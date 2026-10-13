@@ -1,0 +1,2282 @@
+{
+ "contract_version": "tournament_context_v2",
+ "generated_at": "2026-10-13T00:09:40.785+00:00",
+ "source": "getSchedule",
+ "source_ok": true,
+ "stale": false,
+ "fetched_at": "2026-10-13T00:09:40.785+00:00",
+ "sources": {
+  "schedule": {
+   "ok": true,
+   "stale": false,
+   "fetched_at": "2026-10-13T00:09:40.785+00:00",
+   "pages_read": 2,
+   "page_failure": null
+  },
+  "standings": {
+   "ok": true,
+   "stale": false,
+   "fetched_at": "2026-10-13T00:09:40.785+00:00"
+  }
+ },
+ "context": {
+  "context_id": "worlds-2026",
+  "name": "League of Legends World Championship 2026",
+  "short_name": "Worlds",
+  "league": {
+   "slug": "worlds",
+   "id": "98767975604431411"
+  },
+  "tournament": {
+   "id": "115660540725177488",
+   "slug": "worlds_2026"
+  },
+  "starts": "2026-10-15",
+  "ends": "2026-11-14",
+  "regions": [
+   "LPL",
+   "LCK",
+   "LEC",
+   "LCS",
+   "LCP",
+   "CBLOL"
+  ],
+  "stages": [
+   {
+    "key": "play_in",
+    "name": "Play-In Stage",
+    "block_names": [
+     "Play-Ins"
+    ],
+    "starts": "2026-10-15",
+    "ends": "2026-10-18",
+    "venue": "Los Angeles, CA",
+    "format_note": "Four teams in a best-of-five double-elimination bracket. The Play-In winner takes the Play-In slot in Swiss Tier 4.",
+    "bracket": "double_elimination",
+    "standings_slug": "play_ins",
+    "expected_matches": 6
+   },
+   {
+    "key": "swiss",
+    "name": "Swiss Stage",
+    "block_names": [
+     "Swiss"
+    ],
+    "starts": "2026-10-23",
+    "ends": "2026-10-31",
+    "venue": "Allen, TX",
+    "format_note": "Sixteen teams over five rounds of best-of-one and best-of-three matches. Three match wins advance; three match losses eliminate. Round 1 is Tier 1 v Tier 4 and Tier 2 v Tier 3; later rounds pair teams on the same record.",
+    "bracket": "swiss",
+    "standings_slug": "swiss",
+    "expected_matches": 33,
+    "wins_to_advance": 3,
+    "losses_to_eliminate": 3
+   },
+   {
+    "key": "knockout",
+    "name": "Knockout Stage",
+    "block_names": [
+     "Quarterfinals",
+     "Semifinals",
+     "Finals"
+    ],
+    "starts": "2026-11-03",
+    "ends": "2026-11-14",
+    "venue": "Allen, TX; Final in Brooklyn, NY",
+    "format_note": "Eight teams, single elimination, best-of-five. Quarterfinals Nov 3-6, Semifinals Nov 7-8, Final Nov 14.",
+    "bracket": "single_elimination",
+    "standings_slug": "knockouts",
+    "expected_matches": 7
+   }
+  ],
+  "participants": [
+   {
+    "code": "AL",
+    "team_key": "Anyone's Legend",
+    "region": "LPL",
+    "lineup": [],
+    "esports_team_id": "99566404856367466",
+    "name": "Anyone's Legend",
+    "entry_stage": "swiss",
+    "swiss_tier": 1,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "BLG",
+    "team_key": "Bilibili Gaming",
+    "region": "LPL",
+    "lineup": [],
+    "esports_team_id": "99566404853854212",
+    "name": "Bilibili Gaming",
+    "entry_stage": "swiss",
+    "swiss_tier": 2,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "TES",
+    "team_key": "Top Esports",
+    "region": "LPL",
+    "lineup": [],
+    "esports_team_id": "99566404854685458",
+    "name": "TOP Esports",
+    "entry_stage": "swiss",
+    "swiss_tier": 3,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "IG",
+    "team_key": "Invictus Gaming",
+    "region": "LPL",
+    "lineup": [],
+    "esports_team_id": "99566404848691211",
+    "name": "Shanghai Invictus Gaming Meituan",
+    "entry_stage": "swiss",
+    "swiss_tier": 4,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "GEN",
+    "team_key": "Gen.G",
+    "region": "LCK",
+    "lineup": [],
+    "esports_team_id": "100205573495116443",
+    "name": "Gen.G",
+    "entry_stage": "swiss",
+    "swiss_tier": 1,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "HLE",
+    "team_key": "Hanwha Life Esports",
+    "region": "LCK",
+    "lineup": [],
+    "esports_team_id": "100205573496804586",
+    "name": "Hanwha Life Esports",
+    "entry_stage": "swiss",
+    "swiss_tier": 2,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "T1",
+    "team_key": "T1",
+    "region": "LCK",
+    "lineup": [],
+    "esports_team_id": "98767991853197861",
+    "name": "T1",
+    "entry_stage": "swiss",
+    "swiss_tier": 3,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "DK",
+    "team_key": "Dplus Kia",
+    "region": "LCK",
+    "lineup": [],
+    "esports_team_id": "100725845018863243",
+    "name": "Dplus Kia",
+    "entry_stage": "swiss",
+    "swiss_tier": 4,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "G2",
+    "team_key": "G2 Esports",
+    "region": "LEC",
+    "lineup": [],
+    "esports_team_id": "98767991926151025",
+    "name": "G2 Esports",
+    "entry_stage": "swiss",
+    "swiss_tier": 1,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "MKOI",
+    "team_key": "Movistar KOI",
+    "region": "LEC",
+    "lineup": [],
+    "esports_team_id": "103461966965149786",
+    "name": "Movistar KOI",
+    "entry_stage": "swiss",
+    "swiss_tier": 3,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "KC",
+    "team_key": "Karmine Corp",
+    "region": "LEC",
+    "lineup": [],
+    "esports_team_id": "111692118851466302",
+    "name": "Karmine Corp",
+    "entry_stage": "play_in",
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "TLAW",
+    "team_key": "Team Liquid",
+    "region": "LCS",
+    "lineup": [],
+    "esports_team_id": "98926509885559666",
+    "name": "Team Liquid Alienware",
+    "entry_stage": "swiss",
+    "swiss_tier": 1,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "LYON",
+    "team_key": "LYON (2024 American Team)",
+    "region": "LCS",
+    "lineup": [],
+    "esports_team_id": "99566405941863385",
+    "name": "LYON",
+    "entry_stage": "swiss",
+    "swiss_tier": 3,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "C9",
+    "team_key": "Cloud9",
+    "region": "LCS",
+    "lineup": [],
+    "esports_team_id": "98767991877340524",
+    "name": "Cloud9 Kia",
+    "entry_stage": "play_in",
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "TSW",
+    "team_key": "Team Secret Whales",
+    "region": "LCP",
+    "lineup": [],
+    "esports_team_id": "113661839307879869",
+    "name": "Team Secret Whales",
+    "entry_stage": "swiss",
+    "swiss_tier": 2,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "CFO",
+    "team_key": "CTBC Flying Oyster",
+    "region": "LCP",
+    "lineup": [],
+    "esports_team_id": "107700199633958891",
+    "name": "CTBC Flying Oyster",
+    "entry_stage": "swiss",
+    "swiss_tier": 4,
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "MVK",
+    "team_key": "MVK Esports",
+    "region": "LCP",
+    "lineup": [],
+    "esports_team_id": "107251245690956393",
+    "name": "MVK Esports",
+    "entry_stage": "play_in",
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "LOS",
+    "team_key": "LØS",
+    "region": "CBLOL",
+    "lineup": [],
+    "esports_team_id": "109480204628225868",
+    "name": "LØS",
+    "entry_stage": "swiss",
+    "swiss_tier": 2,
+    "qualification": "CBLOL1",
+    "lineup_status": "not_certified"
+   },
+   {
+    "code": "FUR",
+    "team_key": "FURIA",
+    "region": "CBLOL",
+    "lineup": [],
+    "esports_team_id": "100205576309502431",
+    "name": "FURIA",
+    "entry_stage": "play_in",
+    "qualification": "CBLOL2",
+    "lineup_status": "not_certified"
+   }
+  ],
+  "related": [],
+  "sources": [
+   "Riot: Worlds 2026 primer (lolesports.com/en-GB/news/worlds-2026-primer, 2026-10-05) — field, tiers, stages, dates, venues, format",
+   "lolesports getSchedule (league cblol-brazil) — CBLOL Final 2026-10-10: LOS 3-2 FURIA (resolves the primer's CBLOL1/CBLOL2 placeholders)",
+   "lolesports getTeams / getStandingsV3 (tournament worlds_2026) — codes, team ids, bracket cells and edges",
+   "lolesports getSchedule (league worlds) — matches, times, results"
+  ],
+  "notes": [
+   "Lineups are not shown: no official Worlds 2026 registration has been published or certified.",
+   "Bracket edges, Swiss rounds and Play-In cells come from upstream standings; advancement is reported only where a completed result or upstream placement shows it."
+  ]
+ },
+ "state": {
+  "phase": "pre_event",
+  "phase_basis": "results",
+  "phase_detail": null,
+  "calendar_stage": "pre_event",
+  "next_match_id": "115660588583171786",
+  "matches": [
+   {
+    "match_id": "115660588583171786",
+    "scheduled_start": "2026-10-15T18:00:00Z",
+    "stage": "play_in",
+    "block_name": "Play-Ins",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "C9",
+      "upstream_name": "Cloud9 Kia",
+      "team_key": "Cloud9",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": "KC",
+      "upstream_name": "Karmine Corp",
+      "team_key": "Karmine Corp",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Play-Ins",
+     "cell": "Upper Bracket - Semifinals",
+     "cell_slug": "upper_bracket_semifinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660588583040710",
+    "scheduled_start": "2026-10-15T23:00:00Z",
+    "stage": "play_in",
+    "block_name": "Play-Ins",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "FUR",
+      "upstream_name": "FURIA",
+      "team_key": "FURIA",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": "MVK",
+      "upstream_name": "MVK Esports",
+      "team_key": "MVK Esports",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Play-Ins",
+     "cell": "Upper Bracket - Semifinals",
+     "cell_slug": "upper_bracket_semifinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660588583171790",
+    "scheduled_start": "2026-10-16T18:00:00Z",
+    "stage": "play_in",
+    "block_name": "Play-Ins",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660588583040710"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660588583171786"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Play-Ins",
+     "cell": "Upper Bracket - Finals",
+     "cell_slug": "upper_bracket_finals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660588583171794",
+    "scheduled_start": "2026-10-16T23:00:00Z",
+    "stage": "play_in",
+    "block_name": "Play-Ins",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "loser_of",
+       "match_id": "115660588583040710"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "loser_of",
+       "match_id": "115660588583171786"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Play-Ins",
+     "cell": "Lower Bracket - Semifinals",
+     "cell_slug": "lower_bracket_semifinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660588583171798",
+    "scheduled_start": "2026-10-17T18:00:00Z",
+    "stage": "play_in",
+    "block_name": "Play-Ins",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "loser_of",
+       "match_id": "115660588583171790"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660588583171794"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Play-Ins",
+     "cell": "Lower Bracket - Finals",
+     "cell_slug": "lower_bracket_finals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "116299649498303884",
+    "scheduled_start": "2026-10-18T18:00:00Z",
+    "stage": "play_in",
+    "block_name": "Play-Ins",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660588583171790"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660588583171798"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Play-Ins",
+     "cell": "Finals",
+     "cell_slug": "finals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095005",
+    "scheduled_start": "2026-10-23T17:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095007",
+    "scheduled_start": "2026-10-23T18:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095009",
+    "scheduled_start": "2026-10-23T19:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095011",
+    "scheduled_start": "2026-10-23T20:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095013",
+    "scheduled_start": "2026-10-23T21:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095015",
+    "scheduled_start": "2026-10-23T22:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095017",
+    "scheduled_start": "2026-10-23T23:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095019",
+    "scheduled_start": "2026-10-24T00:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 1",
+     "cell_slug": "round_1"
+    },
+    "swiss_round": 1
+   },
+   {
+    "match_id": "115660540726095021",
+    "scheduled_start": "2026-10-24T17:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095023",
+    "scheduled_start": "2026-10-24T18:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095025",
+    "scheduled_start": "2026-10-24T19:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095027",
+    "scheduled_start": "2026-10-24T20:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095029",
+    "scheduled_start": "2026-10-24T21:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095031",
+    "scheduled_start": "2026-10-24T22:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095033",
+    "scheduled_start": "2026-10-24T23:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095035",
+    "scheduled_start": "2026-10-25T00:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 2",
+     "cell_slug": "round_2"
+    },
+    "swiss_round": 2
+   },
+   {
+    "match_id": "115660540726095045",
+    "scheduled_start": "2026-10-25T17:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095047",
+    "scheduled_start": "2026-10-25T18:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095037",
+    "scheduled_start": "2026-10-25T19:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095041",
+    "scheduled_start": "2026-10-25T22:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095049",
+    "scheduled_start": "2026-10-26T17:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095051",
+    "scheduled_start": "2026-10-26T18:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095053",
+    "scheduled_start": "2026-10-26T19:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095057",
+    "scheduled_start": "2026-10-26T22:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 3",
+     "cell_slug": "round_3"
+    },
+    "swiss_round": 3
+   },
+   {
+    "match_id": "115660540726095061",
+    "scheduled_start": "2026-10-28T20:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 4",
+     "cell_slug": "round_4"
+    },
+    "swiss_round": 4
+   },
+   {
+    "match_id": "115660540726095065",
+    "scheduled_start": "2026-10-28T23:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 4",
+     "cell_slug": "round_4"
+    },
+    "swiss_round": 4
+   },
+   {
+    "match_id": "115660540726095069",
+    "scheduled_start": "2026-10-29T20:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 4",
+     "cell_slug": "round_4"
+    },
+    "swiss_round": 4
+   },
+   {
+    "match_id": "115660540726095073",
+    "scheduled_start": "2026-10-29T23:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 4",
+     "cell_slug": "round_4"
+    },
+    "swiss_round": 4
+   },
+   {
+    "match_id": "115660540726095077",
+    "scheduled_start": "2026-10-30T20:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 4",
+     "cell_slug": "round_4"
+    },
+    "swiss_round": 4
+   },
+   {
+    "match_id": "115660540726095081",
+    "scheduled_start": "2026-10-30T23:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 4",
+     "cell_slug": "round_4"
+    },
+    "swiss_round": 4
+   },
+   {
+    "match_id": "115660540726095085",
+    "scheduled_start": "2026-10-31T17:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 5",
+     "cell_slug": "round_5"
+    },
+    "swiss_round": 5
+   },
+   {
+    "match_id": "115660540726095089",
+    "scheduled_start": "2026-10-31T20:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 5",
+     "cell_slug": "round_5"
+    },
+    "swiss_round": 5
+   },
+   {
+    "match_id": "115660540726095093",
+    "scheduled_start": "2026-10-31T23:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Swiss",
+     "cell": "Round 5",
+     "cell_slug": "round_5"
+    },
+    "swiss_round": 5
+   },
+   {
+    "match_id": "115660540726095097",
+    "scheduled_start": "2026-11-03T22:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Quarterfinals",
+     "cell_slug": "quarterfinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095103",
+    "scheduled_start": "2026-11-04T22:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Quarterfinals",
+     "cell_slug": "quarterfinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095109",
+    "scheduled_start": "2026-11-05T22:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Quarterfinals",
+     "cell_slug": "quarterfinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095115",
+    "scheduled_start": "2026-11-06T22:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "draw"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Quarterfinals",
+     "cell_slug": "quarterfinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095121",
+    "scheduled_start": "2026-11-07T22:00:00Z",
+    "stage": "knockout",
+    "block_name": "Semifinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660540726095097"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660540726095103"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Semifinals",
+     "cell_slug": "semifinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095127",
+    "scheduled_start": "2026-11-08T22:00:00Z",
+    "stage": "knockout",
+    "block_name": "Semifinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660540726095109"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660540726095115"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Semifinals",
+     "cell_slug": "semifinals"
+    },
+    "swiss_round": null
+   },
+   {
+    "match_id": "115660540726095133",
+    "scheduled_start": "2026-11-14T19:00:00Z",
+    "stage": "knockout",
+    "block_name": "Finals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660540726095121"
+      }
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null,
+      "slot": {
+       "kind": "winner_of",
+       "match_id": "115660540726095127"
+      }
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": [],
+    "bracket": {
+     "section": "Knockouts",
+     "cell": "Finals",
+     "cell_slug": "finals"
+    },
+    "swiss_round": null
+   }
+  ],
+  "swiss_records": [],
+  "knockout_teams": [],
+  "counts": {
+   "matches": 46,
+   "completed": 0,
+   "live": 0
+  },
+  "play_in": {
+   "stage": "play_in",
+   "bracket": "double_elimination",
+   "bracket_authority": "standings",
+   "match_ids": [
+    "115660588583040710",
+    "115660588583171786",
+    "115660588583171790",
+    "115660588583171794",
+    "115660588583171798",
+    "116299649498303884"
+   ],
+   "records": [],
+   "eliminated": [],
+   "winner_code": null,
+   "unverified_completed_matches": 0
+  },
+  "swiss": {
+   "wins_to_advance": 3,
+   "losses_to_eliminate": 3,
+   "records": [],
+   "placed_codes": [],
+   "rounds": {
+    "1": [
+     "115660540726095005",
+     "115660540726095007",
+     "115660540726095009",
+     "115660540726095011",
+     "115660540726095013",
+     "115660540726095015",
+     "115660540726095017",
+     "115660540726095019"
+    ],
+    "2": [
+     "115660540726095021",
+     "115660540726095023",
+     "115660540726095025",
+     "115660540726095027",
+     "115660540726095029",
+     "115660540726095031",
+     "115660540726095033",
+     "115660540726095035"
+    ],
+    "3": [
+     "115660540726095045",
+     "115660540726095047",
+     "115660540726095037",
+     "115660540726095041",
+     "115660540726095049",
+     "115660540726095051",
+     "115660540726095053",
+     "115660540726095057"
+    ],
+    "4": [
+     "115660540726095061",
+     "115660540726095065",
+     "115660540726095069",
+     "115660540726095073",
+     "115660540726095077",
+     "115660540726095081"
+    ],
+    "5": [
+     "115660540726095085",
+     "115660540726095089",
+     "115660540726095093"
+    ]
+   },
+   "unverified_completed_matches": 0
+  },
+  "knockout": {
+   "stage": "knockout",
+   "bracket": "single_elimination",
+   "bracket_authority": "standings",
+   "match_ids": [
+    "115660540726095097",
+    "115660540726095103",
+    "115660540726095109",
+    "115660540726095115",
+    "115660540726095121",
+    "115660540726095127",
+    "115660540726095133"
+   ],
+   "records": [],
+   "eliminated": [],
+   "winner_code": null,
+   "unverified_completed_matches": 0,
+   "champion_code": null
+  },
+  "coverage": {
+   "pages_read": 2,
+   "page_failure": null,
+   "found_matches": 46,
+   "basis": "standings",
+   "complete": true,
+   "expected_matches": 46,
+   "missing_match_ids": [],
+   "unlisted_match_ids": []
+  },
+  "warnings": []
+ }
+}

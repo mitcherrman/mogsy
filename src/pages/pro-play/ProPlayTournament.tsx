@@ -13,12 +13,19 @@
  * registered for this tournament (GAM's loaned jungler, RED's stand-in); the
  * team and player links lead to the ordinary profiles, which keep their own
  * roster truth.
+ *
+ * TWO CONTRACTS (PW4-B). A `tournament_context_v1` event (DCGI) renders
+ * exactly as DCGI1 built it, below. A `tournament_context_v2` event (Worlds
+ * 2026) renders `TournamentV2`: a Play-In, Swiss and Knockout read from
+ * upstream standings. A version this page cannot read, or a body without its
+ * shape, is said plainly rather than half-drawn.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Brain, CalendarDays, MapPin, Search } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
+import TournamentV2 from "@/components/pro-play/tournament/TournamentV2";
 import { HubKicker } from "@/components/pro-play/hub/HubSection";
 import MatchStateBadge from "@/components/pro-play/hub/MatchStateBadge";
 import { PlayerPortrait, TeamCrest } from "@/components/pro-play/media/EntityCrest";
@@ -34,7 +41,10 @@ import {
   proPlayTournamentUrl,
 } from "@/lib/pro-play/routes";
 import {
+  TournamentMalformed,
   TournamentNotFound,
+  TournamentUnsupported,
+  isTournamentV2,
   useTournament,
   type TournamentContext,
   type TournamentMatch,
@@ -59,6 +69,7 @@ import {
   scoreText,
   todaysMatches,
 } from "@/lib/pro-play/tournamentView";
+import { mediaKeysV2, stageShortName } from "@/lib/pro-play/tournamentV2View";
 import { cn } from "@/lib/utils";
 
 function useNow(intervalMs = 30_000) {
@@ -495,22 +506,33 @@ export default function ProPlayTournament() {
   const query = useTournament(contextId);
   const now = useNow();
   const data = query.data;
+  const v2 = data && isTournamentV2(data) ? data : null;
+  const v1 = data && !isTournamentV2(data) ? data : null;
 
-  const mediaTeams = useMemo(() => data?.context.participants.map((p) => p.team_key) ?? [], [data]);
+  const mediaKeys = useMemo(() => (v2 ? mediaKeysV2(v2) : null), [v2]);
+  const mediaTeams = useMemo(
+    () => mediaKeys?.teams ?? data?.context.participants.map((p) => p.team_key) ?? [],
+    [data, mediaKeys],
+  );
   const mediaPlayers = useMemo(
-    () => data?.context.participants.flatMap((p) => p.lineup.map((s) => s.player_key)) ?? [],
-    [data],
+    () => mediaKeys?.players ?? data?.context.participants.flatMap((p) => p.lineup.map((s) => s.player_key)) ?? [],
+    [data, mediaKeys],
   );
   const mediaLeagues = useMemo(() => (data ? [data.context.league.slug] : []), [data]);
+  const error = query.error;
 
   return (
     <div className="relative min-h-screen bg-background">
       <SEOHead
         title={data ? `${data.context.short_name} — ${data.context.name} | Mogzy` : "Tournament | Mogzy"}
         description={
-          data
-            ? `${data.context.name}: the ${data.context.participants.length}-team field, tournament lineups, schedule and results.`
-            : "A professional League of Legends tournament: field, lineups, schedule and results."
+          v2
+            ? `${v2.context.name}: the ${v2.context.participants.length}-team field, the ${v2.context.stages
+                .map((s) => stageShortName(s))
+                .join(", ")} stages, the full schedule and results.`
+            : data
+              ? `${data.context.name}: the ${data.context.participants.length}-team field, tournament lineups, schedule and results.`
+              : "A professional League of Legends tournament: field, lineups, schedule and results."
         }
         path={proPlayTournamentUrl(contextId ?? "")}
       />
@@ -522,23 +544,45 @@ export default function ProPlayTournament() {
             <Skeleton className="h-64 w-full" />
           </div>
         )}
-        {query.isError && (
+        {query.isError && !data && (
           <div className="space-y-3 pt-8" role="alert">
             <Link to={PRO_PLAY_ROUTE} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Pro Play
             </Link>
             <p className="text-base font-semibold">
-              {query.error instanceof TournamentNotFound ? "No such tournament." : "This tournament could not be loaded."}
+              {error instanceof TournamentNotFound
+                ? "No such tournament."
+                : error instanceof TournamentUnsupported
+                  ? "This tournament can't be shown on this version of the page."
+                  : "This tournament could not be loaded."}
             </p>
-            {!(query.error instanceof TournamentNotFound) && (
-              <p className="text-sm text-muted-foreground">The Pro Play service did not answer. Try again in a moment.</p>
+            {error instanceof TournamentUnsupported || error instanceof TournamentMalformed ? (
+              <p className="text-sm text-muted-foreground" data-testid="tournament-contract-error">
+                The Pro Play service answered in a format this page doesn't read
+                {error instanceof TournamentUnsupported ? ` (${error.version})` : ""}, so nothing is drawn from it. Reloading
+                after the site updates should fix it.
+              </p>
+            ) : (
+              !(error instanceof TournamentNotFound) && (
+                <p className="text-sm text-muted-foreground">The Pro Play service did not answer. Try again in a moment.</p>
+              )
             )}
           </div>
         )}
-        {data && (
+        {v1 && (
           <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
-            <Header ctx={data.context} phase={data.state.phase} />
-            <TournamentBody data={data} now={now} />
+            <Header ctx={v1.context} phase={v1.state.phase} />
+            <TournamentBody data={v1} now={now} />
+          </ProPlayMediaProvider>
+        )}
+        {v2 && (
+          <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
+            <TournamentV2
+              data={v2}
+              now={now}
+              onRetry={() => void query.refetch()}
+              retrying={query.isFetching}
+            />
           </ProPlayMediaProvider>
         )}
       </div>
