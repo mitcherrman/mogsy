@@ -334,3 +334,40 @@ describe("reconstruct module renderer — source contract", () => {
     expect(src).not.toMatch(/opponent_?submitted|opponentChoices|placements\[/);
   });
 });
+
+describe("RECONSTRUCT-R3C — a timed-out reveal (host-built from the settlement)", () => {
+  const raw = () => reconstructRound(WE).reveal_wrong as Record<string, unknown>;
+  /** The settlement-derived shape `withSettledTimeoutReveal` attaches: recipe only, no build. */
+  function timedOut() {
+    const parsed = parse(reconstructState(WE, { own_challenge_reveals: [raw()] }, reconstructRound(WE).wrong_placement));
+    const served = parsed.segmentState!.ownChallengeReveals[0].reconstruct!;
+    return { ...served, placement: [], slotCorrect: [], settledPlacement: [], isCorrect: false, timedOut: true };
+  }
+
+  it("settles the sockets to the server's canonical parts, one per copy, in the server's order", () => {
+    const r = timedOut();
+    const mapped = toReconstructReveal(r, 3);
+    expect(mapped.timedOut).toBe(true);
+    expect(mapped.placement).toEqual([]);
+    expect(mapped.slotCorrect).toEqual([]);
+    expect(mapped.settled).toEqual(r.canonicalParts.flatMap((p) => Array(p.quantity).fill(p.pieceId)));
+    expect(mapped.settled).toHaveLength(3);
+  });
+
+  it("reports no placed count on any part (the player placed nothing)", () => {
+    const mapped = toReconstructReveal(timedOut(), 3);
+    expect(mapped.evidence!.parts.every((p) => p.annotation === null)).toBe(true);
+  });
+
+  it("a recipe whose copies do not fill the board draws no sockets (never a wrong board)", () => {
+    expect(toReconstructReveal(timedOut(), 4).settled).toEqual([]);
+    expect(toReconstructReveal(timedOut()).settled).toEqual([]);
+  });
+
+  it("an answered reveal is unchanged: no timedOut flag, the server's settled sockets", () => {
+    const parsed = parse(reconstructState(WE, { own_challenge_reveals: [raw()] }, reconstructRound(WE).wrong_placement));
+    const mapped = toReconstructReveal(parsed.segmentState!.ownChallengeReveals[0].reconstruct!, 3);
+    expect(mapped.timedOut).toBeUndefined();
+    expect(mapped.settled).toEqual(raw().settled_placement);
+  });
+});

@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { withInlineOrderForgeReveal } from "@/lib/ranked-core/orderForgeLockReveal";
+import { withSettledTimeoutReveal } from "@/lib/ranked-core/reconstructTimeoutReveal";
 import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import {
@@ -972,10 +973,17 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // OF4-FIX2 — the Order Forge lock's inline reveal, on the segment the
   // surface is presenting (frozen through the reveal hold). Exact match and
   // segment only; a snapshot that carries its own reveal wins.
+  // RECONSTRUCT-R3C — a viewer the server settled as TIMED OUT has no reveal
+  // of their own; once the round has settled, its recipe goes on the board
+  // (from the resolved round's settlement, the viewer's own entry only).
   const surfaceSegmentState = useMemo(
-    () => withInlineOrderForgeReveal(surfaceRound?.segmentState ?? null,
-      m.orderForgeLockReveal, matchId),
-    [surfaceRound, m.orderForgeLockReveal, matchId]);
+    () => withSettledTimeoutReveal(
+      withInlineOrderForgeReveal(surfaceRound?.segmentState ?? null,
+        m.orderForgeLockReveal, matchId),
+      { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber },
+      viewerUserId),
+    [surfaceRound, m.orderForgeLockReveal, matchId,
+      m.lastSegmentSettlement, m.lastSegmentRoundNumber, viewerUserId]);
   const segmentActions = useMemo(() => ({
     submitChallenge: m.submitSegmentChallenge,
     busy: m.submitting,
