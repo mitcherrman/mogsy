@@ -26,7 +26,11 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - run: npm ci --ignore-scripts
+      # Baseline package-lock.json is already out of sync with package.json
+      # (drizzle-kit / drizzle-orm / postgres added without lock refresh).
+      # Do not modify the lockfile as part of this isolated feature PR.
+      - name: Install dependency graph without changing the repository lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
       - name: Creator Replay frontend tests
         run: npx vitest run src/pages/admin/CreatorReplayPage.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.test.tsx
       - name: TypeScript contract check
