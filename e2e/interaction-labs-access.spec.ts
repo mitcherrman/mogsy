@@ -1,12 +1,16 @@
 /**
- * INT1 — owner-only entry for the Rangefinder / Glyph Press labs.
+ * INT1 — owner-only entry for the Rangefinder / Glyph Press labs, run against
+ * the PRODUCTION bundle (`vite preview` of `dist`).
  *
- * @owner-dev: the real AdminRoute + InteractionLabPage + the original labs,
- * with an owner (or non-owner) persona from the DEV-only E2E identity seam.
- * Loads the committed fixtures through the file input as the owner would.
+ * Owner / non-owner: a signed-in Supabase session is placed in storage and the
+ * one server question AdminRoute asks — the `owner_auth_state` RPC — is answered
+ * here (owner + authorized, or not the owner). That drives the real AdminRoute,
+ * InteractionLabPage and original labs; the labs themselves make no server call.
+ * (The DEV-only E2E admin persona is not used: with it, AdminAuthProvider
+ * re-renders without end — see the handoff.)
  *
- * @prod-preview: the production bundle, signed out. No lab, no loader, no
- * DEV route, and no fixture content in any JS asset the page can fetch.
+ * Signed out: no lab, no loader, no DEV route, and no fixture content in any JS
+ * asset the page can fetch.
  *
  * Screenshots go to INT1_SHOTS (default test-results/interaction-labs).
  */
@@ -21,20 +25,44 @@ const WP_PACK = path.resolve("src/lib/word-puzzle/__fixtures__/wordPuzzleRounds.
 const WP = JSON.parse(readFileSync(WP_PACK, "utf8")) as { rounds: { id: string; answer: string }[] };
 const LABEL = "Prototype • not server-authoritatively graded";
 
-const persona = (admin: boolean) => JSON.stringify({
-  token: "int1-e2e-not-a-real-token",
-  user: { id: admin ? "int1-owner" : "int1-player", email: null, is_anonymous: false },
-  admin,
-});
+const SUPABASE_REF = "kewgjwrzpzpeltwidvuc";
+const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+/** A session-shaped object. The token is unsigned: nothing in this run verifies it, and no real server sees it. */
+const session = (userId: string) => {
+  const exp = Math.floor(Date.now() / 1000) + 3600 * 24;
+  const user = { id: userId, aud: "authenticated", role: "authenticated", email: `${userId}@example.test`, is_anonymous: false, app_metadata: { provider: "email" }, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
+  return {
+    access_token: `${b64url({ alg: "none", typ: "JWT" })}.${b64url({ sub: userId, aud: "authenticated", role: "authenticated", exp, aal: "aal2" })}.int1`,
+    refresh_token: "int1-refresh", token_type: "bearer", expires_in: 86_400, expires_at: exp, user,
+  };
+};
 
-/** Hermetic: Supabase answers empty, so no run depends on the network (or a CI proxy that blocks it). */
-const stubSupabase = (ctx: BrowserContext) =>
-  ctx.route(/supabase\.co/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+/**
+ * Hermetic: every non-local request is answered here, so no run depends on the
+ * network (Supabase: the owner RPC as configured, the user record, empty rows
+ * elsewhere; anything else: 204).
+ */
+async function hermetic(ctx: BrowserContext, owner: boolean | null) {
+  await ctx.route((url) => !/^(127\.0\.0\.1|localhost)$/.test(url.hostname), (r) => {
+    const u = r.request().url();
+    if (!/supabase\.co/.test(u)) return r.fulfill({ status: 204, body: "" });
+    if (owner !== null && u.includes("/rest/v1/rpc/owner_auth_state")) {
+      return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(owner
+        ? { is_owner: true, authorized: true, aal: "aal2", trusted_device: true, fresh_aal2: true }
+        : { is_owner: false }) });
+    }
+    if (owner !== null && u.includes("/auth/v1/user")) {
+      return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(session(owner ? "int1-owner" : "int1-player").user) });
+    }
+    return r.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+}
 
-async function open(browser: Browser, admin: boolean, vp = { width: 1280, height: 720 }): Promise<Page> {
+async function open(browser: Browser, owner: boolean, vp = { width: 1280, height: 720 }): Promise<Page> {
   const ctx = await browser.newContext({ viewport: vp, isMobile: vp.width < 640, hasTouch: vp.width < 640 });
-  await stubSupabase(ctx);
-  await ctx.addInitScript((p) => { try { localStorage.setItem("mogsy_e2e_identity", p); } catch { /* storage blocked */ } }, persona(admin));
+  await hermetic(ctx, owner);
+  await ctx.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch { /* storage blocked */ } },
+    [`sb-${SUPABASE_REF}-auth-token`, JSON.stringify(session(owner ? "int1-owner" : "int1-player"))] as const);
   return ctx.newPage();
 }
 
@@ -56,7 +84,7 @@ async function answerInDom(page: Page, answer: string): Promise<string[]> {
   }, norm);
 }
 
-test.describe("@owner-dev owner flow", () => {
+test.describe("owner flow (production bundle)", () => {
   test("non-owner is redirected away and never sees a loader", async ({ browser }) => {
     const page = await open(browser, false);
     await page.goto("/admin/interaction-labs/word-puzzle");
@@ -87,9 +115,12 @@ test.describe("@owner-dev owner flow", () => {
     expect(await answerInDom(page, answer), "answer not in the open DOM").toEqual([]);
     await page.screenshot({ path: path.join(SHOTS, `owner-word-puzzle-open-${id}-1280x720.png`) });
 
-    // Type the exact answer on the keyboard, lock, and see it solved.
+    // Type the exact answer into the open sockets (the cursor skips the given, engraved ones).
+    const truth = [...answer.toUpperCase()].filter((c) => /[A-Z]/.test(c));
+    const states = await page.$$eval(".gp-cell", (els) => els.map((e) => e.getAttribute("data-state")));
+    expect(states).toHaveLength(truth.length);
     await page.getByTestId("gp-forme").focus();
-    await page.keyboard.type(answer.replace(/[^A-Za-z]/g, "").toLowerCase());
+    await page.keyboard.type(truth.filter((_, i) => states[i] !== "engraved").join("").toLowerCase());
     await page.getByTestId("gp-lock").click();
     await expect(root).toHaveAttribute("data-phase", "revealed", { timeout: 5000 });
     await expect(root).toHaveAttribute("data-reveal-stage", "done", { timeout: 8000 });
@@ -158,8 +189,8 @@ test.describe("@owner-dev owner flow", () => {
   });
 });
 
-test.describe("@prod-preview production bundle, signed out", () => {
-  test.beforeEach(async ({ context }) => { await stubSupabase(context); });
+test.describe("signed out (production bundle)", () => {
+  test.beforeEach(async ({ context }) => { await hermetic(context, null); });
 
   for (const p of ["/admin/interaction-labs", "/admin/interaction-labs/word-puzzle", "/admin/interaction-labs/rangefinder"]) {
     test(`${p} mounts no loader and no lab`, async ({ page }) => {
