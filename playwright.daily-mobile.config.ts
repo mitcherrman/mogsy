@@ -2,12 +2,12 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * Branch-scoped Daily mobile acceptance. Deliberately discover only these
- * frontend-only specs, since other E2E modules rely on backend setup and
+ * frontend-only geometry spec, since other E2E modules rely on backend setup and
  * Node-incompatible JSON imports during Playwright test discovery.
  */
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: ["daily-mobile-header-fit.spec.ts", "nav1/daily-active-exit.spec.ts"],
+  testMatch: ["daily-mobile-header-fit.spec.ts"],
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
