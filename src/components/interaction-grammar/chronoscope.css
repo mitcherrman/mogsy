@@ -25,9 +25,15 @@
   --cs-ink-muted: var(--ranked-ink-muted, #5a4a2e);
   --cs-inset: 22px;
 
-  /* normal tier (1280×720-class desktops, tablets) */
-  --cs-objective-h: 44px;
-  --cs-lens-h: 216px;
+  /* normal tier (1280×720-class desktops, tablets).
+     SCRUB-S3: the objective block holds the eyebrow (14px) plus TWO prompt
+     lines (2 × 21.25px) = 56.5px, so it is 58px, with the 14px taken from the
+     lens (was 44 / 216). The module height is unchanged (492px). The two
+     "first cannon wave where ... is at least Level N" objectives wrap to two
+     lines here (and every objective does in a ~480px module); at 44px the
+     second line was cut mid-glyph, hiding the target level. */
+  --cs-objective-h: 58px;
+  --cs-lens-h: 202px;
   --cs-reading-h: 56px;
   --cs-rail-h: 72px;
   --cs-footer-h: 48px;
