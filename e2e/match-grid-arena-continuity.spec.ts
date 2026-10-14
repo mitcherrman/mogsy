@@ -235,6 +235,10 @@ async function startAdminMatch(page: Page): Promise<string> {
     return s.matchId as string;
   });
   await page.reload();
+  // RANKED-INT1: under the local E2E identity (dummy Supabase) `/quiz/ranked`
+  // takes ~17-25 s to first render on clean main too; wait for the arena
+  // itself, so the 20 s budgets below measure the board, not the app's boot.
+  await page.locator('[data-testid="ranked-match"]').waitFor({ timeout: 60_000 });
   return id;
 }
 

@@ -114,6 +114,31 @@ const LABEL = Object.fromEntries(PUBLIC.challenges[0].entities.map((e) => [e.ent
 const GROUP = Object.fromEntries(PUBLIC.challenges[0].groups.map((g) => [g.group_id, g.label]));
 const GROUP_INDEX = Object.fromEntries(PUBLIC.challenges[0].groups.map((g, i) => [g.group_id, i + 1]));
 
+/**
+ * RANKED-INT1 — the capture is regenerated from the integrated backend
+ * (`test_wire_contract_field_names_and_capture`), which deals a FRESH board
+ * each run. Its shape is fixed (a trio of 7 runes; the player's board is the
+ * backend's `_wrong(private, 1)`: e0 moved off its tree, the other six right),
+ * but which seal e0 was moved to, where it belongs, the dealt names and the
+ * bot's luck are not. Those few values are read here from the capture's OWN
+ * server bodies, so every assertion below still compares the client to the
+ * exact bytes the server sent — it just no longer pins one particular deal.
+ */
+const SUBMITTED: Record<string, string> = Object.fromEntries(
+  wire.submitted_choice.assignments.map((a) => [a.entity_id, a.group_id]));
+const CANONICAL: Record<string, string> = Object.fromEntries(
+  LOCK_REVEAL.canonical_assignments.map((a) => [a.entity_id, a.group_id]));
+const FACTS = LOCK_REVEAL.entity_facts as Record<string, { label: string; tree_label: string; rune_type: string }>;
+/** Where the capture's player seated e0 (wrong), and where the server says it belongs. */
+const PLACED_E0 = SUBMITTED.e0;
+const CANON_E0 = CANONICAL.e0;
+/** Any other seal, for the keyboard step that the tap reassignment then corrects. */
+const OTHER_E0 = PUBLIC.challenges[0].groups.map((g) => g.group_id).find((g) => g !== PLACED_E0)!;
+const SLOT_WORD = (runeType: string) => (runeType === "keystone" ? "Keystone" : "Minor rune");
+const SETTLED_PLAYERS = wire.settlement_segment_reveal.players as Record<
+  string, { matched: number; segment_result: string }>;
+const BOT_ID = Object.keys(SETTLED_PLAYERS).find((k) => k.startsWith("bot"))!;
+
 const pointer = (type: string, el: Element, x: number, y: number, pointerType = "mouse") =>
   fireEvent(el, new window.PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, pointerId: 1, pointerType }));
 const tap = (el: Element) => { pointer("pointerdown", el, 10, 10); pointer("pointerup", el, 10, 10); };
@@ -131,13 +156,22 @@ function seatByKeyboard(entityId: string, groupId: string) {
 
 // ---------------------------------------------------------------- 1–4: contract
 describe("match contract — public block", () => {
+  it("the capture is the backend's one-wrong trio (RANKED-INT1 precondition)", () => {
+    expect(PUBLIC.challenges[0].entities).toHaveLength(7);
+    expect(PUBLIC.challenges[0].groups).toHaveLength(3);
+    expect(PLACED_E0).not.toBe(CANON_E0);
+    for (const e of LOCK_REVEAL.entity_correct) expect(e.correct).toBe(e.entity_id !== "e0");
+    expect(OTHER_E0).toBeDefined();
+    expect(BOT_ID).toBeDefined();
+  });
+
   it("parses P2's pre-lock block with opaque tokens preserved exactly", () => {
     const st = parse(rawState()).segmentState!;
     expect(st.block?.contract).toBe("match");
     if (st.block?.contract !== "match") return;
     expect(st.block.entities.map((e) => e.entityId)).toEqual(["e0", "e1", "e2", "e3", "e4", "e5", "e6"]);
     expect(st.block.groups.map((g) => g.groupId)).toEqual(["g0", "g1", "g2"]);
-    expect(st.block.groups.map((g) => g.glyph)).toEqual(["precision", "domination", "sorcery"]);
+    expect(st.block.groups.map((g) => g.glyph)).toEqual(PUBLIC.challenges[0].groups.map((g) => g.glyph));
     expect(st.block.prompt).toBe("Seat each rune under its tree");
     expect(st.block.membership).toBe("one");
     expect(st.ownSubmittedAssignments).toEqual([null]);
@@ -195,8 +229,9 @@ describe("match contract — reveal, settlement, review", () => {
     expect(r.matched).toBe(6);
     expect(r.required).toBe(7);
     expect(r.entityCorrect).toEqual({ e0: false, e1: true, e2: true, e3: true, e4: true, e5: true, e6: true });
-    expect(r.canonicalAssignments.find((a) => a.entityId === "e0")?.groupId).toBe("g0");
-    expect(r.entityFacts.e0).toEqual({ label: "Conqueror", treeLabel: "Precision", runeType: "keystone" });
+    expect(r.canonicalAssignments.find((a) => a.entityId === "e0")?.groupId).toBe(CANON_E0);
+    expect(r.entityFacts.e0).toEqual({
+      label: FACTS.e0.label, treeLabel: FACTS.e0.tree_label, runeType: FACTS.e0.rune_type });
   });
 
   it("refuses a reveal for a challenge the viewer may still answer", () => {
@@ -215,7 +250,7 @@ describe("match contract — reveal, settlement, review", () => {
     expect(rv.challenges).toEqual([]);
     expect(rv.match?.matched["human-1"]).toBe(6);
     expect(rv.match?.required).toBe(7);
-    expect(rv.players["human-1"].segmentResult).toBe("loss");
+    expect(rv.players["human-1"].segmentResult).toBe(SETTLED_PLAYERS["human-1"].segment_result);
   });
 
   const reviewEnvelope = (round: Record<string, unknown>) => ({
@@ -244,9 +279,9 @@ describe("match contract — reveal, settlement, review", () => {
   it("reads a frozen review round", () => {
     const rv = readMatchReview(reviewEnvelope(reviewRound(true))).rounds[0];
     expect(rv.kind).toBe("match");
-    expect(rv.match?.viewerAssignments?.[0]).toEqual({ entityId: "e0", groupId: "g1" });
+    expect(rv.match?.viewerAssignments?.[0]).toEqual({ entityId: "e0", groupId: PLACED_E0 });
     expect(rv.match?.entityCorrect?.e0).toBe(false);
-    expect(rv.match?.entityFacts?.e0.treeLabel).toBe("Precision");
+    expect(rv.match?.entityFacts?.e0.treeLabel).toBe(FACTS.e0.tree_label);
   });
 
   it("an unrevealed review round must not carry the canonical board", () => {
@@ -260,10 +295,10 @@ describe("match settlement transcript", () => {
   it("states relationships from the server's own counts, never points", () => {
     const rv = readSegmentReveal({ segment_reveal: clone(wire.settlement_segment_reveal) })!;
     expect(segmentTitle(rv)).toBe("Match Grid");
-    const bot = Object.keys(wire.settlement_segment_reveal.players).find((k) => k.startsWith("bot"))!;
-    render(<SegmentTranscript reveal={rv} viewerUserId="human-1" opponentUserId={bot} />);
+    render(<SegmentTranscript reveal={rv} viewerUserId="human-1" opponentUserId={BOT_ID} />);
     expect(screen.getByTestId("mg-transcript-you")).toHaveTextContent("6 of 7 relationships correct");
-    expect(screen.getByTestId("mg-transcript-them")).toHaveTextContent("7 of 7 relationships correct");
+    expect(screen.getByTestId("mg-transcript-them")).toHaveTextContent(
+      `${SETTLED_PLAYERS[BOT_ID].matched} of 7 relationships correct`);
     expect(screen.getByTestId("match-grid-transcript").textContent).not.toMatch(/point/i);
   });
 });
@@ -304,13 +339,13 @@ describe("match module — open board, assignment, Lock", () => {
   it("keyboard + tap-then-tap + reassignment, then Lock emits one complete opaque-id choice", () => {
     const submit = vi.fn(() => Promise.resolve(true));
     render(view(parse(rawState()).segmentState, actions({ submitChallenge: submit })));
-    // keyboard: everything as the capture's player did, but e0 first under g2.
-    seatByKeyboard("e0", "g2");
-    // tap-then-tap reassignment: e0 → g1.
+    // keyboard: everything as the capture's player did, but e0 first under another seal.
+    seatByKeyboard("e0", OTHER_E0);
+    // tap-then-tap reassignment: e0 → the seal the capture's player chose.
     tap(sigil(LABEL.e0));
     expect(sigil(LABEL.e0)).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(seal(GROUP.g1));
-    expect(sigil(LABEL.e0)).toHaveAccessibleName(new RegExp(`In ${GROUP.g1}`));
+    fireEvent.click(seal(GROUP[PLACED_E0]));
+    expect(sigil(LABEL.e0)).toHaveAccessibleName(new RegExp(`In ${GROUP[PLACED_E0]}`));
     for (const a of wire.submitted_choice.assignments.slice(1)) seatByKeyboard(a.entity_id, a.group_id);
     expect(lockButton()).toBeEnabled();
     fireEvent.click(lockButton());
@@ -320,7 +355,9 @@ describe("match module — open board, assignment, Lock", () => {
     expect(choice).toEqual(wire.submitted_choice);
     // Only ids; no labels, keys or correctness.
     const text = JSON.stringify(choice);
-    for (const word of ["Conqueror", "Precision", "rune_key", "tree_key", "correct"]) expect(text).not.toContain(word);
+    for (const word of [LABEL.e0, GROUP[CANON_E0], "rune_key", "tree_key", "correct"]) {
+      expect(text).not.toContain(word);
+    }
   });
 
   it("a direct drag seats a rune under the nearest seal in one action", () => {
@@ -347,7 +384,7 @@ describe("match module — open board, assignment, Lock", () => {
   it("after a refresh past Lock, the server's echo is the locked board", () => {
     render(view(parse(rawState({}, wire.submitted_choice.assignments)).segmentState, actions()));
     expect(screen.getByTestId("match-grid-phase").getAttribute("data-phase")).toBe("locked");
-    expect(sigil(LABEL.e0)).toHaveAccessibleName(new RegExp(`In ${GROUP.g1}`));
+    expect(sigil(LABEL.e0)).toHaveAccessibleName(new RegExp(`In ${GROUP[PLACED_E0]}`));
   });
 });
 
@@ -357,11 +394,11 @@ describe("match module — authoritative reveal", () => {
     const served = readOwnChallengeReveal(clone(LOCK_REVEAL), 1, "match").match!;
     const r = toMatchReveal(served);
     expect(r.entityCorrect).toEqual(served.entityCorrect);
-    expect(r.canonical.e0).toEqual(["g0"]);
-    expect(r.assignments.e0).toBe("g1");
+    expect(r.canonical.e0).toEqual([CANON_E0]);
+    expect(r.assignments.e0).toBe(PLACED_E0);
     expect(r.isCorrect).toBe(false);
-    expect(r.facts?.e0).toEqual([{ label: "Slot", value: "Keystone" }]);
-    expect(r.facts?.e1).toEqual([{ label: "Slot", value: "Minor rune" }]);
+    expect(r.facts?.e0).toEqual([{ label: "Slot", value: SLOT_WORD(FACTS.e0.rune_type) }]);
+    expect(r.facts?.e1).toEqual([{ label: "Slot", value: SLOT_WORD(FACTS.e1.rune_type) }]);
   });
 
   it("a partially wrong board resolves to the canonical arrangement (reduced motion)", () => {
@@ -372,9 +409,9 @@ describe("match module — authoritative reveal", () => {
     expect(screen.getByTestId("match-grid-phase").getAttribute("data-phase")).toBe("revealed");
     expect(container.querySelector(`button[data-mark="corrected"]`)).not.toBeNull();
     expect(container.querySelectorAll('button[data-mark="stable"]').length).toBe(6);
-    // Settled board: e0 now sits under its canonical seal (g0 = Precision).
-    expect(sigil(LABEL.e0)).toHaveAccessibleName(new RegExp(`In ${GROUP.g0}`));
-    expect(container.textContent).toMatch(/Keystone/);
+    // Settled board: e0 now sits under its canonical seal.
+    expect(sigil(LABEL.e0)).toHaveAccessibleName(new RegExp(`In ${GROUP[CANON_E0]}`));
+    expect(container.textContent).toContain(SLOT_WORD(FACTS.e0.rune_type));
   });
 
   it("an all-correct board settles in place", () => {

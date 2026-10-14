@@ -3,11 +3,11 @@
   "assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -15,11 +15,11 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e4",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e5",
@@ -27,17 +27,17 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ],
   "canonical_assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g0"
+    "group_id": "g2"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -45,11 +45,11 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e4",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e5",
@@ -57,7 +57,7 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ],
   "challenge_index": 0,
@@ -93,39 +93,39 @@
   ],
   "entity_facts": {
    "e0": {
-    "label": "Conqueror",
+    "label": "Guardian",
     "rune_type": "keystone",
-    "tree_label": "Precision"
+    "tree_label": "Resolve"
    },
    "e1": {
-    "label": "Celerity",
+    "label": "Waterwalking",
     "rune_type": "minor",
     "tree_label": "Sorcery"
    },
    "e2": {
-    "label": "Scorch",
+    "label": "Unflinching",
     "rune_type": "minor",
-    "tree_label": "Sorcery"
+    "tree_label": "Resolve"
    },
    "e3": {
-    "label": "Treasure Hunter",
-    "rune_type": "minor",
-    "tree_label": "Domination"
+    "label": "Arcane Comet",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
    },
    "e4": {
-    "label": "Sudden Impact",
-    "rune_type": "minor",
-    "tree_label": "Domination"
+    "label": "Summon Aery",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
    },
    "e5": {
-    "label": "Grisly Mementos",
+    "label": "Time Warp Tonic",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Inspiration"
    },
    "e6": {
-    "label": "Legend: Alacrity",
+    "label": "Cash Back",
     "rune_type": "minor",
-    "tree_label": "Precision"
+    "tree_label": "Inspiration"
    }
   },
   "is_correct": false,
@@ -143,76 +143,76 @@
     "entities": [
      {
       "entity_id": "e0",
-      "label": "Conqueror",
+      "label": "Guardian",
       "media": {
        "alt": "",
-       "src": "assets/runes/Conqueror.png"
+       "src": "assets/runes/Guardian.png"
       }
      },
      {
       "entity_id": "e1",
-      "label": "Celerity",
+      "label": "Waterwalking",
       "media": {
        "alt": "",
-       "src": "assets/runes/Celerity.png"
+       "src": "assets/runes/Waterwalking.png"
       }
      },
      {
       "entity_id": "e2",
-      "label": "Scorch",
+      "label": "Unflinching",
       "media": {
        "alt": "",
-       "src": "assets/runes/Scorch.png"
+       "src": "assets/runes/Unflinching.png"
       }
      },
      {
       "entity_id": "e3",
-      "label": "Treasure Hunter",
+      "label": "Arcane Comet",
       "media": {
        "alt": "",
-       "src": "assets/runes/Treasure_Hunter.png"
+       "src": "assets/runes/Arcane_Comet.png"
       }
      },
      {
       "entity_id": "e4",
-      "label": "Sudden Impact",
+      "label": "Summon Aery",
       "media": {
        "alt": "",
-       "src": "assets/runes/Sudden_Impact.png"
+       "src": "assets/runes/Summon_Aery.png"
       }
      },
      {
       "entity_id": "e5",
-      "label": "Grisly Mementos",
+      "label": "Time Warp Tonic",
       "media": {
        "alt": "",
-       "src": "assets/runes/Grisly_Mementos.png"
+       "src": "assets/runes/Time_Warp_Tonic.png"
       }
      },
      {
       "entity_id": "e6",
-      "label": "Legend: Alacrity",
+      "label": "Cash Back",
       "media": {
        "alt": "",
-       "src": "assets/runes/Legend_Alacrity.png"
+       "src": "assets/runes/Cash_Back.png"
       }
      }
     ],
     "groups": [
      {
-      "glyph": "precision",
-      "group_id": "g0",
-      "label": "Precision"
-     },
-     {
-      "glyph": "domination",
-      "group_id": "g1",
-      "label": "Domination"
-     },
-     {
       "glyph": "sorcery",
-      "group_id": "g2",
+      "group_id": "g0",
       "label": "Sorcery"
+     },
+     {
+      "glyph": "inspiration",
+      "group_id": "g1",
+      "label": "Inspiration"
+     },
+     {
+      "glyph": "resolve",
+      "group_id": "g2",
+      "label": "Resolve"
      }
     ],
     "membership": "one"
@@ -220,17 +220,17 @@
   ],
   "family": "rune_tree",
   "prompt": "Seat each rune under its tree",
-  "reveal_window_ms": 3000
+  "reveal_window_ms": 4500
  },
  "settlement_segment_reveal": {
   "canonical_assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g0"
+    "group_id": "g2"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -238,11 +238,11 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e4",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e5",
@@ -250,46 +250,46 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ],
   "challenge_count": 1,
   "correct_points": 2,
   "entity_facts": {
    "e0": {
-    "label": "Conqueror",
+    "label": "Guardian",
     "rune_type": "keystone",
-    "tree_label": "Precision"
+    "tree_label": "Resolve"
    },
    "e1": {
-    "label": "Celerity",
+    "label": "Waterwalking",
     "rune_type": "minor",
     "tree_label": "Sorcery"
    },
    "e2": {
-    "label": "Scorch",
+    "label": "Unflinching",
     "rune_type": "minor",
-    "tree_label": "Sorcery"
+    "tree_label": "Resolve"
    },
    "e3": {
-    "label": "Treasure Hunter",
-    "rune_type": "minor",
-    "tree_label": "Domination"
+    "label": "Arcane Comet",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
    },
    "e4": {
-    "label": "Sudden Impact",
-    "rune_type": "minor",
-    "tree_label": "Domination"
+    "label": "Summon Aery",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
    },
    "e5": {
-    "label": "Grisly Mementos",
+    "label": "Time Warp Tonic",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Inspiration"
    },
    "e6": {
-    "label": "Legend: Alacrity",
+    "label": "Cash Back",
     "rune_type": "minor",
-    "tree_label": "Precision"
+    "tree_label": "Inspiration"
    }
   },
   "module_id": "match",
@@ -299,11 +299,11 @@
     "assignments": [
      {
       "entity_id": "e0",
-      "group_id": "g0"
+      "group_id": "g2"
      },
      {
       "entity_id": "e1",
-      "group_id": "g2"
+      "group_id": "g0"
      },
      {
       "entity_id": "e2",
@@ -311,11 +311,11 @@
      },
      {
       "entity_id": "e3",
-      "group_id": "g1"
+      "group_id": "g0"
      },
      {
       "entity_id": "e4",
-      "group_id": "g1"
+      "group_id": "g0"
      },
      {
       "entity_id": "e5",
@@ -323,12 +323,12 @@
      },
      {
       "entity_id": "e6",
-      "group_id": "g0"
+      "group_id": "g1"
      }
     ],
     "base_points": 2,
     "correct": 1,
-    "duration_ms": 11337,
+    "duration_ms": 14700,
     "entity_correct": [
      {
       "correct": true,
@@ -372,11 +372,11 @@
     "assignments": [
      {
       "entity_id": "e0",
-      "group_id": "g1"
+      "group_id": "g0"
      },
      {
       "entity_id": "e1",
-      "group_id": "g2"
+      "group_id": "g0"
      },
      {
       "entity_id": "e2",
@@ -384,11 +384,11 @@
      },
      {
       "entity_id": "e3",
-      "group_id": "g1"
+      "group_id": "g0"
      },
      {
       "entity_id": "e4",
-      "group_id": "g1"
+      "group_id": "g0"
      },
      {
       "entity_id": "e5",
@@ -396,7 +396,7 @@
      },
      {
       "entity_id": "e6",
-      "group_id": "g0"
+      "group_id": "g1"
      }
     ],
     "base_points": 0,
@@ -453,11 +453,11 @@
   "assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -465,11 +465,11 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e4",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e5",
@@ -477,7 +477,7 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ]
  }
