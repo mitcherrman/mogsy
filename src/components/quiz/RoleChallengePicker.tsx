@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { getRoleChallengeCatalog, getRoleChallengeStatus, startRoleChallenge } from "@/lib/role-challenge/client";
 import type { RoleChallengeCatalog, RoleChallengeRole, RoleChallengeStatus } from "@/lib/role-challenge/contracts";
+import { championIconPath } from "@/lib/quiz/championKnowledge";
+import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 
 const ROLES: readonly RoleChallengeRole[] = ["top", "jungle", "mid", "adc", "support"];
 type Props = {
@@ -44,7 +46,8 @@ export default function RoleChallengePicker({ enabled, hasAccount, onRequireAcco
   ), [selection, query]);
   const selected = selection?.champions.find(c => c.id === champion) ?? null;
   const next = status?.nextStart;
-  const canStart = !!selected && hasAccount && !!next?.allowed && !busy && !loading;
+  const activeRun = status?.activeRun ?? null;
+  const canStart = !!selected && hasAccount && !!next?.allowed && !busy && !loading && !activeRun;
   const start = async () => {
     if (!hasAccount) { onRequireAccount(); return; }
     if (!canStart || !selected) return;
@@ -71,6 +74,13 @@ export default function RoleChallengePicker({ enabled, hasAccount, onRequireAcco
           </button>
         ))}
       </div>
+      {activeRun ? (
+        <div className="rounded border border-amber-800/50 bg-amber-100/60 p-2 text-sm text-amber-950" data-testid="role-active-run">
+          <p>Continue {activeRun.championName} · {activeRun.role.toUpperCase()} — 12 questions</p>
+          <button type="button" className="mt-1 w-full rounded bg-amber-900 p-2 font-bold text-amber-50"
+            onClick={() => onEnterMatch(activeRun.matchId)}>Resume Role Challenge</button>
+        </div>
+      ) : null}
       {loading ? <p role="status">Loading champion selection…</p> : null}
       <label className="block text-xs font-bold text-amber-950" htmlFor="rc-champion-search">Find a champion</label>
       <input id="rc-champion-search" value={query} onChange={e => setQuery(e.target.value)}
@@ -80,12 +90,18 @@ export default function RoleChallengePicker({ enabled, hasAccount, onRequireAcco
           <button key={c.id} type="button" disabled={busy} onClick={() => { if (busy) return; setChampion(c.id); setPendingStartKey(null); }}
             aria-pressed={champion === c.id}
             className={`block w-full px-2 py-1 text-left text-sm text-amber-950 ${champion === c.id ? "bg-amber-200 font-bold" : "hover:bg-amber-100/70"}`}>
-            {c.name}{c.conventional ? "" : " · Off-meta"}
+            <span className="flex items-center gap-2">
+              <img src={resolveQuizAssetUrl(championIconPath(c.id))} alt="" aria-hidden="true" loading="lazy" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover" />
+              <span>{c.name}{c.conventional ? "" : " · Off-meta"}</span>
+            </span>
           </button>
         ))}
         {!loading && filtered.length === 0 ? <p className="p-2 text-xs text-amber-950">No champions found</p> : null}
       </div>
-      {selected ? <p className="text-xs text-amber-950">{selected.name} · {role.toUpperCase()} · {selected.conventional ? "Conventional" : "Off-meta permitted"}</p> : null}
+      {selected ? <div className="flex items-center gap-2 text-xs text-amber-950">
+        <img src={resolveQuizAssetUrl(championIconPath(selected.id))} alt="" aria-hidden="true" width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
+        <span>{selected.name} · {role.toUpperCase()} · {selected.conventional ? "Conventional" : "Off-meta permitted"}</span>
+      </div> : null}
       {hasAccount && next && !next.allowed ? <p role="status" className="text-xs text-amber-950">{next.allowed === null ? "Eligibility unavailable. Retry later." : next.reason === "daily_limit_reached" ? "Free daily attempt used. Premium permits another start." : "Finish your active match first."}</p> : null}
       {error ? <p role="alert" className="text-xs text-red-900">{error}</p> : null}
       <button type="button" disabled={hasAccount && !canStart} onClick={start}
