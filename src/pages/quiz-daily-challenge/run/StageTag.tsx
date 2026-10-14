@@ -14,7 +14,7 @@ import { specialStageRulesetLabel, stageIdentity } from "@/lib/daily-challenge/r
 
 export function StageTag({ stage, size = "sm" }: {
   stage: Pick<DailyStage, "kind" | "ruleset">;
-  size?: "sm" | "lg";
+  size?: "compact" | "sm" | "lg";
 }) {
   const id = stageIdentity(stage);
   const extra = specialStageRulesetLabel(stage);
@@ -24,15 +24,17 @@ export function StageTag({ stage, size = "sm" }: {
     : id.family === "special"
       ? "border-sky-300/60 bg-sky-300/10 text-sky-200"
       : "border-[rgba(240,215,140,0.55)] bg-black/30 text-[var(--ranked-vellum,#f1e6c8)]";
-  const scale = size === "lg"
-    ? "px-3.5 py-1 text-sm tracking-[0.22em]" : "px-2 py-0.5 text-[0.6875rem] tracking-[0.18em]";
+  const scale = size === "compact"
+    ? "shrink-0 whitespace-nowrap px-1 py-0.5 text-[9px] leading-none tracking-[0.02em] min-[500px]:px-2 min-[500px]:text-[11px]"
+    : size === "lg"
+      ? "px-3.5 py-1 text-sm tracking-[0.22em]" : "px-2 py-0.5 text-[0.6875rem] tracking-[0.18em]";
   return (
     <span data-testid="daily-stage-tag" data-stage-kind={stage.kind}
       data-stage-family={id.family} data-stage-category={id.category} data-closing={closing ? "true" : undefined}
       className={`inline-flex items-center gap-1.5 rounded-sm border font-semibold uppercase ${tone} ${scale}`}>
       {id.label}
       {extra && (
-        <span data-testid="daily-stage-ruleset-tag" className="opacity-80">· {extra}</span>
+        <span data-testid="daily-stage-ruleset-tag" className={size === "compact" ? "hidden opacity-80 md:inline" : "opacity-80"}>· {extra}</span>
       )}
     </span>
   );
