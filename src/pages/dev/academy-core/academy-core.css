@@ -1,0 +1,786 @@
+/* ==========================================================================
+   Academy Core V1 — scoped styles for /lol/dev/academy-core.
+   Every rule is prefixed `.acore-`; nothing here leaks into the Hall or the
+   rest of the League section, and deleting this file with the page removes
+   the preview completely.
+
+   Palette: deep midnight ground, brushed warm metal (brass), enamel navy and
+   one cool teal "live" accent. Display face is Cinzel (already loaded for the
+   League section), markings are Space Mono, prose is Lora / Inter.
+   ========================================================================== */
+
+.acore-root {
+  --acore-bg: #060c14;
+  --acore-navy: #0b1527;
+  --acore-navy-2: #10203a;
+  --acore-brass: #c9a24c;
+  --acore-brass-hi: #f3dfa6;
+  --acore-brass-lo: #5a4520;
+  --acore-ink: #ecdcb3;
+  --acore-ink-dim: #a8a08a;
+  --acore-teal: #43c3d6;
+  --acore-lamp: #ffd98a;
+  --acore-lamp-glow: rgba(255, 217, 138, 0.55);
+
+  position: relative;
+  isolation: isolate;
+  color: var(--acore-ink);
+  background:
+    radial-gradient(62% 52% at 72% 42%, rgba(67, 195, 214, 0.07), transparent 62%),
+    radial-gradient(48% 40% at 18% 82%, rgba(201, 162, 76, 0.08), transparent 62%),
+    var(--acore-bg);
+  overflow-x: clip;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.acore-hero {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.86fr) minmax(0, 1.5fr);
+  gap: clamp(1rem, 3vw, 3rem);
+  align-items: center;
+  min-height: calc(100dvh - var(--app-header-h));
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vh, 2.25rem) clamp(1rem, 4vw, 4rem);
+  box-sizing: border-box;
+}
+
+.acore-root[data-layout="stacked"] .acore-hero {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  gap: 1.25rem;
+  padding: 1rem 1rem 2rem;
+}
+
+/* --------------------------------------------------------------- console */
+
+.acore-console {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.acore-eyebrow {
+  margin: 0;
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--acore-brass);
+  opacity: 0.85;
+}
+
+.acore-title {
+  margin: 0;
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 3.4vw, 3.3rem);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: #f6e8c4;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 28px rgba(201, 162, 76, 0.18);
+}
+
+.acore-lede {
+  margin: 0;
+  font-family: Lora, Georgia, serif;
+  font-size: clamp(1rem, 1.1vw, 1.15rem);
+  line-height: 1.5;
+  color: var(--acore-ink-dim);
+  max-width: 34ch;
+}
+
+.acore-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.acore-root[data-layout="stacked"] .acore-actions {
+  flex-direction: column;
+}
+
+.acore-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 56px;
+  padding: 0 1.4rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: transform 160ms ease, box-shadow 220ms ease, background-color 220ms ease;
+  will-change: transform;
+}
+
+.acore-cta:focus-visible {
+  outline: 2px solid var(--acore-brass-hi);
+  outline-offset: 3px;
+}
+
+.acore-cta-primary {
+  flex: 1 1 auto;
+  color: #1b1306;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 48%),
+    linear-gradient(135deg, #f3dfa6 0%, #c9a24c 55%, #a37f36 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 10px 30px -10px rgba(201, 162, 76, 0.55);
+  font-size: 1rem;
+}
+
+.acore-cta-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 14px 36px -10px rgba(201, 162, 76, 0.7);
+}
+
+.acore-cta-primary:active {
+  transform: translateY(1px);
+}
+
+.acore-cta-key {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  background: #1b1306;
+  color: #f3dfa6;
+  font-size: 0.6rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.acore-cta-secondary {
+  min-height: 48px;
+  padding: 0 1.1rem;
+  color: var(--acore-ink);
+  background: rgba(11, 21, 39, 0.75);
+  border: 1px solid rgba(201, 162, 76, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  font-size: 0.86rem;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.1;
+}
+
+.acore-cta-secondary:hover {
+  border-color: var(--acore-brass);
+  background: rgba(16, 32, 58, 0.9);
+}
+
+.acore-cta-hint {
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-weight: 400;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--acore-brass);
+  opacity: 0.8;
+}
+
+.acore-status {
+  margin: 0;
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--acore-brass);
+}
+
+/* -------------------------------------------- broadcast gateway + second screen */
+
+.acore-gateway {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(201, 162, 76, 0.22);
+}
+
+.acore-transmitter {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 56px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--acore-ink);
+  background: linear-gradient(180deg, rgba(16, 32, 58, 0.85), rgba(11, 21, 39, 0.85));
+  border: 1px solid rgba(201, 162, 76, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+
+.acore-transmitter:hover {
+  border-color: var(--acore-brass);
+}
+
+.acore-transmitter:focus-visible {
+  outline: 2px solid var(--acore-brass-hi);
+  outline-offset: 2px;
+}
+
+.acore-transmitter-dial {
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 999px;
+  color: var(--acore-brass-hi);
+  background: radial-gradient(circle at 35% 30%, #2a3b55, #0a1424 70%);
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 76, 0.55), inset 0 0 0 4px #0a1424, inset 0 0 0 5px rgba(201, 162, 76, 0.25);
+}
+
+.acore-transmitter-dial svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.acore-transmitter-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.acore-transmitter-eyebrow {
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--acore-brass);
+  opacity: 0.85;
+}
+
+.acore-transmitter-title {
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.03em;
+  color: #f0e2bd;
+}
+
+.acore-transmitter-meta {
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  color: var(--acore-ink-dim);
+}
+
+.acore-second-screen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.4rem;
+  padding: 0 0.2rem;
+}
+
+.acore-minor-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--acore-ink-dim);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.acore-minor-link:hover {
+  color: var(--acore-brass-hi);
+  border-bottom-color: rgba(201, 162, 76, 0.6);
+}
+
+.acore-minor-link:focus-visible {
+  outline: 2px solid var(--acore-brass-hi);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------------- stage */
+
+.acore-stagewrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.acore-stage {
+  position: relative;
+  width: min(100%, calc((100dvh - var(--app-header-h) - 6.5rem) * 1.34375));
+  aspect-ratio: 860 / 640;
+  container-type: inline-size;
+}
+
+.acore-root[data-layout="stacked"] .acore-stagewrap {
+  padding-top: 2rem;
+}
+
+.acore-root[data-layout="stacked"] .acore-stage {
+  width: min(100%, 320px);
+  aspect-ratio: 1 / 1;
+}
+
+.acore-console-tail {
+  margin-top: 0.25rem;
+}
+
+.acore-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: "Space Mono", ui-monospace, monospace;
+}
+
+/* Mogzy peeks over the chassis's top-left edge; the opaque body hides the rest. */
+.acore-operator {
+  position: absolute;
+  z-index: 0;
+  left: 9.2%;
+  top: -6%;
+  width: 13%;
+  pointer-events: none;
+}
+
+.acore-root[data-layout="stacked"] .acore-operator {
+  left: 2%;
+  top: -11%;
+  width: 21%;
+}
+
+.acore-operator-art {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+
+.acore-readout-line {
+  margin: 0;
+  width: 100%;
+  max-width: 920px;
+  padding: 0.4rem 0.8rem;
+  border-top: 1px solid rgba(201, 162, 76, 0.28);
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--acore-ink-dim);
+  transition: color 250ms ease;
+}
+
+.acore-stage[data-focus]:not([data-focus="idle"]) + .acore-readout-line {
+  color: var(--acore-brass-hi);
+}
+
+/* ------------------------------------------------------------- bay links */
+
+.acore-bays-mounted {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.acore-bay-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--acore-ink);
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.acore-bay-link:focus-visible {
+  outline: 2px solid var(--acore-brass-hi);
+  outline-offset: 3px;
+}
+
+/* Mounted: the SVG draws the plate; the link is the real text on top of it. */
+.acore-bay-link-mounted {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 0 4.5% 0 11%;
+  pointer-events: auto;
+  gap: 4%;
+}
+
+.acore-bay-link-mounted .acore-bay-lampcell {
+  display: none;
+}
+
+.acore-bay-glyph {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--acore-brass);
+  transition: color 250ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.acore-bay-link-mounted .acore-bay-glyph svg {
+  width: clamp(16px, 2.8cqw, 26px);
+  height: clamp(16px, 2.8cqw, 26px);
+}
+
+.acore-bay-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.05em;
+  line-height: 1.15;
+}
+
+.acore-bay-eyebrow {
+  font-family: "Space Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--acore-brass);
+  opacity: 0.75;
+}
+
+.acore-bay-link-mounted .acore-bay-eyebrow {
+  font-size: clamp(7px, 1.05cqw, 10px);
+}
+
+.acore-bay-title {
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #efe0b8;
+  transition: color 250ms ease, text-shadow 250ms ease;
+  white-space: nowrap;
+}
+
+.acore-bay-link-mounted .acore-bay-title {
+  font-size: clamp(10px, 1.62cqw, 16px);
+}
+
+.acore-bay-arrow {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--acore-brass);
+  opacity: 0.45;
+  transition: opacity 250ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.acore-bay-link-mounted .acore-bay-arrow {
+  width: clamp(12px, 1.8cqw, 18px);
+  height: clamp(12px, 1.8cqw, 18px);
+}
+
+.acore-bay-link[data-active="true"] .acore-bay-title {
+  color: #fff3d2;
+  text-shadow: 0 0 14px rgba(255, 217, 138, 0.45);
+}
+
+.acore-bay-link[data-active="true"] .acore-bay-glyph {
+  color: var(--acore-lamp);
+  transform: translateX(2px);
+}
+
+.acore-bay-link[data-active="true"] .acore-bay-arrow {
+  opacity: 1;
+  transform: translate(2px, -2px);
+}
+
+/* Rows (stacked layout): the plate is HTML, with its own lamp cell. */
+.acore-bays-rows {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+@media (min-width: 560px) {
+  .acore-bays-rows {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.acore-bay-link-row {
+  min-height: 60px;
+  padding: 0.7rem 0.8rem 0.7rem 0.7rem;
+  background: linear-gradient(180deg, rgba(16, 32, 58, 0.85), rgba(11, 21, 39, 0.9));
+  border: 1px solid rgba(201, 162, 76, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+
+.acore-bay-link-row:hover,
+.acore-bay-link-row[data-active="true"] {
+  border-color: var(--acore-brass);
+}
+
+.acore-bay-link-row .acore-bay-lampcell {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 34px;
+  border-radius: 2px;
+  background: #202a40;
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 76, 0.3);
+  transition: background-color 250ms ease, box-shadow 250ms ease;
+}
+
+.acore-bay-link-row[data-active="true"] .acore-bay-lampcell {
+  background: var(--acore-lamp);
+  box-shadow: 0 0 12px var(--acore-lamp-glow);
+}
+
+.acore-bay-link-row .acore-bay-glyph svg {
+  width: 22px;
+  height: 22px;
+}
+
+.acore-bay-link-row .acore-bay-eyebrow {
+  font-size: 0.56rem;
+}
+
+.acore-bay-link-row .acore-bay-title {
+  font-size: 0.92rem;
+  white-space: normal;
+}
+
+.acore-bay-preview {
+  font-family: Lora, Georgia, serif;
+  font-size: 0.78rem;
+  color: var(--acore-ink-dim);
+  line-height: 1.3;
+}
+
+.acore-bay-link-row .acore-bay-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+/* ========================================================== the instrument */
+
+.acore-svg {
+  --lens-core: #ffe4a6;
+  --lens-mid: #6a4c1c;
+  --live: var(--acore-teal);
+  --lamp-on: var(--acore-lamp);
+}
+
+.acore-svg[data-focus="leaguecraft"] { --lens-core: #fff1c9; --lens-mid: #d49a2f; }
+.acore-svg[data-focus="combat-lab"]  { --lens-core: #ecfdff; --lens-mid: #2bb3c7; }
+.acore-svg[data-focus="archives"]    { --lens-core: #ffd9a0; --lens-mid: #9a6326; }
+.acore-svg[data-focus="pro-play"]    { --lens-core: #fff8e2; --lens-mid: #6f93b5; }
+
+.acore-lens-stop-core { stop-color: var(--lens-core); transition: stop-color 500ms ease; }
+.acore-lens-stop-mid  { stop-color: var(--lens-mid);  transition: stop-color 500ms ease; }
+
+/* chassis details */
+.acore-tick { stroke: var(--acore-brass); stroke-opacity: 0.5; stroke-width: 1; }
+.acore-tick-major { stroke-opacity: 0.95; stroke-width: 1.6; }
+.acore-scale-num { fill: var(--acore-brass); fill-opacity: 0.75; font-size: 9px; letter-spacing: 0.05em; }
+.acore-screw circle { fill: #2a3b55; stroke: var(--acore-brass); stroke-width: 0.8; }
+.acore-screw line { stroke: #0a1424; stroke-width: 1.4; }
+.acore-plate rect { fill: #0d1a2e; stroke: var(--acore-brass); stroke-opacity: 0.45; stroke-width: 0.8; }
+.acore-plate-title { fill: #e9d5a1; font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; }
+.acore-plate-sub { fill: var(--acore-brass); fill-opacity: 0.8; font-size: 7.5px; letter-spacing: 0.12em; }
+
+/* vernier column */
+.acore-carriage rect { fill: url(#acore-brass); stroke: #3b2f16; stroke-width: 0.8; }
+.acore-carriage .acore-carriage-window { fill: #06101c; stroke: none; }
+.acore-carriage-pointer { fill: var(--acore-brass-hi); }
+.acore-carriage-hair { stroke: #0a1424; stroke-width: 1; }
+
+/* contact pads */
+.acore-pad-ring { fill: #0a1424; stroke: var(--acore-brass); stroke-opacity: 0.55; stroke-width: 1; }
+.acore-pad-lamp { fill: #2a3146; transition: fill 300ms ease, filter 300ms ease; }
+.acore-svg[data-focus="leaguecraft"] .acore-pad[data-bay="leaguecraft"] .acore-pad-lamp,
+.acore-svg[data-focus="combat-lab"]  .acore-pad[data-bay="combat-lab"]  .acore-pad-lamp,
+.acore-svg[data-focus="archives"]    .acore-pad[data-bay="archives"]    .acore-pad-lamp,
+.acore-svg[data-focus="pro-play"]    .acore-pad[data-bay="pro-play"]    .acore-pad-lamp {
+  fill: var(--lamp-on);
+  filter: drop-shadow(0 0 5px var(--acore-lamp-glow));
+}
+
+/* bay plates (desktop) */
+.acore-conduit { stroke: var(--acore-brass-lo); stroke-width: 2.2; stroke-linecap: round; }
+.acore-conduit-live { stroke: var(--live); stroke-width: 2.2; stroke-linecap: round; opacity: 0; transition: opacity 350ms ease; }
+.acore-bay-plate { fill: var(--acore-navy); stroke: var(--acore-brass); stroke-opacity: 0.45; stroke-width: 1.2; transition: fill 300ms ease, stroke-opacity 300ms ease; }
+.acore-bay-highlight { stroke: #ffffff; stroke-opacity: 0.07; stroke-width: 1; }
+.acore-bay-lamp { fill: #202a40; stroke: var(--acore-brass); stroke-opacity: 0.3; stroke-width: 0.8; transition: fill 300ms ease, filter 300ms ease; }
+.acore-bay-latch { stroke: var(--acore-brass); stroke-opacity: 0.5; stroke-width: 1; }
+
+.acore-svg[data-focus="leaguecraft"] .acore-bay[data-bay="leaguecraft"] .acore-conduit-live,
+.acore-svg[data-focus="combat-lab"]  .acore-bay[data-bay="combat-lab"]  .acore-conduit-live,
+.acore-svg[data-focus="archives"]    .acore-bay[data-bay="archives"]    .acore-conduit-live,
+.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-conduit-live {
+  opacity: 0.9;
+}
+.acore-svg[data-focus="leaguecraft"] .acore-bay[data-bay="leaguecraft"] .acore-bay-plate,
+.acore-svg[data-focus="combat-lab"]  .acore-bay[data-bay="combat-lab"]  .acore-bay-plate,
+.acore-svg[data-focus="archives"]    .acore-bay[data-bay="archives"]    .acore-bay-plate,
+.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-bay-plate {
+  fill: var(--acore-navy-2);
+  stroke-opacity: 1;
+}
+.acore-svg[data-focus="leaguecraft"] .acore-bay[data-bay="leaguecraft"] .acore-bay-lamp,
+.acore-svg[data-focus="combat-lab"]  .acore-bay[data-bay="combat-lab"]  .acore-bay-lamp,
+.acore-svg[data-focus="archives"]    .acore-bay[data-bay="archives"]    .acore-bay-lamp,
+.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-bay-lamp {
+  fill: var(--lamp-on);
+  filter: drop-shadow(0 0 6px var(--acore-lamp-glow));
+}
+
+/* aperture */
+.acore-bezel-outer { fill: none; stroke: url(#acore-brass); stroke-width: 4; }
+.acore-bezel-face { stroke: #3b2f16; stroke-width: 1; }
+.acore-lens-plate { fill: #050b14; stroke: var(--acore-brass-lo); stroke-width: 1.2; }
+.acore-lens-glow { opacity: 1; }
+.acore-lens-halo { opacity: 0.55; }
+.acore-svg[data-ambient="on"] .acore-lens-halo { animation: acore-breathe 7s ease-in-out infinite; }
+
+.acore-mode { opacity: 0; transition: opacity 450ms ease; }
+.acore-svg[data-focus="idle"]        .acore-mode-idle        { opacity: 1; }
+.acore-svg[data-focus="leaguecraft"] .acore-mode-leaguecraft { opacity: 1; }
+.acore-svg[data-focus="combat-lab"]  .acore-mode-combat      { opacity: 1; }
+.acore-svg[data-focus="archives"]    .acore-mode-archives    { opacity: 1; }
+.acore-svg[data-focus="pro-play"]    .acore-mode-pro-play    { opacity: 1; }
+
+/* idle: the slowest possible sweep */
+.acore-idle-sweep {
+  fill: var(--lens-core);
+  fill-opacity: 0.14;
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+}
+.acore-svg[data-ambient="on"][data-focus="idle"] .acore-idle-sweep { animation: acore-spin 40s linear infinite; }
+
+/* INQUIRY — a probe wedge sweeps, rings pulse */
+.acore-probe-wedge {
+  fill: #ffe9b8;
+  fill-opacity: 0.22;
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+}
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-wedge { animation: acore-spin 4.5s linear infinite; }
+.acore-probe-ring { fill: none; stroke: #ffe9b8; stroke-width: 0.9; stroke-dasharray: 3 5; opacity: 0.6; }
+.acore-probe-ring-2 { stroke-dasharray: 2 7; opacity: 0.45; }
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-ring { animation: acore-pulse 2.2s ease-in-out infinite; }
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-ring-2 { animation: acore-pulse 2.2s ease-in-out 0.6s infinite; }
+.acore-probe-dot { fill: #fff3d4; }
+
+/* MEASURE — caliper jaws close onto a dimension */
+.acore-jaw line { stroke: #e6f8fb; stroke-width: 2; }
+.acore-jaw path { fill: #e6f8fb; }
+.acore-jaw { transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acore-jaw-l { transform: translateX(-80px); }
+.acore-jaw-r { transform: translateX(80px); }
+.acore-svg[data-focus="combat-lab"] .acore-jaw-l { transform: translateX(-32px); }
+.acore-svg[data-focus="combat-lab"] .acore-jaw-r { transform: translateX(32px); }
+.acore-dim-line { stroke: #bff3fb; stroke-width: 1; stroke-dasharray: 2 3; }
+.acore-dim-arrow { fill: #bff3fb; }
+.acore-dim-text { fill: #dffbff; font-size: 10px; letter-spacing: 0.08em; }
+
+/* STRATA — layers fan apart */
+.acore-stratum {
+  fill: #ffcf8a;
+  fill-opacity: 0.16;
+  stroke: #ffd9a0;
+  stroke-opacity: 0.55;
+  stroke-width: 0.8;
+  transition: transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.acore-stratum-1 { transition-delay: 40ms; }
+.acore-stratum-2 { transition-delay: 80ms; }
+.acore-stratum-3 { transition-delay: 120ms; }
+.acore-stratum-4 { transition-delay: 160ms; }
+.acore-svg[data-focus="archives"] .acore-stratum-0 { transform: translateY(-40px); }
+.acore-svg[data-focus="archives"] .acore-stratum-1 { transform: translateY(-20px); }
+.acore-svg[data-focus="archives"] .acore-stratum-2 { transform: translateY(0); }
+.acore-svg[data-focus="archives"] .acore-stratum-3 { transform: translateY(20px); }
+.acore-svg[data-focus="archives"] .acore-stratum-4 { transform: translateY(40px); }
+
+/* OBSERVE — a reticle squares up, a mark tracks */
+.acore-reticle {
+  fill: none;
+  stroke: #f6e9c6;
+  stroke-width: 1;
+  stroke-opacity: 0.85;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: rotate(-22deg);
+  transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.acore-svg[data-focus="pro-play"] .acore-reticle { transform: rotate(0deg); }
+.acore-track-mark { fill: var(--lamp-on); transform: translate(-28px, -16px); }
+.acore-svg[data-ambient="on"][data-focus="pro-play"] .acore-track-mark { animation: acore-track 6s ease-in-out infinite alternate; }
+
+/* iris + cursor */
+.acore-blade-edge { stroke: var(--acore-brass); stroke-opacity: 0.85; stroke-width: 1.2; }
+.acore-iris-rim { fill: none; stroke: var(--acore-brass-lo); stroke-width: 6; }
+.acore-cursor-ring { fill: none; stroke: #7a5b24; stroke-width: 2; }
+.acore-cursor-pointer { fill: url(#acore-brass); stroke: #3b2f16; stroke-width: 0.6; }
+.acore-cursor-tail { fill: #7a5b24; }
+.acore-cursor-lamp { fill: #2a3146; transition: fill 300ms ease, filter 300ms ease; }
+.acore-svg:not([data-focus="idle"]) .acore-cursor-lamp { fill: var(--lamp-on); filter: drop-shadow(0 0 4px var(--acore-lamp-glow)); }
+
+/* readout */
+.acore-readout rect { fill: #050b14; stroke: var(--acore-brass); stroke-opacity: 0.4; stroke-width: 1; }
+.acore-readout-label { fill: var(--acore-brass); fill-opacity: 0.6; font-size: 7px; letter-spacing: 0.3em; }
+.acore-readout-value { fill: var(--lamp-on); font-size: 13px; letter-spacing: 0.22em; }
+.acore-svg[data-ambient="on"] .acore-readout-caret { animation: acore-blink 1.2s steps(1) infinite; }
+
+/* ------------------------------------------------------------ keyframes */
+
+@keyframes acore-breathe {
+  0%, 100% { opacity: 0.36; }
+  50% { opacity: 0.62; }
+}
+@keyframes acore-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes acore-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.85; }
+}
+@keyframes acore-track {
+  0% { transform: translate(-28px, -16px); }
+  35% { transform: translate(20px, -24px); }
+  70% { transform: translate(30px, 18px); }
+  100% { transform: translate(-14px, 26px); }
+}
+@keyframes acore-blink {
+  50% { opacity: 0; }
+}
+
+/* ------------------------------------------------------- reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .acore-root *,
+  .acore-root *::before,
+  .acore-root *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+html.reduce-motion .acore-root *,
+html.reduce-motion .acore-root *::before,
+html.reduce-motion .acore-root *::after {
+  transition: none !important;
+  animation: none !important;
+}

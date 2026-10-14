@@ -267,6 +267,13 @@ const MatchGridLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
   : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
+// ACADEMY CORE V1: the approved Home Hub concept as a working preview. Lives
+// under /lol/ so it renders in the League theme exactly as the Hall does (the
+// pre-paint shell in index.html and Layout both key the theme on that prefix);
+// /dev/academy-core is the alias named in the brief. Read-only: it fetches the
+// same Daily status and Patch Reports list the Hall and lobby already read,
+// and writes nothing. The production Hall at /lol is untouched.
+const AcademyCorePage = lazy(() => import("./pages/dev/academy-core/AcademyCorePage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
 // server (npm run content-studio). Inert without it; not linked anywhere.
@@ -683,6 +690,8 @@ export const appRouter = createBrowserRouter(
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
+                  <Route path="/lol/dev/academy-core" element={<Suspense fallback={<RouteFallback />}><AcademyCorePage /></Suspense>} />
+                  <Route path="/dev/academy-core" element={<Navigate to="/lol/dev/academy-core" replace />} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />
                   {/* The internal alias. Same element as the promoted route,
