@@ -126,6 +126,7 @@ async function main() {
     isMobile: phone, hasTouch: phone, deviceScaleFactor: 1 });
   await ctx.addInitScript((p) => { try { localStorage.setItem("mogsy_e2e_identity", p); } catch {} }, JSON.stringify(persona));
   const page = await ctx.newPage();
+  globalThis.__page = page; globalThis.__shots = SHOTS;
   page.on("pageerror", (e) => report.errors.push("pageerror: " + e.message));
   page.on("console", (m) => { if (m.type() === "error") report.errors.push("console: " + m.text().slice(0, 200)); });
 
@@ -173,7 +174,7 @@ async function main() {
     // a fresh OPEN, answerable instrument for THIS segment
     await page.waitForFunction((n) => {
       const p = document.querySelector('[data-testid="scrub-phase"]');
-      const ready = !!p && p.getAttribute("data-phase") === "open" && !p.hasAttribute("data-not-open");
+      const ready = !!p && p.getAttribute("data-phase") === "open" && !p.hasAttribute("data-not-open") && !p.hasAttribute("data-input-closed");
       return ready;
     }, s, { timeout: 90000 });
     await page.waitForTimeout(400);
@@ -207,14 +208,29 @@ async function main() {
 
     if (kind === "timeout") {
       seg.note = "never locks; waiting for the server's deadline";
-      await page.waitForFunction((n) => {
-        const t = document.querySelector('[data-testid="scrub-phase"]');
-        return !t || t.getAttribute("data-phase") !== "open";
-      }, s, { timeout: 120000 }).catch(() => {});
-      await page.waitForTimeout(1500);
-      seg.timeoutDom = await page.evaluate(() => ({ phase: document.querySelector('[data-testid="scrub-phase"]')?.getAttribute("data-phase") ?? null,
-        shell: document.querySelector('[data-testid="ranked-match"]')?.innerText?.slice(0, 300) }));
-      await shot(`s${s}-timeout`);
+      const promptBefore = await page.locator('[data-testid="chronoscope-prompt"]').textContent();
+      const snap = () => page.evaluate(() => ({
+        phase: document.querySelector('[data-testid="scrub-phase"]')?.getAttribute("data-phase") ?? null,
+        inputClosed: document.querySelector('[data-testid="scrub-phase"]')?.getAttribute("data-input-closed") ?? null,
+        inert: document.querySelector('[data-testid="scrub-phase"]')?.hasAttribute("inert") ?? null,
+        lockDisabled: document.querySelector('[data-testid="chronoscope-lock"]')?.hasAttribute("disabled") ?? null,
+        prompt: document.querySelector('[data-testid="chronoscope-prompt"]')?.textContent ?? null,
+        proofShown: document.querySelector('[data-testid="chronoscope-proof"]')?.getAttribute("data-shown") ?? null,
+        verdict: document.querySelector('[data-testid="chronoscope-verdict-text"]')?.textContent ?? null,
+        header: document.querySelector('[data-testid="ranked-match"]')?.innerText?.split("\n").slice(0, 14).join(" | ") ?? null }));
+      // The deadline is the SERVER's (30 s); the next segment's instrument is also "open", so detect the change
+      // by the prompt, the phase or the arena's own timed-out word.
+      await page.waitForFunction((before) => {
+        const ph = document.querySelector('[data-testid="scrub-phase"]');
+        const pr = document.querySelector('[data-testid="chronoscope-prompt"]')?.textContent;
+        const txt = document.querySelector('[data-testid="ranked-match"]')?.innerText ?? "";
+        return !ph || ph.getAttribute("data-phase") !== "open" || pr !== before || /timed out|time.?s up/i.test(txt);
+      }, promptBefore, { timeout: 70000 });
+      seg.timeoutDom = { atSettle: await snap() };
+      await shot(`s${s}-timeout-0`);
+      await page.waitForTimeout(1200);
+      seg.timeoutDom.plus1200 = await snap();
+      await shot(`s${s}-timeout-1`);
     } else {
       const token = kind === "exact" ? oracle.canonical : (() => {
         const i = oracle.tokens.indexOf(oracle.canonical);
@@ -326,4 +342,14 @@ async function main() {
   console.log("lockPosts", JSON.stringify(report.wire.lockPosts.map((p) => p.body)));
   console.log("preLockLeaks", report.wire.preLockLeaks.length, "bodiesChecked", report.wire.preLockBodiesChecked, "errors", report.errors.length);
 }
-main().catch((e) => { console.error("Error:", e); process.exit(1); });
+main().catch(async (e) => {
+  console.error("Error:", e);
+  try { // leave evidence of WHERE it stopped
+    const pg = globalThis.__page;
+    await pg.screenshot({ path: `${globalThis.__shots}/error-state.png` });
+    console.error("STATE", JSON.stringify(await pg.evaluate(() => ({ url: location.pathname,
+      scrub: document.querySelector('[data-testid="scrub-phase"]')?.outerHTML?.slice(0, 160) ?? null,
+      shell: document.querySelector('[data-testid="ranked-match"]')?.innerText?.slice(0, 400) ?? document.body.innerText.slice(0, 400) }))));
+  } catch {}
+  process.exit(1);
+});

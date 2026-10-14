@@ -56,11 +56,13 @@ function opensAt(state: SegmentStateView, roundStartedAt: string | null): string
     ? null : instants.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a));
 }
 
-function ScrubPhase({ state, actions, skewMs, roundStartedAt }: {
+function ScrubPhase({ state, actions, skewMs, roundStartedAt, inputOpen }: {
   state: SegmentStateView;
   actions: ModuleViewportProps["actions"];
   skewMs: number;
   roundStartedAt: string | null;
+  /** The shell's own gate (`permissions.canSelectAnswer`): false through a result hold. */
+  inputOpen: boolean;
 }) {
   const block = state.block?.contract === "scrub" ? state.block : null;
   const content = useMemo(() => (block ? toChronoscopePublic(block) : null), [block]);
@@ -97,11 +99,16 @@ function ScrubPhase({ state, actions, skewMs, roundStartedAt }: {
   }
 
   const phase = reveal ? "revealed" : serverLocked || pending === key ? "locked" : "open";
+  // SCRUB-S3: while the shell holds a RESULT (a timed-out lock never receives an own reveal, so the
+  // instrument stays "open" under the arena's TIMED OUT stamp for the whole hold) it closes input and
+  // refuses the submit. An enabled Lock there would flip the instrument into a "locked" state that
+  // nothing was sent for. Treat it like the pre-open lead-in: inert, and no lock is attempted.
+  const shellClosed = phase === "open" && !inputOpen;
   const own = draft?.key === key ? draft.token : null;
   const value = phase === "open" ? own : lockedToken ?? own;
 
   const onLock = ({ checkpoint }: { checkpoint: string }) => {
-    if (notOpen || pending !== null || serverLocked) return;
+    if (notOpen || shellClosed || pending !== null || serverLocked) return;
     setPending(key);
     const result = actions.submitChallenge(CHALLENGE_INDEX, { checkpoint });
     // A refused or failed lock stored nothing: reopen so the player can retry.
@@ -115,7 +122,8 @@ function ScrubPhase({ state, actions, skewMs, roundStartedAt }: {
   return (
     <div data-testid="scrub-phase" data-phase={phase}
       data-not-open={phase === "open" && notOpen ? "true" : undefined}
-      {...(phase === "open" && notOpen ? { inert: "" } : {})}>
+      data-input-closed={shellClosed ? "true" : undefined}
+      {...(phase === "open" && (notOpen || shellClosed) ? { inert: "" } : {})}>
       <Chronoscope<WaveXpScene> key={key} content={content} phase={phase} value={value}
         onChange={(token) => setDraft({ key, token })} onLock={onLock} reveal={reveal}
         renderScene={(frame) => <WaveXpLens frame={frame} />}
@@ -131,12 +139,13 @@ function ScrubPhase({ state, actions, skewMs, roundStartedAt }: {
   );
 }
 
-function ScrubViewport({ segmentState, actions, skewMs, publicRound }: ModuleViewportProps) {
+function ScrubViewport({ segmentState, actions, skewMs, publicRound, permissions }: ModuleViewportProps) {
   return (
     <div className="relative isolate" data-testid="scrub-viewport">
       {segmentState ? (
         <ScrubPhase state={segmentState} actions={actions} skewMs={skewMs}
-          roundStartedAt={publicRound?.activeRound?.startedAt ?? null} />
+          roundStartedAt={publicRound?.activeRound?.startedAt ?? null}
+          inputOpen={permissions.canSelectAnswer} />
       ) : (
         <p className="text-sm text-muted-foreground" data-testid="scrub-loading">
           Loading the segment…
