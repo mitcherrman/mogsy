@@ -21,6 +21,7 @@
 
 export const MATCH_HOST = {
   journeyLibrary: "journey_library",
+  roleChallenge: "role_challenge",
   dailyChallenge: "daily_challenge",
   studyHall: "study_hall",
   playtest: "playtest",
@@ -40,12 +41,13 @@ export function readMatchHost(value: unknown): RankedMatchHost | null {
 
 /**
  * The player-facing name of a host whose matches are labelled as such, or
- * `null`. Only the Journey Library is named today: every other host (and an
+ * `null`. Journey Library and Role Challenge are named: other hosts (and an
  * ordinary `null` match) keeps the label it had before hosts were exposed.
  * The raw host id is never shown.
  */
 const HOST_LABELS: Partial<Record<KnownRankedMatchHost, string>> = {
   [MATCH_HOST.journeyLibrary]: "Journey Library",
+  [MATCH_HOST.roleChallenge]: "Role Challenge",
 };
 
 export function matchHostLabel(host: RankedMatchHost | null | undefined): string | null {
