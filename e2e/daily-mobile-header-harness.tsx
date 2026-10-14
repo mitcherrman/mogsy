@@ -26,7 +26,7 @@ const stageWithLive: DailyStage = stage.kind === "time_trial"
 createRoot(document.getElementById("root")!).render(
   <MemoryRouter>
     <main className="min-h-screen pt-[var(--app-header-h)]">
-      <ArenaShell size="wide" header={<DailyStageChrome run={run} stage={stageWithLive} />}>
+      <ArenaShell size="wide" phoneArena header={<DailyStageChrome run={run} stage={stageWithLive} />}>
         <div data-testid="arena-first-content" className="ranked-panel h-40 rounded-md p-4">
           Arena starts here
         </div>
