@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -85,7 +86,7 @@ describe("creator replay run viewer", () => {
   });
 
   it("keeps the replay route outside AdminShell and behind AdminRoute", () => {
-    const app = readFileSync(new URL("../../App.tsx", import.meta.url), "utf8");
+    const app = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
     const adminBlockStart = app.indexOf('<Route path="/admin" element={<AdminRoute>');
     const adminBlockEnd = app.indexOf("\n                  </Route>", adminBlockStart);
     const dailyRoute = app.indexOf('<Route path="/quiz/daily-challenge"');
