@@ -50,7 +50,8 @@ export interface RankedMatchOrigin {
 }
 
 export const JOURNEY_LIBRARY_ROUTE = "/quiz/journeys";
-export const ROLE_CHALLENGE_ROUTE = "/quiz";
+/** RC8: back to the hub with the centre parchment on Role Challenge. */
+export const ROLE_CHALLENGE_ROUTE = "/quiz?mode=role";
 
 export const RANKED_MATCH_ORIGINS: Record<RankedMatchOriginId, RankedMatchOrigin> = {
   [MATCH_HOST.journeyLibrary]: {

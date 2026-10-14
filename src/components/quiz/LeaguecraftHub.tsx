@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap, Library } from "lucide-react";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
+import type { HubCentreMode } from "@/lib/role-challenge/presentation";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
 import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
 import LeaguecraftGuide from "@/components/quiz/LeaguecraftGuide";
@@ -176,6 +177,7 @@ export default function LeaguecraftHub({
   onRequireAccount,
   onEnterMatch,
   onEnterRoleChallenge,
+  initialCentreMode = "daily",
   onPlayDailyChallenge,
   rankedAvailabilityOpen = true,
   playModes,
@@ -286,6 +288,8 @@ export default function LeaguecraftHub({
   onRequireAccount?: () => void;
   onEnterMatch: (matchId: string) => void;
   onEnterRoleChallenge?: (matchId: string) => void;
+  /** RC8: the centre parchment's opening mode (`/quiz?mode=role` etc.). */
+  initialCentreMode?: HubCentreMode;
   /**
    * PLAY1: the host's OWN Daily Challenge entry. `Quiz.tsx` hosts the daily
    * set in-page (`handlePlayDailyChallenge`), which is a different feature
@@ -614,6 +618,7 @@ export default function LeaguecraftHub({
           onPlayDailyChallenge={onPlayDailyChallenge}
           dailyChallenge={dailyChallenge}
           onEnterRoleChallenge={onEnterRoleChallenge}
+          initialMode={initialCentreMode}
           hasAccount={hasAccount}
           onRequireAccount={onRequireAccount}
           rankedAvailable={rankedAvailabilityOpen}

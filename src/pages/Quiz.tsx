@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useContext, useMemo, useRef } from "react";
+import { hubModeFromSearch } from "@/lib/role-challenge/presentation";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { track, useSurfaceEvent } from "@/lib/analytics";
 import { Link, UNSAFE_DataRouterContext, useLocation, useNavigate } from "react-router-dom";
@@ -455,6 +456,8 @@ export default function Quiz() {
     return new URLSearchParams(location.search).get(PLAY_RETURN_PARAM) === "1";
   });
   const [playScrollOpen, setPlayScrollOpen] = useState(openPlayOnMount);
+  // RC8: the centre parchment's opening mode, read once like the request above.
+  const [initialCentreMode] = useState(() => hubModeFromSearch(location.search, openPlayOnMount));
 
   /**
    * PLAY — opens the record. It no longer writes anything.
@@ -1501,6 +1504,7 @@ export default function Quiz() {
                 navigate("/quiz/ranked", { state: { matchId } })}
               onEnterRoleChallenge={(matchId) =>
                 navigate("/quiz/ranked", { state: { matchId, origin: "role_challenge" } })}
+              initialCentreMode={initialCentreMode}
               /* The Daily Challenge is DC2 and nothing else. The legacy
                  five-question in-page flow that used to answer this press is
                  gone from this file entirely — see the handoff. */

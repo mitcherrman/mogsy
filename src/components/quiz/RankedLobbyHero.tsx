@@ -80,8 +80,8 @@
 
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { History, Shield } from "lucide-react";
+import { useRef, useState } from "react";
+import { CalendarDays, History, Shield, Swords, Trophy } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import RankCrown from "@/components/ranked/RankCrown";
@@ -105,6 +105,7 @@ import {
 import RoleQueueRecord from "@/components/quiz/lobby-queue-context/RoleQueueRecord";
 import RoleChallengePicker from "@/components/quiz/RoleChallengePicker";
 import type { DailyStatusView } from "@/lib/daily-challenge/status";
+import type { HubCentreMode } from "@/lib/role-challenge/presentation";
 import RoleChampionKnowledge from "@/components/quiz/lobby-queue-context/RoleChampionKnowledge";
 import AcademyAnalyticsCarousel, {
   RESERVED_BOX,
@@ -253,6 +254,7 @@ export default function RankedLobbyHero({
   onEnterRoleChallenge,
   hasAccount = false,
   onRequireAccount,
+  initialMode = "daily",
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -262,6 +264,8 @@ export default function RankedLobbyHero({
   onEnterRoleChallenge?: (matchId: string) => void;
   hasAccount?: boolean;
   onRequireAccount?: () => void;
+  /** RC8: which centre mode the sheet opens on. Daily unless the URL asked. */
+  initialMode?: HubCentreMode;
   rankedAvailable?: boolean;
   /** PLAY1: the seal's own node, so a closing match-entry record can put
    *  focus back where it came from. */
@@ -352,7 +356,7 @@ export default function RankedLobbyHero({
 
   // ── Role mastery, derived from the same real rows the centre lists ─────
   const roleMastery = tallyRoleMastery(matchHistory);
-  const [selectedMode, setSelectedMode] = useState<"daily" | "role" | "ranked">("daily");
+  const [selectedMode, setSelectedMode] = useState<HubCentreMode>(initialMode);
   // The role the STAGE is pointing at, which is not necessarily the account's
   // saved role: a reader spinning the ring expects the ledger under it to
   // follow their eye. Seeded from the saved role, then owned by the stage.
@@ -534,40 +538,21 @@ export default function RankedLobbyHero({
             gives it display size and — deliberately — no rule at all, so it
             reads as the title OF the selection below it rather than as a
             caption with a widget underneath. See `ColumnHeading`. */}
-        <div className="grid w-full grid-cols-3 gap-1.5" role="tablist" aria-label="Choose challenge mode" data-testid="challenge-mode-switcher">
-          {(["daily", "role", "ranked"] as const).map((id) => (
-            <button key={id} type="button" role="tab" aria-selected={selectedMode === id}
-              onClick={() => setSelectedMode(id)}
-              className={selectedMode === id ? "rounded border border-amber-800 bg-amber-100 p-2 text-xs font-bold text-amber-950" : "rounded border border-amber-900/30 p-2 text-xs font-bold text-amber-950"}>
-              {id === "daily" ? "Daily Challenge" : id === "role" ? "Role Challenge" : "Ranked"}
-            </button>
-          ))}
-        </div>
+        <CentreModeSwitcher value={selectedMode} onChange={setSelectedMode} />
         {selectedMode === "daily" ? (
-          <div role="tabpanel" className="w-full space-y-3 py-8 text-center" data-testid="daily-mode-panel">
-            <h2 className="text-xl font-extrabold text-amber-950">Today's Challenge</h2>
-            <p className="text-sm text-amber-950" data-testid="daily-mode-status">
-              {dailyChallenge?.known && dailyChallenge.completed
-                ? dailyChallenge.optionalOpen ? "Standard complete · More Challenges or Review available." : "Today's Standard challenge is complete."
-                : dailyChallenge?.known && dailyChallenge.resumable
-                ? "You have an unfinished Daily Challenge."
-                : "A fresh League knowledge challenge every day."}
-            </p>
-            <button type="button" onClick={onPlayDailyChallenge} disabled={!onPlayDailyChallenge}
-              className="rounded-lg bg-amber-900 px-6 py-3 font-black uppercase text-amber-50 disabled:opacity-50">
-              {dailyChallenge?.known && dailyChallenge.completed
-                ? dailyChallenge.optionalOpen ? "Continue / Review" : "View Today's Results"
-                : dailyChallenge?.known && dailyChallenge.resumable ? "Continue Daily" : "Play Daily"}
-            </button>
-          </div>
+          <DailyModePanel daily={dailyChallenge} onPlay={onPlayDailyChallenge} />
         ) : selectedMode === "role" ? (
-          <div role="tabpanel" className="w-full" data-testid="role-mode-panel">
+          <div role="tabpanel" id="centre-mode-panel-role" aria-labelledby="centre-mode-tab-role"
+            className="w-full" data-testid="role-mode-panel">
             <RoleChallengePicker enabled hasAccount={hasAccount}
               onRequireAccount={onRequireAccount ?? (() => {})}
               onEnterMatch={onEnterRoleChallenge ?? (() => {})} />
           </div>
         ) : (
-          <>
+          /* `contents`: the tabpanel adds semantics only. The Ranked stage keeps
+             the exact box it laid out in before the centre gained modes. */
+          <div role="tabpanel" id="centre-mode-panel-ranked" aria-labelledby="centre-mode-tab-ranked"
+            className="contents">
         <ColumnHeading ceremonial>Choose your role</ColumnHeading>
         <RankedClassCarousel
           /* Sits directly under the title with no divider between them: the
@@ -627,7 +612,7 @@ export default function RankedLobbyHero({
             <RoleChampionKnowledge role={browsedRole} result={championKnowledge(browsedRole)} />
           </div>
         </div>
-          </>
+          </div>
         )}
         </LobbyPanel>
       </motion.div>
@@ -1145,6 +1130,141 @@ function RecentRankedLedger({
  * down. It stays ink and press — no second gold gradient, because the centre
  * wordmark owns that and two would fight.
  */
+const CENTRE_MODES: readonly { id: HubCentreMode; label: string; icon: typeof CalendarDays }[] = [
+  { id: "daily", label: "Daily Challenge", icon: CalendarDays },
+  { id: "role", label: "Role Challenge", icon: Swords },
+  { id: "ranked", label: "Ranked", icon: Trophy },
+];
+
+/**
+ * RC8 — the centre sheet's three modes. A WAI-ARIA tablist: one tab stop,
+ * arrow keys move between modes, the selected mode is stated in text and
+ * never by colour alone. The left Ranked Standing and right Academy Record
+ * sheets do not change with it.
+ */
+function CentreModeSwitcher({
+  value,
+  onChange,
+}: {
+  value: HubCentreMode;
+  onChange: (mode: HubCentreMode) => void;
+}) {
+  const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const move = (from: number, delta: number) => {
+    const next = (from + delta + CENTRE_MODES.length) % CENTRE_MODES.length;
+    onChange(CENTRE_MODES[next].id);
+    refs.current[next]?.focus();
+  };
+  return (
+    <div
+      className="grid w-full grid-cols-3 gap-1 rounded-xl p-1"
+      style={{ border: `1px solid ${INK.rule}`, background: INK.inset }}
+      role="tablist"
+      aria-label="Choose challenge mode"
+      data-testid="challenge-mode-switcher"
+    >
+      {CENTRE_MODES.map(({ id, label, icon: Icon }, index) => {
+        const active = value === id;
+        return (
+          <button
+            key={id}
+            ref={(node) => { refs.current[index] = node; }}
+            type="button"
+            role="tab"
+            id={`centre-mode-tab-${id}`}
+            aria-selected={active}
+            aria-controls={`centre-mode-panel-${id}`}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(id)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") { e.preventDefault(); move(index, 1); }
+              if (e.key === "ArrowLeft") { e.preventDefault(); move(index, -1); }
+            }}
+            className="flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] font-extrabold uppercase leading-tight tracking-[0.06em] transition-colors sm:text-[12px]"
+            style={{
+              color: active ? "#fff7e6" : INK.body,
+              background: active ? "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)" : "transparent",
+              boxShadow: active ? "0 1px 2px rgba(42,26,4,0.35)" : undefined,
+            }}
+          >
+            <Icon className="hidden h-3.5 w-3.5 shrink-0 sm:block" aria-hidden="true" />
+            <span className="min-w-0">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** RC8 — the Daily Challenge mode: today's state from the Daily parent run. */
+function DailyModePanel({
+  daily,
+  onPlay,
+}: {
+  daily: DailyStatusView | null;
+  onPlay?: () => void;
+}) {
+  const known = daily?.known === true;
+  const completed = known && daily!.completed;
+  const resumable = known && daily!.resumable;
+  const status = completed
+    ? daily!.optionalOpen
+      ? "Standard complete · More Challenges or Review available."
+      : "Today's Standard challenge is complete."
+    : resumable
+      ? "You have an unfinished Daily Challenge."
+      : "A fresh League knowledge challenge every day.";
+  const label = completed
+    ? daily!.optionalOpen ? "Continue / Review" : "View Today's Results"
+    : resumable ? "Continue Daily" : "Play Daily";
+  const streak = known ? daily!.streak : null;
+  return (
+    <div
+      role="tabpanel"
+      id="centre-mode-panel-daily"
+      aria-labelledby="centre-mode-tab-daily"
+      className="flex w-full flex-1 flex-col items-center justify-center gap-3 py-6 text-center sm:py-10"
+      data-testid="daily-mode-panel"
+    >
+      <span
+        className="flex h-16 w-16 items-center justify-center rounded-full"
+        style={{ border: `1px solid ${INK.rule}`, background: INK.inset }}
+        aria-hidden="true"
+      >
+        <CalendarDays className="h-8 w-8" style={{ color: INK.brass }} />
+      </span>
+      <h2
+        className="lc-scroll-title whitespace-nowrap font-black uppercase leading-none tracking-[0.13em]"
+        style={{ color: INK.strong, textShadow: INK.press }}
+      >
+        Today's Challenge
+      </h2>
+      <p className="max-w-[18rem] text-[13px] font-semibold leading-snug" style={{ color: INK.body }}
+        data-testid="daily-mode-status">
+        {status}
+      </p>
+      {completed ? (
+        <span className="rounded-full px-2.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.16em]"
+          style={{ border: `1px solid ${INK.rule}`, color: INK.brass }} data-testid="daily-mode-complete">
+          Complete
+        </span>
+      ) : null}
+      {streak ? (
+        <p className="text-[11px] font-bold" style={{ color: INK.faint }}>{streak}-day streak</p>
+      ) : null}
+      <button
+        type="button"
+        onClick={onPlay}
+        disabled={!onPlay}
+        className="mt-1 rounded-lg px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-sm disabled:opacity-50"
+        style={{ background: "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)", border: "1px solid #2a1a04" }}
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
 function ColumnHeading({
   children,
   align = "left",

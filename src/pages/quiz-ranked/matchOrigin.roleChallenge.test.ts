@@ -15,7 +15,7 @@ describe("RC6 Role Challenge origin", () => {
       navLabel: "Role Challenge",
       returnLabel: "Back to Role Challenge",
     });
-    expect(ROLE_CHALLENGE_ROUTE).toBe("/quiz");
+    expect(ROLE_CHALLENGE_ROUTE).toBe("/quiz?mode=role");
   });
   it("accepts router hint only before backend provenance arrives", () => {
     const hint = readMatchOrigin({ origin: MATCH_HOST.roleChallenge });
