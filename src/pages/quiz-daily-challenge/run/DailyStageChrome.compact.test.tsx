@@ -1,0 +1,50 @@
+import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { describe, expect, it } from "vitest";
+import { fixtureV5Run, V5_ELIGIBLE_DAY } from "@/lib/daily-challenge/run/fixtures";
+import { DailyStageChrome } from "./DailyStageChrome";
+
+const run = fixtureV5Run(V5_ELIGIBLE_DAY);
+
+function mount(index: number | null) {
+  const stage = index === null ? null : run.stages[index];
+  return render(<MemoryRouter><DailyStageChrome run={run} stage={stage} /></MemoryRouter>);
+}
+
+describe("Daily compact mobile header", () => {
+  it("places back, challenge, mode, and screenshot CTA in one non-wrapping row", () => {
+    mount(0);
+    const header = screen.getByTestId("daily-stage-chrome");
+    expect(header.className).toContain("!flex-nowrap");
+    expect(within(header).getByRole("heading", { name: "Daily Challenge" })).toBeInTheDocument();
+    const back = within(header).getByRole("link", { name: "Exit Daily Challenge" });
+    expect(back).toHaveAttribute("href", "/quiz");
+    expect(back).toHaveAttribute("title", "Exit Daily Challenge");
+    expect(back).not.toHaveTextContent("Exit Daily Challenge");
+    expect(within(header).getByTestId("daily-stage-tag")).toHaveTextContent("Standard");
+    const cta = within(header).getByTestId("daily-screenshot-cta");
+    expect(cta).toHaveAttribute("href", "https://mogzy.lol");
+    expect(cta).toHaveTextContent("mogzy.lol");
+    expect(cta).toHaveTextContent("PLAY NOW");
+    expect(cta.className).toContain("whitespace-nowrap");
+    // Section and server content remain available to assistive technology,
+    // while the visible phone row has exactly one mode name.
+    expect(within(header).getByTestId("daily-stage-position")).toHaveClass("sr-only");
+    expect(within(header).getByTestId("daily-stage-content")).toHaveClass("sr-only");
+    expect(within(header).getByTestId("daily-stage-tag")).toHaveAttribute("data-stage-kind", "standard");
+  });
+
+  it("keeps distinctive modes and their readouts; hides no live ruleset number", () => {
+    mount(1);
+    const header = screen.getByTestId("daily-stage-chrome");
+    expect(within(header).getByTestId("daily-stage-tag")).toHaveTextContent("Time Trial");
+    expect(within(header).getByTestId("daily-screenshot-cta")).toHaveTextContent("PLAY NOW");
+  });
+
+  it("has the same back and CTA when between stages", () => {
+    mount(null);
+    expect(screen.getByRole("link", { name: "Exit Daily Challenge" })).toHaveAttribute("href", "/quiz");
+    expect(screen.getByTestId("daily-screenshot-cta")).toHaveTextContent("mogzy.lol");
+    expect(screen.queryByTestId("daily-stage-tag")).not.toBeInTheDocument();
+  });
+});
