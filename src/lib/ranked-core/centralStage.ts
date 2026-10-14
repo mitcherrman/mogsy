@@ -21,7 +21,7 @@
 import { categoryLabel, type CategoryKey } from "@/lib/quiz/publicCategory";
 import { isMetaReflexSegment } from "./roundTimeline";
 import {
-  ASSEMBLY_MODULE_ID, MASTERY_SLICE_MODULE_ID, MATCH_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID,
+  ASSEMBLY_MODULE_ID, MASTERY_SLICE_MODULE_ID, MATCH_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID,
   type PublicRoundView,
 } from "@/lib/ranked-public/contracts";
 import type { PointsFeedbackView } from "./pointsFeedback";
@@ -152,6 +152,7 @@ export function liveModuleTitle(round: PublicRoundView | null): string | null {
     return block?.contract === "assembly" && block.family === "draft_memory"
       ? "Draft Memory" : "Roster Lock";
   }
+  if (segment?.moduleId === SCRUB_MODULE_ID) return "Chronoscope";
   const category = round.question?.topic?.category ?? null;
   return category ? categoryLabel(category as CategoryKey) : null;
 }

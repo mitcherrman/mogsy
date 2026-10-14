@@ -26,6 +26,7 @@ import { metaReflexModule } from "./metaReflexModule";
 import { ORDER_FORGE_MODULE_ID, orderForgeModule } from "./orderForgeModule";
 import { QUIZ_MODULE_ID, quizModule } from "./quizModule";
 import { RECONSTRUCT_MODULE_ID, reconstructModule } from "./reconstructModule";
+import { SCRUB_MODULE_ID, scrubModule } from "./scrubModule";
 import type { ModuleRenderer } from "./types";
 
 /** Ordered candidates per module id; the first version match wins. */
@@ -43,6 +44,8 @@ const RENDERERS: Record<string, readonly ModuleRenderer[]> = {
   // PA2B - admin-only unrated playtest: Roster Lock / Draft Memory, the
   // five-position board is the answer.
   [ASSEMBLY_MODULE_ID]: [assemblyModule],
+  // SCRUB-S2 - admin-only unrated playtest: the locked checkpoint is the answer.
+  [SCRUB_MODULE_ID]: [scrubModule],
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -77,8 +80,7 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
 
 export {
   assemblyModule, itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule,
-  reconstructModule,
-  matchGridModule,
+  reconstructModule, matchGridModule, scrubModule,
 };
 export type {
   ModuleRenderer, ModuleSegmentActions, ModuleViewportProps,

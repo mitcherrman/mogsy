@@ -40,6 +40,7 @@ export function IconFace({ round }: { round: ReviewRound | null }) {
     if (round.kind === "reconstruct") return <ModuleSigil kind="reconstruct" />;
     if (round.kind === "match") return <ModuleSigil kind="match" />;
     if (round.kind === "assembly") return <ModuleSigil kind="assembly" />;
+    if (round.kind === "scrub") return <ModuleSigil kind="scrub" />;
     return (
       <HelpCircle
         className="h-4 w-4"
