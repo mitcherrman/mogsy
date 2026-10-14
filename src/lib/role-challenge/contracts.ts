@@ -47,7 +47,8 @@ function slotKind(value: unknown, at: string): RoleChallengeSlot {
   return fail(at, "must be daily or premium");
 }
 function matchStatus(value: unknown, at: string): "active" | "complete" | null {
-  if (value === "active" || value === "complete" || value === null) return value;
+  if (value === "active" || value === "complete") return value;
+  if (value === null) return null;
   return fail(at, "must be active, complete, or null");
 }
 function startResult(value: unknown, at: string): "created" | "existing" {
