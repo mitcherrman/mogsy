@@ -17,7 +17,20 @@ export default function CreatorReplayPage() {
         method: "POST",
         headers: await buildAdminHeaders(url),
       });
-      if (!response.ok) throw new Error(`Creator replay request failed (${response.status})`);
+      if (!response.ok) {
+        let message = `Creator replay request failed (${response.status})`;
+        try {
+          const payload: unknown = await response.json();
+          if (payload && typeof payload === "object" && "detail" in payload) {
+            const detail = payload.detail;
+            if (detail && typeof detail === "object" && "message" in detail
+                && typeof detail.message === "string") {
+              message = detail.message;
+            }
+          }
+        } catch { /* keep the response status */ }
+        throw new Error(message);
+      }
       const json: unknown = await response.json();
       if (!json || typeof json !== "object" || !("run_id" in json)
           || typeof json.run_id !== "string" || !/^dr_[a-f0-9]{24}$/.test(json.run_id)) {
@@ -37,7 +50,7 @@ export default function CreatorReplayPage() {
     </div>
     <div className="rounded-lg border p-5 space-y-4">
       <h2 className="text-lg font-semibold">Daily Challenge</h2>
-      <p className="text-sm text-muted-foreground">Every click starts a fresh Daily Challenge using today's live content and stages. Your official streak and Daily result remain intact.</p>
+      <p className="text-sm text-muted-foreground">Every click starts a fresh Daily Challenge using today's live content and stages. Starting another take ends the previous unfinished creator match; official Daily and Ranked matches are never reset.</p>
       <Button onClick={createRun} disabled={busy} data-testid="creator-replay-new">
         {busy ? "Creating take…" : "Record a new take"}
       </Button>
