@@ -317,6 +317,29 @@ try {
     await ctx.close();
   }
 
+  // ── 4b. Ranked still opens its own entry record; ?play=1 lands on Ranked ──
+  {
+    const { ctx, page } = await open("free", DESKTOP, "/quiz");
+    await waitHub(page);
+    await page.getByRole("tab", { name: "Ranked" }).click();
+    await page.locator('[data-testid="ranked-play-gem"]').click();
+    const dialog = await page.waitForSelector('[role="dialog"]', { timeout: 30000 }).then(() => true).catch(() => false);
+    await page.waitForTimeout(1200);
+    await shot(page, "desktop-13-ranked-entry-record");
+    record("Ranked mode's Play seal still opens the Ranked match-entry record", dialog, { dialog });
+    await ctx.close();
+    const second = await open("free", DESKTOP, "/quiz?play=1");
+    await waitHub(second.page);
+    // The entry record opens as a modal here, which (correctly) hides the page
+    // from the accessibility tree, so read the tab's state from the DOM.
+    const rankedSel = await second.page.locator("#centre-mode-tab-ranked").getAttribute("aria-selected");
+    const recordOpen = await second.page.locator('[role="dialog"]').count();
+    await shot(second.page, "desktop-14-play-again-ranked");
+    record("Ranked 'Play Again' (/quiz?play=1) lands on the Ranked mode with its entry record open",
+      rankedSel === "true" && recordOpen > 0, { rankedSel, recordOpen });
+    await second.ctx.close();
+  }
+
   // ── 5. Daily mode still reaches the Daily Challenge route ─────────────────
   {
     const { ctx, page } = await open("free", DESKTOP, "/quiz");

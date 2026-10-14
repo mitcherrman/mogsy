@@ -36,6 +36,9 @@ os.environ.update({
     "RANKED_PUBLIC_ENABLED": "1",
     "RANKED_FORMATS_ENABLED": "1",
     "RANKED_RATELIMIT_ENABLED": "0",
+    # Ranked itself open, so the hub's Ranked mode is exercised for real.
+    "RANKED_QUEUE_ENABLED": "1",
+    "RANKED_QUEUE_AVAILABILITY": '{"state":"open","reason":"rc_rig"}',
     "SUPABASE_JWT_SECRET": C.secret(),
     "SUPABASE_ALLOW_HS256": "1",
     "LIVE_ESPORTS_ENABLED": "0",

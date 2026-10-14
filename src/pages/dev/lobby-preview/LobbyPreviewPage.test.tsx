@@ -86,6 +86,8 @@ describe("Timmy demo — isolation from production state", () => {
         <LobbyPreviewPage />
       </MemoryRouter>,
     );
+    // RC7/RC8: the hub lands on Daily; the seal lives on the Ranked mode.
+    fireEvent.click(screen.getByRole("tab", { name: "Ranked" }));
     // The seal is present and pressable, and pressing it does nothing at all
     // — there is no navigation and no queue behind it here.
     const play = screen.getByRole("button", { name: /^Play$/ });
