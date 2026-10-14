@@ -727,6 +727,24 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "GENERATED questions, not stored ones. A mastery_slice question is synthesized when a match opens the segment and frozen onto that one round — it is never a row. This is deliberately NOT a Quiz Review tab: Quiz Review is a table of stored, approvable questions, and generated samples do not belong in it. Read-only — previewing creates no attempt, no history, no match, no round and no stored question, which the backend enforces with a sqlite authorizer rather than by convention. It calls the SAME generator a live match calls and draws the result with the SAME component the Ranked arena draws a challenge with.",
   },
   {
+    id: "numeric-modes-lab",
+    title: "Numeric Modes Lab",
+    description:
+      "Playtest the Stat Drop (number-line placement) and Combat Estimate (typed estimate) prototypes, with the lab band rule compared against the production exact-cell rule.",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "question-bank",
+    kind: "route",
+    path: "/admin/numeric-modes-lab",
+    oldLocation: "none — neither mode had any surface; the MIG1 Stat Drop lab was never pushed",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Prototype",
+    authorization: "Inherits the /admin layout gate. Calls no backend.",
+    notes:
+      "PROTOTYPE ONLY. Synthetic fixture values (not game facts) and a client-side stand-in grader; nothing is authoritatively graded, stored or sent. Not wired to Quiz, Daily or Ranked. See NUMERIC_MODES_PLAYTEST_HANDOFF.md for the backend work a real authority needs.",
+  },
+  {
     id: "mastery-reviewer",
     title: "Mastery Artifact Reviewer",
     description: "Read-only inspection of a mastery artifact by digest.",

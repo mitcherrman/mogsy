@@ -266,6 +266,13 @@ const WorldsExperienceDev = import.meta.env.DEV
 const MatchGridLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
   : null;
+// NUM-LAB: the Stat Drop + Combat Estimate prototype lab (synthetic fixtures,
+// not authoritatively graded). DEVELOPMENT-ONLY here; the owner's playable copy
+// is the /admin/numeric-modes-lab child below, behind the /admin layout gate.
+const NumericModesLabDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/numeric-modes/NumericModesLab"))
+  : null;
+const NumericModesLab = lazy(() => import("./pages/dev/numeric-modes/NumericModesLab"));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -490,6 +497,11 @@ export const appRouter = createBrowserRouter(
                         /admin layout gate, and its backend endpoints are behind
                         the same require_admin every other admin read uses. */}
                     <Route path="ranked/generator-lab" element={<Suspense fallback={<RouteFallback />}><MasteryGeneratorLab /></Suspense>} />
+                    {/* NUM-LAB — Stat Drop + Combat Estimate PROTOTYPE lab.
+                        Synthetic fixtures, client-side stand-in grading, no
+                        backend call; inherits the /admin layout gate. Not a
+                        Quiz, Daily or Ranked surface. */}
+                    <Route path="numeric-modes-lab" element={<Suspense fallback={<RouteFallback />}><NumericModesLab /></Suspense>} />
                   </Route>
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
@@ -681,6 +693,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
+                  ) : null}
+                  {NumericModesLabDev ? (
+                    <Route path="/dev/numeric-modes" element={<Suspense fallback={<RouteFallback />}><NumericModesLabDev /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
