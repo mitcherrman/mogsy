@@ -12,13 +12,13 @@
  * Never entity art: a champion or item picture is shown only when the
  * backend proved it (`iconHint.icon`); a sigil claims nothing about subject.
  */
-import { ArrowDownUp, Layers, Puzzle, Zap } from "lucide-react";
+import { ArrowDownUp, Layers, Network, Puzzle, Zap } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import type { ReviewRound } from "@/lib/ranked-public/contracts";
 
 export function hasModuleSigil(round: ReviewRound | null): boolean {
   return round?.kind === "mastery_slice" || round?.kind === "meta_reflex"
-    || round?.kind === "order_forge" || round?.kind === "reconstruct";
+    || round?.kind === "order_forge" || round?.kind === "reconstruct" || round?.kind === "match";
 }
 
 export default function ModuleSigil({
@@ -31,7 +31,7 @@ export default function ModuleSigil({
   ink?: string;
 }) {
   const Icon = kind === "meta_reflex" ? Zap : kind === "order_forge" ? ArrowDownUp
-    : kind === "reconstruct" ? Puzzle : Layers;
+    : kind === "reconstruct" ? Puzzle : kind === "match" ? Network : Layers;
   return (
     <Icon
       className={className}

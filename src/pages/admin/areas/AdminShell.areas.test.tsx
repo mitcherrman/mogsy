@@ -381,6 +381,13 @@ describe("7 · Ranked Admin home renders", () => {
     expect(panel.textContent).toMatch(/unrated/i);
   });
 
+  it("offers Play Match Grid in Ranked > Playtests, in its own panel (MG-P3)", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const panel = await screen.findByTestId("ranked-match-grid");
+    expect(within(panel).getByTestId("match-grid-launch-button").textContent).toBe("Play Match Grid");
+    expect(panel.textContent).toMatch(/unrated/i);
+  });
+
   it("offers the Journey launches in Ranked > Playtests, extended one last", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
     const panel = await screen.findByTestId("ranked-reference-journeys");

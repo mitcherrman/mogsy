@@ -25,6 +25,7 @@ import {
   MASTERY_SLICE_MODULE_ID,
   ORDER_FORGE_MODULE_ID,
   RECONSTRUCT_MODULE_ID,
+  MATCH_MODULE_ID,
   META_REFLEX_MIXED_VERSION,
   revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
@@ -49,6 +50,7 @@ export function segmentTitle(reveal: SegmentRevealView): string {
   if (reveal.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   if (reveal.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
   if (reveal.moduleId === RECONSTRUCT_MODULE_ID) return "Reconstruct";
+  if (reveal.moduleId === MATCH_MODULE_ID) return "Match Grid";
   return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
     ? META_REFLEX_LABEL : "Item Cost Duel";
 }
@@ -202,6 +204,46 @@ export function SegmentTranscript({
             {`${marks.filter(Boolean).length}/${marks.length} parts right`}
           </p>
         )}
+      </section>
+    );
+  }
+
+  // MG-P3 - a match settlement is one board per player. The only figure is
+  // the server's own per-entity count, worded as relationships, never points.
+  if (reveal.match) {
+    const m = reveal.match;
+    const line = (pid: string | null) => {
+      if (!pid) return null;
+      const n = m.matched[pid];
+      return m.assignments[pid] === null ? "No board locked"
+        : n !== null && n !== undefined && m.required !== null
+          ? `${n} of ${m.required} relationships correct` : "Board locked";
+    };
+    return (
+      <section className="ranked-panel space-y-3 p-3 sm:p-4"
+               data-testid="icd-transcript" aria-labelledby="icd-transcript-heading">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="icd-transcript-heading" className="font-semibold">
+            {segmentTitle(reveal)} — segment result
+          </h4>
+          <p className="text-sm font-semibold" data-testid="icd-transcript-result">
+            {result ? RESULT_LABEL[result] : "—"}
+            {damageDealt !== null && (
+              <span className="ml-2 font-normal text-muted-foreground"
+                    data-testid="icd-transcript-damage">{damageDealt} damage</span>
+            )}
+          </p>
+        </header>
+        <dl className="space-y-1 text-sm" data-testid="match-grid-transcript">
+          <div data-testid="mg-transcript-you">
+            <dt className="text-muted-foreground">{viewerLabel}</dt><dd>{line(viewerUserId)}</dd>
+          </div>
+          {opponentUserId && (
+            <div data-testid="mg-transcript-them">
+              <dt className="text-muted-foreground">Opponent</dt><dd>{line(opponentUserId)}</dd>
+            </div>
+          )}
+        </dl>
       </section>
     );
   }

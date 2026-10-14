@@ -1,0 +1,484 @@
+{
+ "lock_challenge_reveal": {
+  "assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g1"
+   }
+  ],
+  "canonical_assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g1"
+   }
+  ],
+  "challenge_index": 0,
+  "entity_correct": [
+   {
+    "correct": false,
+    "entity_id": "e0"
+   },
+   {
+    "correct": true,
+    "entity_id": "e1"
+   },
+   {
+    "correct": true,
+    "entity_id": "e2"
+   },
+   {
+    "correct": true,
+    "entity_id": "e3"
+   },
+   {
+    "correct": true,
+    "entity_id": "e4"
+   },
+   {
+    "correct": true,
+    "entity_id": "e5"
+   },
+   {
+    "correct": true,
+    "entity_id": "e6"
+   }
+  ],
+  "entity_facts": {
+   "e0": {
+    "label": "Guardian",
+    "rune_type": "keystone",
+    "tree_label": "Resolve"
+   },
+   "e1": {
+    "label": "Waterwalking",
+    "rune_type": "minor",
+    "tree_label": "Sorcery"
+   },
+   "e2": {
+    "label": "Unflinching",
+    "rune_type": "minor",
+    "tree_label": "Resolve"
+   },
+   "e3": {
+    "label": "Arcane Comet",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
+   },
+   "e4": {
+    "label": "Summon Aery",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
+   },
+   "e5": {
+    "label": "Time Warp Tonic",
+    "rune_type": "minor",
+    "tree_label": "Inspiration"
+   },
+   "e6": {
+    "label": "Cash Back",
+    "rune_type": "minor",
+    "tree_label": "Inspiration"
+   }
+  },
+  "is_correct": false,
+  "matched": 6,
+  "required": 7,
+  "source": {
+   "parser_version": "rune-canonical-0.1.0",
+   "snapshot_digest": "1aae7795ede2711f5b051470af4cab099429a63c1da0be01b2e1a1bfeede0914"
+  }
+ },
+ "segment_state_challenges": {
+  "challenges": [
+   {
+    "challenge_index": 0,
+    "entities": [
+     {
+      "entity_id": "e0",
+      "label": "Guardian",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Guardian.png"
+      }
+     },
+     {
+      "entity_id": "e1",
+      "label": "Waterwalking",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Waterwalking.png"
+      }
+     },
+     {
+      "entity_id": "e2",
+      "label": "Unflinching",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Unflinching.png"
+      }
+     },
+     {
+      "entity_id": "e3",
+      "label": "Arcane Comet",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Arcane_Comet.png"
+      }
+     },
+     {
+      "entity_id": "e4",
+      "label": "Summon Aery",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Summon_Aery.png"
+      }
+     },
+     {
+      "entity_id": "e5",
+      "label": "Time Warp Tonic",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Time_Warp_Tonic.png"
+      }
+     },
+     {
+      "entity_id": "e6",
+      "label": "Cash Back",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Cash_Back.png"
+      }
+     }
+    ],
+    "groups": [
+     {
+      "glyph": "sorcery",
+      "group_id": "g0",
+      "label": "Sorcery"
+     },
+     {
+      "glyph": "inspiration",
+      "group_id": "g1",
+      "label": "Inspiration"
+     },
+     {
+      "glyph": "resolve",
+      "group_id": "g2",
+      "label": "Resolve"
+     }
+    ],
+    "membership": "one"
+   }
+  ],
+  "family": "rune_tree",
+  "prompt": "Seat each rune under its tree",
+  "reveal_window_ms": 4500
+ },
+ "settlement_segment_reveal": {
+  "canonical_assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g1"
+   }
+  ],
+  "challenge_count": 1,
+  "correct_points": 2,
+  "entity_facts": {
+   "e0": {
+    "label": "Guardian",
+    "rune_type": "keystone",
+    "tree_label": "Resolve"
+   },
+   "e1": {
+    "label": "Waterwalking",
+    "rune_type": "minor",
+    "tree_label": "Sorcery"
+   },
+   "e2": {
+    "label": "Unflinching",
+    "rune_type": "minor",
+    "tree_label": "Resolve"
+   },
+   "e3": {
+    "label": "Arcane Comet",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
+   },
+   "e4": {
+    "label": "Summon Aery",
+    "rune_type": "keystone",
+    "tree_label": "Sorcery"
+   },
+   "e5": {
+    "label": "Time Warp Tonic",
+    "rune_type": "minor",
+    "tree_label": "Inspiration"
+   },
+   "e6": {
+    "label": "Cash Back",
+    "rune_type": "minor",
+    "tree_label": "Inspiration"
+   }
+  },
+  "module_id": "match",
+  "module_version": 1,
+  "players": {
+   "bot::2eb80dea98e1caa23d1607df": {
+    "assignments": [
+     {
+      "entity_id": "e0",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e1",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e2",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e3",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e4",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e5",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e6",
+      "group_id": "g1"
+     }
+    ],
+    "base_points": 2,
+    "correct": 1,
+    "duration_ms": 14700,
+    "entity_correct": [
+     {
+      "correct": true,
+      "entity_id": "e0"
+     },
+     {
+      "correct": true,
+      "entity_id": "e1"
+     },
+     {
+      "correct": true,
+      "entity_id": "e2"
+     },
+     {
+      "correct": true,
+      "entity_id": "e3"
+     },
+     {
+      "correct": true,
+      "entity_id": "e4"
+     },
+     {
+      "correct": true,
+      "entity_id": "e5"
+     },
+     {
+      "correct": true,
+      "entity_id": "e6"
+     }
+    ],
+    "finished_first": false,
+    "incorrect": 0,
+    "matched": 7,
+    "points_awarded": 2,
+    "required": 7,
+    "segment_result": "win",
+    "speed_bonus_points": 0,
+    "unanswered": 0
+   },
+   "human-1": {
+    "assignments": [
+     {
+      "entity_id": "e0",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e1",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e2",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e3",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e4",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e5",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e6",
+      "group_id": "g1"
+     }
+    ],
+    "base_points": 0,
+    "correct": 0,
+    "duration_ms": 3600,
+    "entity_correct": [
+     {
+      "correct": false,
+      "entity_id": "e0"
+     },
+     {
+      "correct": true,
+      "entity_id": "e1"
+     },
+     {
+      "correct": true,
+      "entity_id": "e2"
+     },
+     {
+      "correct": true,
+      "entity_id": "e3"
+     },
+     {
+      "correct": true,
+      "entity_id": "e4"
+     },
+     {
+      "correct": true,
+      "entity_id": "e5"
+     },
+     {
+      "correct": true,
+      "entity_id": "e6"
+     }
+    ],
+    "finished_first": true,
+    "incorrect": 1,
+    "matched": 6,
+    "points_awarded": 0,
+    "required": 7,
+    "segment_result": "loss",
+    "speed_bonus_points": 0,
+    "unanswered": 0
+   }
+  },
+  "scoring": "points",
+  "source": {
+   "parser_version": "rune-canonical-0.1.0",
+   "snapshot_digest": "1aae7795ede2711f5b051470af4cab099429a63c1da0be01b2e1a1bfeede0914"
+  },
+  "speed_bonus_points": 1
+ },
+ "submitted_choice": {
+  "assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g1"
+   }
+  ]
+ }
+}
