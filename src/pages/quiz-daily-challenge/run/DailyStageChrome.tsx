@@ -12,6 +12,7 @@
  *   * Survival — mistakes left, as a count of marks. Never a health bar.
  */
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow";
@@ -49,13 +50,13 @@ export function TimeBankMeter({ bank, skewMs, childPhase }: {
     <div data-testid="daily-time-bank" data-bank-ms={String(ms)}
       data-bank-state={holding ? "held" : "draining"}
       role="timer" aria-label={`Time bank ${formatBank(ms)} left`}
-      className="flex items-center gap-2">
-      <span className="text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ranked-muted,#a8a29e)]">Bank</span>
-      <span aria-hidden className="relative h-1.5 w-20 overflow-hidden rounded-full bg-white/10">
+      className="flex shrink-0 items-center gap-1 md:gap-2">
+      <span className="hidden text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ranked-muted,#a8a29e)] md:inline">Bank</span>
+      <span aria-hidden className="relative hidden h-1.5 w-20 overflow-hidden rounded-full bg-white/10 md:inline-block">
         <span className={`absolute inset-y-0 left-0 rounded-full ${ms < 10_000 ? "bg-rose-400" : "bg-amber-300"}`}
           style={{ width: `${pct}%` }} />
       </span>
-      <span className="font-mono text-sm tabular-nums">{formatBank(ms)}</span>
+      <span className="whitespace-nowrap font-mono text-[10px] tabular-nums min-[500px]:text-sm">{formatBank(ms)}</span>
     </div>
   );
 }
@@ -73,9 +74,9 @@ export function StrikesMeter({ strikes, answered = null }: { strikes: DailyStrik
       data-strikes-max={String(strikes.max)} data-strikes-remaining={String(left)}
       data-strikes-out={out ? "true" : "false"}
       aria-label={`${left} of ${strikes.max} mistakes left`}
-      className="flex items-center gap-2">
+      className="flex shrink-0 items-center gap-1 md:gap-2">
       {answered !== null && (
-        <span data-testid="daily-survival-answered" className="whitespace-nowrap font-mono text-xs tabular-nums">
+        <span data-testid="daily-survival-answered" className="hidden whitespace-nowrap font-mono text-xs tabular-nums md:inline">
           {answered} answered
           <span aria-hidden className="px-1 text-[var(--ranked-muted,#a8a29e)]">·</span>
         </span>
@@ -83,7 +84,7 @@ export function StrikesMeter({ strikes, answered = null }: { strikes: DailyStrik
       <span className="hidden text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ranked-muted,#a8a29e)] sm:inline">
         Strikes
       </span>
-      <span aria-hidden className="flex gap-1">
+      <span aria-hidden className="hidden gap-1 md:flex">
         {Array.from({ length: strikes.max }, (_, i) => (
           <span key={i} data-testid="daily-strike-mark" data-spent={i < strikes.used ? "true" : "false"}
             className={`flex h-4 w-4 items-center justify-center rounded-sm border text-[0.625rem] font-bold ${
@@ -94,7 +95,7 @@ export function StrikesMeter({ strikes, answered = null }: { strikes: DailyStrik
           </span>
         ))}
       </span>
-      <span data-testid="daily-strikes-count" className="whitespace-nowrap font-mono text-xs tabular-nums">
+      <span data-testid="daily-strikes-count" className="whitespace-nowrap font-mono text-[10px] tabular-nums min-[500px]:text-xs">
         {Math.min(strikes.used, strikes.max)} / {strikes.max}
       </span>
     </div>
@@ -152,33 +153,46 @@ export function DailyStageChrome({
   /** B7 — the highest strike count the server reported for this stage. */
   strikesFloor?: number | null;
 }) {
+  // Keep section and distinct content accessible, but out of the phone's
+  // single-row space budget. The mode tag is the only visible stage label.
   const content = stage ? stageContentLine(stage) : null;
+  const backLabel = exitLabel(run);
   return (
-    <header data-testid="daily-stage-chrome" className={`${arenaHeaderRowClass("wide")} flex-wrap`}>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-        <h1 className="ranked-title text-lg font-bold leading-tight">Daily Challenge</h1>
+    <header data-testid="daily-stage-chrome"
+      className={`${arenaHeaderRowClass("wide")} !flex-nowrap !gap-1 sm:!gap-2`}>
+      <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+        <Link to={LEAGUECRAFT_HREF} aria-label={backLabel} title={backLabel}
+          className="inline-flex h-7 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-amber-300">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        </Link>
+        <h1 aria-label="Daily Challenge"
+          className="ranked-title shrink-0 whitespace-nowrap text-[clamp(10px,2.65vw,18px)] font-bold leading-none tracking-[-0.035em]">
+          <span className="hidden min-[360px]:inline">Daily Challenge</span>
+          <span aria-hidden="true" className="min-[360px]:hidden">Daily</span>
+        </h1>
         {stage && (
           <>
-            <span data-testid="daily-stage-position"
-              className="text-xs tabular-nums text-[var(--ranked-muted,#a8a29e)]">
+            <span data-testid="daily-stage-position" className="sr-only">
               {hasMainDaily(run) ? stagePositionLabel(run, stage) : `Stage ${stage.index + 1} of ${run.stages.length}`}
             </span>
-            <StageTag stage={stage} />
+            <StageTag stage={stage} size="compact" />
             {content && (
-              <span data-testid="daily-stage-content" className="truncate text-xs text-[var(--ranked-muted,#a8a29e)]">
+              <span data-testid="daily-stage-content"
+                className="sr-only lg:not-sr-only lg:max-w-32 lg:truncate lg:text-xs lg:text-[var(--ranked-muted,#a8a29e)]">
                 {content}
               </span>
             )}
           </>
         )}
       </div>
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1">
-        {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} survival={survival}
-          strikesFloor={strikesFloor} />}
-        <Link to={LEAGUECRAFT_HREF} className="text-sm text-muted-foreground underline">
-          {exitLabel(run)}
-        </Link>
+      <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+        {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase}
+          survival={survival} strikesFloor={strikesFloor} />}
+        <a data-testid="daily-screenshot-cta" href="https://mogzy.lol"
+          target="_blank" rel="noopener noreferrer" aria-label="Play now at mogzy.lol"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[9px] min-[400px]:text-[10px] min-[500px]:text-xs">
+          <span className="font-semibold text-sky-200">mogzy.lol</span>
+          <span className="font-bold uppercase text-amber-300">PLAY NOW</span>
+        </a>
       </div>
     </header>
-  );
-}
