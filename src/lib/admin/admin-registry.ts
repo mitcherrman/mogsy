@@ -624,6 +624,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     authorization: "AdminRoute + backend require_admin; separate Daily policy per take.",
   },
+  {
     id: "quiz-content-workspace",
     title: "Admin Quiz Review",
     description:
