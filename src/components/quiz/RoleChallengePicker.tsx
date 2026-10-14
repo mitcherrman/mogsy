@@ -223,7 +223,10 @@ export default function RoleChallengePicker({
     return () => ctrl.abort();
   }, [enabled, refreshStatus, reloadToken]);
 
-  const roster = catalog?.roles.find((x) => x.role === role)?.champions ?? [];
+  const roster = useMemo(
+    () => catalog?.roles.find((x) => x.role === role)?.champions ?? [],
+    [catalog, role],
+  );
   const filtered = useMemo(() => filterChampions(roster, query), [roster, query]);
   const selected = roster.find((c) => c.id === champion) ?? null;
   const activeRun = status?.activeRun ?? null;

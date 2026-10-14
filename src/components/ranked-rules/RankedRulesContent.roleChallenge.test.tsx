@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { RankedRulesContent } from "./RankedRulesContent";
-import { openResultDetails } from "@/components/game-results/GameResultsBody";
+import { openResultDetails } from "@/components/game-results/openResultDetails";
 
 afterEach(cleanup);
 
