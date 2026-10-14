@@ -1,0 +1,5319 @@
+{
+ "capturedAt": "2026-10-11T21:48:10.970Z",
+ "source": {
+  "file": "champion_ability_canonical/data/range_authority.json",
+  "repoCommit": "679173bfee6b8b34228aa74d05f45453e0b2d0c7",
+  "authorityHost": "wiki.leagueoflegends.com"
+ },
+ "rules": [
+  "the authority publishes a plain per-rank CAST_RANGE ladder (cast_range_by_rank non-null)",
+  "the ladder holds one value across every rank (no per-rank ladders)",
+  "the cast range is finite, never Global",
+  "targeting is exactly Unit, Location or Direction (no mixed-mode or Auto/Vector/Proximity casts)",
+  "exactly one CAST_RANGE component, equal to the ladder, with no qualifying note (BUG / see notes / total range / estimated / based off)",
+  "the value sits on the 25-unit lattice within [100, 6000]"
+ ],
+ "population": 692,
+ "eligible": [
+  {
+   "champion": "Ahri",
+   "slot": "R",
+   "ability": "Spirit Rush",
+   "targeting": "Location",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ahri/Spirit_Rush",
+   "revisionId": 4007764
+  },
+  {
+   "champion": "Akali",
+   "slot": "W",
+   "ability": "Twilight Shroud",
+   "targeting": "Direction",
+   "castRangeUnits": 250,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Akali/Twilight_Shroud",
+   "revisionId": 4007406
+  },
+  {
+   "champion": "Akshan",
+   "slot": "R",
+   "ability": "Comeuppance",
+   "targeting": "Unit",
+   "castRangeUnits": 2500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Akshan/Comeuppance",
+   "revisionId": 3982549
+  },
+  {
+   "champion": "Alistar",
+   "slot": "W",
+   "ability": "Headbutt",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Alistar/Headbutt",
+   "revisionId": 4007563
+  },
+  {
+   "champion": "Anivia",
+   "slot": "E",
+   "ability": "Frostbite",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Anivia/Frostbite",
+   "revisionId": 4057862
+  },
+  {
+   "champion": "Annie",
+   "slot": "Q",
+   "ability": "Disintegrate",
+   "targeting": "Unit",
+   "castRangeUnits": 625,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Annie/Disintegrate",
+   "revisionId": 3992633
+  },
+  {
+   "champion": "Annie",
+   "slot": "R",
+   "ability": "Summon: Tibbers",
+   "targeting": "Location",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Annie/Summon:_Tibbers",
+   "revisionId": 4012758
+  },
+  {
+   "champion": "Aphelios",
+   "slot": "R",
+   "ability": "Moonlight Vigil",
+   "targeting": "Direction",
+   "castRangeUnits": 1300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Aphelios/Moonlight_Vigil",
+   "revisionId": 4052070
+  },
+  {
+   "champion": "Aurelion Sol",
+   "slot": "R",
+   "ability": "Falling Star",
+   "targeting": "Location",
+   "castRangeUnits": 1250,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Aurelion_Sol/Falling_Star",
+   "revisionId": 3978297
+  },
+  {
+   "champion": "Azir",
+   "slot": "W",
+   "ability": "Arise!",
+   "targeting": "Location",
+   "castRangeUnits": 525,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Azir/Arise!",
+   "revisionId": 4044339
+  },
+  {
+   "champion": "Azir",
+   "slot": "E",
+   "ability": "Shifting Sands",
+   "targeting": "Unit",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Azir/Shifting_Sands",
+   "revisionId": 4022609
+  },
+  {
+   "champion": "Bard",
+   "slot": "Q",
+   "ability": "Cosmic Binding",
+   "targeting": "Direction",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Bard/Cosmic_Binding",
+   "revisionId": 4037681
+  },
+  {
+   "champion": "Bard",
+   "slot": "E",
+   "ability": "Magical Journey",
+   "targeting": "Direction",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Bard/Magical_Journey",
+   "revisionId": 4007574
+  },
+  {
+   "champion": "Bard",
+   "slot": "R",
+   "ability": "Tempered Fate",
+   "targeting": "Location",
+   "castRangeUnits": 3400,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Bard/Tempered_Fate",
+   "revisionId": 4008478
+  },
+  {
+   "champion": "Brand",
+   "slot": "W",
+   "ability": "Pillar of Flame",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Brand/Pillar_of_Flame",
+   "revisionId": 3955084
+  },
+  {
+   "champion": "Brand",
+   "slot": "E",
+   "ability": "Conflagration",
+   "targeting": "Unit",
+   "castRangeUnits": 675,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Brand/Conflagration",
+   "revisionId": 4034693
+  },
+  {
+   "champion": "Brand",
+   "slot": "R",
+   "ability": "Pyroclasm",
+   "targeting": "Unit",
+   "castRangeUnits": 750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Brand/Pyroclasm",
+   "revisionId": 3955099
+  },
+  {
+   "champion": "Braum",
+   "slot": "W",
+   "ability": "Stand Behind Me",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Braum/Stand_Behind_Me",
+   "revisionId": 3906582
+  },
+  {
+   "champion": "Briar",
+   "slot": "Q",
+   "ability": "Head Rush",
+   "targeting": "Unit",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Briar/Head_Rush",
+   "revisionId": 3989856
+  },
+  {
+   "champion": "Caitlyn",
+   "slot": "W",
+   "ability": "Yordle Snap Trap",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Caitlyn/Yordle_Snap_Trap",
+   "revisionId": 4023135
+  },
+  {
+   "champion": "Caitlyn",
+   "slot": "R",
+   "ability": "Ace in the Hole",
+   "targeting": "Unit",
+   "castRangeUnits": 3500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Caitlyn/Ace_in_the_Hole",
+   "revisionId": 3982561
+  },
+  {
+   "champion": "Camille",
+   "slot": "E",
+   "ability": "Hookshot",
+   "targeting": "Direction",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Camille/Hookshot",
+   "revisionId": 3922084
+  },
+  {
+   "champion": "Camille",
+   "slot": "R",
+   "ability": "The Hextech Ultimatum",
+   "targeting": "Unit",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Camille/The_Hextech_Ultimatum",
+   "revisionId": 4037519
+  },
+  {
+   "champion": "Cassiopeia",
+   "slot": "Q",
+   "ability": "Noxious Blast",
+   "targeting": "Location",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Cassiopeia/Noxious_Blast",
+   "revisionId": 3906813
+  },
+  {
+   "champion": "Cassiopeia",
+   "slot": "W",
+   "ability": "Miasma",
+   "targeting": "Location",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Cassiopeia/Miasma",
+   "revisionId": 3936292
+  },
+  {
+   "champion": "Cho'Gath",
+   "slot": "Q",
+   "ability": "Rupture",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Cho'Gath/Rupture",
+   "revisionId": 4053169
+  },
+  {
+   "champion": "Cho'Gath",
+   "slot": "W",
+   "ability": "Feral Scream",
+   "targeting": "Direction",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Cho'Gath/Feral_Scream",
+   "revisionId": 4052916
+  },
+  {
+   "champion": "Cho'Gath",
+   "slot": "R",
+   "ability": "Feast",
+   "targeting": "Unit",
+   "castRangeUnits": 175,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Cho'Gath/Feast",
+   "revisionId": 3932267
+  },
+  {
+   "champion": "Corki",
+   "slot": "Q",
+   "ability": "Phosphorus Bomb",
+   "targeting": "Location",
+   "castRangeUnits": 825,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Corki/Phosphorus_Bomb",
+   "revisionId": 4007588
+  },
+  {
+   "champion": "Darius",
+   "slot": "R",
+   "ability": "Noxian Guillotine",
+   "targeting": "Unit",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Darius/Noxian_Guillotine",
+   "revisionId": 4004898
+  },
+  {
+   "champion": "Diana",
+   "slot": "Q",
+   "ability": "Crescent Strike",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Diana/Crescent_Strike",
+   "revisionId": 4007592
+  },
+  {
+   "champion": "Diana",
+   "slot": "E",
+   "ability": "Lunar Rush",
+   "targeting": "Unit",
+   "castRangeUnits": 825,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Diana/Lunar_Rush",
+   "revisionId": 3937024
+  },
+  {
+   "champion": "Draven",
+   "slot": "E",
+   "ability": "Stand Aside",
+   "targeting": "Direction",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Draven/Stand_Aside",
+   "revisionId": 4034694
+  },
+  {
+   "champion": "Ekko",
+   "slot": "Q",
+   "ability": "Timewinder",
+   "targeting": "Direction",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ekko/Timewinder",
+   "revisionId": 4007479
+  },
+  {
+   "champion": "Ekko",
+   "slot": "W",
+   "ability": "Parallel Convergence",
+   "targeting": "Location",
+   "castRangeUnits": 1600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ekko/Parallel_Convergence",
+   "revisionId": 3956502
+  },
+  {
+   "champion": "Elise",
+   "slot": "Q",
+   "ability": "Neurotoxin",
+   "targeting": "Unit",
+   "castRangeUnits": 575,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Elise/Neurotoxin",
+   "revisionId": 3982568
+  },
+  {
+   "champion": "Elise",
+   "slot": "W",
+   "ability": "Volatile Spiderling",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Elise/Volatile_Spiderling",
+   "revisionId": 3906822
+  },
+  {
+   "champion": "Elise",
+   "slot": "E",
+   "ability": "Cocoon",
+   "targeting": "Direction",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Elise/Cocoon",
+   "revisionId": 3906643
+  },
+  {
+   "champion": "Ezreal",
+   "slot": "Q",
+   "ability": "Mystic Shot",
+   "targeting": "Location",
+   "castRangeUnits": 1200,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ezreal/Mystic_Shot",
+   "revisionId": 4013233
+  },
+  {
+   "champion": "Ezreal",
+   "slot": "W",
+   "ability": "Essence Flux",
+   "targeting": "Location",
+   "castRangeUnits": 1200,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ezreal/Essence_Flux",
+   "revisionId": 4013234
+  },
+  {
+   "champion": "Ezreal",
+   "slot": "E",
+   "ability": "Arcane Shift",
+   "targeting": "Location",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ezreal/Arcane_Shift",
+   "revisionId": 3989862
+  },
+  {
+   "champion": "Fiddlesticks",
+   "slot": "Q",
+   "ability": "Terrify",
+   "targeting": "Unit",
+   "castRangeUnits": 575,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fiddlesticks/Terrify",
+   "revisionId": 4058043
+  },
+  {
+   "champion": "Fiddlesticks",
+   "slot": "E",
+   "ability": "Reap",
+   "targeting": "Location",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fiddlesticks/Reap",
+   "revisionId": 3906828
+  },
+  {
+   "champion": "Fiddlesticks",
+   "slot": "R",
+   "ability": "Crowstorm",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fiddlesticks/Crowstorm",
+   "revisionId": 4004933
+  },
+  {
+   "champion": "Fiora",
+   "slot": "W",
+   "ability": "Riposte",
+   "targeting": "Direction",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fiora/Riposte",
+   "revisionId": 4007365
+  },
+  {
+   "champion": "Fiora",
+   "slot": "R",
+   "ability": "Grand Challenge",
+   "targeting": "Unit",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fiora/Grand_Challenge",
+   "revisionId": 4007516
+  },
+  {
+   "champion": "Fizz",
+   "slot": "Q",
+   "ability": "Urchin Strike",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fizz/Urchin_Strike",
+   "revisionId": 3948968
+  },
+  {
+   "champion": "Fizz",
+   "slot": "R",
+   "ability": "Chum the Waters",
+   "targeting": "Location",
+   "castRangeUnits": 1300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Fizz/Chum_the_Waters",
+   "revisionId": 4010638
+  },
+  {
+   "champion": "Galio",
+   "slot": "Q",
+   "ability": "Winds of War",
+   "targeting": "Location",
+   "castRangeUnits": 825,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Galio/Winds_of_War",
+   "revisionId": 4016962
+  },
+  {
+   "champion": "Gangplank",
+   "slot": "Q",
+   "ability": "Parrrley",
+   "targeting": "Unit",
+   "castRangeUnits": 625,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Gangplank/Parrrley",
+   "revisionId": 4051880
+  },
+  {
+   "champion": "Gangplank",
+   "slot": "E",
+   "ability": "Powder Keg",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Gangplank/Powder_Keg",
+   "revisionId": 4058497
+  },
+  {
+   "champion": "Garen",
+   "slot": "R",
+   "ability": "Demacian Justice",
+   "targeting": "Unit",
+   "castRangeUnits": 400,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Garen/Demacian_Justice",
+   "revisionId": 4042864
+  },
+  {
+   "champion": "Gnar",
+   "slot": "E",
+   "ability": "Hop",
+   "targeting": "Location",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Gnar/Hop",
+   "revisionId": 4007742
+  },
+  {
+   "champion": "Gragas",
+   "slot": "E",
+   "ability": "Body Slam",
+   "targeting": "Direction",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Gragas/Body_Slam",
+   "revisionId": 4007602
+  },
+  {
+   "champion": "Gragas",
+   "slot": "R",
+   "ability": "Explosive Cask",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Gragas/Explosive_Cask",
+   "revisionId": 3906845
+  },
+  {
+   "champion": "Graves",
+   "slot": "W",
+   "ability": "Smoke Screen",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Graves/Smoke_Screen",
+   "revisionId": 4049973
+  },
+  {
+   "champion": "Heimerdinger",
+   "slot": "Q",
+   "ability": "H-28G Evolution Turret",
+   "targeting": "Location",
+   "castRangeUnits": 350,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Heimerdinger/H-28G_Evolution_Turret",
+   "revisionId": 4036534
+  },
+  {
+   "champion": "Heimerdinger",
+   "slot": "E",
+   "ability": "CH-2 Electron Storm Grenade",
+   "targeting": "Location",
+   "castRangeUnits": 925,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Heimerdinger/CH-2_Electron_Storm_Grenade",
+   "revisionId": 4022980
+  },
+  {
+   "champion": "Irelia",
+   "slot": "Q",
+   "ability": "Bladesurge",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Irelia/Bladesurge",
+   "revisionId": 4057466
+  },
+  {
+   "champion": "Irelia",
+   "slot": "E",
+   "ability": "Flawless Duet",
+   "targeting": "Location",
+   "castRangeUnits": 775,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Irelia/Flawless_Duet",
+   "revisionId": 4021834
+  },
+  {
+   "champion": "Irelia",
+   "slot": "R",
+   "ability": "Vanguard's Edge",
+   "targeting": "Direction",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Irelia/Vanguard's_Edge",
+   "revisionId": 4057346
+  },
+  {
+   "champion": "Ivern",
+   "slot": "W",
+   "ability": "Brushmaker",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ivern/Brushmaker",
+   "revisionId": 4025374
+  },
+  {
+   "champion": "Ivern",
+   "slot": "E",
+   "ability": "Triggerseed",
+   "targeting": "Unit",
+   "castRangeUnits": 750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ivern/Triggerseed",
+   "revisionId": 3994759
+  },
+  {
+   "champion": "Janna",
+   "slot": "W",
+   "ability": "Zephyr",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Janna/Zephyr",
+   "revisionId": 3971180
+  },
+  {
+   "champion": "Janna",
+   "slot": "E",
+   "ability": "Eye of the Storm",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Janna/Eye_of_the_Storm",
+   "revisionId": 3933659
+  },
+  {
+   "champion": "Jarvan IV",
+   "slot": "R",
+   "ability": "Cataclysm",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Jarvan_IV/Cataclysm",
+   "revisionId": 4017869
+  },
+  {
+   "champion": "Jax",
+   "slot": "Q",
+   "ability": "Leap Strike",
+   "targeting": "Unit",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Jax/Leap_Strike",
+   "revisionId": 4026413
+  },
+  {
+   "champion": "Jayce",
+   "slot": "Q",
+   "ability": "To the Skies!",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Jayce/To_the_Skies!",
+   "revisionId": 3989865
+  },
+  {
+   "champion": "Jhin",
+   "slot": "Q",
+   "ability": "Dancing Grenade",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Jhin/Dancing_Grenade",
+   "revisionId": 4007611
+  },
+  {
+   "champion": "Jhin",
+   "slot": "E",
+   "ability": "Captive Audience",
+   "targeting": "Location",
+   "castRangeUnits": 750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Jhin/Captive_Audience",
+   "revisionId": 4007613
+  },
+  {
+   "champion": "Jinx",
+   "slot": "E",
+   "ability": "Flame Chompers!",
+   "targeting": "Location",
+   "castRangeUnits": 925,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Jinx/Flame_Chompers!",
+   "revisionId": 3993368
+  },
+  {
+   "champion": "K'Sante",
+   "slot": "R",
+   "ability": "All Out",
+   "targeting": "Unit",
+   "castRangeUnits": 300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_K'Sante/All_Out",
+   "revisionId": 4051537
+  },
+  {
+   "champion": "Kai'Sa",
+   "slot": "W",
+   "ability": "Void Seeker",
+   "targeting": "Location",
+   "castRangeUnits": 3000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kai'Sa/Void_Seeker",
+   "revisionId": 4034696
+  },
+  {
+   "champion": "Kalista",
+   "slot": "Q",
+   "ability": "Pierce",
+   "targeting": "Direction",
+   "castRangeUnits": 1200,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kalista/Pierce",
+   "revisionId": 3997075
+  },
+  {
+   "champion": "Karma",
+   "slot": "W",
+   "ability": "Focused Resolve",
+   "targeting": "Unit",
+   "castRangeUnits": 675,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Karma/Focused_Resolve",
+   "revisionId": 3968365
+  },
+  {
+   "champion": "Karma",
+   "slot": "E",
+   "ability": "Inspire",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Karma/Inspire",
+   "revisionId": 4008449
+  },
+  {
+   "champion": "Karthus",
+   "slot": "Q",
+   "ability": "Lay Waste",
+   "targeting": "Location",
+   "castRangeUnits": 875,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Karthus/Lay_Waste",
+   "revisionId": 4011136
+  },
+  {
+   "champion": "Karthus",
+   "slot": "W",
+   "ability": "Wall of Pain",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Karthus/Wall_of_Pain",
+   "revisionId": 3990033
+  },
+  {
+   "champion": "Kassadin",
+   "slot": "Q",
+   "ability": "Null Sphere",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kassadin/Null_Sphere",
+   "revisionId": 4022981
+  },
+  {
+   "champion": "Kassadin",
+   "slot": "R",
+   "ability": "Riftwalk",
+   "targeting": "Location",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kassadin/Riftwalk",
+   "revisionId": 3996941
+  },
+  {
+   "champion": "Katarina",
+   "slot": "Q",
+   "ability": "Bouncing Blade",
+   "targeting": "Unit",
+   "castRangeUnits": 625,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Katarina/Bouncing_Blade",
+   "revisionId": 4015158
+  },
+  {
+   "champion": "Kayle",
+   "slot": "R",
+   "ability": "Divine Judgment",
+   "targeting": "Unit",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kayle/Divine_Judgment",
+   "revisionId": 3962015
+  },
+  {
+   "champion": "Kayn",
+   "slot": "Q",
+   "ability": "Reaping Slash",
+   "targeting": "Direction",
+   "castRangeUnits": 350,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kayn/Reaping_Slash",
+   "revisionId": 4051323
+  },
+  {
+   "champion": "Kennen",
+   "slot": "Q",
+   "ability": "Thundering Shuriken",
+   "targeting": "Direction",
+   "castRangeUnits": 1050,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kennen/Thundering_Shuriken",
+   "revisionId": 3936401
+  },
+  {
+   "champion": "Kha'Zix",
+   "slot": "Q",
+   "ability": "Taste Their Fear",
+   "targeting": "Unit",
+   "castRangeUnits": 325,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kha'Zix/Taste_Their_Fear",
+   "revisionId": 4006997
+  },
+  {
+   "champion": "Kha'Zix",
+   "slot": "W",
+   "ability": "Void Spike",
+   "targeting": "Direction",
+   "castRangeUnits": 1025,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kha'Zix/Void_Spike",
+   "revisionId": 3971345
+  },
+  {
+   "champion": "Kha'Zix",
+   "slot": "E",
+   "ability": "Leap",
+   "targeting": "Location",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kha'Zix/Leap",
+   "revisionId": 4007747
+  },
+  {
+   "champion": "Kindred",
+   "slot": "W",
+   "ability": "Wolf's Frenzy",
+   "targeting": "Location",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kindred/Wolf's_Frenzy",
+   "revisionId": 4038396
+  },
+  {
+   "champion": "LeBlanc",
+   "slot": "Q",
+   "ability": "Sigil of Malice",
+   "targeting": "Unit",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_LeBlanc/Sigil_of_Malice",
+   "revisionId": 3985524
+  },
+  {
+   "champion": "LeBlanc",
+   "slot": "E",
+   "ability": "Ethereal Chains",
+   "targeting": "Direction",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_LeBlanc/Ethereal_Chains",
+   "revisionId": 3954748
+  },
+  {
+   "champion": "Lee Sin",
+   "slot": "Q",
+   "ability": "Sonic Wave",
+   "targeting": "Direction",
+   "castRangeUnits": 1200,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lee_Sin/Sonic_Wave",
+   "revisionId": 4026427
+  },
+  {
+   "champion": "Lee Sin",
+   "slot": "W",
+   "ability": "Safeguard",
+   "targeting": "Unit",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lee_Sin/Safeguard",
+   "revisionId": 4024314
+  },
+  {
+   "champion": "Lee Sin",
+   "slot": "R",
+   "ability": "Dragon's Rage",
+   "targeting": "Unit",
+   "castRangeUnits": 375,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lee_Sin/Dragon's_Rage",
+   "revisionId": 4032576
+  },
+  {
+   "champion": "Leona",
+   "slot": "E",
+   "ability": "Zenith Blade",
+   "targeting": "Direction",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Leona/Zenith_Blade",
+   "revisionId": 4007645
+  },
+  {
+   "champion": "Leona",
+   "slot": "R",
+   "ability": "Solar Flare",
+   "targeting": "Location",
+   "castRangeUnits": 1200,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Leona/Solar_Flare",
+   "revisionId": 4007649
+  },
+  {
+   "champion": "Lissandra",
+   "slot": "R",
+   "ability": "Frozen Tomb",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lissandra/Frozen_Tomb",
+   "revisionId": 4017996
+  },
+  {
+   "champion": "Locke",
+   "slot": "Q",
+   "ability": "Ritual Nails",
+   "targeting": "Direction",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Locke/Ritual_Nails",
+   "revisionId": 4046580
+  },
+  {
+   "champion": "Locke",
+   "slot": "R",
+   "ability": "Purgatory",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Locke/Purgatory",
+   "revisionId": 4051476
+  },
+  {
+   "champion": "Lucian",
+   "slot": "Q",
+   "ability": "Piercing Light",
+   "targeting": "Unit",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lucian/Piercing_Light",
+   "revisionId": 3982579
+  },
+  {
+   "champion": "Lulu",
+   "slot": "W",
+   "ability": "Whimsy",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lulu/Whimsy",
+   "revisionId": 4007673
+  },
+  {
+   "champion": "Lulu",
+   "slot": "E",
+   "ability": "Help, Pix!",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lulu/Help,_Pix!",
+   "revisionId": 3945270
+  },
+  {
+   "champion": "Lulu",
+   "slot": "R",
+   "ability": "Wild Growth",
+   "targeting": "Unit",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Lulu/Wild_Growth",
+   "revisionId": 4007674
+  },
+  {
+   "champion": "Malphite",
+   "slot": "Q",
+   "ability": "Seismic Shard",
+   "targeting": "Unit",
+   "castRangeUnits": 625,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Malphite/Seismic_Shard",
+   "revisionId": 4003493
+  },
+  {
+   "champion": "Malphite",
+   "slot": "R",
+   "ability": "Unstoppable Force",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Malphite/Unstoppable_Force",
+   "revisionId": 4007750
+  },
+  {
+   "champion": "Malzahar",
+   "slot": "Q",
+   "ability": "Call of the Void",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Malzahar/Call_of_the_Void",
+   "revisionId": 3906985
+  },
+  {
+   "champion": "Malzahar",
+   "slot": "W",
+   "ability": "Void Swarm",
+   "targeting": "Location",
+   "castRangeUnits": 150,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Malzahar/Void_Swarm",
+   "revisionId": 4041818
+  },
+  {
+   "champion": "Malzahar",
+   "slot": "E",
+   "ability": "Malefic Visions",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Malzahar/Malefic_Visions",
+   "revisionId": 4015185
+  },
+  {
+   "champion": "Malzahar",
+   "slot": "R",
+   "ability": "Nether Grasp",
+   "targeting": "Unit",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Malzahar/Nether_Grasp",
+   "revisionId": 4015186
+  },
+  {
+   "champion": "Maokai",
+   "slot": "Q",
+   "ability": "Bramble Smash",
+   "targeting": "Direction",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Maokai/Bramble_Smash",
+   "revisionId": 4046583
+  },
+  {
+   "champion": "Maokai",
+   "slot": "W",
+   "ability": "Twisted Advance",
+   "targeting": "Unit",
+   "castRangeUnits": 525,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Maokai/Twisted_Advance",
+   "revisionId": 3946300
+  },
+  {
+   "champion": "Maokai",
+   "slot": "E",
+   "ability": "Sapling Toss",
+   "targeting": "Location",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Maokai/Sapling_Toss",
+   "revisionId": 4007687
+  },
+  {
+   "champion": "Master Yi",
+   "slot": "Q",
+   "ability": "Alpha Strike",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Master_Yi/Alpha_Strike",
+   "revisionId": 4032850
+  },
+  {
+   "champion": "Mel",
+   "slot": "Q",
+   "ability": "Radiant Volley",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Mel/Radiant_Volley",
+   "revisionId": 4042677
+  },
+  {
+   "champion": "Milio",
+   "slot": "E",
+   "ability": "Warm Hugs",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Milio/Warm_Hugs",
+   "revisionId": 3908079
+  },
+  {
+   "champion": "Miss Fortune",
+   "slot": "E",
+   "ability": "Make It Rain",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Miss_Fortune/Make_It_Rain",
+   "revisionId": 3936384
+  },
+  {
+   "champion": "Mordekaiser",
+   "slot": "R",
+   "ability": "Realm of Death",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Mordekaiser/Realm_of_Death",
+   "revisionId": 4059719
+  },
+  {
+   "champion": "Morgana",
+   "slot": "W",
+   "ability": "Tormented Shadow",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Morgana/Tormented_Shadow",
+   "revisionId": 3949929
+  },
+  {
+   "champion": "Morgana",
+   "slot": "E",
+   "ability": "Black Shield",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Morgana/Black_Shield",
+   "revisionId": 4050925
+  },
+  {
+   "champion": "Naafiri",
+   "slot": "Q",
+   "ability": "Darkin Daggers",
+   "targeting": "Direction",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Naafiri/Darkin_Daggers",
+   "revisionId": 4025704
+  },
+  {
+   "champion": "Naafiri",
+   "slot": "R",
+   "ability": "Hounds' Pursuit",
+   "targeting": "Unit",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Naafiri/Hounds'_Pursuit",
+   "revisionId": 4046586
+  },
+  {
+   "champion": "Nami",
+   "slot": "Q",
+   "ability": "Aqua Prison",
+   "targeting": "Location",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nami/Aqua_Prison",
+   "revisionId": 4007696
+  },
+  {
+   "champion": "Nami",
+   "slot": "W",
+   "ability": "Ebb and Flow",
+   "targeting": "Unit",
+   "castRangeUnits": 725,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nami/Ebb_and_Flow",
+   "revisionId": 4007697
+  },
+  {
+   "champion": "Nami",
+   "slot": "E",
+   "ability": "Tidecaller's Blessing",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nami/Tidecaller's_Blessing",
+   "revisionId": 4042884
+  },
+  {
+   "champion": "Nami",
+   "slot": "R",
+   "ability": "Tidal Wave",
+   "targeting": "Direction",
+   "castRangeUnits": 2750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nami/Tidal_Wave",
+   "revisionId": 3712330
+  },
+  {
+   "champion": "Nasus",
+   "slot": "W",
+   "ability": "Wither",
+   "targeting": "Unit",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nasus/Wither",
+   "revisionId": 3993736
+  },
+  {
+   "champion": "Nasus",
+   "slot": "E",
+   "ability": "Spirit Fire",
+   "targeting": "Location",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nasus/Spirit_Fire",
+   "revisionId": 4035787
+  },
+  {
+   "champion": "Nautilus",
+   "slot": "R",
+   "ability": "Depth Charge",
+   "targeting": "Unit",
+   "castRangeUnits": 825,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nautilus/Depth_Charge",
+   "revisionId": 4007702
+  },
+  {
+   "champion": "Nidalee",
+   "slot": "W",
+   "ability": "Bushwhack",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nidalee/Bushwhack",
+   "revisionId": 4015217
+  },
+  {
+   "champion": "Nidalee",
+   "slot": "E",
+   "ability": "Primal Surge",
+   "targeting": "Unit",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nidalee/Primal_Surge",
+   "revisionId": 3907033
+  },
+  {
+   "champion": "Nilah",
+   "slot": "E",
+   "ability": "Slipstream",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nilah/Slipstream",
+   "revisionId": 3927625
+  },
+  {
+   "champion": "Nocturne",
+   "slot": "E",
+   "ability": "Unspeakable Horror",
+   "targeting": "Unit",
+   "castRangeUnits": 425,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nocturne/Unspeakable_Horror",
+   "revisionId": 4015219
+  },
+  {
+   "champion": "Nunu",
+   "slot": "Q",
+   "ability": "Consume",
+   "targeting": "Unit",
+   "castRangeUnits": 125,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nunu/Consume",
+   "revisionId": 3985877
+  },
+  {
+   "champion": "Nunu",
+   "slot": "E",
+   "ability": "Snowball Barrage",
+   "targeting": "Direction",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Nunu/Snowball_Barrage",
+   "revisionId": 4013466
+  },
+  {
+   "champion": "Olaf",
+   "slot": "E",
+   "ability": "Reckless Swing",
+   "targeting": "Unit",
+   "castRangeUnits": 325,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Olaf/Reckless_Swing",
+   "revisionId": 4001134
+  },
+  {
+   "champion": "Orianna",
+   "slot": "Q",
+   "ability": "Command: Attack",
+   "targeting": "Location",
+   "castRangeUnits": 825,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Orianna/Command:_Attack",
+   "revisionId": 3995779
+  },
+  {
+   "champion": "Ornn",
+   "slot": "Q",
+   "ability": "Volcanic Rupture",
+   "targeting": "Direction",
+   "castRangeUnits": 750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ornn/Volcanic_Rupture",
+   "revisionId": 3998234
+  },
+  {
+   "champion": "Ornn",
+   "slot": "R",
+   "ability": "Call of the Forge God",
+   "targeting": "Direction",
+   "castRangeUnits": 300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ornn/Call_of_the_Forge_God",
+   "revisionId": 4007985
+  },
+  {
+   "champion": "Pantheon",
+   "slot": "W",
+   "ability": "Shield Vault",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Pantheon/Shield_Vault",
+   "revisionId": 4026707
+  },
+  {
+   "champion": "Poppy",
+   "slot": "E",
+   "ability": "Heroic Charge",
+   "targeting": "Unit",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Poppy/Heroic_Charge",
+   "revisionId": 3946254
+  },
+  {
+   "champion": "Pyke",
+   "slot": "E",
+   "ability": "Phantom Undertow",
+   "targeting": "Direction",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Pyke/Phantom_Undertow",
+   "revisionId": 4044071
+  },
+  {
+   "champion": "Pyke",
+   "slot": "R",
+   "ability": "Death from Below",
+   "targeting": "Location",
+   "castRangeUnits": 750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Pyke/Death_from_Below",
+   "revisionId": 4007995
+  },
+  {
+   "champion": "Qiyana",
+   "slot": "W",
+   "ability": "Terrashape",
+   "targeting": "Location",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Qiyana/Terrashape",
+   "revisionId": 4007752
+  },
+  {
+   "champion": "Qiyana",
+   "slot": "E",
+   "ability": "Audacity",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Qiyana/Audacity",
+   "revisionId": 4052493
+  },
+  {
+   "champion": "Qiyana",
+   "slot": "R",
+   "ability": "Supreme Display of Talent",
+   "targeting": "Direction",
+   "castRangeUnits": 875,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Qiyana/Supreme_Display_of_Talent",
+   "revisionId": 4007999
+  },
+  {
+   "champion": "Quinn",
+   "slot": "Q",
+   "ability": "Blinding Assault",
+   "targeting": "Direction",
+   "castRangeUnits": 1050,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Quinn/Blinding_Assault",
+   "revisionId": 4056272
+  },
+  {
+   "champion": "Quinn",
+   "slot": "E",
+   "ability": "Vault",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Quinn/Vault",
+   "revisionId": 4024768
+  },
+  {
+   "champion": "Rakan",
+   "slot": "Q",
+   "ability": "Gleaming Quill",
+   "targeting": "Direction",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Rakan/Gleaming_Quill",
+   "revisionId": 3996425
+  },
+  {
+   "champion": "Rakan",
+   "slot": "W",
+   "ability": "Grand Entrance",
+   "targeting": "Location",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Rakan/Grand_Entrance",
+   "revisionId": 4007760
+  },
+  {
+   "champion": "Rammus",
+   "slot": "E",
+   "ability": "Frenzying Taunt",
+   "targeting": "Unit",
+   "castRangeUnits": 325,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Rammus/Frenzying_Taunt",
+   "revisionId": 4052309
+  },
+  {
+   "champion": "Rek'Sai",
+   "slot": "E",
+   "ability": "Furious Bite",
+   "targeting": "Unit",
+   "castRangeUnits": 225,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Rek'Sai/Furious_Bite",
+   "revisionId": 4034704
+  },
+  {
+   "champion": "Rek'Sai",
+   "slot": "R",
+   "ability": "Void Rush",
+   "targeting": "Unit",
+   "castRangeUnits": 1500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Rek'Sai/Void_Rush",
+   "revisionId": 4004938
+  },
+  {
+   "champion": "Renata",
+   "slot": "W",
+   "ability": "Bailout",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Renata_Glasc/Bailout",
+   "revisionId": 3908415
+  },
+  {
+   "champion": "Renata",
+   "slot": "E",
+   "ability": "Loyalty Program",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Renata_Glasc/Loyalty_Program",
+   "revisionId": 4053301
+  },
+  {
+   "champion": "Rengar",
+   "slot": "E",
+   "ability": "Bola Strike",
+   "targeting": "Direction",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Rengar/Bola_Strike",
+   "revisionId": 4009137
+  },
+  {
+   "champion": "Ryze",
+   "slot": "Q",
+   "ability": "Overload",
+   "targeting": "Direction",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ryze/Overload",
+   "revisionId": 3936361
+  },
+  {
+   "champion": "Ryze",
+   "slot": "W",
+   "ability": "Rune Prison",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ryze/Rune_Prison",
+   "revisionId": 3989878
+  },
+  {
+   "champion": "Ryze",
+   "slot": "E",
+   "ability": "Spell Flux",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ryze/Spell_Flux",
+   "revisionId": 4008024
+  },
+  {
+   "champion": "Samira",
+   "slot": "E",
+   "ability": "Wild Rush",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Samira/Wild_Rush",
+   "revisionId": 4008028
+  },
+  {
+   "champion": "Sejuani",
+   "slot": "Q",
+   "ability": "Arctic Assault",
+   "targeting": "Location",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sejuani/Arctic_Assault",
+   "revisionId": 4007753
+  },
+  {
+   "champion": "Sejuani",
+   "slot": "W",
+   "ability": "Winter's Wrath",
+   "targeting": "Direction",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sejuani/Winter's_Wrath",
+   "revisionId": 3971350
+  },
+  {
+   "champion": "Sejuani",
+   "slot": "E",
+   "ability": "Permafrost",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sejuani/Permafrost",
+   "revisionId": 3979909
+  },
+  {
+   "champion": "Sejuani",
+   "slot": "R",
+   "ability": "Glacial Prison",
+   "targeting": "Direction",
+   "castRangeUnits": 1300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sejuani/Glacial_Prison",
+   "revisionId": 4008031
+  },
+  {
+   "champion": "Senna",
+   "slot": "W",
+   "ability": "Last Embrace",
+   "targeting": "Direction",
+   "castRangeUnits": 1300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Senna/Last_Embrace",
+   "revisionId": 4009139
+  },
+  {
+   "champion": "Seraphine",
+   "slot": "Q",
+   "ability": "High Note",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Seraphine/High_Note",
+   "revisionId": 4042889
+  },
+  {
+   "champion": "Seraphine",
+   "slot": "E",
+   "ability": "Beat Drop",
+   "targeting": "Direction",
+   "castRangeUnits": 1300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Seraphine/Beat_Drop",
+   "revisionId": 3990139
+  },
+  {
+   "champion": "Seraphine",
+   "slot": "R",
+   "ability": "Encore",
+   "targeting": "Direction",
+   "castRangeUnits": 1300,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Seraphine/Encore",
+   "revisionId": 4008035
+  },
+  {
+   "champion": "Sett",
+   "slot": "R",
+   "ability": "The Show Stopper",
+   "targeting": "Unit",
+   "castRangeUnits": 400,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sett/The_Show_Stopper",
+   "revisionId": 3936244
+  },
+  {
+   "champion": "Shaco",
+   "slot": "Q",
+   "ability": "Deceive",
+   "targeting": "Location",
+   "castRangeUnits": 400,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Shaco/Deceive",
+   "revisionId": 4023266
+  },
+  {
+   "champion": "Shaco",
+   "slot": "W",
+   "ability": "Jack in the Box",
+   "targeting": "Location",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Shaco/Jack_in_the_Box",
+   "revisionId": 3990300
+  },
+  {
+   "champion": "Shaco",
+   "slot": "E",
+   "ability": "Two-Shiv Poison",
+   "targeting": "Unit",
+   "castRangeUnits": 625,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Shaco/Two-Shiv_Poison",
+   "revisionId": 3985833
+  },
+  {
+   "champion": "Singed",
+   "slot": "W",
+   "ability": "Mega Adhesive",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Singed/Mega_Adhesive",
+   "revisionId": 4001677
+  },
+  {
+   "champion": "Singed",
+   "slot": "E",
+   "ability": "Fling",
+   "targeting": "Unit",
+   "castRangeUnits": 125,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Singed/Fling",
+   "revisionId": 4026605
+  },
+  {
+   "champion": "Sivir",
+   "slot": "Q",
+   "ability": "Boomerang Blade",
+   "targeting": "Direction",
+   "castRangeUnits": 1250,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sivir/Boomerang_Blade",
+   "revisionId": 4016378
+  },
+  {
+   "champion": "Soraka",
+   "slot": "Q",
+   "ability": "Starcall",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Soraka/Starcall",
+   "revisionId": 3953362
+  },
+  {
+   "champion": "Soraka",
+   "slot": "W",
+   "ability": "Astral Infusion",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Soraka/Astral_Infusion",
+   "revisionId": 4007066
+  },
+  {
+   "champion": "Soraka",
+   "slot": "E",
+   "ability": "Equinox",
+   "targeting": "Location",
+   "castRangeUnits": 925,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Soraka/Equinox",
+   "revisionId": 3907153
+  },
+  {
+   "champion": "Sylas",
+   "slot": "W",
+   "ability": "Kingslayer",
+   "targeting": "Unit",
+   "castRangeUnits": 400,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sylas/Kingslayer",
+   "revisionId": 4026459
+  },
+  {
+   "champion": "Sylas",
+   "slot": "E",
+   "ability": "Abscond",
+   "targeting": "Location",
+   "castRangeUnits": 400,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sylas/Abscond",
+   "revisionId": 4007757
+  },
+  {
+   "champion": "Sylas",
+   "slot": "R",
+   "ability": "Hijack",
+   "targeting": "Unit",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Sylas/Hijack",
+   "revisionId": 4050139
+  },
+  {
+   "champion": "Syndra",
+   "slot": "Q",
+   "ability": "Dark Sphere",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Syndra/Dark_Sphere",
+   "revisionId": 4026460
+  },
+  {
+   "champion": "Syndra",
+   "slot": "R",
+   "ability": "Unleashed Power",
+   "targeting": "Unit",
+   "castRangeUnits": 675,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Syndra/Unleashed_Power",
+   "revisionId": 4024661
+  },
+  {
+   "champion": "Tahm Kench",
+   "slot": "R",
+   "ability": "Devour",
+   "targeting": "Unit",
+   "castRangeUnits": 250,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Tahm_Kench/Devour",
+   "revisionId": 4044345
+  },
+  {
+   "champion": "Talon",
+   "slot": "E",
+   "ability": "Assassin's Path",
+   "targeting": "Location",
+   "castRangeUnits": 725,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Talon/Assassin's_Path",
+   "revisionId": 3907201
+  },
+  {
+   "champion": "Taric",
+   "slot": "W",
+   "ability": "Bastion",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Taric/Bastion",
+   "revisionId": 3989049
+  },
+  {
+   "champion": "Thresh",
+   "slot": "W",
+   "ability": "Dark Passage",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Thresh/Dark_Passage",
+   "revisionId": 4017821
+  },
+  {
+   "champion": "Tristana",
+   "slot": "W",
+   "ability": "Rocket Jump",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Tristana/Rocket_Jump",
+   "revisionId": 4007758
+  },
+  {
+   "champion": "Trundle",
+   "slot": "W",
+   "ability": "Frozen Domain",
+   "targeting": "Location",
+   "castRangeUnits": 750,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Trundle/Frozen_Domain",
+   "revisionId": 4057475
+  },
+  {
+   "champion": "Trundle",
+   "slot": "E",
+   "ability": "Pillar of Ice",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Trundle/Pillar_of_Ice",
+   "revisionId": 4008207
+  },
+  {
+   "champion": "Trundle",
+   "slot": "R",
+   "ability": "Subjugate",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Trundle/Subjugate",
+   "revisionId": 4015247
+  },
+  {
+   "champion": "Twisted Fate",
+   "slot": "Q",
+   "ability": "Wild Cards",
+   "targeting": "Direction",
+   "castRangeUnits": 1450,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Twisted_Fate/Wild_Cards",
+   "revisionId": 3950864
+  },
+  {
+   "champion": "Twitch",
+   "slot": "W",
+   "ability": "Venom Cask",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Twitch/Venom_Cask",
+   "revisionId": 4012250
+  },
+  {
+   "champion": "Urgot",
+   "slot": "Q",
+   "ability": "Corrosive Charge",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Urgot/Corrosive_Charge",
+   "revisionId": 3952903
+  },
+  {
+   "champion": "Varus",
+   "slot": "E",
+   "ability": "Hail of Arrows",
+   "targeting": "Location",
+   "castRangeUnits": 925,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Varus/Hail_of_Arrows",
+   "revisionId": 3969402
+  },
+  {
+   "champion": "Vayne",
+   "slot": "E",
+   "ability": "Condemn",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vayne/Condemn",
+   "revisionId": 4008541
+  },
+  {
+   "champion": "Veigar",
+   "slot": "W",
+   "ability": "Dark Matter",
+   "targeting": "Location",
+   "castRangeUnits": 950,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Veigar/Dark_Matter",
+   "revisionId": 3991312
+  },
+  {
+   "champion": "Veigar",
+   "slot": "E",
+   "ability": "Event Horizon",
+   "targeting": "Location",
+   "castRangeUnits": 725,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Veigar/Event_Horizon",
+   "revisionId": 4016714
+  },
+  {
+   "champion": "Veigar",
+   "slot": "R",
+   "ability": "Primordial Burst",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Veigar/Primordial_Burst",
+   "revisionId": 4004085
+  },
+  {
+   "champion": "Vel'Koz",
+   "slot": "E",
+   "ability": "Tectonic Disruption",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vel'Koz/Tectonic_Disruption",
+   "revisionId": 3952590
+  },
+  {
+   "champion": "Vex",
+   "slot": "E",
+   "ability": "Looming Darkness",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vex/Looming_Darkness",
+   "revisionId": 4034711
+  },
+  {
+   "champion": "Vi",
+   "slot": "R",
+   "ability": "Cease and Desist",
+   "targeting": "Unit",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vi/Cease_and_Desist",
+   "revisionId": 4004943
+  },
+  {
+   "champion": "Viego",
+   "slot": "R",
+   "ability": "Heartbreaker",
+   "targeting": "Location",
+   "castRangeUnits": 500,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Viego/Heartbreaker",
+   "revisionId": 4001566
+  },
+  {
+   "champion": "Viktor",
+   "slot": "Q",
+   "ability": "Siphon Power",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Viktor/Siphon_Power",
+   "revisionId": 3971354
+  },
+  {
+   "champion": "Viktor",
+   "slot": "W",
+   "ability": "Gravity Field",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Viktor/Gravity_Field",
+   "revisionId": 3980978
+  },
+  {
+   "champion": "Vladimir",
+   "slot": "Q",
+   "ability": "Transfusion",
+   "targeting": "Unit",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vladimir/Transfusion",
+   "revisionId": 3997094
+  },
+  {
+   "champion": "Vladimir",
+   "slot": "R",
+   "ability": "Hemoplague",
+   "targeting": "Location",
+   "castRangeUnits": 625,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vladimir/Hemoplague",
+   "revisionId": 4039794
+  },
+  {
+   "champion": "Volibear",
+   "slot": "E",
+   "ability": "Sky Splitter",
+   "targeting": "Location",
+   "castRangeUnits": 1200,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Volibear/Sky_Splitter",
+   "revisionId": 4008614
+  },
+  {
+   "champion": "Volibear",
+   "slot": "R",
+   "ability": "Stormbringer",
+   "targeting": "Location",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Volibear/Stormbringer",
+   "revisionId": 4007765
+  },
+  {
+   "champion": "Wukong",
+   "slot": "E",
+   "ability": "Nimbus Strike",
+   "targeting": "Unit",
+   "castRangeUnits": 650,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Wukong/Nimbus_Strike",
+   "revisionId": 4021858
+  },
+  {
+   "champion": "Xerath",
+   "slot": "W",
+   "ability": "Eye of Destruction",
+   "targeting": "Location",
+   "castRangeUnits": 1000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Xerath/Eye_of_Destruction",
+   "revisionId": 4008622
+  },
+  {
+   "champion": "Yasuo",
+   "slot": "E",
+   "ability": "Sweeping Blade",
+   "targeting": "Unit",
+   "castRangeUnits": 475,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Yasuo/Sweeping_Blade",
+   "revisionId": 4008638
+  },
+  {
+   "champion": "Yorick",
+   "slot": "W",
+   "ability": "Dark Procession",
+   "targeting": "Location",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Yorick/Dark_Procession",
+   "revisionId": 4051828
+  },
+  {
+   "champion": "Yorick",
+   "slot": "E",
+   "ability": "Mourning Mist",
+   "targeting": "Location",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Yorick/Mourning_Mist",
+   "revisionId": 4046036
+  },
+  {
+   "champion": "Yorick",
+   "slot": "R",
+   "ability": "Eulogy of the Isles",
+   "targeting": "Location",
+   "castRangeUnits": 600,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Yorick/Eulogy_of_the_Isles",
+   "revisionId": 3972823
+  },
+  {
+   "champion": "Yuumi",
+   "slot": "Q",
+   "ability": "Prowling Projectile",
+   "targeting": "Direction",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Yuumi/Prowling_Projectile",
+   "revisionId": 4008652
+  },
+  {
+   "champion": "Yuumi",
+   "slot": "R",
+   "ability": "Final Chapter",
+   "targeting": "Direction",
+   "castRangeUnits": 1100,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Yuumi/Final_Chapter",
+   "revisionId": 4047717
+  },
+  {
+   "champion": "Zaahen",
+   "slot": "W",
+   "ability": "Dreaded Return",
+   "targeting": "Direction",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zaahen/Dreaded_Return",
+   "revisionId": 4050171
+  },
+  {
+   "champion": "Zaahen",
+   "slot": "E",
+   "ability": "Aureate Rush",
+   "targeting": "Location",
+   "castRangeUnits": 350,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zaahen/Aureate_Rush",
+   "revisionId": 4022487
+  },
+  {
+   "champion": "Zed",
+   "slot": "Q",
+   "ability": "Razor Shuriken",
+   "targeting": "Direction",
+   "castRangeUnits": 925,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zed/Razor_Shuriken",
+   "revisionId": 4006897
+  },
+  {
+   "champion": "Ziggs",
+   "slot": "Q",
+   "ability": "Bouncing Bomb",
+   "targeting": "Location",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ziggs/Bouncing_Bomb",
+   "revisionId": 4008669
+  },
+  {
+   "champion": "Ziggs",
+   "slot": "E",
+   "ability": "Hexplosive Minefield",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ziggs/Hexplosive_Minefield",
+   "revisionId": 4008673
+  },
+  {
+   "champion": "Ziggs",
+   "slot": "R",
+   "ability": "Mega Inferno Bomb",
+   "targeting": "Location",
+   "castRangeUnits": 5000,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Ziggs/Mega_Inferno_Bomb",
+   "revisionId": 4008677
+  },
+  {
+   "champion": "Zilean",
+   "slot": "Q",
+   "ability": "Time Bomb",
+   "targeting": "Location",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zilean/Time_Bomb",
+   "revisionId": 4008679
+  },
+  {
+   "champion": "Zilean",
+   "slot": "E",
+   "ability": "Time Warp",
+   "targeting": "Unit",
+   "castRangeUnits": 550,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zilean/Time_Warp",
+   "revisionId": 3433210
+  },
+  {
+   "champion": "Zilean",
+   "slot": "R",
+   "ability": "Chronoshift",
+   "targeting": "Unit",
+   "castRangeUnits": 900,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zilean/Chronoshift",
+   "revisionId": 3907350
+  },
+  {
+   "champion": "Zyra",
+   "slot": "Q",
+   "ability": "Deadly Spines",
+   "targeting": "Location",
+   "castRangeUnits": 800,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zyra/Deadly_Spines",
+   "revisionId": 4013461
+  },
+  {
+   "champion": "Zyra",
+   "slot": "W",
+   "ability": "Rampant Growth",
+   "targeting": "Location",
+   "castRangeUnits": 850,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zyra/Rampant_Growth",
+   "revisionId": 4044057
+  },
+  {
+   "champion": "Zyra",
+   "slot": "R",
+   "ability": "Stranglethorns",
+   "targeting": "Location",
+   "castRangeUnits": 700,
+   "sourceUrl": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zyra/Stranglethorns",
+   "revisionId": 3945317
+  }
+ ],
+ "excluded": [
+  {
+   "champion": "Aatrox",
+   "slot": "Q",
+   "ability": "The Darkin Blade",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aatrox",
+   "slot": "W",
+   "ability": "Infernal Chains",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aatrox",
+   "slot": "E",
+   "ability": "Umbral Dash",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Aatrox",
+   "slot": "R",
+   "ability": "World Ender",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ahri",
+   "slot": "Q",
+   "ability": "Orb of Deception",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ahri",
+   "slot": "W",
+   "ability": "Fox-Fire",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ahri",
+   "slot": "E",
+   "ability": "Charm",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Akali",
+   "slot": "Q",
+   "ability": "Five Point Strike",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Akali",
+   "slot": "E",
+   "ability": "Shuriken Flip",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Direction-targeted / Direction / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Akali",
+   "slot": "R",
+   "ability": "Perfect Execution",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit-targeted / Unit / Direction-targeted / Direction"
+  },
+  {
+   "champion": "Akshan",
+   "slot": "Q",
+   "ability": "Avengerang",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Akshan",
+   "slot": "W",
+   "ability": "Going Rogue",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Akshan",
+   "slot": "E",
+   "ability": "Heroic Swing",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Auto / Location"
+  },
+  {
+   "champion": "Alistar",
+   "slot": "Q",
+   "ability": "Pulverize",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Alistar",
+   "slot": "E",
+   "ability": "Trample",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Alistar",
+   "slot": "R",
+   "ability": "Unbreakable Will",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ambessa",
+   "slot": "Q",
+   "ability": "Cunning Sweep",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ambessa",
+   "slot": "W",
+   "ability": "Repudiation",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ambessa",
+   "slot": "E",
+   "ability": "Lacerate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ambessa",
+   "slot": "R",
+   "ability": "Public Execution",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Amumu",
+   "slot": "Q",
+   "ability": "Bandage Toss",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Amumu",
+   "slot": "W",
+   "ability": "Despair",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Amumu",
+   "slot": "E",
+   "ability": "Tantrum",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Amumu",
+   "slot": "R",
+   "ability": "Curse of the Sad Mummy",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Anivia",
+   "slot": "Q",
+   "ability": "Flash Frost",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Anivia",
+   "slot": "W",
+   "ability": "Crystallize",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Anivia",
+   "slot": "R",
+   "ability": "Glacial Storm",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Location / Auto"
+  },
+  {
+   "champion": "Annie",
+   "slot": "W",
+   "ability": "Incinerate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Annie",
+   "slot": "E",
+   "ability": "Molten Shield",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit / Auto"
+  },
+  {
+   "champion": "Aphelios",
+   "slot": "Q",
+   "ability": "Weapons of the Faithful",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aphelios",
+   "slot": "W",
+   "ability": "Phase",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aphelios",
+   "slot": "E",
+   "ability": "Weapon Queue System",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ashe",
+   "slot": "Q",
+   "ability": "Ranger's Focus",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ashe",
+   "slot": "W",
+   "ability": "Volley",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ashe",
+   "slot": "E",
+   "ability": "Hawkshot",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Ashe",
+   "slot": "R",
+   "ability": "Enchanted Crystal Arrow",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aurelion Sol",
+   "slot": "Q",
+   "ability": "Breath of Light",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aurelion Sol",
+   "slot": "W",
+   "ability": "Astral Flight",
+   "reason": "no cast range ladder published",
+   "detail": "scales on state, not a rank progression"
+  },
+  {
+   "champion": "Aurelion Sol",
+   "slot": "E",
+   "ability": "Singularity",
+   "reason": "no cast range ladder published",
+   "detail": "scales on level"
+  },
+  {
+   "champion": "Aurora",
+   "slot": "Q",
+   "ability": "Twofold Hex",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aurora",
+   "slot": "W",
+   "ability": "Across the Veil",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aurora",
+   "slot": "E",
+   "ability": "The Weirding",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Aurora",
+   "slot": "R",
+   "ability": "Between Worlds",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Azir",
+   "slot": "Q",
+   "ability": "Conquering Sands",
+   "reason": "not on the 25-unit lattice",
+   "detail": "740"
+  },
+  {
+   "champion": "Azir",
+   "slot": "R",
+   "ability": "Emperor's Divide",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Bard",
+   "slot": "W",
+   "ability": "Caretaker's Shrine",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Location / Unit"
+  },
+  {
+   "champion": "Bel'Veth",
+   "slot": "Q",
+   "ability": "Void Surge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Bel'Veth",
+   "slot": "W",
+   "ability": "Above and Below",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Bel'Veth",
+   "slot": "E",
+   "ability": "Royal Maelstrom",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Bel'Veth",
+   "slot": "R",
+   "ability": "Endless Banquet",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Blitzcrank",
+   "slot": "Q",
+   "ability": "Rocket Grab",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Blitzcrank",
+   "slot": "W",
+   "ability": "Overdrive",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Blitzcrank",
+   "slot": "E",
+   "ability": "Power Fist",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Blitzcrank",
+   "slot": "R",
+   "ability": "Static Field",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Brand",
+   "slot": "Q",
+   "ability": "Sear",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Braum",
+   "slot": "Q",
+   "ability": "Winter's Bite",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Braum",
+   "slot": "E",
+   "ability": "Unbreakable",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Braum",
+   "slot": "R",
+   "ability": "Glacial Fissure",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Briar",
+   "slot": "W",
+   "ability": "Blood Frenzy",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Briar",
+   "slot": "E",
+   "ability": "Chilling Scream",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Briar",
+   "slot": "R",
+   "ability": "Certain Death",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Caitlyn",
+   "slot": "Q",
+   "ability": "Piltover Peacemaker",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Caitlyn",
+   "slot": "E",
+   "ability": "90 Caliber Net",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Camille",
+   "slot": "Q",
+   "ability": "Precision Protocol",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Camille",
+   "slot": "W",
+   "ability": "Tactical Sweep",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Cassiopeia",
+   "slot": "E",
+   "ability": "Twin Fang",
+   "reason": "authority note qualifies the number",
+   "detail": "BUG: Displayed range, 765, is slightly larger than the real range"
+  },
+  {
+   "champion": "Cassiopeia",
+   "slot": "R",
+   "ability": "Petrifying Gaze",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Cho'Gath",
+   "slot": "E",
+   "ability": "Vorpal Spikes",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Corki",
+   "slot": "W",
+   "ability": "Valkyrie",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Corki",
+   "slot": "E",
+   "ability": "Gatling Gun",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Corki",
+   "slot": "R",
+   "ability": "Missile Barrage",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Darius",
+   "slot": "Q",
+   "ability": "Decimate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Darius",
+   "slot": "W",
+   "ability": "Crippling Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Darius",
+   "slot": "E",
+   "ability": "Apprehend",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Diana",
+   "slot": "W",
+   "ability": "Pale Cascade",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Diana",
+   "slot": "R",
+   "ability": "Moonfall",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Dr Mundo",
+   "slot": "Q",
+   "ability": "Infected Bonesaw",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Dr Mundo",
+   "slot": "W",
+   "ability": "Heart Zapper",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Dr Mundo",
+   "slot": "E",
+   "ability": "Blunt Force Trauma",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Dr Mundo",
+   "slot": "R",
+   "ability": "Maximum Dosage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Draven",
+   "slot": "Q",
+   "ability": "Spinning Axe",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Draven",
+   "slot": "W",
+   "ability": "Blood Rush",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Draven",
+   "slot": "R",
+   "ability": "Whirling Death",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Ekko",
+   "slot": "E",
+   "ability": "Phase Dive",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Ekko",
+   "slot": "R",
+   "ability": "Chronobreak",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Elise",
+   "slot": "R",
+   "ability": " Human Form",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Evelynn",
+   "slot": "Q",
+   "ability": "Hate Spike",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Evelynn",
+   "slot": "W",
+   "ability": "Allure",
+   "reason": "cast range varies by rank",
+   "detail": "1200 / 1300 / 1400 / 1500 / 1600"
+  },
+  {
+   "champion": "Evelynn",
+   "slot": "E",
+   "ability": "Whiplash",
+   "reason": "not on the 25-unit lattice",
+   "detail": "210"
+  },
+  {
+   "champion": "Evelynn",
+   "slot": "R",
+   "ability": "Last Caress",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ezreal",
+   "slot": "R",
+   "ability": "Trueshot Barrage",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "slot": "W",
+   "ability": "Bountiful Harvest",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Fiora",
+   "slot": "Q",
+   "ability": "Lunge",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Fiora",
+   "slot": "E",
+   "ability": "Bladework",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Fizz",
+   "slot": "W",
+   "ability": "Seastone Trident",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Fizz",
+   "slot": "E",
+   "ability": "Playful",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Galio",
+   "slot": "W",
+   "ability": "Shield of Durand",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Galio",
+   "slot": "E",
+   "ability": "Justice Punch",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Galio",
+   "slot": "R",
+   "ability": "Hero's Entrance",
+   "reason": "cast range varies by rank",
+   "detail": "4000 / 4750 / 5500"
+  },
+  {
+   "champion": "Gangplank",
+   "slot": "W",
+   "ability": "Remove Scurvy",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gangplank",
+   "slot": "R",
+   "ability": "Cannon Barrage",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Garen",
+   "slot": "Q",
+   "ability": "Decisive Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Garen",
+   "slot": "W",
+   "ability": "Courage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Garen",
+   "slot": "E",
+   "ability": "Judgment",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gnar",
+   "slot": "Q",
+   "ability": "Boomerang Throw",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gnar",
+   "slot": "W",
+   "ability": "Hyper",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gnar",
+   "slot": "R",
+   "ability": "GNAR!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gragas",
+   "slot": "Q",
+   "ability": "Barrel Roll",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Location / Auto"
+  },
+  {
+   "champion": "Gragas",
+   "slot": "W",
+   "ability": "Drunken Rage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Graves",
+   "slot": "Q",
+   "ability": "End of the Line",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Graves",
+   "slot": "E",
+   "ability": "Quickdraw",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Graves",
+   "slot": "R",
+   "ability": "Collateral Damage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gwen",
+   "slot": "Q",
+   "ability": "Snip Snip!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gwen",
+   "slot": "W",
+   "ability": "Hallowed Mist",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Gwen",
+   "slot": "E",
+   "ability": "Skip 'n Slash",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Gwen",
+   "slot": "R",
+   "ability": "Needlework",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hecarim",
+   "slot": "Q",
+   "ability": "Rampage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hecarim",
+   "slot": "W",
+   "ability": "Spirit of Dread",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hecarim",
+   "slot": "E",
+   "ability": "Devastating Charge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hecarim",
+   "slot": "R",
+   "ability": "Onslaught of Shadows",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Heimerdinger",
+   "slot": "W",
+   "ability": "Hextech Micro-Rockets",
+   "reason": "authority note qualifies the number",
+   "detail": "Total range is 1350, starting from 200 units behind Heimerdinger"
+  },
+  {
+   "champion": "Heimerdinger",
+   "slot": "R",
+   "ability": "UPGRADE!!!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hwei",
+   "slot": "Q",
+   "ability": "Subject: Disaster",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hwei",
+   "slot": "W",
+   "ability": "Subject: Serenity",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hwei",
+   "slot": "E",
+   "ability": "Subject: Torment",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Hwei",
+   "slot": "R",
+   "ability": "Spiraling Despair",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Illaoi",
+   "slot": "Q",
+   "ability": "Tentacle Smash",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Illaoi",
+   "slot": "W",
+   "ability": "Harsh Lesson",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Illaoi",
+   "slot": "E",
+   "ability": "Test of Spirit",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Illaoi",
+   "slot": "R",
+   "ability": "Leap of Faith",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Irelia",
+   "slot": "W",
+   "ability": "Defiant Dance",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ivern",
+   "slot": "Q",
+   "ability": "Rootcaller",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Direction-targeted / Direction / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Ivern",
+   "slot": "R",
+   "ability": "Daisy!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Janna",
+   "slot": "Q",
+   "ability": "Howling Gale",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Janna",
+   "slot": "R",
+   "ability": "Monsoon",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jarvan IV",
+   "slot": "Q",
+   "ability": "Dragon Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jarvan IV",
+   "slot": "W",
+   "ability": "Golden Aegis",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jarvan IV",
+   "slot": "E",
+   "ability": "Demacian Standard",
+   "reason": "not on the 25-unit lattice",
+   "detail": "860"
+  },
+  {
+   "champion": "Jax",
+   "slot": "W",
+   "ability": "Empower",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jax",
+   "slot": "E",
+   "ability": "Counter Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jax",
+   "slot": "R",
+   "ability": "Grandmaster-at-Arms",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jayce",
+   "slot": "W",
+   "ability": "Lightning Field",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jayce",
+   "slot": "E",
+   "ability": "Thundering Blow",
+   "reason": "not on the 25-unit lattice",
+   "detail": "240"
+  },
+  {
+   "champion": "Jayce",
+   "slot": "R",
+   "ability": "Transform Mercury Cannon",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jhin",
+   "slot": "W",
+   "ability": "Deadly Flourish",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jhin",
+   "slot": "R",
+   "ability": "Curtain Call",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jinx",
+   "slot": "Q",
+   "ability": "Switcheroo!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jinx",
+   "slot": "W",
+   "ability": "Zap!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Jinx",
+   "slot": "R",
+   "ability": "Super Mega Death Rocket!",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "K'Sante",
+   "slot": "Q",
+   "ability": "Ntofo Strikes",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "K'Sante",
+   "slot": "W",
+   "ability": "Path Maker",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "K'Sante",
+   "slot": "E",
+   "ability": "Footwork",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kai'Sa",
+   "slot": "Q",
+   "ability": "Icathian Rain",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Proximity"
+  },
+  {
+   "champion": "Kai'Sa",
+   "slot": "E",
+   "ability": "Supercharge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kai'Sa",
+   "slot": "R",
+   "ability": "Killer Instinct",
+   "reason": "cast range varies by rank",
+   "detail": "2000 / 2500 / 3000"
+  },
+  {
+   "champion": "Kalista",
+   "slot": "W",
+   "ability": "Sentinel",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Kalista",
+   "slot": "E",
+   "ability": "Rend",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kalista",
+   "slot": "R",
+   "ability": "Fate's Call",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Proximity"
+  },
+  {
+   "champion": "Karma",
+   "slot": "Q",
+   "ability": "Inner Flame",
+   "reason": "no cast range ladder published",
+   "detail": "slash list not published as an ability progression"
+  },
+  {
+   "champion": "Karma",
+   "slot": "R",
+   "ability": "Mantra",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Karthus",
+   "slot": "E",
+   "ability": "Defile",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Karthus",
+   "slot": "R",
+   "ability": "Requiem",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kassadin",
+   "slot": "W",
+   "ability": "Nether Blade",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kassadin",
+   "slot": "E",
+   "ability": "Force Pulse",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Katarina",
+   "slot": "W",
+   "ability": "Preparation",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Katarina",
+   "slot": "E",
+   "ability": "Shunpo",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Katarina",
+   "slot": "R",
+   "ability": "Death Lotus",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kayle",
+   "slot": "Q",
+   "ability": "Radiant Blast",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kayle",
+   "slot": "W",
+   "ability": "Celestial Blessing",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit / Auto"
+  },
+  {
+   "champion": "Kayle",
+   "slot": "E",
+   "ability": "Starfire Spellblade",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kayn",
+   "slot": "W",
+   "ability": "Blade's Reach",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Kayn",
+   "slot": "E",
+   "ability": "Shadow Step",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kayn",
+   "slot": "R",
+   "ability": "Umbral Trespass",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Kennen",
+   "slot": "W",
+   "ability": "Electrical Surge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kennen",
+   "slot": "E",
+   "ability": "Lightning Rush",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kennen",
+   "slot": "R",
+   "ability": "Slicing Maelstrom",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kha'Zix",
+   "slot": "R",
+   "ability": "Void Assault",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kindred",
+   "slot": "Q",
+   "ability": "Dance of Arrows",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Kindred",
+   "slot": "E",
+   "ability": "Mounting Dread",
+   "reason": "no cast range ladder published",
+   "detail": "scales on Marks"
+  },
+  {
+   "champion": "Kindred",
+   "slot": "R",
+   "ability": "Lamb's Respite",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kled",
+   "slot": "Q",
+   "ability": "Bear Trap on a Rope",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kled",
+   "slot": "W",
+   "ability": "Violent Tendencies",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kled",
+   "slot": "E",
+   "ability": "Jousting",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Kled",
+   "slot": "R",
+   "ability": "Chaaaaaaaarge!!!",
+   "reason": "no cast range ladder published",
+   "detail": "not a plain distance"
+  },
+  {
+   "champion": "Kog'Maw",
+   "slot": "Q",
+   "ability": "Caustic Spittle",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kog'Maw",
+   "slot": "W",
+   "ability": "Bio-Arcane Barrage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kog'Maw",
+   "slot": "E",
+   "ability": "Void Ooze",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Kog'Maw",
+   "slot": "R",
+   "ability": "Living Artillery",
+   "reason": "cast range varies by rank",
+   "detail": "1300 / 1550 / 1800"
+  },
+  {
+   "champion": "LeBlanc",
+   "slot": "W",
+   "ability": "Distortion",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "LeBlanc",
+   "slot": "R",
+   "ability": "Mimic",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lee Sin",
+   "slot": "E",
+   "ability": "Tempest",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Leona",
+   "slot": "Q",
+   "ability": "Shield of Daybreak",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Leona",
+   "slot": "W",
+   "ability": "Eclipse",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lillia",
+   "slot": "Q",
+   "ability": "Blooming Blows",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lillia",
+   "slot": "W",
+   "ability": "Watch Out! Eep!",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Lillia",
+   "slot": "E",
+   "ability": "Swirlseed",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Lillia",
+   "slot": "R",
+   "ability": "Lilting Lullaby",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Lissandra",
+   "slot": "Q",
+   "ability": "Ice Shard",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lissandra",
+   "slot": "W",
+   "ability": "Ring of Frost",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lissandra",
+   "slot": "E",
+   "ability": "Glacial Path",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Locke",
+   "slot": "W",
+   "ability": "Soul Ignition",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Locke",
+   "slot": "E",
+   "ability": "Ashen Pursuit",
+   "reason": "authority note qualifies the number",
+   "detail": "Maximum blink range (estimated), has no minimum blink range"
+  },
+  {
+   "champion": "Lucian",
+   "slot": "W",
+   "ability": "Ardent Blaze",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lucian",
+   "slot": "E",
+   "ability": "Relentless Pursuit",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Lucian",
+   "slot": "R",
+   "ability": "The Culling",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lulu",
+   "slot": "Q",
+   "ability": "Glitterlance",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lux",
+   "slot": "Q",
+   "ability": "Light Binding",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lux",
+   "slot": "W",
+   "ability": "Prismatic Barrier",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Lux",
+   "slot": "E",
+   "ability": "Lucent Singularity",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Location-targeted / Location / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Lux",
+   "slot": "R",
+   "ability": "Final Spark",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Malphite",
+   "slot": "W",
+   "ability": "Thunderclap",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Malphite",
+   "slot": "E",
+   "ability": "Ground Slam",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Maokai",
+   "slot": "R",
+   "ability": "Nature's Grasp",
+   "reason": "authority note qualifies the number",
+   "detail": "See notes"
+  },
+  {
+   "champion": "Master Yi",
+   "slot": "W",
+   "ability": "Meditate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Master Yi",
+   "slot": "E",
+   "ability": "Wuju Style",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Master Yi",
+   "slot": "R",
+   "ability": "Highlander",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Mel",
+   "slot": "W",
+   "ability": "Rebuttal",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Mel",
+   "slot": "E",
+   "ability": "Solar Snare",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Mel",
+   "slot": "R",
+   "ability": "Golden Eclipse",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Milio",
+   "slot": "Q",
+   "ability": "Ultra Mega Fire Kick",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Milio",
+   "slot": "W",
+   "ability": "Cozy Campfire",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Milio",
+   "slot": "R",
+   "ability": "Breath of Life",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Miss Fortune",
+   "slot": "Q",
+   "ability": "Double Up",
+   "reason": "no cast range ladder published",
+   "detail": "scales on state, not a rank progression"
+  },
+  {
+   "champion": "Miss Fortune",
+   "slot": "W",
+   "ability": "Strut",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Miss Fortune",
+   "slot": "R",
+   "ability": "Bullet Time",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Mordekaiser",
+   "slot": "Q",
+   "ability": "Obliterate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Mordekaiser",
+   "slot": "W",
+   "ability": "Indestructible",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Mordekaiser",
+   "slot": "E",
+   "ability": "Death's Grasp",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Morgana",
+   "slot": "Q",
+   "ability": "Dark Binding",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Morgana",
+   "slot": "R",
+   "ability": "Soul Shackles",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Naafiri",
+   "slot": "W",
+   "ability": "The Call of the Pack",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Naafiri",
+   "slot": "E",
+   "ability": "Eviscerate",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Nasus",
+   "slot": "Q",
+   "ability": "Siphoning Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nasus",
+   "slot": "R",
+   "ability": "Fury of the Sands",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nautilus",
+   "slot": "Q",
+   "ability": "Dredge Line",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nautilus",
+   "slot": "W",
+   "ability": "Titan's Wrath",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nautilus",
+   "slot": "E",
+   "ability": "Riptide",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Neeko",
+   "slot": "Q",
+   "ability": "Blooming Burst",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Neeko",
+   "slot": "W",
+   "ability": "Shapesplitter",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Direction / Location"
+  },
+  {
+   "champion": "Neeko",
+   "slot": "E",
+   "ability": "Tangle-Barbs",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Neeko",
+   "slot": "R",
+   "ability": "Pop Blossom",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nidalee",
+   "slot": "Q",
+   "ability": "Javelin Toss",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nidalee",
+   "slot": "R",
+   "ability": "Aspect of the Cougar",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nilah",
+   "slot": "Q",
+   "ability": "Formless Blade",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nilah",
+   "slot": "W",
+   "ability": "Jubilant Veil",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nilah",
+   "slot": "R",
+   "ability": "Apotheosis",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nocturne",
+   "slot": "Q",
+   "ability": "Duskbringer",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nocturne",
+   "slot": "W",
+   "ability": "Shroud of Darkness",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Nocturne",
+   "slot": "R",
+   "ability": "Paranoia",
+   "reason": "cast range varies by rank",
+   "detail": "2500 / 3250 / 4000"
+  },
+  {
+   "champion": "Nunu",
+   "slot": "W",
+   "ability": "Biggest Snowball Ever!",
+   "reason": "no cast range ladder published",
+   "detail": "scales on charge time"
+  },
+  {
+   "champion": "Nunu",
+   "slot": "R",
+   "ability": "Absolute Zero",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Olaf",
+   "slot": "Q",
+   "ability": "Undertow",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Olaf",
+   "slot": "W",
+   "ability": "Tough It Out",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Olaf",
+   "slot": "R",
+   "ability": "Ragnarok",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Orianna",
+   "slot": "W",
+   "ability": "Command: Dissonance",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Orianna",
+   "slot": "E",
+   "ability": "Command: Protect",
+   "reason": "not on the 25-unit lattice",
+   "detail": "1120"
+  },
+  {
+   "champion": "Orianna",
+   "slot": "R",
+   "ability": "Command: Shockwave",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ornn",
+   "slot": "W",
+   "ability": "Bellows Breath",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Ornn",
+   "slot": "E",
+   "ability": "Searing Charge",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Pantheon",
+   "slot": "Q",
+   "ability": "Comet Spear",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Pantheon",
+   "slot": "E",
+   "ability": "Aegis Assault",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Pantheon",
+   "slot": "R",
+   "ability": "Grand Starfall",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Poppy",
+   "slot": "Q",
+   "ability": "Hammer Shock",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Poppy",
+   "slot": "W",
+   "ability": "Steadfast Presence",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Poppy",
+   "slot": "R",
+   "ability": "Keeper's Verdict",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Pyke",
+   "slot": "Q",
+   "ability": "Bone Skewer",
+   "reason": "no cast range ladder published",
+   "detail": "scales on channel time"
+  },
+  {
+   "champion": "Pyke",
+   "slot": "W",
+   "ability": "Ghostwater Dive",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Qiyana",
+   "slot": "Q",
+   "ability": "Edge of Ixtal",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Quinn",
+   "slot": "W",
+   "ability": "Heightened Senses",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Quinn",
+   "slot": "R",
+   "ability": "Behind Enemy Lines",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rakan",
+   "slot": "E",
+   "ability": "Battle Dance",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Rakan",
+   "slot": "R",
+   "ability": "The Quickness",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rammus",
+   "slot": "Q",
+   "ability": "Powerball",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rammus",
+   "slot": "W",
+   "ability": "Defensive Ball Curl",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rammus",
+   "slot": "R",
+   "ability": "Soaring Slam",
+   "reason": "no cast range ladder published",
+   "detail": "scales on state, not a rank progression"
+  },
+  {
+   "champion": "Rek'Sai",
+   "slot": "Q",
+   "ability": "Queen's Wrath",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rek'Sai",
+   "slot": "W",
+   "ability": "Burrow",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rell",
+   "slot": "Q",
+   "ability": "Shattering Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rell",
+   "slot": "W",
+   "ability": "Ferromancy: Crash Down",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Rell",
+   "slot": "E",
+   "ability": "Full Tilt",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit-targeted / Unit / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Rell",
+   "slot": "R",
+   "ability": "Magnet Storm",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Renata",
+   "slot": "Q",
+   "ability": "Handshake",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Renata",
+   "slot": "R",
+   "ability": "Hostile Takeover",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Renekton",
+   "slot": "Q",
+   "ability": "Cull the Meek",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Renekton",
+   "slot": "W",
+   "ability": "Ruthless Predator",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Renekton",
+   "slot": "E",
+   "ability": "Slice and Dice",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Renekton",
+   "slot": "R",
+   "ability": "Dominus",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rengar",
+   "slot": "Q",
+   "ability": "Savagery",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rengar",
+   "slot": "W",
+   "ability": "Battle Roar",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rengar",
+   "slot": "R",
+   "ability": "Thrill of the Hunt",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Riven",
+   "slot": "Q",
+   "ability": "Broken Wings",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Riven",
+   "slot": "W",
+   "ability": "Ki Burst",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Riven",
+   "slot": "E",
+   "ability": "Valor",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Riven",
+   "slot": "R",
+   "ability": "Blade of the Exile",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rumble",
+   "slot": "Q",
+   "ability": "Flamespitter",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rumble",
+   "slot": "W",
+   "ability": "Scrap Shield",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rumble",
+   "slot": "E",
+   "ability": "Electro Harpoon",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Rumble",
+   "slot": "R",
+   "ability": "The Equalizer",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Vector"
+  },
+  {
+   "champion": "Ryze",
+   "slot": "R",
+   "ability": "Realm Warp",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Samira",
+   "slot": "Q",
+   "ability": "Flair",
+   "reason": "not on the 25-unit lattice",
+   "detail": "340"
+  },
+  {
+   "champion": "Samira",
+   "slot": "W",
+   "ability": "Blade Whirl",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Samira",
+   "slot": "R",
+   "ability": "Inferno Trigger",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Senna",
+   "slot": "Q",
+   "ability": "Piercing Darkness",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Senna",
+   "slot": "E",
+   "ability": "Curse of the Black Mist",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Senna",
+   "slot": "R",
+   "ability": "Dawning Shadow",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Seraphine",
+   "slot": "W",
+   "ability": "Surround Sound",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sett",
+   "slot": "Q",
+   "ability": "Knuckle Down",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sett",
+   "slot": "W",
+   "ability": "Haymaker",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sett",
+   "slot": "E",
+   "ability": "Facebreaker",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shaco",
+   "slot": "R",
+   "ability": "Hallucinate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shen",
+   "slot": "Q",
+   "ability": "Twilight Assault",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shen",
+   "slot": "W",
+   "ability": "Spirit's Refuge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shen",
+   "slot": "E",
+   "ability": "Shadow Dash",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Shen",
+   "slot": "R",
+   "ability": "Stand United",
+   "reason": "no cast range ladder published",
+   "detail": "global"
+  },
+  {
+   "champion": "Shyvana",
+   "slot": "Q",
+   "ability": "Emberstrike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shyvana",
+   "slot": "W",
+   "ability": "Inferno Aegis",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shyvana",
+   "slot": "E",
+   "ability": "Molten Burst",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Shyvana",
+   "slot": "R",
+   "ability": "Dragon's Descent",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Singed",
+   "slot": "Q",
+   "ability": "Poison Trail",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Singed",
+   "slot": "R",
+   "ability": "Insanity Potion",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sion",
+   "slot": "Q",
+   "ability": "Decimating Smash",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sion",
+   "slot": "W",
+   "ability": "Soul Furnace",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sion",
+   "slot": "E",
+   "ability": "Roar of the Slayer",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sion",
+   "slot": "R",
+   "ability": "Unstoppable Onslaught",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sivir",
+   "slot": "W",
+   "ability": "Ricochet",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sivir",
+   "slot": "E",
+   "ability": "Spell Shield",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sivir",
+   "slot": "R",
+   "ability": "On the Hunt",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Skarner",
+   "slot": "Q",
+   "ability": "Shattered Earth",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Skarner",
+   "slot": "W",
+   "ability": "Seismic Bastion",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Skarner",
+   "slot": "E",
+   "ability": "Ixtal's Impact",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Skarner",
+   "slot": "R",
+   "ability": "Impale",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Smolder",
+   "slot": "Q",
+   "ability": "Super Scorcher Breath",
+   "reason": "no cast range ladder published",
+   "detail": "scales on state, not a rank progression"
+  },
+  {
+   "champion": "Smolder",
+   "slot": "W",
+   "ability": "Achooo!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Smolder",
+   "slot": "E",
+   "ability": "Flap, Flap, Flap",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Smolder",
+   "slot": "R",
+   "ability": "MMOOOMMMM!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sona",
+   "slot": "Q",
+   "ability": "Hymn of Valor",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sona",
+   "slot": "W",
+   "ability": "Aria of Perseverance",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sona",
+   "slot": "E",
+   "ability": "Song of Celerity",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sona",
+   "slot": "R",
+   "ability": "Crescendo",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Soraka",
+   "slot": "R",
+   "ability": "Wish",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Swain",
+   "slot": "Q",
+   "ability": "Death's Hand",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Swain",
+   "slot": "W",
+   "ability": "Vision of Empire",
+   "reason": "cast range varies by rank",
+   "detail": "5500 / 6000 / 6500 / 7000 / 7500"
+  },
+  {
+   "champion": "Swain",
+   "slot": "E",
+   "ability": "Nevermove",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Direction-targeted / Direction / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Swain",
+   "slot": "R",
+   "ability": "Demonic Ascension",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Sylas",
+   "slot": "Q",
+   "ability": "Chain Lash",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Syndra",
+   "slot": "W",
+   "ability": "Force of Will",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Syndra",
+   "slot": "E",
+   "ability": "Scatter the Weak",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tahm Kench",
+   "slot": "Q",
+   "ability": "Tongue Lash",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tahm Kench",
+   "slot": "W",
+   "ability": "Abyssal Dive",
+   "reason": "cast range varies by rank",
+   "detail": "1000 / 1050 / 1100 / 1150 / 1200"
+  },
+  {
+   "champion": "Tahm Kench",
+   "slot": "E",
+   "ability": "Thick Skin",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Taliyah",
+   "slot": "Q",
+   "ability": "Threaded Volley",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Taliyah",
+   "slot": "W",
+   "ability": "Seismic Shove",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Vector"
+  },
+  {
+   "champion": "Taliyah",
+   "slot": "E",
+   "ability": "Unraveled Earth",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Taliyah",
+   "slot": "R",
+   "ability": "Weaver's Wall",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Talon",
+   "slot": "Q",
+   "ability": "Noxian Diplomacy",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Talon",
+   "slot": "W",
+   "ability": "Rake",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Talon",
+   "slot": "R",
+   "ability": "Shadow Assault",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Taric",
+   "slot": "Q",
+   "ability": "Starlight's Touch",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Taric",
+   "slot": "E",
+   "ability": "Dazzle",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Taric",
+   "slot": "R",
+   "ability": "Cosmic Radiance",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Teemo",
+   "slot": "Q",
+   "ability": "Blinding Dart",
+   "reason": "not on the 25-unit lattice",
+   "detail": "680"
+  },
+  {
+   "champion": "Teemo",
+   "slot": "W",
+   "ability": "Move Quick",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Teemo",
+   "slot": "E",
+   "ability": "Toxic Shot",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Teemo",
+   "slot": "R",
+   "ability": "Noxious Trap",
+   "reason": "cast range varies by rank",
+   "detail": "600 / 750 / 900"
+  },
+  {
+   "champion": "Thresh",
+   "slot": "Q",
+   "ability": "Death Sentence",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Thresh",
+   "slot": "E",
+   "ability": "Flay",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Thresh",
+   "slot": "R",
+   "ability": "The Box",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tristana",
+   "slot": "Q",
+   "ability": "Rapid Fire",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tristana",
+   "slot": "E",
+   "ability": "Explosive Charge",
+   "reason": "no cast range ladder published",
+   "detail": "scales on level"
+  },
+  {
+   "champion": "Tristana",
+   "slot": "R",
+   "ability": "Buster Shot",
+   "reason": "no cast range ladder published",
+   "detail": "scales on level"
+  },
+  {
+   "champion": "Trundle",
+   "slot": "Q",
+   "ability": "Chomp",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tryndamere",
+   "slot": "Q",
+   "ability": "Bloodlust",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tryndamere",
+   "slot": "W",
+   "ability": "Mocking Shout",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Tryndamere",
+   "slot": "E",
+   "ability": "Spinning Slash",
+   "reason": "not on the 25-unit lattice",
+   "detail": "660"
+  },
+  {
+   "champion": "Tryndamere",
+   "slot": "R",
+   "ability": "Undying Rage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Twisted Fate",
+   "slot": "W",
+   "ability": "Pick a Card",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Twisted Fate",
+   "slot": "E",
+   "ability": "Stacked Deck",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Twisted Fate",
+   "slot": "R",
+   "ability": "Destiny",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Auto / Location"
+  },
+  {
+   "champion": "Twitch",
+   "slot": "Q",
+   "ability": "Ambush",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Twitch",
+   "slot": "E",
+   "ability": "Contaminate",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Twitch",
+   "slot": "R",
+   "ability": "Spray and Pray",
+   "reason": "no cast range ladder published",
+   "detail": "not a plain distance"
+  },
+  {
+   "champion": "Udyr",
+   "slot": "Q",
+   "ability": "Wilding Claw",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Udyr",
+   "slot": "W",
+   "ability": "Iron Mantle",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Udyr",
+   "slot": "E",
+   "ability": "Blazing Stampede",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Udyr",
+   "slot": "R",
+   "ability": "Wingborne Storm",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Urgot",
+   "slot": "W",
+   "ability": "Purge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Urgot",
+   "slot": "E",
+   "ability": "Disdain",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Urgot",
+   "slot": "R",
+   "ability": "Fear Beyond Death",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Direction-targeted / Direction / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Varus",
+   "slot": "Q",
+   "ability": "Piercing Arrow",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Varus",
+   "slot": "W",
+   "ability": "Blighted Quiver",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Varus",
+   "slot": "R",
+   "ability": "Chain of Corruption",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vayne",
+   "slot": "Q",
+   "ability": "Tumble",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vayne",
+   "slot": "W",
+   "ability": "Silver Bolts",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vayne",
+   "slot": "R",
+   "ability": "Final Hour",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Veigar",
+   "slot": "Q",
+   "ability": "Baleful Strike",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Vel'Koz",
+   "slot": "Q",
+   "ability": "Plasma Fission",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vel'Koz",
+   "slot": "W",
+   "ability": "Void Rift",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vel'Koz",
+   "slot": "R",
+   "ability": "Life Form Disintegration Ray",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vex",
+   "slot": "Q",
+   "ability": "Mistral Bolt",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vex",
+   "slot": "W",
+   "ability": "Personal Space",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vex",
+   "slot": "R",
+   "ability": "Shadow Surge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vi",
+   "slot": "Q",
+   "ability": "Vault Breaker",
+   "reason": "no cast range ladder published",
+   "detail": "scales on channel time"
+  },
+  {
+   "champion": "Vi",
+   "slot": "W",
+   "ability": "Denting Blows",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vi",
+   "slot": "E",
+   "ability": "Relentless Force",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Viego",
+   "slot": "Q",
+   "ability": "Blade of the Ruined King",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Viego",
+   "slot": "W",
+   "ability": "Spectral Maw",
+   "reason": "no cast range ladder published",
+   "detail": "scales on channel time"
+  },
+  {
+   "champion": "Viego",
+   "slot": "E",
+   "ability": "Harrowed Path",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Viktor",
+   "slot": "E",
+   "ability": "Hextech Ray",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Vector"
+  },
+  {
+   "champion": "Viktor",
+   "slot": "R",
+   "ability": "Arcane Storm",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Location-targeted / Location / Unit-targeted / Unit"
+  },
+  {
+   "champion": "Vladimir",
+   "slot": "W",
+   "ability": "Sanguine Pool",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Vladimir",
+   "slot": "E",
+   "ability": "Tides of Blood",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Volibear",
+   "slot": "Q",
+   "ability": "Thundering Smash",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Volibear",
+   "slot": "W",
+   "ability": "Frenzied Maul",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Warwick",
+   "slot": "Q",
+   "ability": "Jaws of the Beast",
+   "reason": "not on the 25-unit lattice",
+   "detail": "365"
+  },
+  {
+   "champion": "Warwick",
+   "slot": "W",
+   "ability": "Blood Hunt",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Warwick",
+   "slot": "E",
+   "ability": "Primal Howl",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Warwick",
+   "slot": "R",
+   "ability": "Infinite Duress",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Wukong",
+   "slot": "Q",
+   "ability": "Crushing Blow",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Wukong",
+   "slot": "W",
+   "ability": "Warrior Trickster",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Wukong",
+   "slot": "R",
+   "ability": "Cyclone",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xayah",
+   "slot": "Q",
+   "ability": "Double Daggers",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xayah",
+   "slot": "W",
+   "ability": "Deadly Plumage",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xayah",
+   "slot": "E",
+   "ability": "Bladecaller",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xayah",
+   "slot": "R",
+   "ability": "Featherstorm",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xerath",
+   "slot": "Q",
+   "ability": "Arcanopulse",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xerath",
+   "slot": "E",
+   "ability": "Shocking Orb",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xerath",
+   "slot": "R",
+   "ability": "Rite of the Arcane",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Auto / Location"
+  },
+  {
+   "champion": "Xin Zhao",
+   "slot": "Q",
+   "ability": "Three Talon Strike",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xin Zhao",
+   "slot": "W",
+   "ability": "Wind Becomes Lightning",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Xin Zhao",
+   "slot": "E",
+   "ability": "Audacious Charge",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Xin Zhao",
+   "slot": "R",
+   "ability": "Crescent Guard",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yasuo",
+   "slot": "Q",
+   "ability": "Steel Tempest",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yasuo",
+   "slot": "W",
+   "ability": "Wind Wall",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yasuo",
+   "slot": "R",
+   "ability": "Last Breath",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit / Proximity"
+  },
+  {
+   "champion": "Yone",
+   "slot": "Q",
+   "ability": "Mortal Steel",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yone",
+   "slot": "W",
+   "ability": "Spirit Cleave",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yone",
+   "slot": "E",
+   "ability": "Soul Unbound",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yone",
+   "slot": "R",
+   "ability": "Fate Sealed",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yorick",
+   "slot": "Q",
+   "ability": "Last Rites",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yunara",
+   "slot": "Q",
+   "ability": "Cultivation of Spirit",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yunara",
+   "slot": "W",
+   "ability": "Arc of Judgment",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yunara",
+   "slot": "E",
+   "ability": "Kanmei's Steps",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yunara",
+   "slot": "R",
+   "ability": "Transcend One's Self",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Yuumi",
+   "slot": "W",
+   "ability": "You and Me!",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit / Direction"
+  },
+  {
+   "champion": "Yuumi",
+   "slot": "E",
+   "ability": "Zoomies",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zaahen",
+   "slot": "Q",
+   "ability": "The Darkin Glaive",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zaahen",
+   "slot": "R",
+   "ability": "Grim Deliverance",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Zac",
+   "slot": "Q",
+   "ability": "Stretching Strikes",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  },
+  {
+   "champion": "Zac",
+   "slot": "W",
+   "ability": "Unstable Matter",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Auto"
+  },
+  {
+   "champion": "Zac",
+   "slot": "E",
+   "ability": "Elastic Slingshot",
+   "reason": "cast range varies by rank",
+   "detail": "1200 / 1350 / 1500 / 1650 / 1800"
+  },
+  {
+   "champion": "Zac",
+   "slot": "R",
+   "ability": "Let's Bounce!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zed",
+   "slot": "W",
+   "ability": "Living Shadow",
+   "reason": "no cast range ladder published",
+   "detail": "minimum-maximum band, not a rank ladder"
+  },
+  {
+   "champion": "Zed",
+   "slot": "E",
+   "ability": "Shadow Slash",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zed",
+   "slot": "R",
+   "ability": "Death Mark",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Unit-targeted / Unit / Auto-targeted / Auto"
+  },
+  {
+   "champion": "Zeri",
+   "slot": "Q",
+   "ability": "Burst Fire",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zeri",
+   "slot": "W",
+   "ability": "Ultrashock Laser",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zeri",
+   "slot": "E",
+   "ability": "Spark Surge",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zeri",
+   "slot": "R",
+   "ability": "Lightning Crash",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Ziggs",
+   "slot": "W",
+   "ability": "Satchel Charge",
+   "reason": "mixed or non-spatial targeting",
+   "detail": "Location / Auto"
+  },
+  {
+   "champion": "Zilean",
+   "slot": "W",
+   "ability": "Rewind",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zoe",
+   "slot": "Q",
+   "ability": "Paddle Star!",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zoe",
+   "slot": "W",
+   "ability": "Spell Thief",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zoe",
+   "slot": "E",
+   "ability": "Sleepy Trouble Bubble",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zoe",
+   "slot": "R",
+   "ability": "Portal Jump",
+   "reason": "no cast range ladder published",
+   "detail": "no cast range published"
+  },
+  {
+   "champion": "Zyra",
+   "slot": "E",
+   "ability": "Grasping Roots",
+   "reason": "no cast range ladder published",
+   "detail": "multiple distinct distances"
+  }
+ ]
+}

@@ -266,6 +266,10 @@ const WorldsExperienceDev = import.meta.env.DEV
 const MatchGridLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
   : null;
+// GM-R1: the Rangefinder playtest lab. Same DEVELOPMENT-ONLY rule.
+const RangefinderLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/rangefinder/RangefinderLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -681,6 +685,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
+                  ) : null}
+                  {RangefinderLab ? (
+                    <Route path="/dev/rangefinder" element={<Suspense fallback={<RouteFallback />}><RangefinderLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
