@@ -1,0 +1,2482 @@
+{
+  "contract": "combat_estimate.capture.v1",
+  "tool": "scripts/combat-estimate/capture_combat_authority.py",
+  "captured_at": "2026-10-12T05:59:55+00:00",
+  "backend": {
+    "repo": "mitcherrman/League_Combat_Simulator",
+    "commit": "8829fc3c942d1e81b7817187716c57da4459473a",
+    "checkout": "C:\\Users\\mlmit\\mogzy-wt\\ce1-be-read",
+    "dirty": false
+  },
+  "database": {
+    "path": "C:\\Users\\mlmit\\mogzy-data\\lol_calc.db",
+    "bytes": 6217244672,
+    "modified": "2026-09-26T23:01:13+00:00"
+  },
+  "authorities": {
+    "calculation": "ability_damage.physical.post_mitigation.v1",
+    "implementation": "combat_calculations.physical_ability_damage.v1",
+    "raw_authority": "generic_ability_damage.resolve_generic_ability_damage",
+    "mitigation_authority": "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances",
+    "item_authority": "item_canonical.runtime_stats.map_stats_json",
+    "stat_builder": "services.combat_helpers.build_runtime_champion_stats",
+    "disclosure": "combat_calculations.formula_disclosure.v1",
+    "certification_tests": [
+      "test_combat_calculations_seam.py",
+      "test_jp5_structured_working.py"
+    ]
+  },
+  "scale_policy": {
+    "id": "ce1.scale.four_times_attack_damage.dev-v0",
+    "development_only": true,
+    "rule": "max = clamp(ceil(4 x attacker attack damage / 100) x 100, 400, 1000); coarse step 50; figures every 100",
+    "basis": "attacker total attack damage (public premise)"
+  },
+  "scenarios": [
+    {
+      "id": "jarvan-q-r3-l5-dirk-vs-olaf",
+      "kind": "certified",
+      "difficulty": "opening",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Jarvan IV",
+        "level": 5,
+        "items": [
+          {
+            "id": "3134",
+            "name": "Serrated Dirk",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 93.27,
+          "bonus_attack_damage": 20,
+          "ability_power": 0,
+          "base_attack_damage": 73.27
+        }
+      },
+      "ability": {
+        "slot": "Q",
+        "name": "Dragon Strike",
+        "rank": 3,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(50 + 40 * P_Q + 1,45 * BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Jarvan IV",
+          "slot": "Q",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            90,
+            130,
+            170,
+            210,
+            250
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1.45
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Olaf",
+        "level": 5,
+        "items": [],
+        "armor": 47.978
+      },
+      "penetration": {
+        "lethality": 10.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 199.0,
+        "target_armor": 47.978,
+        "effective_armor": 37.978,
+        "mitigation_multiplier": 0.7247532215280696,
+        "post_mitigation_damage": 144.22589108408587
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 144.22589108408587,
+        "whole": 144
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 400,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 93.27, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Jarvan IV"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Olaf"
+        },
+        "ability": {
+          "slot": "Q",
+          "name": "Dragon Strike",
+          "rank": 3
+        },
+        "formula": {
+          "flat": 170,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1.45,
+              "value": 20
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 93.27,
+          "bonus_attack_damage": 20,
+          "ability_power": 0
+        },
+        "raw_damage": 199,
+        "target_armor": {
+          "value": 47.978,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 10,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 37.978,
+        "mitigation_multiplier": 0.7248,
+        "final_damage": 144.2259,
+        "answer": "144"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          20.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_Q",
+          3.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Jarvan IV"
+        ],
+        [
+          "formula_slot",
+          "Q"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(50 + 40 * P_Q + 1,45 * BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Serrated Dirk@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "zed-q-r1-l2-longsword-vs-ahri",
+      "kind": "certified",
+      "difficulty": "opening",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Zed",
+        "level": 2,
+        "items": [
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 75.448,
+          "bonus_attack_damage": 10,
+          "ability_power": 0,
+          "base_attack_damage": 65.448
+        }
+      },
+      "ability": {
+        "slot": "Q",
+        "name": "Razor Shuriken",
+        "rank": 1,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(40 + 40 * P_Q + BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Zed",
+          "slot": "Q",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            80,
+            120,
+            160,
+            200,
+            240
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Ahri",
+        "level": 2,
+        "items": [],
+        "armor": 24.024
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 90.0,
+        "target_armor": 24.024,
+        "effective_armor": 24.024,
+        "mitigation_multiplier": 0.806295555698897,
+        "post_mitigation_damage": 72.56660001290074
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 72.56660001290074,
+        "whole": 73
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 400,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 75.448, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Zed"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Ahri"
+        },
+        "ability": {
+          "slot": "Q",
+          "name": "Razor Shuriken",
+          "rank": 1
+        },
+        "formula": {
+          "flat": 80,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1,
+              "value": 10
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 75.448,
+          "bonus_attack_damage": 10,
+          "ability_power": 0
+        },
+        "raw_damage": 90,
+        "target_armor": {
+          "value": 24.024,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 0,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 24.024,
+        "mitigation_multiplier": 0.8063,
+        "final_damage": 72.5666,
+        "answer": "73"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          10.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_Q",
+          1.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Zed"
+        ],
+        [
+          "formula_slot",
+          "Q"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(40 + 40 * P_Q + BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Long Sword@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "olaf-q-r5-l11-lastwhisper-vs-jarvan",
+      "kind": "certified",
+      "difficulty": "middle",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Olaf",
+        "level": 11,
+        "items": [
+          {
+            "id": "3035",
+            "name": "Last Whisper",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 129.2425,
+          "bonus_attack_damage": 20,
+          "ability_power": 0,
+          "base_attack_damage": 109.2425
+        }
+      },
+      "ability": {
+        "slot": "Q",
+        "name": "Undertow",
+        "rank": 5,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(20 + 50 * P_Q + BO_AD) * MOD_Phys",
+        "tier": "VERIFIED",
+        "disclosure": {
+          "champion": "Olaf",
+          "slot": "Q",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            70,
+            120,
+            170,
+            220,
+            270
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1
+            ]
+          ],
+          "tier": "VERIFIED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Jarvan IV",
+        "level": 11,
+        "items": [],
+        "armor": 76.36500000000001
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 18.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 290.0,
+        "target_armor": 76.36500000000001,
+        "effective_armor": 62.61930000000001,
+        "mitigation_multiplier": 0.6149331598401911,
+        "post_mitigation_damage": 178.33061635365544
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 178.33061635365544,
+        "whole": 178
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 600,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 129.2425, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Olaf"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Jarvan IV"
+        },
+        "ability": {
+          "slot": "Q",
+          "name": "Undertow",
+          "rank": 5
+        },
+        "formula": {
+          "flat": 270,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1,
+              "value": 20
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 129.2425,
+          "bonus_attack_damage": 20,
+          "ability_power": 0
+        },
+        "raw_damage": 290,
+        "target_armor": {
+          "value": 76.365,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 0,
+          "armor_pen_percent": 18,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 62.6193,
+        "mitigation_multiplier": 0.6149,
+        "final_damage": 178.3306,
+        "answer": "178"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          20.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_Q",
+          5.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Olaf"
+        ],
+        [
+          "formula_slot",
+          "Q"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(20 + 50 * P_Q + BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Last Whisper@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "jarvan-q-r5-l11-noitems-vs-olaf",
+      "kind": "certified",
+      "difficulty": "middle",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Jarvan IV",
+        "level": 11,
+        "items": [],
+        "stats": {
+          "attack_damage": 90.325,
+          "bonus_attack_damage": 0,
+          "ability_power": 0,
+          "base_attack_damage": 90.325
+        }
+      },
+      "ability": {
+        "slot": "Q",
+        "name": "Dragon Strike",
+        "rank": 5,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(50 + 40 * P_Q + 1,45 * BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Jarvan IV",
+          "slot": "Q",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            90,
+            130,
+            170,
+            210,
+            250
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1.45
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Olaf",
+        "level": 11,
+        "items": [],
+        "armor": 71.855
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 250.0,
+        "target_armor": 71.855,
+        "effective_armor": 71.855,
+        "mitigation_multiplier": 0.5818858921765441,
+        "post_mitigation_damage": 145.47147304413602
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 145.47147304413602,
+        "whole": 145
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 400,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 90.325, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Jarvan IV"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Olaf"
+        },
+        "ability": {
+          "slot": "Q",
+          "name": "Dragon Strike",
+          "rank": 5
+        },
+        "formula": {
+          "flat": 250,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1.45,
+              "value": 0
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 90.325,
+          "bonus_attack_damage": 0,
+          "ability_power": 0
+        },
+        "raw_damage": 250,
+        "target_armor": {
+          "value": 71.855,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 0,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 71.855,
+        "mitigation_multiplier": 0.5819,
+        "final_damage": 145.4715,
+        "answer": "145"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          0.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_Q",
+          5.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Jarvan IV"
+        ],
+        [
+          "formula_slot",
+          "Q"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(50 + 40 * P_Q + 1,45 * BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          ""
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "lucian-q-r3-l7-pickaxe-vs-ezreal",
+      "kind": "certified",
+      "difficulty": "middle",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Lucian",
+        "level": 7,
+        "items": [
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 97.1125,
+          "bonus_attack_damage": 25,
+          "ability_power": 0,
+          "base_attack_damage": 72.1125
+        }
+      },
+      "ability": {
+        "slot": "Q",
+        "name": "Piercing Light",
+        "rank": 3,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(45 + 35 * P_Q + BO_AD) * MOD_Phys",
+        "tier": "VERIFIED",
+        "disclosure": {
+          "champion": "Lucian",
+          "slot": "Q",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            80,
+            115,
+            150,
+            185,
+            220
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1
+            ]
+          ],
+          "tier": "VERIFIED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Ezreal",
+        "level": 7,
+        "items": [],
+        "armor": 44.349000000000004
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 175.0,
+        "target_armor": 44.349000000000004,
+        "effective_armor": 44.349000000000004,
+        "mitigation_multiplier": 0.6927654504014576,
+        "post_mitigation_damage": 121.2339538202551
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 121.2339538202551,
+        "whole": 121
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 400,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 97.1125, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Lucian"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Ezreal"
+        },
+        "ability": {
+          "slot": "Q",
+          "name": "Piercing Light",
+          "rank": 3
+        },
+        "formula": {
+          "flat": 150,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1,
+              "value": 25
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 97.1125,
+          "bonus_attack_damage": 25,
+          "ability_power": 0
+        },
+        "raw_damage": 175,
+        "target_armor": {
+          "value": 44.349,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 0,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 44.349,
+        "mitigation_multiplier": 0.6928,
+        "final_damage": 121.234,
+        "answer": "121"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          25.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_Q",
+          3.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Lucian"
+        ],
+        [
+          "formula_slot",
+          "Q"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(45 + 35 * P_Q + BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Pickaxe@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "leesin-r-r2-l11-brutalizer-vs-sett",
+      "kind": "certified",
+      "difficulty": "middle",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Lee Sin",
+        "level": 11,
+        "items": [
+          {
+            "id": "2020",
+            "name": "The Brutalizer",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 120.835,
+          "bonus_attack_damage": 25,
+          "ability_power": 0,
+          "base_attack_damage": 95.835
+        }
+      },
+      "ability": {
+        "slot": "R",
+        "name": "Dragon's Rage",
+        "rank": 2,
+        "max_rank": 3,
+        "component": null,
+        "formula_text": "(-50 + 225 * P_R + 2 * BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Lee Sin",
+          "slot": "R",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            175,
+            400,
+            625
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              2
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Sett",
+        "level": 11,
+        "items": [],
+        "armor": 74.2425
+      },
+      "penetration": {
+        "lethality": 5.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 450.0,
+        "target_armor": 74.2425,
+        "effective_armor": 69.2425,
+        "mitigation_multiplier": 0.5908681330044168,
+        "post_mitigation_damage": 265.89065985198755
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 265.89065985198755,
+        "whole": 266
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 500,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 120.835, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Lee Sin"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Sett"
+        },
+        "ability": {
+          "slot": "R",
+          "name": "Dragon's Rage",
+          "rank": 2
+        },
+        "formula": {
+          "flat": 400,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 2,
+              "value": 25
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 120.835,
+          "bonus_attack_damage": 25,
+          "ability_power": 0
+        },
+        "raw_damage": 450,
+        "target_armor": {
+          "value": 74.2425,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 5,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 69.2425,
+        "mitigation_multiplier": 0.5909,
+        "final_damage": 265.8907,
+        "answer": "266"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          25.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_R",
+          2.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Lee Sin"
+        ],
+        [
+          "formula_slot",
+          "R"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(-50 + 225 * P_R + 2 * BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "The Brutalizer@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "jhin-w-r5-l13-dirk-pickaxe-vs-malphite-chainvest",
+      "kind": "certified",
+      "difficulty": "late",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Jhin",
+        "level": 13,
+        "items": [
+          {
+            "id": "3134",
+            "name": "Serrated Dirk",
+            "revision": "4065930"
+          },
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 154.18,
+          "bonus_attack_damage": 45,
+          "ability_power": 0,
+          "base_attack_damage": 109.18
+        }
+      },
+      "ability": {
+        "slot": "W",
+        "name": "Deadly Flourish",
+        "rank": 5,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(35 + 35 * P_W + 0,5 * AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Jhin",
+          "slot": "W",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            70,
+            105,
+            140,
+            175,
+            210
+          ],
+          "ratios": [
+            [
+              "AD",
+              0.5
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Malphite",
+        "level": 13,
+        "items": [
+          {
+            "id": "1031",
+            "name": "Chain Vest",
+            "revision": "4065930"
+          }
+        ],
+        "armor": 134.20250000000001
+      },
+      "penetration": {
+        "lethality": 10.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 287.09000000000003,
+        "target_armor": 134.20250000000001,
+        "effective_armor": 124.20250000000001,
+        "mitigation_multiplier": 0.44602535654151937,
+        "post_mitigation_damage": 128.0494196095048
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 128.0494196095048,
+        "whole": 128
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 700,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 154.18, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Jhin"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Malphite"
+        },
+        "ability": {
+          "slot": "W",
+          "name": "Deadly Flourish",
+          "rank": 5
+        },
+        "formula": {
+          "flat": 210,
+          "ratios": [
+            {
+              "stat": "attack_damage",
+              "label": "attack damage",
+              "ratio": 0.5,
+              "value": 154.18
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 154.18,
+          "bonus_attack_damage": 45,
+          "ability_power": 0
+        },
+        "raw_damage": 287.09,
+        "target_armor": {
+          "value": 134.2025,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 10,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 124.2025,
+        "mitigation_multiplier": 0.446,
+        "final_damage": 128.0494,
+        "answer": "128"
+      },
+      "formula_bindings": [
+        [
+          "AD",
+          154.18
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_W",
+          5.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Jhin"
+        ],
+        [
+          "formula_slot",
+          "W"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(35 + 35 * P_W + 0,5 * AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Chain Vest@4065930, Pickaxe@4065930, Serrated Dirk@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "pantheon-e-r5-l13-dirk-vs-garen",
+      "kind": "certified",
+      "difficulty": "late",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Pantheon",
+        "level": 13,
+        "items": [
+          {
+            "id": "3134",
+            "name": "Serrated Dirk",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 120.135,
+          "bonus_attack_damage": 20,
+          "ability_power": 0,
+          "base_attack_damage": 100.135
+        }
+      },
+      "ability": {
+        "slot": "E",
+        "name": "Aegis Assault",
+        "rank": 5,
+        "max_rank": 5,
+        "component": "unempowered cast (no Mortal Will)",
+        "formula_text": "(5 + 50 * P_E + 1,5 * BO_AD + AD) * MOD_Phys",
+        "tier": "VERIFIED",
+        "disclosure": {
+          "champion": "Pantheon",
+          "slot": "E",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            55,
+            105,
+            155,
+            205,
+            255
+          ],
+          "ratios": [
+            [
+              "AD",
+              1
+            ],
+            [
+              "BO_AD",
+              1.5
+            ]
+          ],
+          "tier": "VERIFIED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Garen",
+        "level": 13,
+        "items": [],
+        "armor": 83.99000000000001
+      },
+      "penetration": {
+        "lethality": 10.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 405.135,
+        "target_armor": 83.99000000000001,
+        "effective_armor": 73.99000000000001,
+        "mitigation_multiplier": 0.5747456750387953,
+        "post_mitigation_damage": 232.84958905684232
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 232.84958905684232,
+        "whole": 233
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 500,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 120.135, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Pantheon"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Garen"
+        },
+        "ability": {
+          "slot": "E",
+          "name": "Aegis Assault",
+          "rank": 5
+        },
+        "formula": {
+          "flat": 255,
+          "ratios": [
+            {
+              "stat": "attack_damage",
+              "label": "attack damage",
+              "ratio": 1,
+              "value": 120.135
+            },
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1.5,
+              "value": 20
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 120.135,
+          "bonus_attack_damage": 20,
+          "ability_power": 0
+        },
+        "raw_damage": 405.135,
+        "target_armor": {
+          "value": 83.99,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 10,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 73.99,
+        "mitigation_multiplier": 0.5747,
+        "final_damage": 232.8496,
+        "answer": "233"
+      },
+      "formula_bindings": [
+        [
+          "AD",
+          120.135
+        ],
+        [
+          "BO_AD",
+          20.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_E",
+          5.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Pantheon"
+        ],
+        [
+          "formula_slot",
+          "E"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(5 + 50 * P_E + 1,5 * BO_AD + AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Serrated Dirk@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula.",
+        "Modelled component: unempowered cast (no Mortal Will)."
+      ]
+    },
+    {
+      "id": "vi-r-r3-l18-lastwhisper-pickaxe-pickaxe-vs-ornn-chainvest",
+      "kind": "certified",
+      "difficulty": "late",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Vi",
+        "level": 18,
+        "items": [
+          {
+            "id": "3035",
+            "name": "Last Whisper",
+            "revision": "4065930"
+          },
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "revision": "4065930"
+          },
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 197.3,
+          "bonus_attack_damage": 70,
+          "ability_power": 0,
+          "base_attack_damage": 127.3
+        }
+      },
+      "ability": {
+        "slot": "R",
+        "name": "Cease and Desist",
+        "rank": 3,
+        "max_rank": 3,
+        "component": null,
+        "formula_text": "(50 + 100 * P_R + 0,9 * BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Vi",
+          "slot": "R",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            150,
+            250,
+            350
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              0.9
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Ornn",
+        "level": 18,
+        "items": [
+          {
+            "id": "1031",
+            "name": "Chain Vest",
+            "revision": "4065930"
+          }
+        ],
+        "armor": 161.4
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 18.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 413.0,
+        "target_armor": 161.4,
+        "effective_armor": 132.348,
+        "mitigation_multiplier": 0.4303888994095064,
+        "post_mitigation_damage": 177.75061545612616
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 177.75061545612616,
+        "whole": 178
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 800,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 197.3, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Vi"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Ornn"
+        },
+        "ability": {
+          "slot": "R",
+          "name": "Cease and Desist",
+          "rank": 3
+        },
+        "formula": {
+          "flat": 350,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 0.9,
+              "value": 70
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 197.3,
+          "bonus_attack_damage": 70,
+          "ability_power": 0
+        },
+        "raw_damage": 413,
+        "target_armor": {
+          "value": 161.4,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 0,
+          "armor_pen_percent": 18,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 132.348,
+        "mitigation_multiplier": 0.4304,
+        "final_damage": 177.7506,
+        "answer": "178"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          70.00000000000001
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_R",
+          3.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Vi"
+        ],
+        [
+          "formula_slot",
+          "R"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(50 + 100 * P_R + 0,9 * BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Chain Vest@4065930, Last Whisper@4065930, Pickaxe@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "yasuo-r-r3-l16-warhammer-vs-sion",
+      "kind": "certified",
+      "difficulty": "late",
+      "metric": "post_mitigation",
+      "attacker": {
+        "champion": "Yasuo",
+        "level": 16,
+        "items": [
+          {
+            "id": "3133",
+            "name": "Caulfield's Warhammer",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 116.1875,
+          "bonus_attack_damage": 20,
+          "ability_power": 0,
+          "base_attack_damage": 96.1875
+        }
+      },
+      "ability": {
+        "slot": "R",
+        "name": "Last Breath",
+        "rank": 3,
+        "max_rank": 3,
+        "component": null,
+        "formula_text": "(50 + 150 * P_R + 1,5 * BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Yasuo",
+          "slot": "R",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            200,
+            350,
+            500
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1.5
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Sion",
+        "level": 16,
+        "items": [],
+        "armor": 96.79500000000002
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 530.0,
+        "target_armor": 96.79500000000002,
+        "effective_armor": 96.79500000000002,
+        "mitigation_multiplier": 0.5081429914377905,
+        "post_mitigation_damage": 269.315785462029
+      },
+      "answer": {
+        "metric": "post_mitigation",
+        "exact": 269.315785462029,
+        "whole": 269
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 500,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 116.1875, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "combat_working.v1",
+        "calculation": "physical_ability_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Yasuo"
+        },
+        "target": {
+          "side": "target",
+          "champion": "Sion"
+        },
+        "ability": {
+          "slot": "R",
+          "name": "Last Breath",
+          "rank": 3
+        },
+        "formula": {
+          "flat": 500,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1.5,
+              "value": 20
+            }
+          ]
+        },
+        "attacker_stats": {
+          "attack_damage": 116.1875,
+          "bonus_attack_damage": 20,
+          "ability_power": 0
+        },
+        "raw_damage": 530,
+        "target_armor": {
+          "value": 96.795,
+          "source": "stated"
+        },
+        "penetration": {
+          "lethality": 0,
+          "armor_pen_percent": 0,
+          "armor_pen_flat": 0
+        },
+        "effective_armor": 96.795,
+        "mitigation_multiplier": 0.5081,
+        "final_damage": 269.3158,
+        "answer": "269"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          20.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_R",
+          3.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Yasuo"
+        ],
+        [
+          "formula_slot",
+          "R"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(50 + 150 * P_R + 1,5 * BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Caulfield's Warhammer@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "After armor: percent armor penetration, then flat penetration and lethality, then the armor formula."
+      ]
+    },
+    {
+      "id": "zed-q-r3-l7-longsword-vs-ahri-raw",
+      "kind": "certified",
+      "difficulty": "middle",
+      "metric": "raw",
+      "attacker": {
+        "champion": "Zed",
+        "level": 7,
+        "items": [
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 89.473,
+          "bonus_attack_damage": 10,
+          "ability_power": 0,
+          "base_attack_damage": 79.473
+        }
+      },
+      "ability": {
+        "slot": "Q",
+        "name": "Razor Shuriken",
+        "rank": 3,
+        "max_rank": 5,
+        "component": null,
+        "formula_text": "(40 + 40 * P_Q + BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Zed",
+          "slot": "Q",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            80,
+            120,
+            160,
+            200,
+            240
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Ahri",
+        "level": 7,
+        "items": [],
+        "armor": 41.349000000000004
+      },
+      "penetration": {
+        "lethality": 0.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 170.0,
+        "target_armor": 41.349000000000004,
+        "effective_armor": 41.349000000000004,
+        "mitigation_multiplier": 0.7074687475680762,
+        "post_mitigation_damage": 120.26968708657296
+      },
+      "answer": {
+        "metric": "raw",
+        "exact": 170.0,
+        "whole": 170
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 400,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 89.473, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "raw_damage_working.v1",
+        "calculation": "physical_ability_raw_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Zed"
+        },
+        "ability": {
+          "slot": "Q",
+          "name": "Razor Shuriken",
+          "rank": 3
+        },
+        "formula": {
+          "flat": 160,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1,
+              "value": 10
+            }
+          ]
+        },
+        "terms": [
+          {
+            "term": "flat",
+            "value": 160
+          },
+          {
+            "term": "ratio",
+            "stat": "bonus_attack_damage",
+            "value": 10
+          }
+        ],
+        "raw_damage": 170,
+        "answer": "170"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          10.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_Q",
+          3.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Zed"
+        ],
+        [
+          "formula_slot",
+          "Q"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(40 + 40 * P_Q + BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Long Sword@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "Before armor: the ability's raw physical damage, with no mitigation applied."
+      ]
+    },
+    {
+      "id": "jarvan-r-r3-l16-dirk-vs-olaf-raw",
+      "kind": "certified",
+      "difficulty": "late",
+      "metric": "raw",
+      "attacker": {
+        "champion": "Jarvan IV",
+        "level": 16,
+        "items": [
+          {
+            "id": "3134",
+            "name": "Serrated Dirk",
+            "revision": "4065930"
+          }
+        ],
+        "stats": {
+          "attack_damage": 127.425,
+          "bonus_attack_damage": 20,
+          "ability_power": 0,
+          "base_attack_damage": 107.425
+        }
+      },
+      "ability": {
+        "slot": "R",
+        "name": "Cataclysm",
+        "rank": 3,
+        "max_rank": 3,
+        "component": null,
+        "formula_text": "(75 + 125 * P_R + 1,8 * BO_AD) * MOD_Phys",
+        "tier": "INHERITED",
+        "disclosure": {
+          "champion": "Jarvan IV",
+          "slot": "R",
+          "damage_type": "physical",
+          "flat_by_rank": [
+            200,
+            325,
+            450
+          ],
+          "ratios": [
+            [
+              "BO_AD",
+              1.8
+            ]
+          ],
+          "tier": "INHERITED",
+          "version": "combat_calculations.formula_disclosure.v1"
+        }
+      },
+      "target": {
+        "champion": "Olaf",
+        "level": 16,
+        "items": [],
+        "armor": 95.79500000000002
+      },
+      "penetration": {
+        "lethality": 10.0,
+        "armor_pen_flat": 0.0,
+        "armor_pen_percent": 0.0
+      },
+      "result": {
+        "damage_type": "physical",
+        "raw_damage": 486.0,
+        "target_armor": 95.79500000000002,
+        "effective_armor": 85.79500000000002,
+        "mitigation_multiplier": 0.5382276164590004,
+        "post_mitigation_damage": 261.5786215990742
+      },
+      "answer": {
+        "metric": "raw",
+        "exact": 486.0,
+        "whole": 486
+      },
+      "scale": {
+        "policy": "ce1.scale.four_times_attack_damage.dev-v0",
+        "max": 600,
+        "coarse_step": 50,
+        "figure_every": 100,
+        "basis": "4 x attack damage 127.425, rounded up to 100, clamped [400, 1000]"
+      },
+      "working": {
+        "contract": "raw_damage_working.v1",
+        "calculation": "physical_ability_raw_damage",
+        "damage_type": "physical",
+        "attacker": {
+          "side": "attacker",
+          "champion": "Jarvan IV"
+        },
+        "ability": {
+          "slot": "R",
+          "name": "Cataclysm",
+          "rank": 3
+        },
+        "formula": {
+          "flat": 450,
+          "ratios": [
+            {
+              "stat": "bonus_attack_damage",
+              "label": "bonus attack damage",
+              "ratio": 1.8,
+              "value": 20
+            }
+          ]
+        },
+        "terms": [
+          {
+            "term": "flat",
+            "value": 450
+          },
+          {
+            "term": "ratio",
+            "stat": "bonus_attack_damage",
+            "value": 36
+          }
+        ],
+        "raw_damage": 486,
+        "answer": "486"
+      },
+      "formula_bindings": [
+        [
+          "BO_AD",
+          20.0
+        ],
+        [
+          "MOD_Phys",
+          1.0
+        ],
+        [
+          "P_R",
+          3.0
+        ]
+      ],
+      "provenance": [
+        [
+          "formula_champion",
+          "Jarvan IV"
+        ],
+        [
+          "formula_slot",
+          "R"
+        ],
+        [
+          "formula_source_cell",
+          ""
+        ],
+        [
+          "formula_source_sheet",
+          "champion_ability_canonical"
+        ],
+        [
+          "formula_table",
+          "champion_ability_formulas"
+        ],
+        [
+          "formula_text",
+          "(75 + 125 * P_R + 1,8 * BO_AD) * MOD_Phys"
+        ],
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ],
+        [
+          "item_authority",
+          "item_canonical.runtime_stats.map_stats_json"
+        ],
+        [
+          "item_effect_authority",
+          "item_canonical_effects"
+        ],
+        [
+          "item_revisions",
+          "Serrated Dirk@4065930"
+        ],
+        [
+          "mitigation_authority",
+          "damage_mitigation.mitigate_damage(attacker_stats) -> penetration.calculate_effective_resistances"
+        ],
+        [
+          "raw_authority",
+          "generic_ability_damage.resolve_generic_ability_damage"
+        ]
+      ],
+      "assumptions": [
+        "Frozen state: one specified hit, both champions at the stated levels, nothing else happening.",
+        "No runes, no stat shards, no form or transformation on either side.",
+        "Items contribute base stats only; no item passive or active is modelled.",
+        "Target armor is the stated total; no armor reduction (shred) is in effect.",
+        "Before armor: the ability's raw physical damage, with no mitigation applied."
+      ]
+    }
+  ],
+  "refused": [
+    {
+      "id": "jarvan-q-r5-l11-ldr-vs-olaf",
+      "reason": "item_effect_unmodelled",
+      "detail": "attacker item Lord Dominik's Regards (3036) declares pass:Giant Slayer; a static calculation reads base stats only and cannot say the effect leaves this number unchanged",
+      "provenance": [
+        [
+          "implementation",
+          "combat_calculations.physical_ability_damage.v1"
+        ]
+      ]
+    }
+  ]
+}
