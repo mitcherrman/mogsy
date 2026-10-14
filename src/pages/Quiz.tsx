@@ -1499,6 +1499,8 @@ export default function Quiz() {
                  account-bound discovery when it arrives without one. */
               onEnterMatch={(matchId) =>
                 navigate("/quiz/ranked", { state: { matchId } })}
+              onEnterRoleChallenge={(matchId) =>
+                navigate("/quiz/ranked", { state: { matchId, origin: "role_challenge" } })}
               /* The Daily Challenge is DC2 and nothing else. The legacy
                  five-question in-page flow that used to answer this press is
                  gone from this file entirely — see the handoff. */
