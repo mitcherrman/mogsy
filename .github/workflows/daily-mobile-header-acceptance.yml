@@ -1,0 +1,44 @@
+name: Daily Mobile Header Acceptance
+
+on:
+  push:
+    branches:
+      - ui/daily-mobile-single-row-header
+  pull_request:
+    paths:
+      - 'src/pages/quiz-daily-challenge/run/DailyStageChrome*'
+      - 'src/pages/quiz-daily-challenge/run/StageTag.tsx'
+      - 'e2e/daily-mobile-header-*'
+      - 'e2e/nav1/daily-active-exit.spec.ts'
+      - '.github/workflows/daily-mobile-header-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  daily-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Daily unit and navigation tests
+        run: npm test -- src/pages/quiz-daily-challenge/run/DailyStageChrome.compact.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.navigation.test.tsx src/pages/quiz-daily-challenge/run/dailyV2P2C.opening.test.tsx src/pages/quiz-daily-challenge/run/dailyV2P2A.hierarchy.test.tsx
+      - name: Chromium installation
+        run: npx playwright install --with-deps chromium
+      - name: Real-component mobile geometry and guarded-exit browser tests
+        run: npx playwright test -c playwright.frontend.config.ts e2e/daily-mobile-header-fit.spec.ts e2e/nav1/daily-active-exit.spec.ts
+      - name: Upload failed browser traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-mobile-failure
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 3
