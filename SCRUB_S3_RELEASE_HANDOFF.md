@@ -1,15 +1,63 @@
 # Scrub / Chronoscope S3 — Frontend (admin-only live integration)
 
-**Status: READY FOR COMMAND-CENTER REVIEW. Draft PR only. Not merged, not published to Lovable.** Deploy **after** the backend twin
+**Status: RE-INTEGRATED ON POST-ASSEMBLY `main` — READY FOR COMMAND-CENTER RE-REVIEW. Draft PR only. Not merged, not published to Lovable.** Deploy **after** the backend twin
 (`mitcherrman/League_Combat_Simulator` · `scrub/s3-admin-live`): a frontend without the backend cannot reach a `scrub` segment, and a
 backend without this frontend is inert.
 
 | | |
 |---|---|
-| Repo / branch | `mitcherrman/mogsy` · `scrub/s3-admin-live` (base `main` = `7be45341`, unchanged at hand-off time) |
-| Code SHAs | `30f8d270` (integration) · `0c25f7ee` (objective-fit fix + rig) · `1b6a3523` (server-paced pin) · `18b46f67` (input gate) · this note and the evidence follow |
+| Repo / branch | `mitcherrman/mogsy` · `scrub/s3-admin-live`; **now merged with `main` = `5760f41d`** (Assembly PA3 #20 plus two Lovable commits that only touch `src/integrations/supabase/types.ts`; the review comment cites `ce4c218c`). It was built on `7be45341`. |
+| Code SHAs (S3 first pass) | `30f8d270` (integration) · `0c25f7ee` (objective-fit fix + rig) · `1b6a3523` (server-paced pin) · `18b46f67` (input gate) · `a2b9cd33` first handoff. S3.2: merge `693687e0`, `9f77e7c2`, then this note and 6 more screenshots. |
 | Source candidate | S2 `506ac30b` (feature commit `bc50ca8b`, parent `a59526b2`, local-only, verified present). `SCRUB_S2_HANDOFF.md` is carried as the historical design record. |
 | Backend twin | base `f12a7432`; code SHAs `322d2528`, `fc024b2d`; its `SCRUB_S3_RELEASE_HANDOFF.md` has the wire contract, fail-closed proof and rollback |
+
+## S3.2 — re-integration on post-Assembly `main` (supersedes the numbers below where they differ)
+Command Center (PR #21 comment, 2026-10-14) ruled the first evidence void for the new base. Done, in order:
+
+**Merge.** `origin/main` `5760f41d` merged into `scrub/s3-admin-live` (merge `693687e0`, follow-up `9f77e7c2`). Fifteen files conflicted; **every one keeps Assembly and Scrub**:
+`contracts.ts` (blocks, own reveals, settlements, review rows, disclosure vocabulary — Assembly's readers and Scrub's side by side), `client.ts` needed no merge (Assembly reuses the `placement` choice; the union stays `placement | assignments | checkpoint`),
+`registry.ts` + test (`assembly … scrub`), `centralStage.ts`, `SegmentTranscript.tsx`, `QuestionReviewCard.tsx`, `ModuleSigil.tsx` (Users / Hourglass), `questionIcons.ts`, `questionTimelineParts.tsx`,
+`rankedResultsModel.ts`, `orderForgeLockReveal.ts` (inline-lock set and **`SERVER_PACED_REVEAL_MODULES` = reconstruct, match, assembly 4400/3600, scrub 4000/3400**),
+`AdminRankedPage.tsx` (the Pro Play Assembly panel and the Chronoscope panel both present), `interaction-grammar/types.ts`, `playwright.arena.config.ts`, and the hold pin test
+(`['assembly','match','reconstruct','scrub']`). `tsc -p tsconfig.app.json`: only the two pre-existing errors. No `package.json`/lockfile change; no INT1 rune migration.
+
+**Fresh vitest comparison on the NEW base** (S2's directory set plus `components/pro-play`, `components/playtest`; sequential; clean base `5760f41d` vs branch):
+
+| | passed | failed | total |
+|---|---|---|---|
+| base `5760f41d` | 6850 | 14 | 6868 |
+| branch `9f77e7c2` | 6929 | 13 | 6946 (+78 = S2 73 + Scrub hold/input tests) |
+
+Deterministic failures are **identical**: 10 in six files (`QuizCategoryRail` 3, `DailyOnCanonicalArena.boundary` 2, `QuestionStageGeometry` 2, `CanonicalArena.boundary` 1, `AdminQuizReview.proPlay` 1,
+`syntheticRankedHistory` 1). The only difference is `LobbyPreviewPage.premiumAnalytics`, the documented load-timing flake, which fails *different* tests on each tree (branch-only 2, base-only 3, plus one shared).
+
+**`useOwnerAuth` / dev admin workaround — checked.** Assembly's `E2E_ENSURE_AUTHORIZED` (one stable function) is the exact fix for the render loop I had diagnosed, so my earlier "not verified in a browser" caveat is **closed**:
+the rig's `--launch admin` now does the owner's real click-through in a real browser. Nothing in this branch worked around it.
+
+**Real-browser, real-backend runs on the merged stack (Scrub).** Admin → Leaguecraft → Ranked → Playtests (the panel list shows Journeys, Order Forge, Reconstruct, Match Grid, Pro Play Assembly **and** Chronoscope) → *Play Chronoscope*;
+the button's POST is `{"match_with_bot":true,"preset":"admin.scrub",…}`; then three rounds:
+
+| run | viewport / mode | plan | result |
+|---|---|---|---|
+| admin click | 1366×768 | perfect · wrong · **timeout** | server verdicts == UI; review `correct / incorrect / timeout`; axe **0 violations, 21 passes** |
+| admin click | 390×844 touch | wrong · perfect · **timeout** | same; review `incorrect / correct / timeout` |
+| admin click | 360×640 touch | wrong · perfect · **timeout** | same |
+| admin click | 1280×720 **reduced motion**, reload after round 2's lock | perfect · wrong · wrong | reload lands on round 3, answer-free, **0 extra Lock POSTs** |
+| api launch | 1600×900 | wrong · wrong · perfect | same |
+
+Across these 5 matches / 15 rounds: **0 reveal-only keys in 199 pre-lock bodies**; every Lock body exactly `{"checkpoint":…}`; **0.00 px** region movement and no horizontal overflow in every run;
+holds observed at 5400 (4000 + title), 4800 (3400 + title) and 7950 (+ Final Round warning), the reveal completing before the boundary; a **timeout** round settles `result:"timeout"`, the instrument goes inert
+(`data-input-closed`, Lock disabled) under the generic TIMED OUT stamp, and Review shows `outcome:"timeout"` with its proof. "Undo" does not exist in Scrub (a lock is final); refresh is covered above.
+
+**Cross-mode, real browser, merged stack.** *Assembly's own* `pro-play-assembly-pa3-live.spec.ts` (admin launch → perfect → wrong → timeout, Roster Lock and Draft Memory × desktop and mobile, with its pre-lock leak scan): **4/4 pass** (5.6 min).
+Mount smoke of **Match Grid, Reconstruct, Roster Lock and Scrub** through the real backend in the real arena: all four create (200), mount and reach `data-phase="open"`, 0 page errors (screenshots 16-18). Backend HTTP matrix (all six admin presets × anonymous/non-owner/owner + pre-reveal scan) is in the backend handoff.
+Scrub browser specs re-run **on the merged build**: `ranked-scrub-continuity` **12/12**, `ranked-scrub-objective-fit` **10/10**.
+**What I could NOT run, honestly:** Match Grid's and Reconstruct's own live specs need harness oracle scripts that are not in the repo (rebuilding them is out of scope), so those two are covered by the mount smoke, the backend suites (identical to base), the vitest suites and the HTTP matrix — not by a played three-round browser run. The replay-route Playwright set I selected (162 cases: Match Grid ×2 specs, Assembly continuity, Reconstruct ×3, results, outro, statcheck) gives **81 passed / 69 failed / 12 skipped on BOTH the branch and clean `main`, with the same failing IDs** (all of `match-grid-continuity` 13, `pro-play-assembly-continuity` 26, `ranked-result-fit` 30: the lab/probe page renders blank in this sandbox, which cannot reach external hosts), so it is not a usable signal here. The 526 generic `ranked-arena-fit` / `visual-continuity` cases contain no module code and were not run.
+**Release-gate suggestion:** owner plays Match Grid and Reconstruct once each after deploy.
+
+**Residuals carried (owner decisions):** compact-tier objective wrap at a ~480 px module (e.g. 1024×650); timed-out lock shows the generic stamp over an inert instrument with no on-screen proof (proof in Review).
+**Content authority:** the instrument prints `PATCH 26.15` in its eyebrow; the backend pins 26.15 with a test; nothing claims it is the current game patch (see the backend handoff).
+
 
 ## Scope
 Only the Chronoscope as module `scrub.v1`, reachable only through **Admin → Leaguecraft → Ranked → Playtests → Chronoscope → Play
@@ -95,7 +143,7 @@ After the pin fix the deterministic branch failures equal the baseline's. `Playt
 **Types/lint:** `tsc -p tsconfig.app.json` shows only the two pre-existing errors on clean main (`OnboardingProfile.tsx`, `identity/connections.ts`).
 
 ## Evidence
-`docs/audits/scrub-s3/` — 13 JPEGs from the real-backend runs (before/after the objective fix, desktop, tall, compact, phone, small
+`docs/audits/scrub-s3/` — 19 JPEGs (13-18 are from the merged stack: admin panels incl. Assembly, timeout hold, Match Grid / Reconstruct / Roster Lock mounts) from the real-backend runs (before/after the objective fix, desktop, tall, compact, phone, small
 phone, reduced motion). Raw per-run JSON and per-frame samples are in the session scratchpad, not committed.
 
 ## Rollback
