@@ -104,6 +104,7 @@ import {
 } from "@/lib/ranked-public/roleRecords";
 import RoleQueueRecord from "@/components/quiz/lobby-queue-context/RoleQueueRecord";
 import RoleChallengePicker from "@/components/quiz/RoleChallengePicker";
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import RoleChampionKnowledge from "@/components/quiz/lobby-queue-context/RoleChampionKnowledge";
 import AcademyAnalyticsCarousel, {
   RESERVED_BOX,
@@ -248,6 +249,7 @@ export default function RankedLobbyHero({
   demoAnalyticsRoleDimension,
   guide = null,
   onPlayDailyChallenge,
+  dailyChallenge = null,
   onEnterRoleChallenge,
   hasAccount = false,
   onRequireAccount,
@@ -256,6 +258,7 @@ export default function RankedLobbyHero({
   ranked: RankedState;
   onPlayRanked: () => void;
   onPlayDailyChallenge?: () => void;
+  dailyChallenge?: DailyStatusView | null;
   onEnterRoleChallenge?: (matchId: string) => void;
   hasAccount?: boolean;
   onRequireAccount?: () => void;
@@ -543,9 +546,19 @@ export default function RankedLobbyHero({
         {selectedMode === "daily" ? (
           <div role="tabpanel" className="w-full space-y-3 py-8 text-center" data-testid="daily-mode-panel">
             <h2 className="text-xl font-extrabold text-amber-950">Today's Challenge</h2>
-            <p className="text-sm text-amber-950">A fresh League knowledge challenge every day.</p>
+            <p className="text-sm text-amber-950" data-testid="daily-mode-status">
+              {dailyChallenge?.known && dailyChallenge.completed
+                ? dailyChallenge.optionalOpen ? "Standard complete · More Challenges or Review available." : "Today's Standard challenge is complete."
+                : dailyChallenge?.known && dailyChallenge.resumable
+                ? "You have an unfinished Daily Challenge."
+                : "A fresh League knowledge challenge every day."}
+            </p>
             <button type="button" onClick={onPlayDailyChallenge} disabled={!onPlayDailyChallenge}
-              className="rounded-lg bg-amber-900 px-6 py-3 font-black uppercase text-amber-50 disabled:opacity-50">Play Daily</button>
+              className="rounded-lg bg-amber-900 px-6 py-3 font-black uppercase text-amber-50 disabled:opacity-50">
+              {dailyChallenge?.known && dailyChallenge.completed
+                ? dailyChallenge.optionalOpen ? "Continue / Review" : "View Today's Results"
+                : dailyChallenge?.known && dailyChallenge.resumable ? "Continue Daily" : "Play Daily"}
+            </button>
           </div>
         ) : selectedMode === "role" ? (
           <div role="tabpanel" className="w-full" data-testid="role-mode-panel">
