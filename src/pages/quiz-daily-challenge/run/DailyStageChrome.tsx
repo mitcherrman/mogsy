@@ -19,7 +19,7 @@ import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow"
 import type { DailyRun, DailyStage, DailyStrikes, DailyTimeBank } from "@/lib/daily-challenge/run/contracts";
 import { hasMainDaily, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
 import { stagePositionLabel } from "@/lib/daily-challenge/run/stageResultModel";
-import { stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
+import { stageContentLine, stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 import { formatBank, projectTimeBank } from "@/lib/daily-challenge/run/timeBank";
 import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { StageTag } from "./StageTag";
@@ -176,7 +176,7 @@ export function DailyStageChrome({
               {hasMainDaily(run) ? stagePositionLabel(run, stage) : `Stage ${stage.index + 1} of ${run.stages.length}`}
             </span>
             <StageTag stage={stage} size="compact" />
-            {content && (
+            {content && content.trim().toLowerCase() !== stageIdentity(stage).label.toLowerCase() && (
               <span data-testid="daily-stage-content"
                 className="sr-only lg:not-sr-only lg:max-w-32 lg:truncate lg:text-xs lg:text-[var(--ranked-muted,#a8a29e)]">
                 {content}
