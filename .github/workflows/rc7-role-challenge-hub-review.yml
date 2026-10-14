@@ -30,7 +30,7 @@ jobs:
       - name: Install diagnostic dependencies (pre-existing lockfile drift)
         run: npm install --package-lock=false --no-save --no-audit --no-fund
       - name: Role Challenge and arena origin tests
-        run: npx vitest run src/lib/role-challenge/contracts.test.ts src/pages/quiz-ranked/matchOrigin.roleChallenge.test.ts src/lib/ranked-public/matchHost.test.ts
+        run: npx vitest run src/lib/role-challenge/contracts.test.ts src/pages/quiz-ranked/matchOrigin.roleChallenge.test.ts src/lib/ranked-public/matchHost.test.ts src/components/quiz/RankedLobbyHero.test.tsx
       - name: TypeScript audit (pre-existing global errors retained)
         run: |
           set +e
