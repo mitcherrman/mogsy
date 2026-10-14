@@ -42,6 +42,18 @@ function role(value: unknown, at: string): RoleChallengeRole {
 function literal(value: unknown, expected: string, at: string): void {
   if (value !== expected) fail(at, "must be " + expected);
 }
+function slotKind(value: unknown, at: string): RoleChallengeSlot {
+  if (value === "daily" || value === "premium") return value;
+  return fail(at, "must be daily or premium");
+}
+function matchStatus(value: unknown, at: string): "active" | "complete" | null {
+  if (value === "active" || value === "complete" || value === null) return value;
+  return fail(at, "must be active, complete, or null");
+}
+function startResult(value: unknown, at: string): "created" | "existing" {
+  if (value === "created" || value === "existing") return value;
+  return fail(at, "must be created or existing");
+}
 function twelve(value: unknown, at: string): 12 {
   if (nonnegative(value, at) !== 12) fail(at, "must equal 12");
   return 12;
@@ -100,6 +112,7 @@ export function readRoleChallengeCatalog(wire: unknown): RoleChallengeCatalog {
   });
   if (seenRoles.size !== ROLES.length) fail("catalog", "must include all five roles");
   const first = new Set(roles[0].champions.map(c => c.id));
+  if (first.size === 0) fail("catalog", "cannot have an empty champion roster");
   for (const row of roles.slice(1)) {
     if (row.champions.length !== first.size || row.champions.some(c => !first.has(c.id))) {
       fail("catalog", "must offer every champion in every role");
@@ -131,22 +144,20 @@ export interface RoleChallengeRun {
 function parseRun(value: unknown, at: string): RoleChallengeRun {
   const r = obj(value, at);
   literal(r.host, "role_challenge", at + ".host");
-  if (r.slot_kind !== "daily" && r.slot_kind !== "premium") fail(at, "has invalid slot kind");
-  if (r.match_status !== "active" && r.match_status !== "complete" && r.match_status !== null) {
-    fail(at, "has invalid match status");
-  }
+  const kind = slotKind(r.slot_kind, at + ".slot_kind");
+  const status = matchStatus(r.match_status, at + ".match_status");
   return {
     runId: str(r.run_id, at + ".run_id"),
     matchId: str(r.match_id, at + ".match_id"),
     challengeDate: str(r.challenge_date, at + ".challenge_date"),
-    slotKind: r.slot_kind,
+    slotKind: kind,
     role: role(r.role, at + ".role"),
     champion: str(r.champion, at + ".champion"),
     championName: str(r.champion_name, at + ".champion_name"),
     answerCount: twelve(r.answer_count, at + ".answer_count"),
     composerVersion: str(r.composer_version, at + ".composer_version"),
     createdAt: str(r.created_at, at + ".created_at"),
-    matchStatus: r.match_status,
+    matchStatus: status,
     outline: array(r.outline, at + ".outline").map((v, i) => obj(v, at + ".outline[" + i + "]")),
   };
 }
@@ -168,10 +179,8 @@ export function readRoleChallengeStatus(wire: unknown): RoleChallengeStatus {
   const next = obj(r.next_start, "status.next_start");
   const used = bool(daily.used, "status.daily_slot.used");
   if ((daily.run !== null) !== used) fail("status.daily_slot", "has conflicting used/run data");
-  const slot = next.slot_kind;
-  if (slot !== "daily" && slot !== "premium" && slot !== null) fail("status.next_start", "has invalid slot");
-  const allowed = next.allowed;
-  if (allowed !== null && typeof allowed !== "boolean") fail("status.next_start", "has invalid allowed flag");
+  const slot = next.slot_kind === null ? null : slotKind(next.slot_kind, "status.next_start.slot_kind");
+  const allowed = next.allowed === null ? null : bool(next.allowed, "status.next_start.allowed");
   return {
     serverNow: str(r.server_now, "status.server_now"),
     challengeDate: str(r.challenge_date, "status.challenge_date"),
@@ -197,12 +206,12 @@ export function readRoleChallengeStart(wire: unknown): RoleChallengeStart {
   const r = obj(wire, "start");
   const rc = obj(r.role_challenge, "start.role_challenge");
   literal(rc.schema_version, "role_challenge_start.v1", "start.role_challenge.schema_version");
-  if (rc.result !== "created" && rc.result !== "existing") fail("start", "has invalid result");
+  const result = startResult(rc.result, "start.role_challenge.result");
   const item = parseRun(rc.run, "start.role_challenge.run");
   literal(r.projection_type, "queue_status", "start.projection_type");
   const payload = obj(r.payload, "start.payload");
   literal(payload.status, "matched", "start.payload.status");
   const matchId = str(payload.match_id, "start.payload.match_id");
   if (matchId !== item.matchId) fail("start", "disagrees on match id");
-  return { result: rc.result, run: item, matchId };
+  return { result, run: item, matchId };
 }
