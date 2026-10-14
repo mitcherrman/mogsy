@@ -212,4 +212,4 @@ Not exercised against real data, because no Worlds match has started yet: the li
 - **Gate.** Works with UX3A OFF and ON (§7). Enabling the experience changes only the event link's target.
 - **After 15 Oct.** When Worlds becomes Featured, the `worlds-2026` read is the pill's cache entry, so a Worlds `?next=` costs no extra request. The `dcgi-2026` read happens only for an unresolved link.
 - **Merge.** `ProPlayHub.tsx` and `MatchCenter.tsx` were not modified by UX3A, so no conflict is expected with `main` at `9fb89ac3`. Merge, don't rebase, to keep the baseline SHA meaningful.
-- **Tests depending on the old wording.** Any test or tool that matched `data-testid="next-gone"` or `data-reason="gone"` must use `next-unresolved` with `data-reason="unverified"`. None remain in the repo.
+- **Tests depending on the old wording.** Any test or tool that matched `data-testid="next-gone"` or `data-reason="gone"` must use `next-unresolved` with `data-reason="unverified"`. Only two vacuous negative checks (`queryByTestId("next-gone")).toBeNull()`, PW1-A / PW1-C) remain; they still pass and can be dropped.
