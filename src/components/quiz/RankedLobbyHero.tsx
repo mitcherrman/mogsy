@@ -103,6 +103,8 @@ import {
   type RoleMastery,
 } from "@/lib/ranked-public/roleRecords";
 import RoleQueueRecord from "@/components/quiz/lobby-queue-context/RoleQueueRecord";
+import RoleChallengePicker from "@/components/quiz/RoleChallengePicker";
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import RoleChampionKnowledge from "@/components/quiz/lobby-queue-context/RoleChampionKnowledge";
 import AcademyAnalyticsCarousel, {
   RESERVED_BOX,
@@ -246,10 +248,20 @@ export default function RankedLobbyHero({
   analyticsSource,
   demoAnalyticsRoleDimension,
   guide = null,
+  onPlayDailyChallenge,
+  dailyChallenge = null,
+  onEnterRoleChallenge,
+  hasAccount = false,
+  onRequireAccount,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
   onPlayRanked: () => void;
+  onPlayDailyChallenge?: () => void;
+  dailyChallenge?: DailyStatusView | null;
+  onEnterRoleChallenge?: (matchId: string) => void;
+  hasAccount?: boolean;
+  onRequireAccount?: () => void;
   rankedAvailable?: boolean;
   /** PLAY1: the seal's own node, so a closing match-entry record can put
    *  focus back where it came from. */
@@ -340,6 +352,7 @@ export default function RankedLobbyHero({
 
   // ── Role mastery, derived from the same real rows the centre lists ─────
   const roleMastery = tallyRoleMastery(matchHistory);
+  const [selectedMode, setSelectedMode] = useState<"daily" | "role" | "ranked">("daily");
   // The role the STAGE is pointing at, which is not necessarily the account's
   // saved role: a reader spinning the ring expects the ledger under it to
   // follow their eye. Seeded from the saved role, then owned by the stage.
@@ -521,6 +534,40 @@ export default function RankedLobbyHero({
             gives it display size and — deliberately — no rule at all, so it
             reads as the title OF the selection below it rather than as a
             caption with a widget underneath. See `ColumnHeading`. */}
+        <div className="grid w-full grid-cols-3 gap-1.5" role="tablist" aria-label="Choose challenge mode" data-testid="challenge-mode-switcher">
+          {(["daily", "role", "ranked"] as const).map((id) => (
+            <button key={id} type="button" role="tab" aria-selected={selectedMode === id}
+              onClick={() => setSelectedMode(id)}
+              className={selectedMode === id ? "rounded border border-amber-800 bg-amber-100 p-2 text-xs font-bold text-amber-950" : "rounded border border-amber-900/30 p-2 text-xs font-bold text-amber-950"}>
+              {id === "daily" ? "Daily Challenge" : id === "role" ? "Role Challenge" : "Ranked"}
+            </button>
+          ))}
+        </div>
+        {selectedMode === "daily" ? (
+          <div role="tabpanel" className="w-full space-y-3 py-8 text-center" data-testid="daily-mode-panel">
+            <h2 className="text-xl font-extrabold text-amber-950">Today's Challenge</h2>
+            <p className="text-sm text-amber-950" data-testid="daily-mode-status">
+              {dailyChallenge?.known && dailyChallenge.completed
+                ? dailyChallenge.optionalOpen ? "Standard complete · More Challenges or Review available." : "Today's Standard challenge is complete."
+                : dailyChallenge?.known && dailyChallenge.resumable
+                ? "You have an unfinished Daily Challenge."
+                : "A fresh League knowledge challenge every day."}
+            </p>
+            <button type="button" onClick={onPlayDailyChallenge} disabled={!onPlayDailyChallenge}
+              className="rounded-lg bg-amber-900 px-6 py-3 font-black uppercase text-amber-50 disabled:opacity-50">
+              {dailyChallenge?.known && dailyChallenge.completed
+                ? dailyChallenge.optionalOpen ? "Continue / Review" : "View Today's Results"
+                : dailyChallenge?.known && dailyChallenge.resumable ? "Continue Daily" : "Play Daily"}
+            </button>
+          </div>
+        ) : selectedMode === "role" ? (
+          <div role="tabpanel" className="w-full" data-testid="role-mode-panel">
+            <RoleChallengePicker enabled hasAccount={hasAccount}
+              onRequireAccount={onRequireAccount ?? (() => {})}
+              onEnterMatch={onEnterRoleChallenge ?? (() => {})} />
+          </div>
+        ) : (
+          <>
         <ColumnHeading ceremonial>Choose your role</ColumnHeading>
         <RankedClassCarousel
           /* Sits directly under the title with no divider between them: the
@@ -580,6 +627,8 @@ export default function RankedLobbyHero({
             <RoleChampionKnowledge role={browsedRole} result={championKnowledge(browsedRole)} />
           </div>
         </div>
+          </>
+        )}
         </LobbyPanel>
       </motion.div>
 

@@ -1,0 +1,50 @@
+name: rc7-role-challenge-hub-review
+
+on:
+  pull_request:
+    paths:
+      - "src/components/quiz/RoleChallengePicker.tsx"
+      - "src/components/quiz/RankedLobbyHero.tsx"
+      - "src/components/quiz/LeaguecraftHub.tsx"
+      - "src/pages/Quiz.tsx"
+      - "src/lib/ranked-public/matchHost.ts"
+      - "src/pages/quiz-ranked/matchOrigin*"
+      - ".github/workflows/rc7-role-challenge-hub-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc7-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install diagnostic dependencies (pre-existing lockfile drift)
+        run: npm install --package-lock=false --no-save --no-audit --no-fund
+      - name: Role Challenge and arena origin tests
+        run: npx vitest run src/lib/role-challenge/contracts.test.ts src/pages/quiz-ranked/matchOrigin.roleChallenge.test.ts src/lib/ranked-public/matchHost.test.ts src/components/quiz/RankedLobbyHero.test.tsx
+      - name: TypeScript audit (pre-existing global errors retained)
+        run: |
+          set +e
+          npx tsc --project tsconfig.app.json --noEmit --pretty false > rc7-tsc.log 2>&1
+          code=$?
+          cat rc7-tsc.log
+          if grep -E '^src/(components/quiz/RoleChallengePicker|components/quiz/RankedLobbyHero|components/quiz/LeaguecraftHub|pages/Quiz|pages/quiz-ranked/matchOrigin|lib/role-challenge|lib/ranked-public/matchHost)\.tsx?\([0-9]+,[0-9]+\): error TS' rc7-tsc.log; then
+            echo 'RC7 touched files contain TypeScript errors'
+            exit 1
+          fi
+          if [ "$code" -eq 0 ]; then
+            echo 'Entire frontend typecheck passed'
+          else
+            echo 'Entire frontend typecheck still fails outside RC7 scope; not release green'
+          fi
+      - name: Verify no tracked code mutations
+        run: test -z "$(git status --porcelain --untracked-files=no)"
