@@ -189,6 +189,8 @@ export function questionIconLabel(
             ? "Reconstruct"
             : round.kind === "match"
               ? "Match Grid"
+            : round.kind === "assembly"
+              ? (round.assembly?.family === "draft_memory" ? "Draft Memory" : "Roster Lock")
               : resolveQuestionIcon(round.iconHint).label;
   const outcome = questionOutcome(round);
   const state =
@@ -231,6 +233,11 @@ export function questionOutcome(round: ReviewRound): QuestionOutcome {
   if (round.match) {
     // MG-P3 - the backend's word for the board.
     const o = round.match.outcome;
+    return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
+  }
+  if (round.assembly) {
+    // Likewise the backend's word for the board.
+    const o = round.assembly.outcome;
     return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
   }
   const sub = round.viewerSubmission;
