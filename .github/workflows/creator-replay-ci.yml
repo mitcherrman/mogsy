@@ -5,6 +5,7 @@ on:
     paths:
       - "src/pages/admin/CreatorReplayPage.tsx"
       - "src/pages/admin/CreatorReplayPage.test.tsx"
+      - "src/pages/admin/CreatorReplayRunPage.test.tsx"
       - "src/pages/admin/CreatorReplayRunPage.tsx"
       - "src/App.tsx"
       - "src/lib/admin/admin-registry.ts"
@@ -32,6 +33,6 @@ jobs:
       - name: Install dependency graph without changing the repository lockfile
         run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
       - name: Creator Replay frontend tests
-        run: npx vitest run src/pages/admin/CreatorReplayPage.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.test.tsx
+        run: npx vitest run src/pages/admin/CreatorReplayPage.test.tsx src/pages/admin/CreatorReplayRunPage.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.test.tsx
       - name: TypeScript contract check
         run: npx tsc --noEmit -p tsconfig.app.json
