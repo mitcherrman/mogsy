@@ -612,6 +612,7 @@ export default function LeaguecraftHub({
           ranked={ranked}
           onPlayRanked={openPlay}
           onPlayDailyChallenge={onPlayDailyChallenge}
+          dailyChallenge={dailyChallenge}
           onEnterRoleChallenge={onEnterRoleChallenge}
           hasAccount={hasAccount}
           onRequireAccount={onRequireAccount}
