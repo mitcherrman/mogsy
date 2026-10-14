@@ -75,3 +75,40 @@ entry only after the live API check, using the owning navigation surface.
 
 Remove the `/lol/stats` route, prefetch entry, page, client, and tests. No user
 or production data changes are involved.
+
+## Browser acceptance (2026-10-13)
+
+The original review head `9539bd844b1b70548be607c0273abd4014c26140` was
+tested against schema-version-1 production-shaped responses. Acceptance found
+one product-spec defect: the six-mode ledger described above was absent, and
+mode counts disappeared after applying a filter because filtered responses
+correctly zero non-selected mode rows. The scoped correction commit is
+`ee93982a8171059966086d4735ec4c690386f26b`.
+
+The correction keeps an unfiltered five-minute-cached query as the authority
+for mode navigation and the ledger while the selected-mode query owns the
+overview and entity results. It also updates the TypeScript response contract
+for the backend's additive demo/global-exclusion diagnostics. No route,
+navigation promotion, gameplay surface, API origin, or archive ownership was
+changed.
+
+Acceptance results:
+
+- desktop 1440×1000 and mobile 390×844: pass, with no document-level
+  horizontal overflow;
+- all six mode cards: pass, including available-empty Time Trial and
+  unavailable Role Challenge;
+- loading skeleton, 503 error/retry, empty-mode, entity-filter empty state,
+  minimum-sample disclosure, and unavailable-source explanation: pass;
+- champion `/lol/docs/champions/dr-mundo` and item
+  `/items/rabadons-deathcap` links: pass; rune/spell non-links: pass;
+- scoped Vitest: 5 passed; scoped ESLint: clean; Vite production build: pass;
+- repository-wide typecheck remains blocked by two unrelated pre-existing
+  Supabase generated-type errors in `OnboardingProfile.tsx` and
+  `identity/connections.ts`; neither file overlaps this candidate.
+
+Frontend `main` advanced to `4b13c042ef88bff0f3d261b69a3277ecf4ffc2e6`
+after the original candidate. A Git merge-tree check completed cleanly, with
+only an automatic `src/App.tsx` merge. The intervening Match Grid and HUB work
+does not invalidate the stats route or API client. Reconcile onto current main
+at integration time, after the backend endpoint is live.
