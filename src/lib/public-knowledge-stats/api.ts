@@ -66,6 +66,7 @@ export interface KnowledgeStatsResponse {
   coverage: {
     unsupported_answers_by_family: Record<string, number>;
     excluded_bot_records: number;
+    excluded_demo_records: number;
     excluded_non_public_records: number;
     recorded_timeouts_excluded_from_accuracy: number;
     duplicate_records: number;
@@ -75,12 +76,19 @@ export interface KnowledgeStatsResponse {
       reason: string;
       answer_records?: number;
     }>;
+    global_exclusions: {
+      excluded_bot_records: number;
+      excluded_demo_records: number;
+      excluded_non_public_records: number;
+      note: string;
+    };
   };
   methodology: {
     minimum_sample: number;
     ranking_rule: string;
     timeout_rule: string;
     bot_rule: string;
+    demo_rule: string;
     identity_rule: string;
   };
 }

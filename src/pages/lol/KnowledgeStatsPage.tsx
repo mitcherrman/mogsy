@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   KNOWLEDGE_STATS_PATH,
   type EntityType,
+  type ModeSummary,
   type KnowledgeStatsMode,
   useKnowledgeStats,
 } from "@/lib/public-knowledge-stats/api";
@@ -82,6 +83,35 @@ function LoadingBoard() {
   );
 }
 
+export function ModeLedger({ modes }: { modes: ModeSummary[] }) {
+  return (
+    <section className="mt-6" aria-labelledby="mode-ledger-heading">
+      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d5b85a]">All surfaces</div>
+      <h2 id="mode-ledger-heading" className="mt-1 text-xl font-black text-white">Mode ledger</h2>
+      <p className="mt-1 text-xs text-slate-400">Every mode stays visible, including empty and unavailable sources.</p>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {modes.map((row) => (
+          <div key={row.mode} className="rounded-xl border border-white/10 bg-[#0b1324]/80 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{MODE_LABEL[row.mode]}</div>
+            {row.available ? (
+              <>
+                <div className="mt-2 text-xl font-black tabular-nums text-white">{number(row.answers)}</div>
+                <div className="mt-0.5 text-[11px] text-slate-400">{percent(row.accuracy)} accuracy</div>
+                <div className="mt-1 text-[10px] text-slate-500">{number(row.recorded_timeouts)} timeouts</div>
+              </>
+            ) : (
+              <>
+                <div className="mt-2 text-xs font-bold text-amber-300">Unavailable</div>
+                <div className="mt-1 text-[10px] leading-4 text-slate-500">No authoritative ledger</div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function KnowledgeStatsPage() {
   const [params, setParams] = useSearchParams();
   const requestedMode = params.get("mode") as KnowledgeStatsMode | null;
@@ -89,6 +119,8 @@ export default function KnowledgeStatsPage() {
   const [entityType, setEntityType] = useState<EntityType | "all">("all");
   const [query, setQuery] = useState("");
   const stats = useKnowledgeStats(mode);
+  const allModes = useKnowledgeStats(null);
+  const modeAuthority = allModes.data ?? (mode === null ? stats.data : undefined);
 
   const entities = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -146,7 +178,7 @@ export default function KnowledgeStatsPage() {
               mode === null ? "border-[#d5b85a]/60 bg-[#d5b85a]/15 text-[#f3dc8c]" : "border-white/10 bg-white/5 text-slate-400 hover:border-white/20",
             )}>All modes</button>
             {(Object.keys(MODE_LABEL) as KnowledgeStatsMode[]).map((id) => {
-              const row = stats.data?.modes.find((entry) => entry.mode === id);
+              const row = modeAuthority?.modes.find((entry) => entry.mode === id);
               return (
                 <button key={id} onClick={() => setMode(id)} disabled={row?.available === false}
                   title={row?.available === false ? "No authoritative ledger is deployed yet" : undefined}
@@ -186,6 +218,8 @@ export default function KnowledgeStatsPage() {
                 <p className="mt-1 text-sm text-slate-400">The page will fill itself from authoritative answers as people play.</p>
               </section>
             ) : null}
+
+            {modeAuthority ? <ModeLedger modes={modeAuthority.modes} /> : null}
 
             <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
               <div className="min-w-0">
