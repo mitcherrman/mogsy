@@ -25,7 +25,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      # The existing repository lockfile is out of sync with package.json.
+      # Resolve dependencies ephemerally for this branch-only acceptance run.
+      # Do not alter package.json or package-lock.json.
+      - run: npm install --no-save --package-lock=false --no-audit --no-fund
       - name: Daily unit and navigation tests
         run: npm test -- src/pages/quiz-daily-challenge/run/DailyStageChrome.compact.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.navigation.test.tsx src/pages/quiz-daily-challenge/run/dailyV2P2C.opening.test.tsx src/pages/quiz-daily-challenge/run/dailyV2P2A.hierarchy.test.tsx
       - name: Chromium installation
