@@ -14,7 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import {
-  MATCH_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID,
+  ASSEMBLY_MODULE_ID, MATCH_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID,
   type MasteryChallengeReveal, type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 
@@ -26,24 +26,27 @@ import {
  * SCRUB-S2: the Chronoscope's one checkpoint lock shares it too.
  */
 export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, SCRUB_MODULE_ID]);
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, ASSEMBLY_MODULE_ID, SCRUB_MODULE_ID]);
 
 /**
  * MG-P3.1 / RANKED-INT1 / RECONSTRUCT-R3B / SCRUB-S3 — the modules whose in-board
  * reveal plays IN the result beat and whose backend declares `settlement_hold_ms`:
  * the server spaces the next round by the module's own hold, so the client's
  * reveal hold follows the server's boundary instead of the generic beat.
- * Reconstruct (4000 wrong / 3400 exact), Match Grid (4500 wrong / 3000 exact)
- * and Scrub (4000 wrong / 3400 exact). Every other module keeps the fixed beats.
+ * Reconstruct (4000 wrong / 3400 exact) and, with MATCH-GRID-LIVE, Match Grid
+ * (4500 wrong / 3000 exact); with ASSEMBLY-PA3, Assembly (4400 wrong /
+ * 3600 exact); with SCRUB-S3, Scrub (4000 wrong / 3400 exact). Every other
+ * module keeps the fixed beats.
  */
 export const SERVER_PACED_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, SCRUB_MODULE_ID]);
+  RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, ASSEMBLY_MODULE_ID, SCRUB_MODULE_ID]);
 
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
     : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct
     : moduleId === MATCH_MODULE_ID ? !!reveal.match
-      : moduleId === SCRUB_MODULE_ID ? !!reveal.scrub : false;
+    : moduleId === ASSEMBLY_MODULE_ID ? !!reveal.assembly
+    : moduleId === SCRUB_MODULE_ID ? !!reveal.scrub : false;
 }
 
 export interface OrderForgeLockRevealRef {

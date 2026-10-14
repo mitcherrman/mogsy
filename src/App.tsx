@@ -266,6 +266,11 @@ const WorldsExperienceDev = import.meta.env.DEV
 const MatchGridLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
   : null;
+// PAV1: the Pro Play Assembly (Roster Lock / Draft Memory) playtest lab. Same
+// DEVELOPMENT-ONLY rule: frozen PA1 content, a stand-in grader, no API.
+const ProPlayAssemblyLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/pro-play-assembly/ProPlayAssemblyLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -681,6 +686,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
+                  ) : null}
+                  {ProPlayAssemblyLab ? (
+                    <Route path="/dev/pro-play-assembly" element={<Suspense fallback={<RouteFallback />}><ProPlayAssemblyLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

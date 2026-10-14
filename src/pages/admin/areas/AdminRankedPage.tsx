@@ -62,6 +62,7 @@ import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJour
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 import { ReconstructLaunch } from "@/pages/admin/ranked/ReconstructLaunch";
 import { MatchGridLaunch } from "@/pages/admin/ranked/MatchGridLaunch";
+import { DraftMemoryLaunch, RosterLockLaunch } from "@/pages/admin/ranked/AssemblyLaunch";
 import { ScrubLaunch } from "@/pages/admin/ranked/ScrubLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
@@ -346,6 +347,16 @@ export default function AdminRankedPage() {
                 testId="ranked-match-grid"
               >
                 <MatchGridLaunch />
+              </AdminPanel>
+              <AdminPanel
+                title="Pro Play Assembly"
+                description="Owner playtest of Roster Lock and Draft Memory (seat five historical Worlds players or champions by position), played through the normal Ranked Bot shell. Unrated; admin-only on the server."
+                testId="ranked-assembly"
+              >
+                <div className="space-y-3">
+                  <RosterLockLaunch />
+                  <DraftMemoryLaunch />
+                </div>
               </AdminPanel>
               <AdminPanel
                 title="Chronoscope"

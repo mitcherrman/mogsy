@@ -45,6 +45,7 @@ import { flattenMediaEntityIcons } from "@/components/quiz-broadcast/scenario-ca
 import type { ScenarioSelection } from "@/components/quiz-broadcast/scenario-cards/types";
 import { ROLE_EMBLEM_SRC } from "@/components/ranked-arena/RoleEmblem";
 import { getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
+import { getChampionSquareIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { resolveBandProfile } from "@/lib/question-surface/bandProfile";
 import { resolveCompactDensity } from "@/lib/question-surface/compactDensity";
 import { selectFamilyLayout } from "@/lib/question-surface/familyLayout";
@@ -260,6 +261,13 @@ export function rankedRoundMedia(
   } else if (block?.contract === "match") {
     // MG-P3: every dealt sigil's art, resolved exactly as the renderer does.
     for (const e of block.entities) critical.add(resolveQuizAssetUrl(e.media?.src));
+  } else if (block?.contract === "assembly") {
+    // PA2B: Draft Memory's champion icons and the five lane emblems, resolved
+    // exactly as the adapter resolves them. Roster Lock cards are seals (no art).
+    for (const c of block.cards) {
+      if (c.entityType === "champion") critical.add(getChampionSquareIconUrl(c.mediaKey));
+    }
+    for (const p of block.positions) critical.add(ROLE_EMBLEM_SRC[p.slotId]);
   } else if (block?.contract === "mastery_slice") {
     for (const ch of block.challenges) {
       if (renderPathFor(ch) === "prose") {
