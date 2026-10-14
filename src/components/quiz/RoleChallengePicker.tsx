@@ -50,6 +50,11 @@ import { usePremiumSession } from "@/hooks/usePremiumSession";
 
 const INK = LEAGUECRAFT_INK;
 const PREMIUM_HREF = "/lol/premium";
+/** Phone labels: the abbreviations League players use (and the Academy
+ *  Record's role filter prints). The accessible name stays the full role. */
+const ROLE_SHORT: Record<RoleChallengeRole, string> = {
+  top: "Top", jungle: "Jng", mid: "Mid", adc: "ADC", support: "Sup",
+};
 
 type Props = {
   enabled: boolean;
@@ -319,6 +324,7 @@ export default function RoleChallengePicker({
               type="button"
               role="radio"
               aria-checked={active}
+              aria-label={RANKED_ROLE_LABELS[id]}
               disabled={busy}
               onClick={() => choose(() => { setRole(id); setChampion(""); })}
               className="flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1.5 transition-colors disabled:opacity-60"
@@ -334,8 +340,12 @@ export default function RoleChallengePicker({
                 aria-hidden="true"
                 className="h-8 w-8 object-contain sm:h-9 sm:w-9"
               />
-              <span className="max-w-full truncate text-[9px] font-extrabold uppercase tracking-normal sm:text-[10.5px] sm:tracking-wide"
-                style={{ color: active ? INK.strong : INK.faint }}>
+              <span className="text-[10px] font-extrabold uppercase tracking-normal sm:hidden"
+                style={{ color: active ? INK.strong : INK.faint }} aria-hidden="true">
+                {ROLE_SHORT[id]}
+              </span>
+              <span className="hidden text-[10.5px] font-extrabold uppercase tracking-wide sm:inline"
+                style={{ color: active ? INK.strong : INK.faint }} aria-hidden="true">
                 {RANKED_ROLE_LABELS[id]}
               </span>
             </button>

@@ -206,6 +206,13 @@ try {
     const back = page.getByRole("button", { name: "Back to Role Challenge" });
     record("All 12 questions answered and the result screen offers Back to Role Challenge",
       answered >= 11 && await back.count() > 0, { answered, nodeStatesAfterResume: nodeStates.slice(0, 12), result: resultText.slice(0, 160) });
+    await page.getByRole("button", { name: "Review Match" }).first().click();
+    await page.waitForTimeout(1200);
+    const detailsOpen = await page.locator('[data-testid="result-details"]').evaluate((d) => d.open).catch(() => false);
+    const reviewEntries = await page.locator('[data-testid="result-details"] li, [data-testid="result-details"] [data-testid^="result-timeline"]').count();
+    await shot(page, "desktop-8b-review-in-place");
+    record("Review Match opens this match's question review in place (still on the result)",
+      detailsOpen && /\/quiz\/ranked/.test(page.url()), { detailsOpen, reviewEntries, url: page.url() });
     await back.first().click();
     await page.waitForURL(/\/quiz\?mode=role/, { timeout: 30000 });
     await page.waitForSelector('[data-testid="rc-champion-option"]', { timeout: 60000 });
