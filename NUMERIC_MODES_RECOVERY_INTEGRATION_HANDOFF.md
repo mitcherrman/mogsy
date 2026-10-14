@@ -79,6 +79,12 @@ Labels on screen:
   - The owner chunk `NumericLabPage-*.js` contains no answer value.
 - **Pre-existing observation, not introduced here:** MIG1's three Leaguecraft Stat Drop evidence sentences also appear in `olaf.standard-*.js` and `zed.standard-*.js`. `main` already emits those from `src/lib/journey/__fixtures__/j3/*.json`. The owner chunk does not import them.
 
+**What this does NOT protect (Command Center review, 2026-10-14).**
+- `mogsy` is a **public** repository. Its source holds every historical value: CE1's capture JSON, MIG1's fixture sources and `e2e/fixtures/numeric-lab/*.json`.
+- These values are therefore **not secret**. The checks above prove only that the production JS bundle does not ship them, and that the live rounds reach a browser only through the owner-gated backend.
+- **The backend route protection (`require_admin` + `NUMERIC_LAB_ENABLED`) is the operational gate.**
+- Nothing here supports an "answer-secret" claim for any future competitive use. Competitive content needs fresh, server-held data and its own assessment.
+
 ## 4. Owner feedback (exact vs tolerance, input experience)
 
 - **No pass mark.** The lab shows none and evaluates no candidate policy; this keeps the owner's call blind, as CEG1 §10 requires.
