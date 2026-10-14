@@ -72,7 +72,6 @@ function MetricCard({ label, value, detail, icon: Icon }: {
     </div>
   );
 }
-
 function LoadingBoard() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading statistics">
@@ -272,4 +271,3 @@ export default function KnowledgeStatsPage() {
     </div>
   );
 }
-
