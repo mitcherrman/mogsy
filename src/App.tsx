@@ -270,6 +270,10 @@ const MatchGridLab = import.meta.env.DEV
 const RangefinderLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/rangefinder/RangefinderLab"))
   : null;
+// WP1: the Word Puzzle (Glyph Press) playtest lab. Same DEVELOPMENT-ONLY rule.
+const WordPuzzleLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -688,6 +692,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {RangefinderLab ? (
                     <Route path="/dev/rangefinder" element={<Suspense fallback={<RouteFallback />}><RangefinderLab /></Suspense>} />
+                  ) : null}
+                  {WordPuzzleLab ? (
+                    <Route path="/dev/word-puzzle" element={<Suspense fallback={<RouteFallback />}><WordPuzzleLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

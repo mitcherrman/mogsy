@@ -119,7 +119,9 @@ export default function Layout() {
     // GM-M1 — the Match Grid lab brings its own max-width and gutters.
     || pathname === "/dev/match-grid"
     // GM-R1 — the Rangefinder lab mounts the arena's own frame, so it gets the same page frame as Ranked.
-    || pathname === "/dev/rangefinder";
+    || pathname === "/dev/rangefinder"
+    // WP1 — the Word Puzzle lab mounts the arena's own frame, so it gets the same page frame as Ranked.
+    || pathname === "/dev/word-puzzle";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

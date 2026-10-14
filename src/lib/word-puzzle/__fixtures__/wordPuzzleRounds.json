@@ -1,0 +1,233 @@
+{
+  "capturedAt": "2026-10-11T23:48:19.725Z",
+  "backend": {
+    "path": "reconstruct-r1-be",
+    "commit": "afcedd43ce568ab600da6e73f82c695dd0333d17"
+  },
+  "abilityAuthority": "champion_ability_canonical/data/range_authority.json",
+  "itemAuthority": "fixtures/reconstruct_recipe_graph_rev4065930.json",
+  "rounds": [
+    {
+      "id": "zephyr",
+      "family": "ability",
+      "answer": "Zephyr",
+      "prompt": "Set the name of this ability.",
+      "categoryLabel": "Ability",
+      "clue": {
+        "champion": "Janna",
+        "slot": "W",
+        "caption": "Janna · W"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data template",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Janna/Zephyr",
+        "revisionId": 3971180
+      },
+      "note": "Zephyr is Janna's W.",
+      "traits": [
+        "short word"
+      ]
+    },
+    {
+      "id": "kaisa",
+      "family": "champion",
+      "answer": "Kai'Sa",
+      "prompt": "Set this champion's name.",
+      "categoryLabel": "Champion",
+      "clue": {
+        "champion": "Kai'Sa",
+        "slot": "icon",
+        "caption": null
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data templates",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Kai'Sa/Icathian_Rain",
+        "revisionId": 4038389
+      },
+      "note": null,
+      "traits": [
+        "apostrophe",
+        "short",
+        "recognisable clue"
+      ]
+    },
+    {
+      "id": "heimerdinger",
+      "family": "champion",
+      "answer": "Heimerdinger",
+      "prompt": "Set this champion's name.",
+      "categoryLabel": "Champion",
+      "clue": {
+        "champion": "Heimerdinger",
+        "slot": "W",
+        "caption": "Their W: Hextech Micro-Rockets"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data templates",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Heimerdinger/H-28G_Evolution_Turret",
+        "revisionId": 4036534
+      },
+      "note": "Hextech Micro-Rockets is Heimerdinger's W.",
+      "traits": [
+        "long name",
+        "repeated letters",
+        "abstract clue"
+      ]
+    },
+    {
+      "id": "infinity-edge",
+      "family": "item",
+      "answer": "Infinity Edge",
+      "prompt": "Set the name of this item.",
+      "categoryLabel": "Item",
+      "clue": {
+        "itemId": 3031,
+        "caption": "Summoner's Rift shop"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · Module:ItemData",
+        "url": "https://wiki.leagueoflegends.com/en-us/Module:ItemData/data",
+        "revisionId": 4065930
+      },
+      "note": null,
+      "traits": [
+        "two words",
+        "recognisable clue"
+      ]
+    },
+    {
+      "id": "rabadons-deathcap",
+      "family": "item",
+      "answer": "Rabadon's Deathcap",
+      "prompt": "Set the name of this item.",
+      "categoryLabel": "Item",
+      "clue": {
+        "itemId": 3089,
+        "caption": "Summoner's Rift shop"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · Module:ItemData",
+        "url": "https://wiki.leagueoflegends.com/en-us/Module:ItemData/data",
+        "revisionId": 4065930
+      },
+      "note": null,
+      "traits": [
+        "apostrophe",
+        "two words"
+      ]
+    },
+    {
+      "id": "ace-in-the-hole",
+      "family": "ability",
+      "answer": "Ace in the Hole",
+      "prompt": "Set the name of this ability.",
+      "categoryLabel": "Ability",
+      "clue": {
+        "champion": "Caitlyn",
+        "slot": "R",
+        "caption": "Caitlyn · R"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data template",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Caitlyn/Ace_in_the_Hole",
+        "revisionId": 3982561
+      },
+      "note": "Ace in the Hole is Caitlyn's R.",
+      "traits": [
+        "four short words"
+      ]
+    },
+    {
+      "id": "sleepy-trouble-bubble",
+      "family": "ability",
+      "answer": "Sleepy Trouble Bubble",
+      "prompt": "Set the name of this ability.",
+      "categoryLabel": "Ability",
+      "clue": {
+        "champion": "Zoe",
+        "slot": "E",
+        "caption": "Zoe · E"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data template",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Zoe/Sleepy_Trouble_Bubble",
+        "revisionId": 4053170
+      },
+      "note": "Sleepy Trouble Bubble is Zoe's E.",
+      "traits": [
+        "repeated letters",
+        "three words"
+      ]
+    },
+    {
+      "id": "command-shockwave",
+      "family": "ability",
+      "answer": "Command: Shockwave",
+      "prompt": "Set the name of this ability.",
+      "categoryLabel": "Ability",
+      "clue": {
+        "champion": "Orianna",
+        "slot": "R",
+        "caption": "Orianna · R"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data template",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Orianna/Command:_Shockwave",
+        "revisionId": 4026444
+      },
+      "note": "Command: Shockwave is Orianna's R.",
+      "traits": [
+        "colon mark"
+      ]
+    },
+    {
+      "id": "life-form-disintegration-ray",
+      "family": "ability",
+      "answer": "Life Form Disintegration Ray",
+      "prompt": "Set the name of this ability.",
+      "categoryLabel": "Ability",
+      "clue": {
+        "champion": "Vel'Koz",
+        "slot": "R",
+        "caption": "Vel'Koz · R"
+      },
+      "verified": true,
+      "source": {
+        "label": "League Wiki · ability data template",
+        "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Vel'Koz/Life_Form_Disintegration_Ray",
+        "revisionId": 4012050
+      },
+      "note": "Life Form Disintegration Ray is Vel'Koz's R.",
+      "traits": [
+        "long phrase in a short viewport",
+        "word must break on a phone"
+      ]
+    },
+    {
+      "id": "shurima",
+      "family": "region",
+      "answer": "Shurima",
+      "prompt": "Set the name of this region.",
+      "categoryLabel": "Region",
+      "clue": {
+        "caption": "A desert empire of the Ascended",
+        "monogram": "◈"
+      },
+      "verified": false,
+      "source": null,
+      "note": "No region authority exists in the repository: this round is a development-only demonstration.",
+      "traits": [
+        "abstract text-only clue",
+        "UNVERIFIED — development only"
+      ]
+    }
+  ]
+}

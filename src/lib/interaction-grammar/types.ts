@@ -343,3 +343,100 @@ export interface RangefinderReveal {
 // Rangefinder is NOT a SegmentChoice yet: `{ stop }` is a new transport shape.
 // The production seam (a `rangefinder.v1` module) widens `SegmentChoice` then.
 export type _RangefinderIsNotSegmentChoiceYet = Assert<RangefinderResponse extends SegmentChoice ? false : true>;
+
+// ---------------------------------------------------------------- Glyph Press
+//
+// WP1 — SPELL. The player completes a partially engraved word or phrase. The
+// authority publishes only the phrase's STRUCTURE (which positions are glyph
+// sockets, which are engraved marks such as an apostrophe, where the words
+// break) plus whatever it has chosen to disclose: the given glyphs and the
+// result of every sounding so far. The response is one glyph per socket. The
+// primitive draws sockets; it never knows a canonical glyph until the ledger
+// or a reveal hands it one.
+
+/** One position in the phrase, in reading order. */
+export type GlyphPressCell =
+  /** A socket the player fills. `index` is its position among the sockets. */
+  | { kind: "glyph"; index: number }
+  /** A character engraved as given (punctuation, a digit, an ampersand). */
+  | { kind: "mark"; text: string }
+  /** A word boundary. */
+  | { kind: "gap" };
+
+export interface GlyphPressStructure {
+  cells: readonly GlyphPressCell[];
+  /** How many `glyph` cells there are. */
+  glyphCount: number;
+}
+
+export interface GlyphPressClue {
+  media?: SubjectMedia | null;
+  /** One short line under the prompt, e.g. "Janna · W". The line is reserved even when null. */
+  caption?: string | null;
+  /** 1–3 characters drawn when there is no art. */
+  monogram?: string | null;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface GlyphPressPublic {
+  prompt: string;
+  /** The content family, short: "Ability", "Item". */
+  categoryLabel: string;
+  clue: GlyphPressClue;
+  structure: GlyphPressStructure;
+  /** The glyphs the drum carries, in drum order. Uppercase, distinct. */
+  alphabet: string;
+  /** How many soundings the authority allows this round. */
+  soundingsAllowed: number;
+  /** The host's footnote under the instrument once the hand is off, e.g. a source line. */
+  footnote?: string | null;
+}
+
+/** One sounding the authority has answered. `hits` is how many sockets hold the glyph. */
+export interface GlyphPressSounding {
+  glyph: string;
+  hits: number;
+}
+
+/**
+ * Everything the authority has DISCLOSED so far this round. The host owns it
+ * and replaces it after every sounding; the primitive only reads it.
+ */
+export interface GlyphPressLedger {
+  /** Per socket: the disclosed glyph, or null while the socket is the player's to fill. */
+  engraved: readonly (string | null)[];
+  soundings: readonly GlyphPressSounding[];
+}
+
+/** The host-owned value: the player's glyph per socket (null = blank). Engraved sockets are ignored. */
+export type GlyphPressValue = readonly (string | null)[];
+
+/** The response: one glyph per socket (engraved sockets carry their engraved glyph), null where left blank. */
+export interface GlyphPressResponse {
+  glyphs: readonly (string | null)[];
+}
+
+export type GlyphPressCellResult = "given" | "sounded" | "right" | "wrong" | "missing";
+
+/** Authority-supplied, post-reveal only. Display only. */
+export interface GlyphPressReveal {
+  /** The canonical glyph per socket. Only ever supplied here. */
+  glyphs: readonly string[];
+  /** Per socket, straight from the grader. */
+  results: readonly GlyphPressCellResult[];
+  /** What the player locked, as the host recorded it. */
+  locked: readonly (string | null)[];
+  /** The host's verdict on the whole answer. */
+  verdict: "solved" | "partial" | "missed";
+  /** The completed answer in its display form: "Rabadon's Deathcap". */
+  answerText: string;
+  /** The host's own score line: "7 of 9 glyphs". */
+  scoreText: string;
+  /** A short line from the authority, if any. */
+  note?: string | null;
+  source?: { label: string; url?: string | null } | null;
+}
+
+// Glyph Press is NOT a SegmentChoice yet: `{ glyphs }` is a new transport shape.
+// The production seam (a `glyph_press.v1` module) widens `SegmentChoice` then.
+export type _GlyphPressIsNotSegmentChoiceYet = Assert<GlyphPressResponse extends SegmentChoice ? false : true>;

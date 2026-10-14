@@ -43,6 +43,7 @@ export default function Footer() {
     // RG1: the dev Ranked shell probe mirrors /quiz/ranked exactly, footer included.
     pathname.startsWith("/dev/ranked-shell-probe") ||
     pathname.startsWith("/dev/rangefinder") ||
+    pathname.startsWith("/dev/word-puzzle") ||
     pathname.startsWith("/admin");
   if (hidden) return null;
 
