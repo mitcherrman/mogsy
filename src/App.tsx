@@ -559,7 +559,7 @@ export const appRouter = createBrowserRouter(
                       as official Daily; never nest the fixed-height Ranked arena
                       beneath AdminShell's capped width, rail and padding.
                       AdminRoute keeps the owner/MFA gate; backend still owns
-                      authorization and run isolation. */ }
+                      authorization and run isolation. */}
                   <Route path="/quiz/daily-challenge/creator/:runId" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CreatorReplayRunPage /></Suspense></AdminRoute>} />
                   {/* RB3 — the guided playtest. A separate route so canonical
                       Ranked is untouched and the whole session can be removed
