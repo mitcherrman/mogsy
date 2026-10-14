@@ -216,7 +216,10 @@ describe("SCRUB-S3 — Scrub's server-paced hold", () => {
     const cap = scrubCapture as unknown as Record<string, { payload: Record<string, unknown> }>;
     const first = cap.resolved_correct.payload;
     expect(readSegmentSettlement(first)?.reveal.moduleId).toBe("scrub");
-    expect(readResolvedPresentationMs(first)).toBe(4000 + TITLE);
+    // The viewer locked exactly; the shorter 3400 hold applies only when the bot was exact too
+    // (the bot's pick varies per capture), otherwise the whole 4000 window.
+    const allExact = Object.values(readSegmentSettlement(first)!.reveal.players).every((pl) => pl.correct === 1);
+    expect(readResolvedPresentationMs(first)).toBe((allExact ? 3400 : 4000) + TITLE);
     // The penultimate round also carries the Final Round warning lead-in.
     expect(readResolvedPresentationMs(cap.resolved_wrong.payload)).toBeGreaterThan(4000 + TITLE);
     // The final round: no next instrument, so the stored value holds it.

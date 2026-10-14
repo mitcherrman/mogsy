@@ -3,7 +3,7 @@
 // Playwright config includes it.
 //
 //   node e2e/scrub-real-backend/play-match.mjs --vp 1280x720 --motion no-preference \
-//        --plan exact,wrong,wrong --out ./scrub-out [--axe <axe.min.js>] [--reload-after-lock 1]
+//        --plan exact,wrong,wrong --out ./scrub-out [--launch admin|api] [--axe <axe.min.js>] [--reload-after-lock 1]
 //
 // Per segment it: waits for the OPEN instrument, checks the pre-lock DOM and the pre-lock wire for
 // answer secrecy, scrubs (keyboard on `exact`, mouse/touch drag on `wrong`), asserts the Lock POST
@@ -110,14 +110,15 @@ async function main() {
   const motion = arg("motion", "no-preference");
   const scheme = arg("scheme", "dark");
   const plan = arg("plan", "exact,wrong,wrong").split(",");
+  const launch = arg("launch", "api");
   const axePath = arg("axe", "");
   const reloadAfterLock = arg("reload-after-lock", "") === "1";
   fs.mkdirSync(SHOTS, { recursive: true });
-  const report = { vp, motion, scheme, plan, segments: [], errors: [], wire: { lockPosts: [], preLockLeaks: [] } };
+  const report = { vp, motion, scheme, plan, launch, segments: [], errors: [], wire: { lockPosts: [], preLockLeaks: [] } };
 
   try { py("setup_db.py", "--wipe"); } catch { py("setup_db.py"); }
   const persona = JSON.parse(py("mint_token.py", "--json").trim());
-  persona.admin = false; // the arena does not gate on it; the server decides ownership
+  persona.admin = launch === "admin"; // only the admin SHELL gates on it; the server decides ownership
   const token = persona.token;
   const [w, h] = VIEWPORTS[vp];
   const phone = w < 640;
@@ -153,12 +154,29 @@ async function main() {
   });
 
   // ---- launch
-  // The owner's launch is the shared PresetLaunch POST /api/ranked/queue {match_with_bot, preset}; the rig
-  // posts that exact body with the owner's bearer, then opens the arena at /quiz/ranked (discovery path).
-  // (The admin SHELL cannot render under the dev-only E2E admin persona: AdminAuthProvider re-runs on its
-  // per-render `ensureAuthorized`, a pre-existing render loop on main. Its panel is covered by vitest.)
-  const matchId = py("create_match.py").trim().split(/\r?\n/).pop();
-  await page.goto(`${FE}/quiz/ranked`);
+  // `--launch admin` is the owner's REAL click-through: the E2E admin persona opens Admin -> Leaguecraft ->
+  // Ranked -> Playtests, clicks "Play Chronoscope" (the shared PresetLaunch POST /api/ranked/queue), and the app
+  // navigates to /quiz/ranked itself. `--launch api` (default) posts that same body from the rig and opens
+  // /quiz/ranked directly (the discovery path).
+  let matchId;
+  if (launch === "admin") {
+    await page.goto(`${FE}/admin/leaguecraft?section=ranked&view=playtests`);
+    const btn = page.locator('[data-testid="scrub-launch-button"]');
+    await btn.waitFor({ timeout: 90000 });
+    report.adminPanel = { label: (await btn.textContent())?.trim(),
+      panelText: (await page.locator('[data-testid="ranked-scrub"]').textContent())?.slice(0, 260),
+      panels: await page.locator('[data-testid^="ranked-"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-testid"))) };
+    await btn.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SHOTS}/${vp}-admin-playtests.png` });
+    await btn.click();
+    await page.waitForURL(/\/quiz\/ranked/, { timeout: 60000 });
+    report.adminQueuePost = report.wire.queuePost;
+    matchId = JSON.parse(py("oracle_latest.py").trim()).match_id;
+  } else {
+    matchId = py("create_match.py").trim().split(/\r?\n/).pop();
+    await page.goto(`${FE}/quiz/ranked`);
+  }
   report.matchId = matchId;
   await page.waitForSelector('[data-testid="mig-chronoscope"]', { timeout: 90000 });
   // The first-visit "Ranked rules" popover (a fresh test persona) is the shell's, not Scrub's.
@@ -335,9 +353,9 @@ async function main() {
   report.stages = stagesBySeg;
   report.overflow = await page.evaluate(() => ({ hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
-  fs.writeFileSync(path.join(OUT, `${vp}-${motion}-report.json`), JSON.stringify(report, null, 1));
+  fs.writeFileSync(path.join(OUT, `${vp}-${motion}-${launch}-report.json`), JSON.stringify(report, null, 1));
   await browser.close();
-  console.log("wrote", path.join(OUT, `${vp}-${motion}-report.json`));
+  console.log("wrote", path.join(OUT, `${vp}-${motion}-${launch}-report.json`));
   console.log("segments", JSON.stringify(report.segments.map((x) => ({ n: x.n, kind: x.kind, verdict: x.postRevealDom?.verdict, server: x.server?.correct, hold: x.server?.presentation_ms }))));
   console.log("lockPosts", JSON.stringify(report.wire.lockPosts.map((p) => p.body)));
   console.log("preLockLeaks", report.wire.preLockLeaks.length, "bodiesChecked", report.wire.preLockBodiesChecked, "errors", report.errors.length);

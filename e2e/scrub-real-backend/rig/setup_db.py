@@ -26,4 +26,15 @@ assert os.path.abspath(C.DB_PATH).lower().startswith(os.path.abspath(C.DATA).low
 
 from migrate_add_ranked_public import migrate
 migrate(C.DB_PATH)
+# Cross-mode checks (Reconstruct reads a recipe graph from the DB; Scrub and Assembly read none).
+if "--seed-recipes" in sys.argv:
+    import sqlite3
+    from migrate_add_study_hall_attempts import migrate as migrate_study_hall
+    from reconstruct_fixture_support import seed_recipe_graph
+    migrate_study_hall(C.DB_PATH)
+    conn = sqlite3.connect(C.DB_PATH)
+    try:
+        seed_recipe_graph(conn)
+    finally:
+        conn.close()
 print(f"scratch db ready: {C.DB_PATH}")

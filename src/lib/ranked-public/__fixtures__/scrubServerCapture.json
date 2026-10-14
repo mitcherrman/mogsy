@@ -33,21 +33,21 @@
    "count": 1,
    "entries": [
     {
-     "completed_at": "2026-09-09T12:00:42.800000+00:00",
+     "completed_at": "2026-09-09T12:00:42.200000+00:00",
      "completion_reason": "segments_complete",
      "final_round_number": 3,
      "host": "playtest",
      "is_bot_match": true,
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "opponent_class": "tank",
-     "opponent_display_name": "Scrim Partner",
+     "opponent_display_name": "Sparring Bot",
      "opponent_is_bot": true,
      "opponent_role": null,
      "rating_after": null,
      "rating_delta": null,
      "terminal_reason": "combat",
      "viewer_class": "tank",
-     "viewer_outcome": "draw",
+     "viewer_outcome": "loss",
      "viewer_role": null
     }
    ]
@@ -55,7 +55,7 @@
   "projection_type": "match_history",
   "round_number": null,
   "schema_version": "ranked_duel.match_history.v1",
-  "server_time": "2026-09-09T12:01:12.800000+00:00"
+  "server_time": "2026-09-09T12:01:12.200000+00:00"
  },
  "meta": {
   "canonical": {
@@ -63,7 +63,7 @@
    "2": "w6",
    "3": "w13"
   },
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "preset": "admin.scrub",
   "submitted": {
    "1": "w4",
@@ -73,19 +73,19 @@
   "viewer_user_id": "0a11d111-0000-4000-8000-000000000001"
  },
  "private_after_bot_settled_correct": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "active_deadline": "2026-09-09T12:00:50.200000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 2,
-    "started_at": "2026-09-09T12:00:20.800000+00:00"
+    "started_at": "2026-09-09T12:00:20.200000+00:00"
    },
    "completed_rounds": 1,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -137,10 +137,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 9
+     "score": 3,
+     "total_xp": 12
     }
    ],
    "presence": {
@@ -153,7 +153,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:2",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -176,9 +176,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -206,8 +206,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -483,19 +483,19 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "private_after_bot_settled_wrong": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "active_deadline": "2026-09-09T12:01:09.150000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 3,
-    "started_at": "2026-09-09T12:00:39.750000+00:00"
+    "started_at": "2026-09-09T12:00:39.150000+00:00"
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -547,10 +547,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 18
+     "score": 6,
+     "total_xp": 24
     }
    ],
    "presence": {
@@ -563,7 +563,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -586,9 +586,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -616,8 +616,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -890,22 +890,22 @@
   "projection_type": "private_player",
   "round_number": 3,
   "schema_version": "ranked_duel.private_player.v2",
-  "server_time": "2026-09-09T12:00:31.800000+00:00"
+  "server_time": "2026-09-09T12:00:31.200000+00:00"
  },
  "private_after_refusal": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "active_deadline": "2026-09-09T12:01:09.150000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 3,
-    "started_at": "2026-09-09T12:00:39.750000+00:00"
+    "started_at": "2026-09-09T12:00:39.150000+00:00"
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -957,10 +957,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 18
+     "score": 6,
+     "total_xp": 24
     }
    ],
    "presence": {
@@ -973,7 +973,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -996,9 +996,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -1026,8 +1026,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -1300,10 +1300,10 @@
   "projection_type": "private_player",
   "round_number": 3,
   "schema_version": "ranked_duel.private_player.v2",
-  "server_time": "2026-09-09T12:00:39.800000+00:00"
+  "server_time": "2026-09-09T12:00:39.200000+00:00"
  },
  "private_before_bot_lock_correct": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -1315,7 +1315,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1367,7 +1367,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -1383,7 +1383,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:1",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1713,19 +1713,19 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "private_before_bot_lock_wrong": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "active_deadline": "2026-09-09T12:00:50.200000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 2,
-    "started_at": "2026-09-09T12:00:20.800000+00:00"
+    "started_at": "2026-09-09T12:00:20.200000+00:00"
    },
    "completed_rounds": 1,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1777,10 +1777,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 9
+     "score": 3,
+     "total_xp": 12
     }
    ],
    "presence": {
@@ -1793,7 +1793,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:2",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1816,9 +1816,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -1846,8 +1846,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -2120,22 +2120,22 @@
   "projection_type": "private_player",
   "round_number": 2,
   "schema_version": "ranked_duel.private_player.v2",
-  "server_time": "2026-09-09T12:00:31.800000+00:00"
+  "server_time": "2026-09-09T12:00:31.200000+00:00"
  },
  "private_locked": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "active_deadline": "2026-09-09T12:01:09.150000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 3,
-    "started_at": "2026-09-09T12:00:39.750000+00:00"
+    "started_at": "2026-09-09T12:00:39.150000+00:00"
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -2187,10 +2187,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 18
+     "score": 6,
+     "total_xp": 24
     }
    ],
    "presence": {
@@ -2203,7 +2203,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2226,9 +2226,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
     "challenge_index": 1,
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -2256,8 +2256,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -2586,10 +2586,10 @@
   "projection_type": "private_player",
   "round_number": 3,
   "schema_version": "ranked_duel.private_player.v2",
-  "server_time": "2026-09-09T12:00:39.800000+00:00"
+  "server_time": "2026-09-09T12:00:39.200000+00:00"
  },
  "private_open": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -2601,7 +2601,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -2653,7 +2653,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -2669,7 +2669,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:1",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2999,20 +2999,20 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "public_after_bot_lock_correct": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "active_deadline": "2026-09-09T12:00:50.200000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 2,
-    "started_at": "2026-09-09T12:00:20.800000+00:00"
+    "started_at": "2026-09-09T12:00:20.200000+00:00"
    },
    "completed_rounds": 1,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -3038,10 +3038,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 9
+     "score": 3,
+     "total_xp": 12
     }
    ],
    "playtest": {
@@ -3060,7 +3060,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:2",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -3089,9 +3089,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -3119,8 +3119,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -3396,20 +3396,20 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "public_after_bot_lock_wrong": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "active_deadline": "2026-09-09T12:01:09.150000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 3,
-    "started_at": "2026-09-09T12:00:39.750000+00:00"
+    "started_at": "2026-09-09T12:00:39.150000+00:00"
    },
    "completed_rounds": 2,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -3435,10 +3435,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 18
+     "score": 6,
+     "total_xp": 24
     }
    ],
    "playtest": {
@@ -3457,7 +3457,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -3486,9 +3486,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -3516,8 +3516,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -3790,10 +3790,10 @@
   "projection_type": "public_round",
   "round_number": 3,
   "schema_version": "ranked_duel.public_round.v2",
-  "server_time": "2026-09-09T12:00:31.800000+00:00"
+  "server_time": "2026-09-09T12:00:31.200000+00:00"
  },
  "public_before_bot_lock_correct": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -3806,7 +3806,7 @@
    "completed_rounds": 0,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -3832,7 +3832,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -3854,7 +3854,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:1",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -4190,20 +4190,20 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "public_before_bot_lock_wrong": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "active_deadline": "2026-09-09T12:00:50.200000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 2,
-    "started_at": "2026-09-09T12:00:20.800000+00:00"
+    "started_at": "2026-09-09T12:00:20.200000+00:00"
    },
    "completed_rounds": 1,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -4229,10 +4229,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 9
+     "score": 3,
+     "total_xp": 12
     }
    ],
    "playtest": {
@@ -4251,7 +4251,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:2",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -4280,9 +4280,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
     "challenge_index": 0,
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -4310,8 +4310,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:00:50.800000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:20.800000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:50.200000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.200000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -4584,23 +4584,23 @@
   "projection_type": "public_round",
   "round_number": 2,
   "schema_version": "ranked_duel.public_round.v2",
-  "server_time": "2026-09-09T12:00:31.800000+00:00"
+  "server_time": "2026-09-09T12:00:31.200000+00:00"
  },
  "public_locked": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
-    "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "active_deadline": "2026-09-09T12:01:09.150000+00:00",
     "duration_seconds": 30.0,
     "pressure_applied": false,
     "ready_to_resolve": false,
     "round_number": 3,
-    "started_at": "2026-09-09T12:00:39.750000+00:00"
+    "started_at": "2026-09-09T12:00:39.150000+00:00"
    },
    "completed_rounds": 2,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -4626,10 +4626,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
-     "score": 0,
-     "total_xp": 18
+     "score": 6,
+     "total_xp": 24
     }
    ],
    "playtest": {
@@ -4648,7 +4648,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -4677,9 +4677,9 @@
     "card_started_at": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
     "challenge_index": 1,
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "module_id": "scrub",
     "module_version": 1,
     "phase": "challenges",
@@ -4707,8 +4707,8 @@
     "active_time_running": null,
     "card_timer_ms": null,
     "challenge_count": 1,
-    "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-    "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+    "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
     "challenges": {
      "challenges": [
       {
@@ -5037,10 +5037,10 @@
   "projection_type": "public_round",
   "round_number": 3,
   "schema_version": "ranked_duel.public_round.v2",
-  "server_time": "2026-09-09T12:00:39.800000+00:00"
+  "server_time": "2026-09-09T12:00:39.200000+00:00"
  },
  "public_open": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -5053,7 +5053,7 @@
    "completed_rounds": 0,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -5079,7 +5079,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -5101,7 +5101,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:1",
+    "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -5437,11 +5437,11 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "queue_join": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "class_id": null,
    "enqueued_at": "2026-09-09T12:00:00+00:00",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "queue_version": 1,
    "role": null,
    "status": "matched"
@@ -5452,16 +5452,16 @@
   "server_time": "2026-09-09T12:00:00+00:00"
  },
  "resolved_correct": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:34.400000+00:00",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_0b74f6afbc98bd1e": 170
+    "p_e0052799552fe1a6": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -5471,12 +5471,12 @@
      "score_before": 0,
      "speed_bonus_points": 0
     },
-    "p_0b74f6afbc98bd1e": {
-     "base_points": 0,
-     "points_awarded": 0,
-     "score_after": 0,
+    "p_e0052799552fe1a6": {
+     "base_points": 2,
+     "points_awarded": 3,
+     "score_after": 3,
      "score_before": 0,
-     "speed_bonus_points": 0
+     "speed_bonus_points": 1
     }
    },
    "next_round_duration_delta": 0.0,
@@ -5525,7 +5525,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 0,
+      "consecutive_correct": 1,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -5546,25 +5546,25 @@
      "level_after": 1,
      "level_before": 1,
      "level_up_events": [],
-     "outcome": "incorrect",
-     "player_id": "p_0b74f6afbc98bd1e",
-     "points_awarded": 0,
+     "outcome": "correct",
+     "player_id": "p_e0052799552fe1a6",
+     "points_awarded": 3,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 0,
+     "score_after": 3,
      "score_before": 0,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:08.618750+00:00",
+     "submitted_at": "2026-09-09T12:00:08.748852+00:00",
      "timed_out": false,
-     "total_xp_after": 9,
-     "xp_gained": 9
+     "total_xp_after": 12,
+     "xp_gained": 12
     }
    ],
-   "presentation_ms": 5400,
+   "presentation_ms": 4800,
    "pressure_applied": true,
-   "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:1",
+   "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:1",
    "round_number": 1,
    "segment_reveal": {
     "canonical_checkpoint": "w4",
@@ -5599,25 +5599,24 @@
       "finished_first": false,
       "incorrect": 0,
       "points_awarded": 2,
-      "segment_result": "win",
+      "segment_result": "loss",
       "speed_bonus_points": 0,
       "traverse_path": [
        "w4"
       ],
       "unanswered": 0
      },
-     "p_0b74f6afbc98bd1e": {
-      "base_points": 0,
-      "checkpoint": "w3",
-      "correct": 0,
-      "duration_ms": 4219,
+     "p_e0052799552fe1a6": {
+      "base_points": 2,
+      "checkpoint": "w4",
+      "correct": 1,
+      "duration_ms": 4349,
       "finished_first": true,
-      "incorrect": 1,
-      "points_awarded": 0,
-      "segment_result": "loss",
-      "speed_bonus_points": 0,
+      "incorrect": 0,
+      "points_awarded": 3,
+      "segment_result": "win",
+      "speed_bonus_points": 1,
       "traverse_path": [
-       "w3",
        "w4"
       ],
       "unanswered": 0
@@ -5675,16 +5674,16 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "resolved_held": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "completion_reason": "segments_complete",
    "end_reason": "both_answered",
-   "final_deadline": "2026-09-09T12:01:09.750000+00:00",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "final_deadline": "2026-09-09T12:01:09.150000+00:00",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": true,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_0b74f6afbc98bd1e": 170
+    "p_e0052799552fe1a6": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -5694,17 +5693,17 @@
      "score_before": 2,
      "speed_bonus_points": 0
     },
-    "p_0b74f6afbc98bd1e": {
+    "p_e0052799552fe1a6": {
      "base_points": 2,
      "points_awarded": 2,
-     "score_after": 2,
-     "score_before": 0,
+     "score_after": 8,
+     "score_before": 6,
      "speed_bonus_points": 0
     }
    },
    "next_round_duration_delta": 0.0,
    "next_round_duration_seconds": 30.0,
-   "original_deadline": "2026-09-09T12:01:09.750000+00:00",
+   "original_deadline": "2026-09-09T12:01:09.150000+00:00",
    "players": [
     {
      "answered_first": true,
@@ -5740,7 +5739,7 @@
      "score_after": 2,
      "score_before": 2,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:39.800000+00:00",
+     "submitted_at": "2026-09-09T12:00:39.200000+00:00",
      "timed_out": false,
      "total_xp_after": 30,
      "xp_gained": 9
@@ -5748,7 +5747,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 1,
+      "consecutive_correct": 3,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -5770,24 +5769,24 @@
      "level_before": 1,
      "level_up_events": [],
      "outcome": "correct",
-     "player_id": "p_0b74f6afbc98bd1e",
+     "player_id": "p_e0052799552fe1a6",
      "points_awarded": 2,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 2,
-     "score_before": 0,
+     "score_after": 8,
+     "score_before": 6,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:45.506100+00:00",
+     "submitted_at": "2026-09-09T12:00:43.761868+00:00",
      "timed_out": false,
-     "total_xp_after": 30,
+     "total_xp_after": 36,
      "xp_gained": 12
     }
    ],
    "presentation_ms": 5400,
    "pressure_applied": true,
-   "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+   "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
    "round_number": 3,
    "segment_reveal": {
     "canonical_checkpoint": "w13",
@@ -5841,11 +5840,11 @@
       ],
       "unanswered": 0
      },
-     "p_0b74f6afbc98bd1e": {
+     "p_e0052799552fe1a6": {
       "base_points": 2,
       "checkpoint": "w13",
       "correct": 1,
-      "duration_ms": 5756,
+      "duration_ms": 4612,
       "finished_first": false,
       "incorrect": 0,
       "points_awarded": 2,
@@ -5891,25 +5890,25 @@
     "scoring": "points",
     "speed_bonus_points": 1
    },
-   "started_at": "2026-09-09T12:00:39.750000+00:00",
-   "winner_id": null
+   "started_at": "2026-09-09T12:00:39.150000+00:00",
+   "winner_id": "p_e0052799552fe1a6"
   },
   "projection_type": "resolved_round",
   "round_number": 3,
   "schema_version": "ranked_duel.resolved_round.v2",
-  "server_time": "2026-09-09T12:00:42.800000+00:00"
+  "server_time": "2026-09-09T12:00:42.200000+00:00"
  },
  "resolved_wrong": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
-   "final_deadline": "2026-09-09T12:00:50.800000+00:00",
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "final_deadline": "2026-09-09T12:00:50.200000+00:00",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_0b74f6afbc98bd1e": 170
+    "p_e0052799552fe1a6": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -5919,17 +5918,17 @@
      "score_before": 2,
      "speed_bonus_points": 0
     },
-    "p_0b74f6afbc98bd1e": {
-     "base_points": 0,
-     "points_awarded": 0,
-     "score_after": 0,
-     "score_before": 0,
-     "speed_bonus_points": 0
+    "p_e0052799552fe1a6": {
+     "base_points": 2,
+     "points_awarded": 3,
+     "score_after": 6,
+     "score_before": 3,
+     "speed_bonus_points": 1
     }
    },
    "next_round_duration_delta": 0.0,
    "next_round_duration_seconds": 30.0,
-   "original_deadline": "2026-09-09T12:00:50.800000+00:00",
+   "original_deadline": "2026-09-09T12:00:50.200000+00:00",
    "players": [
     {
      "answered_first": false,
@@ -5965,7 +5964,7 @@
      "score_after": 2,
      "score_before": 2,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:31.800000+00:00",
+     "submitted_at": "2026-09-09T12:00:31.200000+00:00",
      "timed_out": false,
      "total_xp_after": 21,
      "xp_gained": 9
@@ -5973,7 +5972,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 0,
+      "consecutive_correct": 2,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -5994,25 +5993,25 @@
      "level_after": 1,
      "level_before": 1,
      "level_up_events": [],
-     "outcome": "incorrect",
-     "player_id": "p_0b74f6afbc98bd1e",
-     "points_awarded": 0,
+     "outcome": "correct",
+     "player_id": "p_e0052799552fe1a6",
+     "points_awarded": 3,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 0,
-     "score_before": 0,
+     "score_after": 6,
+     "score_before": 3,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:26.881314+00:00",
+     "submitted_at": "2026-09-09T12:00:27.128753+00:00",
      "timed_out": false,
-     "total_xp_after": 18,
-     "xp_gained": 9
+     "total_xp_after": 24,
+     "xp_gained": 12
     }
    ],
    "presentation_ms": 7950,
    "pressure_applied": true,
-   "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:2",
+   "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:2",
    "round_number": 2,
    "segment_reveal": {
     "canonical_checkpoint": "w6",
@@ -6047,7 +6046,7 @@
       "finished_first": false,
       "incorrect": 1,
       "points_awarded": 0,
-      "segment_result": "draw",
+      "segment_result": "loss",
       "speed_bonus_points": 0,
       "traverse_path": [
        "w15",
@@ -6063,18 +6062,17 @@
       ],
       "unanswered": 0
      },
-     "p_0b74f6afbc98bd1e": {
-      "base_points": 0,
-      "checkpoint": "w5",
-      "correct": 0,
-      "duration_ms": 6081,
+     "p_e0052799552fe1a6": {
+      "base_points": 2,
+      "checkpoint": "w6",
+      "correct": 1,
+      "duration_ms": 6929,
       "finished_first": true,
-      "incorrect": 1,
-      "points_awarded": 0,
-      "segment_result": "draw",
-      "speed_bonus_points": 0,
+      "incorrect": 0,
+      "points_awarded": 3,
+      "segment_result": "win",
+      "speed_bonus_points": 1,
       "traverse_path": [
-       "w5",
        "w6"
       ],
       "unanswered": 0
@@ -6121,59 +6119,59 @@
     "scoring": "points",
     "speed_bonus_points": 1
    },
-   "started_at": "2026-09-09T12:00:20.800000+00:00",
+   "started_at": "2026-09-09T12:00:20.200000+00:00",
    "winner_id": null
   },
   "projection_type": "resolved_round",
   "round_number": 2,
   "schema_version": "ranked_duel.resolved_round.v2",
-  "server_time": "2026-09-09T12:00:31.800000+00:00"
+  "server_time": "2026-09-09T12:00:31.200000+00:00"
  },
  "result": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "completion_reason": "segments_complete",
    "final_round_number": 3,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
-   "outcome": "draw",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
+   "outcome": "decisive",
    "rating_application_status": "skipped",
    "rating_policy_version": "elo.v1",
    "rating_skip_reason": "format_not_rated",
    "scoring": {
     "final_scores": {
      "0a11d111-0000-4000-8000-000000000001": 2,
-     "p_0b74f6afbc98bd1e": 2
+     "p_e0052799552fe1a6": 8
     },
     "match_length": 3,
     "model": "points",
     "modules_played": 3,
     "modules_won": {
-     "0a11d111-0000-4000-8000-000000000001": 1,
-     "p_0b74f6afbc98bd1e": 1
+     "0a11d111-0000-4000-8000-000000000001": 0,
+     "p_e0052799552fe1a6": 3
     }
    },
    "terminal_reason": "combat",
-   "winner_user_id": null
+   "winner_user_id": "p_e0052799552fe1a6"
   },
   "projection_type": "match_result",
   "round_number": 3,
   "schema_version": "ranked_duel.match_result.v1",
-  "server_time": "2026-09-09T12:01:12.800000+00:00"
+  "server_time": "2026-09-09T12:01:12.200000+00:00"
  },
  "resume_final": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "completion_reason": "segments_complete",
      "end_reason": "both_answered",
-     "final_deadline": "2026-09-09T12:01:09.750000+00:00",
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "final_deadline": "2026-09-09T12:01:09.150000+00:00",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "match_over": true,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_0b74f6afbc98bd1e": 170
+      "p_e0052799552fe1a6": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -6183,17 +6181,17 @@
        "score_before": 2,
        "speed_bonus_points": 0
       },
-      "p_0b74f6afbc98bd1e": {
+      "p_e0052799552fe1a6": {
        "base_points": 2,
        "points_awarded": 2,
-       "score_after": 2,
-       "score_before": 0,
+       "score_after": 8,
+       "score_before": 6,
        "speed_bonus_points": 0
       }
      },
      "next_round_duration_delta": 0.0,
      "next_round_duration_seconds": 30.0,
-     "original_deadline": "2026-09-09T12:01:09.750000+00:00",
+     "original_deadline": "2026-09-09T12:01:09.150000+00:00",
      "players": [
       {
        "answered_first": true,
@@ -6229,7 +6227,7 @@
        "score_after": 2,
        "score_before": 2,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:39.800000+00:00",
+       "submitted_at": "2026-09-09T12:00:39.200000+00:00",
        "timed_out": false,
        "total_xp_after": 30,
        "xp_gained": 9
@@ -6237,7 +6235,7 @@
       {
        "answered_first": false,
        "carryover": {
-        "consecutive_correct": 1,
+        "consecutive_correct": 3,
         "effects_consumed": [],
         "effects_gained": []
        },
@@ -6259,24 +6257,24 @@
        "level_before": 1,
        "level_up_events": [],
        "outcome": "correct",
-       "player_id": "p_0b74f6afbc98bd1e",
+       "player_id": "p_e0052799552fe1a6",
        "points_awarded": 2,
        "reached_zero_hp": false,
        "remaining_charges": {
         "tank.fortify": 3
        },
-       "score_after": 2,
-       "score_before": 0,
+       "score_after": 8,
+       "score_before": 6,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:45.506100+00:00",
+       "submitted_at": "2026-09-09T12:00:43.761868+00:00",
        "timed_out": false,
-       "total_xp_after": 30,
+       "total_xp_after": 36,
        "xp_gained": 12
       }
      ],
      "presentation_ms": 5400,
      "pressure_applied": true,
-     "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+     "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
      "round_number": 3,
      "segment_reveal": {
       "canonical_checkpoint": "w13",
@@ -6330,11 +6328,11 @@
         ],
         "unanswered": 0
        },
-       "p_0b74f6afbc98bd1e": {
+       "p_e0052799552fe1a6": {
         "base_points": 2,
         "checkpoint": "w13",
         "correct": 1,
-        "duration_ms": 5756,
+        "duration_ms": 4612,
         "finished_first": false,
         "incorrect": 0,
         "points_awarded": 2,
@@ -6380,13 +6378,13 @@
       "scoring": "points",
       "speed_bonus_points": 1
      },
-     "started_at": "2026-09-09T12:00:39.750000+00:00",
-     "winner_id": null
+     "started_at": "2026-09-09T12:00:39.150000+00:00",
+     "winner_id": "p_e0052799552fe1a6"
     },
     "projection_type": "resolved_round",
     "round_number": 3,
     "schema_version": "ranked_duel.resolved_round.v2",
-    "server_time": "2026-09-09T12:01:12.800000+00:00"
+    "server_time": "2026-09-09T12:01:12.200000+00:00"
    },
    "match_over": true,
    "match_status": "complete",
@@ -6397,12 +6395,12 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -6454,10 +6452,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_0b74f6afbc98bd1e",
+       "player_id": "p_e0052799552fe1a6",
        "role": null,
-       "score": 2,
-       "total_xp": 30
+       "score": 8,
+       "total_xp": 36
       }
      ],
      "presence": {
@@ -6470,21 +6468,21 @@
      "ruleset": null,
      "segment": null,
      "segment_state": null,
-     "winner_id": null
+     "winner_id": "p_e0052799552fe1a6"
     },
     "projection_type": "private_player",
     "round_number": null,
     "schema_version": "ranked_duel.private_player.v2",
-    "server_time": "2026-09-09T12:01:12.800000+00:00"
+    "server_time": "2026-09-09T12:01:12.200000+00:00"
    },
    "public": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
      "host": "playtest",
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -6510,10 +6508,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_0b74f6afbc98bd1e",
+       "player_id": "p_e0052799552fe1a6",
        "role": null,
-       "score": 2,
-       "total_xp": 30
+       "score": 8,
+       "total_xp": 36
       }
      ],
      "playtest": {
@@ -6538,64 +6536,64 @@
      },
      "segment": null,
      "segment_state": null,
-     "winner_id": null
+     "winner_id": "p_e0052799552fe1a6"
     },
     "projection_type": "public_round",
     "round_number": null,
     "schema_version": "ranked_duel.public_round.v2",
-    "server_time": "2026-09-09T12:01:12.800000+00:00"
+    "server_time": "2026-09-09T12:01:12.200000+00:00"
    },
    "result": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "completion_reason": "segments_complete",
      "final_round_number": 3,
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
-     "outcome": "draw",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
+     "outcome": "decisive",
      "rating_application_status": "skipped",
      "rating_policy_version": "elo.v1",
      "rating_skip_reason": "format_not_rated",
      "scoring": {
       "final_scores": {
        "0a11d111-0000-4000-8000-000000000001": 2,
-       "p_0b74f6afbc98bd1e": 2
+       "p_e0052799552fe1a6": 8
       },
       "match_length": 3,
       "model": "points",
       "modules_played": 3,
       "modules_won": {
-       "0a11d111-0000-4000-8000-000000000001": 1,
-       "p_0b74f6afbc98bd1e": 1
+       "0a11d111-0000-4000-8000-000000000001": 0,
+       "p_e0052799552fe1a6": 3
       }
      },
      "terminal_reason": "combat",
-     "winner_user_id": null
+     "winner_user_id": "p_e0052799552fe1a6"
     },
     "projection_type": "match_result",
     "round_number": 3,
     "schema_version": "ranked_duel.match_result.v1",
-    "server_time": "2026-09-09T12:01:12.800000+00:00"
+    "server_time": "2026-09-09T12:01:12.200000+00:00"
    }
   },
   "projection_type": "resume",
   "round_number": null,
   "schema_version": "ranked_duel.resume.v1",
-  "server_time": "2026-09-09T12:01:12.800000+00:00"
+  "server_time": "2026-09-09T12:01:12.200000+00:00"
  },
  "resume_locked": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "completion_reason": null,
      "end_reason": "both_answered",
-     "final_deadline": "2026-09-09T12:00:50.800000+00:00",
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "final_deadline": "2026-09-09T12:00:50.200000+00:00",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "match_over": false,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_0b74f6afbc98bd1e": 170
+      "p_e0052799552fe1a6": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -6605,17 +6603,17 @@
        "score_before": 2,
        "speed_bonus_points": 0
       },
-      "p_0b74f6afbc98bd1e": {
-       "base_points": 0,
-       "points_awarded": 0,
-       "score_after": 0,
-       "score_before": 0,
-       "speed_bonus_points": 0
+      "p_e0052799552fe1a6": {
+       "base_points": 2,
+       "points_awarded": 3,
+       "score_after": 6,
+       "score_before": 3,
+       "speed_bonus_points": 1
       }
      },
      "next_round_duration_delta": 0.0,
      "next_round_duration_seconds": 30.0,
-     "original_deadline": "2026-09-09T12:00:50.800000+00:00",
+     "original_deadline": "2026-09-09T12:00:50.200000+00:00",
      "players": [
       {
        "answered_first": false,
@@ -6651,7 +6649,7 @@
        "score_after": 2,
        "score_before": 2,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:31.800000+00:00",
+       "submitted_at": "2026-09-09T12:00:31.200000+00:00",
        "timed_out": false,
        "total_xp_after": 21,
        "xp_gained": 9
@@ -6659,7 +6657,7 @@
       {
        "answered_first": false,
        "carryover": {
-        "consecutive_correct": 0,
+        "consecutive_correct": 2,
         "effects_consumed": [],
         "effects_gained": []
        },
@@ -6680,25 +6678,25 @@
        "level_after": 1,
        "level_before": 1,
        "level_up_events": [],
-       "outcome": "incorrect",
-       "player_id": "p_0b74f6afbc98bd1e",
-       "points_awarded": 0,
+       "outcome": "correct",
+       "player_id": "p_e0052799552fe1a6",
+       "points_awarded": 3,
        "reached_zero_hp": false,
        "remaining_charges": {
         "tank.fortify": 3
        },
-       "score_after": 0,
-       "score_before": 0,
+       "score_after": 6,
+       "score_before": 3,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:26.881314+00:00",
+       "submitted_at": "2026-09-09T12:00:27.128753+00:00",
        "timed_out": false,
-       "total_xp_after": 18,
-       "xp_gained": 9
+       "total_xp_after": 24,
+       "xp_gained": 12
       }
      ],
      "presentation_ms": 7950,
      "pressure_applied": true,
-     "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:2",
+     "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:2",
      "round_number": 2,
      "segment_reveal": {
       "canonical_checkpoint": "w6",
@@ -6733,7 +6731,7 @@
         "finished_first": false,
         "incorrect": 1,
         "points_awarded": 0,
-        "segment_result": "draw",
+        "segment_result": "loss",
         "speed_bonus_points": 0,
         "traverse_path": [
          "w15",
@@ -6749,18 +6747,17 @@
         ],
         "unanswered": 0
        },
-       "p_0b74f6afbc98bd1e": {
-        "base_points": 0,
-        "checkpoint": "w5",
-        "correct": 0,
-        "duration_ms": 6081,
+       "p_e0052799552fe1a6": {
+        "base_points": 2,
+        "checkpoint": "w6",
+        "correct": 1,
+        "duration_ms": 6929,
         "finished_first": true,
-        "incorrect": 1,
-        "points_awarded": 0,
-        "segment_result": "draw",
-        "speed_bonus_points": 0,
+        "incorrect": 0,
+        "points_awarded": 3,
+        "segment_result": "win",
+        "speed_bonus_points": 1,
         "traverse_path": [
-         "w5",
          "w6"
         ],
         "unanswered": 0
@@ -6807,13 +6804,13 @@
       "scoring": "points",
       "speed_bonus_points": 1
      },
-     "started_at": "2026-09-09T12:00:20.800000+00:00",
+     "started_at": "2026-09-09T12:00:20.200000+00:00",
      "winner_id": null
     },
     "projection_type": "resolved_round",
     "round_number": 2,
     "schema_version": "ranked_duel.resolved_round.v2",
-    "server_time": "2026-09-09T12:00:39.800000+00:00"
+    "server_time": "2026-09-09T12:00:39.200000+00:00"
    },
    "match_over": false,
    "match_status": "active",
@@ -6824,19 +6821,19 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "active_round": {
-      "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+      "active_deadline": "2026-09-09T12:01:09.150000+00:00",
       "duration_seconds": 30.0,
       "pressure_applied": false,
       "ready_to_resolve": false,
       "round_number": 3,
-      "started_at": "2026-09-09T12:00:39.750000+00:00"
+      "started_at": "2026-09-09T12:00:39.150000+00:00"
      },
      "completed_rounds": 2,
      "completion_reason": null,
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -6888,10 +6885,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_0b74f6afbc98bd1e",
+       "player_id": "p_e0052799552fe1a6",
        "role": null,
-       "score": 0,
-       "total_xp": 18
+       "score": 6,
+       "total_xp": 24
       }
      ],
      "presence": {
@@ -6904,7 +6901,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+      "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -6927,9 +6924,9 @@
       "card_started_at": null,
       "card_timer_ms": null,
       "challenge_count": 1,
-      "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+      "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
       "challenge_index": 1,
-      "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+      "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
       "module_id": "scrub",
       "module_version": 1,
       "phase": "challenges",
@@ -6957,8 +6954,8 @@
       "active_time_running": null,
       "card_timer_ms": null,
       "challenge_count": 1,
-      "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-      "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+      "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+      "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
       "challenges": {
        "challenges": [
         {
@@ -7287,23 +7284,23 @@
     "projection_type": "private_player",
     "round_number": 3,
     "schema_version": "ranked_duel.private_player.v2",
-    "server_time": "2026-09-09T12:00:39.800000+00:00"
+    "server_time": "2026-09-09T12:00:39.200000+00:00"
    },
    "public": {
-    "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+    "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
     "payload": {
      "active_round": {
-      "active_deadline": "2026-09-09T12:01:09.750000+00:00",
+      "active_deadline": "2026-09-09T12:01:09.150000+00:00",
       "duration_seconds": 30.0,
       "pressure_applied": false,
       "ready_to_resolve": false,
       "round_number": 3,
-      "started_at": "2026-09-09T12:00:39.750000+00:00"
+      "started_at": "2026-09-09T12:00:39.150000+00:00"
      },
      "completed_rounds": 2,
      "completion_reason": null,
      "host": "playtest",
-     "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+     "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -7329,10 +7326,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_0b74f6afbc98bd1e",
+       "player_id": "p_e0052799552fe1a6",
        "role": null,
-       "score": 0,
-       "total_xp": 18
+       "score": 6,
+       "total_xp": 24
       }
      ],
      "playtest": {
@@ -7351,7 +7348,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "scrub:rkb_cc80d8ff0e2391d2718a9c3d:3",
+      "question_id": "scrub:rkb_ec4c00fa3a770ed7c8f80feb:3",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -7380,9 +7377,9 @@
       "card_started_at": null,
       "card_timer_ms": null,
       "challenge_count": 1,
-      "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
+      "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
       "challenge_index": 1,
-      "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+      "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
       "module_id": "scrub",
       "module_version": 1,
       "phase": "challenges",
@@ -7410,8 +7407,8 @@
       "active_time_running": null,
       "card_timer_ms": null,
       "challenge_count": 1,
-      "challenge_deadline": "2026-09-09T12:01:09.750000+00:00",
-      "challenge_started_at": "2026-09-09T12:00:39.750000+00:00",
+      "challenge_deadline": "2026-09-09T12:01:09.150000+00:00",
+      "challenge_started_at": "2026-09-09T12:00:39.150000+00:00",
       "challenges": {
        "challenges": [
         {
@@ -7740,20 +7737,20 @@
     "projection_type": "public_round",
     "round_number": 3,
     "schema_version": "ranked_duel.public_round.v2",
-    "server_time": "2026-09-09T12:00:39.800000+00:00"
+    "server_time": "2026-09-09T12:00:39.200000+00:00"
    },
    "result": null
   },
   "projection_type": "resume",
   "round_number": 3,
   "schema_version": "ranked_duel.resume.v1",
-  "server_time": "2026-09-09T12:00:39.800000+00:00"
+  "server_time": "2026-09-09T12:00:39.200000+00:00"
  },
  "review": {
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "payload": {
    "final_round_number": 3,
-   "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+   "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
    "round_count": 3,
    "rounds": [
     {
@@ -8674,7 +8671,7 @@
   "projection_type": "match_review",
   "round_number": null,
   "schema_version": "ranked_duel.match_review.v1",
-  "server_time": "2026-09-09T12:01:12.800000+00:00"
+  "server_time": "2026-09-09T12:01:12.200000+00:00"
  },
  "submit_accepted": {
   "challenge_index": 0,
@@ -8733,7 +8730,7 @@
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 3,
@@ -8794,7 +8791,7 @@
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 1,
@@ -8862,7 +8859,7 @@
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 2,
@@ -8926,7 +8923,7 @@
   },
   "conflicting": true,
   "idempotent": true,
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 3,
@@ -8992,7 +8989,7 @@
   },
   "conflicting": false,
   "idempotent": true,
-  "match_id": "rkb_cc80d8ff0e2391d2718a9c3d",
+  "match_id": "rkb_ec4c00fa3a770ed7c8f80feb",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 3,

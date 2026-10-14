@@ -41,7 +41,8 @@ samples every region on every frame, and reads the server's resolved round back.
 * `/quiz/ranked` takes several seconds to first render under the dummy-Supabase identity.
 * The console shows ~80 `ERR_UNSAFE_PORT` / dummy-realtime errors: that is the dummy Supabase URL
   (port 1), not the page. The asset routes are not served (503 / CORS on `/api/assets/*`).
-* The admin *shell* does not render under the dev-only E2E **admin** persona: `AdminAuthProvider`
-  re-runs on the per-render `ensureAuthorized` the persona returns (an infinite update loop that is
-  identical on `main`). The Playtests panel is covered by `AdminShell.areas.test.tsx` and
-  `ScrubLaunch.test.tsx`; the launch request is exercised here over real HTTP.
+* `--launch admin` is the owner's real click-through (E2E admin persona -> Admin -> Leaguecraft -> Ranked -> Playtests ->
+  "Play Chronoscope"). It needs the stable `ensureAuthorized` in `useOwnerAuth` (Assembly PA3 fixed it on `main`; before that the admin
+  shell looped forever under the E2E admin persona, on clean `main` too).
+* Order Forge's preset is refused in this scratch DB (`RANKED_FORMAT_UNSERVABLE`: no `champion_stats` content); Reconstruct needs
+  `setup_db.py --seed-recipes`. Scrub and Assembly read no database content.
