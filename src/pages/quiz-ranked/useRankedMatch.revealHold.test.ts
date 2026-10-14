@@ -80,12 +80,13 @@ import { finalServerPacedHoldMs } from "@/lib/ranked-core/pacing";
 import { SERVER_PACED_REVEAL_MODULES } from "@/lib/ranked-core/orderForgeLockReveal";
 import { readResolvedPresentationMs, readSegmentSettlement } from "@/lib/ranked-public/contracts";
 
-describe("the shared server-paced hold (Reconstruct + Match Grid)", () => {
+describe("the shared server-paced hold (Reconstruct + Match Grid + Assembly)", () => {
   const TITLE = 1400;
 
-  it("is exactly Match Grid and Reconstruct; every other module keeps its beat", () => {
-    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["match", "reconstruct"]);
-    for (const id of ["scrub", "assembly", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
+  it("is exactly Assembly, Match Grid and Reconstruct; every other module keeps its beat", () => {
+    // ASSEMBLY-PA3: Assembly joins (backend `AssemblyModule.settlement_hold_ms`).
+    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["assembly", "match", "reconstruct"]);
+    for (const id of ["scrub", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
       expect(SERVER_PACED_REVEAL_MODULES.has(id)).toBe(false);
     }
   });
@@ -149,5 +150,35 @@ describe("RECONSTRUCT-R3B — Reconstruct's server-paced hold", () => {
     const resumed = (cap.resume_final.payload as { latest_resolved_round: { payload: unknown } })
       .latest_resolved_round.payload;
     expect(readResolvedPresentationMs(resumed)).toBe(4000 + TITLE);
+  });
+});
+
+// ASSEMBLY-PA3 — Roster Lock / Draft Memory join the shared server-paced hold.
+// The backend window (`assembly.SETTLEMENT_REVEAL_WINDOW_MS` 4400, exact 3600)
+// is the PositionalAssembly primitive's own clock plus 2500 ms to read the
+// context plate and the notes under each wrong pick.
+import { ASSEMBLY_TIMING, planAssemblyReveal } from "@/lib/interaction-grammar/positionalAssembly";
+
+describe("ASSEMBLY-PA3 — Assembly's server-paced hold", () => {
+  const TITLE = 1400;
+  const READ = 2500;
+
+  it("the window is the primitive's own reveal plus reading time", () => {
+    const wrong = planAssemblyReveal({ reduced: false, anyWrong: true });
+    const exact = planAssemblyReveal({ reduced: false, anyWrong: false });
+    expect(wrong.totalMs).toBe(ASSEMBLY_TIMING.contextEnd);
+    expect(4400 - wrong.totalMs).toBe(READ);
+    expect(3600 - exact.totalMs).toBe(READ);
+  });
+
+  it("an ordinary wrong board holds the whole window (5800 → 4400)", () => {
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(5800, TITLE));
+    expect(anchoredRevealHoldMs(nominal, 5800, TITLE)).toBe(4400);
+  });
+
+  it("the FINAL board holds its stored window before the outro", () => {
+    // backend test_assembly_pa3_admin_live: final presentation_ms = 4400 + title.
+    expect(finalServerPacedHoldMs(4400 + TITLE, TITLE)).toBe(4400);
+    expect(finalServerPacedHoldMs(3600 + TITLE, TITLE)).toBe(3600);
   });
 });
