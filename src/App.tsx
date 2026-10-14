@@ -469,7 +469,7 @@ export const appRouter = createBrowserRouter(
                     <Route path="pro-play-coverage" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
                     <Route path="creator-replay" element={<Suspense fallback={<RouteFallback />}><CreatorReplayPage /></Suspense>} />
-                    <Route path="creator-replay/:runId" element={<Suspense fallback={<RouteFallback />}><CreatorReplayRunPage /></Suspense>} />
+                    <Route path="creator-replay/:runId" element={<Suspense fallback={<RouteFallback />}><CreatorReplayRunPage legacyRedirect /></Suspense>} />
                     <Route path="playtest-director" element={<Suspense fallback={<RouteFallback />}><PlaytestDirectorPage /></Suspense>} />
                     {/* USERS1 — Ranked is a section of Leaguecraft now, not an
                         area. The path resolves so bookmarks land somewhere
@@ -555,6 +555,12 @@ export const appRouter = createBrowserRouter(
                   <Route path="/quiz/matchup" element={<Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense>} />
                   <Route path="/quiz/daily" element={<Navigate to="/quiz/daily-challenge" replace />} />
                   <Route path="/quiz/daily-challenge" element={<Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense>} />
+                  {/* Creator filming plays in EXACTLY the same /quiz page framing
+                      as official Daily; never nest the fixed-height Ranked arena
+                      beneath AdminShell's capped width, rail and padding.
+                      AdminRoute keeps the owner/MFA gate; backend still owns
+                      authorization and run isolation. */}
+                  <Route path="/quiz/daily-challenge/creator/:runId" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CreatorReplayRunPage /></Suspense></AdminRoute>} />
                   {/* RB3 — the guided playtest. A separate route so canonical
                       Ranked is untouched and the whole session can be removed
                       by deleting this line. */}

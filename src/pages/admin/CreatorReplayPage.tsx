@@ -36,7 +36,7 @@ export default function CreatorReplayPage() {
           || typeof json.run_id !== "string" || !/^dr_[a-f0-9]{24}$/.test(json.run_id)) {
         throw new Error("The Daily service returned an invalid run.");
       }
-      navigate(`/admin/creator-replay/${json.run_id}`);
+      navigate(`/quiz/daily-challenge/creator/${json.run_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create replay.");
     } finally {

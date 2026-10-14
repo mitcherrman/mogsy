@@ -16,7 +16,7 @@ function mount() {
   return render(<MemoryRouter initialEntries={["/admin/creator-replay"]}>
     <Routes>
       <Route path="/admin/creator-replay" element={<CreatorReplayPage />} />
-      <Route path="/admin/creator-replay/:runId" element={<p data-testid="replay-route">Filming run</p>} />
+      <Route path="/quiz/daily-challenge/creator/:runId" element={<p data-testid="replay-route">Filming run</p>} />
     </Routes>
   </MemoryRouter>);
 }
