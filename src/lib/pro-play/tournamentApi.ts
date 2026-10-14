@@ -417,14 +417,21 @@ const permanent = (error: unknown) =>
   error instanceof TournamentUnsupported ||
   error instanceof TournamentMalformed;
 
-export function useTournament(contextId: string | undefined) {
-  return useQuery({
+/** One tournament read's query: shared by `useTournament` and by callers that
+ *  read several contexts at once (`useQueries`, HUB-NEXT1), so every reader of
+ *  a context uses the same cache entry and the same retry rule. */
+export function tournamentQuery(contextId: string | undefined) {
+  return {
     queryKey: ["live-esports", "tournament", contextId],
     queryFn: () => fetchTournament(contextId as string),
     enabled: Boolean(contextId),
     refetchInterval: TOURNAMENT_POLL_MS,
     // A failed refresh keeps the last good answer on screen (react-query's
     // default), and the page marks it with the backend's own `stale` flags.
-    retry: (count, error) => !permanent(error) && count < 2,
-  });
+    retry: (count: number, error: unknown) => !permanent(error) && count < 2,
+  };
+}
+
+export function useTournament(contextId: string | undefined) {
+  return useQuery(tournamentQuery(contextId));
 }
