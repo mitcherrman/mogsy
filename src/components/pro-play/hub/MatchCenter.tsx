@@ -63,6 +63,7 @@ import {
   sidesUnverified,
 } from "@/lib/live-esports/gameTruth";
 import type { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
+import type { TournamentFixtureView } from "@/lib/pro-play/explicitFixture";
 import {
   countdown,
   gameState,
@@ -93,9 +94,10 @@ import {
 } from "@/pages/esports/live/lib";
 import MatchStateBadge from "./MatchStateBadge";
 
-/** Why an explicit `?next=` fixture cannot be shown (PW1-A): the schedule is
- *  slow or unavailable, or no longer lists it. */
-export type NextNotice = "slow" | "unavailable" | "gone";
+/** Why an explicit `?next=` fixture cannot be shown (PW1-A, HUB-NEXT1): its
+ *  sources are slow or unavailable, or none of them lists it (`unverified`).
+ *  Each replaces the board: no other match is ever shown in its place. */
+export type NextNotice = "slow" | "unavailable" | "unverified";
 
 type Feed = ReturnType<typeof useLiveFeed>;
 type Match = ReturnType<typeof useLiveMatch>;
@@ -629,9 +631,16 @@ function Objectives({ blue, red }: { blue?: LiveTeamState; red?: LiveTeamState }
 
 /* ── the upcoming board ─────────────────────────────────────────────────── */
 
-function UpcomingBoard({ match }: { match: UpcomingMatch }) {
+/**
+ * An upcoming match, from the live schedule — or, for an explicit link beyond
+ * it (HUB-NEXT1), from the event's tournament schedule (`fixture`), labelled
+ * as such and in the state that schedule gives it. Never a score: a started
+ * fixture whose game the feed does not hold yet is said so, not drawn.
+ */
+function UpcomingBoard({ match, fixture }: { match: UpcomingMatch; fixture?: TournamentFixtureView | null }) {
   const now = useMinuteClock();
   const worlds = isWorldsFixture(match);
+  const state = fixture?.state ?? "upcoming";
   const competition = withWorldsYear(
     [match.league?.name, match.block_name].filter(Boolean) as string[],
     worlds ? worldsYear(match.scheduled_start) : null,
@@ -639,11 +648,21 @@ function UpcomingBoard({ match }: { match: UpcomingMatch }) {
   const unnamed = match.teams.a.tbd || match.teams.b.tbd;
   const facts = [
     ...(match.best_of ? [{ key: "bo", text: `Best of ${match.best_of}` }] : []),
-    { key: "src", text: "Upstream schedule", title: "From the official LoL Esports schedule" },
+    fixture
+      ? {
+          key: "src",
+          text: "Tournament schedule",
+          title: `From the ${fixture.eventName} schedule — the whole event, not the live list of the next few matches`,
+        }
+      : { key: "src", text: "Upstream schedule", title: "From the official LoL Esports schedule" },
   ];
   const start = localStart(match.scheduled_start);
   return (
-    <div data-testid="upcoming-summary">
+    <div
+      data-testid={fixture ? "tournament-fixture" : "upcoming-summary"}
+      data-match-id={match.match_id}
+      data-state={state}
+    >
       <h3 className="sr-only">
         {teamLabel(match.teams.a)} vs {teamLabel(match.teams.b)}
       </h3>
@@ -657,25 +676,61 @@ function UpcomingBoard({ match }: { match: UpcomingMatch }) {
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 py-5 sm:gap-6 sm:px-6">
         <TeamIdentity team={match.teams.a} side="blue" winner={false} sideLabel={false} />
         <div className="flex flex-col items-center gap-1.5 text-center">
-          <MatchStateBadge state="upcoming" />
+          <MatchStateBadge state={state} />
           <span className="text-2xl font-bold leading-none text-[#e3c66f]">VS</span>
           {start && (
             <span className="text-sm font-semibold tabular-nums text-foreground" title={`${match.scheduled_start} UTC, shown in your local time`}>
               {start}
             </span>
           )}
-          <span className="text-xs text-muted-foreground tabular-nums">{countdown(match.scheduled_start, now)}</span>
+          {state === "upcoming" && (
+            <span className="text-xs text-muted-foreground tabular-nums">{countdown(match.scheduled_start, now)}</span>
+          )}
         </div>
         <TeamIdentity team={match.teams.b} side="red" winner={false} sideLabel={false} />
       </div>
       <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted-foreground">
-        {unnamed && (
+        {unnamed && state === "upcoming" && (
           <span data-testid="tbd-note">
             TBD means the official schedule has not named that team yet.{" "}
           </span>
         )}
-        Sides, lineups, the live score and match evidence appear here once the match starts.
+        {fixture && state === "upcoming" && (
+          <span data-testid="fixture-source-note">
+            This match is further out than the live list of upcoming matches, so it is shown from the{" "}
+            {fixture.eventName} schedule.{" "}
+          </span>
+        )}
+        {fixture && state === "live" && (
+          <span data-testid="fixture-source-note">
+            The {fixture.eventName} schedule marks this match live, but its game isn't in the live feed yet. It
+            appears here as soon as the feed has it.{" "}
+          </span>
+        )}
+        {fixture && state === "completed" && (
+          <span data-testid="fixture-source-note">
+            The {fixture.eventName} schedule marks this match completed, but its games aren't in the live feed.{" "}
+          </span>
+        )}
+        {fixture?.stale && (
+          <span data-testid="fixture-stale-note">
+            That schedule couldn't be refreshed just now, so this is its last good read.{" "}
+          </span>
+        )}
+        {state === "upcoming" && "Sides, lineups, the live score and match evidence appear here once the match starts."}
       </p>
+      {fixture && (
+        <div className="flex justify-center border-t border-border/60 px-4 py-2">
+          <Link
+            to={fixture.href}
+            data-testid="fixture-event-link"
+            className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-[#e3c66f] hover:underline sm:min-h-0"
+          >
+            {state === "completed" ? `Result in the ${fixture.shortName} schedule` : `${fixture.shortName} schedule`}
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -688,6 +743,7 @@ export default function MatchCenter({
   series,
   upcoming,
   upcomingMatch,
+  tournamentFixture = null,
   selectedId,
   pinnedId,
   onSelect,
@@ -695,6 +751,7 @@ export default function MatchCenter({
   onClearPin,
   selecting = false,
   nextNotice = null,
+  nextPartial = false,
   onRetrySchedule,
   lanes,
 }: {
@@ -704,6 +761,9 @@ export default function MatchCenter({
   upcoming: UpcomingMatch[];
   /** The selected upcoming match; when set, the board shows it. */
   upcomingMatch: UpcomingMatch | null;
+  /** An explicit `?next=` beyond the schedule reads, found in its event's
+   *  tournament schedule (HUB-NEXT1); when set, the board shows it. */
+  tournamentFixture?: TournamentFixtureView | null;
   selectedId: string | null;
   pinnedId: string | null;
   onSelect: (gameId: string) => void;
@@ -713,10 +773,12 @@ export default function MatchCenter({
    *  (PW1): the loading frame stays, so an unrelated match is not flashed
    *  in front of the Worlds fixture that replaces it. */
   selecting?: boolean;
-  /** An explicit `?next=` fixture the schedule cannot produce (PW1-A). `slow`
-   *  and `unavailable` replace the board with an honest state; `gone` is a
-   *  one-line note above the match the hub fell back to. */
+  /** An explicit `?next=` fixture nothing can produce (PW1-A, HUB-NEXT1).
+   *  Every notice replaces the board with an honest state; no other match is
+   *  shown in the link's place. */
   nextNotice?: NextNotice | null;
+  /** With `unverified`: some source it was checked against is partial. */
+  nextPartial?: boolean;
   onRetrySchedule?: () => void;
   /** The lane board for the selected game, drawn inside the match. */
   lanes?: React.ReactNode;
@@ -724,10 +786,10 @@ export default function MatchCenter({
   const { live, selectable, failing } = feed;
   const { selected, isFinal, detail, gold, insights } = match;
   const selectedIsLive = !!selectedId && live.some((g) => g.game_id === selectedId);
-  const nextBlocked = nextNotice === "slow" || nextNotice === "unavailable";
-  const title = upcomingMatch
+  const nextBlocked = nextNotice !== null;
+  const title = upcomingMatch || tournamentFixture?.state === "upcoming"
     ? "Up next"
-    : nextBlocked
+    : nextBlocked || tournamentFixture
       ? "Selected match"
       : selectedIsLive
       ? "Live now"
@@ -735,7 +797,8 @@ export default function MatchCenter({
         ? "Selected match"
         : "Previous match";
 
-  const worldsBoard = upcomingMatch ? isWorldsFixture(upcomingMatch) : !!selected && isWorldsGame(selected);
+  const boardFixture = upcomingMatch ?? tournamentFixture?.match ?? null;
+  const worldsBoard = boardFixture ? isWorldsFixture(boardFixture) : !!selected && isWorldsGame(selected);
 
   const shell = (body: React.ReactNode) => (
     <section
@@ -786,7 +849,7 @@ export default function MatchCenter({
     );
   }
 
-  if (!feed.feed.data || (selecting && !upcomingMatch)) {
+  if (!feed.feed.data || (selecting && !boardFixture)) {
     return shell(
       <div className="space-y-3 p-4" data-testid="match-center-loading">
         <div className="flex gap-2 overflow-hidden">
@@ -805,9 +868,9 @@ export default function MatchCenter({
     selected && !selectable.some((g) => g.game_id === selected.game_id) ? (
       <button
         type="button"
-        aria-pressed={!upcomingMatch}
+        aria-pressed={!boardFixture}
         onClick={() => onSelect(selected.game_id)}
-        className={cn(CHIP, chipTone(!upcomingMatch))}
+        className={cn(CHIP, chipTone(!boardFixture))}
         data-testid="pinned-chip"
       >
         {gameState(selected, false) ? (
@@ -824,8 +887,8 @@ export default function MatchCenter({
     <Rail
       series={series}
       upcoming={upcoming}
-      selectedKey={upcomingMatch ? null : (selectedSeries?.key ?? null)}
-      upcomingId={upcomingMatch?.match_id ?? null}
+      selectedKey={boardFixture || nextBlocked ? null : (selectedSeries?.key ?? null)}
+      upcomingId={boardFixture?.match_id ?? null}
       onSelectSeries={(s) => onSelect(s.focus.game_id)}
       onSelectUpcoming={onSelectUpcoming}
       pinnedOutside={pinnedOutside}
@@ -836,35 +899,32 @@ export default function MatchCenter({
       }
     />
   );
-  const rail = (
-    <>
-      {railRow}
-      {nextNotice === "gone" && (
-        <p
-          role="status"
-          data-testid="next-gone"
-          className="border-b border-border/60 px-4 py-2 text-xs text-muted-foreground"
-        >
-          The match in this link isn't in the current schedule response (it lists only the next few matches), so the latest match is shown instead.
-        </p>
-      )}
-    </>
-  );
+  const rail = railRow;
 
   if (nextBlocked) {
     const slow = nextNotice === "slow";
+    const unverified = nextNotice === "unverified";
     return shell(
       <>
         {rail}
-        <div className="p-4" data-testid="next-unresolved" data-reason={nextNotice}>
-          <Alert variant={slow ? "default" : "destructive"}>
+        <div
+          className="p-4"
+          data-testid="next-unresolved"
+          data-reason={nextNotice}
+          data-partial={unverified && nextPartial ? "true" : undefined}
+        >
+          <Alert variant={slow || unverified ? "default" : "destructive"}>
             {slow ? <Clock className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            <AlertTitle>{slow ? "Still loading that match" : "Couldn't load that match"}</AlertTitle>
+            <AlertTitle>
+              {slow ? "Still loading that match" : unverified ? "Can't confirm that match" : "Couldn't load that match"}
+            </AlertTitle>
             <AlertDescription className="flex flex-col gap-2">
               <span>
                 {slow
                   ? "The schedule is taking longer than usual, so the match in this link can't be shown yet. It appears here as soon as the schedule answers — or open the latest match instead."
-                  : "The schedule didn't respond, so the match in this link can't be confirmed, and no other match is shown in its place."}
+                  : unverified
+                    ? `The match in this link isn't among the next few matches in the live schedule, or in the tournament schedules Mogzy reads${nextPartial ? " (not all of which can confirm they are complete)" : ""}. That doesn't mean it was cancelled — it can't be confirmed from here, so no other match is shown in its place.`
+                    : "The schedule didn't respond, so the match in this link can't be confirmed, and no other match is shown in its place."}
               </span>
               <span className="flex flex-wrap gap-2">
                 {onRetrySchedule && (
@@ -889,6 +949,15 @@ export default function MatchCenter({
       <>
         {rail}
         <UpcomingBoard match={upcomingMatch} />
+      </>,
+    );
+  }
+
+  if (tournamentFixture) {
+    return shell(
+      <>
+        {rail}
+        <UpcomingBoard match={tournamentFixture.match} fixture={tournamentFixture} />
       </>,
     );
   }

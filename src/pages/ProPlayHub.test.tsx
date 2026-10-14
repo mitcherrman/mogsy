@@ -32,7 +32,7 @@ import ProPlayHub, {
 import { PRO_PLAY_LIVE_ARCHIVE_ROUTE, PRO_PLAY_STATS_ROUTE } from "@/lib/pro-play/routes";
 import { __resetProPlayMediaCache } from "@/components/pro-play/media/ProPlayMediaProvider";
 import DCGI_PRE_EVENT from "@/lib/pro-play/__fixtures__/tournamentDcgiPreEvent.json";
-import { WORLDS_PRE, worldsComplete } from "@/lib/pro-play/__fixtures__/worldsScenarios";
+import { KO, PI, WORLDS_PRE, clone, finish, goLive, partialSchedule, worldsComplete } from "@/lib/pro-play/__fixtures__/worldsScenarios";
 import LES_G1 from "@/lib/live-esports/__fixtures__/ppia2LesSwappedG1.json";
 
 const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
@@ -1130,10 +1130,12 @@ describe("PPH3 · UP NEXT", () => {
     }
   });
 
-  it("falls back to the played games when ?next= names a match no longer upcoming", async () => {
+  it("never shows the played games in place of a ?next= nothing lists (HUB-NEXT1)", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [] });
     renderHub(`${PRO_PLAY_ROUTE}?next=gone`);
-    expect(await summaryTitle()).toMatch(/GEN/);
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unverified");
+    expect(screen.queryByTestId("match-summary")).toBeNull();
   });
 
   it("picking a played game from the rail leaves the upcoming view", async () => {
@@ -1571,12 +1573,17 @@ describe("PW1 · explicit selection is never overridden", () => {
     expect(location.search).toBe("?next=w1");
   });
 
-  it("does not stick on a ?next= that left the schedule: it falls back to the automatic pick", async () => {
+  it("a ?next= nothing lists is not replaced by the automatic pick; clearing it restores that pick (HUB-NEXT1)", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [worldsFixture("w2", "C9", "KC")] });
     renderHub(`${PRO_PLAY_ROUTE}?next=gone`);
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unverified");
+    expect(note.textContent).toMatch(/doesn't mean it was cancelled/i);
+    expect(screen.queryByTestId("upcoming-summary")).toBeNull();
+    expect(railChips().every((c) => c.getAttribute("aria-pressed") === "false")).toBe(true);
+    fireEvent.click(within(note).getByRole("button", { name: /Show the latest match/i }));
     expect(await upcomingTitle()).toBe("C9 vs KC");
-    // Said, not silent: the link named a match the schedule no longer lists.
-    expect(within(matchCenter()).getByTestId("next-gone").textContent).toMatch(/isn't in the current schedule/i);
+    expect(location.search).toBe("");
   });
 });
 
@@ -1855,12 +1862,14 @@ describe("PW1-A · an explicit fixture the schedule is slow or unable to produce
     expect(note.getAttribute("data-reason")).toBe("unavailable");
   });
 
-  it("a healthy schedule that does not list the fixture is 'gone': the fallback is labelled, not silent", async () => {
+  it("a healthy schedule that does not list the fixture, with no tournament listing it either, is 'unverified' and shows no fallback", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [] });
     renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
-    expect(await summaryTitle()).toBe("GEN vs T1");
-    expect(screen.getByTestId("next-gone")).toBeTruthy();
-    expect(screen.queryByTestId("next-unresolved")).toBeNull();
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unverified");
+    // No tournament route answered (404s): the miss is partial, never "removed".
+    expect(note.getAttribute("data-partial")).toBe("true");
+    expect(screen.queryByTestId("match-summary")).toBeNull();
   });
 
   it("shows no such note on an ordinary visit, or when a started match is followed", async () => {
@@ -1994,15 +2003,16 @@ describe("PW1-C · two bounded schedule reads", () => {
     expect(location.search).toBe("?next=w1");
   }, 9000);
 
-  it("is 'gone' only once both reads have answered without the fixture", async () => {
+  it("is 'unverified' only once both reads have answered without the fixture, and shows no other match", async () => {
     installBackend({
       recent: [summary("R1", "GEN", "T1")],
       upcoming: [dcgiFixture("d1", "KT", "VIT", 5)],
       worldsUpcoming: [],
     });
     renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
-    expect(await summaryTitle()).toBe("GEN vs T1");
-    expect(screen.getByTestId("next-gone")).toBeTruthy();
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unverified");
+    expect(screen.queryByTestId("match-summary")).toBeNull();
   });
 
   it("a slow filtered read does not delay an ordinary Worlds row beyond the bound, and it then settles", async () => {
@@ -2128,4 +2138,284 @@ describe("PW4-B · featured tournament by calendar day", () => {
     const header = (await screen.findByTestId("tournament-spotlight")).closest("header")!;
     expect(header.nextElementSibling?.contains(document.getElementById("match-center"))).toBe(true);
   });
+});
+
+/* ── HUB-NEXT1: an explicit ?next= keeps its identity ───────────────────── */
+
+describe("HUB-NEXT1 · an explicit ?next= is never replaced by another match", () => {
+  const BOTH = { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": WORLDS_PRE };
+
+  it("REGRESSION: the Worlds Knockout Final, outside the upcoming window, is not replaced by an unrelated match", async () => {
+    // 13 Oct: DCGI is featured, the Final is a month out (UX2 §5 / UX3A §15).
+    beforeWorldsClock();
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5)],
+      worldsUpcoming: [worldsFixture("w1", "C9", "KC")],
+      tournaments: BOTH,
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    // Let the board settle on whatever it is going to show.
+    await waitFor(
+      () => {
+        expect(within(matchCenter()).queryByTestId("match-center-loading")).toBeNull();
+        expect(requests.some((r) => r.includes("/upcoming?league=worlds"))).toBe(true);
+      },
+      { timeout: 4500 },
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    // Neither the automatic Worlds fixture nor the latest game stands in for it
+    // (the starting commit showed "C9 vs KC" under a "not in the schedule" note).
+    expect(within(matchCenter()).queryByRole("heading", { name: /C9 vs KC/ })).toBeNull();
+    expect(screen.queryByTestId("next-gone")).toBeNull();
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    const board = await screen.findByTestId("tournament-fixture", undefined, { timeout: 4500 });
+    expect(board.getAttribute("data-match-id")).toBe(KO.final);
+    expect(location.search).toBe(`?next=${KO.final}`);
+  }, 12000);
+
+  const fixtureBoard = () => screen.findByTestId("tournament-fixture", undefined, { timeout: 4500 });
+  const unresolved = () => screen.findByTestId("next-unresolved", undefined, { timeout: 4500 });
+  const at = (iso: string) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(iso));
+  };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("draws the verified fixture from the tournament schedule: identity, stage, time, TBD sides, state, source", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    const board = await fixtureBoard();
+    expect(board.getAttribute("data-state")).toBe("upcoming");
+    expect(within(board).getByTestId("match-meta").textContent).toMatch(/Worlds 2026/);
+    expect(within(board).getByTestId("match-meta").textContent).toMatch(/Knockout Stage · Finals/);
+    expect(within(board).getByTestId("match-facts").textContent).toMatch(/Best of 5/);
+    expect(within(board).getByTestId("match-facts").textContent).toMatch(/Tournament schedule/);
+    expect(within(board).getByTestId("match-state").getAttribute("data-state")).toBe("upcoming");
+    // The Final's sides are not decided: TBD, not guessed.
+    expect(board.querySelector("h3")?.textContent).toBe("TBD vs TBD");
+    expect(within(board).getByTestId("tbd-note")).toBeTruthy();
+    // Said where it comes from, and that the live list is shorter.
+    expect(within(board).getByTestId("fixture-source-note").textContent).toMatch(/further out than the live list/);
+    expect(within(board).getByText(/\d{1,2}:\d{2}/)).toBeTruthy();
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Up next" })).toBeTruthy();
+    expect(matchCenter().getAttribute("data-event")).toBe("worlds");
+    // UX3A off: the canonical Worlds page, not a nested route this build lacks.
+    expect(within(board).getByTestId("fixture-event-link").getAttribute("href")).toBe(
+      "/lol/pro-play/tournament/worlds-2026",
+    );
+  }, 9000);
+
+  it("resolves a Worlds link before 15 Oct while DCGI stays the featured event", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    await fixtureBoard();
+    expect(screen.getByTestId("tournament-spotlight").getAttribute("href")).toBe("/lol/pro-play/tournament/dcgi-2026");
+    expect(requests.some((r) => r.includes("/tournament/worlds-2026"))).toBe(true);
+  }, 9000);
+
+  it("links to the Worlds Schedule screen for the match only when the UX3A experience is on", async () => {
+    vi.stubEnv("VITE_WORLDS_EXPERIENCE_ENABLED", "true");
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    const board = await fixtureBoard();
+    expect(within(board).getByTestId("fixture-event-link").getAttribute("href")).toBe(
+      `/lol/pro-play/tournament/worlds-2026/schedule?match=${KO.final}`,
+    );
+  }, 9000);
+
+  it("does not ask any tournament for a fixture the upcoming feed already lists", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [worldsFixture("w1", "C9", "KC")], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    expect(await upcomingTitle()).toBe("C9 vs KC");
+    expect(screen.queryByTestId("tournament-fixture")).toBeNull();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(requests.some((r) => r.includes("/tournament/worlds-2026"))).toBe(false);
+  });
+
+  it("an ordinary visit and a ?game= link ask no extra tournament", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1"), summary("R2", "HLE", "KT")], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?game=R2`);
+    expect(await summaryTitle()).toBe("HLE vs KT");
+    expect(location.search).toBe("?game=R2");
+    cleanup();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], tournaments: BOTH });
+    renderHub();
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    await new Promise((r) => setTimeout(r, 100));
+    expect(requests.some((r) => r.includes("/tournament/worlds-2026"))).toBe(false);
+  });
+
+  it("an id no schedule lists is 'unverified', not 'removed', and shows nothing in its place", async () => {
+    beforeWorldsClock();
+    // Every source complete and healthy (v2, full coverage): still only "can't confirm".
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w1", "C9", "KC")],
+      tournaments: { "dcgi-2026": clone(), "worlds-2026": WORLDS_PRE },
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=999999`);
+    const note = await unresolved();
+    expect(note.getAttribute("data-reason")).toBe("unverified");
+    expect(note.getAttribute("data-partial")).toBeNull();
+    expect(note.textContent).toMatch(/Can't confirm that match/);
+    expect(note.textContent).not.toMatch(/removed|cancelled\b(?! —)/i);
+    expect(screen.queryByTestId("upcoming-summary")).toBeNull();
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Selected match" })).toBeTruthy();
+  }, 9000);
+
+  it("a fixture missing from a partial tournament schedule is unverified and marked partial", async () => {
+    beforeWorldsClock();
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      worldsUpcoming: [],
+      tournaments: { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": partialSchedule() },
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    const note = await unresolved();
+    expect(note.getAttribute("data-reason")).toBe("unverified");
+    expect(note.getAttribute("data-partial")).toBe("true");
+    expect(note.textContent).toMatch(/not all of which can confirm they are complete/);
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+  }, 9000);
+
+  it("a partial schedule that still lists the fixture shows it", async () => {
+    beforeWorldsClock();
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      worldsUpcoming: [],
+      tournaments: { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": partialSchedule() },
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.qf1}`);
+    expect((await fixtureBoard()).getAttribute("data-match-id")).toBe(KO.qf1);
+  }, 9000);
+
+  it("a failed tournament read is 'unavailable', with retry and a way back, and no other match", async () => {
+    beforeWorldsClock();
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      worldsUpcoming: [],
+      tournaments: { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": "fail" },
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    // The read retries (as the tournament page does): slow first, then unavailable.
+    await waitFor(
+      () => expect(screen.getByTestId("next-unresolved").getAttribute("data-reason")).toBe("unavailable"),
+      { timeout: 9000 },
+    );
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    const note = screen.getByTestId("next-unresolved");
+    // It comes back: the retry asks the tournament again.
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      worldsUpcoming: [],
+      tournaments: BOTH,
+    });
+    fireEvent.click(within(note).getByRole("button", { name: /Try again/i }));
+    expect((await fixtureBoard()).getAttribute("data-match-id")).toBe(KO.final);
+  }, 20000);
+
+  it("a stale tournament copy is still shown, and said to be the last good read", async () => {
+    beforeWorldsClock();
+    const stale = clone();
+    stale.stale = true;
+    stale.source_ok = false;
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      worldsUpcoming: [],
+      tournaments: { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": stale },
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    expect(within(await fixtureBoard()).getByTestId("fixture-stale-note")).toBeTruthy();
+  }, 9000);
+
+  it("a fixture the tournament marks live, before its game is in the feed, is not drawn as upcoming or scored", async () => {
+    at("2026-10-15T19:00:00Z");
+    const d = clone();
+    goLive(d, PI.ubsf1, 1, 0);
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: { "worlds-2026": d } });
+    const { client } = renderHubWithClient(`${PRO_PLAY_ROUTE}?next=${PI.ubsf1}`);
+    const board = await fixtureBoard();
+    expect(board.getAttribute("data-state")).toBe("live");
+    expect(within(board).getByTestId("match-state").getAttribute("data-state")).toBe("live");
+    expect(within(board).getByTestId("fixture-source-note").textContent).toMatch(/marks this match live/);
+    expect(board.textContent).not.toMatch(/1–0|1-0|\bin \d/);
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Selected match" })).toBeTruthy();
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+
+    // Its game reaches the feed under the backend's own game id: followed.
+    d.state.matches.find((m) => m.match_id === PI.ubsf1)!.live1_game_ids = ["PI1-G2"];
+    installBackend({
+      live: [liveWorlds("PI1-G2", "C9", "KC")],
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      worldsUpcoming: [],
+      tournaments: { "worlds-2026": d },
+    });
+    await client.refetchQueries({ queryKey: ["live-esports"] });
+    expect(await summaryTitle()).toBe("C9 vs KC");
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Live now" })).toBeTruthy();
+    expect(screen.queryByTestId("tournament-fixture")).toBeNull();
+    expect(location.search).toBe(`?next=${PI.ubsf1}`);
+  }, 15000);
+
+  it("a fixture the tournament marks completed, with no feed game, points to its result instead of inventing one", async () => {
+    at("2026-10-16T19:00:00Z");
+    const d = clone();
+    finish(d, PI.ubsf1, 0, 1);
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: { "worlds-2026": d } });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${PI.ubsf1}`);
+    const board = await fixtureBoard();
+    expect(board.getAttribute("data-state")).toBe("completed");
+    expect(board.textContent).not.toMatch(/3–1|Winner/);
+    expect(within(board).getByTestId("fixture-event-link").textContent).toMatch(/Result in the Worlds schedule/);
+  }, 9000);
+
+  it("with both ?next= and ?game=, the fixture keeps the board; the game pin never stands in", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}&game=R1`);
+    expect((await fixtureBoard()).getAttribute("data-match-id")).toBe(KO.final);
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    cleanup();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=999999&game=R1`);
+    expect((await unresolved()).getAttribute("data-reason")).toBe("unverified");
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+  }, 12000);
+
+  it("clearing an unresolved fixture returns to the normal Match Center", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=999999&game=R1`);
+    const note = await unresolved();
+    fireEvent.click(within(note).getByRole("button", { name: /Show the latest match/i }));
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    expect(location.search).toBe("");
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Previous match" })).toBeTruthy();
+  }, 9000);
+
+  it("a rail pick from the fixture board leaves it", async () => {
+    beforeWorldsClock();
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [], worldsUpcoming: [], tournaments: BOTH });
+    renderHub(`${PRO_PLAY_ROUTE}?next=${KO.final}`);
+    await fixtureBoard();
+    fireEvent.click(within(matchCenter()).getAllByTestId("series-chip")[0]);
+    await waitFor(() => expect(location.search).toBe("?game=R1"));
+    expect(await summaryTitle()).toBe("GEN vs T1");
+  }, 9000);
 });

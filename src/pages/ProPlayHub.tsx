@@ -15,6 +15,13 @@ import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useSchedule } from "@/lib/liv
 import { gamesNeedingResult, groupSeries, railUpcoming, type GameRecord } from "@/lib/pro-play/hubSeries";
 import { nextWorldsFixture } from "@/lib/pro-play/worlds";
 import { featuredTournament } from "@/lib/pro-play/featuredTournament";
+import {
+  FIXTURE_CONTEXT_IDS,
+  fixtureFeedGame,
+  resolveExplicitFixture,
+  tournamentFixtureView,
+} from "@/lib/pro-play/explicitFixture";
+import { tournamentQuery } from "@/lib/pro-play/tournamentApi";
 import { lanePlayerKey, nextHubAutoPick, samePick, type HubPick } from "@/lib/pro-play/hubSelection";
 import {
   PRO_PLAY_LIVE_GAME_PARAM,
@@ -63,6 +70,11 @@ import {
  * follows that match into its games rather than expiring, and one the
  * schedule cannot produce (slow, unavailable, gone) is said so — an
  * unrelated match is never shown in its place (PW1-A).
+ *
+ * HUB-NEXT1: the schedule reads are bounded, so a `?next=` they do not list is
+ * looked up in the configured events' tournament schedules and, when found,
+ * shown from there (`explicitFixture.ts`); otherwise the board says the match
+ * can't be confirmed. Either way the link's match keeps the board.
  *
  * Nothing on the hub is a placeholder. No match-specific quiz: the quiz API
  * cannot filter by match.
@@ -144,34 +156,78 @@ function ProPlayHubPage() {
    * `match_id`: follow it into the live game, else its latest. */
   const explicitUpcoming = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
   const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
-  const followedGameId =
+  const seriesGameId =
     nextId && !explicitUpcoming ? (roughSeries.find((s) => s.key === nextId)?.focus.game_id ?? null) : null;
-  // `?next=` is the later, more specific choice when a URL carries both
-  // (selecting a fixture clears `?game=`; an older link may still hold both).
-  const explicitGameId = followedGameId ?? pinnedId;
 
-  /* An explicit fixture the schedule cannot (yet) produce. Within the bound
-   * the loading frame holds; past it the board says so — it never shows an
+  /* HUB-NEXT1 — the schedule reads are BOUNDED (the next 12 within 14 days),
+   * so a fixture they do not list may simply be further away: the Worlds
+   * Final a month out. Such a link is looked up in the configured events'
+   * own tournament schedules (`explicitFixture.ts`) — every configured event,
+   * not just today's featured one, so a Worlds link works while DCGI is
+   * featured. Only for an explicit link neither schedule read nor the feed
+   * holds, once the schedule has answered (or the bounded wait is over): an
+   * ordinary visit asks for nothing more. The featured event's read is the
+   * pill's cache entry, so it costs nothing extra. */
+  const lookupWanted = !!nextId && !explicitUpcoming && !seriesGameId && (!schedule.isPending || scheduleWaited);
+  const fixtureReads = useQueries({
+    queries: FIXTURE_CONTEXT_IDS.map((id) => ({ ...tournamentQuery(id), enabled: lookupWanted })),
+  });
+  const fixtureKey = fixtureReads.map((r) => `${r.dataUpdatedAt}:${r.errorUpdatedAt}:${r.status}`).join(",");
+  const resolution = useMemo(
+    () =>
+      lookupWanted && nextId
+        ? resolveExplicitFixture(
+            nextId,
+            fixtureReads.map((r, i) => ({
+              contextId: FIXTURE_CONTEXT_IDS[i],
+              data: r.data,
+              error: r.error,
+              isPending: r.isPending,
+            })),
+          )
+        : null,
+    // `fixtureReads` is a new array every render; `fixtureKey` is what changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lookupWanted, nextId, fixtureKey],
+  );
+  const found = resolution?.kind === "found" ? resolution : null;
+  // A fixture the tournament marks started continues as its feed game, by the
+  // backend's own game ids for the match.
+  const fixtureGameId = found ? fixtureFeedGame(found.match, live, recent) : null;
+  const followedGameId = seriesGameId ?? fixtureGameId;
+  const tournamentFixture = useMemo(
+    () => (found && !fixtureGameId ? tournamentFixtureView(found) : null),
+    [found, fixtureGameId],
+  );
+  // `?next=` is the later, more specific choice when a URL carries both
+  // (selecting a fixture clears `?game=`; an older link may still hold both):
+  // a `?game=` pin never stands in for the fixture the link names.
+  const explicitGameId = nextId ? followedGameId : pinnedId;
+
+  /* An explicit fixture nothing can produce (yet). Within the bound the
+   * loading frame holds; past it the board says so — it NEVER shows an
    * unrelated match as though it were the one in the link:
-   *  - slow: the schedule has not answered in time;
-   *  - unavailable: it failed, or upstream's own read failed;
-   *  - gone: both schedule reads answered and neither lists it (a started
-   *    match is followed above). The responses are bounded, so this is "not in
-   *    the current schedule", not proof Riot removed the fixture.
-   * Pending means EITHER read (all upcoming / Worlds-filtered, PW1-C) is
-   * pending: one answering is never enough to call a fixture gone. */
-  const waitingOnNext = !!nextId && !explicitUpcoming && !followedGameId;
-  const scheduleUnusable = schedule.unusable;
+   *  - slow: the schedule or the tournament lookup has not answered in time;
+   *  - unavailable: a read failed, so the fixture cannot be checked;
+   *  - unverified: every read answered and none lists it. The sources are
+   *    bounded or may be partial, so this is "can't be confirmed", never proof
+   *    the match was removed.
+   * Pending means EITHER schedule read (all upcoming / Worlds-filtered, PW1-C)
+   * is pending: one answering is never enough. */
+  const waitingOnNext = !!nextId && !explicitUpcoming && !followedGameId && !tournamentFixture;
+  const lookupPending = !resolution || resolution.kind === "pending";
   const nextNotice: NextNotice | null = !waitingOnNext
     ? null
-    : schedule.isPending
+    : schedule.isPending || lookupPending
       ? scheduleWaited
         ? "slow"
         : null
-      : scheduleUnusable
+      : schedule.unusable || resolution?.kind === "unavailable"
         ? "unavailable"
-        : "gone";
-  const nextBlocked = nextNotice === "slow" || nextNotice === "unavailable";
+        : "unverified";
+  const nextPartial = resolution?.kind === "not_found" && resolution.partial;
+  // Still resolving an explicit fixture: the loading frame, never another match.
+  const nextLoading = waitingOnNext && nextNotice === null;
 
   // The feed lands before the schedule: hold the pick (the automatic one, or
   // an explicit fixture's) until the schedule has answered, or for a bounded
@@ -189,17 +245,16 @@ function ProPlayHubPage() {
   const nextAuto = settling ? auto : nextHubAutoPick(auto, live, recent, allUpcoming, now);
   if (!samePick(nextAuto, auto)) setAuto(nextAuto);
 
-  const autoGameId = nextAuto?.kind === "game" ? nextAuto.id : null;
+  // The automatic pick only ever fills a board nobody has chosen for.
+  const explicit = !!nextId || !!pinnedId;
+  const autoGameId = !explicit && nextAuto?.kind === "game" ? nextAuto.id : null;
   const autoUpcoming =
-    !explicitGameId && !explicitUpcoming && !nextBlocked && nextAuto?.kind === "upcoming"
-      ? (allUpcoming.find((m) => m.match_id === nextAuto.id) ?? null)
-      : null;
+    !explicit && nextAuto?.kind === "upcoming" ? (allUpcoming.find((m) => m.match_id === nextAuto.id) ?? null) : null;
   // The board's upcoming match: an explicit `?next=`, else the automatic
-  // Worlds fixture. A shared link may name a fixture outside the rail's short
-  // list; a match that has since started is simply not offered any more.
+  // Worlds fixture. A fixture beyond the schedule reads is `tournamentFixture`.
   const upcomingMatch = explicitUpcoming ?? autoUpcoming;
 
-  const selectedId = nextBlocked ? null : (explicitGameId ?? (upcomingMatch ? null : autoGameId));
+  const selectedId = explicitGameId ?? (upcomingMatch ? null : autoGameId);
   const match = useLiveMatch(
     selectedId,
     selectable.find((g) => g.game_id === selectedId),
@@ -264,10 +319,12 @@ function ProPlayHubPage() {
       ...upcoming.flatMap((m) => [m.teams.a.resolved_page, m.teams.b.resolved_page]),
       upcomingMatch?.teams.a.resolved_page,
       upcomingMatch?.teams.b.resolved_page,
+      tournamentFixture?.match.teams.a.resolved_page,
+      tournamentFixture?.match.teams.b.resolved_page,
       selected?.teams.blue?.resolved_page,
       selected?.teams.red?.resolved_page,
     ],
-    [series, upcoming, upcomingMatch, selected],
+    [series, upcoming, upcomingMatch, tournamentFixture, selected],
   );
   // Event marks for the event band and the UP NEXT rail (DCGI1): league
   // slugs resolve through the same media authority as crests.
@@ -275,10 +332,11 @@ function ProPlayHubPage() {
     () => [
       ...upcoming.map((m) => m.league?.slug),
       upcomingMatch?.league?.slug,
+      tournamentFixture?.match.league.slug,
       selected?.competition?.league.slug,
       selected?.league?.slug,
     ],
-    [upcoming, upcomingMatch, selected],
+    [upcoming, upcomingMatch, tournamentFixture, selected],
   );
   const lanePlayers = match.players.data?.players;
   const mediaPlayers = useMemo(() => (lanePlayers ?? []).map(lanePlayerKey), [lanePlayers]);
@@ -335,9 +393,14 @@ function ProPlayHubPage() {
             upcomingMatch={upcomingMatch}
             selectedId={selectedId}
             pinnedId={explicitGameId}
-            selecting={settling}
+            tournamentFixture={tournamentFixture}
+            selecting={settling || nextLoading}
             nextNotice={nextNotice}
-            onRetrySchedule={() => void schedule.refetch()}
+            nextPartial={nextPartial}
+            onRetrySchedule={() => {
+              void schedule.refetch();
+              fixtureReads.forEach((r) => void r.refetch());
+            }}
             onSelect={select}
             onSelectUpcoming={selectUpcoming}
             onClearPin={clearPin}
