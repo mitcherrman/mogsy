@@ -140,6 +140,8 @@ const AdminOverviewPage = lazy(() => import("./pages/admin/areas/AdminOverviewPa
 const AdminAllToolsPage = lazy(() => import("./pages/admin/areas/AdminAllToolsPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/areas/AdminUsersPage"));
 const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
+const CreatorReplayPage = lazy(() => import("./pages/admin/CreatorReplayPage"));
+const CreatorReplayRunPage = lazy(() => import("./pages/admin/CreatorReplayRunPage"));
 const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulationPage"));
 const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPage"));
 const ContentAtlasPage = lazy(() => import("./pages/admin/ContentAtlasPage"));
@@ -466,6 +468,8 @@ export const appRouter = createBrowserRouter(
                         backend-authority admin reads are. */}
                     <Route path="pro-play-coverage" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
+                    <Route path="creator-replay" element={<Suspense fallback={<RouteFallback />}><CreatorReplayPage /></Suspense>} />
+                    <Route path="creator-replay/:runId" element={<Suspense fallback={<RouteFallback />}><CreatorReplayRunPage /></Suspense>} />
                     <Route path="playtest-director" element={<Suspense fallback={<RouteFallback />}><PlaytestDirectorPage /></Suspense>} />
                     {/* USERS1 — Ranked is a section of Leaguecraft now, not an
                         area. The path resolves so bookmarks land somewhere
