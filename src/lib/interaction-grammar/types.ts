@@ -254,6 +254,180 @@ export interface ReconstructReveal {
   timedOut?: boolean;
 }
 
+// ---------------------------------------------------------------- Chronoscope (SCRUB)
+
+/**
+ * One discrete checkpoint on the chronoscope rail. Everything here is
+ * PRE-REVEAL public state: what the world looks like at this checkpoint. It has
+ * no field that could say whether the objective holds here, and no field that
+ * only the canonical checkpoint would carry.
+ */
+export interface ChronoscopeCheckpoint<TScene = unknown> {
+  /** Opaque identity the response carries. Never displayed. */
+  token: string;
+  /** The engraved name of the checkpoint: "Wave 4". */
+  label: string;
+  /** The clock engraving beside it: "2:00". */
+  clock: string;
+  /**
+   * Draws the rail's diamond detent. A UNIFORM public fact about the
+   * checkpoint (a cannon wave), never a hint: the host marks every checkpoint
+   * of that kind alike, or none.
+   */
+  emphasised?: boolean;
+  /** The reading plate's engraving at this checkpoint: authority strings only. */
+  reading: readonly ChronoscopeReadingLine[];
+  /** Everything the lens scene needs to draw this checkpoint. Host-typed. */
+  scene: TScene;
+}
+
+export interface ChronoscopeReadingLine {
+  label: string;
+  value: string;
+}
+
+/** Everything a player may see before the reveal. */
+export interface ChronoscopePublic<TScene = unknown> {
+  /** The eyebrow over the objective: "Chronoscope · Duo lane". */
+  eyebrow: string;
+  /** The objective sentence. */
+  prompt: string;
+  /** The instrument's engraved unit: "Wave". Used in announcements. */
+  unitLabel: string;
+  /** ≥ 2 checkpoints in rail order, distinct tokens. */
+  checkpoints: readonly ChronoscopeCheckpoint<TScene>[];
+  /** Short engravings under the rail at these indexes, e.g. the clock at 1, 5, 10, 15. */
+  railMarks?: readonly { index: number; text: string }[];
+  /** One short host line shown under the footer once the hand is off the rail (an authority caveat). */
+  footnote?: string | null;
+}
+
+/** The locked checkpoint: identity only, never correctness. */
+export type ChronoscopeResponse = { checkpoint: string };
+
+/** One reading in the before → after proof. Every string is the host's. */
+export interface ChronoscopeProofReading {
+  token: string;
+  /** "Wave 3 · 1:30" */
+  title: string;
+  lines: readonly ChronoscopeReadingLine[];
+  /** Whether the objective holds at this reading, as the authority states it. */
+  satisfied: boolean;
+  /** One short host-worded line: "still below 660 XP" / "threshold reached". */
+  caption: string | null;
+}
+
+/** Authority-supplied, post-lock only. The primitive displays it and grades nothing. */
+export interface ChronoscopeReveal {
+  /** The checkpoint the player locked, as the host recorded it. */
+  lockedToken: string;
+  /** The canonical checkpoint. Only ever supplied here. */
+  canonicalToken: string;
+  /** The host's verdict; null when it stated none. */
+  isCorrect: boolean | null;
+  /**
+   * The proof that the canonical checkpoint is the FIRST valid one: the
+   * reading just before it (null when it is the first checkpoint) and the
+   * reading at it.
+   */
+  proof: {
+    before: ChronoscopeProofReading | null;
+    after: ChronoscopeProofReading;
+    /** What the crossing is, host-worded: "Level 3 needs 660 cumulative XP". */
+    thresholdLine: string | null;
+  };
+  /** One host-worded teaching line for a wrong lock; null for a right one. */
+  note: string | null;
+}
+
+// -------------------------------------------------------- Positional Assembly
+//
+// PAV1 — ASSIGN. The player puts N distinct cards from a tray into N labelled
+// positions, one card per position, each card in at most one position. Every
+// position has SEMANTIC meaning (unlike Reconstruct's unordered sockets), so a
+// board is graded position by position. The primitive knows positions, cards
+// and placement; it never knows which card belongs where until a reveal says.
+
+/** One labelled position on the board. The host words every label. */
+export interface AssemblyPosition {
+  /** Opaque id the response is keyed by, e.g. "top". Never displayed. */
+  id: string;
+  /** Engraved label, e.g. "Top". */
+  label: string;
+  /** Short label for a narrow board, e.g. "TOP". Defaults to `label`. */
+  short?: string | null;
+  /** Emblem art for the position, if the host has one. Decorative: the label names it. */
+  emblem?: SubjectMedia | null;
+}
+
+/** One card in the tray. The tray holds each card once. */
+export interface AssemblyCard {
+  /** Opaque id the response carries. Never displayed. */
+  token: string;
+  label: string;
+  /** A second, smaller line, if any. */
+  sublabel?: string | null;
+  media?: SubjectMedia | null;
+  /** 1–3 characters drawn when there is no art. Defaults to the label's initials. */
+  monogram?: string | null;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface PositionalAssemblyPublic {
+  prompt: string;
+  /** The small engraved line above the prompt, e.g. the family and the event. */
+  eyebrow: string;
+  /** The whole being assembled: its name, a line under it, and its mark. */
+  subject: { label: string; sublabel?: string | null; media?: SubjectMedia | null; monogram?: string | null };
+  /** How the cards are drawn: an identity card (seal + name) or an icon card (art + name). */
+  cardKind: "identity" | "icon";
+  /** 2–8 positions, in the host's order. Distinct ids. */
+  positions: readonly AssemblyPosition[];
+  /** 2–20 cards, in the host's dealt order. Distinct tokens. Never fewer than positions. */
+  cards: readonly AssemblyCard[];
+  /** A short line under the board once the hand is off, e.g. the source. */
+  footnote?: string | null;
+}
+
+/** The host-owned board: position id → card token, or null when empty. Every position id is present. */
+export type PositionalAssemblyValue = Readonly<Record<string, string | null>>;
+
+/** The response: one card token per position. Identity, never correctness. */
+export interface PositionalAssemblyResponse {
+  assignment: Readonly<Record<string, string>>;
+}
+
+/** Authority-supplied, post-reveal only. The primitive displays it and grades nothing. */
+export interface PositionalAssemblyReveal {
+  /** The assignment the player locked, as the host recorded it. */
+  assignment: Readonly<Record<string, string>>;
+  /** The canonical card for every position. Only ever supplied here. */
+  canonical: Readonly<Record<string, string>>;
+  /** Per position, straight from the host's grader. Display only. */
+  positionCorrect: Readonly<Record<string, boolean>>;
+  /** The host's verdict on the whole board; null when it stated none. */
+  isCorrect: boolean | null;
+  /** The host's one-line verdict, e.g. "3 of 5 in position". */
+  verdictText: string;
+  /**
+   * What a card the player placed WAS, worded by the host and keyed by token:
+   * "SK Telecom T1's jungler in this series". Shown beside a wrong pick so it
+   * stays understandable. Absent tokens get no note.
+   */
+  cardNotes?: Readonly<Record<string, string>> | null;
+  /** The context plate: where and when this happened, in the host's words. */
+  context: {
+    title: string;
+    lines: readonly string[];
+    source?: { label: string; url?: string | null } | null;
+  };
+}
+
+// Positional Assembly is NOT a SegmentChoice yet: `{ assignment }` is a new
+// transport shape. The production seam (an `assembly.v1` module) widens
+// `SegmentChoice` then.
+export type _PositionalAssemblyIsNotSegmentChoiceYet = Assert<PositionalAssemblyResponse extends SegmentChoice ? false : true>;
+
 // ------------------------------------------------- Stat Drop (MIG1.2, b932af4b)
 
 /** A bounded scale. The same shape as Mastery's numeric input constraints. */

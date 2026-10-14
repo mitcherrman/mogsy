@@ -7,8 +7,9 @@ import {
   itemCostDuelModule,
   masterySliceModule,
   metaReflexModule,
-  orderForgeModule, reconstructModule,
+  assemblyModule, orderForgeModule, reconstructModule,
   registeredModuleIds,
+  scrubModule,
   rendererForSegment,
   quizModule,
 } from "./registry";
@@ -20,8 +21,11 @@ describe("ranked module renderer registry", () => {
     // flag + allowlist on the backend, exactly like Item Cost Duel.
     // GM1-R1 adds reconstruct (admin-only unrated playtest).
     // MG-P3 adds match (admin-only unrated playtest, `admin.match`).
+    // PA2B/PA3 add assembly (Roster Lock / Draft Memory, admin-only unrated
+    // playtests `admin.roster_lock` / `admin.draft_memory`); SCRUB-S2 adds scrub,
+    // the Chronoscope (admin-only unrated playtest, `admin.scrub`).
     expect(registeredModuleIds()).toEqual(
-      ["item_cost_duel", "mastery_slice", "match", "order_forge", "quiz", "reconstruct"]);
+      ["assembly", "item_cost_duel", "mastery_slice", "match", "order_forge", "quiz", "reconstruct", "scrub"]);
   });
 
   it("resolves each renderer by id", () => {
@@ -30,11 +34,23 @@ describe("ranked module renderer registry", () => {
     expect(getModuleRenderer("mastery_slice")).toBe(masterySliceModule);
     expect(getModuleRenderer("order_forge")).toBe(orderForgeModule);
     expect(getModuleRenderer("reconstruct")).toBe(reconstructModule);
+    expect(getModuleRenderer("scrub")).toBe(scrubModule);
+  });
+
+  it("serves assembly v1 only: an unknown version fails closed to unsupported", () => {
+    expect(getModuleRenderer("assembly", 1)).toBe(assemblyModule);
+    expect(getModuleRenderer("assembly", 2)).toBeNull();
   });
 
   it("serves reconstruct v1 only: a future contract fails closed to unsupported", () => {
     expect(getModuleRenderer("reconstruct", 1)).toBe(reconstructModule);
     expect(getModuleRenderer("reconstruct", 2)).toBeNull();
+  });
+
+  it("serves scrub v1 only: a future contract fails closed to unsupported", () => {
+    expect(getModuleRenderer("scrub", 1)).toBe(scrubModule);
+    expect(getModuleRenderer("scrub", 2)).toBeNull();
+    expect(scrubModule.ownsSubmission).toBe(true);
   });
 
   it("falls back to quiz when no segment discriminator is present", () => {
