@@ -34,7 +34,7 @@ jobs:
       - name: Chromium installation
         run: npx playwright install --with-deps chromium
       - name: Real-component mobile geometry and guarded-exit browser tests
-        run: npx playwright test -c playwright.frontend.config.ts e2e/daily-mobile-header-fit.spec.ts e2e/nav1/daily-active-exit.spec.ts
+        run: npx playwright test -c playwright.daily-mobile.config.ts
       - name: Upload failed browser traces
         if: failure()
         uses: actions/upload-artifact@v4
