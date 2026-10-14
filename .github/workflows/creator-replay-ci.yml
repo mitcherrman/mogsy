@@ -1,0 +1,33 @@
+name: creator-replay-frontend
+
+on:
+  pull_request:
+    paths:
+      - "src/pages/admin/CreatorReplayPage.tsx"
+      - "src/pages/admin/CreatorReplayPage.test.tsx"
+      - "src/pages/admin/CreatorReplayRunPage.tsx"
+      - "src/App.tsx"
+      - "src/lib/admin/admin-registry.ts"
+      - ".github/workflows/creator-replay-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Creator Replay frontend tests
+        run: npx vitest run src/pages/admin/CreatorReplayPage.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.test.tsx
+      - name: TypeScript contract check
+        run: npx tsc --noEmit -p tsconfig.app.json
