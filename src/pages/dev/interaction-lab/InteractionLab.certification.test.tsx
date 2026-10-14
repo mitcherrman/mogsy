@@ -147,7 +147,10 @@ describe.each(DUELS.map((f) => [f.id, f] as const))("DataDuel · %s", (_id, f) =
       expect(text).toMatch(/Dead even/);
       expect(screen.getByTestId("duel-margin-even")).toBeInTheDocument();
     } else {
-      expect(text).toContain((toward === "left" ? f.content.left : f.content.right).label);
+      // NUM-REC2: production Data Duel (DD1) words a decisive margin from the
+      // authority's own `marginDisplay`; these lab fixtures carry none, so the
+      // words fall back to the two authority values ("84 vs 64").
+      for (const v of Object.values(f.hidden.values)) expect(text).toContain(v);
       expect(screen.getByTestId("duel-margin-fill")).toBeInTheDocument();
     }
   });

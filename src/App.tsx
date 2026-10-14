@@ -45,6 +45,7 @@ import {
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
+import { INTERACTION_LAB_ROUTE, isInteractionLabEnabled } from "@/lib/interaction-grammar/featureGate";
 import { isWorldsExperienceEnabled, WORLDS_EXPERIENCE_ROUTE } from "@/lib/pro-play/worldsExperience/productionGate";
 import { Suspense } from "react";
 import { lazy } from "react";
@@ -265,6 +266,16 @@ const WorldsExperienceDev = import.meta.env.DEV
 // 404s in production. The production path is the `match` Ranked module.
 const MatchGridLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
+  : null;
+// MIG1.1 — DEV-ONLY Interaction Lab. The lazy import itself is gated, not just
+// the route: in a production build the gate is the literal `false`, so neither
+// the route nor the chunk exists there (see interaction-grammar/featureGate).
+const InteractionLab = isInteractionLabEnabled()
+  ? lazy(() => import("./pages/dev/interaction-lab/InteractionLab"))
+  : null;
+// CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
+const CombatEstimateLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
   : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
@@ -681,6 +692,12 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
+                  ) : null}
+                  {isInteractionLabEnabled() && InteractionLab ? (
+                    <Route path={INTERACTION_LAB_ROUTE} element={<Suspense fallback={<RouteFallback />}><InteractionLab /></Suspense>} />
+                  ) : null}
+                  {CombatEstimateLab ? (
+                    <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

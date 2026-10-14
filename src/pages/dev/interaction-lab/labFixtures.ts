@@ -231,7 +231,9 @@ function proPlayDuel(spec: PairwiseSpec): DuelFixture {
     provenance: `Pro Play authority · ${spec.sample} sample${spec.projection ? " · pairwise projection of a ranking" : ""}`,
     content: {
       prompt, metricLabel: spec.metricLabel, context: tags.join(" · "),
-      left: a.duel, right: b.duel, tie: null, margin: spec.margin,
+      // NUM-REC2: production Data Duel (DD1) dropped the pre-reveal `margin`
+      // field; the margin now comes only from the reveal.
+      left: a.duel, right: b.duel, tie: null,
     },
     hidden: {
       canonicalToken: canonical.duel.token,
@@ -276,7 +278,6 @@ function masteryDuel(args: {
         media: args.art ? { src: resolveAssetUrl(args.art.b), alt: "" } : null,
       },
       tie: masteryTie(args.options),
-      margin: { unit: valueText(0, va.unit).replace(/^0/, ""), decimals: 0 },
     },
     hidden: {
       canonicalToken: args.correct,

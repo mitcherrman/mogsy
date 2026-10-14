@@ -103,6 +103,8 @@ export default function Layout() {
     // PPQ2-A — the neutral question-surface probe measures the arena's own
     // footprint, so it gets the same page frame as Ranked.
     || pathname === "/dev/arena-question-probe"
+    // CE1 — the Combat Estimate lab mounts the arena's own frame, so it gets the same page frame as Ranked.
+    || pathname === "/dev/combat-estimate"
     // PPQ2-INT — the playable Pro Play Arena gets the same arena frame. It sits
     // under /lol/ so it also gets the LoL theme (`dark theme-lol`) that every
     // production arena route has; outside it the header reads dark-on-navy.

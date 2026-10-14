@@ -14,8 +14,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { INTERACTION_LAB_ROUTE, isInteractionLabEnabled } from "@/lib/interaction-grammar/featureGate";
 
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
+// NUM-REC2: a block comment must open after whitespace or `{` — main now has
+// splat routes ("/lol/dev/worlds-experience/*") whose `/*` the old pattern
+// read as a comment opener, swallowing most of the file.
 const stripComments = (source: string) =>
-  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  source.replace(/(^|[\s{])\/\*[\s\S]*?\*\//g, "$1").replace(/(^|[^:"'])\/\/[^\n]*/g, "$1");
 const appCode = stripComments(read("src/App.tsx"));
 
 afterEach(() => vi.unstubAllEnvs());
