@@ -185,7 +185,26 @@ describe("Interaction Lab — isolation from production", () => {
       }
     };
     walk(resolve(process.cwd(), "src"));
-    // App.tsx is the one (gated) registration site.
-    expect(hits.map((h) => h.replace(/\\/g, "/"))).toEqual(["/src/App.tsx"]);
+    // App.tsx is the one (gated) registration site. NUM-REC2: the owner
+    // numeric lab reuses the lab's renderer, arena view and cues (none of which
+    // holds a fixture) — and nothing else of the lab.
+    expect(hits.map((h) => h.replace(/\\/g, "/")).sort()).toEqual(
+      ["/src/App.tsx", "/src/pages/admin/numeric-lab/StatDropOwnerLab.tsx"]);
+    const owner = readFileSync(resolve(process.cwd(), "src/pages/admin/numeric-lab/StatDropOwnerLab.tsx"), "utf8");
+    const labImports = [...owner.matchAll(/from "@\/pages\/dev\/interaction-lab\/([^"]+)"/g)].map((m) => m[1]).sort();
+    expect(labImports).toEqual(["labArenaView", "labCues", "labRenderers"]);
+  });
+
+  it("keeps the lab's fixture-bearing modules out of every module the owner lab loads", () => {
+    // labRenderers may name fixture TYPES (erased at build); it must never
+    // import a fixture value, or the owner chunk would carry the answers.
+    for (const file of ["labRenderers.tsx", "labArenaView.ts", "labCues.ts"]) {
+      const src = readFileSync(resolve(process.cwd(), "src/pages/dev/interaction-lab", file), "utf8");
+      for (const m of src.matchAll(/^import\s+(type\s+)?[^;]*from\s+"([^"]+)";/gm)) {
+        if (/labFixtures|InteractionLab|__fixtures__|proPlaySamples|\.json/.test(m[2])) {
+          expect(m[1], `${file} imports ${m[2]} as a value`).toBe("type ");
+        }
+      }
+    }
   });
 });

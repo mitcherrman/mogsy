@@ -15,11 +15,13 @@
  */
 import capture from "@/lib/combat-estimate/__fixtures__/combatAuthorityCapture.json";
 import {
-  gradeEstimate, metricLabel, readCombatAuthorityCapture, splitScenario,
+  readCombatAuthorityCapture, splitScenario,
   type CapturedScenario, type CombatEstimateScenario, type CombatEstimateSecret,
 } from "@/lib/combat-estimate/contract";
+// NUM-REC2: the capture-free pieces (prompt, content, reveal formatting) moved
+// to rounds.ts so the owner lab can build identical rounds without the capture.
+import { contentFor, promptFor, revealFor, type RoundGrade } from "@/lib/combat-estimate/rounds";
 import type { EstimatePublic, EstimateResponse, EstimateReveal } from "@/lib/interaction-grammar/types";
-import type { JourneyWorking } from "@/lib/journey/combatWorking";
 
 export const COMBAT_CAPTURE = readCombatAuthorityCapture(capture);
 
@@ -38,18 +40,8 @@ export interface LabRound {
   secret: LabSecret;
 }
 
-export interface LabGrade {
-  reveal: EstimateReveal;
-  /** The authority's working, or null for the synthetic round. */
-  working: JourneyWorking | null;
-  /** The provenance line under the working. */
-  sourceLine: string;
-}
-
-export function promptFor(s: CombatEstimateScenario): string {
-  const where = s.metric === "raw" ? "before armor" : `to ${s.target.champion} after armor`;
-  return `How much physical damage does ${s.ability.name} deal ${where}?`;
-}
+export type LabGrade = RoundGrade;
+export { promptFor };
 
 export function findCaptured(id: string): CapturedScenario | null {
   return COMBAT_CAPTURE.scenarios.find((s) => s.id === id) ?? null;
@@ -57,15 +49,7 @@ export function findCaptured(id: string): CapturedScenario | null {
 
 export function buildLabRound(captured: CapturedScenario): LabRound {
   const { scenario, secret } = splitScenario(captured, COMBAT_CAPTURE.backend.commit);
-  const content: EstimatePublic = {
-    prompt: promptFor(scenario),
-    measureLabel: `Combat Estimate · ${metricLabel(scenario.metric)}`,
-    unitLabel: "damage",
-    definition: scenario.definition,
-    scale: scenario.scale,
-    certification: { kind: "certified", label: scenario.certification.label },
-    footnote: `${metricLabel(scenario.metric)} by the combat authority · ${COMBAT_CAPTURE.authorities.implementation as string}`,
-  };
+  const content = contentFor(scenario, COMBAT_CAPTURE.authorities.implementation as string);
   return { id: scenario.id, content, scenario, secret: { secret, synthetic: null } };
 }
 
@@ -100,14 +84,7 @@ export function gradeLabRound(round: LabRound, response: EstimateResponse): LabG
     throw new Error("lab: response names a value this round's beam cannot hold");
   }
   if (round.secret.secret) {
-    const secret = round.secret.secret;
-    const reveal = gradeEstimate(secret, response.estimate, `Combat authority · ${COMBAT_CAPTURE.backend.commit.slice(0, 8)}`);
-    const component = round.scenario.ability.component;
-    return {
-      reveal: { ...reveal, note: component ? `Modelled component: ${component}.` : null },
-      working: secret.working,
-      sourceLine: `${secret.provenance.get("implementation") as string} · formula ${secret.formulaTier.toLowerCase()} · backend ${COMBAT_CAPTURE.backend.commit.slice(0, 8)} · items ${(secret.provenance.get("item_revisions") as string) || "none"}`,
-    };
+    return revealFor(round.scenario, round.secret.secret, response.estimate, COMBAT_CAPTURE.backend.commit);
   }
   const whole = round.secret.synthetic?.whole ?? 0;
   const signed = response.estimate - whole;

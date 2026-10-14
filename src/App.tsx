@@ -273,6 +273,15 @@ const MatchGridLab = import.meta.env.DEV
 const InteractionLab = isInteractionLabEnabled()
   ? lazy(() => import("./pages/dev/interaction-lab/InteractionLab"))
   : null;
+// NUM-REC2: the owner-only numeric playtest (original Stat Drop + CE1 two-beam
+// Combat Estimate). It carries no round or answer: every round comes from
+// /api/admin/numeric-lab/*, gated server-side by require_admin and a flag.
+// Production: /admin/numeric-lab behind AdminRoute. DEV: the same page at
+// /dev/numeric-lab (no gate) so browser specs can stand in for the backend.
+const NumericLabPage = lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"));
+const NumericLabPageDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"))
+  : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -506,6 +515,7 @@ export const appRouter = createBrowserRouter(
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
+                  <Route path="/admin/numeric-lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><NumericLabPage /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />
@@ -698,6 +708,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {CombatEstimateLab ? (
                     <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
+                  ) : null}
+                  {NumericLabPageDev ? (
+                    <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

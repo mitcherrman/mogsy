@@ -727,6 +727,25 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "GENERATED questions, not stored ones. A mastery_slice question is synthesized when a match opens the segment and frozen onto that one round — it is never a row. This is deliberately NOT a Quiz Review tab: Quiz Review is a table of stored, approvable questions, and generated samples do not belong in it. Read-only — previewing creates no attempt, no history, no match, no round and no stored question, which the backend enforces with a sqlite authorizer rather than by convention. It calls the SAME generator a live match calls and draws the result with the SAME component the Ranked arena draws a challenge with.",
   },
   {
+    id: "numeric-lab",
+    title: "Numeric Modes Lab",
+    description:
+      "Owner playtest of the original Stat Drop (MIG1.2) and two-beam Combat Estimate (CE1) prototypes over historical authority captures, with a blind gut-call log for the grading decision.",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "question-bank",
+    kind: "route",
+    path: "/admin/numeric-lab",
+    oldLocation: "none — both prototypes were DEV-only labs (MIG1 Interaction Lab, CE1 Combat Estimate lab)",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Prototype",
+    authorization:
+      "AdminRoute; every round comes from /api/admin/numeric-lab/* behind backend require_admin and NUMERIC_LAB_ENABLED (off by default).",
+    notes:
+      "PROTOTYPE — not server-authoritatively graded. Values are historical captures (CE1: certified combat seam at backend 8829fc3c; MIG1.2: Pro Play and Journey captures), not current-patch facts. The page bundle holds no round or answer; a round's private block is released only by its own Lock. No tolerance is adopted (CEG1 is research): the reveal is descriptive and the owner's gut calls export as CEG1's playtest CSV. Writes nothing. Not part of Quiz, Daily or Ranked.",
+  },
+  {
     id: "mastery-reviewer",
     title: "Mastery Artifact Reviewer",
     description: "Read-only inspection of a mastery artifact by digest.",

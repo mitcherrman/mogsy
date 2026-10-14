@@ -167,17 +167,50 @@ export interface CombatEstimateSecret {
 
 export const metricLabel = (metric: EstimateMetric): string => (metric === "raw" ? "Raw damage" : "Final damage");
 
-export function definitionOf(s: CapturedScenario): string {
+export function definitionOf(s: Pick<PublicCapturedScenario, "ability" | "metric" | "target">): string {
   const hit = s.ability.component ? `${s.ability.name} (${s.ability.component})` : s.ability.name;
   return s.metric === "raw"
     ? `One ${hit} hit at rank ${s.ability.rank}, before ${s.target.champion}'s armor — the ability's raw physical damage.`
     : `One ${hit} hit at rank ${s.ability.rank}, after ${s.target.champion}'s armor — physical damage actually dealt.`;
 }
 
-export function splitScenario(s: CapturedScenario, backendCommit: string): { scenario: CombatEstimateScenario; secret: CombatEstimateSecret } {
-  const working = readJourneyWorking(s.working);
-  if (!working) throw new Error(`capture: ${s.id} has no readable working`);
-  const scenario: CombatEstimateScenario = {
+/**
+ * NUM-REC2 — the PUBLIC projection of a captured scenario, exactly the fields
+ * the owner lab's backend (`/api/admin/numeric-lab/combat-estimate/rounds`)
+ * serves before Lock. It has no answer, result, working, provenance or
+ * formula, so a host can build a round without ever holding the capture.
+ */
+export interface PublicCapturedScenario {
+  id: string;
+  kind: "certified";
+  difficulty: CapturedScenario["difficulty"];
+  metric: EstimateMetric;
+  attacker: {
+    champion: string; level: number; items: CapturedItem[];
+    stats: { attack_damage: number; bonus_attack_damage: number; ability_power: number };
+  };
+  ability: { slot: string; name: string; rank: number; max_rank: number; component: string | null };
+  target: { champion: string; level: number; items: CapturedItem[]; armor: number };
+  penetration: CapturedScenario["penetration"];
+  scale: CapturedScenario["scale"];
+  assumptions: string[];
+}
+
+/** The private block the owner lab's backend releases after Lock. */
+export interface ReleasedScenario {
+  metric: EstimateMetric;
+  exact: number;
+  whole: number;
+  result: CapturedScenario["result"];
+  working: unknown;
+  provenance: [string, unknown][];
+  formula_text: string;
+  tier: string;
+}
+
+/** The public round, from the public fields only. `splitScenario` and the owner lab share it. */
+export function scenarioFromPublic(s: PublicCapturedScenario, backendCommit: string): CombatEstimateScenario {
+  return {
     id: s.id, metric: s.metric, difficulty: s.difficulty,
     attacker: {
       champion: s.attacker.champion, level: s.attacker.level, items: s.attacker.items.map((i) => ({ name: i.name })),
@@ -192,6 +225,33 @@ export function splitScenario(s: CapturedScenario, backendCommit: string): { sce
     assumptions: [...s.assumptions],
     certification: { kind: "certified", label: `Combat authority · ${backendCommit.slice(0, 8)}`, backendCommit },
   };
+}
+
+/**
+ * The secret, from a block the owner lab's backend released after Lock. Fails
+ * closed exactly as the capture reader does: a released number that is not
+ * the authority's, or a working block off-contract, is refused.
+ */
+export function secretFromRelease(id: string, r: ReleasedScenario): CombatEstimateSecret {
+  const expected = r.metric === "raw" ? r.result.raw_damage : r.result.post_mitigation_damage;
+  if (num(r.exact) !== expected) throw new Error(`release: ${id} answer is not the authority's number`);
+  if (int(r.whole) !== roundHalfUp(r.exact)) throw new Error(`release: ${id} whole answer is mis-rounded`);
+  const working = readJourneyWorking(r.working);
+  if (!working) throw new Error(`release: ${id} working block is off-contract`);
+  const provenance = new Map(r.provenance);
+  if (provenance.get("implementation") !== "combat_calculations.physical_ability_damage.v1") {
+    throw new Error(`release: ${id} was not produced by the certified seam`);
+  }
+  return {
+    id, metric: r.metric, exact: r.exact, whole: r.whole, working, result: { ...r.result },
+    provenance, formulaText: text(r.formula_text), formulaTier: text(r.tier),
+  };
+}
+
+export function splitScenario(s: CapturedScenario, backendCommit: string): { scenario: CombatEstimateScenario; secret: CombatEstimateSecret } {
+  const working = readJourneyWorking(s.working);
+  if (!working) throw new Error(`capture: ${s.id} has no readable working`);
+  const scenario = scenarioFromPublic(s, backendCommit);
   const secret: CombatEstimateSecret = {
     id: s.id, metric: s.metric, exact: s.answer.exact, whole: s.answer.whole, working,
     result: { ...s.result }, provenance: new Map(s.provenance), formulaText: s.ability.formula_text, formulaTier: s.ability.tier,

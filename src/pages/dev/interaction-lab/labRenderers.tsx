@@ -32,9 +32,16 @@ import type {
 } from "@/lib/interaction-grammar/types";
 import type { DuelFixture, DropFixture, LabFixture, LabMechanic } from "./labFixtures";
 
+/**
+ * NUM-REC2: a Stat Drop round with NO hidden half — what the owner lab holds
+ * before Lock (it fetches public rounds; the reveal arrives only from the
+ * backend after Lock). The renderer reads only `content`, so it accepts it.
+ */
+export type PublicDropRound = Omit<DropFixture, "hidden">;
+
 /** What the lab controller lends the viewport: public content + its phase. */
 export interface LabStage {
-  fixture: LabFixture;
+  fixture: LabFixture | PublicDropRound;
   phase: InteractionPhase;
   /** Stat Drop's reveal. Null until the controller reveals. */
   dropReveal: StatDropReveal | null;
@@ -89,7 +96,7 @@ function DataDuelViewport({ selection, permissions, onSelect, actions, reveal }:
 function StatDropViewport({ selection, permissions, onSelect, actions, reveal }: ModuleViewportProps) {
   const stage = useContext(LabStageContext);
   if (!stage || stage.fixture.mechanic !== "stat-drop") return null;
-  const fixture: DropFixture = stage.fixture;
+  const fixture: DropFixture | PublicDropRound = stage.fixture;
   return (
     <StatDrop content={fixture.content} phase={stage.phase}
       value={typeof selection === "number" ? selection : null}

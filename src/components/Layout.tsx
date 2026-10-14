@@ -105,6 +105,8 @@ export default function Layout() {
     || pathname === "/dev/arena-question-probe"
     // CE1 — the Combat Estimate lab mounts the arena's own frame, so it gets the same page frame as Ranked.
     || pathname === "/dev/combat-estimate"
+    // NUM-REC2 — the owner numeric lab mounts the same arena frame (and its DEV twin).
+    || pathname === "/admin/numeric-lab" || pathname === "/dev/numeric-lab"
     // PPQ2-INT — the playable Pro Play Arena gets the same arena frame. It sits
     // under /lol/ so it also gets the LoL theme (`dark theme-lol`) that every
     // production arena route has; outside it the header reads dark-on-navy.

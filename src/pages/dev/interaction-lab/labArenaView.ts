@@ -48,6 +48,9 @@ export function labArenaView(args: {
   onSubmit: (choice: SegmentChoice) => void;
   left: ReactNode;
   right: ReactNode;
+  /** NUM-REC2: the owner lab states its own authority; the DEV lab keeps its words. */
+  eyebrow?: string;
+  playtestNote?: string;
 }): ArenaViewModel {
   const open = args.phase === "open";
   const resultFeedback: RankedResultFeedback | null = args.phase === "revealed" && args.verdict
@@ -56,8 +59,8 @@ export function labArenaView(args: {
   return {
     report: null,
     header: {
-      eyebrow: "Interaction Lab", title: args.title, transitionNote: null,
-      playtestNote: "Dev fixture · not recorded", presenceNote: null,
+      eyebrow: args.eyebrow ?? "Interaction Lab", title: args.title, transitionNote: null,
+      playtestNote: args.playtestNote ?? "Dev fixture · not recorded", presenceNote: null,
       timer: null, timerLabel: "", centralResult: null, moduleTitle: null, moduleEventId: null,
     },
     roundBeat: null, segmentBeat: null, cardBeat: null,
