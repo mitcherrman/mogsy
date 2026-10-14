@@ -104,7 +104,7 @@ test("active Daily preserves Back/Forward, header, and HUD destinations without 
   await page.goto("/quiz?play=1");
   await page.getByTestId("play-mode-daily").click();
   await expect(page).toHaveURL("/quiz/daily-challenge");
-  await expect(page.getByText("Exit Daily Challenge", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Exit Daily Challenge" })).toBeVisible();
   const historyLength = await page.evaluate(() => history.length);
 
   await page.evaluate(() => history.back());
@@ -118,17 +118,17 @@ test("active Daily preserves Back/Forward, header, and HUD destinations without 
   await expect(page).toHaveURL("/quiz?play=1");
   await page.goForward();
   await expect(page).toHaveURL("/quiz/daily-challenge");
-  await expect(page.getByText("Exit Daily Challenge", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Exit Daily Challenge" })).toBeVisible();
 
-  await page.getByText("Exit Daily Challenge", { exact: true }).first().click();
+  await page.getByRole("link", { name: "Exit Daily Challenge" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Continue Daily" }).click();
-  await page.getByText("Exit Daily Challenge", { exact: true }).first().click();
+  await page.getByRole("link", { name: "Exit Daily Challenge" }).click();
   await page.getByRole("button", { name: "Exit Daily Challenge" }).click();
   await expect(page).toHaveURL("/quiz");
 
   await page.goto("/quiz/daily-challenge");
-  await expect(page.getByText("Exit Daily Challenge", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Exit Daily Challenge" })).toBeVisible();
   await page.getByTestId("hud-home").click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Continue Daily" }).click();
