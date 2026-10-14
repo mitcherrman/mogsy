@@ -65,7 +65,7 @@ export default function RoleChallengePicker({ enabled, hasAccount, onRequireAcco
       <div className="grid grid-cols-5 gap-1" role="group" aria-label="Role Challenge role">
         {ROLES.map(id => (
           <button key={id} type="button" aria-pressed={role === id}
-            onClick={() => { setRole(id); setChampion(""); setPendingStartKey(null); }}
+            disabled={busy} onClick={() => { if (busy) return; setRole(id); setChampion(""); setPendingStartKey(null); }}
             className={`rounded border px-1 py-2 text-[10px] font-bold uppercase ${role === id ? "border-amber-700 bg-amber-100 text-amber-950" : "border-amber-900/30 text-amber-950"}`}>
             {id}
           </button>
@@ -77,7 +77,7 @@ export default function RoleChallengePicker({ enabled, hasAccount, onRequireAcco
         placeholder="Search all champions" className="w-full rounded border border-amber-900/40 bg-white/75 p-2 text-sm text-slate-950" />
       <div className="max-h-40 overflow-y-auto rounded border border-amber-900/25" role="group" aria-label="Champions">
         {filtered.map(c => (
-          <button key={c.id} type="button" onClick={() => { setChampion(c.id); setPendingStartKey(null); }}
+          <button key={c.id} type="button" disabled={busy} onClick={() => { if (busy) return; setChampion(c.id); setPendingStartKey(null); }}
             aria-pressed={champion === c.id}
             className={`block w-full px-2 py-1 text-left text-sm text-amber-950 ${champion === c.id ? "bg-amber-200 font-bold" : "hover:bg-amber-100/70"}`}>
             {c.name}{c.conventional ? "" : " · Off-meta"}
