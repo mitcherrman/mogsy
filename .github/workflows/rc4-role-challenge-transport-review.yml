@@ -22,8 +22,12 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+      # Known base-repo blocker: package-lock.json omits package.json's
+      # drizzle-kit / drizzle-orm / postgres tree, so npm ci fails before
+      # reaching any RC4 tests. This is a DIAGNOSTIC install only, not
+      # reproducible release validation. Restore npm ci before merging RC4.
+      - name: Install dependencies (diagnostic; base lockfile out of sync)
+        run: npm install --package-lock=false --no-save --no-audit --no-fund
       - name: Run RC4 transport contract tests
         run: npx vitest run src/lib/role-challenge/contracts.test.ts
       - name: Typecheck the frontend
