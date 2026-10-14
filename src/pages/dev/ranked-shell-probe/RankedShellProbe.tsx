@@ -20,7 +20,10 @@
  *   segment; `?rc=witsEnd|stormrazor|fourSlot` picks the real round and
  *   `?recon=locked|wrong|right|live` serves the viewer past their Lock In;
  *   GM1-R2 `?recon=bot` replays the REAL bot-inline lock lifecycle from the
- *   wire capture, segment 2 through segment 3 opening) | junglePet | junglePetBase | jungleRule |
+ *   wire capture, segment 2 through segment 3 opening) | scrub (SCRUB-S2: replays
+ *   the REAL Chronoscope bot-inline lifecycle from the wire capture, segment 1's
+ *   exact lock through segment 2's wrong lock to segment 3 opening; see
+ *   `scrubBotReplay.ts`) | junglePet | junglePetBase | jungleRule |
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
  *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
@@ -112,6 +115,9 @@ import {
 import {
   RECON_BOT_MATCH_ID, RECON_BOT_VIEWER, isReconstructBotReplay, reconstructBotReplay,
 } from "./reconstructBotReplay";
+import {
+  SCRUB_BOT_MATCH_ID, SCRUB_BOT_VIEWER, isScrubBotReplay, scrubBotReplay,
+} from "./scrubBotReplay";
 
 const VIEWER = "userA";
 
@@ -141,6 +147,7 @@ export const PROBE_STATES = [
   "spellCooldown", "matchup", "twoChamp", "shape",
   "ssm212", "ssm218", "ssm224", "ssm228", "ssm248",
   "f1Ionian", "f1IonianText", "f1Chempunk", "f1ChempunkText", "f1Locket",
+  "scrub",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -1104,6 +1111,11 @@ function installInterceptor() {
       const replayed = await reconstructBotReplay(path, init);
       if (replayed) return replayed;
     }
+    // SCRUB-S2 — `?q=scrub` replays the real Chronoscope bot-lock lifecycle.
+    if (isScrubBotReplay()) {
+      const replayed = await scrubBotReplay(path, init);
+      if (replayed) return replayed;
+    }
     // RE1 — a finished match. Checked first: every read below has a terminal
     // answer that differs from the live one.
     const end = probe.end;
@@ -1234,8 +1246,11 @@ export default function RankedShellProbe() {
   const beatPreview = params.get("beat");
   const forgeBot = state === "orderforge" && params.get("forge") === "bot";
   const reconBot = state === "reconstruct" && params.get("recon") === "bot";
-  const replayMatchId = forgeBot ? FORGE_BOT_MATCH_ID : reconBot ? RECON_BOT_MATCH_ID : "m1";
-  const replayViewer = forgeBot ? FORGE_BOT_VIEWER : reconBot ? RECON_BOT_VIEWER : VIEWER;
+  const scrubBot = state === "scrub";
+  const replayMatchId = forgeBot ? FORGE_BOT_MATCH_ID : reconBot ? RECON_BOT_MATCH_ID
+    : scrubBot ? SCRUB_BOT_MATCH_ID : "m1";
+  const replayViewer = forgeBot ? FORGE_BOT_VIEWER : reconBot ? RECON_BOT_VIEWER
+    : scrubBot ? SCRUB_BOT_VIEWER : VIEWER;
   probe.sfxStep = sfxQa ? sfxStep : 0;
   probe.mrStep = params.get("mrlive") === "1" ? mrStep : null;
   probe.seq = (params.get("seq") ?? "").split(",")

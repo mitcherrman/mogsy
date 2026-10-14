@@ -66,6 +66,7 @@ export function moduleSubject(round: ReviewRound): string {
   if (round.kind === "assembly") {
     return round.assembly?.family === "draft_memory" ? "Draft Memory" : "Roster Lock";
   }
+  if (round.kind === "scrub") return "Chronoscope";
   if (round.topic?.category) return categoryLabel(round.topic.category as CategoryKey);
   if (round.category) return prettyCategory(round.category);
   return "Question";

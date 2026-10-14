@@ -145,6 +145,7 @@ export const ADMIN_AREAS: AdminArea[] = [
     sections: [
       { id: "questions", label: "Questions", summary: "The unified Builder / Review / Ranked Duel workspace." },
       { id: "reports", label: "Reports & Overrides", summary: "User-reported questions and authoritative answer overrides." },
+      { id: "creator", label: "Creator Replay", summary: "Owner filming sessions, independent of official daily attempts." },
       { id: "mastery", label: "Mastery", summary: "Mastery artifacts and coverage." },
       {
         id: "premium-preview",
@@ -609,6 +610,20 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // =========================================================================
   // LEAGUECRAFT
   // =========================================================================
+  {
+    id: "creator-replay",
+    title: "Creator Replay",
+    description: "Record unlimited independent Daily Challenge takes without clearing official results.",
+    area: "leaguecraft",
+    section: "creator",
+    kind: "route",
+    path: "/admin/creator-replay",
+    oldLocation: "Not previously implemented",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    authorization: "AdminRoute + backend require_admin; separate Daily policy per take.",
+  },
   {
     id: "quiz-content-workspace",
     title: "Admin Quiz Review",
