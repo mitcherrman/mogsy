@@ -105,6 +105,7 @@ const ProPlayChampionProfile = R.ProPlayChampionProfile.Component;
 const ProPlayMatchup = R.ProPlayMatchup.Component;
 const ProPlayTournament = R.ProPlayTournament.Component;
 const ProPlayStats = R.ProPlayStats.Component;
+const KnowledgeStats = R.KnowledgeStats.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
@@ -569,6 +570,7 @@ export const appRouter = createBrowserRouter(
                   <Route path="/league-swipe/stats" element={<Navigate to="/quiz" replace />} />
                   <Route path="/league-swipe/:gameSlug" element={<Navigate to="/quiz" replace />} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
+                  <Route path="/lol/stats" element={<Suspense fallback={<RouteFallback />}><KnowledgeStats /></Suspense>} />
                   <Route path="/lol/mechanics" element={<Suspense fallback={<RouteFallback />}><MechanicsExplorerPage /></Suspense>} />
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LeagueDocsLanding /></Suspense>} />
                   {/* Mechanics Reference. Three depths, one component, so a
