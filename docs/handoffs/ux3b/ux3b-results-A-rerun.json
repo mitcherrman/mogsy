@@ -1,0 +1,141 @@
+{
+  "at": "2026-10-14T05:44:05.391Z",
+  "passed": 16,
+  "total": 16,
+  "results": [
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF renders the published TournamentV2 page",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: published site renders TournamentV2 (no experience)",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: same sections as published",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: same text as published",
+      "ok": true,
+      "detail": {
+        "words": 1023
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: same title/canonical/description as published",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF never requests the experience chunk",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF no horizontal overflow",
+      "ok": true,
+      "detail": 1440
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF renders the published TournamentV2 page",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: published site renders TournamentV2 (no experience)",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: same sections as published",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: same text as published",
+      "ok": true,
+      "detail": {
+        "words": 977
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: same title/canonical/description as published",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF never requests the experience chunk",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF no horizontal overflow",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF no page errors",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

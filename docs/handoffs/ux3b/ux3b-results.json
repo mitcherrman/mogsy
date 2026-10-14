@@ -1,0 +1,1234 @@
+{
+  "at": "2026-10-14T05:41:40.009Z",
+  "passed": 158,
+  "total": 159,
+  "results": [
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF renders the published TournamentV2 page",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: published site renders TournamentV2 (no experience)",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: same sections as published",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: same text as published",
+      "ok": false,
+      "detail": [
+        [
+          1014,
+          "Esports feed · updated 10:36 PM Pro Play",
+          "Esports feed · updated 10:38 PM Pro Play"
+        ]
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: same title/canonical/description as published",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF never requests the experience chunk",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF no horizontal overflow",
+      "ok": true,
+      "detail": 1440
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "1440: OFF no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF renders the published TournamentV2 page",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: published site renders TournamentV2 (no experience)",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: same sections as published",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: same text as published",
+      "ok": true,
+      "detail": {
+        "words": 977
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: same title/canonical/description as published",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF never requests the experience chunk",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF no horizontal overflow",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "group": "A flag-off vs published",
+      "name": "390: OFF no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: shared nested link /teams → 404 page, noindex, a way home",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: shared nested link /schedule → 404 page, noindex, a way home",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: shared nested link /stages/swiss → 404 page, noindex, a way home",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/stages/swiss",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: shared nested link /schedule?match=115660588583171786 → 404 page, noindex, a way home",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "PUBLISHED today: /teams is the 404 page (flag off in production)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "PUBLISHED today: /schedule is the 404 page (flag off in production)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: DCGI renders its v1 page",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: dev route /lol/dev/worlds-experience 404s in production",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: dev route /dev/match-grid 404s in production",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "B flag-off routes",
+      "name": "OFF: experience chunk never requested across these visits",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Overview at the Worlds URL",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Overview keeps the published title + canonical, indexable",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "frame spans the viewport",
+      "ok": true,
+      "detail": {
+        "top": 56,
+        "bottom": 900,
+        "height": 844,
+        "width": 1440,
+        "left": 0,
+        "right": 1440
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "global HUD does not overlap the frame (bar top hit-tests inside the experience)",
+      "ok": true,
+      "detail": {
+        "hud": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "frameTop": 56,
+        "headerH": 56
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "frame fills the viewport below the header",
+      "ok": true,
+      "detail": {
+        "frame": 844,
+        "avail": 844
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "one h1 (no duplicate tournament heading)",
+      "ok": true,
+      "detail": [
+        "Worlds 2026 — League of Legends World Championship 2026"
+      ]
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "footer follows the frame",
+      "ok": true,
+      "detail": {
+        "footerTop": 964,
+        "frameBottom": 900
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "no body-level horizontal overflow",
+      "ok": true,
+      "detail": 1440
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "no clipped content outside a scroll container",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "no simulation UI",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Discover is not offered",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "nav → stages: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages",
+        "title": "Play-In — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/stages/play-in"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "nav → teams: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams",
+        "title": "Teams — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "nav → schedule: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule",
+        "title": "Schedule — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Back → teams",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Back → stages",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Back → overview",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Forward → stages",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "direct URL + refresh /stages/play-in",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/play-in",
+        "title": "Play-In — Worlds 2026 | Mogzy"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "direct URL + refresh /stages/swiss",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/swiss",
+        "title": "Swiss — Worlds 2026 | Mogzy"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "direct URL + refresh /stages/knockouts",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/knockouts",
+        "title": "Knockouts — Worlds 2026 | Mogzy"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Swiss Round 3 in URL, pressed, survives refresh",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/swiss?round=3"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "singular /stages/knockout (not a slug) corrects in place to the default stage",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/play-in"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Knockout pre-draw: slots empty, no team named (draw not made)",
+      "ok": true,
+      "detail": {
+        "named": [],
+        "head": "QUARTERFINALS · Nov 3–6\n\nQUARTERFINAL 1 · BO5\nTue, Nov 3 · 02:00 PM\nQUARTERFINAL 2 · BO5\nWed, Nov 4 · 02:00 PM\nQUARTERFI"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Schedule fixture → detail (?match=), canonical stays /schedule",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Match Centre link only for a fixture the hub lists (C9 v KC listed → ?next=)",
+      "ok": true,
+      "detail": {
+        "centre": "checking",
+        "centreHref": "/lol/pro-play?next=115660588583171786"
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Escape closes the detail",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Schedule stage filter writes the URL",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-23&stage=swiss"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Schedule deep link (day+match) survives refresh, titled C9 vs KC",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "direct team link opens KC, canonical /teams",
+      "ok": true,
+      "detail": {
+        "title": "Karmine Corp — Worlds 2026 Teams | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams",
+        "robots": null,
+        "description": "The 19-team field of the League of Legends World Championship 2026 by region: how each team entered, where it stands and its matches."
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "region LCK clears KC (UX2A)",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams?region=LCK"
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "keyboard: Tab reaches the Teams nav and Enter opens it",
+      "ok": true,
+      "detail": {
+        "reached": true,
+        "focusVisible": true
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "Schedule list scrolls its last fixture into view",
+      "ok": true,
+      "detail": {
+        "rows": 2,
+        "visible": true
+      }
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "DCGI v1 page unchanged with the flag on",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "experience chunk loaded",
+      "ok": true,
+      "detail": [
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js"
+      ]
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "no Match Grid chunk on Worlds pages",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "C flag-on 1440",
+      "name": "no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Overview at the Worlds URL",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Overview keeps the published title + canonical, indexable",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "frame spans the viewport",
+      "ok": true,
+      "detail": {
+        "top": 56,
+        "bottom": 800,
+        "height": 744,
+        "width": 1280,
+        "left": 0,
+        "right": 1280
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "global HUD does not overlap the frame (bar top hit-tests inside the experience)",
+      "ok": true,
+      "detail": {
+        "hud": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "frameTop": 56,
+        "headerH": 56
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "frame fills the viewport below the header",
+      "ok": true,
+      "detail": {
+        "frame": 744,
+        "avail": 744
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "one h1 (no duplicate tournament heading)",
+      "ok": true,
+      "detail": [
+        "Worlds 2026 — League of Legends World Championship 2026"
+      ]
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "footer follows the frame",
+      "ok": true,
+      "detail": {
+        "footerTop": 864,
+        "frameBottom": 800
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "no body-level horizontal overflow",
+      "ok": true,
+      "detail": 1280
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "no clipped content outside a scroll container",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "no simulation UI",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Discover is not offered",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "nav → stages: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages",
+        "title": "Play-In — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/stages/play-in"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "nav → teams: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams",
+        "title": "Teams — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "nav → schedule: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule",
+        "title": "Schedule — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Back → teams",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Back → stages",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Back → overview",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Forward → stages",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "direct URL + refresh /stages/play-in",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/play-in",
+        "title": "Play-In — Worlds 2026 | Mogzy"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "direct URL + refresh /stages/swiss",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/swiss",
+        "title": "Swiss — Worlds 2026 | Mogzy"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "direct URL + refresh /stages/knockouts",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/knockouts",
+        "title": "Knockouts — Worlds 2026 | Mogzy"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Swiss Round 3 in URL, pressed, survives refresh",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/swiss?round=3"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "singular /stages/knockout (not a slug) corrects in place to the default stage",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/play-in"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Knockout pre-draw: slots empty, no team named (draw not made)",
+      "ok": true,
+      "detail": {
+        "named": [],
+        "head": "QUARTERFINALS · Nov 3–6\n\nQUARTERFINAL 1 · BO5\nTue, Nov 3 · 02:00 PM\nQUARTERFINAL 2 · BO5\nWed, Nov 4 · 02:00 PM\nQUARTERFI"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Schedule fixture → detail (?match=), canonical stays /schedule",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Match Centre link only for a fixture the hub lists (C9 v KC listed → ?next=)",
+      "ok": true,
+      "detail": {
+        "centre": "checking",
+        "centreHref": "/lol/pro-play?next=115660588583171786"
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Escape closes the detail",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Schedule stage filter writes the URL",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-23&stage=swiss"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Schedule deep link (day+match) survives refresh, titled C9 vs KC",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "direct team link opens KC, canonical /teams",
+      "ok": true,
+      "detail": {
+        "title": "Karmine Corp — Worlds 2026 Teams | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams",
+        "robots": null,
+        "description": "The 19-team field of the League of Legends World Championship 2026 by region: how each team entered, where it stands and its matches."
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "region LCK clears KC (UX2A)",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams?region=LCK"
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "keyboard: Tab reaches the Teams nav and Enter opens it",
+      "ok": true,
+      "detail": {
+        "reached": true,
+        "focusVisible": true
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "Schedule list scrolls its last fixture into view",
+      "ok": true,
+      "detail": {
+        "rows": 2,
+        "visible": true
+      }
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "DCGI v1 page unchanged with the flag on",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "experience chunk loaded",
+      "ok": true,
+      "detail": [
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js",
+        "ProductionExperience-BFwpZEzO.js"
+      ]
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "no Match Grid chunk on Worlds pages",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "C flag-on 1280",
+      "name": "no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "compact frame",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "bar below the global header",
+      "ok": true,
+      "detail": {
+        "bar": 48,
+        "headerH": 48
+      }
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "no horizontal overflow",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "no clipped content",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "one h1",
+      "ok": true,
+      "detail": [
+        "Worlds 2026 — League of Legends World Championship 2026"
+      ]
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "team tile opens a bottom sheet (?team=)",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams?team=AL"
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "Back closes the team sheet",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/teams"
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "fixture opens the match sheet",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786"
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "match sheet closes by its control",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule"
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "nested route refresh on phone",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/stages/swiss"
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "footer reachable below the experience",
+      "ok": true,
+      "detail": {
+        "footerTop": 925,
+        "frameTop": 48
+      }
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "no horizontal overflow after moves",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "group": "D flag-on 390",
+      "name": "no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "E reduced motion",
+      "name": "workspace marked reduced",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "E reduced motion",
+      "name": "no travel mid-move",
+      "ok": true,
+      "detail": [
+        "none",
+        "none"
+      ]
+    },
+    {
+      "group": "E reduced motion",
+      "name": "after the move only the new screen is exposed",
+      "ok": true,
+      "detail": [
+        {
+          "hidden": null,
+          "op": "1"
+        }
+      ]
+    },
+    {
+      "group": "F data states",
+      "name": "API 503: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "API 404: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "API unsupported: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "API partial: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "API stale: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "API unknown: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "loading: frame-shaped skeleton while the read is pending",
+      "ok": true,
+      "detail": "worlds"
+    },
+    {
+      "group": "F data states",
+      "name": "loading → experience on the requested screen",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "F data states",
+      "name": "refetch failure: 'Couldn't get the latest update' while the last good data stays",
+      "ok": true,
+      "detail": {
+        "shown": 1,
+        "stillDrawn": 2
+      }
+    },
+    {
+      "group": "F data states",
+      "name": "Retry recovers and clears the notice",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "out-of-window Final shows that exact fixture (id preserved, TBD vs TBD)",
+      "ok": true,
+      "detail": {
+        "id": "115660540726095133",
+        "h": "TBD vs TBD",
+        "meta": "Worlds 2026\n·Knockout Stage · Finals"
+      }
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "fixture identity comes from the tournament read",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "event link → /lol/pro-play/tournament/worlds-2026",
+      "ok": true,
+      "detail": "/lol/pro-play/tournament/worlds-2026"
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "normal automatic hub board renders (no explicit link)",
+      "ok": true,
+      "detail": "C9 vs KC"
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "?next= takes precedence over ?game=",
+      "ok": true,
+      "detail": "117173205319911438"
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "unverifiable id → blocking notice, no other match",
+      "ok": true,
+      "detail": "Can't confirm that match\nThe match in this link isn't among the next few matches in the live schedule, or in the tournament schedules Mogzy reads (not all of which can confirm they are complete). That doesn't mean it was cancelled — it can't be confirmed from here, so no other match is shown in its place.\nTry again\nShow the latest match"
+    },
+    {
+      "group": "G HUB-NEXT1 OFF",
+      "name": "in-feed fixture (C9 v KC) uses the normal upcoming board",
+      "ok": true,
+      "detail": "C9 vs KC"
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "out-of-window Final shows that exact fixture (id preserved, TBD vs TBD)",
+      "ok": true,
+      "detail": {
+        "id": "115660540726095133",
+        "h": "TBD vs TBD",
+        "meta": "Worlds 2026\n·Knockout Stage · Finals"
+      }
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "fixture identity comes from the tournament read",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "event link → /lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133",
+      "ok": true,
+      "detail": "/lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133"
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "event link opens the Schedule with the Final's detail",
+      "ok": true,
+      "detail": "http://localhost:5282/lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133"
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "normal automatic hub board renders (no explicit link)",
+      "ok": true,
+      "detail": "C9 vs KC"
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "?next= takes precedence over ?game=",
+      "ok": true,
+      "detail": "117173205319911438"
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "unverifiable id → blocking notice, no other match",
+      "ok": true,
+      "detail": "Can't confirm that match\nThe match in this link isn't among the next few matches in the live schedule, or in the tournament schedules Mogzy reads (not all of which can confirm they are complete). That doesn't mean it was cancelled — it can't be confirmed from here, so no other match is shown in its place.\nTry again\nShow the latest match"
+    },
+    {
+      "group": "G HUB-NEXT1 ON",
+      "name": "in-feed fixture (C9 v KC) uses the normal upcoming board",
+      "ok": true,
+      "detail": "C9 vs KC"
+    },
+    {
+      "group": "H midnight OFF",
+      "name": "23:59:40 LA: DCGI featured",
+      "ok": true,
+      "detail": "/lol/pro-play/tournament/dcgi-2026"
+    },
+    {
+      "group": "H midnight OFF",
+      "name": "open hub moves to Worlds within a minute of 00:00 LA, no reload",
+      "ok": true,
+      "detail": {
+        "after": "/lol/pro-play/tournament/worlds-2026",
+        "name": "League of Legends World Championship 2026: Know the field"
+      }
+    },
+    {
+      "group": "H midnight OFF",
+      "name": "pill opens the published page (flag off)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "H midnight ON",
+      "name": "23:59:40 LA: DCGI featured",
+      "ok": true,
+      "detail": "/lol/pro-play/tournament/dcgi-2026"
+    },
+    {
+      "group": "H midnight ON",
+      "name": "open hub moves to Worlds within a minute of 00:00 LA, no reload",
+      "ok": true,
+      "detail": {
+        "after": "/lol/pro-play/tournament/worlds-2026",
+        "name": "League of Legends World Championship 2026: Know the field"
+      }
+    },
+    {
+      "group": "H midnight ON",
+      "name": "pill opens the experience (flag on)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence OFF",
+      "name": "Pro Play hub renders, no experience chunk",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "I coexistence OFF",
+      "name": "/lol/pro-play/live renders (not the 404)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence OFF",
+      "name": "/lol/pro-play/stats renders (not the 404)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence OFF",
+      "name": "/lol renders (not the 404)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence OFF",
+      "name": "experience chunk not loaded outside Worlds",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "I coexistence OFF",
+      "name": "no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "I coexistence ON",
+      "name": "Pro Play hub renders, no experience chunk",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "I coexistence ON",
+      "name": "/lol/pro-play/live renders (not the 404)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence ON",
+      "name": "/lol/pro-play/stats renders (not the 404)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence ON",
+      "name": "/lol renders (not the 404)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "group": "I coexistence ON",
+      "name": "experience chunk not loaded outside Worlds",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "group": "I coexistence ON",
+      "name": "no page errors",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}
