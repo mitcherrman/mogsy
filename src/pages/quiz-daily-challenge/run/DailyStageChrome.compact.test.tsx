@@ -32,6 +32,7 @@ describe("Daily compact mobile header", () => {
     expect(within(header).getByTestId("daily-stage-position")).toHaveClass("sr-only");
     expect(within(header).getByTestId("daily-stage-content")).toHaveClass("sr-only");
     expect(within(header).getByTestId("daily-stage-tag")).toHaveAttribute("data-stage-kind", "standard");
+    expect(within(header).queryByTestId("daily-stage-content")).not.toBeInTheDocument();
   });
 
   it("keeps distinctive modes and their readouts; hides no live ruleset number", () => {
@@ -39,6 +40,28 @@ describe("Daily compact mobile header", () => {
     const header = screen.getByTestId("daily-stage-chrome");
     expect(within(header).getByTestId("daily-stage-tag")).toHaveTextContent("Time Trial");
     expect(within(header).getByTestId("daily-screenshot-cta")).toHaveTextContent("PLAY NOW");
+  });
+
+  it("preserves Time Trial's authoritative time-bank readout", () => {
+    const stage = { ...run.stages[1], live: {
+      timeBank: {
+        totalMs: 90_000, remainingMs: 45_000, asOf: new Date().toISOString(),
+        draining: false, answerableAt: null, deadline: null, answered: false,
+      }, strikes: null,
+    } };
+    render(<MemoryRouter><DailyStageChrome run={run} stage={stage} /></MemoryRouter>);
+    expect(screen.getByRole("timer", { name: /Time bank/ })).toBeInTheDocument();
+    expect(screen.getByTestId("daily-time-bank")).toHaveAttribute("data-bank-ms", "45000");
+    expect(screen.getByTestId("daily-screenshot-cta")).toHaveTextContent("PLAY NOW");
+  });
+
+  it("preserves Survival's authoritative mistake count", () => {
+    const stage = { ...run.stages[2], live: {
+      timeBank: null, strikes: { used: 1, max: 3 },
+    } };
+    render(<MemoryRouter><DailyStageChrome run={run} stage={stage} /></MemoryRouter>);
+    expect(screen.getByTestId("daily-strikes-count")).toHaveTextContent("1 / 3");
+    expect(screen.getByTestId("daily-stage-tag")).toHaveTextContent("Survival");
   });
 
   it("has the same back and CTA when between stages", () => {
