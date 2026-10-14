@@ -1,0 +1,222 @@
+[
+  {
+    "name": "base 9fb89ac3 reproduces: ?next=<Final> shows an unrelated match",
+    "ok": true,
+    "detail": {
+      "url": "/lol/pro-play?next=115660540726095133",
+      "h2": "Up next",
+      "h3": "C9 vs KC",
+      "loading": false,
+      "fixture": null,
+      "unresolved": null,
+      "upcoming": true,
+      "summary": false,
+      "gone": true,
+      "pill": "/lol/pro-play/tournament/dcgi-2026",
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "tournamentReqs": [
+        "dcgi-2026"
+      ]
+    }
+  },
+  {
+    "name": "OFF desktop: Final drawn from the tournament schedule",
+    "ok": true,
+    "detail": {
+      "url": "/lol/pro-play?next=115660540726095133",
+      "h2": "Up next",
+      "h3": "TBD vs TBD",
+      "loading": false,
+      "fixture": {
+        "id": "115660540726095133",
+        "state": "upcoming",
+        "link": "/lol/pro-play/tournament/worlds-2026"
+      },
+      "unresolved": null,
+      "upcoming": false,
+      "summary": false,
+      "gone": false,
+      "pill": "/lol/pro-play/tournament/dcgi-2026",
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "tournamentReqs": [
+        "dcgi-2026",
+        "worlds-2026"
+      ]
+    }
+  },
+  {
+    "name": "OFF: link is the canonical Worlds page",
+    "ok": true,
+    "detail": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+    "name": "OFF: DCGI stays featured on 13 Oct; Worlds read only for the link",
+    "ok": true,
+    "detail": {
+      "pill": "/lol/pro-play/tournament/dcgi-2026",
+      "reqs": [
+        "dcgi-2026",
+        "worlds-2026"
+      ]
+    }
+  },
+  {
+    "name": "OFF: URL keeps the requested match id",
+    "ok": true,
+    "detail": "/lol/pro-play?next=115660540726095133"
+  },
+  {
+    "name": "OFF desktop: refresh keeps the Final",
+    "ok": true,
+    "detail": {
+      "id": "115660540726095133",
+      "state": "upcoming",
+      "link": "/lol/pro-play/tournament/worlds-2026"
+    }
+  },
+  {
+    "name": "OFF: event link opens /lol/pro-play/tournament/worlds-2026",
+    "ok": true,
+    "detail": "http://localhost:5278/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+    "name": "OFF phone: Final drawn, no horizontal scroll",
+    "ok": true,
+    "detail": {
+      "fixture": {
+        "id": "115660540726095133",
+        "state": "upcoming",
+        "link": "/lol/pro-play/tournament/worlds-2026"
+      },
+      "sw": 390,
+      "iw": 390
+    }
+  },
+  {
+    "name": "OFF phone: refresh keeps the Final",
+    "ok": true,
+    "detail": {
+      "id": "115660540726095133",
+      "state": "upcoming",
+      "link": "/lol/pro-play/tournament/worlds-2026"
+    }
+  },
+  {
+    "name": "ON desktop: Final drawn",
+    "ok": true,
+    "detail": {
+      "id": "115660540726095133",
+      "state": "upcoming",
+      "link": "/lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133"
+    }
+  },
+  {
+    "name": "ON: link is the Worlds Schedule screen for the match",
+    "ok": true,
+    "detail": "/lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133"
+  },
+  {
+    "name": "ON: link lands on the experience Schedule with ?match=",
+    "ok": true,
+    "detail": {
+      "url": "/lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133",
+      "exp": true
+    }
+  },
+  {
+    "name": "ON phone: Final drawn, no horizontal scroll",
+    "ok": true,
+    "detail": {
+      "fixture": {
+        "id": "115660540726095133",
+        "state": "upcoming",
+        "link": "/lol/pro-play/tournament/worlds-2026/schedule?match=115660540726095133"
+      },
+      "sw": 390
+    }
+  },
+  {
+    "name": "unknown id: 'unverified', nothing in its place",
+    "ok": true,
+    "detail": {
+      "reason": "unverified",
+      "partial": "true",
+      "text": "Can't confirm that match\nThe match in this link isn't among the next few matches in the live schedule, or in the tournament schedules Mogzy reads (not all of which can confirm they are complete). That doesn't mean it was cancelled — it can't be confirmed from here, so no other match is shown in its place.\nTry again\nShow the latest match"
+    }
+  },
+  {
+    "name": "clearing returns to the normal Match Center (clean URL)",
+    "ok": true,
+    "detail": {
+      "url": "/lol/pro-play",
+      "h2": "Up next",
+      "h3": "C9 vs KC"
+    }
+  },
+  {
+    "name": "unknown id phone: no horizontal scroll",
+    "ok": true,
+    "detail": {
+      "sw": 390
+    }
+  },
+  {
+    "name": "ordinary visit: same automatic board as base",
+    "ok": true,
+    "detail": {
+      "base": [
+        "Up next",
+        "C9 vs KC"
+      ],
+      "branch": [
+        "Up next",
+        "C9 vs KC"
+      ]
+    }
+  },
+  {
+    "name": "ordinary visit: no Worlds tournament request",
+    "ok": true,
+    "detail": [
+      "dcgi-2026"
+    ]
+  },
+  {
+    "name": "feed-listed ?next=: upcoming board, no tournament lookup",
+    "ok": true,
+    "detail": {
+      "url": "/lol/pro-play?next=115660588583171786",
+      "h3": "C9 vs KC",
+      "reqs": [
+        "dcgi-2026"
+      ]
+    }
+  },
+  {
+    "name": "?game= deep link: the chosen game",
+    "ok": true,
+    "detail": {
+      "url": "/lol/pro-play?game=117173205319911438",
+      "h3": "GL vs MKF"
+    }
+  },
+  {
+    "name": "?next=<Final>&game=<id>: the Final, not the game",
+    "ok": true,
+    "detail": {
+      "id": "115660540726095133",
+      "state": "upcoming",
+      "link": "/lol/pro-play/tournament/worlds-2026"
+    }
+  },
+  {
+    "name": "(base, for comparison) ?next=<Final>&game=<id> showed the game",
+    "ok": true,
+    "detail": {
+      "h3": "GL vs MKF",
+      "gone": true
+    }
+  }
+]
