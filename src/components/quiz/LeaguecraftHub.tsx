@@ -175,6 +175,7 @@ export default function LeaguecraftHub({
   hasAccount = true,
   onRequireAccount,
   onEnterMatch,
+  onEnterRoleChallenge,
   onPlayDailyChallenge,
   rankedAvailabilityOpen = true,
   playModes,
@@ -284,6 +285,7 @@ export default function LeaguecraftHub({
   /** PLAY1: raise the host's signup notice when a guest presses Ranked. */
   onRequireAccount?: () => void;
   onEnterMatch: (matchId: string) => void;
+  onEnterRoleChallenge?: (matchId: string) => void;
   /**
    * PLAY1: the host's OWN Daily Challenge entry. `Quiz.tsx` hosts the daily
    * set in-page (`handlePlayDailyChallenge`), which is a different feature
@@ -609,6 +611,10 @@ export default function LeaguecraftHub({
           progress={progress}
           ranked={ranked}
           onPlayRanked={openPlay}
+          onPlayDailyChallenge={onPlayDailyChallenge}
+          onEnterRoleChallenge={onEnterRoleChallenge}
+          hasAccount={hasAccount}
+          onRequireAccount={onRequireAccount}
           rankedAvailable={rankedAvailabilityOpen}
           playDisabled={playDisabled}
           playButtonRef={playSealRef}
