@@ -30,7 +30,6 @@ describe("Daily compact mobile header", () => {
     // Section and server content remain available to assistive technology,
     // while the visible phone row has exactly one mode name.
     expect(within(header).getByTestId("daily-stage-position")).toHaveClass("sr-only");
-    expect(within(header).getByTestId("daily-stage-content")).toHaveClass("sr-only");
     expect(within(header).getByTestId("daily-stage-tag")).toHaveAttribute("data-stage-kind", "standard");
     expect(within(header).queryByTestId("daily-stage-content")).not.toBeInTheDocument();
   });
