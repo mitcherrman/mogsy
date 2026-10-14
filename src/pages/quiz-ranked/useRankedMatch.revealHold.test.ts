@@ -74,18 +74,18 @@ describe("a server-paced settlement (MG-P3.1 hold math)", () => {
 });
 
 // RANKED-INT1 / R3C release — the final round (no next `started_at`) holds from
-// the round's stored `presentation_ms`. This release carries Reconstruct as the
-// only server-paced module; Match Grid and Assembly join with RANKED-INT1.
+// the round's stored `presentation_ms`. MATCH-GRID-LIVE adds Match Grid beside
+// Reconstruct; Assembly is not part of this release.
 import { finalServerPacedHoldMs } from "@/lib/ranked-core/pacing";
 import { SERVER_PACED_REVEAL_MODULES } from "@/lib/ranked-core/orderForgeLockReveal";
 import { readResolvedPresentationMs, readSegmentSettlement } from "@/lib/ranked-public/contracts";
 
-describe("the shared server-paced hold (R3C release: Reconstruct only)", () => {
+describe("the shared server-paced hold (Reconstruct + Match Grid)", () => {
   const TITLE = 1400;
 
-  it("is exactly Reconstruct; every other module keeps its beat", () => {
-    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["reconstruct"]);
-    for (const id of ["scrub", "match", "assembly", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
+  it("is exactly Match Grid and Reconstruct; every other module keeps its beat", () => {
+    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["match", "reconstruct"]);
+    for (const id of ["scrub", "assembly", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
       expect(SERVER_PACED_REVEAL_MODULES.has(id)).toBe(false);
     }
   });
@@ -93,6 +93,9 @@ describe("the shared server-paced hold (R3C release: Reconstruct only)", () => {
   it("the FINAL round holds the server's stored hold, not the generic 1.5 s", () => {
     expect(finalServerPacedHoldMs(5400, TITLE)).toBe(4000); // wrong / timeout
     expect(finalServerPacedHoldMs(4800, TITLE)).toBe(3400); // all exact
+    // MATCH-GRID-LIVE: Match Grid's final round stores 4500 + title (wrong /
+    // timeout; backend test_match_grid_live_release) → the full ledger window.
+    expect(finalServerPacedHoldMs(4500 + TITLE, TITLE)).toBe(4500);
     expect(finalServerPacedHoldMs(null, TITLE)).toBe(0);    // old backend: beat unchanged
     expect(Math.max(REVEAL_HOLD_MS, finalServerPacedHoldMs(null, TITLE))).toBe(REVEAL_HOLD_MS);
   });

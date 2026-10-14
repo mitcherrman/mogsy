@@ -566,7 +566,13 @@ export type SegmentChoice =
    * `reconstruct.v1` (GM1-R1): one tray piece id per recipe socket. Socket
    * order carries no meaning; a piece id may repeat.
    */
-  | { placement: readonly string[] };
+  | { placement: readonly string[] }
+  /**
+   * `match.v1` (MG-P3): the whole board, one row per dealt entity, naming the
+   * server's opaque positional tokens only (`e0..` / `g0..`). Row order
+   * carries no meaning; never a rune/tree name, key, or correctness.
+   */
+  | { assignments: readonly { readonly entity_id: string; readonly group_id: string }[] };
 
 const assertNever = (x: never): never => {
   throw new Error(`Unsupported segment choice: ${JSON.stringify(x)}`);
@@ -593,6 +599,9 @@ export const submitSegmentChallenge = (
         : "selected" in choice ? { selected: choice.selected }
         : "order" in choice ? { order: [...choice.order] }
         : "placement" in choice ? { placement: [...choice.placement] }
+        : "assignments" in choice ? {
+          assignments: choice.assignments.map((r) => ({ entity_id: r.entity_id, group_id: r.group_id })),
+        }
         : "itemId" in choice ? { item_id: choice.itemId }
         : assertNever(choice),
       signal,

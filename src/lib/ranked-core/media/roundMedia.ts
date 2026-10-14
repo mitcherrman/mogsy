@@ -257,6 +257,9 @@ export function rankedRoundMedia(
     // renderer resolves them, so the warmed URL is the one the page requests.
     critical.add(resolveQuizAssetUrl(block.target.media?.src));
     for (const p of block.pieces) critical.add(resolveQuizAssetUrl(p.media?.src));
+  } else if (block?.contract === "match") {
+    // MG-P3: every dealt sigil's art, resolved exactly as the renderer does.
+    for (const e of block.entities) critical.add(resolveQuizAssetUrl(e.media?.src));
   } else if (block?.contract === "mastery_slice") {
     for (const ch of block.challenges) {
       if (renderPathFor(ch) === "prose") {
