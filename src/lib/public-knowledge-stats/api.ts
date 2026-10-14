@@ -121,4 +121,3 @@ export function useKnowledgeStats(mode: KnowledgeStatsMode | null) {
     retry: 1,
   });
 }
-

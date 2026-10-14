@@ -29,4 +29,3 @@ describe("public knowledge stats client", () => {
     });
   });
 });
-

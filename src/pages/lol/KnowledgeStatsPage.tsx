@@ -55,7 +55,6 @@ function AccuracyBar({ value, eligible }: { value: number | null; eligible: bool
     </div>
   );
 }
-
 function MetricCard({ label, value, detail, icon: Icon }: {
   label: string;
   value: string;

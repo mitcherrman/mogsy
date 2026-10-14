@@ -14,4 +14,3 @@ describe("KnowledgeStatsPage archive links", () => {
     expect(entityHref({ entity_type: "summoner_spell", entity_key: "Flash" })).toBeNull();
   });
 });
-
