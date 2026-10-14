@@ -261,7 +261,7 @@ export default function RoleChallengePicker({
 
   return (
     <div data-testid="role-challenge-picker" className="flex w-full flex-col gap-3 text-left">
-      <div className="text-center">
+      <div className="mt-1 text-center">
         <h2
           className="lc-scroll-title whitespace-nowrap font-black uppercase leading-none tracking-[0.13em]"
           style={{ color: INK.strong, textShadow: INK.press }}
@@ -334,7 +334,7 @@ export default function RoleChallengePicker({
                 aria-hidden="true"
                 className="h-8 w-8 object-contain sm:h-9 sm:w-9"
               />
-              <span className="text-[10.5px] font-extrabold uppercase tracking-wide"
+              <span className="max-w-full truncate text-[9px] font-extrabold uppercase tracking-normal sm:text-[10.5px] sm:tracking-wide"
                 style={{ color: active ? INK.strong : INK.faint }}>
                 {RANKED_ROLE_LABELS[id]}
               </span>
@@ -484,7 +484,7 @@ export default function RoleChallengePicker({
         type="button"
         disabled={hasAccount ? !canStart : catalogState === "loading"}
         onClick={start}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-sm transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
+        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-3 text-[13px] font-black uppercase tracking-[0.06em] text-amber-50 sm:text-sm sm:tracking-[0.12em] shadow-sm transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
         style={{ background: "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)", border: "1px solid #2a1a04" }}
         data-testid="rc-play"
       >

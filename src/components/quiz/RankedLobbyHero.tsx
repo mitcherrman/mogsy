@@ -531,7 +531,9 @@ export default function RankedLobbyHero({
         data-testid="hero-play-column"
       >
         <LobbyPanel variant="scroll" order="centre" emphasis className="items-center text-center">
-        {guide}
+        {/* RC8: the guide points at the Ranked role stage and seal, so it is
+            only mounted while the Ranked mode is the one on the sheet. */}
+        {selectedMode === "ranked" ? guide : null}
         {/* The lobby's one genuine pre-match DECISION, and since RL1 the only
             heading on this sheet — the LEAGUECRAFT wordmark and the RANKED
             eyebrow above it are gone and nothing replaces them. `ceremonial`
@@ -1130,10 +1132,12 @@ function RecentRankedLedger({
  * down. It stays ink and press — no second gold gradient, because the centre
  * wordmark owns that and two would fight.
  */
-const CENTRE_MODES: readonly { id: HubCentreMode; label: string; icon: typeof CalendarDays }[] = [
-  { id: "daily", label: "Daily Challenge", icon: CalendarDays },
-  { id: "role", label: "Role Challenge", icon: Swords },
-  { id: "ranked", label: "Ranked", icon: Trophy },
+const CENTRE_MODES: readonly {
+  id: HubCentreMode; label: string; short: string; icon: typeof CalendarDays;
+}[] = [
+  { id: "daily", label: "Daily Challenge", short: "Daily", icon: CalendarDays },
+  { id: "role", label: "Role Challenge", short: "Role", icon: Swords },
+  { id: "ranked", label: "Ranked", short: "Ranked", icon: Trophy },
 ];
 
 /**
@@ -1163,7 +1167,7 @@ function CentreModeSwitcher({
       aria-label="Choose challenge mode"
       data-testid="challenge-mode-switcher"
     >
-      {CENTRE_MODES.map(({ id, label, icon: Icon }, index) => {
+      {CENTRE_MODES.map(({ id, label, short, icon: Icon }, index) => {
         const active = value === id;
         return (
           <button
@@ -1174,6 +1178,10 @@ function CentreModeSwitcher({
             id={`centre-mode-tab-${id}`}
             aria-selected={active}
             aria-controls={`centre-mode-panel-${id}`}
+            /* The accessible name is always the full mode name; a phone sheet
+               PRINTS the short one, because three full names cannot share a
+               390px scroll without clipping. */
+            aria-label={label}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(id)}
             onKeyDown={(e) => {
@@ -1188,7 +1196,8 @@ function CentreModeSwitcher({
             }}
           >
             <Icon className="hidden h-3.5 w-3.5 shrink-0 sm:block" aria-hidden="true" />
-            <span className="min-w-0">{label}</span>
+            <span className="min-w-0 sm:hidden" aria-hidden="true">{short}</span>
+            <span className="hidden min-w-0 sm:inline" aria-hidden="true">{label}</span>
           </button>
         );
       })}

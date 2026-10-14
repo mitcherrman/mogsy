@@ -45,7 +45,11 @@ function Row({ label, award }: { label: string; award: string }) {
   );
 }
 
-export function RankedRulesContent() {
+/** RC8: which product's match the scroll sits beside. Scoring is the same
+ *  canonical Ranked scoring; only the length and the stakes line differ. */
+export type RulesVariant = "ranked" | "role_challenge";
+
+export function RankedRulesContent({ variant = "ranked" }: { variant?: RulesVariant } = {}) {
   return (
     <div data-testid="ranked-rules-content">
       <Section heading="Knowledge earns points">
@@ -66,11 +70,22 @@ export function RankedRulesContent() {
         </p>
       </Section>
 
-      <Section heading="10 modules">
-        <p className="text-[13px] leading-snug">
-          Highest score wins. An equal score is a draw.
-        </p>
-      </Section>
+      {variant === "role_challenge" ? (
+        <Section heading="12 questions · Unrated">
+          <p className="text-[13px] leading-snug">
+            Highest score wins. An equal score is a draw.
+          </p>
+          <p className="mt-1.5 text-[11px] leading-snug text-[#5a4622]">
+            Role Challenge never changes your Ranked rating or Ranked history.
+          </p>
+        </Section>
+      ) : (
+        <Section heading="10 modules">
+          <p className="text-[13px] leading-snug">
+            Highest score wins. An equal score is a draw.
+          </p>
+        </Section>
+      )}
     </div>
   );
 }
