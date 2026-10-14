@@ -11,8 +11,12 @@
  * Nothing here is imported by the primitive, and the source test pins that.
  * Nothing here is secret from a browser's devtools either: the fixture ships
  * in the bundle. The backend owns secrecy; this owns the CONTRACT.
+ *
+ * INT1: the rounds are a PARAMETER, never an import, so this module can ship in
+ * a production build without the answer bank. The DEV route hands it the
+ * bundled fixture (`devRounds.ts`); the owner-only admin route hands it the
+ * file the owner loads from their own disk.
  */
-import fixture from "@/lib/word-puzzle/__fixtures__/wordPuzzleRounds.json";
 import type { GlyphPressLedger, GlyphPressPublic, GlyphPressResponse, GlyphPressReveal } from "@/lib/interaction-grammar/types";
 import { GLYPH_PRESS_ALPHABET } from "@/lib/interaction-grammar/glyphPress";
 import { applySounding, chooseGivens, fnv, gradeResponse, structureFromAnswer } from "@/lib/word-puzzle/authority";
@@ -32,13 +36,17 @@ export interface FixtureRound {
   traits: string[];
 }
 
-export const WORD_PUZZLE_ROUNDS: readonly FixtureRound[] = (fixture as { rounds: FixtureRound[] }).rounds;
-export const WORD_PUZZLE_CAPTURE = fixture as { capturedAt: string; backend: { path: string; commit: string } };
+/** The round file's shape (`wordPuzzleRounds.json`). */
+export interface WordPuzzleRoundFile {
+  capturedAt: string;
+  backend: { path: string; commit: string };
+  rounds: readonly FixtureRound[];
+}
 
 export const SOUNDINGS_ALLOWED = 3;
 
-export function findRound(id: string): FixtureRound | null {
-  return WORD_PUZZLE_ROUNDS.find((r) => r.id === id) ?? null;
+export function findRound(rounds: readonly FixtureRound[], id: string): FixtureRound | null {
+  return rounds.find((r) => r.id === id) ?? null;
 }
 
 export interface LabSecret {
@@ -106,6 +114,6 @@ export function gradeLabRound(secret: LabSecret, ledger: GlyphPressLedger, respo
 }
 
 /** A deterministic order through the rounds for a seed. */
-export function roundOrder(seed: string): FixtureRound[] {
-  return [...WORD_PUZZLE_ROUNDS].sort((a, b) => fnv(`${seed}:${a.id}`) - fnv(`${seed}:${b.id}`));
+export function roundOrder(rounds: readonly FixtureRound[], seed: string): FixtureRound[] {
+  return [...rounds].sort((a, b) => fnv(`${seed}:${a.id}`) - fnv(`${seed}:${b.id}`));
 }

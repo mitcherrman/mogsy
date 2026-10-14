@@ -1,7 +1,9 @@
 /**
- * GM-R1 — the Rangefinder playtest harness. DEVELOPMENT ONLY: registered in
- * App.tsx behind `import.meta.env.DEV`, so a production build drops it and the
- * path 404s.
+ * GM-R1 — the Rangefinder playtest harness. Two hosts mount it (INT1):
+ * `/dev/rangefinder` (DEVELOPMENT ONLY, `RangefinderDevLab` hands it the
+ * bundled capture) and `/admin/interaction-labs/rangefinder` (owner-only,
+ * `AdminRoute`; the owner loads the capture file from their own disk, so the
+ * production bundle carries no answer bank). It never imports the capture.
  *
  * It is the HOST for the prototype. It builds a round from the frozen
  * authority capture, keeps the canonical stop in a ref the primitive never
@@ -34,6 +36,8 @@ import { NO_INTERACTIONS, type CombatantView } from "@/lib/ranked-core/viewTypes
 import { readPublicRound } from "@/lib/ranked-public/contracts";
 import { publicRoundV2 } from "@/lib/ranked-public/fixtures";
 import { buildLabRound, findRecord, gradeLabRound, roundId, roundOrder, type LabRound, type LabSecret } from "./labAuthority";
+import type { RangeAuthorityCapture } from "@/lib/rangefinder/eligibility";
+import { PROTOTYPE_LABEL } from "@/lib/interaction-labs/packs";
 
 const SERVER_LATENCY_MS = 420;
 type Prearranged = "open" | "placed" | "locked" | "revealed-right" | "revealed-wrong";
@@ -93,7 +97,7 @@ function labArenaView(phase: InteractionPhase): ArenaViewModel {
   const round = readPublicRound(publicRoundV2());
   return {
     header: {
-      eyebrow: "Rangefinder", title: "Playtest", transitionNote: null, playtestNote: null, presenceNote: null,
+      eyebrow: "Rangefinder", title: "Prototype", transitionNote: null, playtestNote: null, presenceNote: null,
       timer: { durationSeconds: 60, remainingSeconds: 45, paused: true, urgent: false }, timerLabel: "Timer",
       centralResult: null, moduleTitle: null, moduleEventId: null,
     },
@@ -116,12 +120,12 @@ function labArenaView(phase: InteractionPhase): ArenaViewModel {
   } as ArenaViewModel;
 }
 
-export default function RangefinderLab() {
+export default function RangefinderLab({ capture }: { capture: RangeAuthorityCapture }) {
   const [params, setParams] = useSearchParams();
   const seed = params.get("seed") ?? "academy";
-  const order = useMemo(() => roundOrder(seed), [seed]);
+  const order = useMemo(() => roundOrder(capture, seed), [capture, seed]);
   const requested = params.get("round");
-  const record = (requested ? findRecord(requested) : null) ?? order[0];
+  const record = (requested ? findRecord(capture, requested) : null) ?? order[0];
   const forceReduce = params.get("motion") === "reduce";
   const prearranged = (params.get("state") as Prearranged | null) ?? "open";
 
@@ -196,6 +200,8 @@ export default function RangefinderLab() {
     // `arenaHeaderRowClass` insets the row clear of the GlobalHud's fixed chips (the hat and the identity cluster),
     // which otherwise sit over the row's ends and swallow clicks.
     <div data-testid="rangefinder-lab-chrome" className={`${arenaHeaderRowClass("wide")} flex-nowrap gap-x-2 overflow-x-auto whitespace-nowrap text-[11px] text-[#a9b3c1] [scrollbar-width:thin]`}>
+      {/* INT1: mandatory on every lab surface (DEV and owner admin) until a server grader is approved and tested. */}
+      <span data-testid="lab-prototype-label" className="shrink-0 rounded border border-[#d9825a] bg-[#2a1610] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#f0a27c]">{PROTOTYPE_LABEL}</span>
       <span className="ranked-eyebrow shrink-0">Rangefinder · R1 lab</span>
       <span className="shrink-0 font-mono opacity-70" data-testid="lab-round">{roundId(record)}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1">

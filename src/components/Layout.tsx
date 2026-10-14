@@ -121,7 +121,9 @@ export default function Layout() {
     // GM-R1 — the Rangefinder lab mounts the arena's own frame, so it gets the same page frame as Ranked.
     || pathname === "/dev/rangefinder"
     // WP1 — the Word Puzzle lab mounts the arena's own frame, so it gets the same page frame as Ranked.
-    || pathname === "/dev/word-puzzle";
+    || pathname === "/dev/word-puzzle"
+    // INT1 — the owner-only production entry for the same two labs.
+    || pathname.startsWith("/admin/interaction-labs/");
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

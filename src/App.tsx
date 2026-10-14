@@ -268,12 +268,15 @@ const MatchGridLab = import.meta.env.DEV
   : null;
 // GM-R1: the Rangefinder playtest lab. Same DEVELOPMENT-ONLY rule.
 const RangefinderLab = import.meta.env.DEV
-  ? lazy(() => import("./pages/dev/rangefinder/RangefinderLab"))
+  ? lazy(() => import("./pages/dev/rangefinder/RangefinderDevLab"))
   : null;
 // WP1: the Word Puzzle (Glyph Press) playtest lab. Same DEVELOPMENT-ONLY rule.
 const WordPuzzleLab = import.meta.env.DEV
-  ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleLab"))
+  ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleDevLab"))
   : null;
+// INT1: the owner-only production entry for the Rangefinder / Glyph Press
+// labs. Its chunk carries no answer bank: the owner loads the fixture file.
+const InteractionLabPage = lazy(() => import("./pages/admin/interaction-labs/InteractionLabPage"));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -502,6 +505,11 @@ export const appRouter = createBrowserRouter(
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
+                  {/* INT1 — owner-only interaction-mode playtests (Rangefinder, Glyph Press).
+                      Outside the admin shell because the labs own the arena frame;
+                      gated by the same <AdminRoute>. Not linked from any public surface. */}
+                  <Route path="/admin/interaction-labs" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/interaction-labs/:lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}

@@ -7,15 +7,17 @@
  * secret the primitive never receives, and grades a response into a
  * `RangefinderReveal`. Nothing here is imported by the primitive, and the
  * source test pins that.
+ *
+ * INT1: the capture is a PARAMETER, never an import, so this module can ship in
+ * a production build without the answer bank. The DEV route hands it the
+ * bundled fixture (`devCapture.ts`); the owner-only admin route hands it the
+ * file the owner loads from their own disk.
  */
-import capture from "@/lib/rangefinder/__fixtures__/rangeAuthorityCapture.json";
 import type { EligibleRangeRecord, RangeAuthorityCapture } from "@/lib/rangefinder/eligibility";
 import { RANGEFINDER_MAX_UNITS, RANGEFINDER_MIN_UNITS, RANGEFINDER_STEP_UNITS } from "@/lib/rangefinder/eligibility";
 import type { RangefinderLens, RangefinderPublic, RangefinderResponse, RangefinderReveal } from "@/lib/interaction-grammar/types";
 import { formatUnits } from "@/lib/interaction-grammar/rangefinder";
 import { getAbilityIconUrl, getChampionSquareIconUrl } from "@/lib/combat-lab/abilityIcons";
-
-export const RANGE_CAPTURE = capture as unknown as RangeAuthorityCapture;
 
 /** The instrument's two optics. Presentation only; identical for every round. */
 export const LAB_LENSES: readonly RangefinderLens[] = [
@@ -27,8 +29,8 @@ export function roundId(r: EligibleRangeRecord): string {
   return `${r.champion.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${r.slot.toLowerCase()}`;
 }
 
-export function findRecord(id: string): EligibleRangeRecord | null {
-  return RANGE_CAPTURE.eligible.find((r) => roundId(r) === id) ?? null;
+export function findRecord(capture: RangeAuthorityCapture, id: string): EligibleRangeRecord | null {
+  return capture.eligible.find((r) => roundId(r) === id) ?? null;
 }
 
 /** A deterministic 32-bit hash (FNV-1a) for per-round token minting. */
@@ -102,6 +104,6 @@ export function gradeLabRound(secret: LabSecret, response: RangefinderResponse):
 }
 
 /** A deterministic order through the pool for a seed. */
-export function roundOrder(seed: string): EligibleRangeRecord[] {
-  return [...RANGE_CAPTURE.eligible].sort((a, b) => fnv(`${seed}:${roundId(a)}`) - fnv(`${seed}:${roundId(b)}`));
+export function roundOrder(capture: RangeAuthorityCapture, seed: string): EligibleRangeRecord[] {
+  return [...capture.eligible].sort((a, b) => fnv(`${seed}:${roundId(a)}`) - fnv(`${seed}:${roundId(b)}`));
 }

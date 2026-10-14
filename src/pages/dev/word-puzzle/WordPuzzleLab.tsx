@@ -1,7 +1,9 @@
 /**
- * WP1 — the Word Puzzle (Glyph Press) playtest harness. DEVELOPMENT ONLY:
- * registered in App.tsx behind `import.meta.env.DEV`, so a production build
- * drops it and the path 404s.
+ * WP1 — the Word Puzzle (Glyph Press) playtest harness. Two hosts mount it
+ * (INT1): `/dev/word-puzzle` (DEVELOPMENT ONLY, `WordPuzzleDevLab` hands it
+ * the bundled rounds) and `/admin/interaction-labs/word-puzzle` (owner-only,
+ * `AdminRoute`; the owner loads the round file from their own disk, so the
+ * production bundle carries no answer bank). It never imports the rounds.
  *
  * It is the HOST for the prototype. It builds a round from the frozen
  * fixture, keeps the canonical glyphs in a ref the primitive never receives,
@@ -39,6 +41,8 @@ import { publicRoundV2 } from "@/lib/ranked-public/fixtures";
 import {
   buildLabRound, findRound, gradeLabRound, roundOrder, soundLabRound, type LabRound, type LabSecret,
 } from "./labAuthority";
+import type { FixtureRound } from "./labAuthority";
+import { PROTOTYPE_LABEL } from "@/lib/interaction-labs/packs";
 
 const SERVER_LATENCY_MS = 420;
 const SOUNDING_LATENCY_MS = 260;
@@ -103,7 +107,7 @@ function labArenaView(phase: InteractionPhase): ArenaViewModel {
   const round = readPublicRound(publicRoundV2());
   return {
     header: {
-      eyebrow: "Glyph Press", title: "Playtest", transitionNote: null, playtestNote: null, presenceNote: null,
+      eyebrow: "Glyph Press", title: "Prototype", transitionNote: null, playtestNote: null, presenceNote: null,
       timer: { durationSeconds: 60, remainingSeconds: 45, paused: true, urgent: false }, timerLabel: "Timer",
       centralResult: null, moduleTitle: null, moduleEventId: null,
     },
@@ -126,12 +130,12 @@ function labArenaView(phase: InteractionPhase): ArenaViewModel {
   } as ArenaViewModel;
 }
 
-export default function WordPuzzleLab() {
+export default function WordPuzzleLab({ rounds }: { rounds: readonly FixtureRound[] }) {
   const [params, setParams] = useSearchParams();
   const seed = params.get("seed") ?? "academy";
-  const order = useMemo(() => roundOrder(seed), [seed]);
+  const order = useMemo(() => roundOrder(rounds, seed), [rounds, seed]);
   const requested = params.get("round");
-  const record = (requested ? findRound(requested) : null) ?? order[0];
+  const record = (requested ? findRound(rounds, requested) : null) ?? order[0];
   const forceReduce = params.get("motion") === "reduce";
   const prearranged = (params.get("state") as Prearranged | null) ?? "open";
 
@@ -243,6 +247,8 @@ export default function WordPuzzleLab() {
     // `arenaHeaderRowClass` insets the row clear of the GlobalHud's fixed chips (the hat and the identity cluster),
     // which otherwise sit over the row's ends and swallow clicks.
     <div data-testid="word-puzzle-lab-chrome" className={`${arenaHeaderRowClass("wide")} flex-nowrap gap-x-2 overflow-x-auto whitespace-nowrap text-[11px] text-[#a9b3c1] [scrollbar-width:thin]`}>
+      {/* INT1: mandatory on every lab surface (DEV and owner admin) until a server grader is approved and tested. */}
+      <span data-testid="lab-prototype-label" className="shrink-0 rounded border border-[#d9825a] bg-[#2a1610] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#f0a27c]">{PROTOTYPE_LABEL}</span>
       <span className="ranked-eyebrow shrink-0">Glyph Press · WP1 lab</span>
       <span className="shrink-0 font-mono opacity-70" data-testid="lab-round">{record.id}</span>
       {!record.verified ? <span className="shrink-0 rounded border border-[#d9825a]/60 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#d9825a]" data-testid="lab-unverified">dev-only · unverified</span> : null}
