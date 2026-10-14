@@ -135,9 +135,9 @@ describe("Interaction Lab — inside the real CanonicalArena", () => {
 
 describe("Interaction Lab — isolation from production", () => {
   it("leaves the production module registry untouched", () => {
-    // NUM-REC2: main has since registered match / order_forge / reconstruct;
-    // the lab still adds nothing.
-    expect(registeredModuleIds()).toEqual(["item_cost_duel", "mastery_slice", "match", "order_forge", "quiz", "reconstruct"]);
+    // NUM-REC2: main has since registered match / order_forge / reconstruct,
+    // then assembly (PA3) and scrub (S3); the lab still adds nothing.
+    expect(registeredModuleIds()).toEqual(["assembly", "item_cost_duel", "mastery_slice", "match", "order_forge", "quiz", "reconstruct", "scrub"]);
     for (const r of [LAB_DATA_DUEL_RENDERER, LAB_STAT_DROP_RENDERER]) {
       expect(getModuleRenderer(r.moduleId, 1)).toBeNull();
       expect(rendererForSegment({ moduleId: r.moduleId, moduleVersion: 1 } as never)).toBeNull();
