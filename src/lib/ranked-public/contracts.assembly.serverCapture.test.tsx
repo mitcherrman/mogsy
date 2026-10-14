@@ -22,6 +22,7 @@ import {
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { liveModuleTitle } from "@/lib/ranked-core/centralStage";
 import { rankedRoundMedia } from "@/lib/ranked-core/media/roundMedia";
+import { getChampionSquareIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { withInlineOrderForgeReveal } from "@/lib/ranked-core/orderForgeLockReveal";
 import { moduleSubject, reviewRoundQuestionTally } from "@/pages/quiz-ranked/rankedResultsModel";
 import roster from "./__fixtures__/assemblyRosterLockServerCapture.json";
@@ -325,7 +326,13 @@ describe.each(CAPTURES)("assembly server capture — %s", (family, cap, title) =
       expect(urls).toMatch(/top\.svg/);
       if (family === "draft_memory") {
         const served = cap.private_open.payload.segment_state.challenges.challenges[0];
-        for (const c of served.cards) expect(urls).toMatch(new RegExp(`/${c.media_key}/icon\\.png|${c.media_key}`, "i"));
+        // The asset folder is not the display name (Wukong -> MonkeyKing,
+        // K'Sante -> KSante): compare with the resolver the adapter uses.
+        for (const c of served.cards) {
+          const url = getChampionSquareIconUrl(c.media_key);
+          expect(url).toBeTruthy();
+          expect(media.critical).toContain(url);
+        }
       }
     });
   });

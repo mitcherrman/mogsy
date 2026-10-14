@@ -33,10 +33,11 @@ export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
  * the server spaces the next round by the module's own hold, so the client's
  * reveal hold follows the server's boundary instead of the generic beat.
  * Reconstruct (4000 wrong / 3400 exact) and, with MATCH-GRID-LIVE, Match Grid
- * (4500 wrong / 3000 exact). Every other module keeps the fixed beats.
+ * (4500 wrong / 3000 exact); with ASSEMBLY-PA3, Assembly (4400 wrong /
+ * 3600 exact). Every other module keeps the fixed beats.
  */
 export const SERVER_PACED_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID]);
+  RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, ASSEMBLY_MODULE_ID]);
 
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
