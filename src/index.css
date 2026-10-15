@@ -19299,3 +19299,42 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     --jq-answers-h: 17.5rem;
   }
 }
+
+
+/* MVFIT1 — SHORT PHONE VIEWPORT BUDGET (canonical quiz stack only).
+   The September one-screen phone stage is a *floor*; VISCONT1 holds fixed
+   124/124/210px media/prompt/answers reserves on every phone. At 509x709
+   those old floors gave a rich item question 61px of page scroll despite
+   ample unused prompt space. Do not remove floors per question: that would
+   reintroduce content-dependent answer movement on reveal or question swap.
+
+   Instead, choose ONE smaller allocation FROM VIEWPORT HEIGHT. At 509x709:
+     media 112px, prompt 105px, answers unchanged at 210px;
+   at 360x640: media 88px, prompt 60px, answers unchanged at 210px;
+   by 740px the original 124/124px allocation is restored.
+   The prompt and media remain MINIMUMS, never maximums; genuinely taller text
+   or structured media may still grow the *page*, never a nested scrollbar.
+
+   Item/cinematic art requires an explicit px max-height, not min(N,100%):
+   the latter has an indefinite percentage inside this phone flex chain and
+   Chromium let its aspect ratio draw 158px even when the computed max listed
+   100px. At 509x709 the definite cap is 100px. Scope excludes Journey's
+   own board/reserves, Stat Check, standalone/stacked panels and desktop. */
+@media (max-width: 639.98px) and (max-height: 760px) {
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
+    --qs-media-h: clamp(5.5rem, calc(100dvh - 37.3125rem), 7.75rem);
+    --qs-prompt-h: clamp(3.75rem, calc(100dvh - 37.75rem), 7.75rem);
+    /* --qs-answers-h and the VISCONT1 feedback reserve are unchanged. */
+  }
+}
+
+/* MVFIT1: the art cap must not jump back to aspect-ratio height at 761px.
+   509px-wide item art is ~158px at natural aspect. This smoothly grows
+   100px at 709dvh -> 126px at 761dvh -> 156px at 820dvh -> natural
+   by ~826dvh, and leaves tall-phone artwork unchanged once unconstrained.
+   The 100px minimum preserves the legible icon/title on short phones. */
+@media (max-width: 639.98px) and (max-height: 950px) {
+  .ranked-shell[data-phone-arena="true"] [data-testid="scenario-hero"] {
+    max-height: clamp(6.25rem, calc(50dvh - 15.90625rem), 14rem) !important;
+  }
+}
