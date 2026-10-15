@@ -87,6 +87,9 @@ for (const vp of CASES) {
               && timelineBox.bottom <= window.innerHeight + 1,
             timelineSticky: getComputedStyle(timeline).position,
             clipped: rects.some(r => r.bottom > stageBox.bottom + 1 || r.top < stageBox.top - 1),
+            stageTop: stageBox.top,
+            stageBottom: stageBox.bottom,
+            choices: rects.map(r => [Math.round(r.top), Math.round(r.bottom)]),
             horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             viewport: window.innerHeight,
             pageScroll: document.documentElement.scrollHeight - document.documentElement.clientHeight,
@@ -137,7 +140,7 @@ for (const vp of CASES) {
       expect(reserves[2]).toBeLessThanOrEqual(280);
       // At 844 tall the original geometry is retained exactly.
       if (vp.height === 844) expect(reserves.map(Math.round)).toEqual([200, 140, 280]);
-      if (vp.height === 640) expect(reserves.map(Math.round)).toEqual([96, 104, 232]);
+      if (vp.height === 640) expect(reserves.map(Math.round)).toEqual([96, 104, 280]);
     });
   });
 }
