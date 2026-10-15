@@ -79,6 +79,11 @@ export const MOGZY_MASCOT_ASSETS_COMPACT: Partial<Record<MogzyMascotPose, string
  */
 export const MOGZY_MASCOT_ASSETS_MEDIUM: Partial<Record<MogzyMascotPose, string>> = {
   base: "/mascot/mogzy-mascot-base-v1-512.webp",
+  // Parchment continuity — the Quiz Hub's Daily Challenge hero draws these at
+  // roughly 150-260 CSS px tall. Same drawings, same crop and alpha as the
+  // sources (576x768 keeps holding-book's 3:4, 512x768 keeps cheering's 2:3).
+  holdingBook: "/mascot/mogzy-holding-book-transparent-576.webp",
+  cheering: "/mascot/mogzy-cheering-transparent-512.webp",
 };
 
 /**

@@ -7242,6 +7242,151 @@ html.high-contrast * { text-shadow: none !important; }
   }
 }
 
+/* ── The centre stage: one box, three modes ──────────────────────────────
+   PARCHMENT CONTINUITY. The centre sheet's tabs sit above a stage that holds
+   the three mode panes in one place. The Ranked pane is the SIZER: it stays
+   laid out (hidden when another mode shows) so the stage — and therefore the
+   sheet, its rollers and, on desktop, the whole rack row — keeps exactly the
+   box Ranked gives it. Daily and Role FILL that box and never contribute to
+   it. See `CentreModePane.tsx`.
+
+   `flex: 1` lets the stage take any height the rack row stretches the column
+   to on desktop, so a fill pane always reaches the bottom of the writing
+   area (the sheet's own padding is the safe band above the foot roller). */
+.lc-centre-stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  margin-top: 0.375rem;
+}
+
+/* Long-or-short labels inside a scroll, chosen by the SHEET's own width.
+   The sheet is a grid fraction of the viewport (desktop) or a capped 30rem
+   column with deep margins (stacked), so a viewport breakpoint is the wrong
+   question: at 768px the writing area is ~300px and the long tab names
+   overlapped. 21rem is where "Daily Challenge · Role Challenge · Ranked"
+   and the five full role names fit without touching. */
+.lc-cq-wide {
+  display: none;
+}
+
+.lc-mode-tab {
+  font-size: 11px;
+}
+
+@container lc-scroll (min-width: 21rem) {
+  .lc-cq-wide {
+    display: inline;
+  }
+  svg.lc-cq-wide {
+    display: block;
+  }
+  .lc-cq-narrow {
+    display: none;
+  }
+  .lc-mode-tab {
+    font-size: 12px;
+  }
+}
+
+.lc-centre-pane--sizer {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.lc-centre-pane--fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Last resort only. Every fill pane is composed to fit the sizer's box at
+     every supported viewport; this keeps an extreme text zoom from painting
+     over the roller instead of scrolling inside the sheet. */
+  overflow-y: auto;
+}
+
+.lc-centre-pane[data-active="false"] {
+  pointer-events: none;
+}
+
+/* A switch reads as the sheet's writing changing, not as a new sheet: the
+   incoming pane fades up a few pixels. Opacity and transform only, so it
+   stays on the compositor; never on first paint (the unfurl owns that). */
+@keyframes lc-centre-pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lc-centre-pane[data-animate="true"] {
+  animation: lc-centre-pane-in 200ms ease-out both;
+}
+
+/* ── Daily's figure ──────────────────────────────────────────────────────
+   The parchment's way of presenting a figure, as the Ranked stage does it: a
+   sheet cannot glow, so Mogzy is seated in a warm patch of lighter paper and
+   a soft brown shadow under his feet. The art is absolutely placed inside a
+   flexible box and drawn to fit it, so its size follows the stage and never
+   the other way round. */
+.lc-daily-hero__aura {
+  position: absolute;
+  inset: 4% 8% 6%;
+  pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 52%, rgba(255, 246, 220, 0.62) 0%, rgba(255, 240, 205, 0.22) 55%, transparent 74%);
+}
+
+.lc-daily-hero__plinth {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 0;
+  height: 18%;
+  pointer-events: none;
+  background: radial-gradient(56% 52% at 50% 70%, rgba(74, 48, 16, 0.42) 0%, rgba(84, 56, 20, 0.16) 46%, transparent 72%);
+}
+
+.lc-daily-hero__art {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3%;
+  width: 100%;
+  height: min(97%, 19rem);
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 6px 8px rgba(48, 26, 8, 0.22));
+  transform-origin: 50% 100%;
+  animation: lc-daily-hero-breathe 6s ease-in-out infinite;
+}
+
+/* A slow breath, not a bounce: Mogzy is waiting for the reader, not calling
+   for them. */
+@keyframes lc-daily-hero-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.012);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-centre-pane[data-animate="true"],
+  .lc-daily-hero__art {
+    animation: none;
+  }
+}
+
 /* ── The unfurl ──────────────────────────────────────────────────────────
    The scroll opens downward in ~560ms: it starts wound near the top with the
    two rolls almost touching, the sheet runs out from under the head roll, the

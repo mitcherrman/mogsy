@@ -66,6 +66,7 @@ export default function RankedPlayGem({
   className = "",
   buttonRef,
   rankedAvailable = false,
+  testId = "ranked-play-gem",
 }: {
   onClick: () => void;
   disabled?: boolean;
@@ -83,6 +84,9 @@ export default function RankedPlayGem({
    */
   label?: string;
   className?: string;
+  /** Parchment continuity — the same seal also starts the Daily Challenge,
+   *  which needs its own handle so the two are never confused in a query. */
+  testId?: string;
 }) {
   const [pressed, setPressed] = useState(false);
 
@@ -97,7 +101,7 @@ export default function RankedPlayGem({
       ref={buttonRef}
       onClick={onClick}
       disabled={disabled}
-      data-testid="ranked-play-gem"
+      data-testid={testId}
       data-pressed={pressed && !disabled ? "true" : "false"}
       onPointerDown={press}
       onPointerUp={release}

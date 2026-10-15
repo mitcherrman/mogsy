@@ -119,12 +119,20 @@ describe("RC7 three-mode landing", () => {
     expect(role.getAttribute("aria-selected")).toBe("false");
     expect(ranked.getAttribute("aria-selected")).toBe("false");
     expect(screen.getByTestId("daily-mode-panel")).toBeTruthy();
-    expect(screen.queryByTestId("ranked-class-carousel")).toBeNull();
+    // PARCHMENT CONTINUITY: the Ranked pane stays laid out as the stage's
+    // sizer, but is hidden from sight, pointer and assistive tech.
+    const rankedPane = screen.getByTestId("ranked-mode-panel");
+    expect(rankedPane.getAttribute("aria-hidden")).toBe("true");
+    expect(rankedPane.style.visibility).toBe("hidden");
+    expect((rankedPane as HTMLElement & { inert?: boolean }).inert).toBe(true);
+    expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Play Daily" }));
     expect(onPlayDailyChallenge).toHaveBeenCalledTimes(1);
     fireEvent.click(ranked);
     expect(ranked.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByTestId("ranked-class-carousel")).toBeTruthy();
+    expect(rankedPane.getAttribute("aria-hidden")).toBeNull();
+    expect(rankedPane.style.visibility).toBe("");
     expect(screen.queryByTestId("daily-mode-panel")).toBeNull();
   });
 

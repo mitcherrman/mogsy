@@ -259,17 +259,24 @@ describe("B — hub status", () => {
     const run = fixtureRun(FOUR_STAGE_DAY, { plan_version: 4, current_stage_index: 1 }, {
       0: { status: "completed", result: wireResult() } });
     expect(dailyStatusFrom(run)).toEqual({ known: true, completed: false, resumable: true,
-      optionalOpen: false, resolved: 1, total: 4, streak: null, theme: null });
+      optionalOpen: false, resolved: 1, total: 4, streak: null, theme: null,
+      score: null, correct: null, answered: null });
   });
 
   it("v5 before Standard: not complete, resumable, no all-stage count", () => {
     expect(dailyStatusFrom(fixtureV5Run(V5_ELIGIBLE_DAY))).toEqual({ known: true, completed: false,
-      resumable: true, optionalOpen: false, resolved: null, total: null, streak: null, theme: null });
+      resumable: true, optionalOpen: false, resolved: null, total: null, streak: null, theme: null,
+      score: null, correct: null, answered: null });
   });
 
   it("v5 main-complete: complete AND resumable, with optional content open", () => {
-    expect(dailyStatusFrom(readDailyRun(mainCompleteWire()))).toMatchObject({
+    const main = readDailyRun(mainCompleteWire());
+    expect(dailyStatusFrom(main)).toMatchObject({
       completed: true, resumable: true, optionalOpen: true, resolved: null, total: null });
+    // Parchment continuity — the hub's Daily record reads the server's own
+    // settled main score and Standard result; it never derives them.
+    expect(dailyStatusFrom(main).score).toBe(main.mainScore);
+    expect(dailyStatusFrom(main).correct).toBe(main.stages[0].result?.correct ?? null);
   });
 
   it("v5 fully finished: complete, nothing open", () => {

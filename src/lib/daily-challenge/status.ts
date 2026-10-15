@@ -23,7 +23,7 @@
 import { httpDailyRunTransport, isDailyRunAborted } from "./run/client";
 import type { DailyRunTransport } from "./run/client";
 import type { DailyRun } from "./run/contracts";
-import { hasMainDaily, isMainDailyComplete } from "./run/contracts";
+import { hasMainDaily, isMainDailyComplete, mainStage } from "./run/contracts";
 
 export interface DailyStatusView {
   /** Has the Daily service actually answered? False = the ordinary clause. */
@@ -50,11 +50,24 @@ export interface DailyStatusView {
   /** The CURRENT streak, or null when there is none to claim. */
   streak: number | null;
   theme: string | null;
+  /**
+   * Parchment continuity — the MAIN Daily's frozen score (`main_score`, v5+),
+   * exactly as the server settled it. Null until it settles, and always null
+   * for a legacy run (which has no single Daily score). Never summed here.
+   */
+  score?: number | null;
+  /**
+   * The MAIN Daily's settled correct / answered pair (v5+ Standard's own
+   * result). Null until that stage has a result, and for legacy runs.
+   */
+  correct?: number | null;
+  answered?: number | null;
 }
 
 export const UNKNOWN_DAILY_STATUS: DailyStatusView = Object.freeze({
   known: false, completed: false, resumable: false, optionalOpen: false,
   resolved: 0, total: 0, streak: null, theme: null,
+  score: null, correct: null, answered: null,
 });
 
 export function dailyStatusFrom(run: DailyRun | null): DailyStatusView {
@@ -64,6 +77,7 @@ export function dailyStatusFrom(run: DailyRun | null): DailyStatusView {
   const resumable = run.status === "active";
   if (hasMainDaily(run)) {
     const completed = isMainDailyComplete(run);
+    const main = mainStage(run)?.result ?? null;
     return {
       known: true,
       completed,
@@ -73,6 +87,9 @@ export function dailyStatusFrom(run: DailyRun | null): DailyStatusView {
       total: null,
       streak: null,
       theme: null,
+      score: completed ? run.mainScore : null,
+      correct: main ? main.correct : null,
+      answered: main ? main.answered : null,
     };
   }
   const finished = run.stages.filter(
@@ -86,6 +103,9 @@ export function dailyStatusFrom(run: DailyRun | null): DailyStatusView {
     total: run.stages.length,
     streak: null,
     theme: null,
+    score: null,
+    correct: null,
+    answered: null,
   };
 }
 

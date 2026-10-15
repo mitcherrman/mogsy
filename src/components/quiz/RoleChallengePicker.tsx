@@ -268,18 +268,23 @@ export default function RoleChallengePicker({
   const retryLoad = () => setReloadToken((n) => n + 1);
 
   return (
-    <div data-testid="role-challenge-picker" className="flex w-full flex-col gap-3 text-left">
-      <div className="mt-1 text-center">
+    /* PARCHMENT CONTINUITY — the picker FILLS the centre stage (it never sizes
+       it). Header and footer keep their natural height; the champion grid is
+       the one flexible region and scrolls inside its own bounded frame, so
+       173 champions never stretch the sheet and the Play button always sits
+       above the foot roller. */
+    <div data-testid="role-challenge-picker" className="flex h-full min-h-0 w-full flex-col gap-2 text-left">
+      <div className="shrink-0 text-center">
         <h2
           className="lc-scroll-title whitespace-nowrap font-black uppercase leading-none tracking-[0.13em]"
           style={{ color: INK.strong, textShadow: INK.press }}
         >
           Role Challenge
         </h2>
-        <p className="mt-1.5 text-[12.5px] font-semibold leading-snug" style={{ color: INK.body }}>
-          Any champion, any role. Twelve questions in four blocks.
+        <p className="mx-auto mt-1.5 max-w-[19rem] text-[12.5px] font-semibold leading-snug" style={{ color: INK.body }}>
+          Any champion, any role · 12 questions.
         </p>
-        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.14em]">
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.1em]">
           <span className="rounded-full px-2 py-0.5" style={{ border: `1px solid ${INK.rule}`, color: INK.faint }}
             data-testid="rc-unrated-chip">
             Unrated
@@ -295,7 +300,7 @@ export default function RoleChallengePicker({
       </div>
 
       {activeRun ? (
-        <div data-testid="role-active-run">
+        <div className="shrink-0" data-testid="role-active-run">
           <RunCard
             run={activeRun}
             riotId={riotIdOf(activeRun.champion)}
@@ -313,12 +318,12 @@ export default function RoleChallengePicker({
           />
         </div>
       ) : todaysRun && todaysRun.matchStatus === "complete" && todaysRun.slotKind === "daily" ? (
-        <div data-testid="role-today-run">
+        <div className="shrink-0" data-testid="role-today-run">
           <RunCard run={todaysRun} riotId={riotIdOf(todaysRun.champion)} title="Today's free challenge · complete" />
         </div>
       ) : null}
 
-      <div role="radiogroup" aria-label="Role" className="grid grid-cols-5 gap-1.5" data-testid="rc-role-group">
+      <div role="radiogroup" aria-label="Role" className="grid shrink-0 grid-cols-5 gap-1.5" data-testid="rc-role-group">
         {RANKED_ROLES.map((id) => {
           const active = role === id;
           return (
@@ -330,24 +335,24 @@ export default function RoleChallengePicker({
               aria-label={RANKED_ROLE_LABELS[id]}
               disabled={busy}
               onClick={() => choose(() => { setRole(id); setChampion(""); })}
-              className="flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1.5 transition-colors disabled:opacity-60"
+              className="flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 transition-colors hover:bg-[#fff4d6]/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#5e1220] disabled:opacity-60"
               style={{
                 border: `1px solid ${active ? INK.brass : INK.rule}`,
-                background: active ? "rgba(255, 244, 214, 0.55)" : "transparent",
-                boxShadow: active ? "inset 0 0 0 1px rgba(83,56,8,0.35)" : undefined,
+                background: active ? "rgba(255, 244, 214, 0.7)" : "transparent",
+                boxShadow: active ? "inset 0 0 0 1px rgba(83,56,8,0.45), 0 1px 2px rgba(42,26,4,0.18)" : undefined,
               }}
             >
               <img
                 src={getRankedRoleMascotPath(id, "compact")}
                 alt=""
                 aria-hidden="true"
-                className="h-8 w-8 object-contain sm:h-9 sm:w-9"
+                className="h-8 w-8 object-contain"
               />
-              <span className="text-[10px] font-extrabold uppercase tracking-normal sm:hidden"
+              <span className="lc-cq-narrow text-[10px] font-extrabold uppercase tracking-normal"
                 style={{ color: active ? INK.strong : INK.faint }} aria-hidden="true">
                 {ROLE_SHORT[id]}
               </span>
-              <span className="hidden text-[10.5px] font-extrabold uppercase tracking-wide sm:inline"
+              <span className="lc-cq-wide text-[10px] font-extrabold uppercase tracking-normal"
                 style={{ color: active ? INK.strong : INK.faint }} aria-hidden="true">
                 {RANKED_ROLE_LABELS[id]}
               </span>
@@ -356,7 +361,7 @@ export default function RoleChallengePicker({
         })}
       </div>
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <label className="sr-only" htmlFor="rc-champion-search">Find a champion</label>
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: INK.faint }}
           aria-hidden="true" />
@@ -371,7 +376,12 @@ export default function RoleChallengePicker({
       </div>
 
       <div
-        className="lc-rc-grid max-h-[15.5rem] overflow-y-auto rounded-lg p-1.5 sm:max-h-[17rem]"
+        /* The flexible region. `flex-1 min-h-0` takes what the stage has left
+           and scrolls inside it; the floor keeps a full row and a half of
+           portraits in view on the shortest sheet. Scroll chaining is left on,
+           so reaching the end of the grid hands the gesture back to the page
+           instead of trapping it. */
+        className="lc-rc-grid min-h-[6.5rem] flex-1 overflow-y-auto rounded-lg p-1.5"
         style={{ border: `1px solid ${INK.rule}`, background: "rgba(112, 82, 36, 0.08)" }}
         role="radiogroup"
         aria-label="Champion"
@@ -379,7 +389,7 @@ export default function RoleChallengePicker({
         data-testid="rc-champion-grid"
       >
         {catalogState === "loading" ? (
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5" role="status" aria-label="Loading champions">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))] gap-1.5" role="status" aria-label="Loading champions">
             {Array.from({ length: 15 }, (_, i) => (
               <div key={i} className="flex flex-col items-center gap-1 p-1">
                 <span className="h-11 w-11 animate-pulse rounded-md" style={{ background: INK.inset }} />
@@ -399,7 +409,10 @@ export default function RoleChallengePicker({
         ) : filtered.length === 0 ? (
           <p className="p-4 text-center text-xs font-semibold" style={{ color: INK.faint }}>No champions found</p>
         ) : (
-          <div className="grid grid-cols-4 gap-1 sm:grid-cols-5">
+          /* As many columns as fit a readable name — four on a phone sheet,
+             five on desktop — rather than a breakpoint two steps removed from
+             the width the grid actually has. */
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))] gap-1">
             {filtered.map((c) => {
               const active = champion === c.id;
               return (
@@ -411,7 +424,7 @@ export default function RoleChallengePicker({
                   aria-label={`${c.name}${c.conventional ? "" : ", off-meta in this role"}`}
                   disabled={busy}
                   onClick={() => choose(() => setChampion(c.id))}
-                  className="group flex min-w-0 flex-col items-center gap-0.5 rounded-md p-1 transition-colors disabled:opacity-60"
+                  className="group flex min-w-0 flex-col items-center gap-0.5 rounded-md p-1 transition-colors hover:bg-[#fff4d6]/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[#5e1220] disabled:opacity-60"
                   style={{
                     background: active ? "rgba(255, 244, 214, 0.75)" : undefined,
                     boxShadow: active ? `inset 0 0 0 2px ${INK.brass}` : undefined,
@@ -420,12 +433,14 @@ export default function RoleChallengePicker({
                   data-champion={c.id}
                 >
                   <ChampionPortrait champion={c} size={44} className="group-hover:brightness-110" />
-                  <span className="w-full truncate text-center text-[10.5px] font-bold leading-tight"
-                    style={{ color: active ? INK.strong : INK.body }}>
+                  {/* Two lines, not an ellipsis: "Aurelion Sol" and "Bel'Veth"
+                      read whole instead of as "Aurelion …". */}
+                  <span className="line-clamp-2 w-full break-words text-center text-[11px] font-bold leading-[1.15]"
+                    style={{ color: active ? INK.strong : INK.body }} title={c.name}>
                     {c.name}
                   </span>
                   {c.conventional ? null : (
-                    <span className="text-[8.5px] font-extrabold uppercase tracking-wider" style={{ color: INK.faint }}>
+                    <span className="whitespace-nowrap text-[8.5px] font-extrabold uppercase tracking-wide" style={{ color: INK.faint }}>
                       Off-meta
                     </span>
                   )}
@@ -436,10 +451,12 @@ export default function RoleChallengePicker({
         )}
       </div>
 
-      <div className="flex min-h-[48px] items-center gap-2.5" data-testid="rc-selection">
+      {/* ── The protected footer: never shrinks, always last. ─────────── */}
+      <div className="flex shrink-0 flex-col gap-1.5" data-testid="rc-footer">
+      <div className="flex min-h-[40px] items-center gap-2.5" data-testid="rc-selection">
         {selected ? (
           <>
-            <ChampionPortrait champion={selected} size={44} />
+            <ChampionPortrait champion={selected} size={38} />
             <div className="min-w-0 text-left">
               <p className="truncate text-sm font-extrabold" style={{ color: INK.strong }}>
                 {selected.name} · {RANKED_ROLE_LABELS[role]}
@@ -469,7 +486,7 @@ export default function RoleChallengePicker({
         </div>
       ) : null}
       {hasAccount && eligibility?.message ? (
-        <p role="status" className="text-[12px] font-semibold leading-snug" style={{ color: INK.body }}
+        <p role="status" className="text-[11.5px] font-semibold leading-snug" style={{ color: INK.body }}
           data-testid="rc-eligibility">
           {eligibility.message}
           {eligibility.offerUpgrade ? (
@@ -497,16 +514,17 @@ export default function RoleChallengePicker({
         type="button"
         disabled={hasAccount ? !canStart : catalogState === "loading"}
         onClick={start}
-        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-3 text-[13px] font-black uppercase tracking-[0.06em] text-amber-50 sm:text-sm sm:tracking-[0.12em] shadow-sm transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
+        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-3 text-[13px] font-black uppercase tracking-[0.06em] text-amber-50 shadow-sm transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
         style={{ background: "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)", border: "1px solid #2a1a04" }}
         data-testid="rc-play"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
         {!hasAccount ? "Sign in to play" : busy ? "Starting…" : activeRun ? "Challenge in progress" : "Play Role Challenge"}
       </button>
-      <p className="text-center text-[10.5px] font-semibold" style={{ color: INK.faint }}>
-        {loading ? "Loading…" : "12 questions · Unrated · No effect on Ranked rating or history"}
+      <p className="text-center text-[10px] font-semibold leading-tight" style={{ color: INK.faint }}>
+        {loading ? "Loading…" : "Unrated · No effect on Ranked rating or history"}
       </p>
+      </div>
     </div>
   );
 }
