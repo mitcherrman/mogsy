@@ -293,6 +293,12 @@ describe("MatchGrid — reveal", () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toMatch(/Bell.*Alpha.*→.*Gamma/);
     expect(items[1]).toMatch(/Ember.*Gamma.*→.*Alpha/);
+    // MG-UX2: even when a dense rail renders compact "name → target",
+    // the full teaching correction remains explicit in the DOM and title.
+    const corrections = ledger.querySelectorAll(".mg-ledger-item");
+    expect(corrections[0]).toHaveAttribute("title", "Bell: was Alpha, belongs to Gamma");
+    expect(corrections[0]).toHaveAttribute("aria-label", "Bell. Your placement: Alpha. Correct discipline: Gamma.");
+    expect(corrections[1]).toHaveAttribute("title", "Ember: was Gamma, belongs to Alpha");
     expect(ledger).toHaveTextContent("Lab authority");
     expect(done).not.toHaveBeenCalled();
 
