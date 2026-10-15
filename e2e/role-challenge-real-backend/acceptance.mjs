@@ -171,7 +171,9 @@ try {
     await page.waitForURL(/\/quiz\/ranked/, { timeout: 30000 });
     await page.waitForSelector('[data-testid="ranked-question-body"]', { timeout: 60000 });
     const eyebrow = await page.locator('[data-testid="ranked-header"]').textContent();
-    const nodes = await page.locator('[data-testid^="timeline-node-"]').count();
+    // Numbered nodes only (`timeline-node-roles-N` chips share the prefix).
+    const nodes = await page.evaluate(() => [...document.querySelectorAll('[data-testid^="timeline-node-"]')]
+      .filter((n) => /^timeline-node-\d+$/.test(n.getAttribute("data-testid"))).length);
     await page.waitForTimeout(800);
     await shot(page, "desktop-5-arena-q1");
     record("Free start enters the existing Ranked arena as Role Challenge, 12 nodes",
@@ -197,7 +199,9 @@ try {
     await page.getByRole("button", { name: "Resume" }).click();
     await page.waitForURL(/\/quiz\/ranked/, { timeout: 30000 });
     await page.waitForSelector('[data-testid="ranked-question-body"]', { timeout: 60000 });
-    const nodeStates = await page.evaluate(() => [...document.querySelectorAll('[data-testid^="timeline-node-"]')].map((n) => n.getAttribute("data-state") ?? n.className.slice(0, 20)));
+    const nodeStates = await page.evaluate(() => [...document.querySelectorAll('[data-testid^="timeline-node-"]')]
+      .filter((n) => /^timeline-node-\d+$/.test(n.getAttribute("data-testid")))
+      .map((n) => n.getAttribute("data-state") ?? n.className.slice(0, 20)));
     answered = await playToEnd(page, { from: answered, until: 12, wrongAt: [7] });
     await page.waitForSelector('[data-testid="ranked-match-over"]', { timeout: 120000 });
     await page.waitForTimeout(2500);
