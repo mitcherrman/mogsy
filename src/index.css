@@ -19449,7 +19449,7 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     gap: 0.375rem;
   }
   .ranked-shell[data-mobile-journey="true"] .journey-question [data-quiz-choice]:not(:has(img)) {
-    padding-block: 0.375rem;
+    padding-block: 0.25rem;
     min-height: 2.75rem;
   }
 }

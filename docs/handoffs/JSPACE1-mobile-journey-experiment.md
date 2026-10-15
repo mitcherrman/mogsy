@@ -66,3 +66,9 @@ any failures on branch, show owner screenshots, and do not merge before approval
   heights while preserving the large board and prompt and 44px touch floors.
 - Added 360x740 to direct Journey box-containment and dock-overlap tests.
   All existing MAF1 tests remain unchanged as additional release gates.
+
+- First 360x740 narrow-grid CI: 22/24 legacy mobile visibility tests passed.
+  Three formerly failing Journey captures now place all answers at 704.75px
+  below their parchment; one long-text set protruded ~5px at 709.875px.
+  Reducing only per-answer vertical padding 6px->4px (44px min hit target)
+  gives that long set room without shrinking the interactive board or reveal.
