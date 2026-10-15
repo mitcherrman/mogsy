@@ -36,13 +36,7 @@
       "covers": 4
     }
   ],
-  "errors": [
-    "live-desktop-1366x768: Failed to load resource: the server responded with a status of 401 ()",
-    "live-desktop-1920x1080: Failed to load resource: the server responded with a status of 401 ()",
-    "live-desktop-1280x660-short: Failed to load resource: the server responded with a status of 401 ()",
-    "live-mobile-390x844: Failed to load resource: the server responded with a status of 401 ()",
-    "live-mobile-320x568: Failed to load resource: the server responded with a status of 401 ()"
-  ],
+  "errors": [],
   "failed": [
     "live-desktop-1366x768: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
     "live-desktop-1366x768: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
@@ -57,7 +51,7 @@
   ],
   "metrics": {
     "reducedMotionRunningAnimations": 0,
-    "reducedMotionClickToRouteMs": 84,
+    "reducedMotionClickToRouteMs": 234,
     "commonsTop": 0
   }
 }
