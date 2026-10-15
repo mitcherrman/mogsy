@@ -253,6 +253,7 @@ export default function RankedLobbyHero({
   guide = null,
   onPlayDailyChallenge,
   dailyChallenge = null,
+  queueModes = { daily: true, role: true, ranked: true },
   onEnterRoleChallenge,
   hasAccount = false,
   onRequireAccount,
@@ -263,6 +264,8 @@ export default function RankedLobbyHero({
   onPlayRanked: () => void;
   onPlayDailyChallenge?: () => void;
   dailyChallenge?: DailyStatusView | null;
+  /** Backend-enforced owner controls. True when the setting is absent. */
+  queueModes?: { daily: boolean; role: boolean; ranked: boolean };
   onEnterRoleChallenge?: (matchId: string) => void;
   hasAccount?: boolean;
   onRequireAccount?: () => void;
@@ -609,7 +612,7 @@ export default function RankedLobbyHero({
           <div className="order-1 w-full shrink-0 lg:order-2 lg:w-auto">
             <RankedPlayGem
               onClick={onPlayRanked}
-              disabled={playDisabled}
+              disabled={playDisabled || !queueModes.ranked}
               buttonRef={playButtonRef}
               rankedAvailable={rankedAvailable}
             />
@@ -622,7 +625,10 @@ export default function RankedLobbyHero({
           </CentreModePane>
           {selectedMode === "daily" ? (
             <CentreModePane mode="daily" active animate={modeSwitched}>
-              <DailyModePanel daily={dailyChallenge} onPlay={onPlayDailyChallenge} />
+              <DailyModePanel daily={dailyChallenge}
+                paused={!queueModes.daily && !dailyChallenge?.resumable && !dailyChallenge?.completed}
+                onPlay={queueModes.daily || dailyChallenge?.resumable || dailyChallenge?.completed
+                  ? onPlayDailyChallenge : undefined} />
             </CentreModePane>
           ) : null}
           {/* Mounted on first visit and then KEPT, hidden, so returning to Role
@@ -631,7 +637,7 @@ export default function RankedLobbyHero({
           {roleVisited ? (
             <CentreModePane mode="role" active={selectedMode === "role"} animate={modeSwitched}
               testId="role-mode-panel">
-              <RoleChallengePicker enabled hasAccount={hasAccount}
+              <RoleChallengePicker enabled queueOpen={queueModes.role} hasAccount={hasAccount}
                 onRequireAccount={onRequireAccount ?? (() => {})}
                 onEnterMatch={onEnterRoleChallenge ?? (() => {})} />
             </CentreModePane>

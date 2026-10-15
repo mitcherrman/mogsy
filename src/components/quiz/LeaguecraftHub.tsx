@@ -181,6 +181,7 @@ export default function LeaguecraftHub({
   onPlayDailyChallenge,
   rankedAvailabilityOpen = true,
   playModes,
+  queueModes = { daily: true, role: true, ranked: true },
   dailyChallenge = null,
   playScrollOpenOnMount = false,
   onPlayScrollOpenChange,
@@ -301,6 +302,8 @@ export default function LeaguecraftHub({
   rankedAvailabilityOpen?: boolean;
   /** PLAY1: which entries the match-entry scroll offers (admin policy). */
   playModes: PlayModeVisibility;
+  /** Separate backend-enforced switches; not the legacy Play menu visibility. */
+  queueModes?: { daily: boolean; role: boolean; ranked: boolean };
   /** PLAY1: today's real Daily Challenge state, for the scroll's figure. */
   /** DC2's own status for today, for the Daily clause in the match record. */
   dailyChallenge?: DailyStatusView | null;
@@ -617,6 +620,7 @@ export default function LeaguecraftHub({
           onPlayRanked={openPlay}
           onPlayDailyChallenge={onPlayDailyChallenge}
           dailyChallenge={dailyChallenge}
+          queueModes={queueModes}
           onEnterRoleChallenge={onEnterRoleChallenge}
           initialMode={initialCentreMode}
           hasAccount={hasAccount}

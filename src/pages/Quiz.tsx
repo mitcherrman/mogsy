@@ -1510,7 +1510,12 @@ export default function Quiz() {
                  gone from this file entirely — see the handoff. */
               onPlayDailyChallenge={() =>
                 navigate("/quiz/daily-challenge", { state: DAILY_START_STATE })}
-              playModes={playModeVisibility(appSettings.policy)}
+              playModes={{
+                ...playModeVisibility(appSettings.policy),
+                ranked: appSettings.policy.play.modes.ranked && appSettings.policy.queues.ranked,
+                daily: appSettings.policy.play.modes.dailyChallenge && appSettings.policy.queues.daily,
+              }}
+              queueModes={appSettings.policy.queues}
               rankedAvailabilityOpen={rankedAvailability.open}
               /* ARENA1 Step 5 §19 — the record's Daily clause reads DC2, the
                  same service the button beside it opens. There is no longer a
