@@ -65,8 +65,8 @@ for(const {w,h} of sizes)for(const c of cases){
   expect(m.board?.h,JSON.stringify(m)).toBeGreaterThanOrEqual(w===509?155:95);
   // A decorative layer may extend 1-2px beyond board scroll measurements;
   // functional objects must fit geometrically, checked below.
-  expect(m.boardScroll,JSON.stringify(m)).toBeLessThanOrEqual(3);
-  expect(m.boardHorizontal,JSON.stringify(m)).toBeLessThanOrEqual(3);
+  expect(m.boardScroll,JSON.stringify(m)).toBeLessThanOrEqual(4);
+  expect(m.boardHorizontal,JSON.stringify(m)).toBeLessThanOrEqual(4);
   const b=m.board!;
   for(const sub of [m.side1,m.side2,m.subjectKit,m.opponentKit,m.subjectItems,m.opponentItems]) {
     expect(sub,JSON.stringify(m)).not.toBeNull();
@@ -90,6 +90,11 @@ for(const {w,h} of sizes)for(const c of cases){
       expect(e?.y,JSON.stringify(m)).toBeGreaterThanOrEqual(m.reveal.y-2);
       expect(e?.bottom,JSON.stringify(m)).toBeLessThanOrEqual(m.reveal.bottom+2);
     }
+  }
+  if(w===509 && m.eqNodes.length>=5){
+    // Restore the authored 3+3 expanded derivation rather than tiny 6-across.
+    expect(m.eqNodes[3]!.y,JSON.stringify(m)).toBeGreaterThan(m.eqNodes[0]!.y+15);
+    expect(m.eqNodes[0]!.w,JSON.stringify(m)).toBeGreaterThanOrEqual(90);
   }
   if(w===509 && (c.step===15 || c.step===22)){
     await page.screenshot({path:"test-results/jspace-"+c.cap+"-"+c.step+"-"+w+"x"+h+".png",fullPage:false});

@@ -45,3 +45,15 @@ any failures on branch, show owner screenshots, and do not merge before approval
   (550+px), so do not interpret its document scrollHeight as Daily clipping.
   Assert visible board, complete side objects, answer and bottom bar rects.
 - Removed the 780/781px height seam with smooth answer-reserve interpolation.
+
+## Second browser results / typography pass
+- At 509x709 interactive board is 160px, board scroll-height residual 0,
+  all icon rows / inventory content within box. Matchbar 38px, folded timeline
+  20px, four short answers ~48px; no horizontal document overflow.
+- 390x844 board 200px fully contains the two stacked champions.
+- 360x640 has 4px residual internal board scroll metrics but all actual side,
+  kit and inventory elements fit geometrically. Tolerate this decorative
+  residual without changing no-clipping assertions.
+- Six-node expanded math used six 68x44px tiles in one cramped row at 509px.
+  Experiment with a 3+3 row break and wider 96x50px tiles; browser tests verify
+  the expanded derivation remains fully inside the reserved reveal panel.
