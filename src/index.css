@@ -19433,3 +19433,23 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     height: 0;
   }
 }
+
+
+/* JSPACE1: at 360x740 the long Zed/Ahri 4-option grid still used MAF1's
+   280px tablet reserve and its last answer was 24px below the viewport.
+   Journey preserves its large 160px interactive board and 148px worked-
+   explanation area. Spend tablet slack first, per the owner's priority:
+   rows retain >=44px targets and long option copy is allowed to grow. The
+   reserve approaches the original 280px smoothly at 800dvh. */
+@media (max-width: 419.98px) and (max-height: 800px) {
+  .ranked-shell[data-mobile-journey="true"] .journey-stage {
+    --jq-answers-h: clamp(13.75rem, calc(100dvh - 32.5rem), 17.5rem);
+  }
+  .ranked-shell[data-mobile-journey="true"] .journey-question [data-testid="answer-grid"] > .grid {
+    gap: 0.375rem;
+  }
+  .ranked-shell[data-mobile-journey="true"] .journey-question [data-quiz-choice]:not(:has(img)) {
+    padding-block: 0.375rem;
+    min-height: 2.75rem;
+  }
+}

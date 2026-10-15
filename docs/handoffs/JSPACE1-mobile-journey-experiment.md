@@ -57,3 +57,12 @@ any failures on branch, show owner screenshots, and do not merge before approval
 - Six-node expanded math used six 68x44px tiles in one cramped row at 509px.
   Experiment with a 3+3 row break and wider 96x50px tiles; browser tests verify
   the expanded derivation remains fully inside the reserved reveal panel.
+
+## Release-gate regression (owner approval)
+- PR #33 was visually approved, but legacy phone-playwright CI identified
+  4 failing real Journey cases at 360x740: last answer bottom 764.75px,
+  viewport 740px, bottom tab top 720px. This is a genuine release blocker.
+- Added narrow-phone Journey-only answer-reserve compression at <=800px
+  heights while preserving the large board and prompt and 44px touch floors.
+- Added 360x740 to direct Journey box-containment and dock-overlap tests.
+  All existing MAF1 tests remain unchanged as additional release gates.

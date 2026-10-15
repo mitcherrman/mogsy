@@ -9,7 +9,7 @@ const cases = [
   {cap:"jattn1-voli", step:30, kind:"last combat calculation reveal"},
   {cap:"jattn1-voli", step:22, kind:"long-form reveal"},
 ] as const;
-const sizes=[{w:509,h:709},{w:390,h:844},{w:360,h:640}] as const;
+const sizes=[{w:509,h:709},{w:390,h:844},{w:360,h:740},{w:360,h:640}] as const;
 
 async function enter(page:Page,w:number,h:number,cap:string,step:number) {
   await page.setViewportSize({width:w,height:h});
@@ -77,10 +77,9 @@ for(const {w,h} of sizes)for(const c of cases){
   expect(m.matchScore.length).toBe(2);
   expect(m.timer).not.toBeNull();
   expect(m.tab?.h).toBeGreaterThanOrEqual(19);
-  if(w===509){
-    // Dev harness host adds its own page-height reservation; unlike a real
-    // Daily route, document.scrollHeight is not a meaningful viewport-fit
-    // oracle here. Measure whether the playable content is in the viewport.
+  if(w===509 || (w===360 && h===740)){
+    // The dev host adds its own page-height reservation; geometry of the
+    // full answer region relative to the real sticky dock is authoritative.
     expect(m.bar?.bottom,JSON.stringify(m)).toBeLessThanOrEqual(h+1);
     expect(m.answerButtons.at(-1)?.bottom ?? 0,JSON.stringify(m))
       .toBeLessThanOrEqual(m.bar!.y-1);
