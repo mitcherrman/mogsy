@@ -1,0 +1,3461 @@
+[
+  {
+    "variant": "cand",
+    "scenario": "direct",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1294,
+        "primaryCta": 1294,
+        "fourRooms": 1294,
+        "cls": 0.0002,
+        "mogzy": 1854,
+        "coversDecoded": 2946,
+        "upperCoversDecoded": 2946,
+        "bookPainting": 3245,
+        "domContentLoaded": 709,
+        "fcp": 1152
+      },
+      "net": {
+        "all": {
+          "count": 271,
+          "total": 3265405,
+          "images": 1883315,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282256
+        },
+        "pre": {
+          "count": 271,
+          "total": 3265405,
+          "images": 1883315,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282256
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 484,
+        "primaryCta": 484,
+        "fourRooms": 484,
+        "bookPainting": 484,
+        "mogzy": 528,
+        "coversDecoded": 649,
+        "upperCoversDecoded": 649,
+        "domContentLoaded": 157,
+        "fcp": 448
+      },
+      "net": {
+        "all": {
+          "count": 260,
+          "total": 32579,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3616,
+          "external": 28963
+        },
+        "pre": {
+          "count": 260,
+          "total": 32579,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3616,
+          "external": 28963
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "direct",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1217,
+        "primaryCta": 1217,
+        "fourRooms": 1217,
+        "cls": 0.0002,
+        "mogzy": 1789,
+        "coversDecoded": 2929,
+        "upperCoversDecoded": 2929,
+        "bookPainting": 3136,
+        "domContentLoaded": 671,
+        "fcp": 1096
+      },
+      "net": {
+        "all": {
+          "count": 271,
+          "total": 3265322,
+          "images": 1883173,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282173
+        },
+        "pre": {
+          "count": 271,
+          "total": 3265322,
+          "images": 1883173,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282173
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 345,
+        "primaryCta": 345,
+        "fourRooms": 345,
+        "bookPainting": 345,
+        "mogzy": 422,
+        "coversDecoded": 486,
+        "upperCoversDecoded": 486,
+        "domContentLoaded": 125,
+        "fcp": 456
+      },
+      "net": {
+        "all": {
+          "count": 260,
+          "total": 32705,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3824,
+          "external": 28881
+        },
+        "pre": {
+          "count": 260,
+          "total": 32705,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3824,
+          "external": 28881
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "direct",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1276,
+        "primaryCta": 1276,
+        "fourRooms": 1276,
+        "cls": 0.0003,
+        "mogzy": 1766,
+        "upperCoversDecoded": 2925,
+        "coversDecoded": 2964,
+        "bookPainting": 3165,
+        "domContentLoaded": 677,
+        "fcp": 1124
+      },
+      "net": {
+        "all": {
+          "count": 271,
+          "total": 3265396,
+          "images": 1883288,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282247
+        },
+        "pre": {
+          "count": 271,
+          "total": 3265396,
+          "images": 1883288,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282247
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 412,
+        "primaryCta": 412,
+        "fourRooms": 412,
+        "bookPainting": 412,
+        "mogzy": 467,
+        "coversDecoded": 531,
+        "upperCoversDecoded": 531,
+        "domContentLoaded": 127,
+        "fcp": 572
+      },
+      "net": {
+        "all": {
+          "count": 260,
+          "total": 32779,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3824,
+          "external": 28955
+        },
+        "pre": {
+          "count": 260,
+          "total": 32779,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3824,
+          "external": 28955
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "direct",
+    "viewport": "390x844",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1263,
+        "primaryCta": 1263,
+        "fourRooms": 1263,
+        "cls": 0.0004,
+        "mogzy": 1721,
+        "coversDecoded": 2938,
+        "upperCoversDecoded": 2938,
+        "bookPainting": 3156,
+        "domContentLoaded": 669,
+        "fcp": 1112
+      },
+      "net": {
+        "all": {
+          "count": 271,
+          "total": 3265793,
+          "images": 1883591,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282644
+        },
+        "pre": {
+          "count": 271,
+          "total": 3265793,
+          "images": 1883591,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282644
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 331,
+        "primaryCta": 331,
+        "fourRooms": 331,
+        "bookPainting": 415,
+        "mogzy": 415,
+        "coversDecoded": 445,
+        "upperCoversDecoded": 445,
+        "domContentLoaded": 120,
+        "fcp": 416
+      },
+      "net": {
+        "all": {
+          "count": 260,
+          "total": 3457553,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3428538,
+          "external": 29015
+        },
+        "pre": {
+          "count": 260,
+          "total": 3457553,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3428538,
+          "external": 29015
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "direct",
+    "viewport": "390x844",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1322,
+        "primaryCta": 1322,
+        "fourRooms": 1322,
+        "cls": 0.0004,
+        "mogzy": 1841,
+        "upperCoversDecoded": 2974,
+        "coversDecoded": 3007,
+        "bookPainting": 3257,
+        "domContentLoaded": 699,
+        "fcp": 1164
+      },
+      "net": {
+        "all": {
+          "count": 271,
+          "total": 3265509,
+          "images": 1883197,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282360
+        },
+        "pre": {
+          "count": 271,
+          "total": 3265509,
+          "images": 1883197,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282360
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 1179,
+        "primaryCta": 1179,
+        "fourRooms": 1179,
+        "cls": 0.0004,
+        "bookPainting": 1439,
+        "mogzy": 1623,
+        "coversDecoded": 1713,
+        "upperCoversDecoded": 1713,
+        "domContentLoaded": 714,
+        "fcp": 1036
+      },
+      "net": {
+        "all": {
+          "count": 260,
+          "total": 1742309,
+          "images": 848352,
+          "imageCount": 39,
+          "local": 781874,
+          "external": 960435
+        },
+        "pre": {
+          "count": 260,
+          "total": 1742309,
+          "images": 848352,
+          "imageCount": 39,
+          "local": 781874,
+          "external": 960435
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "direct",
+    "viewport": "390x844",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1281,
+        "primaryCta": 1281,
+        "fourRooms": 1281,
+        "cls": 0.0004,
+        "mogzy": 1846,
+        "coversDecoded": 2946,
+        "upperCoversDecoded": 2946,
+        "bookPainting": 3197,
+        "domContentLoaded": 709,
+        "fcp": 1168
+      },
+      "net": {
+        "all": {
+          "count": 271,
+          "total": 3265577,
+          "images": 1883390,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282428
+        },
+        "pre": {
+          "count": 271,
+          "total": 3265577,
+          "images": 1883390,
+          "imageCount": 39,
+          "local": 1983149,
+          "external": 1282428
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 461,
+        "primaryCta": 461,
+        "fourRooms": 461,
+        "bookPainting": 528,
+        "mogzy": 528,
+        "coversDecoded": 612,
+        "upperCoversDecoded": 612,
+        "domContentLoaded": 113,
+        "fcp": 584
+      },
+      "net": {
+        "all": {
+          "count": 260,
+          "total": 32788,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3824,
+          "external": 28964
+        },
+        "pre": {
+          "count": 260,
+          "total": 32788,
+          "images": 3133,
+          "imageCount": 39,
+          "local": 3824,
+          "external": 28964
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-holding-book-transparent-192.webp",
+          "/mascot/mogzy-raising-hand-transparent-192.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "/mascot/mogzy-peeking-transparent-192.webp",
+          "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+          "/assets/journey/mogzy-stat-shards/attack_speed.png",
+          "/assets/ranked/mogzy-role-icons/top.svg",
+          "/assets/ranked/mogzy-role-icons/jungle.svg",
+          "/assets/ranked/mogzy-role-icons/mid.svg",
+          "/assets/ranked/mogzy-role-icons/bot.svg",
+          "/assets/ranked/mogzy-role-icons/support.svg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "direct",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1505,
+        "primaryCta": 1505,
+        "fourRooms": 1505,
+        "cls": 0.0455,
+        "mogzy": 2007,
+        "upperCoversDecoded": 3413,
+        "coversDecoded": 3438,
+        "bookPainting": 3613,
+        "domContentLoaded": 713,
+        "fcp": 1176
+      },
+      "net": {
+        "all": {
+          "count": 267,
+          "total": 3553969,
+          "images": 2215232,
+          "imageCount": 31,
+          "local": 2318999,
+          "external": 1234970
+        },
+        "pre": {
+          "count": 267,
+          "total": 3553969,
+          "images": 2215232,
+          "imageCount": 31,
+          "local": 2318999,
+          "external": 1234970
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-desktop-D8EmW-OF.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-desktop-D8EmW-OF.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 1604,
+        "primaryCta": 1604,
+        "fourRooms": 1604,
+        "cls": 0.0447,
+        "mogzy": 2194,
+        "upperCoversDecoded": 3149,
+        "coversDecoded": 3176,
+        "bookPainting": 3469,
+        "domContentLoaded": 745,
+        "fcp": 1356
+      },
+      "net": {
+        "all": {
+          "count": 253,
+          "total": 3553764,
+          "images": 2215161,
+          "imageCount": 31,
+          "local": 2319415,
+          "external": 1234349
+        },
+        "pre": {
+          "count": 253,
+          "total": 3553764,
+          "images": 2215161,
+          "imageCount": 31,
+          "local": 2319415,
+          "external": 1234349
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          },
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-desktop-D8EmW-OF.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-desktop-D8EmW-OF.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "direct",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1361,
+        "primaryCta": 1361,
+        "fourRooms": 1361,
+        "cls": 0.0455,
+        "mogzy": 1924,
+        "coversDecoded": 3274,
+        "upperCoversDecoded": 3274,
+        "bookPainting": 3525,
+        "domContentLoaded": 671,
+        "fcp": 1064
+      },
+      "net": {
+        "all": {
+          "count": 267,
+          "total": 3554353,
+          "images": 2215211,
+          "imageCount": 31,
+          "local": 2318999,
+          "external": 1235354
+        },
+        "pre": {
+          "count": 267,
+          "total": 3554353,
+          "images": 2215211,
+          "imageCount": 31,
+          "local": 2318999,
+          "external": 1235354
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-desktop-D8EmW-OF.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-desktop-D8EmW-OF.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 343,
+        "primaryCta": 343,
+        "fourRooms": 343,
+        "bookPainting": 343,
+        "mogzy": 343,
+        "coversDecoded": 511,
+        "upperCoversDecoded": 511,
+        "domContentLoaded": 118,
+        "fcp": 324
+      },
+      "net": {
+        "all": {
+          "count": 253,
+          "total": 37726,
+          "images": 1040,
+          "imageCount": 31,
+          "local": 1731,
+          "external": 35995
+        },
+        "pre": {
+          "count": 253,
+          "total": 37726,
+          "images": 1040,
+          "imageCount": 31,
+          "local": 1731,
+          "external": 35995
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          },
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-desktop-D8EmW-OF.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-desktop-D8EmW-OF.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "direct",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1452,
+        "primaryCta": 1452,
+        "fourRooms": 1452,
+        "cls": 0.0455,
+        "mogzy": 2026,
+        "upperCoversDecoded": 3346,
+        "coversDecoded": 3414,
+        "bookPainting": 3617,
+        "domContentLoaded": 699,
+        "fcp": 1148
+      },
+      "net": {
+        "all": {
+          "count": 267,
+          "total": 3553760,
+          "images": 2215089,
+          "imageCount": 31,
+          "local": 2318999,
+          "external": 1234761
+        },
+        "pre": {
+          "count": 267,
+          "total": 3553760,
+          "images": 2215089,
+          "imageCount": 31,
+          "local": 2318999,
+          "external": 1234761
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-desktop-D8EmW-OF.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-desktop-D8EmW-OF.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 403,
+        "primaryCta": 403,
+        "fourRooms": 403,
+        "bookPainting": 403,
+        "mogzy": 403,
+        "coversDecoded": 571,
+        "upperCoversDecoded": 571,
+        "domContentLoaded": 128,
+        "fcp": 572
+      },
+      "net": {
+        "all": {
+          "count": 253,
+          "total": 37679,
+          "images": 1040,
+          "imageCount": 31,
+          "local": 1731,
+          "external": 35948
+        },
+        "pre": {
+          "count": 253,
+          "total": 37679,
+          "images": 1040,
+          "imageCount": 31,
+          "local": 1731,
+          "external": 35948
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          },
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-desktop-D8EmW-OF.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-desktop-D8EmW-OF.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "direct",
+    "viewport": "390x844",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1494,
+        "primaryCta": 1494,
+        "fourRooms": 1494,
+        "cls": 0.0591,
+        "mogzy": 2056,
+        "bookPainting": 3360,
+        "domContentLoaded": 704,
+        "fcp": 1200
+      },
+      "net": {
+        "all": {
+          "count": 264,
+          "total": 3168125,
+          "images": 1829436,
+          "imageCount": 28,
+          "local": 2536617,
+          "external": 631508
+        },
+        "pre": {
+          "count": 264,
+          "total": 3168125,
+          "images": 1829436,
+          "imageCount": 28,
+          "local": 2536617,
+          "external": 631508
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 451,
+        "primaryCta": 451,
+        "fourRooms": 451,
+        "bookPainting": 451,
+        "mogzy": 451,
+        "domContentLoaded": 156,
+        "fcp": 412
+      },
+      "net": {
+        "all": {
+          "count": 250,
+          "total": 37716,
+          "images": 1040,
+          "imageCount": 28,
+          "local": 1731,
+          "external": 35985
+        },
+        "pre": {
+          "count": 250,
+          "total": 37716,
+          "images": 1040,
+          "imageCount": 28,
+          "local": 1731,
+          "external": 35985
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          },
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "direct",
+    "viewport": "390x844",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1768,
+        "primaryCta": 1768,
+        "fourRooms": 1768,
+        "cls": 0.0591,
+        "mogzy": 2333,
+        "bookPainting": 3665,
+        "domContentLoaded": 672,
+        "fcp": 1444
+      },
+      "net": {
+        "all": {
+          "count": 264,
+          "total": 3168130,
+          "images": 1829321,
+          "imageCount": 28,
+          "local": 2536617,
+          "external": 631513
+        },
+        "pre": {
+          "count": 264,
+          "total": 3168130,
+          "images": 1829321,
+          "imageCount": 28,
+          "local": 2536617,
+          "external": 631513
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 691,
+        "primaryCta": 691,
+        "fourRooms": 691,
+        "mogzy": 691,
+        "bookPainting": 720,
+        "domContentLoaded": 133,
+        "fcp": 748
+      },
+      "net": {
+        "all": {
+          "count": 250,
+          "total": 37676,
+          "images": 1040,
+          "imageCount": 28,
+          "local": 1731,
+          "external": 35945
+        },
+        "pre": {
+          "count": 250,
+          "total": 37676,
+          "images": 1040,
+          "imageCount": 28,
+          "local": 1731,
+          "external": 35945
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          },
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/mascot/mogzy-explaining-transparent-192.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "direct",
+    "viewport": "390x844",
+    "cpu": 1,
+    "cold": {
+      "marks": {
+        "rootPainted": 1377,
+        "primaryCta": 1377,
+        "fourRooms": 1377,
+        "cls": 0.0591,
+        "mogzy": 1937,
+        "bookPainting": 3270,
+        "domContentLoaded": 688,
+        "fcp": 1096
+      },
+      "net": {
+        "all": {
+          "count": 264,
+          "total": 3168395,
+          "images": 1829302,
+          "imageCount": 28,
+          "local": 2536617,
+          "external": 631778
+        },
+        "pre": {
+          "count": 264,
+          "total": 3168395,
+          "images": 1829302,
+          "imageCount": 28,
+          "local": 2536617,
+          "external": 631778
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    },
+    "warm": {
+      "marks": {
+        "rootPainted": 1270,
+        "primaryCta": 1270,
+        "fourRooms": 1270,
+        "cls": 0.0577,
+        "mogzy": 1802,
+        "bookPainting": 3070,
+        "domContentLoaded": 678,
+        "fcp": 984
+      },
+      "net": {
+        "all": {
+          "count": 250,
+          "total": 3167860,
+          "images": 1829237,
+          "imageCount": 28,
+          "local": 2537033,
+          "external": 630827
+        },
+        "pre": {
+          "count": 250,
+          "total": 3167860,
+          "images": 1829237,
+          "imageCount": 28,
+          "local": 2537033,
+          "external": 630827
+        },
+        "post": {
+          "count": 0,
+          "total": 0,
+          "images": 0,
+          "imageCount": 0,
+          "local": 0,
+          "external": 0
+        },
+        "dupes": [
+          {
+            "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+            "n": 2
+          },
+          {
+            "url": "/audio/music/tidecaller.webm",
+            "n": 2
+          }
+        ],
+        "hallOnly": [
+          "/assets/LolHub-CGbJ05_a.js",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+        ],
+        "imageUrls": [
+          "/mascot/mogzy-hat-transparent-128.webp",
+          "/mascot/mogzy-mascot-base-v1-240.webp",
+          "/assets/academy-library-mobile-CaMkwpzl.webp",
+          "/mascot/mogzy-mascot-base-v1-512.webp",
+          "/assets/academy-book-frame-CaQzX1_R.webp",
+          "/images/lol-hub/academy-broadcast-book.webp",
+          "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+          "/assets/academy-commons-desktop-BAzx5neB.webp",
+          "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+          "https://web-production-83e53.up.railway.app/assets/items/3085.png",
+          "/mascot/mogzy-explaining-transparent-192.webp"
+        ]
+      }
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "arrivedAtMs": 3068,
+    "landingToHomeWallMs": 2927,
+    "marks": {
+      "cls": 0.0197,
+      "mogzy": 1156,
+      "rootPainted": 3428,
+      "primaryCta": 3428,
+      "fourRooms": 3428,
+      "bookPainting": 3428,
+      "coversDecoded": 3428,
+      "upperCoversDecoded": 3428,
+      "domContentLoaded": 710,
+      "fcp": 1108
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334780,
+        "images": 1943471,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283491
+      },
+      "pre": {
+        "count": 176,
+        "total": 2509040,
+        "images": 1403427,
+        "imageCount": 8,
+        "local": 1768408,
+        "external": 740632
+      },
+      "post": {
+        "count": 99,
+        "total": 825740,
+        "images": 540044,
+        "imageCount": 32,
+        "local": 282881,
+        "external": 542859
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 220,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 444
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "arrivedAtMs": 2785,
+    "landingToHomeWallMs": 2778,
+    "marks": {
+      "cls": 0.0197,
+      "mogzy": 1103,
+      "rootPainted": 3050,
+      "primaryCta": 3050,
+      "fourRooms": 3050,
+      "bookPainting": 3050,
+      "coversDecoded": 3050,
+      "upperCoversDecoded": 3050,
+      "domContentLoaded": 685,
+      "fcp": 920
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334839,
+        "images": 1943550,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283550
+      },
+      "pre": {
+        "count": 176,
+        "total": 2509094,
+        "images": 1403472,
+        "imageCount": 8,
+        "local": 1768408,
+        "external": 740686
+      },
+      "post": {
+        "count": 99,
+        "total": 825745,
+        "images": 540078,
+        "imageCount": 32,
+        "local": 282881,
+        "external": 542864
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 129,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 335
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "arrivedAtMs": 2873,
+    "landingToHomeWallMs": 2768,
+    "marks": {
+      "cls": 0.0197,
+      "mogzy": 1090,
+      "rootPainted": 3132,
+      "primaryCta": 3132,
+      "fourRooms": 3132,
+      "bookPainting": 3132,
+      "coversDecoded": 3132,
+      "upperCoversDecoded": 3132,
+      "domContentLoaded": 686,
+      "fcp": 932
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334939,
+        "images": 1943447,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283650
+      },
+      "pre": {
+        "count": 176,
+        "total": 2509262,
+        "images": 1403462,
+        "imageCount": 8,
+        "local": 1768408,
+        "external": 740854
+      },
+      "post": {
+        "count": 99,
+        "total": 825677,
+        "images": 539985,
+        "imageCount": 32,
+        "local": 282881,
+        "external": 542796
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 126,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 330
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 4,
+    "arrivedAtMs": 3325,
+    "landingToHomeWallMs": 3128,
+    "marks": {
+      "cls": 0.0197,
+      "mogzy": 1298,
+      "rootPainted": 4119,
+      "primaryCta": 4119,
+      "fourRooms": 4119,
+      "bookPainting": 4119,
+      "coversDecoded": 4119,
+      "upperCoversDecoded": 4119,
+      "domContentLoaded": 806,
+      "fcp": 1224
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334707,
+        "images": 1943363,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283418
+      },
+      "pre": {
+        "count": 176,
+        "total": 2508938,
+        "images": 1403325,
+        "imageCount": 8,
+        "local": 1768408,
+        "external": 740530
+      },
+      "post": {
+        "count": 99,
+        "total": 825769,
+        "images": 540038,
+        "imageCount": 32,
+        "local": 282881,
+        "external": 542888
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 438,
+      "longTasksMs": [
+        71,
+        53
+      ],
+      "clickToArchivesContentMs": 433
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "390x844",
+    "cpu": 1,
+    "arrivedAtMs": 2752,
+    "landingToHomeWallMs": 2720,
+    "marks": {
+      "cls": 0.0026,
+      "mogzy": 1085,
+      "rootPainted": 2974,
+      "primaryCta": 2974,
+      "fourRooms": 2974,
+      "coversDecoded": 2974,
+      "upperCoversDecoded": 2974,
+      "bookPainting": 4451,
+      "domContentLoaded": 666,
+      "fcp": 844
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334874,
+        "images": 1943565,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283585
+      },
+      "pre": {
+        "count": 175,
+        "total": 2179867,
+        "images": 1074230,
+        "imageCount": 7,
+        "local": 1439158,
+        "external": 740709
+      },
+      "post": {
+        "count": 100,
+        "total": 1155007,
+        "images": 869335,
+        "imageCount": 33,
+        "local": 612131,
+        "external": 542876
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 98,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 317
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "390x844",
+    "cpu": 1,
+    "arrivedAtMs": 2743,
+    "landingToHomeWallMs": 2737,
+    "marks": {
+      "cls": 0.0026,
+      "mogzy": 1126,
+      "rootPainted": 3000,
+      "primaryCta": 3000,
+      "fourRooms": 3000,
+      "coversDecoded": 3000,
+      "upperCoversDecoded": 3000,
+      "bookPainting": 4476,
+      "domContentLoaded": 677,
+      "fcp": 868
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334774,
+        "images": 1943457,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283485
+      },
+      "pre": {
+        "count": 175,
+        "total": 2179794,
+        "images": 1074149,
+        "imageCount": 7,
+        "local": 1439158,
+        "external": 740636
+      },
+      "post": {
+        "count": 100,
+        "total": 1154980,
+        "images": 869308,
+        "imageCount": 33,
+        "local": 612131,
+        "external": 542849
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 111,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 317
+    }
+  },
+  {
+    "variant": "cand",
+    "scenario": "journey",
+    "viewport": "390x844",
+    "cpu": 1,
+    "arrivedAtMs": 2931,
+    "landingToHomeWallMs": 2923,
+    "marks": {
+      "cls": 0.0026,
+      "mogzy": 1211,
+      "rootPainted": 3187,
+      "primaryCta": 3187,
+      "fourRooms": 3187,
+      "coversDecoded": 3187,
+      "upperCoversDecoded": 3187,
+      "bookPainting": 4660,
+      "domContentLoaded": 758,
+      "fcp": 1116
+    },
+    "net": {
+      "all": {
+        "count": 275,
+        "total": 3334770,
+        "images": 1943479,
+        "imageCount": 40,
+        "local": 2051289,
+        "external": 1283481
+      },
+      "pre": {
+        "count": 175,
+        "total": 2179805,
+        "images": 1074178,
+        "imageCount": 7,
+        "local": 1439158,
+        "external": 740647
+      },
+      "post": {
+        "count": 100,
+        "total": 1154965,
+        "images": 869301,
+        "imageCount": 33,
+        "local": 612131,
+        "external": 542834
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        }
+      ],
+      "hallOnly": [],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "/mascot/mogzy-holding-book-transparent-192.webp",
+        "/mascot/mogzy-raising-hand-transparent-192.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-peeking-transparent-192.webp",
+        "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+        "/assets/journey/mogzy-stat-shards/attack_speed.png",
+        "/assets/ranked/mogzy-role-icons/top.svg",
+        "/assets/ranked/mogzy-role-icons/jungle.svg",
+        "/assets/ranked/mogzy-role-icons/mid.svg",
+        "/assets/ranked/mogzy-role-icons/bot.svg",
+        "/assets/ranked/mogzy-role-icons/support.svg",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 152,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 344
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "arrivedAtMs": 2779,
+    "landingToHomeWallMs": 2774,
+    "marks": {
+      "cls": 0.0196,
+      "mogzy": 1128,
+      "rootPainted": 3047,
+      "primaryCta": 3047,
+      "fourRooms": 3047,
+      "bookPainting": 3170,
+      "coversDecoded": 4554,
+      "upperCoversDecoded": 4554,
+      "domContentLoaded": 688,
+      "fcp": 948
+    },
+    "net": {
+      "all": {
+        "count": 271,
+        "total": 3623261,
+        "images": 2275259,
+        "imageCount": 32,
+        "local": 2387099,
+        "external": 1236162
+      },
+      "pre": {
+        "count": 173,
+        "total": 2071677,
+        "images": 961022,
+        "imageCount": 5,
+        "local": 1934599,
+        "external": 137078
+      },
+      "post": {
+        "count": 98,
+        "total": 1551584,
+        "images": 1314237,
+        "imageCount": 27,
+        "local": 452500,
+        "external": 1099084
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-desktop-D8EmW-OF.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-desktop-D8EmW-OF.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 157,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 244
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "arrivedAtMs": 2763,
+    "landingToHomeWallMs": 2757,
+    "marks": {
+      "cls": 0.0196,
+      "mogzy": 1126,
+      "rootPainted": 2985,
+      "primaryCta": 2985,
+      "fourRooms": 2985,
+      "bookPainting": 3168,
+      "upperCoversDecoded": 4500,
+      "coversDecoded": 4517,
+      "domContentLoaded": 669,
+      "fcp": 904
+    },
+    "net": {
+      "all": {
+        "count": 271,
+        "total": 3623479,
+        "images": 2275470,
+        "imageCount": 32,
+        "local": 2387099,
+        "external": 1236380
+      },
+      "pre": {
+        "count": 173,
+        "total": 2071660,
+        "images": 961022,
+        "imageCount": 5,
+        "local": 1934599,
+        "external": 137061
+      },
+      "post": {
+        "count": 98,
+        "total": 1551819,
+        "images": 1314448,
+        "imageCount": 27,
+        "local": 452500,
+        "external": 1099319
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-desktop-D8EmW-OF.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-desktop-D8EmW-OF.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 112,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 103
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 1,
+    "arrivedAtMs": 2827,
+    "landingToHomeWallMs": 2734,
+    "marks": {
+      "cls": 0.0196,
+      "mogzy": 1098,
+      "rootPainted": 3085,
+      "primaryCta": 3085,
+      "fourRooms": 3085,
+      "bookPainting": 3085,
+      "upperCoversDecoded": 4534,
+      "coversDecoded": 4576,
+      "domContentLoaded": 683,
+      "fcp": 912
+    },
+    "net": {
+      "all": {
+        "count": 271,
+        "total": 3623438,
+        "images": 2275369,
+        "imageCount": 32,
+        "local": 2387099,
+        "external": 1236339
+      },
+      "pre": {
+        "count": 173,
+        "total": 2071739,
+        "images": 961022,
+        "imageCount": 5,
+        "local": 1934599,
+        "external": 137140
+      },
+      "post": {
+        "count": 98,
+        "total": 1551699,
+        "images": 1314347,
+        "imageCount": 27,
+        "local": 452500,
+        "external": 1099199
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-desktop-D8EmW-OF.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-desktop-D8EmW-OF.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 144,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 147
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "1366x768",
+    "cpu": 4,
+    "arrivedAtMs": 3207,
+    "landingToHomeWallMs": 3033,
+    "marks": {
+      "cls": 0.0195,
+      "mogzy": 1361,
+      "rootPainted": 3834,
+      "primaryCta": 3834,
+      "fourRooms": 3834,
+      "bookPainting": 3834,
+      "coversDecoded": 4551,
+      "upperCoversDecoded": 4551,
+      "domContentLoaded": 830,
+      "fcp": 1256
+    },
+    "net": {
+      "all": {
+        "count": 271,
+        "total": 3623384,
+        "images": 2275455,
+        "imageCount": 32,
+        "local": 2387099,
+        "external": 1236285
+      },
+      "pre": {
+        "count": 173,
+        "total": 2071641,
+        "images": 961022,
+        "imageCount": 5,
+        "local": 1934599,
+        "external": 137042
+      },
+      "post": {
+        "count": 98,
+        "total": 1551743,
+        "images": 1314433,
+        "imageCount": 27,
+        "local": 452500,
+        "external": 1099243
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-desktop-D8EmW-OF.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-desktop-D8EmW-OF.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 170,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 347
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "390x844",
+    "cpu": 1,
+    "arrivedAtMs": 2911,
+    "landingToHomeWallMs": 2835,
+    "marks": {
+      "cls": 0.0026,
+      "mogzy": 1174,
+      "rootPainted": 3086,
+      "primaryCta": 3086,
+      "fourRooms": 3086,
+      "bookPainting": 4875,
+      "domContentLoaded": 698,
+      "fcp": 956
+    },
+    "net": {
+      "all": {
+        "count": 268,
+        "total": 3237466,
+        "images": 1889422,
+        "imageCount": 29,
+        "local": 2604717,
+        "external": 632749
+      },
+      "pre": {
+        "count": 172,
+        "total": 1621621,
+        "images": 510906,
+        "imageCount": 4,
+        "local": 1484483,
+        "external": 137138
+      },
+      "post": {
+        "count": 96,
+        "total": 1615845,
+        "images": 1378516,
+        "imageCount": 25,
+        "local": 1120234,
+        "external": 495611
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-mobile-CaMkwpzl.webp",
+        "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-mobile-CaMkwpzl.webp",
+        "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 170,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 249
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "390x844",
+    "cpu": 1,
+    "arrivedAtMs": 2725,
+    "landingToHomeWallMs": 2716,
+    "marks": {
+      "cls": 0.0026,
+      "mogzy": 1073,
+      "rootPainted": 2914,
+      "primaryCta": 2914,
+      "fourRooms": 2914,
+      "bookPainting": 4651,
+      "domContentLoaded": 671,
+      "fcp": 832
+    },
+    "net": {
+      "all": {
+        "count": 268,
+        "total": 3237240,
+        "images": 1889348,
+        "imageCount": 29,
+        "local": 2604717,
+        "external": 632523
+      },
+      "pre": {
+        "count": 173,
+        "total": 1631568,
+        "images": 521036,
+        "imageCount": 5,
+        "local": 1494613,
+        "external": 136955
+      },
+      "post": {
+        "count": 95,
+        "total": 1605672,
+        "images": 1368312,
+        "imageCount": 24,
+        "local": 1110104,
+        "external": 495568
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-mobile-CaMkwpzl.webp",
+        "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-mobile-CaMkwpzl.webp",
+        "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 112,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 89
+    }
+  },
+  {
+    "variant": "main",
+    "scenario": "journey",
+    "viewport": "390x844",
+    "cpu": 1,
+    "arrivedAtMs": 2743,
+    "landingToHomeWallMs": 2717,
+    "marks": {
+      "cls": 0.0026,
+      "mogzy": 1081,
+      "rootPainted": 2933,
+      "primaryCta": 2933,
+      "fourRooms": 2933,
+      "bookPainting": 4714,
+      "domContentLoaded": 675,
+      "fcp": 892
+    },
+    "net": {
+      "all": {
+        "count": 268,
+        "total": 3237286,
+        "images": 1889408,
+        "imageCount": 29,
+        "local": 2604717,
+        "external": 632569
+      },
+      "pre": {
+        "count": 173,
+        "total": 1631575,
+        "images": 521036,
+        "imageCount": 5,
+        "local": 1494613,
+        "external": 136962
+      },
+      "post": {
+        "count": 95,
+        "total": 1605711,
+        "images": 1368372,
+        "imageCount": 24,
+        "local": 1110104,
+        "external": 495607
+      },
+      "dupes": [
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+          "n": 2
+        },
+        {
+          "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings?select=key%2Cvalue",
+          "n": 2
+        }
+      ],
+      "hallOnly": [
+        "/assets/LolHub-CGbJ05_a.js",
+        "/assets/academy-library-mobile-CaMkwpzl.webp",
+        "/assets/book-spine-flat-v2-CeEWCvGR.webp"
+      ],
+      "imageUrls": [
+        "/assets/academy-skyline-CIK__GgQ.webp",
+        "/mascot/mogzy-mascot-base-v1-512.webp",
+        "/assets/academy-library-mobile-CaMkwpzl.webp",
+        "/assets/book-spine-flat-v2-CeEWCvGR.webp",
+        "/mascot/mogzy-explaining-transparent-192.webp",
+        "/mascot/mogzy-hat-transparent-128.webp",
+        "/mascot/mogzy-mascot-base-v1-240.webp",
+        "/assets/academy-book-frame-CaQzX1_R.webp",
+        "/images/lol-hub/academy-broadcast-book.webp",
+        "/assets/academy-commons-desktop-BAzx5neB.webp",
+        "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+        "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+      ]
+    },
+    "interaction": {
+      "hoverToStateMs": 180,
+      "longTasksMs": [],
+      "clickToArchivesContentMs": 174
+    }
+  }
+]

@@ -12,15 +12,26 @@ import { isDailyRunAborted } from "./run/client";
 import { UNKNOWN_DAILY_STATUS, readDailyStatus } from "./status";
 import type { DailyStatusView } from "./status";
 
-export function useDailyChallengeStatus(): DailyStatusView {
+export interface DailyChallengeStatusOptions {
+  /**
+   * Hold the read until true (default: read on mount). A surface seen by
+   * visitors with no session — the home — passes `!!user`: the read is
+   * authenticated, so without a session it is a guaranteed 401 (a wasted
+   * request and a console error) whose answer is `unknown` either way.
+   */
+  enabled?: boolean;
+}
+
+export function useDailyChallengeStatus({ enabled = true }: DailyChallengeStatusOptions = {}): DailyStatusView {
   const [status, setStatus] = useState<DailyStatusView>(UNKNOWN_DAILY_STATUS);
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     let cancelled = false;
     readDailyStatus(controller.signal)
       .then((next) => { if (!cancelled) setStatus(next); })
       .catch((e) => { if (!isDailyRunAborted(e)) setStatus(UNKNOWN_DAILY_STATUS); });
     return () => { cancelled = true; controller.abort(); };
-  }, []);
+  }, [enabled]);
   return status;
 }

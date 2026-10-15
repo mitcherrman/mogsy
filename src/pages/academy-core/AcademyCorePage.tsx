@@ -47,6 +47,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import SEOHead from "@/components/SEOHead";
+import { useAuth } from "@/hooks/useAuth";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { SITE_URL } from "@/lib/site-config";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
@@ -265,7 +266,11 @@ function AcademyCoreHome() {
   }, [fullLayout]);
 
   /* ---------------- real data, read-only ---------------- */
-  const daily = useDailyChallengeStatus();
+  // The Daily read is authenticated: a visitor with no session would only
+  // earn a 401 (a request and a console error) for an answer that is
+  // "unknown" anyway, which renders the same "Play Daily Challenge" label.
+  const { user } = useAuth();
+  const daily = useDailyChallengeStatus({ enabled: !!user });
   const dailyResume = daily.known && daily.resumable && !daily.completed;
   const broadcastFeed = usePatchBriefFeed();
   const brief = broadcastFeed.status === "ready" ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null : null;

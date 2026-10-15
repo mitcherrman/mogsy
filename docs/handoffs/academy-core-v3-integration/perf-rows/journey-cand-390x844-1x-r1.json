@@ -1,0 +1,100 @@
+{
+  "variant": "cand",
+  "scenario": "journey",
+  "viewport": "390x844",
+  "cpu": 1,
+  "arrivedAtMs": 2752,
+  "landingToHomeWallMs": 2720,
+  "marks": {
+    "cls": 0.0026,
+    "mogzy": 1085,
+    "rootPainted": 2974,
+    "primaryCta": 2974,
+    "fourRooms": 2974,
+    "coversDecoded": 2974,
+    "upperCoversDecoded": 2974,
+    "bookPainting": 4451,
+    "domContentLoaded": 666,
+    "fcp": 844
+  },
+  "net": {
+    "all": {
+      "count": 275,
+      "total": 3334874,
+      "images": 1943565,
+      "imageCount": 40,
+      "local": 2051289,
+      "external": 1283585
+    },
+    "pre": {
+      "count": 175,
+      "total": 2179867,
+      "images": 1074230,
+      "imageCount": 7,
+      "local": 1439158,
+      "external": 740709
+    },
+    "post": {
+      "count": 100,
+      "total": 1155007,
+      "images": 869335,
+      "imageCount": 33,
+      "local": 612131,
+      "external": 542876
+    },
+    "dupes": [
+      {
+        "url": "https://kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/analytics_events",
+        "n": 2
+      }
+    ],
+    "hallOnly": [],
+    "imageUrls": [
+      "/assets/academy-skyline-CIK__GgQ.webp",
+      "/mascot/mogzy-mascot-base-v1-512.webp",
+      "/assets/academy-book-frame-CaQzX1_R.webp",
+      "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
+      "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+      "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
+      "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+      "/mascot/mogzy-holding-book-transparent-192.webp",
+      "/mascot/mogzy-raising-hand-transparent-192.webp",
+      "/mascot/mogzy-explaining-transparent-192.webp",
+      "/mascot/mogzy-peeking-transparent-192.webp",
+      "/assets/journey/mogzy-stat-shards/adaptive_force.png",
+      "/assets/journey/mogzy-stat-shards/attack_speed.png",
+      "/assets/ranked/mogzy-role-icons/top.svg",
+      "/assets/ranked/mogzy-role-icons/jungle.svg",
+      "/assets/ranked/mogzy-role-icons/mid.svg",
+      "/assets/ranked/mogzy-role-icons/bot.svg",
+      "/assets/ranked/mogzy-role-icons/support.svg",
+      "/images/lol-hub/academy-broadcast-book.webp",
+      "/mascot/mogzy-hat-transparent-128.webp",
+      "/mascot/mogzy-mascot-base-v1-240.webp",
+      "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Smolder/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Swain/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/TahmKench/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Vayne/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/Yunara/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/items/3073.png",
+      "https://web-production-83e53.up.railway.app/assets/items/3152.png",
+      "https://web-production-83e53.up.railway.app/assets/items/3085.png"
+    ]
+  },
+  "interaction": {
+    "hoverToStateMs": 98,
+    "longTasksMs": [],
+    "clickToArchivesContentMs": 317
+  }
+}

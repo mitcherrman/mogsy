@@ -1,5 +1,5 @@
 /**
- * Academy Core V3 — browser inspection of /lol/dev/academy-core.
+ * Academy Core V3 — browser inspection of the production home, /lol.
  *
  * Runs against the frontend-only config (playwright.frontend.config.ts):
  *   npx playwright test -c playwright.frontend.config.ts e2e/academy-core.spec.ts
@@ -26,8 +26,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-const ROUTE = "/lol/dev/academy-core";
-const OUT = path.resolve("docs/handoffs/academy-core-v3");
+const ROUTE = "/lol";
+const OUT = path.resolve("docs/handoffs/academy-core-v3-integration");
 mkdirSync(OUT, { recursive: true });
 
 const DESKTOP = [
@@ -205,7 +205,7 @@ test.describe("desktop", () => {
     await bookLink(page, "pro-play").click({ modifiers: ["Control"] });
     const newPage = await popup;
     expect(newPage, "ctrl-click opened a new page").not.toBeNull();
-    await expect(page).toHaveURL(/\/lol\/dev\/academy-core$/);
+    await expect(page).toHaveURL(/\/lol$/);
     await newPage?.close();
     await bookLink(page, "leaguecraft").focus();
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "leaguecraft");
@@ -240,7 +240,7 @@ test.describe("desktop", () => {
     }
     await crystal.click();
     await expect(readout).toHaveText("No room previewed");
-    await expect(page).toHaveURL(/\/lol\/dev\/academy-core$/);
+    await expect(page).toHaveURL(/\/lol$/);
     await crystal.focus();
     await page.keyboard.press("Space");
     await expect(readout).toHaveText("Previewing Leaguecraft");
@@ -259,18 +259,112 @@ test.describe("desktop", () => {
     await expect(page.getByTestId("academy-core-book")).toBeVisible();
     await page.getByTestId("academy-core-book").getByRole("link", { name: /Read full report/i }).click();
     await expect(page).toHaveURL(/\/lol\/patch-reports\?patch=26\.20$/);
-    await page.goto("/dev/academy-core");
-    await expect(page).toHaveURL(/\/lol\/dev\/academy-core$/);
   });
 
-  test("/lol#academy-commons still lands on the Commons", async ({ page }) => {
+  test("the preview URLs redirect to the home", async ({ page }) => {
+    await stubRemote(page);
+    await page.goto("/dev/academy-core");
+    await expect(page).toHaveURL(/\/lol$/);
+    await page.goto("/lol/dev/academy-core");
+    await expect(page).toHaveURL(/\/lol$/);
+    await expect(page.getByTestId("academy-core")).toBeVisible();
+  });
+
+  test("legacy /lol#academy-commons is forwarded to the Hall's Commons", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await stubRemote(page);
     await page.goto("/lol#academy-commons");
+    await expect(page).toHaveURL(/\/lol\/hall#academy-commons$/);
+    await expect(page.getByTestId("academy-core")).toHaveCount(0);
     await expect.poll(async () => page.evaluate(() => {
       const el = document.getElementById("academy-commons");
       return el ? Math.round(el.getBoundingClientRect().top) : 9999;
-    }), { timeout: 6000 }).toBeLessThanOrEqual(80);
+    }), { timeout: 8000 }).toBeLessThanOrEqual(80);
+  });
+
+  test("the Core's Commons and Hall links are client-side and land on the Hall", async ({ page }) => {
+    await open(page, 1366, 768);
+    let documentLoads = 0;
+    page.on("request", (r) => { if (r.resourceType() === "document") documentLoads += 1; });
+    await page.getByTestId("academy-core-hall-link").click();
+    await expect(page).toHaveURL(/\/lol\/hall$/);
+    await expect(page.getByTestId("academy-hall")).toBeVisible();
+    await page.goBack();
+    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await page.getByTestId("academy-core-commons-link").click();
+    await expect(page).toHaveURL(/\/lol\/hall#academy-commons$/);
+    await expect.poll(async () => page.evaluate(() => {
+      const el = document.getElementById("academy-commons");
+      return el ? Math.round(el.getBoundingClientRect().top) : 9999;
+    }), { timeout: 8000 }).toBeLessThanOrEqual(80);
+    expect(documentLoads, "no full document reloads").toBe(0);
+    await page.screenshot({ path: path.join(OUT, "desktop-1366x768-hall-commons.png") });
+  });
+
+  test("the Hall is preserved at /lol/hall (desktop screen one, noindex) and the Core is indexable", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubRemote(page);
+    await page.goto("/lol/hall");
+    await expect(page.getByTestId("academy-hall")).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/lol\/hall$/);
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: path.join(OUT, "desktop-1366x768-hall-preserved.png") });
+    await page.goto("/lol");
+    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/lol$/);
+    await expect(page).toHaveTitle(/Mogzy LoL Quiz/);
+  });
+
+  test("Landing → Core: the hold hands off to /lol, the Core's art loads once and no Hall-only art is fetched", async ({ page }) => {
+    const requested: string[] = [];
+    page.on("request", (r) => requested.push(r.url()));
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubRemote(page);
+    await page.goto("/");
+    await page.waitForURL(/\/lol$/, { timeout: 15000 });
+    await expect(page.getByTestId("academy-core-daily")).toBeVisible();
+    await page.waitForTimeout(2500);
+    const real = requested.filter((u) => !/\?import$/.test(u));
+    expect(real.filter((u) => /academy-library-(desktop|mobile)|book-spine/.test(u)), "retired Hall art").toEqual([]);
+    // The dev server serves unhashed assets with revalidation, so a shared image
+    // can appear twice here (the warm, then the <img> after the hand-off). The
+    // production-build harness (academy-core-integration-perf.spec.ts) asserts
+    // the real "downloaded once" contract against immutable caching.
+    expect(real.filter((u) => /academy-book-frame.*\.webp/.test(u)).length).toBeLessThanOrEqual(2);
+    expect(real.filter((u) => /mogzy-mascot-base-v1-512/.test(u)).length).toBeLessThanOrEqual(2);
+    expect(new Set(real.filter((u) => /\/splash\//.test(u))).size).toBe(4);
+    // the Hall's chunk is not downloaded for a visit that never opens it
+    expect(real.filter((u) => /\/LolHub[-.]/.test(u))).toEqual([]);
+    await page.screenshot({ path: path.join(OUT, "journey-landing-to-core-1366x768.png") });
+  });
+
+  test("account vs session-less visitor: the authenticated Daily read happens once, and only with a session", async ({ page, browser }) => {
+    // Test persona for this app on the local dev server (VITE_E2E_AUTH): a fake
+    // token the stubbed backend never verifies. No real credential is involved.
+    const persona = { token: "e2e-test-token", user: { id: "00000000-0000-4000-8000-000000000001", email: "e2e@example.test", is_anonymous: false }, admin: false };
+    const dailyReads: Array<string | undefined> = [];
+    page.on("request", (r) => { if (/\/api\/daily-run\/today$/.test(r.url())) dailyReads.push(r.headers()["authorization"]); });
+    await page.addInitScript((p) => { localStorage.setItem("mogsy_e2e_identity", JSON.stringify(p)); }, persona);
+    await open(page, 1366, 768);
+    await expect(page.getByTestId("academy-core-daily")).toHaveAccessibleName("Play Daily Challenge");
+    await page.waitForTimeout(800);
+    expect(dailyReads.length, "signed-in: one status read").toBe(1);
+    expect(dailyReads[0], "signed-in: carries the session").toMatch(/^Bearer /);
+    // the same shortcut still works for an account
+    await page.getByTestId("academy-core-daily").click();
+    await expect(page).toHaveURL(/\/quiz\/daily-challenge$/);
+
+    const anon = await browser.newContext();
+    const anonPage = await anon.newPage();
+    const anonReads: string[] = [];
+    anonPage.on("request", (r) => { if (/\/api\/daily-run\/today$/.test(r.url())) anonReads.push(r.url()); });
+    await open(anonPage, 1366, 768);
+    await anonPage.waitForTimeout(800);
+    expect(anonReads, "no session: no guaranteed-401 read").toEqual([]);
+    await expect(anonPage.getByTestId("academy-core-daily")).toHaveAccessibleName("Play Daily Challenge");
+    await anon.close();
   });
 
   test("loads one frame, four splashes, no Hall-only art, no manifest icons", async ({ page }) => {

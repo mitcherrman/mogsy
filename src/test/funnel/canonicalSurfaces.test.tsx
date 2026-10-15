@@ -212,7 +212,8 @@ describe("the root landing page", () => {
 describe("each canonical surface emits its own event, from its own file", () => {
   const WIRING: [file: string, event: string][] = [
     ["pages/dev/mogzy-entry-v2/MogzyEntryV2.tsx", "landing_viewed"],
-    ["pages/LolHub.tsx", "hub_entered"],
+    // ACADEMY CORE: `/lol` is the Academy Core; the Hall at /lol/hall no longer emits it.
+    ["pages/academy-core/AcademyCorePage.tsx", "hub_entered"],
     ["pages/Quiz.tsx", "leaguecraft_opened"],
     ["pages/Quiz.tsx", "practice_quiz_opened"],
     ["pages/quiz-ranked/QuizRankedPage.tsx", "ranked_opened"],
@@ -292,11 +293,15 @@ describe("retired legacy behaviour is gone from the codebase", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("the Hub emits hub_entered and no longer calls itself the landing page", () => {
+  it("the home emits hub_entered (the Core owns it; the Hall at /lol/hall does not) and nothing calls itself the landing page", () => {
+    const core = read("pages/academy-core/AcademyCorePage.tsx");
     const hub = read("pages/LolHub.tsx");
-    expect(emits(hub, "hub_entered")).toBe(true);
-    expect(emits(hub, "lol_landing_viewed")).toBe(false);
-    expect(emits(hub, "landing_viewed")).toBe(false);
+    expect(emits(core, "hub_entered")).toBe(true);
+    expect(emits(hub, "hub_entered")).toBe(false);
+    for (const source of [core, hub]) {
+      expect(emits(source, "lol_landing_viewed")).toBe(false);
+      expect(emits(source, "landing_viewed")).toBe(false);
+    }
   });
 
   it("the Leaguecraft CTA is diagnostic, and the page owns the canonical open", () => {

@@ -27,7 +27,6 @@ import {
 } from "@/components/lol/hub-guide";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
-import { useSurfaceEvent } from "@/lib/analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useSfx } from "@/lib/audio/useSfx";
 import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
@@ -668,16 +667,11 @@ export default function LolHub() {
     };
   }, []);
 
-  // FUNNEL1B2: this is the HUB, and it now says so. The event that used to
-  // fire here was `lol_landing_viewed`, which has been a misnomer since the
-  // root entrance shipped — /lol has not been the landing page for a long
-  // time, and reporting it as one made the real landing (/) invisible while
-  // overstating the top of the funnel. `landing_viewed` now comes from
-  // MogzyEntryV2; this is `hub_entered`, and the two are separate steps.
-  //
-  // Once per session rather than once per mount: a visitor bouncing Hub →
-  // Leaguecraft → Hub is one hub entry, not three.
-  useSurfaceEvent("hub_entered");
+  // FUNNEL1B2 / ACADEMY CORE: the canonical `hub_entered` surface event belongs
+  // to the home, which is now the Academy Core at `/lol` (one emitter per
+  // canonical event, pinned by src/test/funnel/canonicalSurfaces.test.tsx). This
+  // page is the same home's second view at `/lol/hall`, so a visit here that
+  // came through the Core is already counted and a direct visit adds nothing.
 
   useEffect(() => {
     // This semantic has no built-in voice, preserving the legacy path's
