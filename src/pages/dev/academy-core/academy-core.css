@@ -417,12 +417,15 @@
 }
 
 /* Mounted: the SVG draws the plate; the link is the real text on top of it. */
+/* Percent padding on an absolutely positioned box resolves against the STAGE,
+   not the plate, so the plate's own proportions are written in container
+   units: the plate is 272/860 of the stage width. */
 .acore-bay-link-mounted {
   position: absolute;
   box-sizing: border-box;
-  padding: 0 4.5% 0 11%;
+  padding: 0 2.2cqw 0 3.2cqw;
   pointer-events: auto;
-  gap: 4%;
+  gap: 1.1cqw;
 }
 
 .acore-bay-link-mounted .acore-bay-lampcell {
@@ -465,28 +468,33 @@
 .acore-bay-title {
   font-family: Cinzel, Georgia, serif;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #efe0b8;
   transition: color 250ms ease, text-shadow 250ms ease;
-  white-space: nowrap;
+  line-height: 1.05;
 }
 
 .acore-bay-link-mounted .acore-bay-title {
-  font-size: clamp(10px, 1.62cqw, 16px);
+  font-size: clamp(10px, 1.45cqw, 14.5px);
 }
 
 .acore-bay-arrow {
   flex: 0 0 auto;
   margin-left: auto;
+  flex-shrink: 0;
   color: var(--acore-brass);
   opacity: 0.45;
   transition: opacity 250ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .acore-bay-link-mounted .acore-bay-arrow {
-  width: clamp(12px, 1.8cqw, 18px);
-  height: clamp(12px, 1.8cqw, 18px);
+  width: clamp(11px, 1.5cqw, 15px);
+  height: clamp(11px, 1.5cqw, 15px);
+}
+
+.acore-bay-link-mounted .acore-bay-text {
+  flex: 1 1 auto;
 }
 
 .acore-bay-link[data-active="true"] .acore-bay-title {

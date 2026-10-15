@@ -52,7 +52,7 @@ const BEZEL_R = 200;
 const LENS_R = 118;
 const PAD_R = 238;
 const BAY_ANCHOR_R = 300;
-export const BAY_PLATE = { width: 240, height: 64 } as const;
+export const BAY_PLATE = { width: 272, height: 66 } as const;
 
 const DEG = Math.PI / 180;
 export function polar(r: number, deg: number) {
