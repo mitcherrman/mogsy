@@ -10,6 +10,24 @@ for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
     await page.waitForSelector('[data-testid="ranked-question"]');
     await page.waitForSelector('[data-testid="ranked-mobile-bottombar"]');
     await page.evaluate(()=>document.fonts.ready);
+    await page.addStyleTag({content:`
+    @media (max-width:639.98px) and (max-height:760px) {
+      .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
+        --qs-media-h: 6.25rem;
+        --qs-prompt-h: 4.5rem;
+      }
+      .ranked-shell[data-phone-arena="true"] [data-testid="scenario-hero"] {
+        max-height: min(6.25rem,100%) !important;
+      }
+      .ranked-shell[data-phone-arena="true"] .ranked-folio {
+        --qs-media-max: 6.25rem;
+      }
+      .ranked-shell[data-phone-arena="true"]::before,
+      .ranked-academy[data-phone-arena="true"]::before {
+        inset: 0 !important;
+      }
+    }
+    `});
     const m=await page.evaluate(()=>{
       const find=(s:string)=>document.querySelector<HTMLElement>(s);
       const rect=(s:string)=>{
@@ -42,7 +60,7 @@ for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
         bottomBar:rect('[data-testid="ranked-mobile-bottombar"]'),
         stack:rect('.question-surface-stack'),
         tokens:{media:css(stack,"--qs-media-h"),prompt:css(stack,"--qs-prompt-h"),answers:css(stack,"--qs-answers-h"),max:css(stack,"--qs-media-max")},
-        styles:{stackGap:css(stack,"gap"),heroMax:css(find('[data-testid="scenario-hero"]'),"max-height"),mediaMin:css(media,"min-height"),promptMin:css(prompt,"min-height"),answerMin:css(answers,"min-height"),bottomPosition:css(bar,"position"),stageOverflow:css(stage,"overflow")}
+        styles:{stackGap:css(stack,"gap"),heroMax:css(find('[data-testid="scenario-hero"]'),"max-height"),heroTransform:css(find('[data-testid="scenario-hero"]'),"transform"),heroComputedHeight:css(find('[data-testid="scenario-hero"]'),"height"),mediaMin:css(media,"min-height"),promptMin:css(prompt,"min-height"),answerMin:css(answers,"min-height"),bottomPosition:css(bar,"position"),stageOverflow:css(stage,"overflow")}
       };
     });
     console.log("PHONE_BUDGET",width,height,shape,JSON.stringify(m));
