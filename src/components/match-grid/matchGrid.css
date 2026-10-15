@@ -502,6 +502,7 @@
 .mg-ledger[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
 .mg-ledger[data-kind="exact"] { justify-content: center; align-items: center; }
 .mg-ledger-sheet {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -617,7 +618,7 @@
   flex: 0 1 auto;
   font-family: "Lora", Georgia, serif;
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
@@ -639,16 +640,79 @@
 .mg-ledger-arrow { color: #7a5a1e; }
 .mg-ledger-group { font-weight: 800; color: hsl(var(--mg-hue) 62% 27%); }
 .mg-ledger-was {
-  font-weight: 500;
-  color: var(--mg-ink-muted);
+  font-weight: 600;
+  color: #61533f;
   text-decoration: line-through;
   text-decoration-color: rgba(122, 98, 54, 0.65);
 }
 .mg-ledger-from { font-size: 11px; line-height: 13px; color: var(--mg-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Compact: "name → group" on one line; the group never yields its room. */
 .mg-ledger[data-fit="compact"] .mg-ledger-name { font-size: 12px; }
-.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 11px; line-height: 13px; }
+.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 12px; line-height: 13px; }
 .mg-ledger[data-fit="compact"] .mg-ledger-to { flex: none; }
+
+/* MG-UX2: player-initiated full correction view, over the *same* reserved
+   ledger box. Overview remains all-visible/no-scroll; only this requested
+   inspector scrolls. Its footer toggle is an existing >=44px control. */
+.mg-ledger-details {
+  position: absolute;
+  inset: 4px;
+  z-index: 4;
+  padding: 5px 8px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  border-radius: 7px;
+  background: #eee1c4;
+  box-shadow: inset 0 0 0 1px rgba(122, 98, 54, 0.3);
+}
+.mg-ledger-details-heading {
+  position: sticky;
+  top: -5px;
+  z-index: 1;
+  margin: 0;
+  padding: 4px 0 6px;
+  background: #eee1c4;
+  border-bottom: 1px solid rgba(122, 98, 54, 0.24);
+  color: #514634;
+  font: 700 11px/15px "Lora", Georgia, serif;
+}
+.mg-ledger-details-list {
+  list-style: none;
+  padding: 0;
+  margin: 5px 0 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+.mg-ledger-details-item {
+  min-height: 48px;
+  padding: 7px 8px;
+  border-left: 3px solid rgba(122, 98, 54, 0.55);
+  border-radius: 5px;
+  background: rgba(44, 36, 23, 0.07);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.mg-ledger-details-name {
+  font: 700 13.5px/17px "Lora", Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.mg-ledger-details-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 5px;
+  color: #5d503f;
+  font-size: 12px;
+  line-height: 16px;
+}
+.mg-ledger-details-was { text-decoration: line-through; text-decoration-color: #8a7660; }
+.mg-ledger-details-route strong { color: #2e594e; font-weight: 800; }
+.mg-lock[aria-pressed="true"] { border-color: #f6e6bb; background: linear-gradient(180deg, #5c4619, #3a2d14); }
+
 .mg-root[data-tier="tall"] .mg-prompt { font-size: 21px; }
 .mg-root[data-tier="tall"] .mg-seal-name { font-size: 12.5px; }
 .mg-root[data-tier="tall"][data-composition="ledger"] .mg-seal-name { font-size: 10px; }

@@ -171,6 +171,15 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const [held, setHeld] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [note, setNote] = useState("");
+  // Owner-only visual correction inspector: opt-in after a server reveal,
+  // overlays the reserved ledger rather than moving the board or footer.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const hasReveal = Boolean(reveal);
+  // Reset across rounds, not on every polling refresh that recreates the
+  // same authoritative reveal object.
+  useEffect(() => {
+    if (!hasReveal || phase === "open") setDetailsOpen(false);
+  }, [hasReveal, phase]);
   // MG-UX1 — who is being NAMED right now (the full-name plate): the pointer's
   // hover, the keyboard's focus, or a tap on a settled board. Presentation
   // only: none of it ever reaches `value` or the host.
@@ -446,6 +455,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
 
   const wrongCount = reveal ? entities.filter((e) => reveal.entityCorrect[e.token] === false).length : 0;
   const rightCount = N - wrongCount;
+  const canInspectCorrections = Boolean(reveal) && ledgerShown && wrongCount > 0;
   const plural = (n: number, noun: string) => (n === 1 ? noun : `${noun}s`);
   const seated = N - remaining;
 
@@ -725,6 +735,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
             content={content}
             reveal={reveal}
             shown={ledgerShown}
+            detailsOpen={detailsOpen && ledgerShown}
             box={plan.ledger}
             groupLabel={groupLabel}
             groupHue={(token) => groups.find((g) => g.token === token)?.hue ?? null}
@@ -739,12 +750,15 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
           className="mg-lock"
           data-part="lock"
           data-ready={open && complete ? "" : undefined}
-          aria-label={reveal ? "Resolved" : phase === "locked" ? "Locked in, waiting" : complete ? "Lock in" : `Lock in (seat every ${content.entityNoun} first)`}
-          disabled={!open || !complete}
-          onClick={lock}
+          aria-label={canInspectCorrections
+            ? detailsOpen ? "Hide correction details" : "Review all correction details"
+            : reveal ? "Resolved" : phase === "locked" ? "Locked in, waiting" : complete ? "Lock in" : `Lock in (seat every ${content.entityNoun} first)`}
+          aria-pressed={canInspectCorrections ? detailsOpen : undefined}
+          disabled={!canInspectCorrections && (!open || !complete)}
+          onClick={canInspectCorrections ? () => setDetailsOpen((v) => !v) : lock}
         >
           <Lock aria-hidden className="mg-lock-icon" />
-          <span>{reveal ? "Resolved" : phase === "locked" ? "Locked in" : "Lock in"}</span>
+          <span>{canInspectCorrections ? detailsOpen ? "Summary" : "Details" : reveal ? "Resolved" : phase === "locked" ? "Locked in" : "Lock in"}</span>
           {open && !complete ? <span className="mg-lock-count" aria-hidden>{seated}/{N}</span> : null}
         </button>
       </footer>
@@ -767,10 +781,11 @@ function matchesFocusVisible(el: Element): boolean {
  * corrected entities, each as "name → its group", in the richest arrangement
  * that fits the reserved room (`ledgerFit`) — never scrolled, never clipped.
  */
-function Ledger({ content, reveal, shown, box, groupLabel, groupHue }: {
+function Ledger({ content, reveal, shown, detailsOpen, box, groupLabel, groupHue }: {
   content: MatchPublic;
   reveal: MatchReveal;
   shown: boolean;
+  detailsOpen: boolean;
   box: { x: number; top: number; w: number; h: number };
   groupLabel: (token: string) => string;
   groupHue: (token: string) => number | null;
@@ -825,7 +840,9 @@ function Ledger({ content, reveal, shown, box, groupLabel, groupHue }: {
                 </span>
               );
               return (
-                <li key={e.token} className="mg-ledger-item" title={`${e.label} → ${groupLabel(to)}`}
+                <li key={e.token} className="mg-ledger-item"
+                  title={`${e.label}: was ${from}, belongs to ${groupLabel(to)}`}
+                  aria-label={`${e.label}. Your placement: ${from}. Correct ${content.groupNoun}: ${groupLabel(to)}.`}
                   style={hue == null ? undefined : ({ "--mg-hue": String(hue) } as CSSProperties)}>
                   <span className="mg-ledger-line1">
                     {e.media?.src ? <img src={e.media.src} alt="" className="mg-ledger-art" /> : <span className="mg-ledger-art" aria-hidden />}
@@ -840,6 +857,29 @@ function Ledger({ content, reveal, shown, box, groupLabel, groupHue }: {
             })}
           </ul>
         )}
+        {!exact && detailsOpen ? (
+          <div className="mg-ledger-details" role="region" aria-label="Full correction details">
+            <p className="mg-ledger-details-heading">Each correction · scroll to review</p>
+            <ol className="mg-ledger-details-list">
+              {wrong.map((e) => {
+                const from = reveal.assignments[e.token]
+                  ? groupLabel(reveal.assignments[e.token])
+                  : "Unassigned";
+                const to = groupLabel(reveal.canonical[e.token]?.[0] ?? "");
+                return (
+                  <li key={e.token} className="mg-ledger-details-item">
+                    <span className="mg-ledger-details-name">{e.label}</span>
+                    <span className="mg-ledger-details-route">
+                      <span className="mg-ledger-details-was">Was {from}</span>
+                      <span aria-hidden> → </span>
+                      <strong>{to}</strong>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ) : null}
       </div>
     </section>
   );

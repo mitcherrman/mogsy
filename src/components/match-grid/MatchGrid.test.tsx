@@ -293,6 +293,12 @@ describe("MatchGrid — reveal", () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toMatch(/Bell.*Alpha.*→.*Gamma/);
     expect(items[1]).toMatch(/Ember.*Gamma.*→.*Alpha/);
+    // MG-UX2: even when a dense rail renders compact "name → target",
+    // the full teaching correction remains explicit in the DOM and title.
+    const corrections = ledger.querySelectorAll(".mg-ledger-item");
+    expect(corrections[0]).toHaveAttribute("title", "Bell: was Alpha, belongs to Gamma");
+    expect(corrections[0]).toHaveAttribute("aria-label", "Bell. Your placement: Alpha. Correct discipline: Gamma.");
+    expect(corrections[1]).toHaveAttribute("title", "Ember: was Gamma, belongs to Alpha");
     expect(ledger).toHaveTextContent("Lab authority");
     expect(done).not.toHaveBeenCalled();
 
@@ -300,6 +306,33 @@ describe("MatchGrid — reveal", () => {
     expect(root).toHaveAttribute("data-reveal-stage", "done");
     expect(done).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("status")).toHaveTextContent("four of six relationships stable. Bell belongs to Gamma, not Alpha. Ember belongs to Alpha, not Gamma.");
+  });
+
+  it("offers an opt-in, scrollable full correction review without changing the board or sending another Lock", () => {
+    vi.useFakeTimers();
+    const onLock = vi.fn();
+    render(<Host initial={lockedValue} reveal={wrongReveal} onLock={onLock} />);
+    const board = document.querySelector<HTMLElement>('[data-part="board"]')!;
+    const heightBefore = board.style.height;
+    act(() => { vi.advanceTimersByTime(1600); });
+    const inspect = screen.getByRole("button", { name: "Review all correction details" });
+    expect(inspect).toBeEnabled();
+    expect(inspect).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(inspect);
+    const details = screen.getByRole("region", { name: "Full correction details" });
+    expect(details).toHaveTextContent("Bell");
+    expect(details).toHaveTextContent("Was Alpha");
+    expect(details).toHaveTextContent("Gamma");
+    expect(details).toHaveTextContent("Ember");
+    expect(details.querySelectorAll(".mg-ledger-details-item")).toHaveLength(2);
+    expect(board.style.height).toBe(heightBefore);
+    expect(onLock).not.toHaveBeenCalled();
+    const summary = screen.getByRole("button", { name: "Hide correction details" });
+    expect(summary).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(summary);
+    expect(screen.queryByRole("region", { name: "Full correction details" })).toBeNull();
+    expect(board.style.height).toBe(heightBefore);
+    expect(onLock).not.toHaveBeenCalled();
   });
 
   it("a fully correct board resolves without travel and says so concisely", () => {

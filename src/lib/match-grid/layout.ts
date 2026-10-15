@@ -469,7 +469,12 @@ function stackedRowsPlan(input: PlanInput): BoardPlan {
   const avail = width - 2 * WELL_PAD;
   const owed = ledgerNeed(N, width - 12);
   const cols = Math.max(1, Math.min(N, Math.floor(avail / 76)));
-  const well = wellFor(N, 0, instrH + gap, width, rows.sigil, Math.min(104, Math.floor(avail / cols)), 2, owed);
+  // Dense five-tree phone boards otherwise push Ranked's lower controls far
+  // below the fold. Keep two-line captions on every SEATED rune; in the
+  // waiting well allow a single line (full names remain available on tap/hold).
+  // The well still reserves the full worst-case correction ledger height.
+  const wellLines: 1 | 2 = K >= 5 && width <= 420 ? 1 : 2;
+  const well = wellFor(N, 0, instrH + gap, width, rows.sigil, Math.min(104, Math.floor(avail / cols)), wellLines, owed);
   return {
     composition: "ledger", tier, rail: false, width, boardH: instrH + gap + well.h,
     instrW: width, instrH, sigil: rows.sigil, seatCaption, well,
@@ -491,9 +496,13 @@ function railPlan(input: PlanInput, budget: number): BoardPlan | null {
   const N = labels.length;
   const boardBudget = budget - RAIL_FOOT - 2;
   const sealCol = 92;
+  // A tall, wide arena should not leave most of its parchment unused.
+  // Only expand when the stage genuinely offers room: short-desktop and
+  // phone plans retain their certified footprints and hit target sizes.
+  const roomyRail = budget >= 600 && width >= 640;
   let best: RailCandidate | null = null;
   for (const seatLines of [2, 1, 0] as const) {
-    for (const sigil of [52, 48, 44]) {
+    for (const sigil of (roomyRail ? [58, 52, 48, 44] : [52, 48, 44])) {
       for (const seatPitch of [112, 104, 96, 88, 80]) {
         const seatCaption = captionSpec(seatPitch, seatLines);
         if (seatLines === 0 && seatPitch > 80) continue;
@@ -517,8 +526,11 @@ function railPlan(input: PlanInput, budget: number): BoardPlan | null {
             const owed = ledgerNeed(N, wellW - 4) + 4;
             const well = wellFor(N, wiresW + RAIL_GAP, 0, wellW, sigil, pitch, wellLines, owed);
             if (well.h > boardBudget) continue;
-            // Rows breathe into the budget (up to 24px each) rather than leave it empty.
-            const rowH = Math.max(rowNeed, Math.min(Math.floor(boardBudget / K), rowNeed + 24));
+            // Larger desktop stages get broader rhythm and (when names fit)
+            // 58px rune art, while never exceeding the measured stage budget.
+            // Short desktops preserve MG-UX1's 24px cap.
+            const breathing = roomyRail ? 88 : 24;
+            const rowH = Math.max(rowNeed, Math.min(Math.floor(boardBudget / K), rowNeed + breathing));
             const finalBoardH = Math.max(rowH * K, well.h);
             const fullWell = { ...well, h: finalBoardH };
             const truncated = (seatLines === 0 ? N : truncatedCount(labels, seatCaption)) + truncatedCount(labels, well.caption);
