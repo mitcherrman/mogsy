@@ -1,9 +1,9 @@
 /**
- * Academy Core V1 — navigation contracts, rendered.
+ * Academy Core V3 — navigation contracts, rendered.
  *
  * The page is mounted in a MemoryRouter beside probe routes for every
  * destination, so each assertion is about where a REAL click lands (and with
- * what router state), not about an href string.
+ * what router state and timing), not about an href string.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act, within } from "@testing-library/react";
@@ -13,6 +13,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
 import { hasVisitedHub } from "@/lib/quiz/onboarding-gate";
 import { UNKNOWN_DAILY_STATUS, type DailyStatusView } from "@/lib/daily-challenge/status";
+import { INITIAL_BROADCAST_FEED, type BroadcastFeed } from "@/components/lol/broadcast/broadcast-content";
+import { HUB_GUIDE_MODES } from "@/components/lol/hub-guide";
 
 const track = vi.fn();
 vi.mock("@/lib/analytics", async (importOriginal) => {
@@ -28,14 +30,20 @@ vi.mock("@/lib/daily-challenge/useDailyChallengeStatus", () => ({
   useDailyChallengeStatus: () => dailyStatus.current,
 }));
 
-import { INITIAL_BROADCAST_FEED, type BroadcastFeed } from "@/components/lol/broadcast/broadcast-content";
 const feed: { current: BroadcastFeed } = { current: INITIAL_BROADCAST_FEED };
-vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({
-  usePatchBriefFeed: () => feed.current,
-}));
-// The warm is observed, never run (no Image loads in jsdom); it resolves with
-// no manifest icons so the projections render their reserved plates only.
-const warm = vi.fn(() => Promise.resolve({ inquiryIcon: null, observeIcon: null }));
+vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({ usePatchBriefFeed: () => feed.current }));
+
+const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Viktor"].map((n) => [n, {
+  icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
+}])) };
+const manifest: { current: typeof MANIFEST | null } = { current: MANIFEST };
+vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useChampionAssets")>();
+  return { ...actual, useChampionAssets: () => ({ data: manifest.current }) };
+});
+
+// The warm is observed, never run (no Image loads in jsdom).
+const warm = vi.fn(() => Promise.resolve({ leaguecraft: null, "pro-play": null, "combat-lab": null, archives: null }));
 vi.mock("./academy-core-warm", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./academy-core-warm")>()),
   warmAcademyCore: () => warm(),
@@ -46,18 +54,18 @@ vi.mock("@/lib/audio/academy-radio", () => ({
 vi.mock("@/components/audio/AcademyRadioDock", () => ({
   default: ({ variant }: { variant: string }) => <div data-testid={`academy-radio-${variant === "desktop" ? "dock" : "dock-mobile"}`} />,
 }));
+const sfxPlay = vi.fn();
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: sfxPlay, stop: vi.fn(), preload: vi.fn() }) }));
+const prefetchRoute = vi.fn();
+vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: (p: string) => prefetchRoute(p) }));
+const reduced = { current: false };
+vi.mock("@/hooks/useReducedMotionPreference", () => ({ useReducedMotionPreference: () => reduced.current }));
+
 /** Per-test control of window.matchMedia (the setup file answers false to everything). */
 const matchMediaMatches: { current: (q: string) => boolean } = { current: () => false };
 
-const sfxPlay = vi.fn();
-vi.mock("@/lib/audio/useSfx", () => ({
-  useSfx: () => ({ play: sfxPlay, stop: vi.fn(), preload: vi.fn() }),
-}));
-vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
-
-import { HUB_GUIDE_MODES } from "@/components/lol/hub-guide";
 import AcademyCorePage from "./AcademyCorePage";
-import { CORE_DESTINATIONS } from "./academy-core-destinations";
+import { BOOK_ACTIVATION_MS, CORE_DESTINATIONS } from "./academy-core-destinations";
 
 function Probe({ name }: { name: string }) {
   const location = useLocation();
@@ -89,11 +97,16 @@ function mount(initial = "/lol/dev/academy-core") {
   );
 }
 
+const book = (id: string) => within(screen.getByTestId(`academy-core-slot-${id}`)).getByRole("link");
+
 beforeEach(() => {
   track.mockReset();
   sfxPlay.mockReset();
+  prefetchRoute.mockReset();
   warm.mockClear();
   feed.current = INITIAL_BROADCAST_FEED;
+  manifest.current = MANIFEST;
+  reduced.current = false;
   matchMediaMatches.current = () => false;
   window.matchMedia = ((query: string) => ({
     matches: matchMediaMatches.current(query), media: query, onchange: null,
@@ -101,183 +114,244 @@ beforeEach(() => {
   })) as typeof window.matchMedia;
   dailyStatus.current = UNKNOWN_DAILY_STATUS;
   sessionStorage.clear();
-  // jsdom: no layout. The setup file's matchMedia answers `false` to every
-  // query, so the page renders its stacked (row) composition here.
 });
 
-describe("branding and hierarchy", () => {
-  it("names the Academy and makes Daily the primary action", () => {
+describe("branding, shortcuts and the hub gate", () => {
+  it("names the Academy, keeps Daily as the compact primary shortcut and labels Ranked for what it does", () => {
     mount();
     expect(screen.getByRole("heading", { level: 1, name: "Mogzy Academy" })).toBeInTheDocument();
     const daily = screen.getByTestId("academy-core-daily");
     expect(daily).toHaveAccessibleName("Play Daily Challenge");
-    expect(daily.className).toContain("acore-cta-primary");
     const ranked = screen.getByTestId("academy-core-ranked");
     expect(ranked).toHaveAccessibleName("Ranked");
-    expect(ranked.className).toContain("acore-cta-secondary");
-  });
-
-  it("shows no Daily status line until the service has answered", () => {
-    mount();
-    expect(screen.queryByTestId("academy-core-daily-status")).not.toBeInTheDocument();
+    expect(ranked).toHaveTextContent(/opens mode selection/i);
+    expect(ranked).not.toHaveTextContent(/queue/i);
   });
 
   it("offers resume only for a known, open, incomplete run", () => {
     dailyStatus.current = { ...UNKNOWN_DAILY_STATUS, known: true, resumable: true, completed: false };
     mount();
     expect(screen.getByTestId("academy-core-daily")).toHaveAccessibleName("Resume Daily Challenge");
-    expect(screen.getByTestId("academy-core-daily-status")).toHaveTextContent("A run is in progress");
   });
 
-  it("reports a completed Daily without changing the destination", () => {
-    dailyStatus.current = { ...UNKNOWN_DAILY_STATUS, known: true, resumable: false, completed: true };
-    mount();
-    expect(screen.getByTestId("academy-core-daily")).toHaveAccessibleName("Play Daily Challenge");
-    expect(screen.getByTestId("academy-core-daily-status")).toHaveTextContent("Today's Daily is complete.");
-  });
-});
-
-describe("the Daily CTA", () => {
-  it("opens /quiz/daily-challenge carrying the existing start-or-resume intent", () => {
-    mount();
-    fireEvent.click(screen.getByTestId("academy-core-daily"));
-    expect(screen.getByTestId("probe")).toHaveTextContent("daily|/quiz/daily-challenge||daily-intent");
-  });
-});
-
-describe("the lobby's hub gate", () => {
   it("counts a visit here as a hub visit, so /quiz does not bounce back to /lol", () => {
     expect(hasVisitedHub()).toBe(false);
     mount();
     expect(hasVisitedHub()).toBe(true);
   });
-});
 
-describe("the Ranked CTA", () => {
-  it("enters the Leaguecraft Play record (/quiz?play=1), never the live-match host", () => {
+  it("Daily opens /quiz/daily-challenge immediately with the existing start-or-resume intent", () => {
+    mount();
+    fireEvent.click(screen.getByTestId("academy-core-daily"));
+    expect(screen.getByTestId("probe")).toHaveTextContent("daily|/quiz/daily-challenge||daily-intent");
+  });
+
+  it("Ranked enters the Leaguecraft Play record (/quiz?play=1) immediately, never the live-match host", () => {
     mount();
     fireEvent.click(screen.getByTestId("academy-core-ranked"));
     expect(screen.getByTestId("probe")).toHaveTextContent("quiz|/quiz|?play=1|no-intent");
-    expect(screen.queryByText(/ranked-host/)).not.toBeInTheDocument();
-  });
-
-  it("records the door diagnostically, not as a Leaguecraft open", () => {
-    mount();
-    fireEvent.click(screen.getByTestId("academy-core-ranked"));
     expect(track).toHaveBeenCalledWith("leaguecraft_cta_clicked", { cta: "academy_core_ranked" });
-    expect(track).not.toHaveBeenCalledWith("leaguecraft_opened", expect.anything());
     expect(track).not.toHaveBeenCalledWith("hub_entered", expect.anything());
   });
 });
 
-describe("the four room entrances", () => {
-  const expected: Record<string, string> = {
-    leaguecraft: "quiz|/quiz||",
-    "combat-lab": "combat|/combat-lab||",
-    archives: "docs|/lol/docs||",
-    "pro-play": "pro-play|/lol/pro-play||",
-  };
-
-  for (const d of CORE_DESTINATIONS) {
-    it(`${d.title} routes on the first click`, () => {
-      mount();
-      const link = screen.getByTestId(`academy-core-bay-${d.id}`);
+describe("the four books", () => {
+  it("are the Hall's real covers: champion, crop, title lines, aria-label and description", () => {
+    mount();
+    for (const d of CORE_DESTINATIONS) {
+      const link = book(d.id);
       expect(link).toHaveAccessibleName(d.title);
       expect(link).toHaveAccessibleDescription(d.preview);
-      fireEvent.click(link);
-      expect(screen.getByTestId("probe")).toHaveTextContent(expected[d.id]);
-    });
-  }
-
-  it("are exactly four, labelled, inside a named navigation landmark", () => {
-    mount();
-    const nav = screen.getByRole("navigation", { name: "Academy rooms" });
-    const links = nav.querySelectorAll("a[data-bay]");
-    expect(links).toHaveLength(4);
-    expect(Array.from(links).map((l) => l.getAttribute("data-bay"))).toEqual([
-      "leaguecraft", "combat-lab", "archives", "pro-play",
-    ]);
+      expect(link).toHaveAttribute("href", d.to);
+      const img = link.querySelector("img[src*='/splash/']") as HTMLImageElement;
+      expect(img.src).toMatch(new RegExp(`${d.championName}/splash`));
+      expect(img.style.objectPosition).toBe(d.splashPosition);
+      const lines = Array.from(link.querySelectorAll("h3 span")).map((s) => s.textContent);
+      expect(lines).toEqual(d.coverTitle.split("\n"));
+      // the shared frame, once per book
+      expect(link.querySelectorAll("img[src*='academy-book-frame']")).toHaveLength(1);
+    }
   });
 
-  it("only the Leaguecraft door emits the diagnostic CTA click", () => {
+  it("the upper pair is Leaguecraft and Pro Play, the lower pair Combat and Archives", () => {
     mount();
-    fireEvent.click(screen.getByTestId("academy-core-bay-combat-lab"));
-    expect(track).not.toHaveBeenCalled();
+    const tier = (id: string) => screen.getByTestId(`academy-core-slot-${id}`).className;
+    expect(tier("leaguecraft")).toContain("acore-slot-upper");
+    expect(tier("pro-play")).toContain("acore-slot-upper");
+    expect(tier("combat-lab")).toContain("acore-slot-lower");
+    expect(tier("archives")).toContain("acore-slot-lower");
+  });
+
+  it("keeps the shell drawn when the manifest has not answered (bare leather, no broken image)", () => {
+    manifest.current = null;
     mount();
-    fireEvent.click(screen.getByTestId("academy-core-bay-leaguecraft"));
-    expect(track).toHaveBeenCalledWith("leaguecraft_cta_clicked", { cta: "academy_core_bay" });
+    const link = book("leaguecraft");
+    expect(link.querySelector("img[src*='/splash/']")).toBeNull();
+    expect(link.querySelectorAll("img[src*='academy-book-frame']")).toHaveLength(1);
+    expect(link).toHaveAccessibleName("Leaguecraft");
   });
 });
 
-describe("focus states", () => {
-  it("keyboard focus engages the matching Core state and the readout; blur returns to idle", () => {
+describe("activation → navigation", () => {
+  it("a click activates for BOOK_ACTIVATION_MS and then navigates itself", () => {
+    vi.useFakeTimers();
+    try {
+      mount();
+      fireEvent.click(book("combat-lab"));
+      expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "combat-lab");
+      expect(screen.queryByTestId("probe")).not.toBeInTheDocument();
+      act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS - 1); });
+      expect(screen.queryByTestId("probe")).not.toBeInTheDocument();
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(screen.getByTestId("probe")).toHaveTextContent("combat|/combat-lab||");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("the activation is at most 350 ms", () => {
+    expect(BOOK_ACTIVATION_MS).toBeLessThanOrEqual(350);
+    expect(BOOK_ACTIVATION_MS).toBeGreaterThanOrEqual(180);
+  });
+
+  it("every room routes to its real destination", () => {
+    vi.useFakeTimers();
+    try {
+      const expected: Record<string, string> = {
+        leaguecraft: "quiz|/quiz||", "pro-play": "pro-play|/lol/pro-play||", "combat-lab": "combat|/combat-lab||", archives: "docs|/lol/docs||",
+      };
+      for (const d of CORE_DESTINATIONS) {
+        const { unmount } = mount();
+        fireEvent.click(book(d.id));
+        act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS); });
+        expect(screen.getByTestId("probe")).toHaveTextContent(expected[d.id]);
+        unmount();
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("rapid repeated presses navigate exactly once", () => {
+    vi.useFakeTimers();
+    try {
+      mount();
+      const link = book("archives");
+      fireEvent.click(link); fireEvent.click(link); fireEvent.click(book("pro-play"));
+      act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 50); });
+      expect(screen.getByTestId("probe")).toHaveTextContent("docs|/lol/docs||");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("a modified click (new tab) is left to the browser: no activation, no in-app navigation", () => {
+    vi.useFakeTimers();
+    try {
+      mount();
+      const link = book("pro-play");
+      const ev = fireEvent.click(link, { ctrlKey: true });
+      expect(ev, "default not prevented").toBe(true);
+      expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "");
+      act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 50); });
+      expect(screen.queryByTestId("probe")).not.toBeInTheDocument();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("reduced motion: the Link navigates at once, with no activation", () => {
+    reduced.current = true;
+    mount();
+    fireEvent.click(book("leaguecraft"));
+    expect(screen.getByTestId("probe")).toHaveTextContent("quiz|/quiz||");
+    expect(track).toHaveBeenCalledWith("leaguecraft_cta_clicked", { cta: "academy_core_book" });
+  });
+
+  it("only the Leaguecraft door emits the diagnostic CTA click", () => {
+    vi.useFakeTimers();
+    try {
+      mount();
+      fireEvent.click(book("combat-lab"));
+      expect(track).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("warms the route chunk on hover, focus and press before any click", () => {
+    mount();
+    const slot = screen.getByTestId("academy-core-slot-pro-play");
+    fireEvent.pointerEnter(slot, { pointerType: "mouse" });
+    fireEvent.focus(slot);
+    fireEvent.pointerDown(slot);
+    expect(prefetchRoute).toHaveBeenCalledWith("/lol/pro-play");
+  });
+});
+
+describe("focus states and the crystal", () => {
+  it("keyboard focus on a book engages the room, Mogzy reacts, blur returns to idle", () => {
     vi.useFakeTimers();
     try {
       mount();
       const stage = screen.getByTestId("academy-core-stage");
       expect(stage).toHaveAttribute("data-focus", "idle");
-      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent("Pick a room");
-
-      const link = screen.getByTestId("academy-core-bay-combat-lab");
-      act(() => { link.focus(); });
+      act(() => { book("combat-lab").focus(); });
       expect(stage).toHaveAttribute("data-focus", "combat-lab");
-      expect(link).toHaveAttribute("data-active", "true");
-      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent(HUB_GUIDE_MODES["combat-lab"].description);
       expect(screen.getByTestId("academy-core-mogzy")).toHaveAttribute("data-pose", "raisingHand");
-
-      act(() => { link.blur(); });
-      // The release is graced, like the guide's hover clear.
-      expect(stage).toHaveAttribute("data-focus", "combat-lab");
+      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent(HUB_GUIDE_MODES["combat-lab"].description);
+      act(() => { book("combat-lab").blur(); });
       act(() => { vi.advanceTimersByTime(200); });
       expect(stage).toHaveAttribute("data-focus", "idle");
-    } finally {
-      vi.useRealTimers();
-    }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("the crystal is a labelled button that cycles the four previews without navigating, with a readout", () => {
+    mount();
+    const crystal = screen.getByRole("button", { name: /cycle the room preview/i });
+    const stage = screen.getByTestId("academy-core-stage");
+    const readout = screen.getByTestId("academy-core-preview");
+    expect(readout).toHaveTextContent("No room previewed");
+    const order = ["leaguecraft", "pro-play", "combat-lab", "archives", "idle"];
+    const titles = ["Leaguecraft", "Pro Play", "Combat Simulation", "Mogzy Archives", null];
+    order.forEach((id, i) => {
+      fireEvent.click(crystal);
+      expect(stage).toHaveAttribute("data-focus", id);
+      expect(readout).toHaveTextContent(titles[i] ? `Previewing ${titles[i]}` : "No room previewed");
+    });
+    expect(screen.queryByTestId("probe")).not.toBeInTheDocument();
   });
 
   it("a touch press engages the state immediately (no hover required)", () => {
     mount();
-    const link = screen.getByTestId("academy-core-bay-archives");
-    fireEvent.pointerDown(link, { pointerType: "touch" });
+    fireEvent.pointerDown(screen.getByTestId("academy-core-slot-archives"), { pointerType: "touch" });
     expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "archives");
-  });
-
-  it("the instrument reflects the focused room", () => {
-    mount();
-    const svg = screen.getByRole("img", { name: "The Academy Core instrument" });
-    expect(svg).toHaveAttribute("data-focus", "idle");
-    act(() => { screen.getByTestId("academy-core-bay-pro-play").focus(); });
-    expect(svg).toHaveAttribute("data-focus", "pro-play");
-    expect(svg.querySelector(".acore-readout-value")?.textContent).toContain("OBSERVE");
   });
 });
 
 describe("the Patch Report book and the second screen", () => {
-  it("mounts the existing mobile book variant below the rooms in the stacked composition", () => {
+  it("stacked: the upper pair, then the crystal band, then the lower pair, then the mobile book", () => {
     mount();
-    // jsdom answers false to every media query → stacked composition.
-    const book = screen.getByTestId("academy-core-book-mobile");
-    expect(within(book).getByTestId("academy-broadcast-surface-mobile")).toBeInTheDocument();
-    expect(screen.queryByTestId("academy-broadcast-surface")).not.toBeInTheDocument();
     const rooms = screen.getByRole("navigation", { name: "Academy rooms" });
-    expect(rooms.compareDocumentPosition(book) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const upper = screen.getByTestId("academy-core-slot-leaguecraft");
+    const stage = screen.getByTestId("academy-core-stage");
+    const lower = screen.getByTestId("academy-core-slot-combat-lab");
+    const bookM = screen.getByTestId("academy-core-book-mobile");
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(rooms.contains(upper) && rooms.contains(lower)).toBe(true);
+    expect(follows(upper, stage)).toBe(true);
+    expect(follows(stage, lower)).toBe(true);
+    expect(follows(lower, bookM)).toBe(true);
+    expect(within(bookM).getByTestId("academy-broadcast-surface-mobile")).toBeInTheDocument();
+    expect(screen.queryByTestId("academy-broadcast-surface")).not.toBeInTheDocument();
+    // no spine image, no second book variant
+    expect(document.querySelector("img[src*='book-spine']")).toBeNull();
   });
 
-  it("mounts the real desktop book with its radio dock beside the Core in the full composition", () => {
+  it("full composition: the real desktop book with its radio dock on the island, the books mounted on the instrument", () => {
     matchMediaMatches.current = (q) => q.includes("min-width: 1024px");
     mount();
-    const book = screen.getByTestId("academy-core-book");
-    expect(within(book).getByTestId("academy-broadcast-surface")).toBeInTheDocument();
-    expect(within(book).getByTestId("academy-radio-dock")).toBeInTheDocument();
+    const island = screen.getByTestId("academy-core-book");
+    expect(within(island).getByTestId("academy-broadcast-surface")).toBeInTheDocument();
+    expect(within(island).getByTestId("academy-radio-dock")).toBeInTheDocument();
     expect(screen.queryByTestId("academy-broadcast-surface-mobile")).not.toBeInTheDocument();
-    // and the rooms are mounted on the instrument, not as rows
-    expect(screen.getByTestId("academy-core-bay-leaguecraft").className).toContain("acore-bay-link-mounted");
+    expect(screen.getByTestId("academy-core-slot-leaguecraft").className).toContain("acore-slot-mounted");
+    expect(screen.getAllByRole("link", { name: /^(Leaguecraft|Pro Play|Combat Simulation|Mogzy Archives)$/ })).toHaveLength(4);
   });
 
-  it("shows the live Patch Brief in the book and carries its icons into the Archives projection", async () => {
+  it("shows the live Patch Brief in the book and carries its icons into the Archives projection", () => {
     feed.current = {
-      status: "ready",
-      index: 0,
+      status: "ready", index: 0,
       transmissions: [{
         id: "patch-brief-26.20", channel: "patch-brief", eyebrow: "Patch Brief", headline: "Patch 26.20",
         primaryAction: { label: "Read full report", to: "/lol/patch-reports?patch=26.20" },
@@ -295,10 +369,9 @@ describe("the Patch Report book and the second screen", () => {
     const svg = screen.getByRole("img", { name: "The Academy Core instrument" });
     const hrefs = Array.from(svg.querySelectorAll(".acore-mode-archives image")).map((i) => i.getAttribute("href"));
     expect(hrefs).toEqual(["https://cdn.test/ryze.png", "https://cdn.test/ahri.png"]);
-    expect(svg.querySelector(".acore-strata-label")?.textContent).toBe("PATCH 26.20");
   });
 
-  it("keeps Academy Commons and the Hall reachable", () => {
+  it("keeps Academy Commons and the Hall reachable, immediately", () => {
     mount();
     expect(screen.getByTestId("academy-core-commons-link")).toHaveAttribute("href", "/lol#academy-commons");
     fireEvent.click(screen.getByTestId("academy-core-hall-link"));

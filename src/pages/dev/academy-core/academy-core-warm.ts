@@ -1,12 +1,12 @@
 /**
- * Academy Core V2 — warm the Core's own critical art, in the PERF1 convention.
+ * Academy Core V3 — warm the Core's own critical art, in the PERF1 convention.
  *
  * This is the Core's twin of `warmAcademyHub`, kept separate on purpose: the
- * Hall's warm fetches the library painting, the book frame and (on phones) the
- * spine — the old four-book assets the Core does not draw — so the preview
- * must not call it. If the Core ever replaces /lol, the Landing's hand-off
- * should call THIS instead (and the Hall's list retires); that is a production
- * step and is documented in the handoff, not done here.
+ * Hall's warm fetches the library painting and (on phones) the spine — art
+ * the Core does not draw — so the preview must not call it. If the Core ever
+ * replaces /lol, the Landing's hand-off should call THIS instead (and the
+ * Hall's list retires); that is a production step and is documented in the
+ * handoff, not done here.
  *
  * Same rules as PERF1: idempotent, never awaited by a render or a navigation,
  * one breakpoint only, high priority for what is on the first screen and low
@@ -15,23 +15,32 @@
  *
  * Order:
  *   1. the champion manifest through the app's one query definition, so the
- *      page's `useChampionAssets()` (via the Patch Brief feed) finds it cached;
- *   2. first-screen art at HIGH priority: Mogzy's 512 plate (the SAME file the
- *      Landing and the Hall draw, so it is usually already cached) and, on
- *      desktop, the Patch Brief book (above the fold there; below it on phones,
- *      where it is fetched at low priority after the critical set);
- *   3. once those settle (or a short budget runs out): the four reaction
- *      poses (~10 KB each), the two projection icons the manifest names, the
- *      phone book, and the four destination route chunks at idle.
+ *      page's `useChampionAssets()` finds it cached and the four cover
+ *      splashes can be NAMED;
+ *   2. first-screen art at HIGH priority: the ONE shared book frame (four
+ *      covers, one file), Mogzy's 512 plate (the SAME file the Landing and
+ *      the Hall draw, so it is usually already cached) and, on desktop, the
+ *      Patch Brief book (above the fold there; below it on phones, where it
+ *      follows at low priority);
+ *   3. as soon as the manifest answers: the four cover splashes — all four at
+ *      high priority on desktop (all on screen); on phones the upper pair
+ *      high and the lower pair low (below the first screen);
+ *   4. once the critical set settles (or a short budget runs out): the four
+ *      reaction poses (~10 KB each), the tiny local shards / role marks, and
+ *      the four destination route chunks at idle.
+ *
+ * Not fetched any more (V2 → V3): the two manifest champion ICONS — the
+ * crystal's projections now reuse the cover splashes that are already in cache.
  */
 import type { QueryClient } from "@tanstack/react-query";
 
-import { ACADEMY_BROADCAST_BOOK } from "@/academy/hub/hub-art";
+import { ACADEMY_BOOK_FRAME, ACADEMY_BROADCAST_BOOK } from "@/academy/hub/hub-art";
 import { getMogzyArtAssetPath, type MogzyMascotPose } from "@/components/mascot/mascot-assets";
-import { HUB_BOOK_COVER_CHAMPION, HUB_DESTINATION_ROUTES } from "@/lib/hub/academy-hub-warm";
-import { championAssetsQuery, getChampionIcon, type ChampionManifest } from "@/hooks/useChampionAssets";
+import { HUB_DESTINATION_ROUTES } from "@/lib/hub/academy-hub-warm";
+import { championAssetsQuery, getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
 import { prepareImage, prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { CORE_DESTINATIONS, type CoreDestination } from "./academy-core-destinations";
 
 /** Mogzy at rest beside the instrument — the Landing / Hall encode (71 KB). */
 export const CORE_MOGZY_REST_SRC = getMogzyArtAssetPath({ category: "mascot", name: "base" }, "medium");
@@ -61,10 +70,6 @@ export const CORE_OBSERVE_ROLES = [
   "/assets/ranked/mogzy-role-icons/support.svg",
 ] as const;
 
-/** The two manifest icons the projections show: the Hall's cover champions for those rooms. */
-export const CORE_INQUIRY_CHAMPION = HUB_BOOK_COVER_CHAMPION["/quiz"];
-export const CORE_OBSERVE_CHAMPION = HUB_BOOK_COVER_CHAMPION["/lol/pro-play"];
-
 const CRITICAL_BUDGET_MS = 4000;
 /** Same breakpoint the page uses to choose the full (book-beside-Core) composition. */
 export const CORE_FULL_LAYOUT_MEDIA = "(min-width: 1024px)";
@@ -77,35 +82,31 @@ function isFullLayout(): boolean {
 
 /** The Core's first-screen art for one layout. Never both variants' extras. */
 export function coreCriticalImages(full: boolean = isFullLayout()): string[] {
-  return full ? [CORE_MOGZY_REST_SRC, ACADEMY_BROADCAST_BOOK] : [CORE_MOGZY_REST_SRC];
+  return full
+    ? [ACADEMY_BOOK_FRAME, CORE_MOGZY_REST_SRC, ACADEMY_BROADCAST_BOOK]
+    : [ACADEMY_BOOK_FRAME, CORE_MOGZY_REST_SRC];
 }
 
-/** What follows the critical set, once the manifest is known. */
-export function coreProjectionIcons(manifest: ChampionManifest | null | undefined): {
-  inquiryIcon: string | null;
-  observeIcon: string | null;
-} {
-  return {
-    inquiryIcon: getChampionIcon(manifest, CORE_INQUIRY_CHAMPION),
-    observeIcon: getChampionIcon(manifest, CORE_OBSERVE_CHAMPION),
-  };
+/** The four cover splash URLs, once the manifest is known, keyed by room. */
+export function coreCoverSplashes(manifest: ChampionManifest | null | undefined): Record<CoreDestination["id"], string | null> {
+  const out = {} as Record<CoreDestination["id"], string | null>;
+  for (const d of CORE_DESTINATIONS) out[d.id] = getChampionSplash(manifest, d.championName);
+  return out;
 }
 
-export interface CoreWarmResult {
-  inquiryIcon: string | null;
-  observeIcon: string | null;
-}
+export type CoreWarmResult = Record<CoreDestination["id"], string | null>;
 
 let started: Promise<CoreWarmResult> | null = null;
 
 /**
- * Start (or join) the Core warm. Resolves with the projection icon URLs once
- * they have been prepared (null when the manifest does not name them), so the
- * page can mount the `<image>`s only after the bytes are in cache.
+ * Start (or join) the Core warm. Resolves with the cover splash URLs once the
+ * manifest has answered (nulls when it does not name a champion). The page's
+ * covers do not wait for this — `useChampionAssets()` reads the same cache
+ * entry — it exists so the warm, not the covers' own <img>s, decides priority.
  */
 export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmResult> {
   if (started) return started;
-  if (typeof window === "undefined") return Promise.resolve({ inquiryIcon: null, observeIcon: null });
+  if (typeof window === "undefined") return Promise.resolve(coreCoverSplashes(null));
   const full = isFullLayout();
 
   const manifest: Promise<ChampionManifest | null> = client
@@ -116,6 +117,19 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
     timeoutMs: CRITICAL_BUDGET_MS,
   });
 
+  // The covers start the moment they can be named — in parallel with the
+  // frame, not after it: on desktop all four are on the first screen.
+  const covers = manifest.then((m) => {
+    const splashes = coreCoverSplashes(m);
+    const jobs = CORE_DESTINATIONS.map((d) => {
+      const url = splashes[d.id];
+      if (!url) return Promise.resolve("error" as const);
+      const priority = full || d.tier === "upper" ? "high" : "low";
+      return prepareImage(url, { priority, timeoutMs: CRITICAL_BUDGET_MS });
+    });
+    return Promise.all(jobs).then(() => splashes);
+  });
+
   started = critical.then(async () => {
     for (const to of HUB_DESTINATION_ROUTES) prefetchRoute(to);
     for (const pose of Object.values(CORE_MOGZY_REACTION_POSE)) {
@@ -123,13 +137,7 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
     }
     for (const u of [...CORE_MEASURE_SHARDS, ...CORE_OBSERVE_ROLES]) void prepareImage(u, { priority: "low" });
     if (!full) void prepareImage(ACADEMY_BROADCAST_BOOK, { priority: "low" });
-    const icons = coreProjectionIcons(await manifest);
-    await Promise.all(
-      [icons.inquiryIcon, icons.observeIcon]
-        .filter((u): u is string => !!u)
-        .map((u) => prepareImage(u, { priority: "low", timeoutMs: CRITICAL_BUDGET_MS })),
-    );
-    return icons;
+    return covers;
   });
   return started;
 }

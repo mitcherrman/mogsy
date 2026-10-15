@@ -51,6 +51,8 @@ const PROBE = `
     bookPainting: () => img('[data-testid="academy-broadcast-book"]') || img('[data-testid="academy-broadcast-book-mobile"]'),
     mogzy: () => img('[data-testid="academy-core-mogzy"] img[data-plate="rest"]') || img('[data-testid^="mogzy-guide-hub"] img') || img('img[src*="mogzy-mascot-base-v1-512"]'),
     libraryPainting: () => img('img[src*="academy-library"]'),
+    coversDecoded: () => { const els = [...document.querySelectorAll('a[href] img[src*="/splash/"]')]; return els.length >= 4 && els.slice(0, 4).every((i) => i.complete && i.naturalWidth > 0); },
+    upperCoversDecoded: () => { const els = ['/quiz', '/lol/pro-play'].map((h) => document.querySelector('a[href="' + h + '"] img[src*="/splash/"]')); return els.every((i) => i && i.complete && i.naturalWidth > 0); },
   };
   const tick = () => {
     const now = performance.now();
@@ -199,9 +201,9 @@ test.afterAll(() => {
   const rows = (all as Array<{ page: string; viewport: string; cpu: number; cold: { marks: Probe & { fcp: number | null }; bytes: { total: number; images: number; count: number }; interaction: { hoverToStateMs: number; longTasksMs: number[]; clickToArchivesContentMs: number } }; warm: { marks: Probe; bytes: { total: number; images: number } } }>);
   const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
   const md = [
-    "| page | viewport | cpu | cold FCP | CTA | rooms | book | Mogzy | CLS | cold bytes (images) | reqs | warm CTA | warm bytes | hover→state | max long task | click→Archives |",
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
-    ...rows.map((r) => `| ${r.page} | ${r.viewport} | ${r.cpu}x | ${r.cold.marks.fcp ?? "—"} | ${r.cold.marks.primaryCta ?? "—"} | ${r.cold.marks.fourRooms ?? "—"} | ${r.cold.marks.bookPainting ?? "—"} | ${r.cold.marks.mogzy ?? "—"} | ${r.cold.marks.cls ?? 0} | ${kb(r.cold.bytes.total)} (${kb(r.cold.bytes.images)}) | ${r.cold.bytes.count} | ${r.warm.marks.primaryCta ?? "—"} | ${kb(r.warm.bytes.total)} | ${r.cold.interaction.hoverToStateMs ?? "—"} ms | ${Math.max(0, ...r.cold.interaction.longTasksMs)} ms | ${r.cold.interaction.clickToArchivesContentMs ?? "—"} ms |`),
+    "| page | viewport | cpu | cold FCP | CTA | rooms | upper covers | 4 covers | book | Mogzy | CLS | cold bytes (images) | reqs | warm CTA | warm bytes | hover→state | max long task | click→Archives |",
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ...rows.map((r) => `| ${r.page} | ${r.viewport} | ${r.cpu}x | ${r.cold.marks.fcp ?? "—"} | ${r.cold.marks.primaryCta ?? "—"} | ${r.cold.marks.fourRooms ?? "—"} | ${r.cold.marks.upperCoversDecoded ?? "—"} | ${r.cold.marks.coversDecoded ?? "—"} | ${r.cold.marks.bookPainting ?? "—"} | ${r.cold.marks.mogzy ?? "—"} | ${r.cold.marks.cls ?? 0} | ${kb(r.cold.bytes.total)} (${kb(r.cold.bytes.images)}) | ${r.cold.bytes.count} | ${r.warm.marks.primaryCta ?? "—"} | ${kb(r.warm.bytes.total)} | ${r.cold.interaction.hoverToStateMs ?? "—"} ms | ${Math.max(0, ...r.cold.interaction.longTasksMs)} ms | ${r.cold.interaction.clickToArchivesContentMs ?? "—"} ms |`),
   ].join("\n");
   writeFileSync(path.join(OUT, "perf.md"), md + "\n");
 });

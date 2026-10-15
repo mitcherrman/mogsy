@@ -1,10 +1,12 @@
 /**
- * Academy Core V2 — the page-scoped warm (PERF1 convention).
+ * Academy Core V3 — the page-scoped warm (PERF1 convention).
  *
- * What matters: the Core never asks for the Hall's old four-book art, its
- * first-screen set is one breakpoint's worth, the follow-ups come after the
- * critical set, the manifest goes through the app's one query definition,
- * and the whole thing is idempotent.
+ * What matters: the Core never asks for the Hall's library / spine art, its
+ * first-screen set is one breakpoint's worth (the ONE shared book frame,
+ * Mogzy, and on desktop the open book), the four cover splashes start as soon
+ * as the manifest answers with the right priorities per breakpoint, the
+ * manifest goes through the app's one query definition, and the whole thing
+ * is idempotent.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
@@ -34,7 +36,10 @@ import {
   CORE_MOGZY_REST_SRC, __resetAcademyCoreWarmForTests, coreCriticalImages, warmAcademyCore,
 } from "./academy-core-warm";
 
-const HALL_ONLY = [ACADEMY_LIBRARY_DESKTOP, ACADEMY_LIBRARY_MOBILE, ACADEMY_BOOK_FRAME, ACADEMY_BOOK_SPINE];
+const HALL_ONLY = [ACADEMY_LIBRARY_DESKTOP, ACADEMY_LIBRARY_MOBILE, ACADEMY_BOOK_SPINE];
+const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Viktor"].map((n) => [n, {
+  icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
+}])) };
 
 function setLayout(full: boolean) {
   window.matchMedia = ((q: string) => ({
@@ -42,6 +47,7 @@ function setLayout(full: boolean) {
     addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
   })) as typeof window.matchMedia;
 }
+const splash = (n: string) => expect.stringMatching(new RegExp(`assets/champions/${n}/splash/0_default\\.jpg$`));
 
 beforeEach(() => {
   loader.prepared.length = 0;
@@ -51,55 +57,58 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("critical set", () => {
-  it("desktop: Mogzy's cached 512 plate and the Patch Brief book, nothing from the old Hall", () => {
-    expect(coreCriticalImages(true)).toEqual([CORE_MOGZY_REST_SRC, ACADEMY_BROADCAST_BOOK]);
+  it("desktop: the one shared book frame, Mogzy's cached 512 plate and the open Patch Brief book — nothing from the old Hall", () => {
+    expect(coreCriticalImages(true)).toEqual([ACADEMY_BOOK_FRAME, CORE_MOGZY_REST_SRC, ACADEMY_BROADCAST_BOOK]);
     for (const u of HALL_ONLY) expect(coreCriticalImages(true)).not.toContain(u);
   });
 
-  it("phone: Mogzy only — the book is below the fold there", () => {
-    expect(coreCriticalImages(false)).toEqual([CORE_MOGZY_REST_SRC]);
+  it("phone: frame and Mogzy only — the open book is below the fold there", () => {
+    expect(coreCriticalImages(false)).toEqual([ACADEMY_BOOK_FRAME, CORE_MOGZY_REST_SRC]);
   });
 });
 
 describe("warmAcademyCore", () => {
-  it("fetches the manifest through the app's query definition and the critical set at high priority first", async () => {
+  it("desktop: manifest through the app's query, critical set at high priority, then all four covers at high priority", async () => {
     setLayout(true);
     const client = new QueryClient();
-    const fetchQuery = vi.spyOn(client, "fetchQuery").mockResolvedValue({ champions: {
-      Ryze: { icon: "assets/champions/Ryze/icon.png", splash: "", loading: "", cutout: "" },
-      Ahri: { icon: "assets/champions/Ahri/icon.png", splash: "", loading: "", cutout: "" },
-    } } as never);
+    const fetchQuery = vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
     const done = warmAcademyCore(client);
     expect(fetchQuery).toHaveBeenCalledWith(championAssetsQuery);
-    expect(loader.prepared.map((p) => p.url)).toEqual([CORE_MOGZY_REST_SRC, ACADEMY_BROADCAST_BOOK]);
-    expect(loader.prepared.every((p) => p.priority === "high")).toBe(true);
-    // nothing else until the critical set settles
+    expect(loader.prepared.map((p) => p.url)).toEqual([ACADEMY_BOOK_FRAME, CORE_MOGZY_REST_SRC, ACADEMY_BROADCAST_BOOK]);
+    await Promise.resolve(); await Promise.resolve(); // the manifest answers
+    const covers = loader.prepared.slice(3);
+    expect(covers.map((p) => p.url)).toEqual([splash("Ryze"), splash("Ahri"), splash("Akali"), splash("Viktor")]);
+    expect(covers.every((p) => p.priority === "high")).toBe(true);
     expect(prefetchRoute).not.toHaveBeenCalled();
     loader.resolveCritical();
-    const icons = await done;
+    const result = await done;
     expect(prefetchRoute.mock.calls.map((c) => c[0])).toEqual(["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]);
-    const later = loader.prepared.slice(2);
+    expect(result.leaguecraft).toMatch(/Ryze\/splash/);
+    expect(result["pro-play"]).toMatch(/Ahri\/splash/);
+    const later = loader.prepared.slice(7);
     expect(later.every((p) => p.priority === "low")).toBe(true);
     expect(later.map((p) => p.url)).toEqual(expect.arrayContaining([
-      "/mascot/mogzy-holding-book-transparent-192.webp",
-      "/mascot/mogzy-raising-hand-transparent-192.webp",
-      "/mascot/mogzy-explaining-transparent-192.webp",
-      "/mascot/mogzy-peeking-transparent-192.webp",
-      "/assets/ranked/mogzy-role-icons/top.svg",
+      "/mascot/mogzy-holding-book-transparent-192.webp", "/mascot/mogzy-peeking-transparent-192.webp",
     ]));
-    expect(icons.inquiryIcon).toMatch(/assets\/champions\/Ryze\/icon\.png$/);
-    expect(icons.observeIcon).toMatch(/assets\/champions\/Ahri\/icon\.png$/);
     for (const u of HALL_ONLY) expect(loader.prepared.map((p) => p.url)).not.toContain(u);
+    // V2's manifest icons are gone: the projections reuse the cover splashes
+    expect(loader.prepared.map((p) => p.url).some((u) => /\/icon\.png$/.test(u))).toBe(false);
   });
 
-  it("phone: the book follows at low priority instead of leading", async () => {
+  it("phone: the upper pair high, the lower pair low, the open book low and last", async () => {
     setLayout(false);
-    const done = warmAcademyCore(null);
-    expect(loader.prepared.map((p) => p.url)).toEqual([CORE_MOGZY_REST_SRC]);
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
+    const done = warmAcademyCore(client);
+    await Promise.resolve(); await Promise.resolve();
+    const byUrl = new Map(loader.prepared.map((p) => [p.url, p.priority]));
+    expect([...byUrl.keys()].find((u) => /Ryze\/splash/.test(u)) && byUrl.get([...byUrl.keys()].find((u) => /Ryze\/splash/.test(u))!)).toBe("high");
+    expect(byUrl.get([...byUrl.keys()].find((u) => /Ahri\/splash/.test(u))!)).toBe("high");
+    expect(byUrl.get([...byUrl.keys()].find((u) => /Akali\/splash/.test(u))!)).toBe("low");
+    expect(byUrl.get([...byUrl.keys()].find((u) => /Viktor\/splash/.test(u))!)).toBe("low");
     loader.resolveCritical();
     await done;
-    const book = loader.prepared.find((p) => p.url === ACADEMY_BROADCAST_BOOK);
-    expect(book?.priority).toBe("low");
+    expect(loader.prepared.find((p) => p.url === ACADEMY_BROADCAST_BOOK)?.priority).toBe("low");
   });
 
   it("is idempotent: a second call joins the first", async () => {
@@ -109,6 +118,6 @@ describe("warmAcademyCore", () => {
     expect(b).toBe(a);
     loader.resolveCritical();
     await a;
-    expect(loader.prepared.filter((p) => p.url === CORE_MOGZY_REST_SRC)).toHaveLength(1);
+    expect(loader.prepared.filter((p) => p.url === ACADEMY_BOOK_FRAME)).toHaveLength(1);
   });
 });

@@ -1,47 +1,55 @@
 /**
- * Academy Core V1 — the navigation registry for the `/lol/dev/academy-core`
+ * Academy Core V3 — the navigation registry for the `/lol/dev/academy-core`
  * preview (alias `/dev/academy-core`).
  *
  * Every route here is a GROUNDED production destination, verified against
  * `src/App.tsx` and the existing Hall (`src/pages/LolHub.tsx`) on the branch
  * base. Nothing is invented: the four rooms are the Hall's four primary
- * destinations, the Daily CTA is the Quiz page's own start-or-resume intent,
- * and Ranked enters the existing Leaguecraft Play record (`/quiz?play=1`),
+ * destinations with the Hall's own cover champions, cover titles and splash
+ * crops (HUB_DESTINATIONS in LolHub.tsx / HUB_BOOK_COVER_CHAMPION in
+ * academy-hub-warm.ts); the Daily CTA is the Quiz page's own start-or-resume
+ * intent; Ranked enters the existing Leaguecraft Play record (`/quiz?play=1`),
  * where every auth / account / role / availability gate already lives.
  *
- * The file is data only so the page, the instrument and the tests read one
- * source of truth.
+ * V3 VISUAL PLACEMENT is deliberately different from the Hall's list order:
+ * Leaguecraft and Pro Play are the prominent upper pair, Combat Simulation
+ * and Mogzy Archives the supporting lower pair. Routes and guide ids are
+ * unchanged.
  */
 import { BrainCircuit, FileText, Swords, Trophy } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { HUB_GUIDE_MODES, type HubGuideModeId } from "@/components/lol/hub-guide";
+import { HUB_BOOK_COVER_CHAMPION } from "@/lib/hub/academy-hub-warm";
 
 /** Instrument focus states. `idle` is the rest state; the rest key the rooms. */
 export type CoreFocus = "idle" | HubGuideModeId;
+
+export type CoreTier = "upper" | "lower";
 
 export interface CoreDestination {
   /** Stable id — reuses the Hall's guide ids so copy and analytics line up. */
   id: HubGuideModeId;
   /** Production route. */
   to: string;
-  /** Accessible name and visible label. */
+  /** Accessible name and visible label (the book's aria-label). */
   title: string;
+  /** Lines set on the book's leather panel, split on "\n" (the Hall's own setting). */
+  coverTitle: string;
+  /** The Hall's cover champion for this room (manifest splash). */
+  championName: string;
+  /** The Hall's `object-position` crop for that splash in the portrait art window. */
+  splashPosition: string;
   /** Engraved bay number — purely visual. */
   bay: string;
-  /**
-   * The measurement language of the room, shown on the instrument readout
-   * while the bay is focused (one short line, per the brief).
-   */
+  /** The room's measurement word on the instrument readout. */
   readout: string;
   /** The one-sentence preview, reused from the Hall's guide copy. */
   preview: string;
   Icon: LucideIcon;
-  /**
-   * Selector angle, degrees, screen convention (0 = +x, clockwise positive).
-   * The four bays sit on an arc on the instrument's right-hand side; the
-   * index arm sweeps to this angle when the bay is focused.
-   */
-  angle: number;
+  /** Upper pair = the focal, larger books; lower pair = supporting. */
+  tier: CoreTier;
+  /** Left or right of the Core's central axis. */
+  side: "left" | "right";
 }
 
 export const CORE_DESTINATIONS: readonly CoreDestination[] = [
@@ -49,46 +57,62 @@ export const CORE_DESTINATIONS: readonly CoreDestination[] = [
     id: "leaguecraft",
     to: "/quiz",
     title: "Leaguecraft",
+    coverTitle: "Leaguecraft\nStudies",
+    championName: HUB_BOOK_COVER_CHAMPION["/quiz"],
+    splashPosition: "78% center",
     bay: "01",
     readout: "INQUIRY",
     preview: HUB_GUIDE_MODES.leaguecraft.description,
     Icon: BrainCircuit,
-    angle: -51,
-  },
-  {
-    id: "combat-lab",
-    to: "/combat-lab",
-    title: "Combat Simulation",
-    bay: "02",
-    readout: "MEASURE",
-    preview: HUB_GUIDE_MODES["combat-lab"].description,
-    Icon: Swords,
-    angle: -17,
-  },
-  {
-    id: "archives",
-    to: "/lol/docs",
-    title: "Mogzy Archives",
-    bay: "03",
-    readout: "STRATA",
-    preview: HUB_GUIDE_MODES.archives.description,
-    Icon: FileText,
-    angle: 17,
+    tier: "upper",
+    side: "left",
   },
   {
     id: "pro-play",
     to: "/lol/pro-play",
     title: "Pro Play",
-    bay: "04",
+    coverTitle: "Pro Play",
+    championName: HUB_BOOK_COVER_CHAMPION["/lol/pro-play"],
+    splashPosition: "56% center",
+    bay: "02",
     readout: "OBSERVE",
     preview: HUB_GUIDE_MODES["pro-play"].description,
     Icon: Trophy,
-    angle: 51,
+    tier: "upper",
+    side: "right",
+  },
+  {
+    id: "combat-lab",
+    to: "/combat-lab",
+    title: "Combat Simulation",
+    coverTitle: "Combat\nSimulation",
+    championName: HUB_BOOK_COVER_CHAMPION["/combat-lab"],
+    splashPosition: "36% center",
+    bay: "03",
+    readout: "MEASURE",
+    preview: HUB_GUIDE_MODES["combat-lab"].description,
+    Icon: Swords,
+    tier: "lower",
+    side: "left",
+  },
+  {
+    id: "archives",
+    to: "/lol/docs",
+    title: "Mogzy Archives",
+    coverTitle: "Mogzy\nArchives",
+    championName: HUB_BOOK_COVER_CHAMPION["/lol/docs"],
+    splashPosition: "34% center",
+    bay: "04",
+    readout: "STRATA",
+    preview: HUB_GUIDE_MODES.archives.description,
+    Icon: FileText,
+    tier: "lower",
+    side: "right",
   },
 ] as const;
 
-/** The index arm's rest angle: parked between bays, pointing at nothing. */
-export const CORE_IDLE_ANGLE = -100;
+/** Crystal-button cycle order: the upper pair first, then the lower pair. */
+export const CORE_CYCLE_ORDER: readonly HubGuideModeId[] = ["leaguecraft", "pro-play", "combat-lab", "archives"];
 
 /** Readout text while nothing is focused. */
 export const CORE_IDLE_READOUT = "STANDBY";
@@ -107,19 +131,25 @@ export function destinationById(id: CoreFocus): CoreDestination | null {
 export const DAILY_ROUTE = "/quiz/daily-challenge";
 
 /**
- * Secondary CTA — Ranked. `/quiz?play=1` is how the Leaguecraft lobby is asked
- * to open its Play record on mount (see PLAY_RETURN_PARAM in Quiz.tsx); the
- * record then applies every account / role / availability gate itself.
- * `/quiz/ranked` is the live-match host and is deliberately NOT linked.
+ * Secondary shortcut — Ranked. `/quiz?play=1` asks the Leaguecraft lobby to
+ * open its Play record (mode selection) on mount; the record applies every
+ * account / role / availability gate itself. `/quiz/ranked` is the live-match
+ * host and is deliberately NOT linked. The label says what it does: it opens
+ * mode selection, it does not enter a queue.
  */
 export const RANKED_ROUTE = "/quiz?play=1";
 
-/** Broadcast gateway and the existing second screen. */
-export const PATCH_REPORTS_ROUTE = "/lol/patch-reports";
+/** The existing second screen. */
 export const ACADEMY_COMMONS_HREF = "/lol#academy-commons";
 export const ACADEMY_HALL_ROUTE = "/lol";
 
-/** DOM id of the visually-hidden description a bay link is described by. */
+/** DOM id of the visually-hidden description a book link is described by. */
 export function coreBayDescriptionId(id: HubGuideModeId): string {
   return `academy-core-bay-desc-${id}`;
 }
+
+/**
+ * The intentional activation before a book navigates. Short but legible;
+ * the brief's ceiling is 350 ms and reduced motion skips it entirely.
+ */
+export const BOOK_ACTIVATION_MS = 240;

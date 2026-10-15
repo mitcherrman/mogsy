@@ -1,45 +1,50 @@
 /**
- * Academy Core V2 — `/lol/dev/academy-core` (alias `/dev/academy-core`).
+ * Academy Core V3 — `/lol/dev/academy-core` (alias `/dev/academy-core`).
  *
- * Mogzy's Hextech workshop as a working page inside the real shell: one
- * refined precision instrument (AcademyCoreInstrument) with Mogzy at its
- * controls (MogzyOperator), the real Patch Report book
- * (AcademyBroadcastCenterpiece, live feed and radio controls) standing beside
- * it on the same bench, and the two play actions in immediate reach.
+ * The Four-Book Hextech Navigator: the four actual closed Academy books
+ * (`AcademyHubBook` — the Hall's own component, with the Hall's cover
+ * champions, crops and titles) mounted INSIDE an enlarged Hextech Core, the
+ * real Patch Report book with its radio on its own lectern island beside it,
+ * Mogzy operating the device, and a compact Daily shortcut.
  *
  * NAVIGATION CONTRACTS (see academy-core-destinations.ts):
- *   · Daily   → <Link to="/quiz/daily-challenge" state={DAILY_START_STATE}>
- *   · Ranked  → <Link to="/quiz?play=1"> — the lobby opens its Play record
- *   · Rooms   → <Link> to /quiz, /combat-lab, /lol/docs, /lol/pro-play
- * Every entrance navigates on the first click / tap / Enter. Hover and focus
- * only animate the instrument and Mogzy; nothing is gated behind them.
+ *   · Books   → <Link> to /quiz, /lol/pro-play, /combat-lab, /lol/docs.
+ *     One click: a short activation (BOOK_ACTIVATION_MS, ≤ 350 ms) and the
+ *     page navigates itself. Modified clicks (Ctrl/Cmd/Shift/Alt, middle)
+ *     are left to the browser untouched; reduced motion navigates at once;
+ *     a second press during activation is ignored (single timer).
+ *   · Crystal → an accessible button that cycles the four previews WITHOUT
+ *     navigating; a visible readout names the current preview.
+ *   · Daily   → <Link to="/quiz/daily-challenge" state={DAILY_START_STATE}>,
+ *     immediate. Ranked shortcut → <Link to="/quiz?play=1">, immediate,
+ *     labelled for what it does (opens mode selection).
+ *   · Patch book links, radio, Commons and Hall links: ordinary, immediate.
  *
- * DATA. Read-only, and all existing authorities: the Patch Brief feed the
- * Hall's book uses (`usePatchBriefFeed`, shared query keys and cache — the
- * Archives projection reuses its icons, so no second patch read), the Daily
- * status (`useDailyChallengeStatus`, one request, the same the lobby makes;
- * copy renders only once the service has answered), and the champion manifest
- * through the app's one query definition (the warm fetches it; the feed hook
- * then finds it cached). Nothing invents completion, streaks, ranks or XP.
+ * DATA. Read-only, existing authorities only: the champion manifest through
+ * the app's one query (the warm fetches it, `useChampionAssets()` reads the
+ * cache), the Patch Brief feed the Hall's book uses (shared keys; the
+ * Archives projection reuses its icons), and the Daily status (one request,
+ * the same the lobby makes). Nothing is invented.
  *
- * LOADING (PERF1 convention, page-scoped): `warmAcademyCore` prepares Mogzy's
- * plate and, on desktop, the book at high priority; reaction poses, projection
- * icons and the four route chunks follow. The Hall's own warm is deliberately
- * NOT called — it would fetch the old library / book-frame art this page does
- * not draw. Every late asset has reserved geometry.
+ * LOADING (PERF1 convention, page-scoped): `warmAcademyCore` — frame, Mogzy,
+ * book painting at high priority; the four cover splashes as soon as the
+ * manifest answers; poses and route chunks after. The Hall's warm is NOT
+ * called. Every late asset has reserved geometry (the books' boxes are their
+ * frame's canvas; the painting declares its intrinsic size).
  *
  * ANALYTICS. No `hub_entered` from a preview route. The diagnostic
- * `leaguecraft_cta_clicked` is reused for the two doors into /quiz with
- * distinct `cta` values; the canonical open event fires on /quiz itself.
+ * `leaguecraft_cta_clicked` is reused for the doors into /quiz with distinct
+ * `cta` values; the canonical open event fires on /quiz itself.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
+import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
+import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
@@ -48,17 +53,14 @@ import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useSfx } from "@/lib/audio/useSfx";
 
-import AcademyCoreInstrument, { BAY_PLATE, CORE_VIEWBOX, bayAnchor, type CoreMedia } from "./AcademyCoreInstrument";
+import AcademyCoreInstrument, { BOOK_SLOTS, CORE_VIEWBOX, type CoreMedia } from "./AcademyCoreInstrument";
 import MogzyOperator from "./MogzyOperator";
-import {
-  CORE_FULL_LAYOUT_MEDIA,
-  CORE_MEASURE_SHARDS,
-  CORE_OBSERVE_ROLES,
-  warmAcademyCore,
-} from "./academy-core-warm";
+import { CORE_FULL_LAYOUT_MEDIA, CORE_MEASURE_SHARDS, CORE_OBSERVE_ROLES, warmAcademyCore } from "./academy-core-warm";
 import {
   ACADEMY_COMMONS_HREF,
   ACADEMY_HALL_ROUTE,
+  BOOK_ACTIVATION_MS,
+  CORE_CYCLE_ORDER,
   CORE_DESTINATIONS,
   DAILY_ROUTE,
   RANKED_ROUTE,
@@ -71,8 +73,7 @@ import "./academy-core.css";
 
 /** Same grace the Mogzy guide uses before a leave clears a hover message. */
 const FOCUS_RELEASE_MS = 140;
-/** Mogzy's idle line. Touch-neutral: phones have no hover. */
-const IDLE_LINE = "Pick a room and I'll take a reading.";
+const IDLE_LINE = "Pick a book and I'll take a reading.";
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(() =>
@@ -89,15 +90,19 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-/** Percent box for a bay's HTML overlay, from the instrument's own geometry. */
-function bayOverlayStyle(d: CoreDestination): React.CSSProperties {
-  const a = bayAnchor(d.angle);
+/** Percent box for a book cradle, from the instrument's own geometry. */
+function slotStyle(id: string): React.CSSProperties {
+  const s = BOOK_SLOTS[id];
   return {
-    left: `${(a.x / CORE_VIEWBOX.width) * 100}%`,
-    top: `${((a.y - BAY_PLATE.height / 2) / CORE_VIEWBOX.height) * 100}%`,
-    width: `${(BAY_PLATE.width / CORE_VIEWBOX.width) * 100}%`,
-    height: `${(BAY_PLATE.height / CORE_VIEWBOX.height) * 100}%`,
+    left: `${(s.x / CORE_VIEWBOX.width) * 100}%`,
+    top: `${(s.y / CORE_VIEWBOX.height) * 100}%`,
+    width: `${(s.w / CORE_VIEWBOX.width) * 100}%`,
   };
+}
+
+/** A click the browser should keep (new tab, download, context): never delayed. */
+function isModifiedClick(e: React.MouseEvent): boolean {
+  return e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
 }
 
 export default function AcademyCorePage() {
@@ -105,51 +110,46 @@ export default function AcademyCorePage() {
   const reduced = useReducedMotionPreference();
   const sfx = useSfx();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // Same session flag the Hall sets on arrival. The Quiz lobby's onboarding
-  // gate (`redirect_to_hub`) bounces a first-time session that has not seen
-  // the hub back to /lol; this page IS the hub candidate. sessionStorage only.
-  useEffect(() => {
-    markHubVisited();
-  }, []);
+  // Same session flag the Hall sets on arrival: the Quiz lobby's onboarding
+  // gate bounces a first-time session that has not seen the hub back to /lol.
+  useEffect(() => { markHubVisited(); }, []);
 
-  /* ---------------- warm: the Core's critical art, then the rest ---------------- */
-  const [projections, setProjections] = useState<{ inquiryIcon: string | null; observeIcon: string | null } | null>(null);
+  /* ---------------- warm, then the covers ---------------- */
+  const [warmed, setWarmed] = useState(false);
   useEffect(() => {
     let active = true;
-    warmAcademyCore(queryClient).then((icons) => { if (active) setProjections(icons); });
+    warmAcademyCore(queryClient).then(() => { if (active) setWarmed(true); });
     return () => { active = false; };
   }, [queryClient]);
+  // The covers read the same cache entry the warm fills — one request in all.
+  const { data: manifest } = useChampionAssets();
+  const splashes = useMemo(() => {
+    const out: Partial<Record<CoreDestination["id"], string | null>> = {};
+    for (const d of CORE_DESTINATIONS) out[d.id] = getChampionSplash(manifest, d.championName);
+    return out;
+  }, [manifest]);
 
-  /* ---------------- focus state ---------------- */
-  const [focus, setFocus] = useState<CoreFocus>("idle");
+  /* ---------------- focus: hover / keyboard, and the crystal's pinned preview ---------------- */
+  const [hoverFocus, setHoverFocus] = useState<CoreFocus>("idle");
+  const [pinned, setPinned] = useState<CoreFocus>("idle");
+  const focus: CoreFocus = hoverFocus !== "idle" ? hoverFocus : pinned;
   const releaseTimer = useRef<number | null>(null);
   const cancelRelease = () => {
-    if (releaseTimer.current !== null) {
-      window.clearTimeout(releaseTimer.current);
-      releaseTimer.current = null;
-    }
+    if (releaseTimer.current !== null) { window.clearTimeout(releaseTimer.current); releaseTimer.current = null; }
   };
-  const engage = useCallback((id: CoreFocus) => {
-    cancelRelease();
-    setFocus(id);
-  }, []);
+  const engage = useCallback((id: CoreFocus) => { cancelRelease(); setHoverFocus(id); }, []);
   const release = useCallback(() => {
     cancelRelease();
-    releaseTimer.current = window.setTimeout(() => {
-      releaseTimer.current = null;
-      setFocus("idle");
-    }, FOCUS_RELEASE_MS);
+    releaseTimer.current = window.setTimeout(() => { releaseTimer.current = null; setHoverFocus("idle"); }, FOCUS_RELEASE_MS);
   }, []);
   useEffect(() => () => cancelRelease(), []);
 
-  // The focus cue sounds only for authored interactions: a fine pointer, or a
-  // Tab-driven focus — never for focus restored by code (same rule as the Hall).
+  // The focus cue sounds only for authored interactions (fine pointer / Tab).
   const lastTabAt = useRef(Number.NEGATIVE_INFINITY);
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Tab") lastTabAt.current = Date.now();
-    };
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Tab") lastTabAt.current = Date.now(); };
     const onPointerDown = () => { lastTabAt.current = Number.NEGATIVE_INFINITY; };
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("pointerdown", onPointerDown, true);
@@ -161,13 +161,39 @@ export default function AcademyCorePage() {
   const cue = useCallback((input: "pointer" | "keyboard") => {
     if (input === "pointer") {
       if (window.matchMedia?.("(hover: hover) and (pointer: fine)").matches !== true) return;
-    } else if (Date.now() - lastTabAt.current > 1000) {
-      return;
-    }
+    } else if (Date.now() - lastTabAt.current > 1000) return;
     sfx.play("hub.destination.focus");
   }, [sfx]);
 
-  /* ---------------- ambient: only while the stage is on screen ---------------- */
+  /* ---------------- activation → navigation ---------------- */
+  const [activating, setActivating] = useState<CoreFocus | null>(null);
+  const activationTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (activationTimer.current !== null) window.clearTimeout(activationTimer.current); }, []);
+  const onBookClick = useCallback((d: CoreDestination, e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (d.to === "/quiz") trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_book" });
+    if (isModifiedClick(e)) return; // the browser's own behaviour, untouched
+    if (reduced) return; // the Link navigates at once
+    e.preventDefault();
+    if (activationTimer.current !== null) return; // a second press changes nothing
+    setActivating(d.id);
+    setHoverFocus(d.id);
+    activationTimer.current = window.setTimeout(() => {
+      activationTimer.current = null;
+      navigate(d.to);
+    }, BOOK_ACTIVATION_MS);
+  }, [navigate, reduced]);
+
+  /* ---------------- crystal: cycle previews, never navigate ---------------- */
+  const cycle = useCallback(() => {
+    setPinned((prev) => {
+      const i = CORE_CYCLE_ORDER.indexOf(prev as (typeof CORE_CYCLE_ORDER)[number]);
+      return i < 0 ? CORE_CYCLE_ORDER[0] : i === CORE_CYCLE_ORDER.length - 1 ? "idle" : CORE_CYCLE_ORDER[i + 1];
+    });
+    cancelRelease();
+    setHoverFocus("idle");
+  }, []);
+
+  /* ---------------- ambient, only while on screen ---------------- */
   const stageRef = useRef<HTMLDivElement>(null);
   const [onScreen, setOnScreen] = useState(true);
   useEffect(() => {
@@ -179,12 +205,7 @@ export default function AcademyCorePage() {
   }, []);
   const ambient = onScreen && !reduced;
 
-  /* ---------------- the floor: one line the bench, the book and Mogzy share ----------------
-     The chassis feet sit at a fixed fraction of the stage (582/640 of its
-     height). The bench edge and the console's resting line are driven from
-     that measurement through one CSS variable, so the book's base, Mogzy's
-     feet and the instrument's feet land on the same physical surface at every
-     viewport. ResizeObserver only: nothing runs per frame. */
+  /* ---------------- the floor: bench edge from the chassis feet ---------------- */
   const heroRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const stage = stageRef.current;
@@ -193,7 +214,7 @@ export default function AcademyCorePage() {
     const measure = () => {
       const s = stage.getBoundingClientRect();
       const h = hero.getBoundingClientRect();
-      const feetY = s.top + s.height * (582 / 640);
+      const feetY = s.top + s.height * (814 / CORE_VIEWBOX.height);
       hero.style.setProperty("--acore-floor", `${Math.max(0, Math.round(h.bottom - feetY))}px`);
     };
     measure();
@@ -206,134 +227,145 @@ export default function AcademyCorePage() {
   /* ---------------- real data, read-only ---------------- */
   const daily = useDailyChallengeStatus();
   const dailyResume = daily.known && daily.resumable && !daily.completed;
-  const dailyStatusLine = !daily.known
-    ? null
-    : daily.completed
-      ? "Today's Daily is complete."
-      : daily.resumable
-        ? "A run is in progress — pick up where you left off."
-        : null;
-
-  // One Patch Brief feed serves the book AND the Archives projection.
   const broadcastFeed = usePatchBriefFeed();
-  const brief = broadcastFeed.status === "ready"
-    ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null
-    : null;
+  const brief = broadcastFeed.status === "ready" ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null : null;
 
   const media = useMemo<CoreMedia>(() => ({
-    inquiryIcon: projections?.inquiryIcon ?? null,
-    observeIcon: projections?.observeIcon ?? null,
-    // The book has already requested these exact URLs; the strata reuse them.
+    // the projections reuse the cover art already in cache — no extra fetch
+    art: warmed ? splashes : {},
     strataIcons: brief ? brief.sections.flatMap((s) => s.entries).slice(0, 4).map((e) => e.iconUrl) : [],
     strataLabel: brief ? brief.patchLabel : null,
-    measureShards: projections ? CORE_MEASURE_SHARDS : undefined,
-    observeRoles: projections ? CORE_OBSERVE_ROLES : [],
-  }), [projections, brief]);
+    measureShards: warmed ? CORE_MEASURE_SHARDS : undefined,
+    observeRoles: warmed ? CORE_OBSERVE_ROLES : [],
+  }), [warmed, splashes, brief]);
 
   const focused = destinationById(focus);
   const mogzyLine = focused ? focused.preview : IDLE_LINE;
+  const previewLabel = focused ? `Previewing ${focused.title}` : "No room previewed";
 
-  /* ---------------- bay handlers ---------------- */
-  const bayHandlers = useMemo(() => {
-    const map = new Map<CoreDestination["id"], {
-      onPointerEnter: (e: React.PointerEvent) => void;
-      onPointerLeave: () => void;
-      onPointerDown: () => void;
-      onFocus: () => void;
-      onBlur: () => void;
-      onClick: () => void;
-    }>();
-    for (const d of CORE_DESTINATIONS) {
-      map.set(d.id, {
-        onPointerEnter: (e) => {
-          prefetchRoute(d.to, { intent: true });
-          if (e.pointerType === "touch") return;
-          engage(d.id);
-          cue("pointer");
-        },
-        onPointerLeave: () => release(),
-        onPointerDown: () => {
-          prefetchRoute(d.to, { intent: true });
-          engage(d.id);
-        },
-        onFocus: () => {
-          prefetchRoute(d.to, { intent: true });
-          engage(d.id);
-          cue("keyboard");
-        },
-        onBlur: () => release(),
-        onClick: () => {
-          if (d.to === "/quiz") {
-            // Diagnostic "which door" only — canonical leaguecraft_opened fires on /quiz.
-            trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_bay" });
-          }
-        },
-      });
-    }
-    return map;
-  }, [engage, release, cue]);
-
-  const renderBay = (d: CoreDestination, variant: "mounted" | "row") => {
-    const h = bayHandlers.get(d.id)!;
-    const active = focus === d.id;
-    return (
-      <Link
-        key={d.id}
+  /* ---------------- a mounted book ---------------- */
+  const renderBook = (d: CoreDestination, variant: "mounted" | "tier") => (
+    <div
+      key={d.id}
+      className={`acore-slot acore-slot-${variant} acore-slot-${d.tier}`}
+      data-bay={d.id}
+      data-active={focus === d.id ? "true" : "false"}
+      data-activating={activating === d.id ? "true" : "false"}
+      data-testid={`academy-core-slot-${d.id}`}
+      style={variant === "mounted" ? slotStyle(d.id) : undefined}
+      onPointerEnter={(e) => {
+        prefetchRoute(d.to, { intent: true });
+        if (e.pointerType === "touch") return;
+        engage(d.id);
+        cue("pointer");
+      }}
+      onPointerLeave={() => release()}
+      onPointerDown={() => { prefetchRoute(d.to, { intent: true }); engage(d.id); }}
+      onFocus={() => { prefetchRoute(d.to, { intent: true }); engage(d.id); cue("keyboard"); }}
+      onBlur={() => release()}
+    >
+      <AcademyHubBook
         to={d.to}
-        className={`acore-bay-link acore-bay-link-${variant}`}
-        data-bay={d.id}
-        data-active={active ? "true" : "false"}
-        data-testid={`academy-core-bay-${d.id}`}
-        aria-describedby={coreBayDescriptionId(d.id)}
-        style={variant === "mounted" ? bayOverlayStyle(d) : undefined}
-        {...h}
+        title={d.title}
+        coverTitle={d.coverTitle}
+        splashUrl={splashes[d.id] ?? null}
+        splashPosition={d.splashPosition}
+        describedBy={coreBayDescriptionId(d.id)}
+        onClick={(e) => onBookClick(d, e)}
+      />
+    </div>
+  );
+
+  const upper = CORE_DESTINATIONS.filter((d) => d.tier === "upper");
+  const lower = CORE_DESTINATIONS.filter((d) => d.tier === "lower");
+
+  const shortcuts = (
+    <div className="acore-shortcuts" data-testid="academy-core-shortcuts">
+      <Link
+        to={DAILY_ROUTE}
+        state={DAILY_START_STATE}
+        className="acore-cta acore-cta-primary"
+        data-testid="academy-core-daily"
+        onPointerEnter={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
+        onFocus={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
       >
-        <span className="acore-bay-lampcell" aria-hidden />
-        <span className="acore-bay-glyph" aria-hidden>
-          <d.Icon strokeWidth={1.75} />
-        </span>
-        <span className="acore-bay-text">
-          <span className="acore-bay-eyebrow" aria-hidden>Bay {d.bay} · {d.readout}</span>
-          <span className="acore-bay-title">{d.title}</span>
-          {/* Visible on rows (no hover on phones); the same sentence reaches AT
-              through aria-describedby, so it stays out of the accessible name. */}
-          {variant === "row" && <span className="acore-bay-preview" aria-hidden>{d.preview}</span>}
-        </span>
-        <ArrowUpRight className="acore-bay-arrow" aria-hidden />
+        <span className="acore-cta-key" aria-hidden>▶</span>
+        <span className="acore-cta-label">{dailyResume ? "Resume Daily Challenge" : "Play Daily Challenge"}</span>
       </Link>
-    );
-  };
+      <Link
+        to={RANKED_ROUTE}
+        className="acore-cta acore-cta-secondary"
+        data-testid="academy-core-ranked"
+        onPointerEnter={() => prefetchRoute("/quiz", { intent: true })}
+        onFocus={() => prefetchRoute("/quiz", { intent: true })}
+        onClick={() => trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_ranked" })}
+      >
+        <span className="acore-cta-label">Ranked</span>
+        <span className="acore-cta-hint" aria-hidden>opens mode selection</span>
+      </Link>
+    </div>
+  );
 
   const secondScreen = (
     <nav className="acore-second-screen" aria-label="Academy rooms beyond the Core">
-      <a href={ACADEMY_COMMONS_HREF} className="acore-minor-link" data-testid="academy-core-commons-link">
-        Academy Commons
-      </a>
-      <Link to={ACADEMY_HALL_ROUTE} className="acore-minor-link" data-testid="academy-core-hall-link">
-        Academy Hall
-      </Link>
+      <a href={ACADEMY_COMMONS_HREF} className="acore-minor-link" data-testid="academy-core-commons-link">Academy Commons</a>
+      <Link to={ACADEMY_HALL_ROUTE} className="acore-minor-link" data-testid="academy-core-hall-link">Academy Hall</Link>
     </nav>
+  );
+
+  const crystalButton = (
+    <button
+      type="button"
+      className="acore-crystal-button"
+      data-testid="academy-core-crystal"
+      aria-label="Cycle the room preview in the crystal"
+      aria-describedby="acore-preview-readout"
+      onClick={cycle}
+      onPointerEnter={() => cancelRelease()}
+    >
+      <span className="sr-only">{previewLabel}</span>
+    </button>
+  );
+
+  const stage = (
+    <div className="acore-stagewrap">
+      <div ref={stageRef} className="acore-stage" data-focus={focus} data-activating={activating ?? ""} data-testid="academy-core-stage">
+        <AcademyCoreInstrument focus={focus} activating={activating} compact={!fullLayout} ambient={ambient} media={media} />
+        {fullLayout && (
+          <nav className="acore-books-mounted" aria-label="Academy rooms">
+            {CORE_DESTINATIONS.map((d) => renderBook(d, "mounted"))}
+          </nav>
+        )}
+        <div
+          className={`acore-crystal-hit${fullLayout ? "" : " acore-crystal-hit-compact"}`}
+          style={fullLayout ? { left: "50%", top: `${(520 / CORE_VIEWBOX.height) * 100}%` } : undefined}
+        >
+          {crystalButton}
+        </div>
+        <p id="acore-preview-readout" className="acore-preview-readout" data-testid="academy-core-preview" aria-live="polite">
+          {previewLabel}
+        </p>
+        <MogzyOperator
+          focus={focus}
+          line={mogzyLine}
+          ambient={ambient}
+          reduced={reduced}
+          facing={fullLayout ? "left" : "right"}
+          reactionsReady={warmed}
+        />
+      </div>
+    </div>
   );
 
   return (
     <div className="acore-root" data-layout={fullLayout ? "full" : "stacked"} data-ambient={ambient ? "on" : "off"} data-testid="academy-core">
-      <SEOHead
-        title="Academy Core — Mogzy Academy (preview)"
-        description="Preview of the Academy Core home hub."
-        path="/lol/dev/academy-core"
-        noindex
-      />
+      <SEOHead title="Academy Core — Mogzy Academy (preview)" description="Preview of the Academy Core home hub." path="/lol/dev/academy-core" noindex />
 
-      {/* sr-only bay descriptions, referenced by aria-describedby */}
       <div className="sr-only">
-        {CORE_DESTINATIONS.map((d) => (
-          <span key={d.id} id={coreBayDescriptionId(d.id)}>{d.preview}</span>
-        ))}
+        {CORE_DESTINATIONS.map((d) => <span key={d.id} id={coreBayDescriptionId(d.id)}>{d.preview}</span>)}
       </div>
 
       <section ref={heroRef} className="acore-hero" aria-labelledby="acore-title">
-        {/* The workshop: wall, bench, and two pools of light — one warm over the
-            console and book, one Hextech over the Core. Pointer-inert. */}
         <div className="acore-room" aria-hidden>
           <div className="acore-room-wall" />
           <div className="acore-room-pilaster acore-room-pilaster-l" />
@@ -344,47 +376,13 @@ export default function AcademyCorePage() {
           <div className="acore-room-bench-edge" />
         </div>
 
-        {/* ---------------- console: brand + actions + the book ---------------- */}
-        <div className="acore-console">
-          <p className="acore-eyebrow">Mogzy&rsquo;s Hextech Workshop</p>
-          <h1 id="acore-title" className="acore-title">Mogzy Academy</h1>
-          <p className="acore-lede">
-            One peculiar instrument. Four rooms. Start with today&rsquo;s Daily.
-          </p>
-
-          <div className="acore-actions">
-            <Link
-              to={DAILY_ROUTE}
-              state={DAILY_START_STATE}
-              className="acore-cta acore-cta-primary"
-              data-testid="academy-core-daily"
-              onPointerEnter={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
-              onFocus={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
-            >
-              <span className="acore-cta-key" aria-hidden>▶</span>
-              <span className="acore-cta-label">
-                {dailyResume ? "Resume Daily Challenge" : "Play Daily Challenge"}
-              </span>
-            </Link>
-            <Link
-              to={RANKED_ROUTE}
-              className="acore-cta acore-cta-secondary"
-              data-testid="academy-core-ranked"
-              onPointerEnter={() => prefetchRoute("/quiz", { intent: true })}
-              onFocus={() => prefetchRoute("/quiz", { intent: true })}
-              onClick={() => trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_ranked" })}
-            >
-              <span className="acore-cta-label">Ranked</span>
-              <span className="acore-cta-hint" aria-hidden>enter the queue</span>
-            </Link>
-          </div>
-          {dailyStatusLine && (
-            <p className="acore-status" data-testid="academy-core-daily-status">{dailyStatusLine}</p>
-          )}
-
-          {/* The real Patch Report book, on the bench below the actions (desktop).
-              Its layout box is the drawn book (geometry reserved by the painting's
-              intrinsic size), with the radio dock as its control deck. */}
+        {/* ---------------- the lectern island: brand, Daily, the real Patch Report book ---------------- */}
+        <div className="acore-island">
+          <header className="acore-brand">
+            <p className="acore-eyebrow">Mogzy&rsquo;s Hextech Workshop</p>
+            <h1 id="acore-title" className="acore-title">Mogzy Academy</h1>
+          </header>
+          {shortcuts}
           {fullLayout && (
             <div className="acore-book" data-testid="academy-core-book">
               <AcademyBroadcastCenterpiece feed={broadcastFeed} className="acore-book-centerpiece" />
@@ -393,31 +391,17 @@ export default function AcademyCorePage() {
           {fullLayout && secondScreen}
         </div>
 
-        {/* ---------------- the instrument, with Mogzy at the controls ---------------- */}
-        <div className="acore-stagewrap">
-          <div ref={stageRef} className="acore-stage" data-focus={focus} data-testid="academy-core-stage">
-            <AcademyCoreInstrument focus={focus} compact={!fullLayout} ambient={ambient} media={media} />
-            {fullLayout && (
-              <nav className="acore-bays-mounted" aria-label="Academy rooms">
-                {CORE_DESTINATIONS.map((d) => renderBay(d, "mounted"))}
-              </nav>
-            )}
-            <MogzyOperator
-              focus={focus}
-              line={mogzyLine}
-              ambient={ambient}
-              reduced={reduced}
-              reactionsReady={projections !== null}
-            />
-          </div>
-        </div>
-
-        {!fullLayout && (
+        {/* ---------------- the Navigator ---------------- */}
+        {fullLayout ? (
+          stage
+        ) : (
           <>
-            <nav className="acore-bays-rows" aria-label="Academy rooms">
-              {CORE_DESTINATIONS.map((d) => renderBay(d, "row"))}
+            {/* phones: the upper pair, the crystal band between the tiers, then the lower pair */}
+            <nav className="acore-books-tiers" aria-label="Academy rooms">
+              <div className="acore-tier acore-tier-upper">{upper.map((d) => renderBook(d, "tier"))}</div>
+              {stage}
+              <div className="acore-tier acore-tier-lower">{lower.map((d) => renderBook(d, "tier"))}</div>
             </nav>
-            {/* Phones: the existing mobile Patch Report variant follows the rooms. */}
             <div className="acore-book acore-book-mobile" data-testid="academy-core-book-mobile">
               <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
             </div>
