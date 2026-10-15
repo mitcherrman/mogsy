@@ -168,6 +168,38 @@ describe("constellation fan", () => {
   });
 });
 
+describe("MG-UX2 responsive refinements", () => {
+  it("uses additional room for the tall desktop rail without scaling controls", () => {
+    for (const K of [4, 5]) {
+      const N = K === 4 ? 8 : 10;
+      const p = planBoard({ width: 685, maxHeight: 820, groupCount: K, labels: LONG.slice(0, N), tier: "compact" });
+      expect(p.rail).toBe(true);
+      expect(p.rows?.rowH).toBeGreaterThanOrEqual(100);
+      expect(p.sigil).toBeGreaterThanOrEqual(44);
+      expect(planHeight(p)).toBeLessThanOrEqual(820);
+      checkPlan(p, K, N);
+    }
+  });
+
+  it("keeps seated labels at two lines while fitting the dense phone well more tightly", () => {
+    for (const width of [322, 352, 380]) {
+      const p = planBoard({ width, groupCount: 5, labels: LONG, tier: "compact" });
+      expect(p.seatCaption.lines).toBe(2);
+      expect(p.well.caption.lines).toBe(1);
+      expect(planHeight(p)).toBeLessThanOrEqual(690);
+      expect(p.ledger.h).toBeGreaterThanOrEqual(ledgerNeed(10, p.ledger.w));
+      checkPlan(p, 5, 10);
+    }
+  });
+
+  it("preserves two-line waiting-well labels for three and four trees", () => {
+    for (const K of [3, 4]) {
+      const p = planBoard({ width: 322, groupCount: K, labels: LONG.slice(0, K === 3 ? 7 : 8), tier: "compact" });
+      expect(p.well.caption.lines).toBe(2);
+    }
+  });
+});
+
 describe("phones stay as short as M1's board", () => {
   // M1/MG-P3 measured these roots in the arena (322px wide): 494 / 560 / 626.
   for (const [K, N, m1] of [[3, 7, 494], [4, 8, 560], [5, 10, 626]] as const) {
