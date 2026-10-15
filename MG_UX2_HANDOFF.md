@@ -26,3 +26,15 @@ Follow-up to draft PR #30: retain MG-UX1 component and real Ranked grading, impr
 3. Test real Ranked viewport accessibility and server grading before declaring release-ready.
 4. Owner visually reviews fresh captures (not old MG-UX1 comparison images).
 5. Only after acceptance, merge MG-UX2 into PR #30, then merge/publish production.
+
+## Owner-approved teaching inspector addendum
+- Original default correction ledger remains fitted, all-visible and stationary, with no added scrolling or enlarged footprint.
+- On a **wrong revealed board** once the ledger is showing, the previously disabled 44px Lock/Resolved footer slot becomes an accessible **Details / Summary** toggle. Selecting Details overlays a voluntarily scrollable, full-label explanation of every incorrect placement (player's original group → server's correct group), inside the existing ledger box. The overlay never grades or submits and disappears across rounds. Exact boards retain Resolved.
+- Corrected full explanations are also present as accessible labels and browser titles on individual rows.
+- Stable reset uses phase and presence-of-reveal rather than reveal object reference, so server polling cannot collapse an open inspector.
+- Dedicated Vitest verifies accessible toggle, complete explanations, fixed board height, and zero additional Lock callbacks.
+- The in-place mobile height refinement does **not** prove global controls are visible without scrolling. Before production launch, a real authenticated owner needs to verify that Forfeit/Rules/timeline can still be reached by ordinary vertical scroll on 390×844 and 360×640. Avoid falsely claiming all controls fit at once.
+
+## CI evidence
+- First MG-UX2 code checkpoint [run 38691995426](https://github.com/mitcherrman/mogsy/actions/runs/38691995426) passed **123/123 Vitest**, lint, production build, **13/13** dev browser cases (including answer-secrecy pre-lock and 6 viewports with reduced-motion).
+- The later opt-in inspector and row typography commits require **fresh CI**. Track the latest code SHA, not prior successes. No real backend scoring E2E is included.
