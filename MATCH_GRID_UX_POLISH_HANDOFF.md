@@ -183,3 +183,17 @@ disposable copy of the 2026-09-26 production snapshot, HS256 test persona, headl
 5. The name plate is a visual aid only (`aria-hidden`); screen readers already get the full name from
    the sigil's accessible name. The Lock `seated/N` pill is `aria-hidden` too (status line carries it).
 6. Shared arena items noticed but out of scope: none new.
+
+
+---
+
+## Command Center checkpoint — PR #30 (2026-10-14 Pacific)
+
+- Draft PR: https://github.com/mitcherrman/mogsy/pull/30
+- Current-main integration parent: `d3629f55db9a216ff16512d237171493bf0e1acb`
+- Integration commit: `1fb9d645ce887a68fd77bd863754c65123be95b0`
+- Original finished work: `36fb2e075fbefaf9e9e1feb1394236725668258b`
+- Six changed implementation/test files have identical blob hashes on current main and old baseline `4b13c042`; exact polished versions were transplanted without shared-host edits. GitHub compare verifies only 25 files changed (six code/test, 18 audits, this handoff), one commit ahead and zero behind as of initial PR verification.
+- **CI status:** No GitHub Actions runs or commit statuses were returned for the integrated SHA at the time checked. This is **not** a successful validation result. Browser/regression certification on the new shared arena remains open. The connector execution environment cannot directly clone github.com and run npm/Playwright.
+- **Deployment:** not merged or published. No new backend migrations or data changes. Owner visual acceptance and a new-baseline test result remain required before release.
+- **Next:** run focused Vitest/ESLint/typecheck, Match Grid continuity (12) and live-release (8) on this exact branch/current backend; inspect 360×640, 390×844, 1280×600 five-tree and tall-desktop viewport output, and confirm answer secrecy and grading. Review PR #30 before merge.
