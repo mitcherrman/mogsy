@@ -16,6 +16,9 @@ on:
       - "src/components/ranked-rules/**"
       - "src/components/game-results/**"
       - "src/pages/Quiz.tsx"
+      - "src/lib/platform-policy/**"
+      - "src/pages/admin/AdminPlatformPolicies*"
+      - "src/components/quiz/centre-stage/**"
       - "src/lib/ranked-public/matchHost*"
       - "src/pages/quiz-ranked/**"
       - ".github/workflows/role-challenge-review.yml"
@@ -48,6 +51,9 @@ jobs:
           src/components/game-results
           src/lib/ranked-public/matchHost.test.ts
           src/pages/quiz-ranked
+          src/lib/platform-policy/policy.test.ts
+          src/pages/admin/AdminPlatformPolicies.test.tsx
+          src/components/quiz/centre-stage/centreStage.test.tsx
       - name: Typecheck the whole frontend
         run: |
           npx tsc --project tsconfig.app.json --noEmit --pretty false
