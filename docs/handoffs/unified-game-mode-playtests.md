@@ -152,7 +152,7 @@ tested branch tip.
 | Backend `ugmp/unified-playtests-be` → `master` | **merged** as `8c1d9b16` |
 | Railway `web` | **deployed** `8c1d9b16`, status SUCCESS, startup complete. The new routes answer 403 without an owner session (before: `/api/admin/playtests/status` was 404). `/api/meta/champions` and `/assets` return 200. `NUMERIC_LAB_ENABLED=1` is already set on `web`; no variable changed. |
 | Frontend `ugmp/unified-playtests-fe` → `main` | **merged** as `21a6705b` (handoff fast-forwards follow) |
-| Lovable sync + publish | **NOT PUBLISHED.** mogzy.lol still served `index-DnSOZ4RY.js` (no `/admin/playtests/` route) 6+ minutes after the push. Lovable needs its Publish step, and this session cannot sign in to Lovable. The new frontend is not live yet. |
+| Lovable sync + publish | **LIVE** (2026-10-15 ~03:40 PT). The owner's first publish still served the old bundle, because Lovable had not yet pulled `main`. A new deployment followed: mogzy.lol now serves `index-BkNzb-YR.js` with the `/admin/playtests/` route. Crawling all 430 reachable chunks finds the hub grid, the status and interaction-lab clients, the "Back to Playtests" origin and the phone stage fix. None of the 10 pack-answer markers appears in any chunk. |
 
 Local re-run recipe (nothing committed beyond the spec):
 * Run the backend through `run_backend.py` (HS256 secret, owner-state and queue-switch stand-ins,
@@ -173,10 +173,8 @@ Local re-run recipe (nothing committed beyond the spec):
 
 ## 9. Next exact action
 
-1. **Owner: publish the frontend in Lovable.** Confirm that Lovable shows `main` at `21a6705b` or
-   a later docs-only commit, then Publish. Verify that mogzy.lol's entry bundle changed (it was
-   `index-DnSOZ4RY.js`) and that it contains `/admin/playtests/`.
-2. **Owner smoke on the live site,** signed in with MFA:
+1. ~~Owner: publish the frontend in Lovable.~~ Done and verified (entry `index-BkNzb-YR.js`).
+2. **Owner smoke on the live site** (the one check that cannot be automated), signed in with MFA:
    1. Open Admin → Leaguecraft → Ranked → Playtests. All 10 cards should be available.
    2. Play one Rangefinder and one Glyph Press round. Check that the Glyph Press clue image shows.
    3. Lock one Stat Drop and one Combat Estimate round.
