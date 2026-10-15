@@ -1,0 +1,31 @@
+name: mobile viewport budget audit (no changes)
+on:
+  push:
+    branches: [audit/mobile-short-viewport-budget-20261015]
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install deps without changing the existing stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Record real arena geometry
+        run: npx playwright test -c playwright.mobile-short-budget.config.ts
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-viewport-budget-evidence
+          path: |
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 3
