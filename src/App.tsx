@@ -46,7 +46,7 @@ import {
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
 import { INTERACTION_LAB_ROUTE, isInteractionLabEnabled } from "@/lib/interaction-grammar/featureGate";
-import { isWorldsExperienceEnabled, WORLDS_EXPERIENCE_ROUTE } from "@/lib/pro-play/worldsExperience/productionGate";
+import { isWorldsExperienceEnabled, WORLDS_EXPERIENCE_ROUTE, WORLDS_EXPERIENCE_BASE, WORLDS_ROLLBACK_SCREEN_PATHS } from "@/lib/pro-play/worldsExperience/productionGate";
 import { Suspense } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
@@ -686,7 +686,14 @@ export const appRouter = createBrowserRouter(
                       untouched. Same page component, same data read. */}
                   {isWorldsExperienceEnabled() ? (
                     <Route path={WORLDS_EXPERIENCE_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTournament /></Suspense>} />
-                  ) : null}
+                  ) : (
+                    /* UX3C: flag off, a shared screen link lands on the
+                       canonical Worlds page instead of the 404. Explicit
+                       paths only (see WORLDS_ROLLBACK_SCREEN_PATHS). */
+                    WORLDS_ROLLBACK_SCREEN_PATHS.map((path) => (
+                      <Route key={path} path={path} element={<Navigate to={WORLDS_EXPERIENCE_BASE} replace />} />
+                    ))
+                  )}
                   {/* LIVE1 match centre. It shipped at /esports/live (below,
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}
