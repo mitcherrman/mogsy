@@ -852,6 +852,29 @@ function Ledger({ content, reveal, shown, detailsOpen, box, groupLabel, groupHue
             })}
           </ul>
         )}
+        {!exact && detailsOpen ? (
+          <div className="mg-ledger-details" role="region" aria-label="Full correction details">
+            <p className="mg-ledger-details-heading">Each correction · scroll to review</p>
+            <ol className="mg-ledger-details-list">
+              {wrong.map((e) => {
+                const from = reveal.assignments[e.token]
+                  ? groupLabel(reveal.assignments[e.token])
+                  : "Unassigned";
+                const to = groupLabel(reveal.canonical[e.token]?.[0] ?? "");
+                return (
+                  <li key={e.token} className="mg-ledger-details-item">
+                    <span className="mg-ledger-details-name">{e.label}</span>
+                    <span className="mg-ledger-details-route">
+                      <span className="mg-ledger-details-was">Was {from}</span>
+                      <span aria-hidden> → </span>
+                      <strong>{to}</strong>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ) : null}
       </div>
     </section>
   );
