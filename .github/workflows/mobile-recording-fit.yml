@@ -1,13 +1,12 @@
 name: Mobile Recording Fit
 on:
-  push:
-    branches: [fix/mobile-recording-viewport-fit-20261015]
   pull_request:
     paths:
       - 'src/index.css'
       - 'e2e/mobile-recording-fit.spec.ts'
       - 'playwright.mobile-recording.config.ts'
       - '.github/workflows/mobile-recording-fit.yml'
+      - 'docs/handoffs/MVFIT1-mobile-recording-fit.md'
 permissions:
   contents: read
 jobs:

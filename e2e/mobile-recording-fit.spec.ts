@@ -1,7 +1,14 @@
 import { test, expect } from "@playwright/test";
 /** MVFIT1 — real CanonicalArena, no extra Frame, no backend. */
 const shapes = ["opts4","media","stressA","realMax","family"] as const;
-const sizes = [{w:509,h:709},{w:390,h:844},{w:360,h:640}] as const;
+const sizes = [
+  {w:509,h:709}, // Shorts target
+  {w:509,h:739}, // just before reserves finish expanding
+  {w:509,h:761}, // just after old 760px breakpoint
+  {w:390,h:844}, // ordinary phone must remain unchanged
+  {w:600,h:820}, // wider short phone - media aspect stress
+  {w:360,h:640}, // fallback allowed only for truly long content
+] as const;
 const uri = (q:string) => "/dev/ranked-shell-probe?q="+q+"&frame=0&lol=1&points=4:7-5&name=Kalista_Enjoyer&role=mid&orole=support&progression=0";
 async function openShape(page:import("@playwright/test").Page,q:string){
   await page.goto(uri(q));
@@ -62,7 +69,7 @@ for(const vp of sizes)for(const shape of shapes){
       expect(m.choices[3].bottom,JSON.stringify(m)).toBeLessThanOrEqual(m.bar.top-1);
     }
     if(vp.w===509 && shape==="media"){
-      await page.screenshot({path:"test-results/mvfit-509x709-item.png",fullPage:false});
+      await page.screenshot({path:"test-results/mvfit-"+vp.w+"x"+vp.h+"-item.png",fullPage:false});
     }
   });
 }
