@@ -19257,3 +19257,45 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
 /* No dark-theme variant on purpose: the arena folio is parchment in both
    themes and the prompt is dark ink, so the scene keeps its own parchment
    base everywhere. */
+
+
+/* MAF1 — PHONE ARENA VISIBILITY / CREATOR CAPTURE.
+   RMOB2's duel layout is a viewport HEIGHT FLOOR, not a cap. A Journey reserves
+   12.5rem board + 8.75rem prompt + 17.5rem answers = 620px BEFORE match bar,
+   chrome, gutters or timeline. On short phones the final choices and the
+   timeline therefore disappear below the fold. Keep these reserves identical
+   for EVERY Journey card at the same viewport, but spend less on the board
+   and the empty portions of prompt/answers as the available height shrinks.
+   Their boxes are still minimums: real long content grows the document and
+   remains readable, never gets cropped inside an extra scroll container.
+
+   The bottom bar remains in the same flow and uses sticky positioning only
+   when that document must scroll, so the five-node timeline/controls remain
+   visible while a long question is being read. The normal one-screen arena
+   and desktop geometry are not changed. */
+@media (max-width: 1023.98px) {
+  .ranked-shell[data-phone-arena="true"] > .ranked-mobile-bottombar {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 30;
+    flex-shrink: 0;
+    background: #060c14;
+    border-top: 1px solid rgba(214, 184, 110, 0.22);
+    border-radius: 0.25rem;
+  }
+}
+@media (max-width: 639.98px) {
+  .ranked-shell[data-phone-arena="true"] .journey-stage {
+    /* At 844px these are the existing full-size 200/140/280px reserves.
+       At 740px spare BOARD height yields first; at 640px the compact board
+       still seats two 26px portraits, names and the kit in its two-row grid.
+       Natural prompt/answer growth is explicitly allowed for outliers. */
+    --jb-band-h: clamp(6rem, calc(100dvh - 39rem), 12.5rem);
+    --jq-prompt-h: clamp(6.5rem, calc(100dvh - 39rem), 8.75rem);
+    /* Preserve the measured 280px four-answer floor, especially four
+       long damage-formula options (JP2 measured 271px at 375px width).
+       Shrinking this region made the Zed/Ahri 4th tablet leave the
+       parchment at 360px. The board is the flexible region instead. */
+    --jq-answers-h: 17.5rem;
+  }
+}
