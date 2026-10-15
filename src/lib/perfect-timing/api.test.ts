@@ -18,7 +18,7 @@ function client(...replies: (Response | "network")[]) {
     if (r === "network") throw new TypeError("Failed to fetch");
     return r;
   });
-  const sleep = vi.fn(async () => {});
+  const sleep = vi.fn(async (_ms: number) => {});
   return { api: perfectTimingApi({ fetchImpl: fetchImpl as unknown as typeof fetch, sleep }), fetchImpl, sleep };
 }
 

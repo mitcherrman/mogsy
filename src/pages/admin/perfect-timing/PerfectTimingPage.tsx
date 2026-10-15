@@ -308,7 +308,8 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin" }: 
       <span className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-400/60 bg-amber-950/60 px-2 py-0.5 uppercase tracking-[0.14em] text-amber-100">
         <FlaskConical aria-hidden className="size-3" /> Prototype · owner lab
       </span>
-      <span className="ml-auto flex shrink-0 items-center gap-1">
+      {/* Left-aligned: the app's floating account cluster covers this row's right end at lg. */}
+      <span className="flex shrink-0 items-center gap-1">
         {actions}
         <Link to={exitTo} className="rounded px-2 py-0.5 underline-offset-2 hover:underline">Exit lab</Link>
       </span>
