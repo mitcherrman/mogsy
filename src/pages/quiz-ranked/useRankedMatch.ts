@@ -204,6 +204,10 @@ export interface MatchController {
   /** True only while an ability draft write is in flight. */
   abilityBusy: boolean;
   actionError: string | null;
+  /** Transient public-snapshot failure, e.g. 502 during a Railway release.
+   * Never changes grading, cards or submission authority; clears on the next
+   * successful server snapshot. */
+  connectionInterrupted: boolean;
   error: string | null;
   /**
    * R3: one click. Submits the answer immediately and irrevocably; there is no
@@ -382,6 +386,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const [abilityBusy, setAbilityBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [connectionInterrupted, setConnectionInterrupted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contractError, setContractError] = useState<string | null>(null);
   const [revealHold, setRevealHold] = useState(false);
@@ -793,6 +798,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       }
       setPublicRound(pub);
       setError(null);
+      setConnectionInterrupted(false); // only a successful authoritative read restores online status
       failuresRef.current = 0;
 
       // RB3.2 — THE SERVER RE-DECIDES WHETHER THIS WAS A FRESH ENTRY.
@@ -884,6 +890,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       if (api.isContractError(e)) { failContract("public round", e); return; }
       if (api.isFatal(e)) { setError((e as RankedApiError).message); stoppedRef.current = true; return; }
       failuresRef.current += 1;
+      setConnectionInterrupted(true);
       setError(null);
       setActionError(null);
     } finally {
@@ -986,6 +993,22 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       timerRef.current = window.setTimeout(() => void pollRef.current?.(), 0);
     }
   }, []);
+
+  // A Railway volume handoff interrupts the backend even on a successful
+  // deployment. An OS reconnect or a return to the tab should not spend
+  // another exponential-backoff interval showing a frozen 0s card.
+  // Poke only; the existing one-flight poll remains authoritative.
+  useEffect(() => {
+    if (!matchId) return;
+    const onOnline = () => poke();
+    const onVisible = () => { if (document.visibilityState === "visible") poke(); };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [matchId, poke]);
 
   /**
    * Stop the pending re-arm the moment a hold begins, and kick the loop again
@@ -1366,7 +1389,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, answeredSelection, selectedAbilityId, submitting, abilityBusy, actionError,
-    error, contractError, retry, roundLive, answer, selectAbility,
+    connectionInterrupted, error, contractError, retry, roundLive, answer, selectAbility,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
     submitSegmentChallenge, revealHold, orderForgeLockReveal,

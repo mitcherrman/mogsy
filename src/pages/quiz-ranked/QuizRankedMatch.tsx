@@ -987,8 +987,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const segmentActions = useMemo(() => ({
     submitChallenge: m.submitSegmentChallenge,
     busy: m.submitting,
-    error: m.actionError,
-  }), [m.submitSegmentChallenge, m.submitting, m.actionError]);
+    // Never leave a frozen 0s Stat Check card saying "Locked in — next
+    // card…" while the backend has stopped for a volume-backed deployment.
+    // Neither regrades nor retries submissions; normal snapshot polling is
+    // already idempotent and is what advances the authoritative card.
+    error: m.connectionInterrupted ? "Connection lost — reconnecting…" : m.actionError,
+  }), [m.submitSegmentChallenge, m.submitting, m.actionError, m.connectionInterrupted]);
   void tick;
 
   // ── Ranked-only failure states ─────────────────────────────────────────
@@ -1664,11 +1668,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // doing. What is left is the row's real job: the transient states.
       // Empty string, not a removed row: the box stays reserved, so a
       // submission or an error still appears without moving the arena.
-      text: m.actionError ? m.actionError
+      text: m.connectionInterrupted ? "Connection lost — reconnecting…"
+        : m.actionError ? m.actionError
         : m.submitting ? "Submitting…"
           : m.phase === "locked" ? "Answer locked — waiting for opponent…"
             : "",
-      isError: m.actionError !== null,
+      isError: m.actionError !== null || m.connectionInterrupted,
     },
     // RG1 — the arena's quiet control. Ranked's is Forfeit Match: the ONE
     // intent signal Ranked has, since a route change, a closed tab, a reload

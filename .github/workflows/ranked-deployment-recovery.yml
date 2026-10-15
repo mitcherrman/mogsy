@@ -1,0 +1,32 @@
+name: ranked-deployment-recovery
+
+on:
+  pull_request:
+    paths:
+      - "src/pages/quiz-ranked/useRankedMatch.ts"
+      - "src/pages/quiz-ranked/useRankedMatch.test.tsx"
+      - "src/pages/quiz-ranked/QuizRankedMatch.tsx"
+      - ".github/workflows/ranked-deployment-recovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconnect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install without changing existing stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Ranked match and Stat Check lifecycle tests
+        run: npx vitest run src/pages/quiz-ranked/useRankedMatch.test.tsx src/lib/ranked-core/modules/metaReflexModule.test.tsx
+      - name: Frontend production build
+        run: npx vite build
