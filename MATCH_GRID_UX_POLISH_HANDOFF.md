@@ -197,3 +197,20 @@ disposable copy of the 2026-09-26 production snapshot, HS256 test persona, headl
 - **CI status:** No GitHub Actions runs or commit statuses were returned for the integrated SHA at the time checked. This is **not** a successful validation result. Browser/regression certification on the new shared arena remains open. The connector execution environment cannot directly clone github.com and run npm/Playwright.
 - **Deployment:** not merged or published. No new backend migrations or data changes. Owner visual acceptance and a new-baseline test result remain required before release.
 - **Next:** run focused Vitest/ESLint/typecheck, Match Grid continuity (12) and live-release (8) on this exact branch/current backend; inspect 360×640, 390×844, 1280×600 five-tree and tall-desktop viewport output, and confirm answer secrecy and grading. Review PR #30 before merge.
+
+
+---
+
+## Command Center validation addendum — 2026-10-14 / PR #30
+
+**Verified new-main code base:** `d3629f55db9a216ff16512d237171493bf0e1acb`. Polished Match Grid and layout blobs transplanted without conflicts from `36fb2e07` (other modes inherited untouched). PR #30 is still draft, unmerged, unpublished.
+
+**New integration CI added:** `.github/workflows/match-grid-ux-integration.yml` runs on Match Grid edits, using Node 22, an ephemeral npm install, 120 focused Vitest tests including the Ranked Match Grid module, lint on modified sources/tests, Vite production build, and the self-contained original DEV Match Grid continuity Playwright matrix (12 desktop/phone normal/reduced motion cases + pre-lock answer-leak assertion). No database, production secrets, or Docker used.
+
+- First CI run [38689544213](https://github.com/mitcherrman/mogsy/actions/runs/38689544213): 120 unit tests, lint and build **PASS**; browser job **FAILED 12 of 13** because the original M1 DEV sampler kept recording the *intentional Next-board reset* and saw a new round with a different planned height while React's phase still briefly read `revealed`. Failures were exclusively a size change `revealed/done → revealed/freeze` after clicking Next (35-77 px). This is not evidence of an in-round reveal jump.
+- Narrow test correction commit `fd2c14cdd12228b79ae4047c80bf79fa2a3a2e70`: stop the frame sampler **after the prior reveal reaches done, before pressing Next**; separately click Next and assert new board opens, with page overflow check. This retains the ≤1px within-round continuity assertion for all sampled frames; no production component, styling or gameplay changes.
+- Second CI run [38690032862](https://github.com/mitcherrman/mogsy/actions/runs/38690032862): **SUCCESS** for both jobs. **120/120** Vitest tests, lint, production Vite build and **13/13** Chromium cases (12 viewports/motions + pre-lock no-correctness DOM) passed. This run was on code commit `fd2c14cd`; subsequent documentation-only edits need no runtime recertification.
+
+**Still not proven by CI:** `e2e/match-grid-arena-continuity.spec.ts` and `e2e/match-grid-live-release.spec.ts` need a real disposable authenticated backend and local score oracle; these are skipped absent the test secrets/config and have **not** been re-run against post-Role production main. Original worker evidence (12/12 and 8/8 respectively) remains historical old-base data. Do not claim live owner-match certification from the green DEV CI. Also require owner visual approval of tall desktops and five-tree phone/short desktop screenshots before merge.
+
+**Next:** owner reviews `docs/audits/mg-ux1/` and gives explicit visual approval or adjustments; engineering either executes current-base real-backend acceptance in a suitable connected runner or documents a conscious owner-approved exception before shipping; merge/publish only after gate resolution, then exercise a real owner account. No publication from this PR yet.
