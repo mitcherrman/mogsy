@@ -6,7 +6,7 @@
  * and what a click SENDS is the server's positional card id (so no v4 answer
  * can carry an `item_id` the server refuses).
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readPublicRound } from "@/lib/ranked-public/contracts";
@@ -26,9 +26,9 @@ function parse(state: unknown): SegmentStateView {
   return readPublicRound(body).segmentState!;
 }
 
-function renderBlock(state: SegmentStateView, over: { busy?: boolean; error?: string | null } = {}) {
+function renderBlock(state: SegmentStateView, over: { busy?: boolean; error?: string | null; submitChallenge?: ReturnType<typeof vi.fn> } = {}) {
   const acts = {
-    submitChallenge: vi.fn(),
+    submitChallenge: over.submitChallenge ?? vi.fn(),
     busy: over.busy ?? false,
     error: over.error ?? null,
   };
@@ -138,6 +138,30 @@ describe("Meta Reflex — submission", () => {
     expect(screen.getByTestId("mr-choice-left")).toBeDisabled();
     expect(screen.getByTestId("mr-choice-right")).toBeDisabled();
     // No local verdict: the lock says "sent", never "right" or "wrong".
+    expect(screen.getByTestId("mr-status")).toHaveTextContent("Locked in");
+  });
+
+  it("immediately unlocks the same card when the server refuses the submission", async () => {
+    let settle: (accepted: boolean) => void = () => {};
+    const deferred = new Promise<boolean>((resolve) => { settle = resolve; });
+    const send = vi.fn().mockReturnValueOnce(deferred).mockResolvedValue(true);
+    const { acts } = renderBlock(parse(metaReflexState(0)), { submitChallenge: send });
+    fireEvent.click(screen.getByTestId("mr-choice-left"));
+    expect(screen.getByTestId("mr-choice-left")).toBeDisabled();
+    expect(screen.getByTestId("mr-status")).toHaveTextContent("Locked in");
+    await act(async () => { settle(false); await deferred; });
+    expect(screen.getByTestId("mr-choice-left")).not.toBeDisabled();
+    expect(screen.getByTestId("mr-choice-right")).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId("mr-choice-right"));
+    expect(acts.submitChallenge).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps an ACCEPTED card locked until the authoritative index advances", async () => {
+    const send = vi.fn().mockResolvedValue(true);
+    renderBlock(parse(metaReflexState(0)), { submitChallenge: send });
+    fireEvent.click(screen.getByTestId("mr-choice-left"));
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByTestId("mr-choice-right")).toBeDisabled();
     expect(screen.getByTestId("mr-status")).toHaveTextContent("Locked in");
   });
 
