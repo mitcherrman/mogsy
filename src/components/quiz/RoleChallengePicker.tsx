@@ -58,6 +58,8 @@ const ROLE_SHORT: Record<RoleChallengeRole, string> = {
 
 type Props = {
   enabled: boolean;
+  /** Owner-controlled pause. Does not prevent resuming an existing match. */
+  queueOpen?: boolean;
   hasAccount: boolean;
   onRequireAccount: () => void;
   onEnterMatch: (matchId: string) => void;
@@ -170,7 +172,7 @@ function RunCard({
 }
 
 export default function RoleChallengePicker({
-  enabled, hasAccount, onRequireAccount, onEnterMatch, now = () => new Date(),
+  enabled, queueOpen = true, hasAccount, onRequireAccount, onEnterMatch, now = () => new Date(),
 }: Props) {
   const { isPro, proStatus } = usePremiumSession();
   const plan: RoleChallengePlan = proStatus === "unknown" ? "unknown" : isPro ? "premium" : "free";
@@ -235,7 +237,7 @@ export default function RoleChallengePicker({
   const todaysRun = status?.dailySlot.run ?? null;
   const eligibility = status ? eligibilityView(status, plan, now()) : null;
   const loading = catalogState === "loading" || (hasAccount && statusState === "loading" && !status);
-  const canStart = !!selected && hasAccount && !!eligibility?.canStart && !busy && catalogState === "ready";
+  const canStart = queueOpen && !!selected && hasAccount && !!eligibility?.canStart && !busy && catalogState === "ready";
 
   const choose = (next: () => void) => {
     if (busy) return;
@@ -513,10 +515,10 @@ export default function RoleChallengePicker({
         data-testid="rc-play"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-        {!hasAccount ? "Sign in to play" : busy ? "Starting…" : activeRun ? "Challenge in progress" : "Play Role Challenge"}
+        {!queueOpen ? "Role Challenge Paused" : !hasAccount ? "Sign in to play" : busy ? "Starting…" : activeRun ? "Challenge in progress" : "Play Role Challenge"}
       </button>
       <p className="text-center text-[10px] font-semibold leading-tight" style={{ color: INK.faint }}>
-        {loading ? "Loading…" : "Unrated · No effect on Ranked rating or history"}
+        {!queueOpen ? "New starts are temporarily paused. Existing matches remain playable." : loading ? "Loading…" : "Unrated · No effect on Ranked rating or history"}
       </p>
       </div>
     </div>

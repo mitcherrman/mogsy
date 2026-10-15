@@ -47,6 +47,21 @@ export const WORLDS_EXPERIENCE_BASE = proPlayTournamentUrl(WORLDS_EXPERIENCE_CON
  */
 export const WORLDS_EXPERIENCE_ROUTE = `${WORLDS_EXPERIENCE_BASE}/*`;
 
+/**
+ * UX3C. The screen paths a shared link can carry. With the flag OFF they have
+ * no experience route; each is registered as a `replace` redirect to the
+ * canonical Worlds URL so a rollback never turns a shared link into a 404.
+ * Listed explicitly (not a splat): `worlds-2026/*` also matches the base URL,
+ * which would redirect to itself. Unknown sub-paths stay 404s.
+ */
+export const WORLDS_ROLLBACK_SCREEN_PATHS: readonly string[] = [
+  `${WORLDS_EXPERIENCE_BASE}/stages/play-in`,
+  `${WORLDS_EXPERIENCE_BASE}/stages/swiss`,
+  `${WORLDS_EXPERIENCE_BASE}/stages/knockouts`,
+  `${WORLDS_EXPERIENCE_BASE}/teams`,
+  `${WORLDS_EXPERIENCE_BASE}/schedule`,
+];
+
 /** Whether `pathname` is the Worlds URL or one of its screens. */
 export function isWorldsExperiencePath(pathname: string): boolean {
   return pathname === WORLDS_EXPERIENCE_BASE || pathname.startsWith(`${WORLDS_EXPERIENCE_BASE}/`);

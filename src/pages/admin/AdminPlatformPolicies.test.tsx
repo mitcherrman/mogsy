@@ -113,6 +113,30 @@ describe("loading and rendering", () => {
     }
   });
 
+  it("shows three independent queue pause switches, enabled by default", async () => {
+    renderPanel();
+    for (const field of ["queueDaily", "queueRole", "queueRanked"]) {
+      const section = await screen.findByTestId(`policy-${field}`);
+      expect(section.querySelector('[role="switch"]')).toHaveAttribute("aria-checked", "true");
+    }
+  });
+
+  it("persists a queue pause under its distinct server-enforced key", async () => {
+    renderPanel();
+    const role = await screen.findByTestId("policy-queueRole");
+    mocks.singleRow = row(POLICY_KEYS.queueRoleEnabled, false);
+    fireEvent.click(role.querySelector('[role="switch"]')!);
+    await waitFor(() => expect(mocks.upsertCalls).toEqual([
+      { key: POLICY_KEYS.queueRoleEnabled, value: { enabled: false } },
+    ]));
+    await waitFor(() => expect(role.querySelector('[role="switch"]'))
+      .toHaveAttribute("aria-checked", "false"));
+    expect(screen.getByTestId("policy-queueDaily")
+      .querySelector('[role="switch"]')).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByTestId("policy-queueRanked")
+      .querySelector('[role="switch"]')).toHaveAttribute("aria-checked", "true");
+  });
+
   /**
    * PLAY1 — the Ranked lobby's PLAY scroll. Three independent switches, in
    * the same admin panel and the same `app_settings` table as everything

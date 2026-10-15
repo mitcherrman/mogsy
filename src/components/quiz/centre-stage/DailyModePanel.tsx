@@ -78,11 +78,17 @@ export function dailyModeCopy(daily: DailyStatusView | null): DailyModeCopy {
 export default function DailyModePanel({
   daily,
   onPlay,
+  paused = false,
 }: {
   daily: DailyStatusView | null;
   onPlay?: () => void;
+  /** Owner queue pause; an existing run may still be resumed. */
+  paused?: boolean;
 }) {
   const copy = dailyModeCopy(daily);
+  const displayCopy = paused
+    ? { ...copy, status: "Daily Challenge is temporarily unavailable.", action: "Daily Paused" }
+    : copy;
   const score = daily?.known && typeof daily.score === "number" ? daily.score : null;
   const correct = daily?.known && typeof daily.correct === "number" ? daily.correct : null;
   const answered = daily?.known && typeof daily.answered === "number" ? daily.answered : null;
@@ -102,7 +108,7 @@ export default function DailyModePanel({
           style={{ color: INK.body }}
           data-testid="daily-mode-status"
         >
-          {copy.status}
+          {displayCopy.status}
         </p>
       </div>
 
@@ -155,7 +161,7 @@ export default function DailyModePanel({
             <RankedPlayGem
               onClick={() => onPlay?.()}
               disabled={!onPlay}
-              label={copy.action}
+              label={displayCopy.action}
               testId="daily-play-seal"
             />
             {/* The seal's art says PLAY; this line says exactly which play. */}
@@ -164,7 +170,7 @@ export default function DailyModePanel({
               className="mt-0.5 text-[11px] font-extrabold uppercase tracking-[0.18em]"
               style={{ color: INK.accent, textShadow: INK.press }}
             >
-              {copy.action}
+              {displayCopy.action}
             </span>
           </>
         ) : (
