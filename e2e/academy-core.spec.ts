@@ -16,7 +16,7 @@
  * focus states, Mogzy's reactions, and reduced-motion behaviour.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const ROUTE = "/lol/dev/academy-core";
@@ -35,10 +35,8 @@ const MOBILE = [
 ];
 
 const ICON = (name: string) => `assets/champions/${name}/icon.png`;
-const PNG_1x1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "base64",
-);
+/** A real 128px champion icon from the repo stands in for every manifest icon. */
+const ICON_PNG = readFileSync(path.resolve("public/images/library/champion-ahri.png"));
 
 export async function stubRemote(page: Page) {
   await page.route("**/api/patch-reports", (route) =>
@@ -55,9 +53,10 @@ export async function stubRemote(page: Page) {
       body: JSON.stringify({
         patch_version: "26.20", source_url: "", built_at: "2026-10-01T00:00:00Z", sections: [],
         cards: ["Ryze", "Ahri", "Akali", "Viktor", "Jinx", "Yasuo"].map((n, i) => ({
+          section_title: "Champions", status: "analyzed",
           entity_type: "champion", entity_name: n, entity_slug: n.toLowerCase(),
           mogzy_entity_ref: null, mogzy_image_path: null, official_image_url: null,
-          editorial_direction: i < 3 ? "buff" : "nerf", editorial_direction_source: "backend",
+          editorial_direction: i < 3 ? "buff" : "nerf", editorial_direction_source: "riot_section",
           changes: [{ group_title: "Base stats", property_name: "Health", change_kind: "numeric",
             before_raw: "600", after_raw: i < 3 ? "620" : "580" }],
         })),
@@ -71,7 +70,7 @@ export async function stubRemote(page: Page) {
       ) }),
     }));
   await page.route("**/assets/champions/**", (route) =>
-    route.fulfill({ status: 200, contentType: "image/png", body: PNG_1x1 }));
+    route.fulfill({ status: 200, contentType: "image/png", body: ICON_PNG }));
   await page.route("**/api/daily-run/today", (route) =>
     route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
   await page.route("**/rest/v1/**", (route) =>

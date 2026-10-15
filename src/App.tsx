@@ -690,7 +690,10 @@ export const appRouter = createBrowserRouter(
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
-                  <Route path="/lol/dev/academy-core" element={<Suspense fallback={<RouteFallback />}><AcademyCorePage /></Suspense>} />
+                  {/* The Core's fallback holds the hero's own height (not the generic
+                      50vh), so the sitewide Footer does not paint high and then get
+                      pushed down when the chunk mounts (measured 0.07–0.09 CLS). */}
+                  <Route path="/lol/dev/academy-core" element={<Suspense fallback={<div aria-hidden style={{ minHeight: "calc(100dvh - var(--app-header-h))" }} />}><AcademyCorePage /></Suspense>} />
                   <Route path="/dev/academy-core" element={<Navigate to="/lol/dev/academy-core" replace />} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />

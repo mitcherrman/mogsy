@@ -38,7 +38,7 @@ vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({
 const warm = vi.fn(() => Promise.resolve({ inquiryIcon: null, observeIcon: null }));
 vi.mock("./academy-core-warm", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./academy-core-warm")>()),
-  warmAcademyCore: (...args: unknown[]) => warm(...args),
+  warmAcademyCore: () => warm(),
 }));
 vi.mock("@/lib/audio/academy-radio", () => ({
   useAcademyRadio: () => ({ isPlaying: false, isTransmitting: false, title: "", subtitle: "", volume: 0.15, tune: vi.fn(), next: vi.fn(), setVolume: vi.fn(), status: "idle" }),

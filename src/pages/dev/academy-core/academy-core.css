@@ -35,6 +35,11 @@
 /* ---------------------------------------------------------------- layout */
 
 .acore-hero {
+  /* px from the hero's bottom edge up to the bench edge; measured from the
+     chassis feet by the page (see the ResizeObserver there). The fallback is
+     the value at 1366x768. */
+  --acore-floor: 118px;
+  --acore-hero-pad-b: clamp(1.25rem, 3.5vh, 2.75rem);
   position: relative;
   display: grid;
   grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.4fr);
@@ -43,7 +48,7 @@
   min-height: calc(100dvh - var(--app-header-h));
   max-width: 1760px;
   margin: 0 auto;
-  padding: clamp(0.75rem, 2.2vh, 1.75rem) clamp(1rem, 3.6vw, 3.6rem) clamp(1.25rem, 3.5vh, 2.75rem);
+  padding: clamp(0.75rem, 2.2vh, 1.75rem) clamp(1rem, 3.6vw, 3.6rem) var(--acore-hero-pad-b);
   box-sizing: border-box;
 }
 
@@ -81,7 +86,7 @@
 .acore-room-pilaster {
   position: absolute;
   top: 0;
-  bottom: 24%;
+  bottom: var(--acore-floor);
   width: clamp(28px, 3vw, 46px);
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012) 45%, rgba(0, 0, 0, 0.22));
   border-left: 1px solid rgba(201, 162, 76, 0.1);
@@ -116,14 +121,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 23%;
+  height: var(--acore-floor);
   background: linear-gradient(180deg, rgba(20, 32, 54, 0.92) 0%, rgba(10, 18, 32, 0.98) 60%, #070d18 100%);
 }
 .acore-room-bench-edge {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 23%;
+  bottom: var(--acore-floor);
   height: 10px;
   background: linear-gradient(180deg, rgba(243, 223, 166, 0.55), rgba(201, 162, 76, 0.45) 35%, rgba(90, 69, 32, 0.6) 70%, rgba(0, 0, 0, 0.5));
   box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.08), 0 14px 26px -8px rgba(0, 0, 0, 0.7);
@@ -144,13 +149,16 @@
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
-  padding-bottom: clamp(2rem, 7vh, 4.5rem);
+  container-type: inline-size;
+  /* the book's base (radio dock) and the links rest on the bench edge */
+  padding-bottom: max(0px, calc(var(--acore-floor) - var(--acore-hero-pad-b) - 44px));
 }
 
 .acore-root[data-layout="stacked"] .acore-console { padding-bottom: 0; }
 
 .acore-eyebrow {
   margin: 0;
+  white-space: nowrap;
   font-family: "Space Mono", ui-monospace, monospace;
   font-size: 0.66rem;
   letter-spacing: 0.3em;
@@ -163,7 +171,11 @@
   margin: 0;
   font-family: Cinzel, Georgia, serif;
   font-weight: 700;
-  font-size: clamp(1.9rem, 3.1vw, 3.1rem);
+  /* One line, always: the Georgia fallback is wider than Cinzel, and a wrap
+     during the font swap moved the whole console by a line (measured 0.21 CLS
+     at 1366x768). The cqw term keeps it on one line at the 1024 breakpoint. */
+  font-size: min(clamp(1.9rem, 3.1vw, 3.1rem), 12.5cqw);
+  white-space: nowrap;
   line-height: 1.05;
   letter-spacing: 0.02em;
   color: #f6e8c4;
@@ -179,12 +191,22 @@
   max-width: 36ch;
 }
 
+/* The row never wraps on its own: the Georgia fallback is wider than Cinzel
+   and a wrap during the font swap moved the whole console by a row (0.21 CLS
+   twice at 1366x768). Whether the two actions share a row is decided by the
+   CONSOLE's width (a container query), never by font metrics. */
 .acore-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: 0.7rem;
   margin-top: 0.3rem;
+}
+
+.acore-cta { white-space: nowrap; min-width: 0; }
+
+@container (max-width: 430px) {
+  .acore-actions { flex-direction: column; }
 }
 
 .acore-root[data-layout="stacked"] .acore-actions { flex-direction: column; }
@@ -312,10 +334,14 @@
 
 /* -------------------------------------------------------- second screen */
 
+/* One line, always: a wrap during the Space Mono font swap moved the whole
+   console by a row (measured 0.21 CLS at 1366x768), so this never wraps. */
 .acore-second-screen {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.4rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 0 clamp(0.8rem, 2vw, 1.4rem);
+  min-height: 44px;
   padding: 0.2rem 0.2rem 0;
 }
 
@@ -381,7 +407,7 @@
   position: absolute;
   z-index: 3;
   left: -14%;
-  bottom: -2.5%;
+  bottom: 6.5%;
   width: 21%;
   pointer-events: none;
   display: flex;

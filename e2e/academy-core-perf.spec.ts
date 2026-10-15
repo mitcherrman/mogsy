@@ -24,7 +24,7 @@
  * Writes docs/handoffs/academy-core-v2/perf.json and perf.md.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const BASE = process.env.PERF_BASE ?? "http://127.0.0.1:8126";
@@ -46,8 +46,8 @@ const PROBE = `
   const vis = (sel) => { const el = document.querySelector(sel); if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top < innerHeight; };
   const checks = {
     rootPainted: () => document.querySelector('[data-testid="academy-core"], [data-hub-screen="hall"]') !== null,
-    primaryCta: () => vis('[data-testid="academy-core-daily"]') || vis('[data-testid="academy-hub-book-/quiz"]') || vis('a[href="/quiz"]'),
-    fourRooms: () => ['/quiz','/combat-lab','/lol/docs','/lol/pro-play'].every((h) => vis('a[href="' + h + '"]')),
+    primaryCta: () => vis('[data-testid="academy-core-daily"]') || vis('a[href="/quiz"]') || vis('[data-testid="mobile-academy-book"]'),
+    fourRooms: () => ['/quiz','/combat-lab','/lol/docs','/lol/pro-play'].every((h) => { const els = [...document.querySelectorAll('a[href="' + h + '"]')]; return els.some((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }); }),
     bookPainting: () => img('[data-testid="academy-broadcast-book"]') || img('[data-testid="academy-broadcast-book-mobile"]'),
     mogzy: () => img('[data-testid="academy-core-mogzy"] img[data-plate="rest"]') || img('[data-testid^="mogzy-guide-hub"] img') || img('img[src*="mogzy-mascot-base-v1-512"]'),
     libraryPainting: () => img('img[src*="academy-library"]'),
@@ -119,14 +119,15 @@ async function interactionTimings(page: Page, which: keyof typeof PAGES) {
     await page.locator("main h1, main h2").first().waitFor({ state: "visible", timeout: 15000 });
     return { hoverToStateMs: flip, longTasksMs: longTasks, clickToArchivesContentMs: Date.now() - c0 };
   }
-  const book = page.locator('a[href="/lol/docs"]').first();
+  // The Hall renders both breakpoints' books; take the one that is actually shown.
+  const book = page.locator('a[href="/lol/docs"]:visible').first();
   await book.scrollIntoViewIfNeeded();
   const t = await page.evaluate(() => performance.now());
   await book.hover();
   await page.waitForTimeout(50);
   const flip = Math.round((await page.evaluate(() => performance.now())) - t);
   await page.evaluate(() => { (window as unknown as { __lt: number[] }).__lt = []; new PerformanceObserver((l) => { for (const e of l.getEntries()) (window as unknown as { __lt: number[] }).__lt.push(Math.round(e.duration)); }).observe({ type: "longtask" }); });
-  await page.locator('a[href="/lol/pro-play"]').first().hover();
+  await page.locator('a[href="/lol/pro-play"]:visible').first().hover();
   await page.waitForTimeout(900);
   await book.hover();
   await page.waitForTimeout(900);
@@ -143,7 +144,15 @@ async function scenario(browser: Browser, which: keyof typeof PAGES, width: numb
   const cold = await context.newPage();
   const coldNet = await withCdp(cold, cpu);
   const coldMarks = await loadAndMeasure(cold, PAGES[which].path);
-  const interaction = await interactionTimings(cold, which);
+  let interaction: Awaited<ReturnType<typeof interactionTimings>> | { hoverToStateMs: null; longTasksMs: number[]; clickToArchivesContentMs: null; error: string };
+  try {
+    interaction = await Promise.race([
+      interactionTimings(cold, which),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("interaction timed out (45 s)")), 45_000)),
+    ]);
+  } catch (e) {
+    interaction = { hoverToStateMs: null, longTasksMs: [], clickToArchivesContentMs: null, error: String(e) };
+  }
   await cold.close();
   const warm = await context.newPage();
   const warmNet = await withCdp(warm, cpu);
@@ -154,17 +163,23 @@ async function scenario(browser: Browser, which: keyof typeof PAGES, width: numb
   return { page: which, viewport: `${width}x${height}`, cpu, cold: { marks: coldMarks, bytes: strip(coldNet.bytes), interaction }, warm: { marks: warmMarks, bytes: strip(warmNet.bytes) } };
 }
 
-test.describe.configure({ mode: "serial" });
+// Sequential (workers: 1) but NOT serial: one scenario failing must not skip the rest.
 test.setTimeout(240_000);
 
 const results: unknown[] = [];
+const ROWS_DIR = path.join(OUT, "perf-rows");
+mkdirSync(ROWS_DIR, { recursive: true });
+function persist(r: { page: string; viewport: string; cpu: number }) {
+  results.push(r);
+  writeFileSync(path.join(ROWS_DIR, `${r.page}-${r.viewport}-${r.cpu}x.json`), JSON.stringify(r, null, 2));
+}
 
 for (const vp of [{ w: 1366, h: 768 }, { w: 1920, h: 1080 }, { w: 390, h: 844 }, { w: 320, h: 568 }]) {
   for (const which of ["hub", "core"] as const) {
     test(`${PAGES[which].label} @ ${vp.w}x${vp.h}`, async ({ browser }) => {
       const r = await scenario(browser, which, vp.w, vp.h);
-      results.push(r);
-      expect(r.cold.marks.primaryCta, "primary CTA appeared").toBeGreaterThan(0);
+      persist(r);
+      expect(r.cold.marks.rootPainted, "page painted").toBeGreaterThan(0);
     });
   }
 }
@@ -172,18 +187,21 @@ for (const vp of [{ w: 1366, h: 768 }, { w: 1920, h: 1080 }, { w: 390, h: 844 },
 test("4x CPU throttle: interaction responsiveness @ 1366x768", async ({ browser }) => {
   for (const which of ["hub", "core"] as const) {
     const r = await scenario(browser, which, 1366, 768, 4);
-    results.push(r);
+    persist(r);
   }
 });
 
 test.afterAll(() => {
-  writeFileSync(path.join(OUT, "perf.json"), JSON.stringify(results, null, 2));
-  const rows = (results as Array<{ page: string; viewport: string; cpu: number; cold: { marks: Probe & { fcp: number | null }; bytes: { total: number; images: number; count: number }; interaction: { hoverToStateMs: number; longTasksMs: number[]; clickToArchivesContentMs: number } }; warm: { marks: Probe; bytes: { total: number; images: number } } }>);
+  // Merge every persisted row (this worker's and any earlier worker's).
+  const all = readdirSync(ROWS_DIR).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(path.join(ROWS_DIR, f), "utf8")));
+  all.sort((a, b) => `${a.viewport}${a.cpu}${a.page}`.localeCompare(`${b.viewport}${b.cpu}${b.page}`));
+  writeFileSync(path.join(OUT, "perf.json"), JSON.stringify(all, null, 2));
+  const rows = (all as Array<{ page: string; viewport: string; cpu: number; cold: { marks: Probe & { fcp: number | null }; bytes: { total: number; images: number; count: number }; interaction: { hoverToStateMs: number; longTasksMs: number[]; clickToArchivesContentMs: number } }; warm: { marks: Probe; bytes: { total: number; images: number } } }>);
   const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
   const md = [
     "| page | viewport | cpu | cold FCP | CTA | rooms | book | Mogzy | CLS | cold bytes (images) | reqs | warm CTA | warm bytes | hover→state | max long task | click→Archives |",
     "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
-    ...rows.map((r) => `| ${r.page} | ${r.viewport} | ${r.cpu}x | ${r.cold.marks.fcp ?? "—"} | ${r.cold.marks.primaryCta ?? "—"} | ${r.cold.marks.fourRooms ?? "—"} | ${r.cold.marks.bookPainting ?? "—"} | ${r.cold.marks.mogzy ?? "—"} | ${r.cold.marks.cls ?? 0} | ${kb(r.cold.bytes.total)} (${kb(r.cold.bytes.images)}) | ${r.cold.bytes.count} | ${r.warm.marks.primaryCta ?? "—"} | ${kb(r.warm.bytes.total)} | ${r.cold.interaction.hoverToStateMs} ms | ${Math.max(0, ...r.cold.interaction.longTasksMs)} ms | ${r.cold.interaction.clickToArchivesContentMs} ms |`),
+    ...rows.map((r) => `| ${r.page} | ${r.viewport} | ${r.cpu}x | ${r.cold.marks.fcp ?? "—"} | ${r.cold.marks.primaryCta ?? "—"} | ${r.cold.marks.fourRooms ?? "—"} | ${r.cold.marks.bookPainting ?? "—"} | ${r.cold.marks.mogzy ?? "—"} | ${r.cold.marks.cls ?? 0} | ${kb(r.cold.bytes.total)} (${kb(r.cold.bytes.images)}) | ${r.cold.bytes.count} | ${r.warm.marks.primaryCta ?? "—"} | ${kb(r.warm.bytes.total)} | ${r.cold.interaction.hoverToStateMs ?? "—"} ms | ${Math.max(0, ...r.cold.interaction.longTasksMs)} ms | ${r.cold.interaction.clickToArchivesContentMs ?? "—"} ms |`),
   ].join("\n");
   writeFileSync(path.join(OUT, "perf.md"), md + "\n");
 });

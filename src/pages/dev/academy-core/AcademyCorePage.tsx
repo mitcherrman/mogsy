@@ -179,6 +179,30 @@ export default function AcademyCorePage() {
   }, []);
   const ambient = onScreen && !reduced;
 
+  /* ---------------- the floor: one line the bench, the book and Mogzy share ----------------
+     The chassis feet sit at a fixed fraction of the stage (582/640 of its
+     height). The bench edge and the console's resting line are driven from
+     that measurement through one CSS variable, so the book's base, Mogzy's
+     feet and the instrument's feet land on the same physical surface at every
+     viewport. ResizeObserver only: nothing runs per frame. */
+  const heroRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const stage = stageRef.current;
+    const hero = heroRef.current;
+    if (!stage || !hero || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const s = stage.getBoundingClientRect();
+      const h = hero.getBoundingClientRect();
+      const feetY = s.top + s.height * (582 / 640);
+      hero.style.setProperty("--acore-floor", `${Math.max(0, Math.round(h.bottom - feetY))}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(stage);
+    ro.observe(hero);
+    return () => ro.disconnect();
+  }, [fullLayout]);
+
   /* ---------------- real data, read-only ---------------- */
   const daily = useDailyChallengeStatus();
   const dailyResume = daily.known && daily.resumable && !daily.completed;
@@ -307,7 +331,7 @@ export default function AcademyCorePage() {
         ))}
       </div>
 
-      <section className="acore-hero" aria-labelledby="acore-title">
+      <section ref={heroRef} className="acore-hero" aria-labelledby="acore-title">
         {/* The workshop: wall, bench, and two pools of light — one warm over the
             console and book, one Hextech over the Core. Pointer-inert. */}
         <div className="acore-room" aria-hidden>
