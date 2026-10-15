@@ -19387,17 +19387,26 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
 /* Board and prompt keep ONE geometry across a Journey's questions/reveals.
    509x709: board ~160px, prompt ~149px. Short 360px screens may page-scroll,
    never clip. Taller screens keep the previous large 200px board. */
-@media (max-width: 639.98px) and (max-height: 780px) {
+@media (max-width: 639.98px) {
   .ranked-shell[data-mobile-journey="true"] .journey-stage {
     --jb-band-h: clamp(10rem, calc(100dvh - 34.375rem), 12.5rem);
     --jq-prompt-h: clamp(8rem, calc(100dvh - 35rem), 9.25rem);
   }
+  /* MVFIT1's later cinematic max-height ALSO matched the Journey band.
+     The Journey band is a state board, not an illustration. Its existing
+     intrinsic height was 100px (art cap), clipping items outside the board.
+     Restore its own --jb-band-h control with a more-specific override. */
+  .ranked-shell[data-mobile-journey="true"] .journey-stage > .journey-band[data-testid="scenario-hero"] {
+    max-height: none !important;
+  }
 }
 /* A 509px-wide Journey's 3-digit options need less vertical reserve than
-   long answers on a narrow phone. Existing actual text may still grow. */
-@media (min-width: 420px) and (max-width: 639.98px) and (max-height: 780px) {
+   long answers on a narrow phone. Interpolate smoothly from 212px at short
+   heights to the original 280px at 848px; no 780/781px size discontinuity.
+   The grid is a minimum, so long actual text may still grow the page. */
+@media (min-width: 420px) and (max-width: 639.98px) {
   .ranked-shell[data-mobile-journey="true"] .journey-stage {
-    --jq-answers-h: 13.25rem;
+    --jq-answers-h: clamp(13.25rem, calc(50dvh - 9rem), 17.5rem);
   }
   .ranked-shell[data-mobile-journey="true"] .journey-question [data-testid="answer-grid"] > .grid {
     gap: 0.375rem;

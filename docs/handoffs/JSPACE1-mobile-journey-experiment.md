@@ -34,3 +34,14 @@ Authentic Olаf/Sett J4 and Volibear JATTN1 captures power browser checks.
 Verify full board containment, long calculation reveal, 509x709 zero scroll,
 timelines collapsed/expanded, other modes unchanged and frontend build. Correct
 any failures on branch, show owner screenshots, and do not merge before approval.
+
+## First browser findings and repairs
+- Initial CI showed MVFIT1's cinematic 100px `max-height: ... !important` was
+  still clamping the Journey board despite its new min-height. Removed this cap
+  only for the served Journey band; keep art cap everywhere else.
+- J4 Olaf capture steps 21–22 are post-stage-finish (segment_state=null):
+  test matrix now uses 19–20 for Cloth Armor and JATTN1 for typed reveals.
+- The dev harness introduces extra document height beyond the live arena
+  (550+px), so do not interpret its document scrollHeight as Daily clipping.
+  Assert visible board, complete side objects, answer and bottom bar rects.
+- Removed the 780/781px height seam with smooth answer-reserve interpolation.
