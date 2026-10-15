@@ -1,0 +1,795 @@
+/* GLYPH PRESS — the typesetter's material.
+   Roughly 70% arcane academy (slate bed, brass sockets, vellum type, carved
+   plaque) and 30% engineered hextech (a cyan sounding that runs through the
+   phrase, a gold inking at the reveal). Nothing here encodes correctness
+   before `[data-result]` exists, and that attribute is only ever written
+   from a reveal. Every state change is transform / opacity inside reserved
+   boxes: the frame never resizes because knowledge changed. */
+
+.gp {
+  --gp-stone: #101c30;
+  --gp-stone-deep: #08101d;
+  --gp-brass: #b9934c;
+  --gp-brass-bright: #d5b66f;
+  --gp-brass-dark: #7a6236;
+  --gp-vellum: #e6d7b0;
+  --gp-vellum-bright: #f4e9cc;
+  --gp-cyan: #7fd6ef;
+  --gp-cyan-deep: #2f8fca;
+  --gp-gold: #f0d78c;
+  --gp-ember: #d9825a;
+  --gp-ink: var(--ranked-ink, #2c2417);
+  --gp-ink-muted: var(--ranked-ink-muted, #5a4a2e);
+  --gp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --gp-head-h: 64px;
+  --gp-drum-h: 56px;
+  --gp-plate-h: 56px;
+  --gp-status-h: 18px;
+  --gp-gap: 8px;
+  --gp-forme-min: 150px;
+  --gp-plaque-h: 44px;
+  --gp-prompt-size: 17px;
+  --gp-art: 48px;
+  --gp-control-h: 44px;
+
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  gap: var(--gp-gap);
+  color: var(--gp-ink);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Compact desktop: the 1366×650 / 1280×600 tier. */
+@media (min-width: 1024px) and (max-height: 719px) {
+  .gp {
+    --gp-head-h: 54px;
+    --gp-drum-h: 50px;
+    --gp-plate-h: 48px;
+    --gp-status-h: 16px;
+    --gp-gap: 6px;
+    --gp-prompt-size: 15px;
+    --gp-art: 42px;
+    --gp-plaque-h: 40px;
+    --gp-forme-min: 120px;
+  }
+}
+/* Tall desktop. */
+@media (min-width: 1024px) and (min-height: 800px) {
+  .gp {
+    --gp-head-h: 72px;
+    --gp-drum-h: 60px;
+    --gp-plate-h: 60px;
+    --gp-status-h: 20px;
+    --gp-gap: 10px;
+    --gp-prompt-size: 19px;
+    --gp-art: 54px;
+    --gp-plaque-h: 48px;
+  }
+}
+/* Phone. */
+@media (max-width: 639px) {
+  .gp {
+    --gp-head-h: 64px;
+    --gp-drum-h: 54px;
+    --gp-plate-h: 44px;
+    --gp-status-h: 18px;
+    --gp-gap: 8px;
+    --gp-forme-min: 150px;
+    --gp-prompt-size: 15.5px;
+    --gp-art: 46px;
+    --gp-plaque-h: 42px;
+  }
+}
+@media (max-width: 639px) and (max-height: 700px) {
+  .gp { --gp-head-h: 60px; --gp-gap: 6px; --gp-status-h: 16px; --gp-prompt-size: 14px; --gp-art: 40px; --gp-forme-min: 130px; --gp-plaque-h: 40px; }
+}
+
+/* ------------------------------------------------------------------ head */
+.gp-head {
+  flex: none;
+  height: var(--gp-head-h);
+  display: grid;
+  grid-template-columns: var(--gp-art) minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  overflow: hidden;
+}
+.gp-art {
+  position: relative;
+  width: var(--gp-art);
+  height: var(--gp-art);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(185, 147, 76, 0.75);
+  box-shadow: 0 0 0 1px rgba(44, 36, 23, 0.25), 0 6px 14px -8px rgba(0, 0, 0, 0.8);
+}
+.gp-art > span { border-radius: 7px; }
+.gp-head-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.gp-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--gp-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gp-prompt {
+  margin: 0;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: var(--gp-prompt-size);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--gp-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  outline: none;
+}
+.gp-caption {
+  margin: 0;
+  height: 13px;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--gp-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----------------------------------------------------------------- forme */
+.gp-forme {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: var(--gp-forme-min);
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(185, 147, 76, 0.55);
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(47, 143, 202, 0.10) 0%, transparent 55%),
+    radial-gradient(80% 60% at 0% 0%, rgba(201, 168, 76, 0.12) 0%, transparent 55%),
+    linear-gradient(170deg, #16243b 0%, var(--gp-stone) 48%, var(--gp-stone-deep) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 168, 76, 0.14),
+    inset 0 2px 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 60px rgba(10, 200, 255, 0.05),
+    0 10px 30px -18px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  outline: none;
+}
+.gp-forme::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(130% 110% at 50% 50%, transparent 55%, rgba(3, 7, 14, 0.55) 100%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 28px);
+}
+.gp-forme::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240, 215, 140, 0.7), transparent);
+  pointer-events: none;
+}
+.gp-forme[data-focus-visible="true"] {
+  box-shadow:
+    inset 0 0 0 2px rgba(127, 214, 239, 0.85),
+    inset 0 2px 18px rgba(0, 0, 0, 0.55),
+    0 10px 30px -18px rgba(0, 0, 0, 0.9);
+}
+.gp[data-armed="true"] .gp-forme {
+  box-shadow:
+    inset 0 0 0 1px rgba(127, 214, 239, 0.55),
+    inset 0 2px 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 70px rgba(127, 214, 239, 0.12),
+    0 10px 30px -18px rgba(0, 0, 0, 0.9);
+}
+.gp-bezel {
+  position: absolute;
+  inset: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(213, 182, 111, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.gp-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  border-color: rgba(213, 182, 111, 0.75);
+  border-style: solid;
+  border-width: 0;
+}
+.gp-corner[data-at="tl"] { left: 3px; top: 3px; border-left-width: 2px; border-top-width: 2px; border-top-left-radius: 9px; }
+.gp-corner[data-at="tr"] { right: 3px; top: 3px; border-right-width: 2px; border-top-width: 2px; border-top-right-radius: 9px; }
+.gp-corner[data-at="bl"] { left: 3px; bottom: 3px; border-left-width: 2px; border-bottom-width: 2px; border-bottom-left-radius: 9px; }
+.gp-corner[data-at="br"] { right: 3px; bottom: 3px; border-right-width: 2px; border-bottom-width: 2px; border-bottom-right-radius: 9px; }
+
+/* The bed: the measured area the sockets are laid into, above the plaque. */
+.gp-bed {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 12px;
+  bottom: calc(var(--gp-plaque-h) + 14px);
+}
+.gp-block {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+/* a socket */
+.gp-cell {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--gp-cell);
+  height: var(--gp-cell);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15)),
+    var(--gp-stone-deep);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 0 rgba(213, 182, 111, 0.22),
+    0 0 0 1px rgba(213, 182, 111, 0.16);
+  color: var(--gp-vellum);
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: calc(var(--gp-cell) * 0.56);
+  line-height: 1;
+  cursor: pointer;
+  outline: none;
+  will-change: transform;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.gp-cell[data-state="engraved"] { cursor: default; }
+.gp[data-phase="locked"] .gp-cell, .gp[data-phase="revealed"] .gp-cell { cursor: default; }
+/* The socket's bottom line: the seat the type sits on. */
+.gp-cell::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(213, 182, 111, 0.35);
+  transition: background 160ms var(--gp-ease), box-shadow 160ms var(--gp-ease);
+}
+.gp-cell[data-cursor="true"]::after {
+  background: var(--gp-cyan);
+  box-shadow: 0 0 8px rgba(127, 214, 239, 0.9);
+}
+.gp-cell[data-cursor="true"] {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    inset 0 0 0 1px rgba(127, 214, 239, 0.55),
+    0 0 0 1px rgba(127, 214, 239, 0.35),
+    0 0 14px rgba(127, 214, 239, 0.25);
+}
+.gp-cell-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: transform 160ms var(--gp-ease), opacity 160ms var(--gp-ease);
+}
+/* The player's type: a loose vellum tile, dark ink — lifted off the slate, provisional, "yours".
+   Light body / dark glyph is the opposite luminance to the engraved plates below, so the two
+   read apart by value, not only by hue. */
+.gp-cell[data-state="set"] .gp-cell-face {
+  background: linear-gradient(180deg, #fbf3da 0%, var(--gp-vellum-bright) 40%, var(--gp-vellum) 100%);
+  color: var(--gp-ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 238, 0.95),
+    inset 0 -3px 0 rgba(122, 98, 54, 0.5),
+    0 0 0 1px rgba(44, 36, 23, 0.55),
+    0 3px 6px -2px rgba(0, 0, 0, 0.85);
+  animation: gp-set 160ms var(--gp-ease) 1 both;
+}
+@keyframes gp-set {
+  0% { transform: translateY(-5px) scale(1.08); opacity: 0.4; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+/* Engraved type: a dark brass plate let into the slate, the glyph cut in bright gold — permanent.
+   Recessed and dark where the player's tile is raised and pale. A given glyph is bound by a brass
+   rim; a sounded one by the sounding's cyan. */
+.gp-cell[data-state="engraved"] .gp-cell-face {
+  background: linear-gradient(180deg, #4b3a1c 0%, #33270f 60%, #261c0a 100%);
+  color: var(--gp-gold);
+  text-shadow: 0 0 6px rgba(240, 215, 140, 0.35), 0 1px 0 rgba(0, 0, 0, 0.8);
+  box-shadow:
+    inset 0 0 0 2px rgba(213, 182, 111, 0.85),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.55),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+.gp-cell[data-origin="sounded"] .gp-cell-face {
+  box-shadow:
+    inset 0 0 0 2px rgba(127, 214, 239, 0.85),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.55),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+/* A sounded engraving carries the sounding's cyan at its seat. */
+.gp-cell[data-origin="sounded"]::after { background: rgba(127, 214, 239, 0.7); }
+.gp-cell[data-fresh="true"] .gp-cell-face {
+  animation: gp-resound 700ms var(--gp-ease) 1 both;
+  animation-delay: calc(var(--gp-fresh) * 70ms);
+}
+@keyframes gp-resound {
+  0% { box-shadow: 0 0 0 0 rgba(127, 214, 239, 0.95), inset 0 0 0 20px rgba(127, 214, 239, 0.6); transform: scale(1.1); }
+  60% { box-shadow: 0 0 0 10px rgba(127, 214, 239, 0), inset 0 0 0 0 rgba(127, 214, 239, 0); }
+  100% { transform: scale(1); }
+}
+.reduce-motion .gp-cell .gp-cell-face, .gp[data-reduced="true"] .gp-cell .gp-cell-face { animation: none !important; transition: none; }
+
+/* an engraved mark: an apostrophe, a colon, a digit — on the slate itself */
+.gp-mark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: var(--gp-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: calc(var(--gp-cell) * 0.6);
+  line-height: 1;
+  color: rgba(213, 182, 111, 0.85);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+/* a continuation tick: the word carries on in the next row */
+.gp-break {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: var(--gp-cell);
+  pointer-events: none;
+}
+.gp-break::before {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: rgba(213, 182, 111, 0.55);
+}
+
+/* the ink: the roller's leading edge during the ink stage */
+.gp-ink {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: 0;
+  width: 24px;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(240, 215, 140, 0.55) 50%, rgba(240, 215, 140, 0.95) 52%, transparent 54%);
+  filter: drop-shadow(0 0 8px rgba(240, 215, 140, 0.8));
+  will-change: transform;
+}
+.gp-ink[data-on="true"] { opacity: 1; }
+
+/* reveal faces — written only from `data-result`, which only a reveal sets */
+.gp-cell[data-result="right"] .gp-cell-face,
+.gp-cell[data-result="missing"] .gp-cell-face,
+.gp-cell[data-result="wrong"] .gp-cell-face {
+  animation: gp-print 420ms var(--gp-ease) 1 both;
+}
+@keyframes gp-print {
+  0% { transform: scale(1.14); filter: brightness(1.8); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.gp-cell[data-result="right"] .gp-cell-face {
+  background: linear-gradient(180deg, #f6e2a6 0%, #d9b86f 55%, #a88744 100%);
+  color: #2a2110;
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.7), inset 0 -2px 0 rgba(60, 44, 16, 0.6), 0 0 14px rgba(240, 215, 140, 0.45);
+}
+.gp-cell[data-result="right"]::after { background: var(--gp-gold); box-shadow: 0 0 8px rgba(240, 215, 140, 0.8); }
+/* Left blank: a hollow slot, drawn with a DASHED outline and no body. A given or sounded socket is a
+   solid dark plate; the dash is the cue that survives size, colour blindness and a quick glance. */
+.gp-cell[data-result="missing"] .gp-cell-face {
+  background: transparent;
+  color: var(--gp-gold);
+  border: 2px dashed rgba(240, 215, 140, 0.9);
+  box-shadow: none;
+}
+.gp-cell[data-result="missing"]::after { background: rgba(240, 215, 140, 0.5); }
+.gp-cell[data-result="wrong"] .gp-cell-face {
+  background: linear-gradient(180deg, rgba(217, 130, 90, 0.28), rgba(217, 130, 90, 0.12));
+  color: var(--gp-gold);
+  box-shadow: inset 0 0 0 1.5px rgba(217, 130, 90, 0.8), inset 0 -2px 0 rgba(120, 50, 30, 0.5);
+}
+.gp-cell[data-result="wrong"]::after { background: var(--gp-ember); box-shadow: 0 0 8px rgba(217, 130, 90, 0.8); }
+.gp-cell-wrong {
+  position: absolute;
+  right: 2px;
+  top: 1px;
+  font-size: calc(var(--gp-cell) * 0.3);
+  line-height: 1;
+  font-weight: 700;
+  color: var(--gp-ember);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  pointer-events: none;
+}
+.reduce-motion .gp-cell[data-result] .gp-cell-face, .gp[data-reduced="true"] .gp-cell[data-result] .gp-cell-face { animation: none; }
+.reduce-motion .gp-ink, .gp[data-reduced="true"] .gp-ink { opacity: 0 !important; }
+
+/* the plaque at the foot of the forme */
+.gp-plaque {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: var(--gp-plaque-h);
+  border-radius: 8px;
+  border: 1px solid rgba(213, 182, 111, 0.5);
+  background: linear-gradient(180deg, rgba(14, 24, 40, 0.94), rgba(7, 13, 24, 0.96));
+  box-shadow: inset 0 1px 0 rgba(240, 215, 140, 0.25), 0 8px 18px -10px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  pointer-events: none;
+}
+.gp-plaque-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  min-width: 0;
+  transition: opacity 240ms var(--gp-ease);
+}
+.gp-plaque-layer[data-shown="false"] { opacity: 0; visibility: hidden; transition: opacity 240ms var(--gp-ease), visibility 0s linear 240ms; }
+.reduce-motion .gp-plaque-layer, .gp[data-reduced="true"] .gp-plaque-layer { transition: none; }
+.gp-plaque-live { flex-direction: row; align-items: baseline; gap: 8px; }
+.gp-plaque-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(230, 215, 176, 0.7);
+  white-space: nowrap;
+}
+.gp-plaque-value {
+  min-width: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f2e6c8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.gp-plaque-answer {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 16px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gp-gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gp-plaque-score {
+  font-size: 11px;
+  line-height: 13px;
+  color: rgba(230, 215, 176, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 639px) { .gp-plaque-answer { font-size: 14px; } }
+
+/* ------------------------------------------------------------------ drum */
+.gp-drum {
+  flex: none;
+  height: var(--gp-drum-h);
+  display: grid;
+  grid-template-columns: var(--gp-control-h) minmax(0, 1fr) var(--gp-control-h);
+  column-gap: 6px;
+  align-items: stretch;
+}
+.gp-drum-step {
+  height: 100%;
+  min-height: var(--gp-control-h);
+  padding: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 22px;
+  line-height: 1;
+}
+.gp-drum-window {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(122, 98, 54, 0.75);
+  /* a brass cylinder: light along its crown, dark at the rims */
+  background:
+    linear-gradient(180deg, #6a5330 0%, #a98744 18%, #d5b66f 46%, #c4a35b 54%, #8d6f36 82%, #5a4526 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 18px rgba(0, 0, 0, 0.35),
+    0 3px 8px -4px rgba(0, 0, 0, 0.7);
+  cursor: grab;
+  touch-action: pan-y;
+  outline: none;
+}
+.gp-drum-window[data-dragging="true"] { cursor: grabbing; }
+.gp-drum-window[aria-disabled="true"] { cursor: default; filter: saturate(0.7); }
+.gp-drum-window:focus-visible { box-shadow: inset 0 0 0 2px var(--gp-cyan), inset 0 0 18px rgba(0, 0, 0, 0.35); }
+.gp[data-armed="true"] .gp-drum-window {
+  box-shadow:
+    inset 0 0 0 2px rgba(127, 214, 239, 0.9),
+    inset 0 0 24px rgba(127, 214, 239, 0.35),
+    0 0 18px rgba(127, 214, 239, 0.35);
+}
+/* The rims fade into shadow so the band reads as turning away. They are kept NARROW and light:
+   the clearing tile rests one step left of centre, and a wide fade there hid the one control the
+   player reaches for to take a glyph back. */
+.gp-drum-window::before,
+.gp-drum-window::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  z-index: 2;
+  pointer-events: none;
+}
+.gp-drum-window::before { left: 0; background: linear-gradient(90deg, rgba(40, 30, 12, 0.5), transparent); }
+.gp-drum-window::after { right: 0; background: linear-gradient(270deg, rgba(40, 30, 12, 0.5), transparent); }
+.gp-drum-band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  will-change: transform;
+  transition: transform 180ms var(--gp-ease);
+}
+.gp-drum-window[data-dragging="true"] .gp-drum-band,
+.reduce-motion .gp-drum-band, .gp[data-reduced="true"] .gp-drum-band { transition: none; }
+.gp-tile {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+  color: #2a2110;
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.55);
+  transition: transform 160ms var(--gp-ease), opacity 160ms var(--gp-ease);
+}
+.gp-tile-face { position: relative; }
+.gp-tile[data-centred="true"] {
+  transform: scale(1.14);
+  background: linear-gradient(180deg, rgba(255, 245, 215, 0.55), rgba(255, 245, 215, 0.15));
+  box-shadow: inset 0 0 0 1px rgba(60, 44, 16, 0.35), 0 2px 6px -2px rgba(0, 0, 0, 0.6);
+}
+.gp-tile[data-kind="clear"] { font-size: 18px; color: rgba(42, 33, 16, 0.75); }
+/* a sounded glyph: fully placed, cyan, cannot be set elsewhere */
+.gp-tile[data-state="sounded"] { color: var(--gp-cyan-deep); text-shadow: 0 0 8px rgba(127, 214, 239, 0.7), 0 1px 0 rgba(255, 240, 200, 0.35); }
+.gp-tile[data-state="sounded"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--gp-cyan);
+  box-shadow: 0 0 6px rgba(127, 214, 239, 0.9);
+}
+/* a tarnished glyph: sounded, found nowhere */
+.gp-tile[data-state="tarnished"] { opacity: 0.4; }
+.gp-tile[data-state="tarnished"]::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(42, 33, 16, 0.85);
+  transform: rotate(-30deg);
+}
+.gp-tile[data-state="pending"] { animation: gp-pending 700ms ease-in-out infinite alternate; }
+@keyframes gp-pending { from { color: #2a2110; } to { color: var(--gp-cyan-deep); text-shadow: 0 0 10px rgba(127, 214, 239, 0.9); } }
+.reduce-motion .gp-tile, .gp[data-reduced="true"] .gp-tile { animation: none; transition: none; }
+.gp-drum-pointer {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 0;
+  height: 0;
+  margin-left: -6px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--gp-cyan);
+  filter: drop-shadow(0 0 4px rgba(127, 214, 239, 0.9));
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------------- plate */
+.gp-plate {
+  flex: none;
+  height: var(--gp-plate-h);
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: 1fr;
+  column-gap: 8px;
+  align-items: center;
+}
+.gp-plate .gp-lockwrap { grid-column: 5; }
+@media (max-width: 639px) {
+  .gp-plate { column-gap: 6px; }
+}
+.gp-btn {
+  height: var(--gp-control-h);
+  min-width: var(--gp-control-h);
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(122, 98, 54, 0.6);
+  background: linear-gradient(180deg, #f4e9cc, #e6d7b0);
+  color: var(--gp-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.7), 0 2px 6px -3px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: background 120ms, transform 120ms, box-shadow 160ms;
+}
+.gp-btn:hover:not(:disabled) { background: linear-gradient(180deg, #fbf2d8, #ecdfbb); }
+.gp-btn:active:not(:disabled) { transform: translateY(1px); }
+.gp-btn:disabled { opacity: 0.45; cursor: default; }
+.gp-btn:focus-visible { outline: 2px solid var(--gp-cyan-deep); outline-offset: 2px; }
+.gp-sound { display: inline-flex; align-items: center; gap: 6px; }
+.gp-sound svg { width: 16px; height: 16px; }
+.gp-sound[aria-pressed="true"] {
+  background: linear-gradient(180deg, #0f2436, #0a1a2a);
+  color: var(--gp-cyan);
+  border-color: rgba(127, 214, 239, 0.9);
+  box-shadow: inset 0 1px 0 rgba(127, 214, 239, 0.3), 0 0 14px rgba(127, 214, 239, 0.45);
+}
+.gp-charges { display: inline-flex; gap: 5px; align-items: center; }
+.gp-charges i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(122, 98, 54, 0.7);
+  background: transparent;
+  transition: background 200ms var(--gp-ease), box-shadow 200ms var(--gp-ease);
+}
+.gp-charges i[data-on="true"] { background: var(--gp-cyan-deep); border-color: var(--gp-cyan-deep); box-shadow: 0 0 6px rgba(47, 143, 202, 0.7); }
+.gp-fill {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gp-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.gp-fill small { font-size: 11px; font-weight: 700; color: var(--gp-ink-muted); }
+
+.gp-lockwrap { position: relative; height: var(--gp-control-h); min-width: 150px; justify-self: end; width: 180px; max-width: 100%; }
+@media (max-width: 639px) { .gp-lockwrap { width: auto; min-width: 128px; } }
+.gp-lock {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(213, 182, 111, 0.8);
+  background: #2a2110;
+  color: #f6e6bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 8px;
+  cursor: pointer;
+  transition: opacity 200ms var(--gp-ease);
+}
+.gp-lock:hover:not(:disabled) { background: #3a2d14; }
+.gp-lock:disabled { opacity: 0.5; cursor: default; }
+.gp-lock:focus-visible { outline: 2px solid var(--gp-cyan); outline-offset: 2px; }
+.gp-lock svg { width: 14px; height: 14px; flex: none; }
+.gp-lockstate {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(122, 98, 54, 0.5);
+  background: rgba(44, 36, 23, 0.08);
+  color: var(--gp-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 8px;
+  white-space: nowrap;
+  transition: opacity 200ms var(--gp-ease);
+}
+.gp-lockstate[data-shown="false"], .gp-lock[data-shown="false"] { opacity: 0; pointer-events: none; }
+.gp-lockstate[data-verdict="solved"] { border-color: rgba(185, 147, 76, 0.9); background: rgba(240, 215, 140, 0.35); color: #5a3f0a; }
+.gp-lockstate[data-verdict="partial"] { border-color: rgba(185, 147, 76, 0.7); background: rgba(240, 215, 140, 0.18); color: #5a3f0a; }
+.gp-lockstate[data-verdict="missed"] { border-color: rgba(184, 73, 79, 0.6); background: rgba(184, 73, 79, 0.10); color: #7a2a2e; }
+.gp-dots { display: inline-flex; gap: 3px; }
+.gp-dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.35; animation: gp-dot 900ms infinite; }
+.gp-dots i:nth-child(2) { animation-delay: 150ms; }
+.gp-dots i:nth-child(3) { animation-delay: 300ms; }
+@keyframes gp-dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.reduce-motion .gp-dots i, .gp[data-reduced="true"] .gp-dots i { animation: none; opacity: 0.7; }
+
+/* ---------------------------------------------------------------- status */
+.gp-status {
+  flex: none;
+  height: var(--gp-status-h);
+  margin: 0;
+  font-size: 11px;
+  line-height: var(--gp-status-h);
+  color: var(--gp-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

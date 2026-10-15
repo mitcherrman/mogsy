@@ -45,6 +45,8 @@ export default function Footer() {
     pathname.startsWith("/dev/pro-play-assembly") ||
     pathname.startsWith("/dev/combat-estimate") ||
     pathname.startsWith("/dev/numeric-lab") ||
+    pathname.startsWith("/dev/rangefinder") ||
+    pathname.startsWith("/dev/word-puzzle") ||
     pathname.startsWith("/admin");
   if (hidden) return null;
 

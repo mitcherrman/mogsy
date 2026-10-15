@@ -123,7 +123,10 @@ export default function Layout() {
     // on. Off, the published Worlds page keeps the reading column.
     || isWorldsExperienceSurface(pathname)
     // GM-M1 — the Match Grid lab brings its own max-width and gutters.
-    || pathname === "/dev/match-grid";
+    || pathname === "/dev/match-grid"
+    || pathname === "/dev/rangefinder"
+    || pathname === "/dev/word-puzzle"
+    || pathname.startsWith("/admin/interaction-labs");
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would
