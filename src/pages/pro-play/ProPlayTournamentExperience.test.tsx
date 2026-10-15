@@ -9,7 +9,7 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation, useNavigate, type Location, type NavigateFunction } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes, useLocation, useNavigate, type Location, type NavigateFunction } from "react-router-dom";
 import { MotionGlobalConfig } from "framer-motion";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +20,7 @@ import { PRO_PLAY_TOURNAMENT_ROUTE } from "@/lib/pro-play/routes";
 import {
   WORLDS_EXPERIENCE_BASE,
   WORLDS_EXPERIENCE_ROUTE,
+  WORLDS_ROLLBACK_SCREEN_PATHS,
   isWorldsExperienceEnabled,
   isWorldsExperiencePath,
   isWorldsExperienceSurface,
@@ -66,7 +67,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={PRO_PLAY_TOURNAMENT_ROUTE} element={<ProPlayTournament />} />
-      {isWorldsExperienceEnabled() ? <Route path={WORLDS_EXPERIENCE_ROUTE} element={<ProPlayTournament />} /> : null}
+      {isWorldsExperienceEnabled()
+        ? <Route path={WORLDS_EXPERIENCE_ROUTE} element={<ProPlayTournament />} />
+        : WORLDS_ROLLBACK_SCREEN_PATHS.map((path) => (
+            <Route key={path} path={path} element={<Navigate to={BASE} replace />} />
+          ))}
       <Route path="*" element={<p data-testid="not-found">Not found</p>} />
     </Routes>
   );
@@ -190,14 +195,58 @@ describe("flag OFF (default)", () => {
     expect(canonical().endsWith(BASE)).toBe(true);
   });
 
-  it("does not register the screen paths: they 404 without a tournament read", () => {
+  it("redirects every shared screen link to the canonical Worlds page (replace, query dropped)", async () => {
     backend(WORLDS_PRE);
-    for (const p of ["/stages/swiss", "/teams", "/schedule", "/discover"]) {
-      const { view } = open(`${BASE}${p}`);
-      expect(screen.getByTestId("not-found")).toBeTruthy();
+    for (const p of [
+      "/stages/play-in",
+      "/stages/swiss",
+      "/stages/knockouts",
+      "/teams?team=KC",
+      "/schedule",
+      `/schedule?match=${C9_KC}`,
+      `/schedule/`,
+    ]) {
+      const { router, view } = open(`${BASE}${p}`);
+      await screen.findByTestId("tournament-v2");
+      expect(router.state.location.pathname, p).toBe(BASE);
+      expect(router.state.location.search, p).toBe("");
+      expect(screen.queryByTestId("worlds-experience")).toBeNull();
       view.unmount();
     }
-    expect(tournamentReads()).toEqual([]);
+  });
+
+  it("Back after a redirect leaves the Worlds page rather than looping", async () => {
+    backend(WORLDS_PRE);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    const router = { state: {} } as RouterHandle;
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/lol/pro-play", `${BASE}/schedule?match=${C9_KC}`]} initialIndex={1}>
+          <AppRoutes />
+          <Probe handle={router} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByTestId("tournament-v2");
+    expect(router.state.location.pathname).toBe(BASE);
+    act(() => router.navigate(-1));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lol/pro-play"));
+  });
+
+  it("does not loop on the canonical URL and keeps unknown paths as 404s", async () => {
+    backend(WORLDS_PRE);
+    const { router, view } = open(BASE);
+    await screen.findByTestId("tournament-v2");
+    expect(router.state.location.pathname).toBe(BASE);
+    view.unmount();
+    for (const p of ["/discover", "/stages/swiss/extra", "/stages", "/stages/knockout", "/teams/KC"]) {
+      const { view: v } = open(`${BASE}${p}`);
+      expect(screen.getByTestId("not-found"), p).toBeTruthy();
+      v.unmount();
+    }
+    const { view: dcgi } = open("/lol/pro-play/tournament/dcgi-2026/teams");
+    expect(screen.getByTestId("not-found")).toBeTruthy();
+    dcgi.unmount();
   });
 
   it("draws nothing of the experience, loading state included", async () => {

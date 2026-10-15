@@ -14,7 +14,11 @@ import { matchRoutes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { PRO_PLAY_TOURNAMENT_ROUTE } from "@/lib/pro-play/routes";
-import { WORLDS_EXPERIENCE_BASE, WORLDS_EXPERIENCE_ROUTE } from "@/lib/pro-play/worldsExperience/productionGate";
+import {
+  WORLDS_EXPERIENCE_BASE,
+  WORLDS_EXPERIENCE_ROUTE,
+  WORLDS_ROLLBACK_SCREEN_PATHS,
+} from "@/lib/pro-play/worldsExperience/productionGate";
 
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
 const stripComments = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
@@ -30,7 +34,7 @@ describe("UX3A route map", () => {
 
   it("registers the experience's route only behind the flag, on the same page element", () => {
     expect(appCode).toMatch(
-      /\{isWorldsExperienceEnabled\(\) \? \(\s*<Route path=\{WORLDS_EXPERIENCE_ROUTE\} element=\{<Suspense fallback=\{<RouteFallback \/>\}><ProPlayTournament \/><\/Suspense>\} \/>\s*\) : null\}/,
+      /\{isWorldsExperienceEnabled\(\) \? \(\s*<Route path=\{WORLDS_EXPERIENCE_ROUTE\} element=\{<Suspense fallback=\{<RouteFallback \/>\}><ProPlayTournament \/><\/Suspense>\} \/>\s*\) : \(/,
     );
     expect(appCode.match(/WORLDS_EXPERIENCE_ROUTE/g)).toHaveLength(2); // the import and the gated route
     expect(appCode.match(/isWorldsExperienceEnabled\(\)/g)).toHaveLength(1);
@@ -48,10 +52,26 @@ describe("UX3A route map", () => {
     expect(winner("/lol/pro-play/tournament/dcgi-2026")).toBe(PRO_PLAY_TOURNAMENT_ROUTE);
     expect(winner("/lol/pro-play/tournament/worlds-2025")).toBe(PRO_PLAY_TOURNAMENT_ROUTE);
     expect(winner("/lol/pro-play/tournament/dcgi-2026/teams")).toBe("*");
-    // Flag off: the screens are unknown paths, the Worlds URL is the published route.
-    const off = [{ path: PRO_PLAY_TOURNAMENT_ROUTE }, { path: "*" }];
-    expect(matchRoutes(off, WORLDS_EXPERIENCE_BASE)?.[0].route.path).toBe(PRO_PLAY_TOURNAMENT_ROUTE);
-    expect(matchRoutes(off, `${WORLDS_EXPERIENCE_BASE}/teams`)?.[0].route.path).toBe("*");
+  });
+
+  it("UX3C: flag off, only the explicit screen paths redirect; the base URL never does", () => {
+    const off = [
+      { path: PRO_PLAY_TOURNAMENT_ROUTE },
+      ...WORLDS_ROLLBACK_SCREEN_PATHS.map((path) => ({ path })),
+      { path: "*" },
+    ];
+    const winner = (p: string) => matchRoutes(off, p)?.[0].route.path;
+    expect(winner(WORLDS_EXPERIENCE_BASE)).toBe(PRO_PLAY_TOURNAMENT_ROUTE);
+    expect(winner(`${WORLDS_EXPERIENCE_BASE}/`)).toBe(PRO_PLAY_TOURNAMENT_ROUTE);
+    for (const p of WORLDS_ROLLBACK_SCREEN_PATHS) expect(winner(p)).toBe(p);
+    for (const p of ["/discover", "/stages", "/stages/knockout", "/stages/swiss/x", "/teams/KC"]) {
+      expect(winner(`${WORLDS_EXPERIENCE_BASE}${p}`)).toBe("*");
+    }
+    expect(winner("/lol/pro-play/tournament/dcgi-2026/teams")).toBe("*");
+    expect(WORLDS_ROLLBACK_SCREEN_PATHS.every((p) => p.startsWith(`${WORLDS_EXPERIENCE_BASE}/`))).toBe(true);
+    // Each redirect is a replace to the base URL, registered only in the flag-off branch.
+    expect(appCode).toMatch(/WORLDS_ROLLBACK_SCREEN_PATHS\.map\(\(path\) => \(\s*<Route key=\{path\} path=\{path\} element=\{<Navigate to=\{WORLDS_EXPERIENCE_BASE\} replace \/>\} \/>/);
+    expect(appCode.match(/WORLDS_ROLLBACK_SCREEN_PATHS/g)).toHaveLength(2);
   });
 
   it("makes only the flagged Worlds surface full-bleed in Layout", () => {
