@@ -274,6 +274,41 @@ describe("useRankedMatch", () => {
     expect(result.current.phase).not.toBe("match_over");
   });
 
+  it("surfaces Railway-style 502 public read outage and automatically clears on recovery", async () => {
+    const original = globalThis.fetch as (u: string, init?: RequestInit) => Promise<Response>;
+    let offline = false;
+    let matchReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
+      const u = String(url);
+      if (/\/matches\/[^/]+$/.test(u) && (init.method ?? "GET") === "GET") {
+        matchReads += 1;
+        if (offline) return json({ detail: "service unavailable" }, 502);
+      }
+      return original(u, init);
+    }) as typeof fetch);
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.publicRound).not.toBeNull();
+    expect(result.current.connectionInterrupted).toBe(false);
+    offline = true;
+    await settle(2000);
+    expect(result.current.connectionInterrupted).toBe(true);
+    // Preserve the last rendered question rather than replacing the arena
+    // with an invented game-state transition while the server is absent.
+    expect(result.current.publicRound).not.toBeNull();
+    expect(result.current.phase).toBe("active");
+
+    const before = matchReads;
+    offline = false;
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await vi.advanceTimersByTimeAsync(60);
+    });
+    expect(matchReads).toBeGreaterThan(before);
+    expect(result.current.connectionInterrupted).toBe(false);
+    expect(result.current.publicRound).not.toBeNull();
+  });
+
   it("sends a presence heartbeat on its own cadence", async () => {
     renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
