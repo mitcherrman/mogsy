@@ -386,7 +386,21 @@ function BlockPhase({ state, cards, actions, skewMs, errorLine }: {
   const pick = (cardId: string) => {
     if (locked) return;
     setPending({ index, cardId });
-    actions.submitChallenge(index, { cardId });
+    // ModuleSegmentActions returns false for a refused, stale or failed POST.
+    // A refusal stores NO answer. Without releasing this optimistic marker,
+    // Stat Check disables BOTH cards until a later server snapshot advances
+    // the index, making a missed tap look like several seconds of lag.
+    const submission = actions.submitChallenge(index, { cardId });
+    if (submission && typeof submission.then === "function") {
+      void submission.then(
+        (accepted) => {
+          if (accepted === false) {
+            setPending((p) => p?.index === index && p.cardId === cardId ? null : p);
+          }
+        },
+        () => setPending((p) => p?.index === index && p.cardId === cardId ? null : p),
+      );
+    }
   };
 
   /**
