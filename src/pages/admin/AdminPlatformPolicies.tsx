@@ -36,7 +36,10 @@ type PolicyField =
   | "showBotLabels"
   | "playModeRanked"
   | "playModeDailyChallenge"
-  | "playModeInvite";
+  | "playModeInvite"
+  | "queueDaily"
+  | "queueRole"
+  | "queueRanked";
 
 const GLOBAL_PREMIUM_ACCESS_FIELD: PolicyField = "globalPremiumAccess";
 
@@ -95,7 +98,34 @@ const CONTROLS: {
     warning:
       "Bot personas are visibly labelled for every user. This is presentation only — it changes no permissions, no filtering, no analytics, no search-engine indexing, and no bot behaviour. Admin screens always show real bot status whichever way this is set.",
   },
-  // ── PLAY1 · the Ranked lobby's match-entry scroll ──────────────────────
+  // Owner's three independent operational kill switches. These are not
+  // cosmetic: backend routes refuse new starts when disabled; active matches,
+  // results and review remain accessible. All default enabled until configured.
+  {
+    field: "queueDaily",
+    settingKey: POLICY_KEYS.queueDailyEnabled,
+    label: "Queue · Daily Challenge",
+    description: "Allow new Daily Challenge runs (existing runs can resume).",
+    warnWhen: "off",
+    warning: "Daily Challenge is paused for new runs. Existing runs and results remain available. Backend checks the setting within 60 seconds.",
+  },
+  {
+    field: "queueRole",
+    settingKey: POLICY_KEYS.queueRoleEnabled,
+    label: "Queue · Role Challenge",
+    description: "Allow new Role Challenge starts for Free and Premium.",
+    warnWhen: "off",
+    warning: "New Role Challenge starts are paused. Active matches and idempotent retries remain available. Backend checks the setting within 60 seconds.",
+  },
+  {
+    field: "queueRanked",
+    settingKey: POLICY_KEYS.queueRankedEnabled,
+    label: "Queue · Ranked",
+    description: "Allow new Ranked matchmaking and bot queue entries.",
+    warnWhen: "off",
+    warning: "New Ranked queue joins are paused. Existing matches and results remain accessible. Backend checks the setting within 60 seconds.",
+  },
+  // ── PLAY1 · the LEGACY Ranked lobby's match-entry scroll ───────────────
   // Three independent switches rather than one "which modes" setting, so a
   // single entry can be withdrawn during an incident without implying
   // anything about the other two. All three default ON, which is the intended
@@ -141,6 +171,9 @@ function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
     playModeRanked: policy.play.modes.ranked,
     playModeDailyChallenge: policy.play.modes.dailyChallenge,
     playModeInvite: policy.play.modes.invite,
+    queueDaily: policy.queues.daily,
+    queueRole: policy.queues.role,
+    queueRanked: policy.queues.ranked,
   };
 }
 
@@ -252,7 +285,9 @@ export default function AdminPlatformPolicies() {
             </h1>
             <p className="text-xs text-muted-foreground">
               These switches are <strong>global</strong> — every change applies to all
-              users immediately.
+              users after the setting is saved. Queue pauses are enforced
+              by the backend within 60 seconds; refresh an open Quiz Hub
+              to update its displayed availability.
             </p>
           </div>
           <Link
