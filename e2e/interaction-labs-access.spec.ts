@@ -1,29 +1,27 @@
 /**
- * INT1 — owner-only entry for the Rangefinder / Glyph Press labs, run against
+ * INT1 → UGMP — owner-only access to the interaction-mode playtests, run against
  * the PRODUCTION bundle (`vite preview` of `dist`).
+ *
+ * UGMP retired INT1's file-loader page: the owner plays Rangefinder and Glyph
+ * Press at /admin/playtests/:mode, where the BACKEND deals every round (the
+ * live flow is `unified-playtests-live.spec.ts`). This spec keeps INT1's access
+ * guarantees on the production bundle: a non-owner and a signed-out visitor are
+ * refused at the new route and at every retired URL, no page offers a file
+ * input, and no JS asset carries fixture content.
  *
  * Owner / non-owner: a signed-in Supabase session is placed in storage and the
  * one server question AdminRoute asks — the `owner_auth_state` RPC — is answered
- * here (owner + authorized, or not the owner). That drives the real AdminRoute,
- * InteractionLabPage and original labs; the labs themselves make no server call.
- * (The DEV-only E2E admin persona is not used: with it, AdminAuthProvider
- * re-renders without end — see the handoff.)
- *
- * Signed out: no lab, no loader, no DEV route, and no fixture content in any JS
- * asset the page can fetch.
+ * here. Every other non-local request (including the backend) is answered
+ * locally, so the owner sees the hub's actionable "backend unreachable" state.
  *
  * Screenshots go to INT1_SHOTS (default test-results/interaction-labs).
  */
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
 const SHOTS = process.env.INT1_SHOTS ?? path.resolve("test-results/interaction-labs");
 mkdirSync(SHOTS, { recursive: true });
-const RF_PACK = path.resolve("src/lib/rangefinder/__fixtures__/rangeAuthorityCapture.json");
-const WP_PACK = path.resolve("src/lib/word-puzzle/__fixtures__/wordPuzzleRounds.json");
-const WP = JSON.parse(readFileSync(WP_PACK, "utf8")) as { rounds: { id: string; answer: string }[] };
-const LABEL = "Prototype • not server-authoritatively graded";
 
 const SUPABASE_REF = "kewgjwrzpzpeltwidvuc";
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -66,134 +64,41 @@ async function open(browser: Browser, owner: boolean, vp = { width: 1280, height
   return ctx.newPage();
 }
 
-/** No text node or attribute other than an image src carries the answer. */
-async function answerInDom(page: Page, answer: string): Promise<string[]> {
-  const norm = answer.toUpperCase().replace(/[^A-Z]/g, "");
-  return page.evaluate((n) => {
-    const hits: string[] = [];
-    const clean = (s: string) => s.toUpperCase().replace(/[^A-Z]/g, "");
-    const root = document.querySelector('[data-mig-primitive="glyph-press"]');
-    if (!root) return ["no primitive"];
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    while (walker.nextNode()) if (clean(walker.currentNode.textContent ?? "").includes(n)) hits.push("text");
-    for (const el of root.querySelectorAll("*")) for (const a of el.getAttributeNames()) {
-      if (a === "src") continue;
-      if (clean(el.getAttribute(a) ?? "").includes(n)) hits.push(`${el.tagName}@${a}`);
-    }
-    return hits;
-  }, norm);
-}
+test.describe("owner and non-owner (production bundle)", () => {
+  for (const p of ["/admin/playtests/glyph-press", "/admin/interaction-labs/word-puzzle", "/admin/numeric-lab?mode=combat-estimate"]) {
+    test(`a non-owner at ${p} is redirected away and sees no playtest`, async ({ browser }) => {
+      const page = await open(browser, false);
+      await page.goto(p);
+      await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
+      await expect(page.locator("[data-mig-primitive]")).toHaveCount(0);
+      await expect(page.locator('input[type="file"]')).toHaveCount(0);
+    });
+  }
 
-test.describe("owner flow (production bundle)", () => {
-  test("non-owner is redirected away and never sees a loader", async ({ browser }) => {
-    const page = await open(browser, false);
-    await page.goto("/admin/interaction-labs/word-puzzle");
-    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
-    await expect(page.getByTestId("lab-pack-input")).toHaveCount(0);
-  });
-
-  test("index → Glyph Press: wrong file refused, real file plays a full round, refresh forgets the pack", async ({ browser }) => {
-    const page = await open(browser, true);
-    await page.goto("/admin/interaction-labs");
-    await expect(page.getByTestId("interaction-labs-index")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId("lab-prototype-label")).toHaveText(LABEL);
-    await page.screenshot({ path: path.join(SHOTS, "owner-index-1280x720.png") });
-
-    await page.getByRole("link", { name: /Glyph Press/ }).click();
-    await expect(page.getByTestId("interaction-lab-loader")).toHaveAttribute("data-lab", "word-puzzle");
-    await page.getByTestId("lab-pack-input").setInputFiles(RF_PACK);
-    await expect(page.getByTestId("lab-pack-error")).toContainText("Not a Word Puzzle round file");
-    await expect(page.locator('[data-mig-primitive="glyph-press"]')).toHaveCount(0);
-    await page.screenshot({ path: path.join(SHOTS, "owner-word-puzzle-wrong-pack-1280x720.png") });
-
-    await page.getByTestId("lab-pack-input").setInputFiles(WP_PACK);
-    const root = page.locator('[data-mig-primitive="glyph-press"]');
-    await expect(root).toHaveAttribute("data-phase", "open", { timeout: 15_000 });
-    await expect(page.getByTestId("lab-prototype-label")).toHaveText(LABEL);
-    const id = (await page.getByTestId("lab-round").textContent())!.trim();
-    const answer = WP.rounds.find((r) => r.id === id)!.answer;
-    expect(await answerInDom(page, answer), "answer not in the open DOM").toEqual([]);
-    await page.screenshot({ path: path.join(SHOTS, `owner-word-puzzle-open-${id}-1280x720.png`) });
-
-    // Type the exact answer into the open sockets (the cursor skips the given, engraved ones).
-    const truth = [...answer.toUpperCase()].filter((c) => /[A-Z]/.test(c));
-    const states = await page.$$eval(".gp-cell", (els) => els.map((e) => e.getAttribute("data-state")));
-    expect(states).toHaveLength(truth.length);
-    await page.getByTestId("gp-forme").focus();
-    await page.keyboard.type(truth.filter((_, i) => states[i] !== "engraved").join("").toLowerCase());
-    await page.getByTestId("gp-lock").click();
-    await expect(root).toHaveAttribute("data-phase", "revealed", { timeout: 5000 });
-    await expect(root).toHaveAttribute("data-reveal-stage", "done", { timeout: 8000 });
-    await expect(root).toHaveAttribute("data-verdict", "solved");
-    await page.screenshot({ path: path.join(SHOTS, `owner-word-puzzle-solved-${id}-1280x720.png`) });
-
-    // A wrong / partial lock on the next round.
-    await page.getByTestId("lab-next").click();
-    await expect(root).toHaveAttribute("data-phase", "open");
-    await page.getByTestId("gp-forme").focus();
-    await page.keyboard.type("q");
-    await page.getByTestId("gp-lock").click();
-    await expect(root).toHaveAttribute("data-reveal-stage", "done", { timeout: 8000 });
-    expect(await root.getAttribute("data-verdict")).not.toBe("solved");
-    await page.screenshot({ path: path.join(SHOTS, "owner-word-puzzle-wrong-1280x720.png") });
-
-    // The pack lives in memory only: a refresh is back at the loader.
-    await page.reload();
-    await expect(page.getByTestId("interaction-lab-loader")).toBeVisible({ timeout: 15_000 });
-    await expect(root).toHaveCount(0);
-  });
-
-  test("Rangefinder: exact and wrong placements by keyboard, phone touch drag", async ({ browser }) => {
-    const page = await open(browser, true);
-    await page.goto("/admin/interaction-labs/rangefinder?round=janna-w");
-    await page.getByTestId("lab-pack-input").setInputFiles(RF_PACK);
-    const root = page.locator('[data-mig-primitive="rangefinder"]');
-    await expect(root).toHaveAttribute("data-phase", "open", { timeout: 15_000 });
-    await expect(page.getByTestId("lab-prototype-label")).toHaveText(LABEL);
-    await expect(page.getByTestId("lab-round")).toHaveText("janna-w");
-    expect(await page.locator('[data-mig-primitive="rangefinder"]').innerHTML()).not.toContain("550");
-    await page.screenshot({ path: path.join(SHOTS, "owner-rangefinder-open-1280x720.png") });
-
-    // Janna W is 550: Home (100) + 18 stops of 25.
-    const field = page.getByRole("slider");
-    await field.focus();
-    await page.keyboard.press("Home");
-    for (let i = 0; i < 18; i++) await page.keyboard.press("ArrowRight");
-    await expect(field).toHaveAttribute("aria-valuenow", "550");
-    await page.getByTestId("rangefinder-lock").click();
-    await expect(root).toHaveAttribute("data-reveal-stage", "done", { timeout: 8000 });
-    await expect(root).toHaveAttribute("data-verdict", "exact");
-    await page.screenshot({ path: path.join(SHOTS, "owner-rangefinder-exact-1280x720.png") });
-
-    await page.getByTestId("lab-next").click();
-    await expect(root).toHaveAttribute("data-phase", "open");
-    await field.focus();
-    await page.keyboard.press("End");
-    await page.getByTestId("rangefinder-lock").click();
-    await expect(root).toHaveAttribute("data-reveal-stage", "done", { timeout: 8000 });
-    expect(["short", "long"]).toContain(await root.getAttribute("data-verdict"));
-    await page.screenshot({ path: path.join(SHOTS, "owner-rangefinder-wrong-1280x720.png") });
-
-    const phone = await open(browser, true, { width: 390, height: 844 });
-    await phone.goto("/admin/interaction-labs/rangefinder?round=ezreal-q");
-    await phone.getByTestId("lab-pack-input").setInputFiles(RF_PACK);
-    const proot = phone.locator('[data-mig-primitive="rangefinder"]');
-    await expect(proot).toHaveAttribute("data-phase", "open", { timeout: 15_000 });
-    const box = (await phone.getByRole("slider").boundingBox())!;
-    await phone.touchscreen.tap(box.x + box.width / 2, box.y + box.height * 0.3);
-    await expect(phone.getByRole("slider")).not.toHaveAttribute("aria-valuenow", "");
-    await phone.screenshot({ path: path.join(SHOTS, "owner-rangefinder-placed-390x844.png") });
-    await phone.getByTestId("rangefinder-lock").tap();
-    await expect(proot).toHaveAttribute("data-reveal-stage", "done", { timeout: 8000 });
-    await phone.screenshot({ path: path.join(SHOTS, "owner-rangefinder-revealed-390x844.png") });
-  });
+  for (const [from, to] of [
+    ["/admin/interaction-labs/rangefinder", "/admin/playtests/rangefinder"],
+    ["/admin/interaction-labs/word-puzzle", "/admin/playtests/glyph-press"],
+    ["/admin/numeric-lab?mode=combat-estimate", "/admin/playtests/combat-estimate"],
+  ]) {
+    test(`the owner's bookmark ${from} lands on ${to}, with no file input and an actionable state`, async ({ browser }) => {
+      const page = await open(browser, true);
+      await page.goto(from);
+      await expect(page).toHaveURL(new RegExp(`${to}$`), { timeout: 15_000 });
+      await expect(page.getByTestId("owner-playtest-page")).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('input[type="file"]')).toHaveCount(0);
+      // The backend is unreachable in this hermetic run: the page says so instead of offering rounds.
+      await expect(page.locator('[data-testid="owner-playtest-error"], [data-testid="numeric-lab-error"]').first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("playtest-back").first()).toHaveAttribute("href", "/admin/leaguecraft?section=ranked&view=playtests");
+      await page.screenshot({ path: path.join(SHOTS, `owner-bookmark-${to.split("/").pop()}-1280x720.png`) });
+    });
+  }
 });
 
 test.describe("signed out (production bundle)", () => {
   test.beforeEach(async ({ context }) => { await hermetic(context, null); });
 
-  for (const p of ["/admin/interaction-labs", "/admin/interaction-labs/word-puzzle", "/admin/interaction-labs/rangefinder"]) {
-    test(`${p} mounts no loader and no lab`, async ({ page }) => {
+  for (const p of ["/admin/interaction-labs", "/admin/interaction-labs/word-puzzle", "/admin/interaction-labs/rangefinder", "/admin/playtests/rangefinder", "/admin/playtests/glyph-press", "/admin/numeric-lab"]) {
+    test(`${p} mounts no loader and no playtest`, async ({ page }) => {
       await page.goto(p);
       // Signed out, AdminRoute either redirects home or (Supabase unreachable) shows the unavailable card.
       await expect(async () => {
@@ -201,7 +106,7 @@ test.describe("signed out (production bundle)", () => {
         const unavailable = await page.getByTestId("owner-unavailable").count();
         expect(home || unavailable > 0).toBe(true);
       }).toPass({ timeout: 20_000 });
-      await expect(page.getByTestId("lab-pack-input")).toHaveCount(0);
+      await expect(page.locator('input[type="file"]')).toHaveCount(0);
       await expect(page.locator("[data-mig-primitive]")).toHaveCount(0);
       await page.screenshot({ path: path.join(SHOTS, `prod-signed-out-${p.split("/").pop()}.png`) });
     });
@@ -223,8 +128,12 @@ test.describe("signed out (production bundle)", () => {
     expect(entry.length).toBeGreaterThan(0);
     const manifestish = await (await request.get(entry[0])).text();
     const chunks = new Set([...manifestish.matchAll(/assets\/([A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.js)/g)].map((m) => `/assets/${m[1]}`));
-    const labChunks = [...chunks].filter((c) => /InteractionLabPage|RangefinderLab|WordPuzzleLab/.test(c));
-    expect(labChunks.length, "the lab chunks are reachable (and therefore public)").toBeGreaterThan(0);
+    const labChunks = [...chunks].filter((c) => /OwnerPlaytestPage/.test(c));
+    expect(labChunks.length, "the owner playtest chunk is reachable (and therefore public)").toBeGreaterThan(0);
+    for (const c of labChunks) {
+      const body = await (await request.get(c)).text();
+      for (const m of body.matchAll(/assets\/([A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.js)/g)) chunks.add(`/assets/${m[1]}`);
+    }
     const markers = [
       "2026-10-11T23:48:19.725Z", "2026-10-11T21:48:10.970Z", "Template:Data_Ahri/Spirit_Rush",
       "A desert empire of the Ascended", "Life Form Disintegration Ray is", "castRangeUnits\":",

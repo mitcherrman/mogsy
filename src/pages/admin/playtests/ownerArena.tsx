@@ -4,13 +4,51 @@
  * `CanonicalArena`: the way back to Playtests at the head of the arena's chrome
  * row, the rails, and the session's loading and failure states.
  */
-import type { ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
+import { useStageRoom } from "@/components/interaction-grammar/useStageRoom";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PLAYTESTS_HUB_ROUTE, LAB_MODES, type LabModeId } from "@/lib/playtests/modes";
 
 /** The honest label for the server-validated prototypes (their grader is the backend's). */
 export const SERVER_PROTOTYPE_NOTE = "Prototype · server-validated · unrated";
+
+/** Below this the instrument would be unusable; the page scrolls instead. */
+export const PHONE_ROOM_FLOOR_PX = 380;
+
+/**
+ * The room a measured-height primitive (Rangefinder, Glyph Press) may spend.
+ *
+ * From `lg` up the arena's stage is definite and `useStageRoom` reads it. Below
+ * `lg` an arena whose flanks are panels (as every owner lab's are) stacks and
+ * its stage is CONTENT-sized, so measuring it is circular: the primitive would
+ * be handed its own collapsed height. There the room is what the viewport
+ * leaves under the stage's top edge, never less than a usable floor.
+ */
+export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | undefined {
+  const measured = useStageRoom(ref);
+  const [phoneRoom, setPhoneRoom] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const read = () => {
+      const stage = ref.current?.closest<HTMLElement>(".ranked-question-stage");
+      if (desktop.matches || !stage) { setPhoneRoom(undefined); return; }
+      const cs = getComputedStyle(stage);
+      const top = stage.getBoundingClientRect().top + window.scrollY;
+      const room = Math.floor(window.innerHeight - top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 12);
+      setPhoneRoom(Math.max(PHONE_ROOM_FLOOR_PX, room));
+    };
+    read();
+    window.addEventListener("resize", read);
+    desktop.addEventListener?.("change", read);
+    return () => {
+      window.removeEventListener("resize", read);
+      desktop.removeEventListener?.("change", read);
+    };
+  }, [ref]);
+  return phoneRoom ?? measured;
+}
 
 /** The chrome row's lead: back to Playtests, then the mode's name. */
 export function PlaytestLead({ mode }: { mode: LabModeId }) {

@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 import { PLAYTEST_TIER_LABEL, type PlaytestTier } from "@/lib/playtests/modes";
 
 const TIER_CLASS: Record<PlaytestTier, string> = {
-  "ranked-bot": "border-emerald-400/40 text-emerald-300",
-  prototype: "border-amber-400/50 text-amber-300",
-  experiment: "border-sky-400/40 text-sky-300",
+  "ranked-bot": "border-emerald-600/40 text-emerald-700 dark:border-emerald-400/40 dark:text-emerald-300",
+  prototype: "border-amber-600/50 text-amber-800 dark:border-amber-400/50 dark:text-amber-300",
+  experiment: "border-sky-600/40 text-sky-700 dark:border-sky-400/40 dark:text-sky-300",
 };
 
 export function PlaytestTierChip({ tier }: { tier: PlaytestTier }) {

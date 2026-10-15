@@ -14,7 +14,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { GlyphPress } from "@/components/interaction-grammar/GlyphPress";
-import { useStageRoom } from "@/components/interaction-grammar/useStageRoom";
 import { reconcileValue } from "@/lib/interaction-grammar/glyphPress";
 import type {
   GlyphPressLedger, GlyphPressPublic, GlyphPressResponse, GlyphPressReveal, GlyphPressValue, InteractionPhase,
@@ -25,7 +24,7 @@ import {
   type GlyphPressPublicRound, type GlyphPressSession, type PlaytestsApi,
 } from "@/lib/playtests/api";
 import { labArenaView } from "@/pages/dev/interaction-lab/labArenaView";
-import { OwnerRail, RoundControls, SERVER_PROTOTYPE_NOTE, SessionState } from "./ownerArena";
+import { OwnerRail, RoundControls, SERVER_PROTOTYPE_NOTE, SessionState, useOwnerStageRoom } from "./ownerArena";
 
 const MIN_LOCK_BEAT_MS = 420;
 
@@ -61,7 +60,7 @@ const StageContext = createContext<Stage | null>(null);
 function Viewport() {
   const s = useContext(StageContext);
   const ref = useRef<HTMLDivElement>(null);
-  const maxHeight = useStageRoom(ref);
+  const maxHeight = useOwnerStageRoom(ref);
   if (!s) return null;
   return (
     <div ref={ref} data-testid="glyph-press-owner-viewport" className="flex min-h-0 flex-col">

@@ -13,7 +13,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { Rangefinder } from "@/components/interaction-grammar/Rangefinder";
-import { useStageRoom } from "@/components/interaction-grammar/useStageRoom";
 import { formatUnits } from "@/lib/interaction-grammar/rangefinder";
 import type {
   InteractionPhase, RangefinderPublic, RangefinderResponse, RangefinderReveal, RangefinderValue,
@@ -25,7 +24,7 @@ import {
   type PlaytestsApi, type RangefinderPublicRound, type RangefinderServerReveal, type RangefinderSession,
 } from "@/lib/playtests/api";
 import { labArenaView } from "@/pages/dev/interaction-lab/labArenaView";
-import { OwnerRail, RoundControls, SERVER_PROTOTYPE_NOTE, SessionState } from "./ownerArena";
+import { OwnerRail, RoundControls, SERVER_PROTOTYPE_NOTE, SessionState, useOwnerStageRoom } from "./ownerArena";
 
 /**
  * GM-R1's two optics (`labAuthority.LAB_LENSES`), restated here so this owner
@@ -83,8 +82,8 @@ const StageContext = createContext<Stage | null>(null);
 function Viewport() {
   const s = useContext(StageContext);
   const ref = useRef<HTMLDivElement>(null);
-  // The host measures the stage and hands the primitive a definite height, as a Ranked module does.
-  const maxHeight = useStageRoom(ref);
+  // The host hands the primitive a definite height, as a Ranked module does (see useOwnerStageRoom).
+  const maxHeight = useOwnerStageRoom(ref);
   if (!s) return null;
   return (
     <div ref={ref} data-testid="rangefinder-owner-viewport" className="flex min-h-0 flex-col">
