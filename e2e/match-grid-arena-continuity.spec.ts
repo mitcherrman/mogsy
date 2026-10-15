@@ -177,14 +177,19 @@ async function targetReport(page: Page) {
       const r = el.getBoundingClientRect();
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
-      const pts = [[cx, cy], [cx - 20, cy], [cx + 20, cy], [cx, cy - 20], [cx, cy + 20]];
+      // MG-UX1: `elementFromPoint` answers null outside the viewport, so a
+      // target below the fold (a phone board taller than the screen, reached
+      // by scrolling) is not hit-tested; it is counted as `offscreen` instead.
+      const offscreen = r.top < 0 || r.bottom > window.innerHeight;
+      const pts = offscreen ? [] : [[cx, cy], [cx - 20, cy], [cx + 20, cy], [cx, cy - 20], [cx, cy + 20]];
       const missed = pts.map(([x, y]) => document.elementFromPoint(x, y))
         .filter((hit) => !(hit && (hit === el || el.contains(hit))));
       const by = missed[0] ? `${missed[0].tagName}.${String(missed[0].className).slice(0, 40)}` : null;
-      return { w: r.width, h: r.height, lw: el.offsetWidth, lh: el.offsetHeight, misses: missed.length, by };
+      return { w: r.width, h: r.height, lw: el.offsetWidth, lh: el.offsetHeight, misses: missed.length, by, offscreen };
     });
-    const sum = (a: { w: number; h: number; lw: number; lh: number; misses: number; by: string | null }[]) => ({
+    const sum = (a: { w: number; h: number; lw: number; lh: number; misses: number; by: string | null; offscreen: boolean }[]) => ({
       coveredBy: a.find((x) => x.by)?.by ?? null,
+      offscreen: a.filter((x) => x.offscreen).length,
       n: a.length,
       minW: Math.min(...a.map((x) => x.w)), minH: Math.min(...a.map((x) => x.h)),
       shrunk: a.filter((x) => Math.abs(x.w - x.lw) > 0.5 || Math.abs(x.h - x.lh) > 0.5).length,
@@ -369,7 +374,7 @@ for (const reduced of [false, true]) {
         test.info().annotations.push({ type: "targets-next", description: JSON.stringify({
           composition: nextTargets.composition, rail: nextTargets.rail,
           groups: await sealButtons(page).count(),
-          rune: [nextTargets.rune.minW, nextTargets.rune.minH], seal: [nextTargets.seal.minW, nextTargets.seal.minH],
+          rune: [nextTargets.rune.minW, nextTargets.rune.minH], offscreen: nextTargets.rune.offscreen, seal: [nextTargets.seal.minW, nextTargets.seal.minH],
         }) });
 
         // Deal 2 played through (keyboard), then deal 3 — the five-tree board.
@@ -395,7 +400,7 @@ for (const reduced of [false, true]) {
         test.info().annotations.push({ type: "targets-third", description: JSON.stringify({
           composition: thirdTargets.composition, rail: thirdTargets.rail,
           groups: await sealButtons(page).count(),
-          rune: [thirdTargets.rune.minW, thirdTargets.rune.minH], seal: [thirdTargets.seal.minW, thirdTargets.seal.minH],
+          rune: [thirdTargets.rune.minW, thirdTargets.rune.minH], offscreen: thirdTargets.rune.offscreen, seal: [thirdTargets.seal.minW, thirdTargets.seal.minH],
         }) });
 
         const frames = await page.evaluate(() => (window as unknown as { __mgStop: () => Frame[] }).__mgStop());

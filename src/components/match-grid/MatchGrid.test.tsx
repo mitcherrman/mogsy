@@ -286,11 +286,13 @@ describe("MatchGrid — reveal", () => {
     expect(root).toHaveAttribute("data-reveal-stage", "ledger");
     const ledger = document.querySelector('[data-part="ledger"]')!;
     expect(ledger).toHaveAttribute("data-shown");
-    expect(ledger).toHaveTextContent("two corrected");
-    expect(ledger).toHaveTextContent("four of six relationships stable");
-    expect(ledger).toHaveTextContent("Bell");
-    expect(ledger).toHaveTextContent("Gamma");
-    expect(ledger).toHaveTextContent("was in Alpha");
+    expect(ledger).toHaveTextContent("Two corrected");
+    expect(ledger).toHaveTextContent("four of six in place");
+    // MG-UX1: ONLY the corrections are listed, each as "was → belongs".
+    const items = [...ledger.querySelectorAll("li")].map((li) => li.textContent);
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatch(/Bell.*Alpha.*→.*Gamma/);
+    expect(items[1]).toMatch(/Ember.*Gamma.*→.*Alpha/);
     expect(ledger).toHaveTextContent("Lab authority");
     expect(done).not.toHaveBeenCalled();
 
@@ -300,7 +302,7 @@ describe("MatchGrid — reveal", () => {
     expect(screen.getByRole("status")).toHaveTextContent("four of six relationships stable. Bell belongs to Gamma, not Alpha. Ember belongs to Alpha, not Gamma.");
   });
 
-  it("a fully correct board resolves without travel and lists the finished classification", () => {
+  it("a fully correct board resolves without travel and says so concisely", () => {
     vi.useFakeTimers();
     const right: MatchReveal = {
       ...wrongReveal,
@@ -312,9 +314,11 @@ describe("MatchGrid — reveal", () => {
     act(() => { vi.advanceTimersByTime(1200); });
     const ledger = document.querySelector('[data-part="ledger"]')!;
     expect(ledger).toHaveAttribute("data-shown");
-    expect(ledger).toHaveTextContent("Classification resolved");
-    expect(ledger).toHaveTextContent("Alpha");
-    expect(ledger).toHaveTextContent("Ash · Bell");
+    expect(ledger).toHaveAttribute("data-kind", "exact");
+    expect(ledger).toHaveTextContent("Perfect classification");
+    expect(ledger).toHaveTextContent("All six sigils in the right discipline");
+    // Concise: no list — the settled board above it IS the classification.
+    expect(ledger.querySelectorAll("li")).toHaveLength(0);
     expect(document.querySelectorAll('[data-mark="fractured"], [data-mark="corrected"]')).toHaveLength(0);
   });
 
@@ -396,5 +400,83 @@ describe("MatchGrid — host height budget (rail)", () => {
     fireEvent.click(lockButton());
     expect(onLock).toHaveBeenCalledTimes(1);
     expect(onLock.mock.calls[0][0].assignments).toHaveLength(content.entities.length);
+  });
+});
+
+// ---------------------------------------------------------------- MG-UX1 polish
+describe("MatchGrid — full names and hand feedback (MG-UX1)", () => {
+  const plate = () => document.querySelector('[data-part="nameplate"]');
+
+  it("names a sigil in full on mouse hover, and drops the plate on leave", () => {
+    render(<Host />);
+    const cinder = sigil("Cinder");
+    // React derives enter/leave from over/out.
+    fireEvent(cinder, new window.PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+    expect(plate()).toHaveTextContent("Cinder");
+    fireEvent(cinder, new window.PointerEvent("pointerout", { bubbles: true, pointerType: "mouse" }));
+    expect(plate()).toBeNull();
+  });
+
+  it("names the sigil in hand (touch has no hover)", () => {
+    render(<Host />);
+    const ember = sigil("Ember");
+    pointer("pointerdown", ember, 10, 10, { pointerType: "touch" });
+    pointer("pointerup", ember, 10, 10, { pointerType: "touch" });
+    expect(ember).toHaveAttribute("aria-pressed", "true");
+    expect(plate()).toHaveTextContent("Ember");
+    expect(ember).toHaveAttribute("data-named");
+  });
+
+  it("a tap on a settled board names the sigil, a second tap puts the name away", () => {
+    render(<Host initial={lockedValue} reveal={wrongReveal} />);
+    fireEvent.click(sigil("Dusk"));
+    expect(plate()).toHaveTextContent("Dusk");
+    fireEvent.click(sigil("Dusk"));
+    expect(plate()).toBeNull();
+  });
+
+  it("highlights only the seal under an in-flight drag, by geometry alone", () => {
+    render(<Host />);
+    const fern = sigil("Fern");
+    pointer("pointerdown", fern, 40, 400);
+    pointer("pointermove", fern, 46, 406);
+    pointer("pointermove", fern, COLUMN * 1.5, 80);
+    const targets = content.groups.map((g) => seal(g.label).hasAttribute("data-target"));
+    expect(targets).toEqual([false, true, false]);
+    expect(document.querySelector('[data-part="drop-zone"]')).not.toBeNull();
+    // Every seal is armed identically while the drag is in flight.
+    expect(new Set(content.groups.map((g) => seal(g.label).getAttribute("data-armed"))).size).toBe(1);
+    pointer("pointerup", fern, COLUMN * 1.5, 80);
+    expect(sigil("Fern")).toHaveAccessibleName(/In Beta/);
+    expect(document.querySelector('[data-part="drop-zone"]')).toBeNull();
+  });
+
+  it("acknowledges a landing on the seal it landed on", () => {
+    render(<Host />);
+    fireEvent.keyDown(sigil("Ash"), { key: "3" });
+    const wraps = document.querySelectorAll('[data-part="seal"]');
+    expect(wraps[2].querySelector(".mg-seal-pulse")).not.toBeNull();
+    expect(wraps[0].querySelector(".mg-seal-pulse")).toBeNull();
+  });
+
+  it("Lock wears its readiness only on a complete board; the empty well says so", () => {
+    render(<Host />);
+    const lock = document.querySelector('[data-part="lock"]')!;
+    const note = document.querySelector('[data-part="well-note"]')!;
+    expect(lock).not.toHaveAttribute("data-ready");
+    expect(lock).toHaveTextContent("0/6");
+    expect(note).not.toHaveAttribute("data-shown");
+    content.entities.forEach((e, i) => fireEvent.keyDown(sigil(e.label), { key: String((i % 3) + 1) }));
+    expect(lock).toHaveAttribute("data-ready");
+    expect(note).toHaveAttribute("data-shown");
+    expect(note).toHaveTextContent("All six seated");
+  });
+
+  it("none of the hand feedback carries a verdict before the reveal", () => {
+    render(<Host initial={{ s0: { group: "d2", seat: 0 } }} />);
+    fireEvent(sigil("Ash"), new window.PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+    fireEvent.keyDown(sigil("Bell"), { key: "1" });
+    expect(document.body.innerHTML).not.toMatch(/canonical|correct|misplaced|wrong/i);
+    expect(document.querySelectorAll("[data-mark]")).toHaveLength(0);
   });
 });
