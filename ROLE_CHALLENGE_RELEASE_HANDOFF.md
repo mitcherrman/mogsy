@@ -60,8 +60,14 @@ become required only if a later change touched any path listed above or `require
 - Deploy-outage drill (new #28 behaviour on a Role Challenge match): backend killed mid-question →
   "Connection lost — reconnecting…" after 1.5 s; backend restarted → the **same** Role Challenge match
   (question 1/12) resumed 4.7 s after the outage began.
-- GitHub: `ranked-deployment-recovery` (#28's workflow) success; `role-challenge-review` (npm ci → tests →
-  tsc → vite build) — see PR.
+- **Full frontend suite**, candidate `106c5bd` vs `main` `8856611`: candidate **17,100 passed / 32 failed /
+  7 skipped** (17,139 tests); main **17,064 / 31 / 7** (17,102). **No file fails only on the candidate.**
+  The only per-test deltas are inside `LobbyPreviewPage.premiumAnalytics` (dev-only Daily History lab; no
+  code in this branch touches it). Four isolated runs per tree: line 130 fails on both every time
+  (pre-existing); lines 237 and 507 fail intermittently on both trees (237: main 3/4, candidate 2/4;
+  507: candidate 1/4, otherwise passing) — waitFor timing on a heavy render, **not a regression**.
+- GitHub on `106c5bd`: `role-challenge-review` (npm ci → tests → tsc → vite build) **success**;
+  `ranked-deployment-recovery` (#28's workflow) **success**; same two green again on handoff head `e987e24`.
 - Frontend changes cannot affect the canonical backend evidence (separate repository; the API contract
   consumed by the frontend is unchanged in `role_challenge/` and `routes/role_challenge.py`).
 
