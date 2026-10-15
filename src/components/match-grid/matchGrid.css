@@ -648,7 +648,7 @@
 .mg-ledger-from { font-size: 11px; line-height: 13px; color: var(--mg-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Compact: "name → group" on one line; the group never yields its room. */
 .mg-ledger[data-fit="compact"] .mg-ledger-name { font-size: 12px; }
-.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 12px; line-height: 14px; }
+.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 12px; line-height: 13px; }
 .mg-ledger[data-fit="compact"] .mg-ledger-to { flex: none; }
 
 /* MG-UX2: player-initiated full correction view, over the *same* reserved
