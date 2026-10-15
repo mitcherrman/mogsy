@@ -32,7 +32,7 @@ import {
   type RankedMatchHost,
 } from "@/lib/ranked-public/matchHost";
 
-export type RankedMatchOriginId = typeof MATCH_HOST.journeyLibrary;
+export type RankedMatchOriginId = typeof MATCH_HOST.journeyLibrary | typeof MATCH_HOST.roleChallenge;
 
 export interface RankedMatchOrigin {
   id: RankedMatchOriginId;
@@ -50,6 +50,8 @@ export interface RankedMatchOrigin {
 }
 
 export const JOURNEY_LIBRARY_ROUTE = "/quiz/journeys";
+/** RC8: back to the hub with the centre parchment on Role Challenge. */
+export const ROLE_CHALLENGE_ROUTE = "/quiz?mode=role";
 
 export const RANKED_MATCH_ORIGINS: Record<RankedMatchOriginId, RankedMatchOrigin> = {
   [MATCH_HOST.journeyLibrary]: {
@@ -59,9 +61,16 @@ export const RANKED_MATCH_ORIGINS: Record<RankedMatchOriginId, RankedMatchOrigin
     returnLabel: "Back to Journey Library",
     navLabel: "Journeys",
   },
+  [MATCH_HOST.roleChallenge]: {
+    id: MATCH_HOST.roleChallenge,
+    label: matchHostLabel(MATCH_HOST.roleChallenge)!,
+    href: ROLE_CHALLENGE_ROUTE,
+    returnLabel: "Back to Role Challenge",
+    navLabel: "Role Challenge",
+  },
 };
 
-/** The origin a persisted host implies; every other host (Daily, Study Hall,
+/** The origin a persisted host implies; other hosts (Daily, Study Hall,
  *  Playtest, direct, unknown) and `null` have none. */
 export function originForHost(
   host: RankedMatchHost | null | undefined,

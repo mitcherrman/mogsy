@@ -1,0 +1,58 @@
+name: role-challenge-review
+
+# Role Challenge release gate (RC4 transport + RC7/RC8 hub, picker and arena
+# provenance). Reproducible install: package-lock.json is in sync again, so
+# this is `npm ci`, and the whole-frontend typecheck must pass outright.
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "src/lib/role-challenge/**"
+      - "src/components/quiz/RoleChallengePicker*"
+      - "src/components/quiz/RankedLobbyHero*"
+      - "src/components/quiz/LeaguecraftHub.tsx"
+      - "src/components/ranked-rules/**"
+      - "src/components/game-results/**"
+      - "src/pages/Quiz.tsx"
+      - "src/lib/ranked-public/matchHost*"
+      - "src/pages/quiz-ranked/**"
+      - ".github/workflows/role-challenge-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  role-challenge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies (reproducible)
+        run: npm ci --no-audit --no-fund
+      - name: Role Challenge, hub and arena tests
+        run: >-
+          npx vitest run
+          src/lib/role-challenge
+          src/components/quiz/RoleChallengePicker.test.tsx
+          src/components/quiz/RankedLobbyHero.test.tsx
+          src/components/ranked-rules
+          src/components/game-results
+          src/lib/ranked-public/matchHost.test.ts
+          src/pages/quiz-ranked
+      - name: Typecheck the whole frontend
+        run: |
+          npx tsc --project tsconfig.app.json --noEmit --pretty false
+          npx tsc --project tsconfig.node.json --noEmit --pretty false
+      - name: Production bundle compiles
+        run: npx vite build
+      - name: Ensure no tracked files changed
+        run: test -z "$(git status --porcelain --untracked-files=no)"

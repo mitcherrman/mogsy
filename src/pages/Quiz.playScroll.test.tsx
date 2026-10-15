@@ -131,7 +131,8 @@ function LocationProbe() {
   return <span data-testid="location">{useLocation().pathname}</span>;
 }
 
-async function renderLobby(entry: unknown = "/quiz") {
+// RC7/RC8: the hub lands on Daily; the PLAY seal lives on the Ranked mode.
+async function renderLobby(entry: unknown = "/quiz?mode=ranked") {
   const utils = render(
     <MemoryRouter initialEntries={[entry as string]}>
       <QuizPage />

@@ -172,9 +172,11 @@ function Where() {
   return <span data-testid="where">{`${l.pathname}${l.search}`}</span>;
 }
 
+// RC7/RC8: the hub lands on Daily; these suites assert the Ranked mode, so
+// they open it explicitly via the same `?mode=ranked` a player can use.
 async function renderHub() {
   render(
-    <MemoryRouter initialEntries={["/quiz"]}>
+    <MemoryRouter initialEntries={["/quiz?mode=ranked"]}>
       <Where />
       <Routes>
         <Route path="/quiz" element={<QuizPage />} />
@@ -272,7 +274,7 @@ describe("Leaguecraft — Mogzy's role guidance", () => {
     fireEvent.click(screen.getByTestId("ranked-play-gem"));
     await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
     // The record opened exactly as before, on the same route, still unwritten.
-    expect(screen.getByTestId("where").textContent).toBe("/quiz");
+    expect(screen.getByTestId("where").textContent).toBe("/quiz?mode=ranked");
     expect(selectRole).not.toHaveBeenCalled();
     await waitFor(() => expect(lobbyGuide()).toBeNull());
     // First-use is consumed by acting on it.
@@ -392,7 +394,7 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     expect(screen.getByRole("button", { name: /Play again/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Create Account" })).toBeNull();
     expect(screen.queryByText("Sign up to save your XP and streak to your profile.")).toBeNull();
-    expect(screen.getByTestId("where").textContent).toBe("/quiz");
+    expect(screen.getByTestId("where").textContent).toBe("/quiz?mode=ranked");
   });
 
   it("Create Account is the existing auth round trip, returning to /quiz", async () => {

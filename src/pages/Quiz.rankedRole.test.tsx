@@ -179,9 +179,11 @@ function Location() {
   );
 }
 
+// RC7/RC8: the hub lands on Daily; these suites assert the Ranked mode, so
+// they open it explicitly via the same `?mode=ranked` a player can use.
 async function renderHub() {
   const utils = render(
-    <MemoryRouter initialEntries={["/quiz"]}>
+    <MemoryRouter initialEntries={["/quiz?mode=ranked"]}>
       <Location />
       <Routes>
         <Route path="/quiz" element={<QuizPage />} />

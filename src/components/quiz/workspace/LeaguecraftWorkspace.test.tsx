@@ -88,6 +88,7 @@ function renderHub(
   return render(
     <MemoryRouter initialEntries={entries}>
       <LeaguecraftHub
+        initialCentreMode="ranked"
         progress={{ rank_name: "Bronze" }}
         ranked={{ placementMatchesRemaining: 0, isPlaced: true, estimatedGain: 20, estimatedLoss: 15 }}
         onPlayRanked={() => true}
@@ -590,6 +591,7 @@ function renderAt(entry: string, over: Partial<React.ComponentProps<typeof Leagu
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <LeaguecraftHub
+        initialCentreMode="ranked"
         progress={{ rank_name: "Bronze" }}
         ranked={{ placementMatchesRemaining: 0, isPlaced: true, estimatedGain: 20, estimatedLoss: 15 }}
         onPlayRanked={() => true}

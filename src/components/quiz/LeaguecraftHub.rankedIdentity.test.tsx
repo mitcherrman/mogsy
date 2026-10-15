@@ -55,6 +55,7 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
   return rtlRender(
     <MemoryRouter>
       <LeaguecraftHub
+        initialCentreMode="ranked"
         // Legacy Academy ladder values, deliberately loud and contradictory.
         progress={{ rank_name: "Grandmaster", next_rank_name: "Iron", progress_percent: 99 }}
         ranked={PLACED}

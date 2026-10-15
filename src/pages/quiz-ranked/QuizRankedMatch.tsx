@@ -18,7 +18,7 @@
  * authoritative pass-through; no combat value is computed here, and none is
  * computed in the arena either.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { withInlineOrderForgeReveal } from "@/lib/ranked-core/orderForgeLockReveal";
 import { withSettledTimeoutReveal } from "@/lib/ranked-core/reconstructTimeoutReveal";
@@ -60,8 +60,10 @@ import {
 } from "@/lib/ranked-core/duelState";
 import { RankedScoreline } from "./RankedScoreline";
 import { resolveMatchOrigin, type RankedMatchOrigin } from "./matchOrigin";
+import { MATCH_HOST } from "@/lib/ranked-public/matchHost";
 import type { RankedMatchHost } from "@/lib/ranked-public/matchHost";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
+import { openResultDetails } from "@/components/game-results/openResultDetails";
 import { ResultContestants } from "@/components/game-results/ResultContestants";
 import { buildRankedResults } from "./rankedResultsModel";
 import { buildModuleDuel } from "./moduleDuel";
@@ -285,11 +287,21 @@ export function rankedDetailsSummary(modules: number, newQuestions = 0): string 
  * this file already owns ("vs Bot", "waiting for opponent…", "Back to Quiz").
  */
 export function QuizRankedMatch(props: QuizRankedMatchProps) {
+  // RC8: the scroll states the match's own length and stakes, so it follows
+  // the RESOLVED origin (the persisted host overrules the router hint).
+  const { onOriginChange } = props;
+  const [origin, setOrigin] = useState<RankedMatchOrigin | null>(props.origin ?? null);
+  const handleOriginChange = useCallback((next: RankedMatchOrigin | null) => {
+    setOrigin(next);
+    onOriginChange?.(next);
+  }, [onOriginChange]);
   return (
     <>
-      <RankedMatchArena {...props} />
+      <RankedMatchArena {...props} onOriginChange={handleOriginChange} />
       {/* A hosted match's rules are its host's to explain. */}
-      {!props.host && <RankedRulesScroll />}
+      {!props.host && (
+        <RankedRulesScroll variant={origin?.id === MATCH_HOST.roleChallenge ? "role_challenge" : "ranked"} />
+      )}
     </>
   );
 }
@@ -1215,10 +1227,14 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
           },
       // Into the Record's History pane, which is where this match's full
       // question-by-question timeline — answers included — already lives.
-      secondary: {
-        label: "Review Match",
-        onClick: () => { onTerminalNavigate("/quiz#history"); },
-      },
+      // RC8: a Role Challenge is NOT in Ranked history (by design), so its
+      // review is this screen's own Match details, opened in place.
+      secondary: origin?.id === MATCH_HOST.roleChallenge
+        ? { label: "Review Match", onClick: () => { openResultDetails(); } }
+        : {
+          label: "Review Match",
+          onClick: () => { onTerminalNavigate("/quiz#history"); },
+        },
       tertiary: {
         label: "Back to Leaguecraft",
         onClick: () => { onTerminalNavigate(LOBBY_HREF); },

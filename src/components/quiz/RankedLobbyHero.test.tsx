@@ -83,7 +83,10 @@ function match(over: Partial<MatchHistoryEntryView>): MatchHistoryEntryView {
   } as MatchHistoryEntryView;
 }
 
-function renderHero(over: Partial<React.ComponentProps<typeof RankedLobbyHero>> = {}) {
+function renderHero(
+  over: Partial<React.ComponentProps<typeof RankedLobbyHero>> = {},
+  selected: "ranked" | "daily" = "ranked",
+) {
   const onPlayRanked = vi.fn();
   const utils = render(
     <MemoryRouter>
@@ -96,8 +99,49 @@ function renderHero(over: Partial<React.ComponentProps<typeof RankedLobbyHero>> 
       />
     </MemoryRouter>,
   );
+  // These legacy assertions exercise the Ranked PANEL rather than the
+  // landing page. RC7 intentionally lands on Daily, so make the selection
+  // explicit instead of changing product behavior back to Ranked-first.
+  if (selected === "ranked") {
+    fireEvent.click(screen.getByRole("tab", { name: "Ranked" }));
+  }
   return { ...utils, onPlayRanked };
 }
+
+describe("RC7 three-mode landing", () => {
+  it("opens Daily by default with the other two modes still selectable", () => {
+    const onPlayDailyChallenge = vi.fn();
+    renderHero({ onPlayDailyChallenge }, "daily");
+    const daily = screen.getByRole("tab", { name: "Daily Challenge" });
+    const role = screen.getByRole("tab", { name: "Role Challenge" });
+    const ranked = screen.getByRole("tab", { name: "Ranked" });
+    expect(daily.getAttribute("aria-selected")).toBe("true");
+    expect(role.getAttribute("aria-selected")).toBe("false");
+    expect(ranked.getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByTestId("daily-mode-panel")).toBeTruthy();
+    expect(screen.queryByTestId("ranked-class-carousel")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Play Daily" }));
+    expect(onPlayDailyChallenge).toHaveBeenCalledTimes(1);
+    fireEvent.click(ranked);
+    expect(ranked.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("ranked-class-carousel")).toBeTruthy();
+    expect(screen.queryByTestId("daily-mode-panel")).toBeNull();
+  });
+
+  it("shows server-authoritative Daily resume and complete copy", () => {
+    const dailyBase = {
+      known: true, completed: false, resumable: true,
+      optionalOpen: false, resolved: null, total: null,
+      streak: null, theme: null,
+    };
+    const { rerender } = renderHero({
+      dailyChallenge: dailyBase,
+      onPlayDailyChallenge: vi.fn(),
+    }, "daily");
+    expect(screen.getByRole("button", { name: "Continue Daily" })).toBeTruthy();
+    expect(screen.getByTestId("daily-mode-status").textContent).toContain("unfinished");
+  });
+});
 
 describe("RankedLobbyHero — three-column composition", () => {
   it("renders the standing column, the play column and the profile column", () => {

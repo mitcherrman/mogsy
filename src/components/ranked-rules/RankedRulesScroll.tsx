@@ -42,7 +42,7 @@ import { BookOpen } from "lucide-react";
 import { useCallback, useState } from "react";
 import { DOCK_ORDER } from "@/components/mogzy-dock/MogzyDock";
 import { MogzyExplainsPanel } from "./MogzyExplainsPanel";
-import { RankedRulesContent } from "./RankedRulesContent";
+import { RankedRulesContent, type RulesVariant } from "./RankedRulesContent";
 import {
   RANKED_RULES_VERSION,
   markRankedRulesSeen,
@@ -50,7 +50,7 @@ import {
   rulesCanOpenBesideArena,
 } from "@/lib/ranked/ranked-rules-seen";
 
-export function RankedRulesScroll() {
+export function RankedRulesScroll({ variant = "ranked" }: { variant?: RulesVariant } = {}) {
   // What this browser had acknowledged when the arena mounted. Held in state
   // rather than re-read, so the tab's prominence drops the instant the player
   // acknowledges rather than on some later render.
@@ -91,13 +91,13 @@ export function RankedRulesScroll() {
       // Only while there is something unread to find. A player who has
       // acknowledged these rules gets the quiet tab, on every layout.
       prominent={unseen && !open}
-      title="Ranked Rules"
+      title={variant === "role_challenge" ? "Role Challenge Rules" : "Ranked Rules"}
       tabIcon={<BookOpen className="h-3.5 w-3.5" />}
       tabLabel="Rules"
-      openLabel="View Ranked scoring rules"
+      openLabel={variant === "role_challenge" ? "View Role Challenge scoring rules" : "View Ranked scoring rules"}
       testId="ranked-rules"
     >
-      <RankedRulesContent />
+      <RankedRulesContent variant={variant} />
     </MogzyExplainsPanel>
   );
 }
