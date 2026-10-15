@@ -1,0 +1,62 @@
+name: Match Grid UX integration
+
+on:
+  pull_request:
+    paths:
+      - "src/components/match-grid/**"
+      - "src/lib/match-grid/**"
+      - "e2e/match-grid-*"
+      - ".github/workflows/match-grid-ux-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  component-and-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install without rewriting the existing lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Match Grid, layout, and Ranked module tests
+        run: npx vitest run src/components/match-grid src/lib/match-grid src/lib/ranked-core/modules/matchGridModule.test.tsx
+      - name: Lint changed source and tests
+        run: npx eslint src/components/match-grid/MatchGrid.tsx src/components/match-grid/MatchGrid.test.tsx src/lib/match-grid/layout.ts src/lib/match-grid/layout.rail.test.ts
+      - name: Production Vite bundle
+        run: npx vite build
+
+  dev-browser-continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install without rewriting the existing lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Match Grid dev-lab continuity, normal and reduced motion at desktop/phone sizes
+        run: npx playwright test -c playwright.arena.config.ts e2e/match-grid-continuity.spec.ts --workers=1
+      - name: Upload browser evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-grid-ux-continuity-evidence
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -29,7 +29,10 @@ import {
   assertMatchContent, isBoardComplete, membersOf, normalizeValue, numberWord, seatEntity, settleReveal, snapToGroup,
   toMatchResponse, unseatEntity, unsortedCount,
 } from "@/lib/match-grid/board";
-import { computeLayout, compositionFor, constellationSizes, instrumentHeight, RAIL, wellSockets, type HeightTier, type InstrumentLayout } from "@/lib/match-grid/layout";
+import {
+  computeLayout, GAP_INSTRUMENT_WELL, ledgerFit, planBoard, wellSocket,
+  type BoardPlan, type CaptionSpec, type HeightTier, type InstrumentLayout,
+} from "@/lib/match-grid/layout";
 import { planReveal, reached, type RevealStage } from "@/lib/match-grid/reveal";
 import "./matchGrid.css";
 
@@ -64,7 +67,6 @@ const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
 const TOUCH_HOLD_MS = 180;
 const TOUCH_SLOP = 8;
 const MOUSE_SLOP = 4;
-const GAP_INSTRUMENT_WELL = 12;
 
 interface DragState {
   token: string;
@@ -133,48 +135,30 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const measured = useMeasuredWidth(rootRef);
   const width = measured || 960;
   const viewportTier = useHeightTier();
-  const tier = heightTier ?? viewportTier;
-  const compact = tier === "compact";
+  const viewTier = heightTier ?? viewportTier;
   const reduced = useReducedMotionPreference();
 
   // ------------------------------------------------------------ geometry
-  const wellPad = 14;
-  // The usual composition, stacked: instrument, then the well beneath it.
-  const stackedComposition = compositionFor(width, K, tier);
-  const stackedInstrH = instrumentHeight(stackedComposition, K, tier);
-  const stackedSigil = stackedComposition === "ledger" ? 44 : constellationSizes(tier).sigil;
-  const stackedCaption = stackedComposition === "ledger" ? 18 : compact ? 20 : tier === "tall" ? 26 : 24;
-  const stackedPitch = stackedComposition === "ledger"
-    ? Math.max(58, Math.floor((width - 16) / Math.min(N, 6))) : compact ? 80 : tier === "tall" ? 102 : 92;
-  const stackedWell = wellSockets(N, width - 2 * wellPad, stackedPitch);
-  const stackedBoardH = stackedInstrH + GAP_INSTRUMENT_WELL
-    + stackedWell.rows * (stackedSigil + stackedCaption + 8) + wellPad * 2;
-  // MG-P3.1: a host-imposed height the stacked board cannot meet → RAIL.
-  const chrome = (compact ? 58 : tier === "tall" ? 72 : 66) + (compact ? 56 : tier === "tall" ? 68 : 64) + 2;
-  const rail = maxHeight !== undefined && width >= RAIL.minWidth && stackedBoardH + chrome > maxHeight;
-
-  const composition = rail ? "ledger" : stackedComposition;
-  const instrW = rail ? RAIL.columnW : width;
-  const instrH = rail ? RAIL.rowH * K : stackedInstrH;
+  // MG-UX1: one plan for the whole board — composition, sizes, captions, the
+  // well and the ledger's reserved room — from the box, the host's budget and
+  // the dealt names. Fixed per round: nothing here reads the board's state.
+  const labels = useMemo(() => entities.map((e) => e.label), [entities]);
+  const plan: BoardPlan = useMemo(
+    () => planBoard({ width, maxHeight, groupCount: K, labels, tier: viewTier, hasContext: Boolean(content.context) }),
+    [width, maxHeight, K, labels, viewTier, content.context],
+  );
+  const { composition, rail, tier, boardH, instrW, instrH, well } = plan;
+  const compact = tier === "compact";
   const layout: InstrumentLayout = useMemo(
-    () => computeLayout({ width: instrW, height: instrH, groupCount: K, tier, rail }),
-    [instrW, instrH, K, tier, rail],
+    () => computeLayout({ width: instrW, height: instrH, groupCount: K, tier, rows: plan.rows ?? undefined }),
+    [instrW, instrH, K, tier, plan.rows],
   );
   const sigil = layout.sigil;
-  const captionBand = composition === "ledger" ? 18 : compact ? 20 : tier === "tall" ? 26 : 24;
-  const wellPitch = rail ? RAIL.wellPitch : stackedPitch;
-  const wellRowH = sigil + captionBand + 8;
-  // The well's footprint: beneath the instrument, or (rail) a column beside it.
-  const wellX = rail ? instrW + RAIL.gap : 0;
-  const wellW = width - wellX;
-  const well = useMemo(() => wellSockets(N, wellW - 2 * wellPad, wellPitch), [N, wellW, wellPitch]);
-  const wellH = well.rows * wellRowH + wellPad * 2;
-  const wellTop = rail ? RAIL.headH : instrH + GAP_INSTRUMENT_WELL;
-  const boardH = rail ? Math.max(instrH, wellTop + wellH) : wellTop + wellH;
-  const socketCenter = useCallback((i: number) => {
-    const p = well.at(i);
-    return { x: wellX + wellPad + p.x, y: wellTop + wellPad + p.y * wellRowH + sigil / 2 };
-  }, [well, wellX, wellTop, wellRowH, sigil]);
+  const wellX = well.x;
+  const wellW = well.w;
+  const wellH = well.h;
+  const wellTop = well.top;
+  const socketCenter = useCallback((i: number) => wellSocket(well, i), [well]);
 
   // ------------------------------------------------------------ board state
   const board = useMemo(() => normalizeValue(content, value), [content, value]);
@@ -187,6 +171,23 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const [held, setHeld] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [note, setNote] = useState("");
+  // Owner-only visual correction inspector: opt-in after a server reveal,
+  // overlays the reserved ledger rather than moving the board or footer.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const hasReveal = Boolean(reveal);
+  // Reset across rounds, not on every polling refresh that recreates the
+  // same authoritative reveal object.
+  useEffect(() => {
+    if (!hasReveal || phase === "open") setDetailsOpen(false);
+  }, [hasReveal, phase]);
+  // MG-UX1 — who is being NAMED right now (the full-name plate): the pointer's
+  // hover, the keyboard's focus, or a tap on a settled board. Presentation
+  // only: none of it ever reaches `value` or the host.
+  const [hoverTok, setHoverTok] = useState<string | null>(null);
+  const [focusTok, setFocusTok] = useState<string | null>(null);
+  const [inspectTok, setInspectTok] = useState<string | null>(null);
+  // The last landing, so the seal it landed on can acknowledge it once.
+  const [landed, setLanded] = useState<{ token: string; group: string; n: number } | null>(null);
   const holdTimer = useRef<number | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
@@ -208,14 +209,14 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const completedFor = useRef<MatchReveal | null>(null);
   useEffect(() => {
     if (!reveal) { setStage("freeze"); return; }
-    const plan = planReveal({ reduced, hasTravel });
-    if (plan.instant) {
+    const clock = planReveal({ reduced, hasTravel });
+    if (clock.instant) {
       setStage("done");
       if (completedFor.current !== reveal) { completedFor.current = reveal; onRevealComplete?.(); }
       return;
     }
     setStage("freeze");
-    const timers = plan.stages.map((s) => window.setTimeout(() => {
+    const timers = clock.stages.map((s) => window.setTimeout(() => {
       setStage(s.stage);
       if (s.stage === "done" && completedFor.current !== reveal) { completedFor.current = reveal; onRevealComplete?.(); }
     }, s.at));
@@ -245,7 +246,10 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const commitSeat = useCallback((token: string, group: string) => {
     const out = seatEntity(content, board, token, group);
     if (out.kind === "invalid") return;
-    if (out.kind !== "same") onChange(out.next);
+    if (out.kind !== "same") {
+      onChange(out.next);
+      setLanded((l) => ({ token, group, n: (l?.n ?? 0) + 1 }));
+    }
     const n = membersOf(out.next, group).length;
     const gl = groupLabel(group);
     setNote(out.kind === "moved"
@@ -326,17 +330,23 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
     setDrag({ ...d, x: p.x, y: p.y });
   };
 
-  const resolveDrop = useCallback((d: DragState) => {
+  /** The group a drop at `p` lands in: geometry only, identical for every group. */
+  const dropGroup = useCallback((p: { x: number; y: number }): number | null => {
     const zones = layout.seals.map((s) => s.zone);
-    const g = snapToGroup({ x: d.x, y: d.y }, zones, { x: rail ? RAIL.gap / 2 : 24, y: GAP_INSTRUMENT_WELL + 24 });
-    const overWires = rail ? d.x < wellX : d.y < wellTop + 24;
-    if (g !== null && overWires) { commitSeat(d.token, groups[g].token); return; }
+    const g = snapToGroup(p, zones, { x: rail ? 5 : 24, y: GAP_INSTRUMENT_WELL + 24 });
+    const overWires = rail ? p.x < wellX : p.y < wellTop + 24;
+    return g !== null && overWires ? g : null;
+  }, [layout, rail, wellX, wellTop]);
+
+  const resolveDrop = useCallback((d: DragState) => {
+    const g = dropGroup({ x: d.x, y: d.y });
+    if (g !== null) { commitSeat(d.token, groups[g].token); return; }
     const inWell = rail
       ? d.x >= wellX - 4 && d.x <= width + 24 && d.y >= -24 && d.y <= boardH + 24
       : d.y >= wellTop - 24 && d.y <= boardH + 24 && d.x >= -24 && d.x <= width + 24;
     if (inWell) { if (board[d.token]) commitUnseat(d.token); else setHeld(null); return; }
     setNote(`${entityLabel(d.token)} put back.`);
-  }, [layout, rail, wellX, wellTop, boardH, width, groups, board, commitSeat, commitUnseat, entityLabel]);
+  }, [dropGroup, rail, wellX, wellTop, boardH, width, groups, board, commitSeat, commitUnseat, entityLabel]);
 
   const onSigilPointerUp = (token: string) => (e: ReactPointerEvent<HTMLButtonElement>) => {
     const d = dragRef.current;
@@ -443,23 +453,65 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
 
   const hueStyle = (g: MatchGroup): CSSProperties => (g.hue == null ? {} : ({ "--mg-hue": String(g.hue) } as CSSProperties));
 
-  const verdictLine = reveal
-    ? reveal.isCorrect
-      ? "Classification resolved"
-      : `${numberWord(entities.filter((e) => reveal.entityCorrect[e.token] === false).length)} corrected`
-    : null;
+  const wrongCount = reveal ? entities.filter((e) => reveal.entityCorrect[e.token] === false).length : 0;
+  const rightCount = N - wrongCount;
+  const canInspectCorrections = Boolean(reveal) && ledgerShown && wrongCount > 0;
+  const plural = (n: number, noun: string) => (n === 1 ? noun : `${noun}s`);
+  const seated = N - remaining;
 
   const statusText = reveal
-    ? `${verdictLine} · ${numberWord(entities.filter((e) => reveal.entityCorrect[e.token]).length)} of ${numberWord(N)} stable`
+    ? reveal.isCorrect || wrongCount === 0
+      ? `Perfect · all ${numberWord(N)} ${plural(N, content.entityNoun)} in place`
+      : `${numberWord(wrongCount)} corrected · ${numberWord(rightCount)} of ${numberWord(N)} stable`
     : phase === "locked"
       ? "Locked in · waiting for the Academy"
       : held
-        ? `Holding ${entityLabel(held)} — choose a ${content.groupNoun}`
+        ? `Holding ${entityLabel(held)} — tap a ${content.groupNoun}, or press 1–${K}`
         : remaining === 0
-          ? "Every relationship drawn — lock when you are sure"
-          : `${numberWord(remaining)} ${remaining === 1 ? content.entityNoun : `${content.entityNoun}s`} unsorted · drag, or tap then tap`;
+          ? `All ${numberWord(N)} seated — lock in when you are sure`
+          : seated === 0
+            ? `${numberWord(remaining)} ${plural(remaining, content.entityNoun)} unsorted · drag each to its ${content.groupNoun}, or tap it, then the ${content.groupNoun}`
+            : `${numberWord(seated)} of ${numberWord(N)} seated · ${numberWord(remaining)} ${plural(remaining, content.entityNoun)} unsorted`;
 
   const dragging = drag?.active ? drag : null;
+  // Where an in-flight drag would land: the same highlight for every group.
+  const dropTarget = dragging ? dropGroup({ x: dragging.x, y: dragging.y }) : null;
+  const dropZone = dropTarget !== null ? layout.seals[dropTarget].zone : null;
+
+  // The name plate: the drag, else the sigil in hand, else focus, hover or a tap on a settled board.
+  const plateTok = dragging?.token ?? held ?? focusTok ?? hoverTok ?? inspectTok;
+  const plateAt = plateTok
+    ? dragging?.token === plateTok
+      ? { x: dragging.x - dragging.grabDx, y: dragging.y - dragging.grabDy }
+      : positions.get(plateTok) ?? null
+    : null;
+  const plateBelow = plateAt ? plateAt.y - sigil / 2 - 34 < 0 : false;
+  const plateRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = plateRef.current;
+    if (!el || !plateAt) return;
+    // Keep the whole name inside the board: clamp by its measured width.
+    const w = el.offsetWidth;
+    el.style.left = `${Math.max(4, Math.min(width - w - 4, plateAt.x - w / 2))}px`;
+  });
+
+  const captionVars = (prefix: string, c: CaptionSpec) => ({
+    [`--mg-${prefix}-cap-w`]: `${c.width}px`,
+    [`--mg-${prefix}-cap-font`]: `${c.font}px`,
+    [`--mg-${prefix}-cap-line`]: `${c.line}px`,
+    [`--mg-${prefix}-cap-lines`]: String(Math.max(1, c.lines)),
+  });
+
+  const rootStyle = {
+    "--mg-head-h": `${plan.headH}px`,
+    "--mg-foot-h": `${plan.footH}px`,
+    "--mg-board-h": `${boardH}px`,
+    ...captionVars("seat", plan.seatCaption),
+    ...captionVars("well", well.caption),
+    ...(rail ? { "--mg-rail-well-x": `${wellX}px` } : {}),
+  } as CSSProperties;
+
+  const wellEmptyNote = !reveal && remaining === 0;
 
   return (
     <div
@@ -468,16 +520,19 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
       data-phase={reveal ? "revealed" : phase}
       data-composition={composition}
       data-rail={rail ? "" : undefined}
-      style={rail ? ({ "--mg-rail-well-x": `${wellX}px`, "--mg-rail-head-h": `${RAIL.headH}px` } as CSSProperties) : undefined}
+      style={rootStyle}
       data-tier={tier}
       data-compact={compact ? "" : undefined}
+      data-seat-captions={plan.seatCaption.lines}
+      data-well-captions={well.caption.lines}
       data-reduced-motion={reduced ? "" : undefined}
       data-reveal-stage={reveal ? stage : undefined}
+      data-held={held ? "" : undefined}
       className="mg-root"
       onKeyDown={(e) => { if (e.key === "Escape" && (held || drag)) { setHeld(null); setDrag(null); clearHold(); } }}
     >
       <header className="mg-head" data-part="head">
-        {content.context ? <p className="mg-eyebrow">{content.context}</p> : <p className="mg-eyebrow">&nbsp;</p>}
+        {content.context ? <p className="mg-eyebrow">{content.context}</p> : null}
         <h2 ref={promptRef} tabIndex={-1} className="mg-prompt">{content.prompt}</h2>
       </header>
 
@@ -501,7 +556,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
               <line x1={0} x2={width} y1={layout.seals[0].y} y2={layout.seals[0].y} stroke="url(#mg-baseline)" strokeWidth={1} />
               {layout.seals.map((s, g) => {
                 const r1 = Math.hypot(layout.seat(g, 0).x - s.x, layout.seat(g, 0).y - s.y);
-                const r2 = Math.hypot(layout.seat(g, 5).x - s.x, layout.seat(g, 5).y - s.y);
+                const r2 = Math.hypot(layout.seat(g, 1).x - s.x, layout.seat(g, 1).y - s.y);
                 return (
                   <g key={g} className="mg-guide-orbit">
                     <circle cx={s.x} cy={s.y} r={r1} />
@@ -513,7 +568,10 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
             </>
           ) : (
             layout.seals.map((s, g) => (
-              <line key={g} x1={s.x + s.r + 6} x2={instrW - 8} y1={s.y} y2={s.y} className="mg-guide-wire" />
+              <g key={g}>
+                {g > 0 && <line x1={8} x2={instrW - 8} y1={s.zone.top} y2={s.zone.top} className="mg-guide-divider" />}
+                <line x1={s.x + s.r + 6} x2={instrW - 8} y1={s.y} y2={s.y} className="mg-guide-wire" />
+              </g>
             ))
           )}
           <rect x={wellX + 6} y={wellTop + 0.5} width={Math.max(0, wellW - 12)} height={Math.max(0, wellH - 1)} rx={10} className="mg-well-plate" />
@@ -522,6 +580,18 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
             return <circle key={e.token} cx={c.x} cy={c.y} r={sigil / 2 + 3} className="mg-socket" data-empty={drawn[e.token] ? "" : undefined} />;
           })}
         </svg>
+
+        {/* Where a drag will land (geometry only; every group the same). */}
+        {dropZone ? (
+          <div className="mg-drop-zone" data-part="drop-zone" aria-hidden
+            style={{ left: dropZone.left + 2, top: dropZone.top + 2, width: Math.min(dropZone.right, instrW) - dropZone.left - 4, height: dropZone.bottom - dropZone.top - 4 }} />
+        ) : null}
+
+        {/* The empty well says so, in the well's own footprint. */}
+        <p className="mg-well-note" data-part="well-note" data-shown={wellEmptyNote ? "" : undefined} aria-hidden
+          style={{ left: wellX + 6, top: wellTop, width: Math.max(0, wellW - 12), height: wellH }}>
+          <span>{phase === "locked" ? "Locked in" : `All ${numberWord(N)} seated`}</span>
+        </p>
 
         {/* Threads: the relationships themselves. */}
         <svg className="mg-threads" width={width} height={boardH} aria-hidden>
@@ -545,13 +615,15 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
           const sealed = Boolean(reveal) && ledgerShown;
           return (
             <div key={g.token} className="mg-seal-wrap" data-part="seal" style={{ left: s.x, top: s.y, ...hueStyle(g) }}>
+              {landed && landed.group === g.token && !reveal ? <span key={landed.n} className="mg-seal-pulse" aria-hidden style={{ width: s.r * 2, height: s.r * 2 }} /> : null}
               <button
                 ref={(el) => { sealRefs.current[gi] = el; }}
                 type="button"
                 className="mg-seal"
                 style={{ width: s.r * 2, height: s.r * 2 }}
                 data-count={count}
-                data-armed={held ? "" : undefined}
+                data-armed={held || dragging ? "" : undefined}
+                data-target={dropTarget === gi ? "" : undefined}
                 data-sealed={sealed ? "" : undefined}
                 aria-label={`${g.label}, ${content.groupNoun} ${gi + 1} of ${K}. Holds ${numberWord(count)}${names.length ? `: ${names.join(", ")}` : ""}.`}
                 aria-disabled={!open || undefined}
@@ -580,7 +652,10 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
                 </span>
                 <span className="mg-seal-index" aria-hidden>{ROMAN[gi] ?? String(gi + 1)}</span>
               </button>
-              <span className="mg-seal-name" aria-hidden style={rail ? undefined : { marginTop: s.r + (composition === "constellation" ? 6 : 3) }}>{g.label}</span>
+              <span className="mg-seal-name" aria-hidden
+                style={{ marginTop: s.r + (composition === "constellation" ? 6 : 2), width: plan.rows ? plan.rows.sealCol - 4 : undefined }}>
+                {g.label}
+              </span>
             </div>
           );
         })}
@@ -602,7 +677,9 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
               className="mg-sigil"
               data-part="sigil"
               data-state={state}
+              data-rest={seat ? "seat" : "well"}
               data-mark={mark ?? undefined}
+              data-named={plateTok === e.token ? "" : undefined}
               data-traveller={travellers.has(e.token) && travelled ? "" : undefined}
               style={{
                 width: sigil, height: sigil,
@@ -617,11 +694,20 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
               onPointerMove={onSigilPointerMove}
               onPointerUp={onSigilPointerUp(e.token)}
               onPointerCancel={onSigilPointerCancel}
+              onPointerEnter={(ev) => { if (ev.pointerType === "mouse") setHoverTok(e.token); }}
+              onPointerLeave={() => setHoverTok((t) => (t === e.token ? null : t))}
+              onFocus={(ev) => { if (matchesFocusVisible(ev.currentTarget)) setFocusTok(e.token); }}
+              onBlur={() => setFocusTok((t) => (t === e.token ? null : t))}
               onKeyDown={onSigilKeyDown(e.token)}
-              onClick={(ev) => { ev.preventDefault(); }}
+              onClick={(ev) => {
+                ev.preventDefault();
+                // On a locked or settled board a tap names the sigil (touch has no hover).
+                if (!open) setInspectTok((t) => (t === e.token ? null : e.token));
+              }}
             >
               <span className="mg-sigil-disc" aria-hidden>
                 {art ? <img src={art} alt="" draggable={false} /> : <span className="mg-sigil-mono">{(e.monogram ?? e.label).slice(0, 2)}</span>}
+                {landed?.token === e.token && !reveal ? <span key={landed.n} className="mg-sigil-land" /> : null}
                 <span className="mg-sigil-mark" data-mark={mark ?? undefined} />
               </span>
               <span className="mg-sigil-caption" aria-hidden>{e.label}</span>
@@ -629,14 +715,30 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
           );
         })}
 
+        {/* The full name of the sigil being handled, hovered, focused or tapped. */}
+        {plateTok && plateAt ? (
+          <div
+            ref={plateRef}
+            className="mg-nameplate"
+            data-part="nameplate"
+            data-below={plateBelow ? "" : undefined}
+            aria-hidden
+            style={{ left: plateAt.x, top: plateBelow ? plateAt.y + sigil / 2 + 6 : plateAt.y - sigil / 2 - 6 }}
+          >
+            {entityLabel(plateTok)}
+          </div>
+        ) : null}
+
         {/* The ledger: the written classification, in the well's footprint, only once a reveal exists. */}
         {reveal && settledPlan ? (
           <Ledger
             content={content}
             reveal={reveal}
             shown={ledgerShown}
-            style={rail ? { top: wellTop, height: wellH, left: wellX + 6, right: 6 } : { top: wellTop, height: wellH }}
+            detailsOpen={detailsOpen && ledgerShown}
+            box={plan.ledger}
             groupLabel={groupLabel}
+            groupHue={(token) => groups.find((g) => g.token === token)?.hue ?? null}
           />
         ) : null}
       </div>
@@ -647,12 +749,17 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
           type="button"
           className="mg-lock"
           data-part="lock"
-          aria-label={reveal ? "Resolved" : phase === "locked" ? "Locked in, waiting" : complete ? "Lock in" : `Lock in (seat every ${content.entityNoun} first)`}
-          disabled={!open || !complete}
-          onClick={lock}
+          data-ready={open && complete ? "" : undefined}
+          aria-label={canInspectCorrections
+            ? detailsOpen ? "Hide correction details" : "Review all correction details"
+            : reveal ? "Resolved" : phase === "locked" ? "Locked in, waiting" : complete ? "Lock in" : `Lock in (seat every ${content.entityNoun} first)`}
+          aria-pressed={canInspectCorrections ? detailsOpen : undefined}
+          disabled={!canInspectCorrections && (!open || !complete)}
+          onClick={canInspectCorrections ? () => setDetailsOpen((v) => !v) : lock}
         >
           <Lock aria-hidden className="mg-lock-icon" />
-          <span>{reveal ? "Resolved" : phase === "locked" ? "Locked in" : "Lock in"}</span>
+          <span>{canInspectCorrections ? detailsOpen ? "Summary" : "Details" : reveal ? "Resolved" : phase === "locked" ? "Locked in" : "Lock in"}</span>
+          {open && !complete ? <span className="mg-lock-count" aria-hidden>{seated}/{N}</span> : null}
         </button>
       </footer>
 
@@ -661,64 +768,119 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   );
 }
 
+/** `:focus-visible` where supported (keyboard focus), else any focus. */
+function matchesFocusVisible(el: Element): boolean {
+  try { return el.matches(":focus-visible"); } catch { return true; }
+}
+
 // ---------------------------------------------------------------- Ledger
 
-function Ledger({ content, reveal, shown, style, groupLabel }: {
+/**
+ * MG-UX1 — the teaching reveal. An exact board gets one concise line of
+ * success and the board stays in view; a corrected board lists ONLY the
+ * corrected entities, each as "name → its group", in the richest arrangement
+ * that fits the reserved room (`ledgerFit`) — never scrolled, never clipped.
+ */
+function Ledger({ content, reveal, shown, detailsOpen, box, groupLabel, groupHue }: {
   content: MatchPublic;
   reveal: MatchReveal;
   shown: boolean;
-  style: CSSProperties;
+  detailsOpen: boolean;
+  box: { x: number; top: number; w: number; h: number };
   groupLabel: (token: string) => string;
+  groupHue: (token: string) => number | null;
 }) {
   const wrong = content.entities.filter((e) => reveal.entityCorrect[e.token] === false);
-  const right = content.entities.length - wrong.length;
-  const cards = wrong.length
-    ? wrong.map((e) => ({
-      key: e.token,
-      media: e.media?.src ?? null,
-      title: e.label,
-      line: `${groupLabel(reveal.canonical[e.token]?.[0] ?? "")}`,
-      from: groupLabel(reveal.assignments[e.token] ?? ""),
-      facts: reveal.facts?.[e.token] ?? [],
-    }))
-    : content.groups.map((g) => {
-      const members = content.entities.filter((e) => reveal.canonical[e.token]?.includes(g.token));
-      return {
-        key: g.token, media: null, title: g.label,
-        line: members.map((m) => m.label).join(" · ") || "—",
-        from: null as string | null,
-        facts: [] as readonly { label: string; value: string }[],
-      };
-    });
+  const n = content.entities.length;
+  const right = n - wrong.length;
+  const exact = reveal.isCorrect || wrong.length === 0;
+  const withFacts = wrong.some((e) => (reveal.facts?.[e.token] ?? []).length > 0);
+  const fit = ledgerFit(Math.max(1, wrong.length), box.w, box.h, withFacts);
+  const noun = (k: number) => (k === 1 ? content.entityNoun : `${content.entityNoun}s`);
+  const verdict = exact ? "Perfect classification" : `${numberWord(wrong.length)} corrected`;
   return (
     <section
       className="mg-ledger"
       data-part="ledger"
       data-shown={shown ? "" : undefined}
+      data-kind={exact ? "exact" : "corrections"}
+      data-fit={exact ? undefined : fit.mode}
       aria-hidden={!shown}
       aria-label="Classification"
-      style={style}
+      style={{ left: box.x, top: box.top, width: box.w, height: box.h }}
     >
-      <div className="mg-ledger-head">
-        <p className="mg-ledger-verdict">{reveal.isCorrect ? "Classification resolved" : `${numberWord(wrong.length)} corrected`}</p>
-        <p className="mg-ledger-sub">{numberWord(right)} of {numberWord(content.entities.length)} relationships stable</p>
-        {reveal.source ? <p className="mg-ledger-source">{reveal.source}</p> : null}
+      <div className="mg-ledger-sheet">
+        <div className="mg-ledger-head">
+          {exact ? <span className="mg-ledger-seal" aria-hidden>✓</span> : null}
+          <div className="mg-ledger-headtext">
+            <p className="mg-ledger-verdict">{verdict.charAt(0).toUpperCase() + verdict.slice(1)}</p>
+            <p className="mg-ledger-sub">
+              {exact
+                ? `All ${numberWord(n)} ${noun(n)} in the right ${content.groupNoun}`
+                : `${numberWord(right)} of ${numberWord(n)} in place`}
+            </p>
+            {reveal.source ? <p className="mg-ledger-source">{reveal.source}</p> : null}
+          </div>
+        </div>
+        {exact ? null : (
+          <ul
+            className="mg-ledger-list"
+            style={{ "--mg-ledger-cols": String(fit.cols), "--mg-ledger-item-h": `${fit.itemH}px`, "--mg-ledger-gap": `${fit.gap}px` } as CSSProperties}
+          >
+            {wrong.map((e) => {
+              const to = reveal.canonical[e.token]?.[0] ?? "";
+              const hue = groupHue(to);
+              const facts = (reveal.facts?.[e.token] ?? []).map((f) => f.value).join(" · ");
+              const from = groupLabel(reveal.assignments[e.token] ?? "");
+              const toLine = (was: string | null) => (
+                <span className="mg-ledger-to">
+                  {was ? <span className="mg-ledger-was">{was} </span> : null}
+                  <span className="mg-ledger-arrow" aria-hidden>→ </span>
+                  <span className="mg-ledger-group">{groupLabel(to)}</span>
+                </span>
+              );
+              return (
+                <li key={e.token} className="mg-ledger-item"
+                  title={`${e.label}: was ${from}, belongs to ${groupLabel(to)}`}
+                  aria-label={`${e.label}. Your placement: ${from}. Correct ${content.groupNoun}: ${groupLabel(to)}.`}
+                  style={hue == null ? undefined : ({ "--mg-hue": String(hue) } as CSSProperties)}>
+                  <span className="mg-ledger-line1">
+                    {e.media?.src ? <img src={e.media.src} alt="" className="mg-ledger-art" /> : <span className="mg-ledger-art" aria-hidden />}
+                    <span className="mg-ledger-name">{e.label}</span>
+                    {fit.mode === "compact" ? toLine(null) : null}
+                  </span>
+                  {/* "was → is": where the player put it, then where it belongs. */}
+                  {fit.mode === "compact" ? null : toLine(from)}
+                  {fit.mode === "rich" && facts ? <span className="mg-ledger-from">{facts}</span> : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {!exact && detailsOpen ? (
+          <div className="mg-ledger-details" role="region" aria-label="Full correction details">
+            <p className="mg-ledger-details-heading">Each correction · scroll to review</p>
+            <ol className="mg-ledger-details-list">
+              {wrong.map((e) => {
+                const from = reveal.assignments[e.token]
+                  ? groupLabel(reveal.assignments[e.token])
+                  : "Unassigned";
+                const to = groupLabel(reveal.canonical[e.token]?.[0] ?? "");
+                return (
+                  <li key={e.token} className="mg-ledger-details-item">
+                    <span className="mg-ledger-details-name">{e.label}</span>
+                    <span className="mg-ledger-details-route">
+                      <span className="mg-ledger-details-was">Was {from}</span>
+                      <span aria-hidden> → </span>
+                      <strong>{to}</strong>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ) : null}
       </div>
-      <ul className="mg-ledger-cards">
-        {cards.map((c) => (
-          <li key={c.key} className="mg-ledger-card" data-kind={wrong.length ? "corrected" : "group"}>
-            {c.media ? <img src={c.media} alt="" className="mg-ledger-art" /> : null}
-            <div className="mg-ledger-text">
-              <p className="mg-ledger-title">{c.title}</p>
-              <p className="mg-ledger-line">
-                {wrong.length ? <><span className="mg-ledger-arrow">→</span> {c.line}</> : c.line}
-                {c.facts.length ? <span className="mg-ledger-facts"> · {c.facts.map((f) => f.value).join(" · ")}</span> : null}
-              </p>
-              {c.from ? <p className="mg-ledger-from">was in {c.from}</p> : null}
-            </div>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

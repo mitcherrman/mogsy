@@ -56,14 +56,14 @@
 /* ------------------------------------------------------------- header */
 .mg-head {
   flex: none;
-  height: 66px;
-  padding: 10px 18px 0;
+  height: var(--mg-head-h, 66px);
+  padding: 12px 18px 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
   overflow: hidden;
 }
-.mg-root[data-compact] .mg-head { height: 58px; padding-top: 8px; }
+.mg-root[data-compact] .mg-head { padding-top: 10px; }
 .mg-eyebrow {
   margin: 0;
   font-size: 10px;
@@ -304,13 +304,17 @@
   white-space: nowrap;
 }
 .mg-root[data-composition="constellation"][data-compact] .mg-seal-name { font-size: 10.5px; }
+/* Rows: the group's name sits under its seal, in the seal column (measured:
+   the longest tree name is 79px at 10px), never riding into the seats. */
 .mg-root[data-composition="ledger"] .mg-seal-name {
-  width: 84px;
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
-  line-height: 1.1;
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.mg-root[data-composition="ledger"][data-compact] .mg-seal-name { font-size: 8.5px; }
+/* Phones: the seal column is 74–82px; "Inspiration" is 71px at 9.5px / 0.04em. */
+.mg-root[data-composition="ledger"]:not([data-rail]) .mg-seal-name { font-size: 9.5px; letter-spacing: 0.04em; }
 
 /* ------------------------------------------------------------- sigils */
 .mg-sigil {
@@ -412,37 +416,48 @@
   left: 50%;
   top: 100%;
   transform: translateX(-50%);
-  margin-top: 4px;
-  width: 88px;
-  font-size: 10.5px;
-  line-height: 1.15;
+  margin-top: 3px;
+  /* MG-UX1: sized by the board's plan — a caption is never wider than the
+     pitch to its neighbour, wraps to the lines its row reserves, and a name it
+     cannot hold is shown whole in the name plate on hover, focus and hold. */
+  width: var(--mg-well-cap-w, 88px);
+  font-size: var(--mg-well-cap-font, 10.5px);
+  line-height: var(--mg-well-cap-line, 12px);
+  -webkit-line-clamp: var(--mg-well-cap-lines, 2);
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--mg-vellum);
   text-align: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.8);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  text-wrap: balance;
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
 }
+.mg-sigil[data-rest="seat"] .mg-sigil-caption {
+  width: var(--mg-seat-cap-w, 88px);
+  font-size: var(--mg-seat-cap-font, 10.5px);
+  line-height: var(--mg-seat-cap-line, 12px);
+  -webkit-line-clamp: var(--mg-seat-cap-lines, 2);
+}
 /* In the constellation a seated sigil wears its name ABOVE, away from the seal
-   and its thread; in the well and on the wire the name hangs below. */
-.mg-root[data-composition="constellation"] .mg-sigil[data-state="seated"] .mg-sigil-caption {
+   and its thread; in the well and on a wire the name hangs below. */
+.mg-root[data-composition="constellation"] .mg-sigil[data-rest="seat"] .mg-sigil-caption {
   top: auto;
   bottom: 100%;
   margin-top: 0;
-  margin-bottom: 4px;
-  width: 92px;
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  margin-bottom: 3px;
 }
-.mg-root[data-composition="ledger"] .mg-sigil-caption { width: 58px; font-size: 8.5px; margin-top: 2px; letter-spacing: 0; }
-.mg-root[data-compact] .mg-sigil-caption { font-size: 10px; margin-top: 3px; }
+/* The densest rail keeps seated names in the name plate only. */
+.mg-root[data-seat-captions="0"] .mg-sigil[data-rest="seat"] .mg-sigil-caption { display: none; }
 .mg-sigil[data-state="dragging"] .mg-sigil-caption,
-.mg-sigil[data-state="held"] .mg-sigil-caption { color: #fff6dd; }
+.mg-sigil[data-state="held"] .mg-sigil-caption,
+.mg-sigil[data-named] .mg-sigil-caption { color: #fff6dd; }
+/* While a sigil is in flight its caption would trail across the board. */
+.mg-sigil[data-state="dragging"] .mg-sigil-caption { opacity: 0; }
 
 /* Reveal marks on the sigil: a glyph, never colour alone. */
 .mg-sigil-mark {
@@ -469,15 +484,30 @@
 .mg-sigil-mark[data-mark="corrected"]::before { content: "➜"; }
 .mg-sigil[data-mark="fractured"] .mg-sigil-disc { filter: saturate(0.4) brightness(0.85); }
 
-/* ------------------------------------------------------------- ledger */
+/* ------------------------------------------------------------- ledger
+   MG-UX1: the teaching reveal lives in the well's reserved footprint. An exact
+   board: one concise plate, the board above it untouched. A corrected board:
+   only the corrections, laid out by `ledgerFit` so every one is in view. */
 .mg-ledger {
   position: absolute;
-  left: 6px;
-  right: 6px;
   z-index: 25;
   display: flex;
-  gap: 14px;
-  padding: 10px 14px;
+  flex-direction: column;
+  justify-content: flex-start;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 420ms ease, transform 420ms var(--mg-ease);
+  pointer-events: none;
+}
+.mg-ledger[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
+.mg-ledger[data-kind="exact"] { justify-content: center; align-items: center; }
+.mg-ledger-sheet {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid rgba(122, 98, 54, 0.7);
   background:
@@ -485,138 +515,212 @@
     linear-gradient(160deg, #f1e6c9 0%, #e6d6b0 100%);
   color: var(--mg-ink);
   box-shadow: inset 0 0 24px rgba(122, 98, 54, 0.18), 0 10px 30px -14px rgba(0, 0, 0, 0.9);
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 420ms ease, transform 420ms var(--mg-ease);
-  pointer-events: none;
   overflow: hidden;
 }
-.mg-ledger[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
+.mg-ledger[data-kind="exact"] .mg-ledger-sheet { flex: none; max-width: 100%; padding: 10px 16px 10px 12px; }
 .mg-ledger-head {
   flex: none;
-  width: 182px;
+  height: 36px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  border-right: 1px solid rgba(122, 98, 54, 0.35);
-  padding-right: 12px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
+/* 26 + 4 + 1 + 3 = the 34px `LEDGER.head` the plan reserves. */
+.mg-ledger[data-kind="corrections"] .mg-ledger-head {
+  height: 26px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(122, 98, 54, 0.35);
+  margin-bottom: 3px;
+  box-sizing: content-box;
+}
+.mg-ledger-seal {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  color: #f6e6bb;
+  background: radial-gradient(circle at 50% 40%, #4a3a1a, #2a2110);
+  box-shadow: 0 0 0 1.5px var(--mg-brass), 0 0 0 3px rgba(122, 98, 54, 0.25);
+}
+.mg-ledger-headtext { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .mg-ledger-verdict {
   margin: 0;
   font-family: "Cinzel", Georgia, serif;
   font-weight: 700;
   font-size: 14px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
+  line-height: 16px;
+  letter-spacing: 0.03em;
   color: var(--mg-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.mg-ledger[data-kind="exact"] .mg-ledger-verdict { font-size: 15px; line-height: 18px; }
+/* The exact plate has no fixed rows: its line may wrap rather than be cut. */
+.mg-ledger[data-kind="exact"] .mg-ledger-head { height: auto; min-height: 36px; }
+.mg-ledger[data-kind="exact"] .mg-ledger-sub { white-space: normal; }
 .mg-ledger-sub {
   margin: 0;
   font-size: 11px;
-  line-height: 1.3;
+  line-height: 13px;
+  font-weight: 500;
   color: var(--mg-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.mg-ledger-cards {
+.mg-ledger-source { margin: 0; font-size: 10px; line-height: 12px; color: var(--mg-ink-muted); opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mg-ledger[data-kind="corrections"] .mg-ledger-source { display: none; }
+.mg-ledger-list {
   flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--mg-ledger-cols, 1), minmax(0, 1fr));
+  grid-auto-rows: var(--mg-ledger-item-h, 32px);
+  align-content: start;
+  gap: var(--mg-ledger-gap, 3px) 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+.mg-ledger-item {
   min-width: 0;
   display: flex;
-  gap: 10px;
-  margin: 0;
-  padding: 0 2px;
-  list-style: none;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  align-items: center;
-}
-.mg-ledger-card {
-  flex: none;
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  align-self: center;
-  min-width: 150px;
-  max-width: 230px;
-  max-height: 100%;
-  padding: 6px 10px 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(122, 98, 54, 0.4);
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 6px 0 6px;
+  border-radius: 6px;
+  border-left: 3px solid hsl(var(--mg-hue) 55% 42%);
   background: rgba(44, 36, 23, 0.06);
 }
-.mg-ledger-card[data-kind="group"] { max-width: 260px; }
+/* Icon and name share the first line, so the correction gets the full width.
+   Lines are 16 + 14 + 13px (medium: 16 + 13): inside the 46 / 29 / 22px rows `ledgerFit` plans. */
+.mg-ledger-item > * { flex: none; }
+.mg-ledger-line1 { min-width: 0; height: 16px; display: flex; align-items: center; gap: 6px; }
 .mg-ledger-art {
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   object-fit: contain;
   background: radial-gradient(circle, #142338 0%, #070f1c 100%);
   box-shadow: 0 0 0 1px rgba(122, 98, 54, 0.6);
 }
-.mg-ledger-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.mg-ledger-title {
-  margin: 0;
+.mg-ledger-name {
+  min-width: 0;
+  flex: 0 1 auto;
   font-family: "Lora", Georgia, serif;
   font-weight: 700;
   font-size: 13px;
-  line-height: 1.15;
+  line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mg-ledger-line {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.2;
+/* "was → belongs": if the line is tight only the struck-through former group
+   gives way; the arrow and the group it belongs to are always whole. */
+.mg-ledger-to {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  font-size: 11.5px;
+  line-height: 14px;
   font-weight: 600;
-  color: var(--mg-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
 }
+.mg-ledger-to > * { flex: none; white-space: pre; }
+.mg-ledger-to > .mg-ledger-was { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .mg-ledger-arrow { color: #7a5a1e; }
-.mg-ledger-facts {
-  font-weight: 500;
-  color: var(--mg-ink-muted);
+.mg-ledger-group { font-weight: 800; color: hsl(var(--mg-hue) 62% 27%); }
+.mg-ledger-was {
+  font-weight: 600;
+  color: #61533f;
+  text-decoration: line-through;
+  text-decoration-color: rgba(122, 98, 54, 0.65);
 }
-.mg-ledger-source {
+.mg-ledger-from { font-size: 11px; line-height: 13px; color: var(--mg-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Compact: "name → group" on one line; the group never yields its room. */
+.mg-ledger[data-fit="compact"] .mg-ledger-name { font-size: 12px; }
+.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 12px; line-height: 13px; }
+.mg-ledger[data-fit="compact"] .mg-ledger-to { flex: none; }
+
+/* MG-UX2: player-initiated full correction view, over the *same* reserved
+   ledger box. Overview remains all-visible/no-scroll; only this requested
+   inspector scrolls. Its footer toggle is an existing >=44px control. */
+.mg-ledger-details {
+  position: absolute;
+  inset: 4px;
+  z-index: 4;
+  padding: 5px 8px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  border-radius: 7px;
+  background: #eee1c4;
+  box-shadow: inset 0 0 0 1px rgba(122, 98, 54, 0.3);
+}
+.mg-ledger-details-heading {
+  position: sticky;
+  top: -5px;
+  z-index: 1;
   margin: 0;
-  font-size: 9.5px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  color: var(--mg-ink-muted);
-  opacity: 0.8;
+  padding: 4px 0 6px;
+  background: #eee1c4;
+  border-bottom: 1px solid rgba(122, 98, 54, 0.24);
+  color: #514634;
+  font: 700 11px/15px "Lora", Georgia, serif;
 }
-.mg-ledger-from {
-  margin: 0;
-  font-size: 10.5px;
-  line-height: 1.2;
-  font-style: italic;
-  color: var(--mg-ink-muted);
+.mg-ledger-details-list {
+  list-style: none;
+  padding: 0;
+  margin: 5px 0 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
 }
+.mg-ledger-details-item {
+  min-height: 48px;
+  padding: 7px 8px;
+  border-left: 3px solid rgba(122, 98, 54, 0.55);
+  border-radius: 5px;
+  background: rgba(44, 36, 23, 0.07);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.mg-ledger-details-name {
+  font: 700 13.5px/17px "Lora", Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.mg-ledger-details-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 5px;
+  color: #5d503f;
+  font-size: 12px;
+  line-height: 16px;
+}
+.mg-ledger-details-was { text-decoration: line-through; text-decoration-color: #8a7660; }
+.mg-ledger-details-route strong { color: #2e594e; font-weight: 800; }
+.mg-lock[aria-pressed="true"] { border-color: #f6e6bb; background: linear-gradient(180deg, #5c4619, #3a2d14); }
+
 .mg-root[data-tier="tall"] .mg-prompt { font-size: 21px; }
-.mg-root[data-tier="tall"] .mg-head { height: 72px; }
-.mg-root[data-tier="tall"] .mg-sigil-caption { font-size: 11px; width: 96px; }
 .mg-root[data-tier="tall"] .mg-seal-name { font-size: 12.5px; }
-.mg-root[data-tier="tall"] .mg-foot { height: 68px; }
-/* On the phone the ledger's cards wrap into two columns and scroll vertically,
-   so the well's footprint is used rather than a single strip floating in it. */
-.mg-root[data-composition="ledger"] .mg-ledger { flex-direction: column; gap: 6px; padding: 8px 10px; }
-.mg-root[data-composition="ledger"] .mg-ledger-cards { flex-wrap: wrap; overflow-x: hidden; overflow-y: auto; align-items: flex-start; align-content: flex-start; gap: 6px; }
-.mg-root[data-composition="ledger"] .mg-ledger-card { flex: 1 1 calc(50% - 3px); min-width: 0; max-width: none; align-self: auto; padding: 5px 8px; }
-.mg-root[data-composition="ledger"] .mg-ledger-art { width: 30px; height: 30px; }
-.mg-root[data-composition="ledger"] .mg-ledger-title { font-size: 12px; }
-.mg-root[data-composition="ledger"] .mg-ledger-line { font-size: 11px; }
-.mg-root[data-composition="ledger"] .mg-ledger-head { width: auto; border-right: 0; border-bottom: 1px solid rgba(122, 98, 54, 0.35); padding: 0 0 6px; flex-direction: row; align-items: baseline; gap: 10px; }
-.mg-root[data-composition="ledger"] .mg-ledger-card { min-width: 140px; }
+.mg-root[data-tier="tall"][data-composition="ledger"] .mg-seal-name { font-size: 10px; }
 
 /* ------------------------------------------------------------- footer */
 .mg-foot {
   flex: none;
-  height: 64px;
+  height: var(--mg-foot-h, 64px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -625,7 +729,6 @@
   border-top: 1px solid rgba(201, 168, 76, 0.18);
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.28));
 }
-.mg-root[data-compact] .mg-foot { height: 56px; }
 .mg-status {
   margin: 0;
   min-width: 0;
@@ -636,9 +739,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.mg-root[data-held] .mg-status { color: #f6e6bb; }
 /* On the phone the status may need two lines: the box is reserved at two lines
    in every phase so the footer's contents never shift when the wording changes. */
-.mg-root[data-composition="ledger"] .mg-status {
+.mg-root[data-composition="ledger"]:not([data-rail]) .mg-status {
   font-size: 11.5px;
   white-space: normal;
   height: 2.5em;
@@ -674,7 +778,154 @@
 .mg-root[data-phase="locked"] .mg-lock,
 .mg-root[data-phase="revealed"] .mg-lock { opacity: 0.85; }
 .mg-lock-icon { width: 14px; height: 14px; }
-.mg-root[data-composition="ledger"] .mg-lock { min-width: 128px; padding: 0 12px; font-size: 11px; }
+/* MG-UX1: Lock has ONE width per composition, whatever its label or count
+   says, so it never shifts in a right-aligned footer. */
+.mg-lock { width: 176px; min-width: 0; }
+.mg-root[data-composition="ledger"] .mg-lock { width: 146px; padding: 0 10px; gap: 6px; font-size: 11px; letter-spacing: 0.12em; }
+
+.mg-lock-count {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--mg-vellum-dim);
+}
+/* MG-UX1 — Lock is READY: the whole map is drawn. Brighter, warmer, breathing. */
+.mg-lock[data-ready] {
+  border-color: var(--mg-brass-bright);
+  background: linear-gradient(180deg, #5c4619, #3a2d14);
+  color: #fff3cf;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 22px -4px rgba(240, 215, 140, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  animation: mg-ready 1.6s ease-in-out infinite alternate;
+}
+@keyframes mg-ready {
+  from { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 14px -6px rgba(240, 215, 140, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+  to { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 26px -2px rgba(240, 215, 140, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+}
+
+/* ------------------------------------------------------------- feedback (MG-UX1)
+   Everything here answers the PLAYER's hand, never the board's truth: every
+   seal offers itself identically, and the drop target is the one under the
+   pointer by geometry alone. */
+/* The full name of whatever the player is handling, hovering, focusing or tapped. */
+.mg-nameplate {
+  position: absolute;
+  z-index: 60;
+  transform: translateY(-100%);
+  max-width: calc(100% - 8px);
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--mg-brass);
+  background: rgba(7, 17, 31, 0.97);
+  color: #fff6dd;
+  font-size: 12.5px;
+  line-height: 16px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.95), 0 0 0 3px rgba(7, 17, 31, 0.5);
+  pointer-events: none;
+}
+.mg-nameplate[data-below] { transform: none; }
+/* Held: the sigil in hand wears a slow brass orbit. */
+.mg-sigil[data-state="held"] .mg-sigil-disc::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(240, 215, 140, 0.85);
+  animation: mg-orbit 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes mg-orbit { to { transform: rotate(360deg); } }
+/* While a sigil is in hand every seal offers itself, identically. */
+.mg-seal[data-armed]::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px dashed hsl(var(--mg-hue) 70% 70% / 0.7);
+  pointer-events: none;
+}
+/* The seal a drag would land in (pointer geometry only). */
+.mg-seal[data-target] {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow:
+    0 0 0 2px var(--mg-brass-bright),
+    0 0 28px -2px hsl(var(--mg-hue) 80% 65% / 0.7),
+    0 10px 26px -12px rgba(0, 0, 0, 0.9);
+}
+.mg-drop-zone {
+  position: absolute;
+  z-index: 4;
+  border-radius: 10px;
+  border: 1px dashed rgba(240, 215, 140, 0.5);
+  background: linear-gradient(90deg, rgba(213, 182, 111, 0.12), rgba(213, 182, 111, 0.03));
+  pointer-events: none;
+}
+/* A landing: the seal rings once, the sigil settles with a flash. */
+.mg-seal-pulse {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--mg-hue) 80% 72%);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: mg-pulse 640ms ease-out;
+  pointer-events: none;
+  z-index: 11;
+}
+@keyframes mg-pulse {
+  0% { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.65); }
+}
+.mg-sigil-land {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--mg-brass-bright);
+  opacity: 0;
+  animation: mg-land 520ms ease-out;
+  pointer-events: none;
+}
+@keyframes mg-land {
+  0% { opacity: 1; transform: scale(0.92); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+/* The empty well, said in the well. */
+.mg-well-note {
+  position: absolute;
+  z-index: 3;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+.mg-well-note span {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 111, 0.35);
+  background: rgba(7, 17, 31, 0.85);
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mg-brass-bright);
+}
+.mg-well-note[data-shown] { opacity: 1; }
+.mg-socket[data-empty] { fill: rgba(0, 0, 0, 0.16); stroke: rgba(213, 182, 111, 0.12); }
 
 /* ------------------------------------------------------------- motion */
 .mg-root[data-reduced-motion] *,
@@ -689,26 +940,30 @@
   .mg-thread[data-state="inked"] line { stroke-dashoffset: 0; }
 }
 
-/* ------------------------------------------------------------- rail (MG-P3.1)
-   The ledger's arrangement for a short host frame: the well is a column beside
-   the wires and the prompt heads that column, so nothing is stacked under the
-   wires and nothing is scaled. Every target keeps its size (44px sigils, 48px
-   seals). Each discipline's name rides on its wire, beside the seal. */
+/* ------------------------------------------------------------- rail (MG-P3.1, MG-UX1)
+   The ledger's arrangement inside a host's height budget: rows on the left,
+   the well as a column on the right, both as tall as the budget allows. The
+   prompt rides in the footer above the status line, so the whole board height
+   goes to the rows and the well. Nothing is scaled: every target keeps ≥44px. */
 .mg-root[data-rail] .mg-head {
   position: absolute;
-  top: 0;
-  left: var(--mg-rail-well-x);
-  right: 0;
-  height: var(--mg-rail-head-h);
-  padding: 8px 14px 0;
+  left: 0;
+  right: 204px;
+  bottom: 0;
+  height: var(--mg-foot-h);
+  padding: 9px 18px 0;
   z-index: 2;
+  pointer-events: none;
 }
 .mg-root[data-rail] .mg-eyebrow { display: none; }
-.mg-root[data-rail] .mg-seal-name {
-  transform: none;
-  left: 30px;
-  top: -19px;
-  width: auto;
-  text-align: left;
+.mg-root[data-rail] .mg-prompt {
+  font-size: 14px;
+  line-height: 18px;
+  -webkit-line-clamp: 1;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
 }
+.mg-root[data-rail] .mg-foot { align-items: center; }
+.mg-root[data-rail] .mg-status { align-self: flex-end; padding-bottom: 9px; font-size: 12px; }
+.mg-root[data-rail] .mg-lock { width: 176px; font-size: 12px; padding: 0 14px; letter-spacing: 0.16em; }
