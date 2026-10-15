@@ -827,7 +827,7 @@ function Ledger({ content, reveal, shown, box, groupLabel, groupHue }: {
               return (
                 <li key={e.token} className="mg-ledger-item"
                   title={`${e.label}: was ${from}, belongs to ${groupLabel(to)}`}
-                  aria-label={`${e.label}. Your placement: ${from}. Correct rune tree: ${groupLabel(to)}.`}
+                  aria-label={`${e.label}. Your placement: ${from}. Correct ${content.groupNoun}: ${groupLabel(to)}.`}
                   style={hue == null ? undefined : ({ "--mg-hue": String(hue) } as CSSProperties)}>
                   <span className="mg-ledger-line1">
                     {e.media?.src ? <img src={e.media.src} alt="" className="mg-ledger-art" /> : <span className="mg-ledger-art" aria-hidden />}
