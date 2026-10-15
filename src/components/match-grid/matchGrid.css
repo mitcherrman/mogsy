@@ -617,7 +617,7 @@
   flex: 0 1 auto;
   font-family: "Lora", Georgia, serif;
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
@@ -639,15 +639,15 @@
 .mg-ledger-arrow { color: #7a5a1e; }
 .mg-ledger-group { font-weight: 800; color: hsl(var(--mg-hue) 62% 27%); }
 .mg-ledger-was {
-  font-weight: 500;
-  color: var(--mg-ink-muted);
+  font-weight: 600;
+  color: #61533f;
   text-decoration: line-through;
   text-decoration-color: rgba(122, 98, 54, 0.65);
 }
 .mg-ledger-from { font-size: 11px; line-height: 13px; color: var(--mg-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Compact: "name → group" on one line; the group never yields its room. */
 .mg-ledger[data-fit="compact"] .mg-ledger-name { font-size: 12px; }
-.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 11px; line-height: 13px; }
+.mg-ledger[data-fit="medium"] .mg-ledger-to { font-size: 12px; line-height: 14px; }
 .mg-ledger[data-fit="compact"] .mg-ledger-to { flex: none; }
 .mg-root[data-tier="tall"] .mg-prompt { font-size: 21px; }
 .mg-root[data-tier="tall"] .mg-seal-name { font-size: 12.5px; }
