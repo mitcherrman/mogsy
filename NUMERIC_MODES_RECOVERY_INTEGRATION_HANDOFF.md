@@ -130,3 +130,68 @@ Adjacent guard and route suites show **the same 16 failures with and without** t
 6. **Productionising as a game mode:** a `combat_estimate.v1` / numeric RoundModule, `SegmentChoice` widening and a registry entry, per CE1 §15 and CEG1 §11. Out of scope here.
 
 Deferred, as instructed: bot, versus, Ranked scoring and speed changes. Untouched: MG-UX1, Assembly, Scrub, Role Challenge and Patch Ops files.
+
+---
+
+# NUM-REC2.1 — reconciled with production (2026-10-14)
+
+Both branches are merged up to current production. **Draft, not merged, not deployed.**
+
+| Repo | Branch | Head | Base merged in |
+|---|---|---|---|
+| backend `League_Combat_Simulator` | `claude/numeric-modes-playtest-qmyogj` | `071c0c58` | `master` `ad194571` (Assembly + Scrub S3) — clean merge, no conflicts |
+| frontend `mogsy` | `lab/numeric-mode-playtests` | see PR #22 head (≥ `aacd7ba`) | `main` `ae5f595` (Assembly PA3 + Scrub S3) — merge commit `c68598f` |
+
+## Frontend conflicts
+
+There were 4 conflicts. All were additive on both sides, so each was resolved as a union and nothing of `main`'s was dropped:
+
+| File | Resolution |
+|---|---|
+| `playwright.arena.config.ts` | `testMatch` keeps main's `pro-play-assembly-continuity`, `scrub-continuity` and `scrub-objective-fit`, and adds `combat-estimate-continuity` and `numeric-lab-owner`. |
+| `src/App.tsx` | main's DEV-only `ProPlayAssemblyLab` import and route sit beside the Interaction Lab, CE1 lab and `/dev/numeric-lab` (all DEV-only). `/admin/numeric-lab` stays behind `AdminRoute`. |
+| `src/components/Footer.tsx` | main's `/dev/pro-play-assembly` plus the numeric DEV paths. |
+| `src/lib/interaction-grammar/types.ts` | main's Chronoscope and Positional Assembly contracts are kept; MIG1.2 Stat Drop and CE1 Estimate are appended after them, with no name collisions. |
+
+Also:
+- `useStageRoom.ts` is byte-identical to main's.
+- Against `main`, every shared file (`App.tsx`, `Layout.tsx`, `Footer.tsx`, `admin-registry.ts`, `types.ts`, `playwright.arena.config.ts`) is purely additive on this branch.
+- Follow-up `aacd7ba`: the MIG1 isolation test's pinned registry now includes main's `assembly` and `scrub`. The lab still adds no module.
+
+## Results on the merged heads
+
+- **Backend, numeric** (`pytest numeric_lab/tests`): **26/26**. This includes owner/non-owner authorization on every route (no session, `X-Admin-Key` and a bad bearer are all refused), the flag off by default, the pre-Lock allow-list, release after Lock and refusals.
+- **Backend, adjacent suites:** the Assembly (7 files), Scrub (4), route/guard, admin-auth, answer-safety and `ranked_public_routes` suites give **623 passed, 26 failed** on this branch and **623 passed, 26 failed on clean `master` `ad194571`**. The failure lists are identical.
+- **Frontend, full suite** (`vitest run src scripts`):
+  - Clean `main` `ae5f595`: 975 files passed, 18 failed (26 tests).
+  - This branch: 26 failing tests, **the identical list** after `aacd7ba`, plus all numeric files passing.
+  - Before `aacd7ba` the only difference was the registry pin above.
+- **Frontend, numeric and interaction suites:** 19 files, **443/443**. These cover the original MIG1.2 and CE1 suites, CEG1 grading, the owner lab (API auth headers, no pre-Lock leak, release, 403/flag-off states, AdminRoute wiring, import-graph secrecy walk) and the route gate.
+- **Typecheck:** `tsc -p tsconfig.app.json` is clean.
+- **Production `vite build` scan:**
+  - Of 50 answer-bearing strings (12 CE1 exact answers, multipliers and formulas; 6 Stat Drop evidence lines; capture identifiers; lab chunk and route markers), **none is in the owner chunk or any numeric-lab asset**.
+  - `/admin/numeric-lab` is registered; `/dev/numeric-lab`, `/dev/combat-estimate` and `/dev/interaction-lab` are not.
+  - The only hits are the 3 pre-existing Journey sentences in `olaf.*` and `zed.*` chunks (§3).
+- **Browser** (Chromium): **83/83**.
+
+  | Spec | Passed |
+  |---|---|
+  | `numeric-lab-owner` (1440×900, 390×844 touch, 360×640 touch, refused session) | 7 |
+  | `combat-estimate-continuity` (CE1 original) | 15 |
+  | `pro-play-assembly-continuity` | 26 |
+  | `ranked-scrub-continuity` | 12 |
+  | `ranked-scrub-objective-fit` | 10 |
+  | `match-grid-continuity` | 13 |
+
+  Screenshots in `docs/audits/numeric-rec2-owner-lab/` are refreshed from this run.
+
+## Still blocking (unchanged in substance)
+
+1. **Owner real-login click-through: not done.** This session has no owner Supabase credentials. Authorization is proven by backend tests (refusal without an owner session) and by the `AdminRoute` wiring test, not by a live login.
+2. **Release order:**
+   - Command Center reviews both drafts together.
+   - Deploy the backend, then set `NUMERIC_LAB_ENABLED=1` on the production **`web`** service only (not cron or worker services).
+   - Then merge the frontend.
+3. **Grading:** no tolerance is chosen or implemented. The owner grades the CEG1 CSV offline first.
+4. **Stat Drop public use stays on HOLD:** it needs answer-independent scales and a closeness policy.
+5. **Current-patch re-capture and Ranked productionisation** are separate work.
