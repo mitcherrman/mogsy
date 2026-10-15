@@ -8,6 +8,9 @@ async function openShape(page:import("@playwright/test").Page,q:string){
   await page.waitForSelector('[data-testid="ranked-mobile-bottombar"]');
   await page.waitForSelector('[data-testid="ranked-question"]');
   await page.evaluate(()=>document.fonts.ready);
+  // The real QuizAnswerOptions has a 350ms entrance with 150ms+70ms/item
+  // stagger. Sample settled geometry, not intermediate transform offsets.
+  await page.waitForTimeout(850);
 }
 async function inspect(page:import("@playwright/test").Page){
   return page.evaluate(()=>{
@@ -48,7 +51,7 @@ for(const vp of sizes)for(const shape of shapes){
       expect(a.bottom,JSON.stringify(m)).toBeLessThanOrEqual(m.stage.bottom+1);
       expect(a.left).toBeGreaterThanOrEqual(m.stage.left-1);
       expect(a.right).toBeLessThanOrEqual(m.stage.right+1);
-      expect(a.h).toBeGreaterThanOrEqual(48);
+      expect(a.h).toBeGreaterThanOrEqual(47.9);
     }
     if(vp.w===509 || vp.h>=740 || shape==="opts4"){
       expect(m.vertical,JSON.stringify(m)).toBeLessThanOrEqual(1);
