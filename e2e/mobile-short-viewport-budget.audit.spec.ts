@@ -6,10 +6,18 @@ const QUESTIONS = ["opts4", "media", "stressA", "realMax", "family"] as const;
 for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
   test(`budget ${width}x${height} ${shape}`,async({page})=>{
     await page.setViewportSize({width,height});
-    await page.goto(`/dev/ranked-shell-probe?q=${shape}&progression=0&points=4:7-5&name=Kalista_Enjoyer&role=mid&orole=support&lol=1`);
+    await page.goto(`/dev/ranked-shell-probe?q=${shape}&progression=0&points=4:7-5&name=Kalista_Enjoyer&role=mid&orole=support&frame=0&lol=1`);
     await page.waitForSelector('[data-testid="ranked-question"]');
     await page.waitForSelector('[data-testid="ranked-mobile-bottombar"]');
     await page.evaluate(()=>document.fonts.ready);
+    const baseline=await page.evaluate(()=>{
+      const box=(s:string)=>{const el=document.querySelector<HTMLElement>(s);if(!el)return null;const r=el.getBoundingClientRect();return {y:Math.round(r.y),bottom:Math.round(r.bottom),height:Math.round(r.height)};};
+      return {pageScroll:document.documentElement.scrollHeight-document.documentElement.clientHeight,
+        horizontal:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+        outerArenas:document.querySelectorAll(".ranked-academy").length,
+        visibleStage:box('[data-testid="ranked-question"]'),
+        visibleBar:box('[data-testid="ranked-mobile-bottombar"]')};
+    });
     await page.addStyleTag({content:`
     @media (max-width:639.98px) and (max-height:760px) {
       .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
@@ -67,7 +75,7 @@ for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
         styles:{stackGap:css(stack,"gap"),heroMax:css(find('[data-testid="scenario-hero"]'),"max-height"),heroTransform:css(find('[data-testid="scenario-hero"]'),"transform"),heroComputedHeight:css(find('[data-testid="scenario-hero"]'),"height"),mediaMin:css(media,"min-height"),promptMin:css(prompt,"min-height"),answerMin:css(answers,"min-height"),bottomPosition:css(bar,"position"),stageOverflow:css(stage,"overflow")}
       };
     });
-    console.log("PHONE_BUDGET",width,height,shape,JSON.stringify(m));
+    console.log("PHONE_BUDGET",width,height,shape,JSON.stringify({...m,baseline}));
     expect(m.stage).not.toBeNull();
     expect(m.choices.length).toBeGreaterThan(0);
   })
