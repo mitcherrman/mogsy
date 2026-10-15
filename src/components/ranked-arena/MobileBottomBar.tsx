@@ -18,6 +18,7 @@
  *    their fixed corners.
  */
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { DOCK_SIDE, useMogzyDockTabHost } from "@/components/mogzy-dock/MogzyDock";
 import { windowTimelineView } from "@/lib/ranked-core/roundTimeline";
 import type { RoundTimelineView } from "@/lib/ranked-core/viewTypes";
@@ -61,11 +62,14 @@ function usePhoneViewport(): boolean {
   return phone;
 }
 
-export function MobileBottomBar({ timeline, className = "" }: {
+export function MobileBottomBar({ timeline, journeyCompact = false, className = "" }: {
   timeline: RoundTimelineView;
+  journeyCompact?: boolean;
   className?: string;
 }) {
   const phone = usePhoneViewport();
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => { if (journeyCompact) setExpanded(false); }, [journeyCompact]);
   const [left, setLeft] = useState<HTMLDivElement | null>(null);
   const [right, setRight] = useState<HTMLDivElement | null>(null);
   useMogzyDockTabHost(DOCK_SIDE.questionReport, left, phone);
@@ -76,13 +80,30 @@ export function MobileBottomBar({ timeline, className = "" }: {
   if (!phone) return null;
   return (
     <section data-testid="ranked-mobile-bottombar" aria-label="Match controls"
-      className={`ranked-mobile-bottombar flex items-center gap-1 ${className}`}>
-      <div ref={setLeft} data-testid="ranked-mobile-bottombar-left"
-        className={`flex justify-start ${TAB_SLOT}`} />
-      <RoundTimeline timeline={windowTimelineView(timeline, MOBILE_TIMELINE_WINDOW)}
-        testIdPrefix="mobile-" className="min-w-0 flex-1" />
-      <div ref={setRight} data-testid="ranked-mobile-bottombar-right"
-        className={`flex justify-end ${TAB_SLOT}`} />
+      data-journey-compact={journeyCompact ? "true" : undefined}
+      data-expanded={journeyCompact ? String(expanded) : undefined}
+      className={`ranked-mobile-bottombar ${journeyCompact ? "flex flex-col items-center gap-0" : "flex items-center gap-1"} ${className}`}>
+      {journeyCompact && (
+        <button type="button" data-testid="journey-timeline-toggle"
+          aria-controls="journey-timeline-content" aria-expanded={expanded}
+          aria-label={expanded ? "Collapse question timeline" : "Expand question timeline"}
+          onClick={() => setExpanded((value) => !value)}
+          className="relative inline-flex h-[20px] min-w-[7rem] items-center justify-center gap-1.5 rounded-t-md border border-b-0 border-[#d4b35a]/45 bg-[#111c2b] px-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#f3dca0] before:absolute before:-inset-x-1 before:-inset-y-2.5">
+          {expanded ? <ChevronDown aria-hidden className="h-3 w-3" /> : <ChevronUp aria-hidden className="h-3 w-3" />}
+          Timeline
+        </button>
+      )}
+      {/* Keep the single original Report/Rules dock hosts and timeline mounted
+          during the fold; no duplicate controls or rail. */}
+      <div id="journey-timeline-content"
+        className={`${journeyCompact && !expanded ? "hidden" : "flex"} w-full items-center gap-1`}>
+        <div ref={setLeft} data-testid="ranked-mobile-bottombar-left"
+          className={`flex justify-start ${TAB_SLOT}`} />
+        <RoundTimeline timeline={windowTimelineView(timeline, MOBILE_TIMELINE_WINDOW)}
+          testIdPrefix="mobile-" className="min-w-0 flex-1" />
+        <div ref={setRight} data-testid="ranked-mobile-bottombar-right"
+          className={`flex justify-end ${TAB_SLOT}`} />
+      </div>
     </section>
   );
 }

@@ -192,16 +192,18 @@ function Clock({ timer, header }: { timer: TimerView | null; header: ArenaHeader
   );
 }
 
-export function MobileMatchBar({ left, right, header, progressionEnabled, className = "" }: {
+export function MobileMatchBar({ left, right, header, progressionEnabled, compactJourney = false, className = "" }: {
   left: CombatantRail;
   right: CombatantRail;
   header: ArenaHeaderView;
   progressionEnabled: boolean;
+  compactJourney?: boolean;
   className?: string;
 }) {
   return (
     <section data-testid="ranked-mobile-matchbar" aria-label="Match"
-      className={`ranked-panel ranked-matchbar flex items-center gap-0.5 px-1 py-1 ${className}`}>
+      data-journey-compact={compactJourney ? "true" : undefined}
+      className={`ranked-panel ranked-matchbar flex items-center gap-0.5 px-1 ${compactJourney ? "py-0.5" : "py-1"} ${className}`}>
       <div className="min-w-0 flex-1 basis-0"><Side rail={left} progressionEnabled={progressionEnabled} /></div>
       <Clock timer={header.timer} header={header} />
       <div className="min-w-0 flex-1 basis-0"><Side rail={right} progressionEnabled={progressionEnabled} /></div>
