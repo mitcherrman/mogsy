@@ -1,12 +1,13 @@
 /* ==========================================================================
-   Academy Core V1 — scoped styles for /lol/dev/academy-core.
+   Academy Core V2 — scoped styles for /lol/dev/academy-core.
    Every rule is prefixed `.acore-`; nothing here leaks into the Hall or the
    rest of the League section, and deleting this file with the page removes
    the preview completely.
 
-   Palette: deep midnight ground, brushed warm metal (brass), enamel navy and
-   one cool teal "live" accent. Display face is Cinzel (already loaded for the
-   League section), markings are Space Mono, prose is Lora / Inter.
+   Mogzy's Hextech Workshop: deep-navy wall and bench, aged brass, deep-blue
+   enamel, Hextech blue-violet energy, one warm lamp over the console and
+   book. Display face Cinzel (already loaded for the League section),
+   markings Space Mono, prose Lora / Inter.
    ========================================================================== */
 
 .acore-root {
@@ -18,55 +19,141 @@
   --acore-brass-lo: #5a4520;
   --acore-ink: #ecdcb3;
   --acore-ink-dim: #a8a08a;
-  --acore-teal: #43c3d6;
+  --acore-hex: #6ea8ff;
+  --acore-hex-violet: #8f7bff;
+  --acore-hex-cyan: #4fd8ff;
   --acore-lamp: #ffd98a;
   --acore-lamp-glow: rgba(255, 217, 138, 0.55);
 
   position: relative;
   isolation: isolate;
   color: var(--acore-ink);
-  background:
-    radial-gradient(62% 52% at 72% 42%, rgba(67, 195, 214, 0.07), transparent 62%),
-    radial-gradient(48% 40% at 18% 82%, rgba(201, 162, 76, 0.08), transparent 62%),
-    var(--acore-bg);
+  background: var(--acore-bg);
   overflow-x: clip;
 }
 
 /* ---------------------------------------------------------------- layout */
 
 .acore-hero {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(300px, 0.86fr) minmax(0, 1.5fr);
-  gap: clamp(1rem, 3vw, 3rem);
-  align-items: center;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.4fr);
+  gap: clamp(1rem, 2.6vw, 2.6rem);
+  align-items: end;
   min-height: calc(100dvh - var(--app-header-h));
-  max-width: 1720px;
+  max-width: 1760px;
   margin: 0 auto;
-  padding: clamp(1rem, 3vh, 2.25rem) clamp(1rem, 4vw, 4rem);
+  padding: clamp(0.75rem, 2.2vh, 1.75rem) clamp(1rem, 3.6vw, 3.6rem) clamp(1.25rem, 3.5vh, 2.75rem);
   box-sizing: border-box;
 }
 
 .acore-root[data-layout="stacked"] .acore-hero {
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   min-height: 0;
   gap: 1.25rem;
   padding: 1rem 1rem 2rem;
 }
 
+/* everything in the hero paints above the room overlay */
+.acore-hero > *:not(.acore-room) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ------------------------------------------------------------- the room */
+
+.acore-room {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.acore-room-wall {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0a1322 0%, #0b1627 48%, #0a1424 100%);
+}
+
+/* two faint pilasters: a wall, not a void */
+.acore-room-pilaster {
+  position: absolute;
+  top: 0;
+  bottom: 24%;
+  width: clamp(28px, 3vw, 46px);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012) 45%, rgba(0, 0, 0, 0.22));
+  border-left: 1px solid rgba(201, 162, 76, 0.1);
+  border-right: 1px solid rgba(0, 0, 0, 0.35);
+}
+.acore-room-pilaster-l { left: 3%; }
+.acore-room-pilaster-r { right: 3%; }
+
+/* warm lamp over the console and the book */
+.acore-room-lamp {
+  position: absolute;
+  left: -6%;
+  top: -12%;
+  width: 62%;
+  height: 92%;
+  background: radial-gradient(52% 48% at 36% 36%, rgba(255, 196, 110, 0.14), rgba(255, 196, 110, 0.05) 42%, transparent 70%);
+}
+
+/* Hextech spill from the Core */
+.acore-room-hex {
+  position: absolute;
+  right: -8%;
+  top: 2%;
+  width: 70%;
+  height: 96%;
+  background: radial-gradient(44% 44% at 52% 50%, rgba(110, 168, 255, 0.16), rgba(143, 123, 255, 0.07) 46%, transparent 70%);
+}
+
+/* the bench: a surface both instruments stand on */
+.acore-room-bench {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 23%;
+  background: linear-gradient(180deg, rgba(20, 32, 54, 0.92) 0%, rgba(10, 18, 32, 0.98) 60%, #070d18 100%);
+}
+.acore-room-bench-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 23%;
+  height: 10px;
+  background: linear-gradient(180deg, rgba(243, 223, 166, 0.55), rgba(201, 162, 76, 0.45) 35%, rgba(90, 69, 32, 0.6) 70%, rgba(0, 0, 0, 0.5));
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.08), 0 14px 26px -8px rgba(0, 0, 0, 0.7);
+}
+
+.acore-root[data-layout="stacked"] .acore-room-bench,
+.acore-root[data-layout="stacked"] .acore-room-bench-edge,
+.acore-root[data-layout="stacked"] .acore-room-pilaster {
+  display: none;
+}
+
 /* --------------------------------------------------------------- console */
 
 .acore-console {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 0.75rem;
   min-width: 0;
+  padding-bottom: clamp(2rem, 7vh, 4.5rem);
 }
+
+.acore-root[data-layout="stacked"] .acore-console { padding-bottom: 0; }
 
 .acore-eyebrow {
   margin: 0;
   font-family: "Space Mono", ui-monospace, monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.32em;
+  font-size: 0.66rem;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--acore-brass);
   opacity: 0.85;
@@ -76,33 +163,31 @@
   margin: 0;
   font-family: Cinzel, Georgia, serif;
   font-weight: 700;
-  font-size: clamp(2rem, 3.4vw, 3.3rem);
+  font-size: clamp(1.9rem, 3.1vw, 3.1rem);
   line-height: 1.05;
   letter-spacing: 0.02em;
   color: #f6e8c4;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 28px rgba(201, 162, 76, 0.18);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 28px rgba(201, 162, 76, 0.2);
 }
 
 .acore-lede {
   margin: 0;
   font-family: Lora, Georgia, serif;
-  font-size: clamp(1rem, 1.1vw, 1.15rem);
+  font-size: clamp(0.95rem, 1.05vw, 1.1rem);
   line-height: 1.5;
   color: var(--acore-ink-dim);
-  max-width: 34ch;
+  max-width: 36ch;
 }
 
 .acore-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 0.75rem;
-  margin-top: 0.4rem;
+  gap: 0.7rem;
+  margin-top: 0.3rem;
 }
 
-.acore-root[data-layout="stacked"] .acore-actions {
-  flex-direction: column;
-}
+.acore-root[data-layout="stacked"] .acore-actions { flex-direction: column; }
 
 .acore-cta {
   display: inline-flex;
@@ -118,24 +203,20 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transition: transform 160ms ease, box-shadow 220ms ease, background-color 220ms ease;
-  will-change: transform;
 }
 
-.acore-cta:focus-visible {
-  outline: 2px solid var(--acore-brass-hi);
-  outline-offset: 3px;
-}
+.acore-cta:focus-visible { outline: 2px solid var(--acore-brass-hi); outline-offset: 3px; }
 
 .acore-cta-primary {
   flex: 1 1 auto;
   color: #1b1306;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 48%),
     linear-gradient(135deg, #f3dfa6 0%, #c9a24c 55%, #a37f36 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
     inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-    0 10px 30px -10px rgba(201, 162, 76, 0.55);
+    0 10px 30px -10px rgba(201, 162, 76, 0.6);
   font-size: 1rem;
 }
 
@@ -144,12 +225,10 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-    0 14px 36px -10px rgba(201, 162, 76, 0.7);
+    0 14px 36px -10px rgba(201, 162, 76, 0.75);
 }
 
-.acore-cta-primary:active {
-  transform: translateY(1px);
-}
+.acore-cta-primary:active { transform: translateY(1px); }
 
 .acore-cta-key {
   display: inline-grid;
@@ -167,7 +246,7 @@
   min-height: 48px;
   padding: 0 1.1rem;
   color: var(--acore-ink);
-  background: rgba(11, 21, 39, 0.75);
+  background: rgba(11, 21, 39, 0.8);
   border: 1px solid rgba(201, 162, 76, 0.55);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   font-size: 0.86rem;
@@ -176,10 +255,7 @@
   line-height: 1.1;
 }
 
-.acore-cta-secondary:hover {
-  border-color: var(--acore-brass);
-  background: rgba(16, 32, 58, 0.9);
-}
+.acore-cta-secondary:hover { border-color: var(--acore-brass); background: rgba(16, 32, 58, 0.92); }
 
 .acore-cta-hint {
   font-family: "Space Mono", ui-monospace, monospace;
@@ -199,93 +275,48 @@
   color: var(--acore-brass);
 }
 
-/* -------------------------------------------- broadcast gateway + second screen */
+/* ---------------------------------------------------------------- the book */
 
-.acore-gateway {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 0.8rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(201, 162, 76, 0.22);
+/* The centerpiece's layout box IS the drawn book (its painting reserves its
+   own height), so this wrapper only decides WIDTH and where it stands: on the
+   bench, under the lamp, with a contact shadow. */
+.acore-book {
+  position: relative;
+  margin-top: clamp(0.9rem, 2.2vh, 1.6rem);
+  width: clamp(272px, 24vw, 380px);
+  max-width: 100%;
+  filter: drop-shadow(0 18px 20px rgba(0, 0, 0, 0.55));
 }
 
-.acore-transmitter {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.8rem;
-  min-height: 56px;
-  padding: 0.55rem 0.8rem;
-  border-radius: 6px;
-  text-decoration: none;
-  color: var(--acore-ink);
-  background: linear-gradient(180deg, rgba(16, 32, 58, 0.85), rgba(11, 21, 39, 0.85));
-  border: 1px solid rgba(201, 162, 76, 0.32);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: border-color 200ms ease, background-color 200ms ease;
+.acore-book::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -14px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55), transparent 70%);
+  z-index: -1;
 }
 
-.acore-transmitter:hover {
-  border-color: var(--acore-brass);
+/* Short desktops: the book must stay legible, so the console simply grows
+   and the page scrolls; nothing is squeezed. */
+@media (min-width: 1024px) and (max-height: 720px) {
+  .acore-hero { align-items: start; }
+  .acore-book { width: clamp(272px, 22vw, 340px); }
 }
 
-.acore-transmitter:focus-visible {
-  outline: 2px solid var(--acore-brass-hi);
-  outline-offset: 2px;
-}
+.acore-book-mobile { margin: 0.5rem auto 0; width: 100%; filter: none; }
+.acore-book-mobile::after { display: none; }
 
-.acore-transmitter-dial {
-  display: grid;
-  place-items: center;
-  width: 2.3rem;
-  height: 2.3rem;
-  border-radius: 999px;
-  color: var(--acore-brass-hi);
-  background: radial-gradient(circle at 35% 30%, #2a3b55, #0a1424 70%);
-  box-shadow: inset 0 0 0 1px rgba(201, 162, 76, 0.55), inset 0 0 0 4px #0a1424, inset 0 0 0 5px rgba(201, 162, 76, 0.25);
-}
-
-.acore-transmitter-dial svg {
-  width: 1.05rem;
-  height: 1.05rem;
-}
-
-.acore-transmitter-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.acore-transmitter-eyebrow {
-  font-family: "Space Mono", ui-monospace, monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: var(--acore-brass);
-  opacity: 0.85;
-}
-
-.acore-transmitter-title {
-  font-family: Cinzel, Georgia, serif;
-  font-weight: 700;
-  font-size: 0.92rem;
-  letter-spacing: 0.03em;
-  color: #f0e2bd;
-}
-
-.acore-transmitter-meta {
-  font-family: "Space Mono", ui-monospace, monospace;
-  font-size: 0.66rem;
-  color: var(--acore-ink-dim);
-}
+/* -------------------------------------------------------- second screen */
 
 .acore-second-screen {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1.4rem;
-  padding: 0 0.2rem;
+  padding: 0.2rem 0.2rem 0;
 }
 
 .acore-minor-link {
@@ -302,44 +333,34 @@
   transition: color 160ms ease, border-color 160ms ease;
 }
 
-.acore-minor-link:hover {
-  color: var(--acore-brass-hi);
-  border-bottom-color: rgba(201, 162, 76, 0.6);
-}
-
-.acore-minor-link:focus-visible {
-  outline: 2px solid var(--acore-brass-hi);
-  outline-offset: 2px;
-}
+.acore-minor-link:hover { color: var(--acore-brass-hi); border-bottom-color: rgba(201, 162, 76, 0.6); }
+.acore-minor-link:focus-visible { outline: 2px solid var(--acore-brass-hi); outline-offset: 2px; }
 
 /* ----------------------------------------------------------------- stage */
 
 .acore-stagewrap {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
   min-width: 0;
+  /* the chassis feet land on the bench edge */
+  padding-bottom: clamp(1.6rem, 6.2vh, 3.6rem);
 }
 
 .acore-stage {
   position: relative;
-  width: min(100%, calc((100dvh - var(--app-header-h) - 6.5rem) * 1.34375));
+  width: min(100%, calc((100dvh - var(--app-header-h) - 9rem) * 1.34375));
   aspect-ratio: 860 / 640;
   container-type: inline-size;
 }
 
-.acore-root[data-layout="stacked"] .acore-stagewrap {
-  padding-top: 2rem;
-}
+.acore-root[data-layout="stacked"] .acore-stagewrap { padding: 0.5rem 0 0; }
 
 .acore-root[data-layout="stacked"] .acore-stage {
-  width: min(100%, 320px);
-  aspect-ratio: 1 / 1;
-}
-
-.acore-console-tail {
-  margin-top: 0.25rem;
+  width: min(100%, 340px);
+  aspect-ratio: 536 / 548;
 }
 
 .acore-svg {
@@ -352,55 +373,120 @@
   font-family: "Space Mono", ui-monospace, monospace;
 }
 
-/* Mogzy peeks over the chassis's top-left edge; the opaque body hides the rest. */
+/* ------------------------------------------------------------ Mogzy */
+
+/* Mogzy stands on the bench at the Core's left, facing it. One reserved box
+   (2:3, the plate ratio) holds every pose; plates stack and cross-fade. */
 .acore-operator {
   position: absolute;
-  z-index: 0;
-  left: 9.2%;
-  top: -6%;
-  width: 13%;
+  z-index: 3;
+  left: -14%;
+  bottom: -2.5%;
+  width: 21%;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .acore-root[data-layout="stacked"] .acore-operator {
-  left: 2%;
-  top: -11%;
-  width: 21%;
+  left: auto;
+  right: -4%;
+  bottom: -2%;
+  width: 30%;
 }
 
-.acore-operator-art {
+.acore-operator-figure {
+  position: relative;
   width: 100%;
-  height: auto;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+  aspect-ratio: 2 / 3;
+  transform-origin: 50% 100%;
 }
 
-.acore-readout-line {
-  margin: 0;
+.acore-operator[data-facing="right"] .acore-operator-figure { transform: scaleX(-1); }
+.acore-operator[data-ambient="on"] .acore-operator-figure { animation: acore-bob 4.2s ease-in-out infinite; }
+.acore-operator[data-ambient="on"][data-facing="right"] .acore-operator-figure { animation-name: acore-bob-mirrored; }
+.acore-operator[data-hop="true"] .acore-operator-figure { animation: acore-hop 480ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acore-operator[data-hop="true"][data-facing="right"] .acore-operator-figure { animation-name: acore-hop-mirrored; }
+
+.acore-operator-plate {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-width: 920px;
-  padding: 0.4rem 0.8rem;
-  border-top: 1px solid rgba(201, 162, 76, 0.28);
-  font-family: "Space Mono", ui-monospace, monospace;
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
-  line-height: 1.4;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  opacity: 0;
+  transition: opacity 260ms ease;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55));
+  user-select: none;
+}
+
+/* which plate shows: the active pose, else rest */
+.acore-operator[data-pose="rest"] .acore-operator-plate[data-plate="rest"],
+.acore-operator[data-pose="holdingBook"] .acore-operator-plate[data-plate="holdingBook"],
+.acore-operator[data-pose="raisingHand"] .acore-operator-plate[data-plate="raisingHand"],
+.acore-operator[data-pose="explaining"] .acore-operator-plate[data-plate="explaining"],
+.acore-operator[data-pose="peeking"] .acore-operator-plate[data-plate="peeking"] {
+  opacity: 1;
+}
+/* until the reaction plates exist (pre-warm), the rest plate stays up */
+.acore-operator[data-reactions="pending"] .acore-operator-plate[data-plate="rest"] { opacity: 1; }
+
+.acore-operator-shadow {
+  width: 70%;
+  height: 10px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.6), transparent 70%);
+}
+
+/* the parchment bubble */
+.acore-operator-bubble {
+  position: relative;
+  max-width: 190%;
+  width: max-content;
+  min-width: 100%;
+  margin-bottom: 6%;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f3e7c6, #e2d1a3);
+  color: #2a2110;
+  font-family: Lora, Georgia, serif;
+  font-size: clamp(11px, 1.15cqw, 14px);
+  line-height: 1.3;
   text-align: center;
-  color: var(--acore-ink-dim);
-  transition: color 250ms ease;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(90, 69, 32, 0.45);
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 260ms ease;
 }
+.acore-operator-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #e2d1a3;
+  box-shadow: 2px 2px 0 0 rgba(90, 69, 32, 0.35);
+}
+.acore-stage:not([data-focus="idle"]) .acore-operator-bubble { transform: translateY(-3px); }
 
-.acore-stage[data-focus]:not([data-focus="idle"]) + .acore-readout-line {
-  color: var(--acore-brass-hi);
+.acore-root[data-layout="stacked"] .acore-operator-bubble {
+  /* right-aligned to Mogzy, growing leftward over the bezel: never past the viewport */
+  align-self: flex-end;
+  max-width: min(220%, 62vw);
+  font-size: 11px;
+  transform: none;
 }
+.acore-root[data-layout="stacked"] .acore-stage:not([data-focus="idle"]) .acore-operator-bubble {
+  transform: translateY(-3px);
+}
+.acore-root[data-layout="stacked"] .acore-operator-bubble::after { left: auto; right: 14%; }
 
 /* ------------------------------------------------------------- bay links */
 
-.acore-bays-mounted {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
+.acore-bays-mounted { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 
 .acore-bay-link {
   display: flex;
@@ -411,15 +497,12 @@
   border-radius: 6px;
 }
 
-.acore-bay-link:focus-visible {
-  outline: 2px solid var(--acore-brass-hi);
-  outline-offset: 3px;
-}
+.acore-bay-link:focus-visible { outline: 2px solid var(--acore-brass-hi); outline-offset: 3px; }
 
-/* Mounted: the SVG draws the plate; the link is the real text on top of it. */
-/* Percent padding on an absolutely positioned box resolves against the STAGE,
-   not the plate, so the plate's own proportions are written in container
-   units: the plate is 272/860 of the stage width. */
+/* Mounted: the SVG draws the plate; the link is the real text on top of it.
+   Percent padding on an absolutely positioned box resolves against the STAGE,
+   so the plate's own proportions are written in container units (the plate is
+   272/860 of the stage width). */
 .acore-bay-link-mounted {
   position: absolute;
   box-sizing: border-box;
@@ -428,9 +511,7 @@
   gap: 1.1cqw;
 }
 
-.acore-bay-link-mounted .acore-bay-lampcell {
-  display: none;
-}
+.acore-bay-link-mounted .acore-bay-lampcell { display: none; }
 
 .acore-bay-glyph {
   display: grid;
@@ -440,18 +521,10 @@
   transition: color 250ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.acore-bay-link-mounted .acore-bay-glyph svg {
-  width: clamp(16px, 2.8cqw, 26px);
-  height: clamp(16px, 2.8cqw, 26px);
-}
+.acore-bay-link-mounted .acore-bay-glyph svg { width: clamp(16px, 2.8cqw, 26px); height: clamp(16px, 2.8cqw, 26px); }
 
-.acore-bay-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 0.05em;
-  line-height: 1.15;
-}
+.acore-bay-text { display: flex; flex-direction: column; min-width: 0; gap: 0.05em; line-height: 1.15; }
+.acore-bay-link-mounted .acore-bay-text { flex: 1 1 auto; }
 
 .acore-bay-eyebrow {
   font-family: "Space Mono", ui-monospace, monospace;
@@ -460,10 +533,7 @@
   color: var(--acore-brass);
   opacity: 0.75;
 }
-
-.acore-bay-link-mounted .acore-bay-eyebrow {
-  font-size: clamp(7px, 1.05cqw, 10px);
-}
+.acore-bay-link-mounted .acore-bay-eyebrow { font-size: clamp(7px, 1.05cqw, 10px); }
 
 .acore-bay-title {
   font-family: Cinzel, Georgia, serif;
@@ -474,70 +544,35 @@
   transition: color 250ms ease, text-shadow 250ms ease;
   line-height: 1.05;
 }
-
-.acore-bay-link-mounted .acore-bay-title {
-  font-size: clamp(10px, 1.45cqw, 14.5px);
-}
+.acore-bay-link-mounted .acore-bay-title { font-size: clamp(10px, 1.45cqw, 14.5px); }
 
 .acore-bay-arrow {
   flex: 0 0 auto;
   margin-left: auto;
-  flex-shrink: 0;
   color: var(--acore-brass);
   opacity: 0.45;
   transition: opacity 250ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.acore-bay-link-mounted .acore-bay-arrow { width: clamp(11px, 1.5cqw, 15px); height: clamp(11px, 1.5cqw, 15px); }
 
-.acore-bay-link-mounted .acore-bay-arrow {
-  width: clamp(11px, 1.5cqw, 15px);
-  height: clamp(11px, 1.5cqw, 15px);
-}
-
-.acore-bay-link-mounted .acore-bay-text {
-  flex: 1 1 auto;
-}
-
-.acore-bay-link[data-active="true"] .acore-bay-title {
-  color: #fff3d2;
-  text-shadow: 0 0 14px rgba(255, 217, 138, 0.45);
-}
-
-.acore-bay-link[data-active="true"] .acore-bay-glyph {
-  color: var(--acore-lamp);
-  transform: translateX(2px);
-}
-
-.acore-bay-link[data-active="true"] .acore-bay-arrow {
-  opacity: 1;
-  transform: translate(2px, -2px);
-}
+.acore-bay-link[data-active="true"] .acore-bay-title { color: #fff3d2; text-shadow: 0 0 14px rgba(255, 217, 138, 0.45); }
+.acore-bay-link[data-active="true"] .acore-bay-glyph { color: var(--acore-lamp); transform: translateX(2px); }
+.acore-bay-link[data-active="true"] .acore-bay-arrow { opacity: 1; transform: translate(2px, -2px); }
 
 /* Rows (stacked layout): the plate is HTML, with its own lamp cell. */
-.acore-bays-rows {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.6rem;
-}
-
-@media (min-width: 560px) {
-  .acore-bays-rows {
-    grid-template-columns: 1fr 1fr;
-  }
-}
+.acore-bays-rows { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+@media (min-width: 560px) { .acore-bays-rows { grid-template-columns: 1fr 1fr; } }
 
 .acore-bay-link-row {
   min-height: 60px;
   padding: 0.7rem 0.8rem 0.7rem 0.7rem;
-  background: linear-gradient(180deg, rgba(16, 32, 58, 0.85), rgba(11, 21, 39, 0.9));
-  border: 1px solid rgba(201, 162, 76, 0.38);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, rgba(16, 32, 58, 0.9), rgba(11, 21, 39, 0.95));
+  border: 1px solid rgba(201, 162, 76, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 18px -12px rgba(0, 0, 0, 0.8);
   transition: border-color 200ms ease, background-color 200ms ease;
 }
-
 .acore-bay-link-row:hover,
-.acore-bay-link-row[data-active="true"] {
-  border-color: var(--acore-brass);
-}
+.acore-bay-link-row[data-active="true"] { border-color: var(--acore-brass); }
 
 .acore-bay-link-row .acore-bay-lampcell {
   flex: 0 0 auto;
@@ -548,64 +583,47 @@
   box-shadow: inset 0 0 0 1px rgba(201, 162, 76, 0.3);
   transition: background-color 250ms ease, box-shadow 250ms ease;
 }
-
-.acore-bay-link-row[data-active="true"] .acore-bay-lampcell {
-  background: var(--acore-lamp);
-  box-shadow: 0 0 12px var(--acore-lamp-glow);
-}
-
-.acore-bay-link-row .acore-bay-glyph svg {
-  width: 22px;
-  height: 22px;
-}
-
-.acore-bay-link-row .acore-bay-eyebrow {
-  font-size: 0.56rem;
-}
-
-.acore-bay-link-row .acore-bay-title {
-  font-size: 0.92rem;
-  white-space: normal;
-}
-
-.acore-bay-preview {
-  font-family: Lora, Georgia, serif;
-  font-size: 0.78rem;
-  color: var(--acore-ink-dim);
-  line-height: 1.3;
-}
-
-.acore-bay-link-row .acore-bay-arrow {
-  width: 16px;
-  height: 16px;
-}
+.acore-bay-link-row[data-active="true"] .acore-bay-lampcell { background: var(--acore-lamp); box-shadow: 0 0 12px var(--acore-lamp-glow); }
+.acore-bay-link-row .acore-bay-glyph svg { width: 22px; height: 22px; }
+.acore-bay-link-row .acore-bay-eyebrow { font-size: 0.56rem; }
+.acore-bay-link-row .acore-bay-title { font-size: 0.92rem; white-space: normal; }
+.acore-bay-preview { font-family: Lora, Georgia, serif; font-size: 0.78rem; color: var(--acore-ink-dim); line-height: 1.3; }
+.acore-bay-link-row .acore-bay-arrow { width: 16px; height: 16px; }
 
 /* ========================================================== the instrument */
 
 .acore-svg {
-  --lens-core: #ffe4a6;
-  --lens-mid: #6a4c1c;
-  --live: var(--acore-teal);
+  --cr-hi: #7fb4ff;
+  --cr-mid: #4c6fe6;
+  --cr-lo: #2a2f8a;
+  --cr-core: #e6f3ff;
+  --live: var(--acore-hex-cyan);
   --lamp-on: var(--acore-lamp);
 }
 
-.acore-svg[data-focus="leaguecraft"] { --lens-core: #fff1c9; --lens-mid: #d49a2f; }
-.acore-svg[data-focus="combat-lab"]  { --lens-core: #ecfdff; --lens-mid: #2bb3c7; }
-.acore-svg[data-focus="archives"]    { --lens-core: #ffd9a0; --lens-mid: #9a6326; }
-.acore-svg[data-focus="pro-play"]    { --lens-core: #fff8e2; --lens-mid: #6f93b5; }
+.acore-svg[data-focus="leaguecraft"] { --cr-hi: #ffd98a; --cr-mid: #d2962e; --cr-lo: #6b4612; --cr-core: #fff6dc; }
+.acore-svg[data-focus="combat-lab"]  { --cr-hi: #8ff1ff; --cr-mid: #2db8d2; --cr-lo: #14506b; --cr-core: #f0feff; }
+.acore-svg[data-focus="archives"]    { --cr-hi: #ffc98c; --cr-mid: #b2742c; --cr-lo: #5a3812; --cr-core: #fff0d8; }
+.acore-svg[data-focus="pro-play"]    { --cr-hi: #b9a6ff; --cr-mid: #7a62e6; --cr-lo: #3a2c8a; --cr-core: #f3eeff; }
 
-.acore-lens-stop-core { stop-color: var(--lens-core); transition: stop-color 500ms ease; }
-.acore-lens-stop-mid  { stop-color: var(--lens-mid);  transition: stop-color 500ms ease; }
+.acore-crystal-stop-hi   { stop-color: var(--cr-hi);   transition: stop-color 520ms ease; }
+.acore-crystal-stop-mid  { stop-color: var(--cr-mid);  transition: stop-color 520ms ease; }
+.acore-crystal-stop-lo   { stop-color: var(--cr-lo);   transition: stop-color 520ms ease; }
+.acore-crystal-stop-core { stop-color: var(--cr-core); transition: stop-color 520ms ease; }
 
 /* chassis details */
 .acore-tick { stroke: var(--acore-brass); stroke-opacity: 0.5; stroke-width: 1; }
 .acore-tick-major { stroke-opacity: 0.95; stroke-width: 1.6; }
-.acore-scale-num { fill: var(--acore-brass); fill-opacity: 0.75; font-size: 9px; letter-spacing: 0.05em; }
+.acore-scale-num { fill: var(--acore-brass); fill-opacity: 0.8; font-size: 9px; letter-spacing: 0.05em; }
 .acore-screw circle { fill: #2a3b55; stroke: var(--acore-brass); stroke-width: 0.8; }
 .acore-screw line { stroke: #0a1424; stroke-width: 1.4; }
+.acore-rivet { fill: #d8bd77; stroke: #3b2f16; stroke-width: 0.6; }
+.acore-foot { fill: #3b2f16; }
 .acore-plate rect { fill: #0d1a2e; stroke: var(--acore-brass); stroke-opacity: 0.45; stroke-width: 0.8; }
 .acore-plate-title { fill: #e9d5a1; font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; }
-.acore-plate-sub { fill: var(--acore-brass); fill-opacity: 0.8; font-size: 7.5px; letter-spacing: 0.12em; }
+.acore-plate-sub { fill: var(--acore-brass); fill-opacity: 0.85; font-size: 7px; letter-spacing: 0.1em; }
+.acore-reflect { opacity: 0.55; transition: opacity 520ms ease; }
+.acore-svg:not([data-focus="idle"]) .acore-reflect { opacity: 1; }
 
 /* vernier column */
 .acore-carriage rect { fill: url(#acore-brass); stroke: #3b2f16; stroke-width: 0.8; }
@@ -625,41 +643,47 @@
 }
 
 /* bay plates (desktop) */
-.acore-conduit { stroke: var(--acore-brass-lo); stroke-width: 2.2; stroke-linecap: round; }
-.acore-conduit-live { stroke: var(--live); stroke-width: 2.2; stroke-linecap: round; opacity: 0; transition: opacity 350ms ease; }
-.acore-bay-plate { fill: var(--acore-navy); stroke: var(--acore-brass); stroke-opacity: 0.45; stroke-width: 1.2; transition: fill 300ms ease, stroke-opacity 300ms ease; }
-.acore-bay-highlight { stroke: #ffffff; stroke-opacity: 0.07; stroke-width: 1; }
+.acore-conduit { stroke: var(--acore-brass-lo); stroke-width: 2.4; stroke-linecap: round; }
+.acore-conduit-live { stroke: var(--live); stroke-width: 2.4; stroke-linecap: round; opacity: 0; transition: opacity 350ms ease; filter: drop-shadow(0 0 4px rgba(79, 216, 255, 0.6)); }
+.acore-bay-plate { fill: var(--acore-navy); stroke: var(--acore-brass); stroke-opacity: 0.5; stroke-width: 1.2; transition: fill 300ms ease, stroke-opacity 300ms ease; }
+.acore-bay-highlight { fill: #ffffff; fill-opacity: 0.06; }
 .acore-bay-lamp { fill: #202a40; stroke: var(--acore-brass); stroke-opacity: 0.3; stroke-width: 0.8; transition: fill 300ms ease, filter 300ms ease; }
 .acore-bay-latch { stroke: var(--acore-brass); stroke-opacity: 0.5; stroke-width: 1; }
 
 .acore-svg[data-focus="leaguecraft"] .acore-bay[data-bay="leaguecraft"] .acore-conduit-live,
 .acore-svg[data-focus="combat-lab"]  .acore-bay[data-bay="combat-lab"]  .acore-conduit-live,
 .acore-svg[data-focus="archives"]    .acore-bay[data-bay="archives"]    .acore-conduit-live,
-.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-conduit-live {
-  opacity: 0.9;
-}
+.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-conduit-live { opacity: 0.95; }
 .acore-svg[data-focus="leaguecraft"] .acore-bay[data-bay="leaguecraft"] .acore-bay-plate,
 .acore-svg[data-focus="combat-lab"]  .acore-bay[data-bay="combat-lab"]  .acore-bay-plate,
 .acore-svg[data-focus="archives"]    .acore-bay[data-bay="archives"]    .acore-bay-plate,
-.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-bay-plate {
-  fill: var(--acore-navy-2);
-  stroke-opacity: 1;
-}
+.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-bay-plate { fill: var(--acore-navy-2); stroke-opacity: 1; }
 .acore-svg[data-focus="leaguecraft"] .acore-bay[data-bay="leaguecraft"] .acore-bay-lamp,
 .acore-svg[data-focus="combat-lab"]  .acore-bay[data-bay="combat-lab"]  .acore-bay-lamp,
 .acore-svg[data-focus="archives"]    .acore-bay[data-bay="archives"]    .acore-bay-lamp,
-.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-bay-lamp {
-  fill: var(--lamp-on);
-  filter: drop-shadow(0 0 6px var(--acore-lamp-glow));
-}
+.acore-svg[data-focus="pro-play"]    .acore-bay[data-bay="pro-play"]    .acore-bay-lamp { fill: var(--lamp-on); filter: drop-shadow(0 0 6px var(--acore-lamp-glow)); }
 
-/* aperture */
-.acore-bezel-outer { fill: none; stroke: url(#acore-brass); stroke-width: 4; }
+/* aperture: bezel, enamel, crystal */
+.acore-lens-halo { opacity: 0.5; transition: opacity 520ms ease; }
+.acore-svg:not([data-focus="idle"]) .acore-lens-halo { opacity: 0.95; }
+.acore-svg[data-ambient="on"][data-focus="idle"] .acore-lens-halo { animation: acore-breathe 7s ease-in-out infinite; }
+
+.acore-bezel-shadow { fill: none; stroke: #000; stroke-opacity: 0.45; stroke-width: 6; }
+.acore-bezel-outer { fill: none; stroke: url(#acore-brass); stroke-width: 6; }
 .acore-bezel-face { stroke: #3b2f16; stroke-width: 1; }
-.acore-lens-plate { fill: #050b14; stroke: var(--acore-brass-lo); stroke-width: 1.2; }
-.acore-lens-glow { opacity: 1; }
-.acore-lens-halo { opacity: 0.55; }
-.acore-svg[data-ambient="on"] .acore-lens-halo { animation: acore-breathe 7s ease-in-out infinite; }
+.acore-bezel-brush { stroke: #ffffff; stroke-opacity: 0.045; stroke-width: 1; }
+.acore-bezel-light { fill: none; stroke: #fff; stroke-opacity: 0.12; stroke-width: 1; stroke-dasharray: 220 1040; }
+.acore-enamel-band { fill: #0f2448; stroke: #061023; stroke-width: 1; }
+.acore-hairline { fill: none; stroke: var(--acore-brass); stroke-opacity: 0.6; stroke-width: 1; }
+
+.acore-lens-plate { fill: #050b14; }
+.acore-facet { stroke: rgba(255, 255, 255, 0.22); stroke-width: 0.6; }
+.acore-facet-0 { fill: url(#acore-facet-0); }
+.acore-facet-1 { fill: url(#acore-facet-1); }
+.acore-facet-2 { fill: url(#acore-facet-2); }
+.acore-crystal-core { fill: url(#acore-core-glow); stroke: rgba(255, 255, 255, 0.35); stroke-width: 0.8; }
+.acore-crystal-edge { fill: none; stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; }
+.acore-crystal-glow { opacity: 0.55; mix-blend-mode: screen; }
 
 .acore-mode { opacity: 0; transition: opacity 450ms ease; }
 .acore-svg[data-focus="idle"]        .acore-mode-idle        { opacity: 1; }
@@ -668,30 +692,26 @@
 .acore-svg[data-focus="archives"]    .acore-mode-archives    { opacity: 1; }
 .acore-svg[data-focus="pro-play"]    .acore-mode-pro-play    { opacity: 1; }
 
+.acore-media { opacity: 0; animation: acore-fade-in 320ms ease forwards; }
+
 /* idle: the slowest possible sweep */
-.acore-idle-sweep {
-  fill: var(--lens-core);
-  fill-opacity: 0.14;
-  transform-box: fill-box;
-  transform-origin: 0 50%;
-}
+.acore-idle-sweep { fill: #ffffff; fill-opacity: 0.1; transform-box: fill-box; transform-origin: 0 50%; }
 .acore-svg[data-ambient="on"][data-focus="idle"] .acore-idle-sweep { animation: acore-spin 40s linear infinite; }
 
-/* INQUIRY — a probe wedge sweeps, rings pulse */
-.acore-probe-wedge {
-  fill: #ffe9b8;
-  fill-opacity: 0.22;
-  transform-box: fill-box;
-  transform-origin: 0 50%;
-}
+/* INQUIRY */
+.acore-probe-wedge { fill: #ffe9b8; fill-opacity: 0.2; transform-box: fill-box; transform-origin: 0 50%; }
 .acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-wedge { animation: acore-spin 4.5s linear infinite; }
-.acore-probe-ring { fill: none; stroke: #ffe9b8; stroke-width: 0.9; stroke-dasharray: 3 5; opacity: 0.6; }
-.acore-probe-ring-2 { stroke-dasharray: 2 7; opacity: 0.45; }
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-ring { animation: acore-pulse 2.2s ease-in-out infinite; }
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-ring-2 { animation: acore-pulse 2.2s ease-in-out 0.6s infinite; }
-.acore-probe-dot { fill: #fff3d4; }
+.acore-probe-ring { fill: none; stroke: #ffe9b8; stroke-width: 0.9; stroke-dasharray: 2 7; opacity: 0.5; }
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .acore-probe-ring-2 { animation: acore-pulse 2.2s ease-in-out infinite; }
+.acore-specimen-plate { fill: #1a1408; }
+.acore-magnifier { fill: none; stroke: var(--acore-brass-hi); stroke-width: 2.4; transform-box: fill-box; transform-origin: 50% 50%; transform: scale(0.6); transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acore-magnifier-handle { stroke: var(--acore-brass-hi); stroke-width: 4; stroke-linecap: round; }
+.acore-svg[data-focus="leaguecraft"] .acore-magnifier { transform: scale(1); }
+.acore-probe-tick { stroke: #ffe9b8; stroke-width: 1.2; opacity: 0.8; }
+.acore-specimen { transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1); transform: scale(0.7); transform-box: fill-box; transform-origin: 50% 50%; }
+.acore-svg[data-focus="leaguecraft"] .acore-specimen { transform: scale(1); }
 
-/* MEASURE — caliper jaws close onto a dimension */
+/* MEASURE */
 .acore-jaw line { stroke: #e6f8fb; stroke-width: 2; }
 .acore-jaw path { fill: #e6f8fb; }
 .acore-jaw { transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -702,44 +722,46 @@
 .acore-dim-line { stroke: #bff3fb; stroke-width: 1; stroke-dasharray: 2 3; }
 .acore-dim-arrow { fill: #bff3fb; }
 .acore-dim-text { fill: #dffbff; font-size: 10px; letter-spacing: 0.08em; }
+.acore-range-arc { fill: none; stroke: #8ff1ff; stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.7; }
+.acore-range-tick { stroke: #8ff1ff; stroke-width: 1.2; opacity: 0.8; }
+.acore-shard { filter: drop-shadow(0 0 3px rgba(143, 241, 255, 0.7)); }
 
-/* STRATA — layers fan apart */
+/* STRATA */
 .acore-stratum {
-  fill: #ffcf8a;
-  fill-opacity: 0.16;
-  stroke: #ffd9a0;
-  stroke-opacity: 0.55;
-  stroke-width: 0.8;
+  fill: #ffcf8a; fill-opacity: 0.16; stroke: #ffd9a0; stroke-opacity: 0.6; stroke-width: 0.8;
   transition: transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.acore-stratum-icons { transition: transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .acore-stratum-1 { transition-delay: 40ms; }
 .acore-stratum-2 { transition-delay: 80ms; }
 .acore-stratum-3 { transition-delay: 120ms; }
 .acore-stratum-4 { transition-delay: 160ms; }
-.acore-svg[data-focus="archives"] .acore-stratum-0 { transform: translateY(-40px); }
-.acore-svg[data-focus="archives"] .acore-stratum-1 { transform: translateY(-20px); }
+.acore-svg[data-focus="archives"] .acore-stratum-0 { transform: translateY(-42px); }
+.acore-svg[data-focus="archives"] .acore-stratum-1 { transform: translateY(-21px); }
 .acore-svg[data-focus="archives"] .acore-stratum-2 { transform: translateY(0); }
-.acore-svg[data-focus="archives"] .acore-stratum-3 { transform: translateY(20px); }
-.acore-svg[data-focus="archives"] .acore-stratum-4 { transform: translateY(40px); }
+.acore-svg[data-focus="archives"] .acore-stratum-3 { transform: translateY(21px); }
+.acore-svg[data-focus="archives"] .acore-stratum-4 { transform: translateY(42px); }
+.acore-strata-icon-ring { fill: #2a1d0c; stroke: #ffd9a0; stroke-opacity: 0.8; stroke-width: 1; }
+.acore-strata-label { fill: #ffe3b3; font-size: 8px; letter-spacing: 0.26em; opacity: 0.9; }
 
-/* OBSERVE — a reticle squares up, a mark tracks */
+/* OBSERVE */
 .acore-reticle {
-  fill: none;
-  stroke: #f6e9c6;
-  stroke-width: 1;
-  stroke-opacity: 0.85;
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-  transform: rotate(-22deg);
+  fill: none; stroke: #efe6ff; stroke-width: 1; stroke-opacity: 0.85;
+  transform-box: fill-box; transform-origin: 50% 50%; transform: rotate(-22deg);
   transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .acore-svg[data-focus="pro-play"] .acore-reticle { transform: rotate(0deg); }
-.acore-track-mark { fill: var(--lamp-on); transform: translate(-28px, -16px); }
+.acore-role-ring { fill: #1a1434; stroke: #b9a6ff; stroke-opacity: 0.8; stroke-width: 1; }
+.acore-role-icon { filter: brightness(1.4); }
+.acore-track-mark { transform: translate(-28px, -16px); }
 .acore-svg[data-ambient="on"][data-focus="pro-play"] .acore-track-mark { animation: acore-track 6s ease-in-out infinite alternate; }
+.acore-mark-plate { fill: #1a1434; }
+.acore-mark-ring { fill: none; stroke: var(--lamp-on); stroke-width: 1.6; }
 
 /* iris + cursor */
-.acore-blade-edge { stroke: var(--acore-brass); stroke-opacity: 0.85; stroke-width: 1.2; }
+.acore-blade-edge { stroke: var(--acore-brass); stroke-opacity: 0.9; stroke-width: 1.2; }
 .acore-iris-rim { fill: none; stroke: var(--acore-brass-lo); stroke-width: 6; }
+.acore-iris-rim-light { fill: none; stroke: #fff; stroke-opacity: 0.12; stroke-width: 1; }
 .acore-cursor-ring { fill: none; stroke: #7a5b24; stroke-width: 2; }
 .acore-cursor-pointer { fill: url(#acore-brass); stroke: #3b2f16; stroke-width: 0.6; }
 .acore-cursor-tail { fill: #7a5b24; }
@@ -754,25 +776,30 @@
 
 /* ------------------------------------------------------------ keyframes */
 
-@keyframes acore-breathe {
-  0%, 100% { opacity: 0.36; }
-  50% { opacity: 0.62; }
-}
-@keyframes acore-spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes acore-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.85; }
-}
+@keyframes acore-breathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
+@keyframes acore-spin { to { transform: rotate(360deg); } }
+@keyframes acore-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.85; } }
+@keyframes acore-fade-in { to { opacity: 1; } }
 @keyframes acore-track {
   0% { transform: translate(-28px, -16px); }
   35% { transform: translate(20px, -24px); }
   70% { transform: translate(30px, 18px); }
   100% { transform: translate(-14px, 26px); }
 }
-@keyframes acore-blink {
-  50% { opacity: 0; }
+@keyframes acore-blink { 50% { opacity: 0; } }
+@keyframes acore-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5%); } }
+@keyframes acore-bob-mirrored { 0%, 100% { transform: scaleX(-1) translateY(0); } 50% { transform: scaleX(-1) translateY(-2.5%); } }
+@keyframes acore-hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-7%) scale(0.97, 1.04); }
+  60% { transform: translateY(0) scale(1.03, 0.97); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes acore-hop-mirrored {
+  0% { transform: scaleX(-1) translateY(0) scale(1, 1); }
+  30% { transform: scaleX(-1) translateY(-7%) scale(0.97, 1.04); }
+  60% { transform: scaleX(-1) translateY(0) scale(1.03, 0.97); }
+  100% { transform: scaleX(-1) translateY(0) scale(1, 1); }
 }
 
 /* ------------------------------------------------------- reduced motion */
@@ -784,6 +811,7 @@
     transition: none !important;
     animation: none !important;
   }
+  .acore-media { opacity: 1; }
 }
 
 html.reduce-motion .acore-root *,
@@ -792,3 +820,4 @@ html.reduce-motion .acore-root *::after {
   transition: none !important;
   animation: none !important;
 }
+html.reduce-motion .acore-media { opacity: 1; }

@@ -1,57 +1,66 @@
 /**
- * Academy Core V1 — `/lol/dev/academy-core` (alias `/dev/academy-core`).
+ * Academy Core V2 — `/lol/dev/academy-core` (alias `/dev/academy-core`).
  *
- * The approved Home Hub concept as a working page inside the real shell: one
- * precision instrument (AcademyCoreInstrument), four permanently labelled room
- * entrances mounted on it, and the two play actions in immediate reach.
+ * Mogzy's Hextech workshop as a working page inside the real shell: one
+ * refined precision instrument (AcademyCoreInstrument) with Mogzy at its
+ * controls (MogzyOperator), the real Patch Report book
+ * (AcademyBroadcastCenterpiece, live feed and radio controls) standing beside
+ * it on the same bench, and the two play actions in immediate reach.
  *
  * NAVIGATION CONTRACTS (see academy-core-destinations.ts):
  *   · Daily   → <Link to="/quiz/daily-challenge" state={DAILY_START_STATE}>
  *   · Ranked  → <Link to="/quiz?play=1"> — the lobby opens its Play record
  *   · Rooms   → <Link> to /quiz, /combat-lab, /lol/docs, /lol/pro-play
  * Every entrance navigates on the first click / tap / Enter. Hover and focus
- * only animate the instrument and show the one-line preview; nothing is
- * gated behind them.
+ * only animate the instrument and Mogzy; nothing is gated behind them.
  *
- * DATA. Two reads, both existing authorities and both read-only: the Daily
- * status (`useDailyChallengeStatus`, one request, the same the Quiz lobby
- * makes) and the Patch Reports list under the Hall's own query key (shared
- * cache). Status copy renders only once the service has actually answered —
- * nothing here invents completion, streaks, ranks or XP.
+ * DATA. Read-only, and all existing authorities: the Patch Brief feed the
+ * Hall's book uses (`usePatchBriefFeed`, shared query keys and cache — the
+ * Archives projection reuses its icons, so no second patch read), the Daily
+ * status (`useDailyChallengeStatus`, one request, the same the lobby makes;
+ * copy renders only once the service has answered), and the champion manifest
+ * through the app's one query definition (the warm fetches it; the feed hook
+ * then finds it cached). Nothing invents completion, streaks, ranks or XP.
  *
- * ANALYTICS. Deliberately NO `hub_entered` from a preview route — that would
- * inflate the real Hall's count. The diagnostic `leaguecraft_cta_clicked` is
- * reused for the two doors that lead into /quiz, with distinct `cta` values,
- * exactly as the Hall's book does; the canonical open event fires on /quiz.
+ * LOADING (PERF1 convention, page-scoped): `warmAcademyCore` prepares Mogzy's
+ * plate and, on desktop, the book at high priority; reaction poses, projection
+ * icons and the four route chunks follow. The Hall's own warm is deliberately
+ * NOT called — it would fetch the old library / book-frame art this page does
+ * not draw. Every late asset has reserved geometry.
  *
- * ISOLATION. New styles live in ./academy-core.css (scoped `.acore-*`), not
- * in index.css. The route is lazily loaded from App.tsx; the production Hall
- * at /lol and the site root are untouched.
+ * ANALYTICS. No `hub_entered` from a preview route. The diagnostic
+ * `leaguecraft_cta_clicked` is reused for the two doors into /quiz with
+ * distinct `cta` values; the canonical open event fires on /quiz itself.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, Radio } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowUpRight } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
-import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
+import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
-import { fetchPatchReports } from "@/lib/patch-reports/api";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useSfx } from "@/lib/audio/useSfx";
 
-import AcademyCoreInstrument, { BAY_PLATE, CORE_VIEWBOX, bayAnchor } from "./AcademyCoreInstrument";
+import AcademyCoreInstrument, { BAY_PLATE, CORE_VIEWBOX, bayAnchor, type CoreMedia } from "./AcademyCoreInstrument";
+import MogzyOperator from "./MogzyOperator";
+import {
+  CORE_FULL_LAYOUT_MEDIA,
+  CORE_MEASURE_SHARDS,
+  CORE_OBSERVE_ROLES,
+  warmAcademyCore,
+} from "./academy-core-warm";
 import {
   ACADEMY_COMMONS_HREF,
   ACADEMY_HALL_ROUTE,
   CORE_DESTINATIONS,
-  CORE_IDLE_READOUT,
   DAILY_ROUTE,
-  PATCH_REPORTS_ROUTE,
   RANKED_ROUTE,
   coreBayDescriptionId,
   destinationById,
@@ -62,8 +71,8 @@ import "./academy-core.css";
 
 /** Same grace the Mogzy guide uses before a leave clears a hover message. */
 const FOCUS_RELEASE_MS = 140;
-/** Full (instrument-mounted bays) composition from here up; stacked below. */
-const FULL_LAYOUT_QUERY = "(min-width: 1024px)";
+/** Mogzy's idle line. Touch-neutral: phones have no hover. */
+const IDLE_LINE = "Pick a room and I'll take a reading.";
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(() =>
@@ -92,17 +101,25 @@ function bayOverlayStyle(d: CoreDestination): React.CSSProperties {
 }
 
 export default function AcademyCorePage() {
-  const fullLayout = useMediaQuery(FULL_LAYOUT_QUERY);
+  const fullLayout = useMediaQuery(CORE_FULL_LAYOUT_MEDIA);
   const reduced = useReducedMotionPreference();
   const sfx = useSfx();
+  const queryClient = useQueryClient();
 
   // Same session flag the Hall sets on arrival. The Quiz lobby's onboarding
   // gate (`redirect_to_hub`) bounces a first-time session that has not seen
-  // the hub back to /lol; this page IS the hub candidate, so Ranked and the
-  // Leaguecraft bay must not be answered with a detour. sessionStorage only.
+  // the hub back to /lol; this page IS the hub candidate. sessionStorage only.
   useEffect(() => {
     markHubVisited();
   }, []);
+
+  /* ---------------- warm: the Core's critical art, then the rest ---------------- */
+  const [projections, setProjections] = useState<{ inquiryIcon: string | null; observeIcon: string | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    warmAcademyCore(queryClient).then((icons) => { if (active) setProjections(icons); });
+    return () => { active = false; };
+  }, [queryClient]);
 
   /* ---------------- focus state ---------------- */
   const [focus, setFocus] = useState<CoreFocus>("idle");
@@ -160,6 +177,7 @@ export default function AcademyCorePage() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  const ambient = onScreen && !reduced;
 
   /* ---------------- real data, read-only ---------------- */
   const daily = useDailyChallengeStatus();
@@ -172,52 +190,24 @@ export default function AcademyCorePage() {
         ? "A run is in progress — pick up where you left off."
         : null;
 
-  const patchList = useQuery({ queryKey: ["patch-reports"], queryFn: fetchPatchReports });
-  const latestPatch = patchList.data?.patches?.[0] ?? null;
-  const patchHref = latestPatch
-    ? `${PATCH_REPORTS_ROUTE}?patch=${encodeURIComponent(latestPatch.patch_version)}`
-    : PATCH_REPORTS_ROUTE;
+  // One Patch Brief feed serves the book AND the Archives projection.
+  const broadcastFeed = usePatchBriefFeed();
+  const brief = broadcastFeed.status === "ready"
+    ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null
+    : null;
+
+  const media = useMemo<CoreMedia>(() => ({
+    inquiryIcon: projections?.inquiryIcon ?? null,
+    observeIcon: projections?.observeIcon ?? null,
+    // The book has already requested these exact URLs; the strata reuse them.
+    strataIcons: brief ? brief.sections.flatMap((s) => s.entries).slice(0, 4).map((e) => e.iconUrl) : [],
+    strataLabel: brief ? brief.patchLabel : null,
+    measureShards: projections ? CORE_MEASURE_SHARDS : undefined,
+    observeRoles: projections ? CORE_OBSERVE_ROLES : [],
+  }), [projections, brief]);
 
   const focused = destinationById(focus);
-  const readoutLine = focused
-    ? `BAY ${focused.bay} · ${focused.readout} — ${focused.preview}`
-    : `${CORE_IDLE_READOUT} — Select a bay to take a reading.`;
-
-  /* The broadcast gateway and the way on to the existing second screen. In
-     the full composition it sits under the actions in the console; stacked,
-     it follows the four rooms so the entrances are never pushed below them. */
-  const gateway = (
-    <>
-      {/* ---------------- broadcast gateway + second screen ---------------- */}
-      <div className="acore-gateway" data-testid="academy-core-gateway">
-        <Link to={patchHref} className="acore-transmitter" data-testid="academy-core-patch-link">
-          <span className="acore-transmitter-dial" aria-hidden>
-            <Radio strokeWidth={1.6} />
-          </span>
-          <span className="acore-transmitter-text">
-            <span className="acore-transmitter-eyebrow">Academy Broadcast</span>
-            <span className="acore-transmitter-title">
-              {latestPatch ? `Patch ${latestPatch.patch_version} brief` : "Patch Reports"}
-            </span>
-            {latestPatch && (
-              <span className="acore-transmitter-meta">
-                {latestPatch.change_count} changes · {latestPatch.card_count} cards
-              </span>
-            )}
-          </span>
-          <ArrowUpRight className="acore-bay-arrow" aria-hidden />
-        </Link>
-        <nav className="acore-second-screen" aria-label="Academy rooms beyond the Core">
-          <a href={ACADEMY_COMMONS_HREF} className="acore-minor-link" data-testid="academy-core-commons-link">
-            Academy Commons
-          </a>
-          <Link to={ACADEMY_HALL_ROUTE} className="acore-minor-link" data-testid="academy-core-hall-link">
-            Academy Hall
-          </Link>
-        </nav>
-      </div>
-    </>
-  );
+  const mogzyLine = focused ? focused.preview : IDLE_LINE;
 
   /* ---------------- bay handlers ---------------- */
   const bayHandlers = useMemo(() => {
@@ -290,8 +280,19 @@ export default function AcademyCorePage() {
     );
   };
 
+  const secondScreen = (
+    <nav className="acore-second-screen" aria-label="Academy rooms beyond the Core">
+      <a href={ACADEMY_COMMONS_HREF} className="acore-minor-link" data-testid="academy-core-commons-link">
+        Academy Commons
+      </a>
+      <Link to={ACADEMY_HALL_ROUTE} className="acore-minor-link" data-testid="academy-core-hall-link">
+        Academy Hall
+      </Link>
+    </nav>
+  );
+
   return (
-    <div className="acore-root" data-layout={fullLayout ? "full" : "stacked"} data-testid="academy-core">
+    <div className="acore-root" data-layout={fullLayout ? "full" : "stacked"} data-ambient={ambient ? "on" : "off"} data-testid="academy-core">
       <SEOHead
         title="Academy Core — Mogzy Academy (preview)"
         description="Preview of the Academy Core home hub."
@@ -307,12 +308,24 @@ export default function AcademyCorePage() {
       </div>
 
       <section className="acore-hero" aria-labelledby="acore-title">
-        {/* ---------------- console: brand + actions ---------------- */}
+        {/* The workshop: wall, bench, and two pools of light — one warm over the
+            console and book, one Hextech over the Core. Pointer-inert. */}
+        <div className="acore-room" aria-hidden>
+          <div className="acore-room-wall" />
+          <div className="acore-room-pilaster acore-room-pilaster-l" />
+          <div className="acore-room-pilaster acore-room-pilaster-r" />
+          <div className="acore-room-lamp" />
+          <div className="acore-room-hex" />
+          <div className="acore-room-bench" />
+          <div className="acore-room-bench-edge" />
+        </div>
+
+        {/* ---------------- console: brand + actions + the book ---------------- */}
         <div className="acore-console">
-          <p className="acore-eyebrow">The Academy Core</p>
+          <p className="acore-eyebrow">Mogzy&rsquo;s Hextech Workshop</p>
           <h1 id="acore-title" className="acore-title">Mogzy Academy</h1>
           <p className="acore-lede">
-            One instrument. Four rooms. Start with today&rsquo;s Daily.
+            One peculiar instrument. Four rooms. Start with today&rsquo;s Daily.
           </p>
 
           <div className="acore-actions">
@@ -345,34 +358,34 @@ export default function AcademyCorePage() {
             <p className="acore-status" data-testid="academy-core-daily-status">{dailyStatusLine}</p>
           )}
 
-          {fullLayout && gateway}
+          {/* The real Patch Report book, on the bench below the actions (desktop).
+              Its layout box is the drawn book (geometry reserved by the painting's
+              intrinsic size), with the radio dock as its control deck. */}
+          {fullLayout && (
+            <div className="acore-book" data-testid="academy-core-book">
+              <AcademyBroadcastCenterpiece feed={broadcastFeed} className="acore-book-centerpiece" />
+            </div>
+          )}
+          {fullLayout && secondScreen}
         </div>
 
-        {/* ---------------- the instrument ---------------- */}
+        {/* ---------------- the instrument, with Mogzy at the controls ---------------- */}
         <div className="acore-stagewrap">
-          <div
-            ref={stageRef}
-            className="acore-stage"
-            data-focus={focus}
-            data-testid="academy-core-stage"
-          >
-            <div className="acore-operator" aria-hidden>
-              <MogzyMascot pose="peeking" scale="compact" decorative className="acore-operator-art" />
-            </div>
-            <AcademyCoreInstrument
-              focus={focus}
-              compact={!fullLayout}
-              ambient={onScreen && !reduced}
-            />
+          <div ref={stageRef} className="acore-stage" data-focus={focus} data-testid="academy-core-stage">
+            <AcademyCoreInstrument focus={focus} compact={!fullLayout} ambient={ambient} media={media} />
             {fullLayout && (
               <nav className="acore-bays-mounted" aria-label="Academy rooms">
                 {CORE_DESTINATIONS.map((d) => renderBay(d, "mounted"))}
               </nav>
             )}
+            <MogzyOperator
+              focus={focus}
+              line={mogzyLine}
+              ambient={ambient}
+              reduced={reduced}
+              reactionsReady={projections !== null}
+            />
           </div>
-          <p className="acore-readout-line" data-testid="academy-core-readout" aria-hidden>
-            {readoutLine}
-          </p>
         </div>
 
         {!fullLayout && (
@@ -380,7 +393,11 @@ export default function AcademyCorePage() {
             <nav className="acore-bays-rows" aria-label="Academy rooms">
               {CORE_DESTINATIONS.map((d) => renderBay(d, "row"))}
             </nav>
-            <div className="acore-console acore-console-tail">{gateway}</div>
+            {/* Phones: the existing mobile Patch Report variant follows the rooms. */}
+            <div className="acore-book acore-book-mobile" data-testid="academy-core-book-mobile">
+              <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
+            </div>
+            {secondScreen}
           </>
         )}
       </section>

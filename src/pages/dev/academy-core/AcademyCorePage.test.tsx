@@ -6,7 +6,7 @@
  * what router state), not about an href string.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -28,10 +28,26 @@ vi.mock("@/lib/daily-challenge/useDailyChallengeStatus", () => ({
   useDailyChallengeStatus: () => dailyStatus.current,
 }));
 
-const fetchPatchReports = vi.fn();
-vi.mock("@/lib/patch-reports/api", () => ({
-  fetchPatchReports: () => fetchPatchReports(),
+import { INITIAL_BROADCAST_FEED, type BroadcastFeed } from "@/components/lol/broadcast/broadcast-content";
+const feed: { current: BroadcastFeed } = { current: INITIAL_BROADCAST_FEED };
+vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({
+  usePatchBriefFeed: () => feed.current,
 }));
+// The warm is observed, never run (no Image loads in jsdom); it resolves with
+// no manifest icons so the projections render their reserved plates only.
+const warm = vi.fn(() => Promise.resolve({ inquiryIcon: null, observeIcon: null }));
+vi.mock("./academy-core-warm", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./academy-core-warm")>()),
+  warmAcademyCore: (...args: unknown[]) => warm(...args),
+}));
+vi.mock("@/lib/audio/academy-radio", () => ({
+  useAcademyRadio: () => ({ isPlaying: false, isTransmitting: false, title: "", subtitle: "", volume: 0.15, tune: vi.fn(), next: vi.fn(), setVolume: vi.fn(), status: "idle" }),
+}));
+vi.mock("@/components/audio/AcademyRadioDock", () => ({
+  default: ({ variant }: { variant: string }) => <div data-testid={`academy-radio-${variant === "desktop" ? "dock" : "dock-mobile"}`} />,
+}));
+/** Per-test control of window.matchMedia (the setup file answers false to everything). */
+const matchMediaMatches: { current: (q: string) => boolean } = { current: () => false };
 
 const sfxPlay = vi.fn();
 vi.mock("@/lib/audio/useSfx", () => ({
@@ -39,6 +55,7 @@ vi.mock("@/lib/audio/useSfx", () => ({
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
 
+import { HUB_GUIDE_MODES } from "@/components/lol/hub-guide";
 import AcademyCorePage from "./AcademyCorePage";
 import { CORE_DESTINATIONS } from "./academy-core-destinations";
 
@@ -75,8 +92,13 @@ function mount(initial = "/lol/dev/academy-core") {
 beforeEach(() => {
   track.mockReset();
   sfxPlay.mockReset();
-  fetchPatchReports.mockReset();
-  fetchPatchReports.mockResolvedValue({ patches: [] });
+  warm.mockClear();
+  feed.current = INITIAL_BROADCAST_FEED;
+  matchMediaMatches.current = () => false;
+  window.matchMedia = ((query: string) => ({
+    matches: matchMediaMatches.current(query), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
   dailyStatus.current = UNKNOWN_DAILY_STATUS;
   sessionStorage.clear();
   // jsdom: no layout. The setup file's matchMedia answers `false` to every
@@ -194,13 +216,14 @@ describe("focus states", () => {
       mount();
       const stage = screen.getByTestId("academy-core-stage");
       expect(stage).toHaveAttribute("data-focus", "idle");
-      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent("STANDBY");
+      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent("Pick a room");
 
       const link = screen.getByTestId("academy-core-bay-combat-lab");
       act(() => { link.focus(); });
       expect(stage).toHaveAttribute("data-focus", "combat-lab");
       expect(link).toHaveAttribute("data-active", "true");
-      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent("BAY 02 · MEASURE");
+      expect(screen.getByTestId("academy-core-readout")).toHaveTextContent(HUB_GUIDE_MODES["combat-lab"].description);
+      expect(screen.getByTestId("academy-core-mogzy")).toHaveAttribute("data-pose", "raisingHand");
 
       act(() => { link.blur(); });
       // The release is graced, like the guide's hover clear.
@@ -229,22 +252,50 @@ describe("focus states", () => {
   });
 });
 
-describe("broadcast gateway and the second screen", () => {
-  it("links Patch Reports generically until the list has loaded", () => {
+describe("the Patch Report book and the second screen", () => {
+  it("mounts the existing mobile book variant below the rooms in the stacked composition", () => {
     mount();
-    const link = screen.getByTestId("academy-core-patch-link");
-    expect(link).toHaveAttribute("href", "/lol/patch-reports");
-    expect(link).toHaveTextContent("Patch Reports");
+    // jsdom answers false to every media query → stacked composition.
+    const book = screen.getByTestId("academy-core-book-mobile");
+    expect(within(book).getByTestId("academy-broadcast-surface-mobile")).toBeInTheDocument();
+    expect(screen.queryByTestId("academy-broadcast-surface")).not.toBeInTheDocument();
+    const rooms = screen.getByRole("navigation", { name: "Academy rooms" });
+    expect(rooms.compareDocumentPosition(book) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("names the latest real patch once the shared list query resolves", async () => {
-    fetchPatchReports.mockResolvedValue({
-      patches: [{ patch_version: "25.19", change_count: 41, card_count: 17, section_titles: [], built_at: "", source_url: "", cards_by_type: {}, cards_by_status: {} }],
-    });
+  it("mounts the real desktop book with its radio dock beside the Core in the full composition", () => {
+    matchMediaMatches.current = (q) => q.includes("min-width: 1024px");
     mount();
-    expect(await screen.findByText("Patch 25.19 brief")).toBeInTheDocument();
-    expect(screen.getByTestId("academy-core-patch-link")).toHaveAttribute("href", "/lol/patch-reports?patch=25.19");
-    expect(screen.getByText("41 changes · 17 cards")).toBeInTheDocument();
+    const book = screen.getByTestId("academy-core-book");
+    expect(within(book).getByTestId("academy-broadcast-surface")).toBeInTheDocument();
+    expect(within(book).getByTestId("academy-radio-dock")).toBeInTheDocument();
+    expect(screen.queryByTestId("academy-broadcast-surface-mobile")).not.toBeInTheDocument();
+    // and the rooms are mounted on the instrument, not as rows
+    expect(screen.getByTestId("academy-core-bay-leaguecraft").className).toContain("acore-bay-link-mounted");
+  });
+
+  it("shows the live Patch Brief in the book and carries its icons into the Archives projection", async () => {
+    feed.current = {
+      status: "ready",
+      index: 0,
+      transmissions: [{
+        id: "patch-brief-26.20", channel: "patch-brief", eyebrow: "Patch Brief", headline: "Patch 26.20",
+        primaryAction: { label: "Read full report", to: "/lol/patch-reports?patch=26.20" },
+        brief: {
+          patchVersion: "26.20", patchLabel: "Patch 26.20", fullReportHref: "/lol/patch-reports?patch=26.20",
+          sections: [{ direction: "buff", title: "Buffs", entries: [
+            { entityType: "champion", entityId: "ryze", iconUrl: "https://cdn.test/ryze.png", accessibleName: "Ryze" },
+            { entityType: "champion", entityId: "ahri", iconUrl: "https://cdn.test/ahri.png", accessibleName: "Ahri" },
+          ] }],
+        },
+      }],
+    };
+    mount();
+    expect(screen.getByText("Patch 26.20")).toBeInTheDocument();
+    const svg = screen.getByRole("img", { name: "The Academy Core instrument" });
+    const hrefs = Array.from(svg.querySelectorAll(".acore-mode-archives image")).map((i) => i.getAttribute("href"));
+    expect(hrefs).toEqual(["https://cdn.test/ryze.png", "https://cdn.test/ahri.png"]);
+    expect(svg.querySelector(".acore-strata-label")?.textContent).toBe("PATCH 26.20");
   });
 
   it("keeps Academy Commons and the Hall reachable", () => {

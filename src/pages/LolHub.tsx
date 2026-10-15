@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
@@ -440,6 +440,22 @@ export default function LolHub() {
   // against the first-party visitor id with no session at all.
   useEffect(() => {
     markHubVisited();
+  }, []);
+
+  // ACADEMY CORE V2 — `/lol#academy-commons` deep link. The Commons section
+  // has carried `id="academy-commons"` since HUB-NEXT1, but the browser's own
+  // fragment scroll fires before this lazily loaded page has mounted, so the
+  // link always landed on the Hall. Honour the fragment ONCE on mount through
+  // the same fold navigation the "Explore the Academy" control uses (reduced
+  // motion jumps, phones use the authored pager). Nothing in production emits
+  // this hash today, so every other visit is byte-identical in behaviour.
+  const { hash: locationHash } = useLocation();
+  useEffect(() => {
+    if (locationHash !== "#academy-commons") return;
+    const frame = window.requestAnimationFrame(() => navigateHubFold("commons"));
+    return () => window.cancelAnimationFrame(frame);
+    // Mount only: a later in-page scroll must not re-snap to the Commons.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // PERF1 — the Hub's own art first, then its covers and the four destination
