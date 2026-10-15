@@ -1,0 +1,38 @@
+name: Journey Mobile Space Experiment
+on:
+  push:
+    branches: [experiment/journey-mobile-space-20261015]
+  pull_request:
+    paths:
+      - 'src/components/ranked-arena/**'
+      - 'src/index.css'
+      - 'e2e/journey-mobile-space.spec.ts'
+      - 'playwright.journey-mobile.config.ts'
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Inspect actual Journey geometry and timeline interaction
+        run: npx playwright test -c playwright.journey-mobile.config.ts
+      - name: Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-mobile-space-experiment
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Build production frontend
+        run: npx vite build
