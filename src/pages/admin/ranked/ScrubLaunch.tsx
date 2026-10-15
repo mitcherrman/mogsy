@@ -1,11 +1,12 @@
 /** SCRUB-S2 — owner playtest launcher for the admin-only `admin.scrub` preset (the Chronoscope). */
-import { PresetLaunch } from "./PresetLaunch";
+import { PresetLaunch, type HubLaunchProps } from "./PresetLaunch";
 
 export const SCRUB_PRESET = "admin.scrub";
 
-export function ScrubLaunch() {
+export function ScrubLaunch(hub: HubLaunchProps = {}) {
   return (
     <PresetLaunch
+      {...hub}
       preset={SCRUB_PRESET}
       testId="scrub-launch"
       buttonLabel="Play Chronoscope"

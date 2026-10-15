@@ -59,11 +59,7 @@ import {
   VolibearLeeSinJourneyLaunch,
 } from "@/pages/admin/ranked/DailyJourneyLaunch";
 import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJourneyLaunch";
-import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
-import { ReconstructLaunch } from "@/pages/admin/ranked/ReconstructLaunch";
-import { MatchGridLaunch } from "@/pages/admin/ranked/MatchGridLaunch";
-import { DraftMemoryLaunch, RosterLockLaunch } from "@/pages/admin/ranked/AssemblyLaunch";
-import { ScrubLaunch } from "@/pages/admin/ranked/ScrubLaunch";
+import { PlaytestHub } from "@/pages/admin/ranked/PlaytestHub";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -305,6 +301,11 @@ export default function AdminRankedPage() {
 
           {section.id === "playtests" && (
             <>
+              {/* UGMP — every game mode, one launcher presentation. The
+                  Ranked Bot modes (Roster Lock, Draft Memory, Chronoscope,
+                  Match Grid, Reconstruct, Order Forge) keep their launchers;
+                  the former Interaction and Numeric labs open here too. */}
+              <PlaytestHub />
               <AdminPanel
                 title="Journeys"
                 description="Certified Journeys, played through the normal Ranked Bot shell."
@@ -328,46 +329,8 @@ export default function AdminRankedPage() {
                 </div>
               </AdminPanel>
               <AdminPanel
-                title="Order Forge"
-                description="Owner playtest of the Order Forge module, played through the normal Ranked Bot shell."
-                testId="ranked-order-forge"
-              >
-                <OrderForgeLaunch />
-              </AdminPanel>
-              <AdminPanel
-                title="Reconstruct"
-                description="Owner playtest of the Reconstruct module (rebuild a legendary item's recipe), played through the normal Ranked Bot shell. Unrated."
-                testId="ranked-reconstruct"
-              >
-                <ReconstructLaunch />
-              </AdminPanel>
-              <AdminPanel
-                title="Match Grid"
-                description="Owner playtest of the Match Grid module (seat each rune under its rune tree), played through the normal Ranked Bot shell. Unrated."
-                testId="ranked-match-grid"
-              >
-                <MatchGridLaunch />
-              </AdminPanel>
-              <AdminPanel
-                title="Pro Play Assembly"
-                description="Owner playtest of Roster Lock and Draft Memory (seat five historical Worlds players or champions by position), played through the normal Ranked Bot shell. Unrated; admin-only on the server."
-                testId="ranked-assembly"
-              >
-                <div className="space-y-3">
-                  <RosterLockLaunch />
-                  <DraftMemoryLaunch />
-                </div>
-              </AdminPanel>
-              <AdminPanel
-                title="Chronoscope"
-                description="Owner playtest of the Chronoscope (scrub) module (find the first wave where a lane state becomes true), played through the normal Ranked Bot shell. Unrated."
-                testId="ranked-scrub"
-              >
-                <ScrubLaunch />
-              </AdminPanel>
-              <AdminPanel
-                title="Playtests"
-                description="The home exists; the system does not yet. Everything below is either an existing primitive a playtest would build on, or a named gap."
+                title="Playtest operations"
+                description="Beyond playing a mode yourself: everything below is either an existing primitive a cohort playtest would build on, or a named gap."
                 testId="ranked-playtests"
               >
                 <div className="space-y-2 text-[11px] leading-relaxed text-muted-foreground">
