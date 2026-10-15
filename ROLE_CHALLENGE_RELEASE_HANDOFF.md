@@ -1,17 +1,69 @@
 # Role Challenge — release handoff (RC8)
 
-_Last updated: 2026-10-15 (UTC). Owner decision required before merge/deploy._
+_Last updated: 2026-10-15 ~03:00 UTC. Owner deployment approval required before merge/deploy._
 
 ## Current state
 
 | Piece | Where | Head |
 |---|---|---|
-| Frontend release candidate | `mitcherrman/mogsy` PR #18, branch `rc7/role-challenge-hub-20261014` (same commits as `claude/relaxed-archimedes-8kq1vi`), **base retargeted to `main`** | `8424bee`+ (includes `main` `ecc6fcb`) |
-| Backend release candidate | `mitcherrman/League_Combat_Simulator` PR #14, branch `rc5/role-challenge-pools` | `29d27212` (includes `master` `7b4e35d3` and the owner's exact-865 guard `7edd840a`) |
+| Frontend release candidate | `mitcherrman/mogsy` PR #18, branch `rc7/role-challenge-hub-20261014` (same commits as `claude/relaxed-archimedes-8kq1vi`), base `main` | **`106c5bd`** code (= candidate + `main` `8856611`); later commits on the branch are handoff-only |
+| Backend release candidate | `mitcherrman/League_Combat_Simulator` PR #14, branch `rc5/role-challenge-pools`, base `master` | **`8fb9b50f`** (= canonically accepted `38aa1125` + `master` `ee722bc1`) |
 | Superseded | mogsy PR #12 (RC4 transport) and PR #13 (RC6 origin) — fully contained in PR #18 | — |
 
-**Verdict: NOT READY until the canonical 865 acceptance passes on the workstation** (everything else
-below is green). Run it with one command (see *Next action*).
+**Verdict: READY for the owner's deployment approval** — see *Final reconciliation* below. Nothing has been
+merged to a default branch or deployed.
+
+## Canonical acceptance (owner's workstation, 2026-10-15)
+
+Run by the owner with `scripts/role_challenge_canonical_acceptance.ps1` on backend commit
+**`38aa1125f87693dcdd6a4a909e7a7fa8afe1fa7d`**: **865/865** champion-role compositions passed, **543/543**
+unconventional pairs passed, **378 backend tests passed, 0 failed, 0 skipped**, canonical database
+**unchanged**, exit code **0**.
+
+## Final reconciliation (2026-10-15 ~02:45 UTC)
+
+### Backend PR #14 → `8fb9b50f`
+- Merge of `master` `ee722bc1` (PRs #25, #26, #12: Patch Ops cron transport, watcher leases, guarded
+  report re-promotion) into the accepted head `38aa1125`. Clean, no conflicts. History preserved.
+- **Every file that differs from `38aa1125` is Patch Ops**: `knowledge_engine/patch_report/*`,
+  `knowledge_engine/tests/test_patch_ops_*`, `scripts/patch_ops*.py`, `.github/workflows/patchops-*`,
+  `docs/handoffs/PATCHOPS_AUTO_REPROMOTION.md`. Verified with `git diff --name-only 38aa1125 8fb9b50f`.
+- `git diff 38aa1125 8fb9b50f` is **empty** for `role_challenge/ ranked_public/ ranked_modules/
+  ranked_formats/ mastery/ content_sets/ quiz/ routes/ services/ schemas/ analytics/ api_server.py`, the
+  865 probe, the acceptance scripts, every `test_rc*`/HOST1/CAP2 test and the RC migration.
+- Import closure check: none of the changed modules is imported by `role_challenge.composer`,
+  `role_challenge.launch`, `routes.role_challenge` or `api_server` (and none of those importers changed).
+- Focused RC + Reconstruct **333 passed, 45 skipped** (the 45 are exactly the DB-gated tests the canonical
+  run executed on byte-identical code); merged Patch Ops suites **117 passed**; GitHub safety /
+  integration / role-challenge **3/3 success** on `8fb9b50f`.
+
+**Canonical evidence: NOT invalidated.** The canonical run exercised the Role Challenge composer, pools,
+launch service, routes and DB-gated tests; all of that code and its whole import closure is identical
+between `38aa1125` and `8fb9b50f`. The only new code (Patch Ops) is outside that closure, has its own
+suites (green) and touches no Role Challenge table. **No canonical rerun is required.** A rerun would
+become required only if a later change touched any path listed above or `requirements.txt`.
+
+### Frontend PR #18 → `106c5bd`
+- Merge of `main` `8856611` (PR #28 ranked reconnect after deploy; PR #19 interaction playtests). Clean.
+- **Overlap**: `src/pages/quiz-ranked/QuizRankedMatch.tsx` changed on both sides in disjoint hunks.
+  #28 adds `connectionInterrupted` ("Connection lost — reconnecting…" in the status row and segment
+  errors) and an `online`/`visibilitychange` re-poll in `useRankedMatch`; RC8 keeps the origin-aware rules
+  scroll and the in-place Role Challenge review. Both retained; #28's recovery also protects a resumed
+  Role Challenge (same arena controller).
+- No `package.json`/`package-lock.json` change; `npm ci` dry-run in sync; `tsc` app + node **0 errors**;
+  production `vite build` passes.
+- Affected suites (Role Challenge, hub, rules, results, all of `src/pages/quiz-ranked` incl. the new
+  `useRankedMatch` tests, Quiz guide/playScroll/rankedRole, LeaguecraftHub, workspace, lobby preview):
+  **1,064 passed, 1 failed** — the one failure (`Quiz.rankedRole › commits NOTHING for Practice after a
+  role change`) fails identically on current `main` `8856611` (pre-existing).
+- Live acceptance on `106c5bd` + backend `8fb9b50f`: **27 / 27 PASS**.
+- Deploy-outage drill (new #28 behaviour on a Role Challenge match): backend killed mid-question →
+  "Connection lost — reconnecting…" after 1.5 s; backend restarted → the **same** Role Challenge match
+  (question 1/12) resumed 4.7 s after the outage began.
+- GitHub: `ranked-deployment-recovery` (#28's workflow) success; `role-challenge-review` (npm ci → tests →
+  tsc → vite build) — see PR.
+- Frontend changes cannot affect the canonical backend evidence (separate repository; the API contract
+  consumed by the frontend is unchanged in `role_challenge/` and `routes/role_challenge.py`).
 
 ## What the feature does
 
@@ -107,29 +159,22 @@ Both default branches moved during the session; both candidates were re-merged (
 
 ## Blockers
 
-1. **Canonical 865 acceptance not run.** The canonical 5.9 GB `lol_calc.db` lives on the owner's Windows
-   workstation; this cloud session has no access to that machine (no Docker, no production DB allowed).
-   The only `lol_calc.db` reachable (Google Drive, 185 MB, July, another account) is not canonical.
-   The live rig therefore replaces Blocks A/C/D Mastery content with exact-ref bank questions; the
-   real Mastery segments for all 865 pairs are proven only by the canonical run below.
-2. Owner approval to merge/deploy (both repos auto-deploy from their default branches).
+None technical. Remaining gate: **owner approval to merge/deploy** (both repos auto-deploy from their
+default branches).
 
-## Next action (owner, ~10–30 min, Windows PowerShell, no Docker)
+## Next action (owner) — merge order
 
-```powershell
-cd <League_Combat_Simulator checkout>
-git fetch origin rc5/role-challenge-pools
-git checkout --detach origin/rc5/role-challenge-pools   # 29d27212 or later
-powershell -ExecutionPolicy Bypass -File scripts/role_challenge_canonical_acceptance.ps1 `
-  -CanonicalDb C:\path\to\lol_calc.db -WorkDir C:\rc-accept
-```
+1. Confirm both PRs are still `mergeable: clean` with green CI on the heads above (if a default branch
+   moves again, re-run this reconciliation; rerun the canonical acceptance only if the new base changes
+   any Role Challenge path listed under *Final reconciliation*).
+2. Mark backend PR #14 ready and merge it (Railway `web` + cron deploy from `master`; migration
+   `migrate_add_role_challenge_runs.py` is additive).
+3. Smoke production: `GET /api/role-challenges/catalog` returns `role_challenge_catalog.v2` with 173
+   champions per role.
+4. Mark frontend PR #18 ready and merge it.
 
-It copies (never links) the DB into a fresh worktree, hashes the source before/after, runs the full
-865 probe and the 45 DB-gated tests, and exits non-zero on any probe exception, failure, skipped gated
-test, or a changed source DB. Report: `C:\rc-accept\acceptance-report.json`. Add `-Wide` for the
-wider Ranked/quiz suites. If it passes: merge backend PR #14 first (migration
-`migrate_add_role_challenge_runs.py` is additive), confirm `/api/role-challenges/catalog` in
-production, then merge frontend PR #18.
+The canonical acceptance script stays in the backend for future reruns:
+`scripts/role_challenge_canonical_acceptance.ps1 -CanonicalDb <lol_calc.db> -WorkDir <scratch>`.
 
 ## Re-running the live acceptance locally
 
