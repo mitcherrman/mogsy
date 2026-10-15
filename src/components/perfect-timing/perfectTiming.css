@@ -1,0 +1,858 @@
+/* ===========================================================================
+   PERFECT TIMING — the casting seal, the reveal rail and the run ladder.
+
+   MATERIAL. The stage sits on the arena's vellum folio, so it is written in
+   ink (`--ranked-ink`) with the Academy's brass and stone for the instrument,
+   cyan where the player's own act lives, gold for the archive's truth, ember
+   for a late stop. Nothing here is a new palette: every value is one the
+   Estimate Beam and the Chronoscope already use.
+
+   THE CLOCK IS INVISIBLE, AND SO IS EVERYTHING THAT COULD STAND IN FOR IT.
+   While the seal is `data-phase="running"` nothing on this stylesheet moves on
+   a period: no pulse, no sweep, no breathing glow. The only animation the
+   running state owns is a single finite flash at the moment of the cast
+   (`pt-cast`, 420 ms, `both`), which says "it started" and then holds. A
+   static change of face is allowed; a rhythm is not, because a rhythm is a
+   metronome the player could count against.
+
+   GEOMETRY. The seal is a fixed box per viewport tier so the stage does not
+   resize between phases; the reveal replaces the seal inside the same stage
+   and is allowed to be taller than it on a phone, where the page scrolls.
+   =========================================================================== */
+
+.pt-stage,
+.pt-reveal {
+  --pt-ink: var(--ranked-ink, #2c2417);
+  --pt-ink-muted: var(--ranked-ink-muted, #5a4a2e);
+  --pt-brass: #b9934c;
+  --pt-brass-bright: #d5b66f;
+  --pt-brass-dark: #7a6236;
+  --pt-stone: #101c30;
+  --pt-stone-deep: #07111f;
+  --pt-vellum: #e6d7b0;
+  --pt-cyan: #7fd6ef;
+  --pt-cyan-deep: #2f8fca;
+  --pt-gold: #f0d78c;
+  --pt-ember: #d9825a;
+  --pt-ember-ink: #8d2f33;
+  --pt-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color: var(--pt-ink);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---- the stage's tiers ----------------------------------------------- */
+.pt-stage {
+  --pt-seal: 232px;
+  --pt-rim: 11px;
+  --pt-icon: 92px;
+  --pt-word-size: 21px;
+  --pt-prompt-size: 22px;
+  --pt-gap: 10px;
+  --pt-status-h: 40px;
+
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  gap: var(--pt-gap);
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Compact desktop: a window under 720px tall clips the stage at ~374px. */
+@media (min-width: 1024px) and (max-height: 719px) {
+  .pt-stage { --pt-seal: 168px; --pt-rim: 9px; --pt-icon: 64px; --pt-word-size: 16px; --pt-prompt-size: 18px; --pt-gap: 6px; --pt-status-h: 32px; }
+}
+/* Tall desktop: the spare vellum goes to the seal. */
+@media (min-width: 1024px) and (min-height: 800px) {
+  .pt-stage { --pt-seal: 264px; --pt-rim: 12px; --pt-icon: 104px; --pt-word-size: 23px; --pt-prompt-size: 24px; --pt-gap: 12px; }
+}
+/* Phone: thumb-sized, inside the folio's 24px of side padding on a 375px screen. */
+@media (max-width: 639px) {
+  .pt-stage { --pt-seal: 212px; --pt-rim: 10px; --pt-icon: 84px; --pt-word-size: 19px; --pt-prompt-size: 20px; --pt-gap: 10px; }
+}
+@media (max-width: 639px) and (max-height: 700px) {
+  .pt-stage { --pt-seal: 176px; --pt-rim: 9px; --pt-icon: 68px; --pt-word-size: 17px; --pt-prompt-size: 18px; --pt-gap: 8px; --pt-status-h: 34px; }
+}
+
+/* ---- round plate ------------------------------------------------------ */
+.pt-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+.pt-eyebrow {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--pt-ink-muted);
+  white-space: nowrap;
+}
+/* Progress as pips, not digits: the only number the stage prints is the rank. */
+.pt-pips { display: inline-flex; align-items: center; gap: 5px; }
+.pt-pip {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--pt-brass-dark);
+  background: transparent;
+  opacity: 0.55;
+}
+.pt-pip[data-state="done"] { background: var(--pt-brass-dark); opacity: 0.8; }
+.pt-pip[data-state="current"] {
+  background: var(--pt-gold);
+  border-color: var(--pt-brass);
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(240, 215, 140, 0.28);
+}
+.pt-prompt {
+  margin: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 700;
+  font-size: var(--pt-prompt-size, 22px);
+  line-height: 1.15;
+  letter-spacing: 0.015em;
+  color: var(--pt-ink);
+  outline: none;
+}
+.pt-prompt-ability { font-weight: 600; opacity: 0.86; }
+.pt-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45em;
+  height: 1.45em;
+  padding: 0 0.3em;
+  border-radius: 6px;
+  background: linear-gradient(170deg, var(--pt-brass-bright), var(--pt-brass));
+  color: #2a2110;
+  font-size: 0.62em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.5), 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.pt-rank {
+  margin: 0;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pt-ink-muted);
+}
+.pt-rank-dot { margin: 0 6px; opacity: 0.45; }
+
+/* ---- the seal ---------------------------------------------------------- */
+.pt-seal-row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.pt-seal {
+  position: relative;
+  flex: none;
+  width: var(--pt-seal);
+  height: var(--pt-seal);
+  border-radius: 50%;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 110ms var(--pt-ease);
+}
+.pt-seal:active { transform: scale(0.985); }
+.pt-seal[aria-disabled="true"] { cursor: default; }
+.pt-seal[aria-disabled="true"]:active { transform: none; }
+
+/* The brass rim: a lit ring with engraved notches, and the stone face set
+   into it. Three stacked layers, all `inset`, so the box never changes. */
+.pt-seal-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 210deg,
+      var(--pt-brass-bright) 0deg, var(--pt-brass) 70deg, var(--pt-brass-dark) 150deg,
+      var(--pt-brass) 230deg, var(--pt-brass-bright) 300deg, var(--pt-brass) 360deg);
+  box-shadow:
+    0 0 0 1px rgba(44, 36, 23, 0.35),
+    0 14px 30px -16px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 248, 226, 0.45);
+  transition: box-shadow 260ms var(--pt-ease);
+}
+/* Notches, masked to the rim only. */
+.pt-seal-ring::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(42, 33, 16, 0.42) 0deg 1.6deg, transparent 1.6deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent calc(50% - var(--pt-rim) + 1px), #000 calc(50% - var(--pt-rim) + 2px));
+  mask: radial-gradient(circle, transparent calc(50% - var(--pt-rim) + 1px), #000 calc(50% - var(--pt-rim) + 2px));
+  pointer-events: none;
+}
+/* The stone face. */
+.pt-seal-ring::after {
+  content: "";
+  position: absolute;
+  inset: var(--pt-rim);
+  border-radius: 50%;
+  background:
+    radial-gradient(80% 60% at 50% 0%, rgba(201, 168, 76, 0.16) 0%, transparent 60%),
+    radial-gradient(110% 80% at 50% 110%, rgba(47, 143, 202, 0.12) 0%, transparent 55%),
+    radial-gradient(circle at 50% 45%, #1a2a44 0%, var(--pt-stone) 55%, var(--pt-stone-deep) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(213, 182, 111, 0.22),
+    inset 0 3px 18px rgba(0, 0, 0, 0.6),
+    inset 0 0 44px rgba(10, 200, 255, 0.05);
+  transition: box-shadow 260ms var(--pt-ease);
+}
+.pt-seal-face {
+  position: absolute;
+  inset: var(--pt-rim);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--pt-vellum);
+  text-align: center;
+  padding: 0 10%;
+}
+.pt-seal-icon {
+  position: relative;
+  display: block;
+  width: var(--pt-icon);
+  height: var(--pt-icon);
+  border-radius: 16%;
+  overflow: hidden;
+  border: 1px solid rgba(213, 182, 111, 0.8);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 8px 18px -10px rgba(0, 0, 0, 0.9);
+  transition: filter 240ms var(--pt-ease), opacity 240ms var(--pt-ease), transform 240ms var(--pt-ease);
+}
+.pt-seal-icon > span { border-radius: inherit; }
+.pt-seal-word {
+  display: block;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 900;
+  font-size: var(--pt-word-size);
+  line-height: 1.05;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pt-gold);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 16px rgba(240, 215, 140, 0.25);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.pt-seal-sub {
+  display: block;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(230, 215, 176, 0.72);
+}
+
+/* Focus: a visible ring on the rim, for the keyboard player. */
+.pt-seal:focus-visible .pt-seal-ring {
+  box-shadow:
+    0 0 0 3px rgba(247, 239, 217, 0.9),
+    0 0 0 6px var(--pt-cyan-deep),
+    0 14px 30px -16px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 248, 226, 0.45);
+}
+
+/* ARMED — the face is warm and lit; the icon is bright. */
+.pt-seal[data-phase="armed"] .pt-seal-ring::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 215, 140, 0.35),
+    inset 0 3px 18px rgba(0, 0, 0, 0.6),
+    inset 0 0 44px rgba(240, 215, 140, 0.12);
+}
+/* RUNNING — the ability is down. The icon darkens the way an in-game slot
+   does, the face goes cold cyan, and nothing moves. */
+.pt-seal[data-phase="running"] .pt-seal-icon > span {
+  filter: grayscale(1) brightness(0.55) contrast(1.05);
+}
+.pt-seal[data-phase="running"] .pt-seal-icon { border-color: rgba(127, 214, 239, 0.55); }
+.pt-seal[data-phase="running"] .pt-seal-ring::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(127, 214, 239, 0.45),
+    inset 0 3px 18px rgba(0, 0, 0, 0.6),
+    inset 0 0 52px rgba(47, 143, 202, 0.22);
+}
+.pt-seal[data-phase="running"] .pt-seal-word { color: var(--pt-cyan); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(127, 214, 239, 0.3); }
+.pt-seal[data-phase="running"] .pt-seal-sub { color: rgba(127, 214, 239, 0.7); }
+/* The cast itself: one finite flash as the face changes, then stillness. */
+.pt-seal[data-phase="running"][data-animate="true"] .pt-seal-face {
+  animation: pt-cast 420ms var(--pt-ease) both;
+}
+@keyframes pt-cast {
+  0%   { box-shadow: inset 0 0 0 0 rgba(127, 214, 239, 0); }
+  35%  { box-shadow: inset 0 0 0 999px rgba(127, 214, 239, 0.22); }
+  100% { box-shadow: inset 0 0 0 999px rgba(127, 214, 239, 0); }
+}
+/* STOPPED / SUBMITTING — the hand is off; the seal rests dim. */
+.pt-seal[data-phase="stopped"],
+.pt-seal[data-phase="submitting"] { cursor: default; }
+.pt-seal[data-phase="stopped"] .pt-seal-icon > span,
+.pt-seal[data-phase="submitting"] .pt-seal-icon > span { filter: saturate(0.6) brightness(0.8); }
+.pt-seal[data-phase="stopped"][data-animate="true"] .pt-seal-face,
+.pt-seal[data-phase="submitting"][data-animate="true"] .pt-seal-face {
+  animation: pt-lock 320ms var(--pt-ease) both;
+}
+@keyframes pt-lock {
+  0%   { box-shadow: inset 0 0 0 999px rgba(240, 215, 140, 0.3); }
+  100% { box-shadow: inset 0 0 0 999px rgba(240, 215, 140, 0); }
+}
+/* VOIDED / HALTED — the seal is dark and the word is ember. */
+.pt-seal[data-phase="interrupted"] .pt-seal-word,
+.pt-seal[data-phase="error"] .pt-seal-word { color: var(--pt-ember); }
+.pt-seal[data-phase="interrupted"] .pt-seal-icon > span,
+.pt-seal[data-phase="error"] .pt-seal-icon > span,
+.pt-seal[data-phase="loading"] .pt-seal-icon > span { filter: grayscale(1) brightness(0.45); }
+.pt-seal[data-phase="loading"] .pt-seal-word,
+.pt-seal[data-phase="complete"] .pt-seal-word { color: var(--pt-brass-bright); }
+
+/* ---- status and hint ----------------------------------------------------- */
+.pt-status {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--pt-status-h);
+  padding: 0 8px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--pt-ink);
+}
+.pt-status[data-tone="warn"] { color: var(--pt-ember-ink); font-weight: 600; }
+.pt-hint {
+  margin: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pt-ink-muted);
+}
+.pt-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2em;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(122, 98, 54, 0.6);
+  border-bottom-width: 2px;
+  background: rgba(247, 239, 217, 0.55);
+  font-family: ui-monospace, "Space Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--pt-ink);
+}
+
+/* ---- the reveal ------------------------------------------------------------ */
+.pt-reveal {
+  --pt-gap: 12px;
+  --pt-tier-size: 36px;
+  --pt-points-size: 22px;
+  --pt-error-size: 30px;
+  --pt-rail-h: 96px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--pt-gap);
+  width: 100%;
+  max-width: 36rem;
+  min-width: 0;
+  margin-inline: auto;
+}
+@media (min-width: 1024px) and (max-height: 719px) {
+  .pt-reveal { --pt-gap: 8px; --pt-tier-size: 28px; --pt-points-size: 18px; --pt-error-size: 24px; --pt-rail-h: 84px; }
+}
+@media (max-width: 639px) {
+  .pt-reveal { --pt-tier-size: 30px; --pt-points-size: 19px; --pt-error-size: 26px; }
+}
+
+.pt-verdict {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  min-height: calc(var(--pt-tier-size) * 1.15);
+}
+.pt-tier {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 900;
+  font-size: var(--pt-tier-size);
+  line-height: 1.1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pt-ink);
+}
+.pt-reveal[data-tier="perfect"] .pt-tier { color: #8a6418; text-shadow: 0 0 18px rgba(240, 215, 140, 0.55); }
+.pt-reveal[data-tier="great"] .pt-tier { color: #1d4a66; }
+.pt-reveal[data-tier="good"] .pt-tier { color: var(--pt-ink); }
+.pt-reveal[data-tier="miss"] .pt-tier { color: var(--pt-ember-ink); }
+.pt-points {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 700;
+  font-size: var(--pt-points-size);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pt-brass-dark);
+}
+.pt-points small { font-size: 0.6em; letter-spacing: 0.18em; opacity: 0.8; }
+
+/* The rail: the cooldown as a bar, filled gold to the truth, with the player's
+   stop as a cyan needle under it. */
+.pt-rail {
+  position: relative;
+  height: var(--pt-rail-h);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+.pt-rail-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 6px);
+  height: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(122, 98, 54, 0.6);
+  background:
+    repeating-linear-gradient(90deg, transparent 0, transparent calc(var(--pt-tick) - 1px), rgba(213, 182, 111, 0.35) calc(var(--pt-tick) - 1px), rgba(213, 182, 111, 0.35) var(--pt-tick)),
+    linear-gradient(180deg, #16243b 0%, var(--pt-stone) 50%, var(--pt-stone-deep) 100%);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 248, 226, 0.35);
+  overflow: hidden;
+}
+.pt-rail-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: var(--pt-true);
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, var(--pt-brass-dark) 0%, var(--pt-brass) 55%, var(--pt-gold) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.35);
+  transform-origin: 0 50%;
+}
+.pt-rail-band {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  left: var(--pt-band-left);
+  width: var(--pt-band-width);
+  min-width: 2px;
+  background: rgba(127, 214, 239, 0.55);
+  box-shadow: 0 0 10px rgba(127, 214, 239, 0.5);
+}
+.pt-reveal[data-direction="late"] .pt-rail-band { background: rgba(217, 130, 90, 0.7); box-shadow: 0 0 10px rgba(217, 130, 90, 0.5); }
+.pt-reveal[data-direction="exact"] .pt-rail-band { display: none; }
+
+/* End labels, above the track. */
+.pt-rail-end {
+  position: absolute;
+  top: 0;
+  font-size: 9.5px;
+  line-height: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--pt-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pt-rail-end[data-end="start"] { left: 0; }
+.pt-rail-end[data-end="end"] { right: 0; }
+.pt-rail-end[data-hidden="true"] { visibility: hidden; }
+
+/* Marks: TRUE flies a gold flag above the track; YOU stands a cyan needle
+   below it. Each is a pennant: the needle is at the point and the label hangs
+   toward the centre of the rail (`data-side`), so no label can run past an end. */
+.pt-mark {
+  position: absolute;
+  left: var(--pt-x);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pt-mark--true { top: 0; }
+.pt-mark--you { bottom: 0; }
+.pt-mark[data-side="right"] { transform: translateX(calc(-100% + 1px)); }
+.pt-mark[data-side="left"] { transform: translateX(-1px); }
+.pt-mark-inner { display: flex; flex-direction: column; }
+.pt-mark--you .pt-mark-inner { flex-direction: column-reverse; }
+.pt-mark[data-side="right"] .pt-mark-inner { align-items: flex-end; }
+.pt-mark[data-side="left"] .pt-mark-inner { align-items: flex-start; }
+.pt-mark-label {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.pt-mark-label b {
+  font-family: ui-monospace, "Space Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+}
+.pt-mark--true .pt-mark-label { color: #8a6418; }
+.pt-mark--you .pt-mark-label { color: #1d4a66; }
+.pt-reveal[data-direction="late"] .pt-mark--you .pt-mark-label { color: var(--pt-ember-ink); }
+.pt-needle {
+  display: block;
+  flex: none;
+  width: 2px;
+  height: calc(var(--pt-rail-h) / 2 - 6px - 14px);
+  margin-top: 2px;
+  border-radius: 1px;
+}
+.pt-mark--true .pt-needle { background: var(--pt-gold); box-shadow: 0 0 6px rgba(240, 215, 140, 0.8); }
+.pt-mark--you .pt-needle { background: var(--pt-cyan-deep); box-shadow: 0 0 6px rgba(127, 214, 239, 0.8); margin-top: 0; margin-bottom: 2px; }
+.pt-reveal[data-direction="late"] .pt-mark--you .pt-needle { background: var(--pt-ember); box-shadow: 0 0 6px rgba(217, 130, 90, 0.8); }
+.pt-reveal[data-direction="exact"] .pt-mark--you .pt-needle { background: var(--pt-gold); }
+
+/* The error figure. */
+.pt-error {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+}
+.pt-error-ms {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 700;
+  font-size: var(--pt-error-size);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pt-ink);
+}
+.pt-error-word {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 800;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+.pt-reveal[data-direction="early"] .pt-error-word { color: #1d4a66; }
+.pt-reveal[data-direction="late"] .pt-error-word { color: var(--pt-ember-ink); }
+.pt-reveal[data-direction="exact"] .pt-error-word { color: #8a6418; }
+
+/* Chips. */
+.pt-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; }
+.pt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 98, 54, 0.45);
+  background: rgba(44, 36, 23, 0.06);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pt-ink-muted);
+}
+.pt-chip--warn {
+  border-color: rgba(217, 130, 90, 0.7);
+  background: rgba(217, 130, 90, 0.14);
+  color: var(--pt-ember-ink);
+}
+
+/* The way on. */
+.pt-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 20rem;
+  min-height: 46px;
+  margin-inline: auto;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: 1px solid var(--pt-brass-dark);
+  background: linear-gradient(170deg, var(--pt-brass-bright) 0%, var(--pt-brass) 100%);
+  color: #2a2110;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.5), 0 8px 18px -12px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  outline: none;
+  transition: transform 110ms var(--pt-ease), box-shadow 160ms var(--pt-ease);
+}
+.pt-next:hover { box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.5), 0 0 18px rgba(240, 215, 140, 0.35), 0 8px 18px -12px rgba(0, 0, 0, 0.8); }
+.pt-next:active { transform: translateY(1px); }
+.pt-next:focus-visible { box-shadow: 0 0 0 3px rgba(247, 239, 217, 0.9), 0 0 0 6px var(--pt-cyan-deep); }
+
+/* ---- reveal choreography ------------------------------------------------- */
+/* The resting state is the visible, settled state. Every animation is `both`
+   and finite, so a frame that never arrives leaves the rest frame, and
+   reduced motion (no `data-animate`) is simply that frame from the start. */
+.pt-reveal[data-animate="true"] .pt-enter {
+  animation: pt-enter 420ms var(--pt-ease) both;
+  animation-delay: var(--pt-delay, 0ms);
+}
+@keyframes pt-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.pt-reveal[data-animate="true"] .pt-rail-fill {
+  animation: pt-fill 560ms var(--pt-ease) both;
+  animation-delay: 160ms;
+}
+@keyframes pt-fill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.pt-reveal[data-animate="true"] .pt-mark--true .pt-mark-inner {
+  animation: pt-enter 320ms var(--pt-ease) both;
+  animation-delay: 560ms;
+}
+.pt-reveal[data-animate="true"] .pt-mark--you .pt-mark-inner {
+  animation: pt-drop 360ms var(--pt-ease) both;
+  animation-delay: 760ms;
+}
+@keyframes pt-drop {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pt-reveal[data-animate="true"] .pt-rail-band {
+  animation: pt-enter 300ms var(--pt-ease) both;
+  animation-delay: 1000ms;
+}
+.pt-reveal[data-animate="true"] .pt-tier {
+  animation: pt-land 520ms var(--pt-ease) both;
+  animation-delay: 1180ms;
+}
+@keyframes pt-land {
+  0%   { opacity: 0; transform: scale(1.18); filter: blur(2px); }
+  55%  { opacity: 1; transform: scale(0.98); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.pt-reveal[data-tier="perfect"][data-animate="true"] .pt-verdict::after {
+  content: "";
+  position: absolute;
+  inset: -20% -10%;
+  pointer-events: none;
+  background: radial-gradient(50% 60% at 50% 50%, rgba(240, 215, 140, 0.35), transparent 70%);
+  animation: pt-flare 900ms ease-out both;
+  animation-delay: 1180ms;
+}
+.pt-reveal[data-tier="perfect"] .pt-verdict { position: relative; }
+@keyframes pt-flare {
+  0%   { opacity: 0; transform: scale(0.6); }
+  35%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* ---- the results screen ---------------------------------------------------- */
+/* `GameResultsShell` paints its own navy panels and writes its quiet lines in
+   `text-muted-foreground`. That token belongs to the PAGE theme: inside
+   `.theme-lol` it is a light slate, but an owner route outside the League
+   section resolves it to a near-black that vanishes on the panel. The results
+   screen therefore carries the League theme's own value for its subtree. */
+.pt-results {
+  --muted-foreground: 215 18% 64%;
+}
+
+/* ---- the run ladder (results screen, on the dark panel) -------------------- */
+.pt-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pt-ladder-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(5.5rem, 9rem) 4.5rem;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b1727;
+}
+@media (max-width: 420px) {
+  .pt-ladder-row { grid-template-columns: minmax(0, 1fr) minmax(4rem, 6rem) 3.9rem; gap: 6px; }
+}
+.pt-ladder-name { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pt-ladder-title {
+  margin: 0;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 600;
+  color: #efe8d6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pt-ladder-sub {
+  margin: 0;
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: 0.06em;
+  color: #a9b3c1;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The error bar: a centre line, early reaches left in cyan, late reaches right in ember. */
+.pt-ladder-bar {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.pt-ladder-bar::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(240, 215, 140, 0.8);
+}
+.pt-ladder-fill {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 5px;
+  width: var(--pt-w);
+}
+.pt-ladder-fill[data-direction="early"] { right: 50%; background: linear-gradient(270deg, rgba(127, 214, 239, 0.95), rgba(47, 143, 202, 0.6)); }
+.pt-ladder-fill[data-direction="late"] { left: 50%; background: linear-gradient(90deg, rgba(217, 130, 90, 0.95), rgba(226, 117, 123, 0.6)); }
+.pt-ladder-fill[data-direction="exact"] { left: calc(50% - 2px); width: 4px; background: #f0d78c; }
+.pt-ladder-bar[data-voided="true"] { background: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 4px, transparent 4px 8px); }
+.pt-ladder-bar[data-voided="true"]::before { display: none; }
+.pt-ladder-tier {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+.pt-ladder-tier b {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 11px;
+  line-height: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pt-ladder-tier[data-tier="perfect"] b { color: #f0d78c; }
+.pt-ladder-tier[data-tier="great"] b { color: #7fd6ef; }
+.pt-ladder-tier[data-tier="good"] b { color: #e6d7b0; }
+.pt-ladder-tier[data-tier="miss"] b { color: #e2757b; }
+.pt-ladder-tier[data-tier="voided"] b { color: #7c8797; }
+.pt-ladder-tier span { font-size: 10px; line-height: 12px; color: #a9b3c1; font-variant-numeric: tabular-nums; }
+
+/* ---- the arena flanks (desktop only; the arena hides panel rails below lg) --- */
+.pt-flank {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 16px;
+  color: #efe8d6;
+}
+.pt-flank-title {
+  margin: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #f5e6b8;
+}
+.pt-flank-figure {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #f5e6b8;
+}
+.pt-flank-figure small { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #a9b3c1; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
+.pt-flank-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.pt-flank-list li {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 14px;
+  color: #c9d1dc;
+}
+.pt-flank-list li[data-state="current"] { color: #f5e6b8; font-weight: 600; }
+.pt-flank-list li[data-state="pending"] { color: #7c8797; }
+.pt-flank-list .pt-pip { opacity: 1; }
+.pt-flank-list [data-tier] { font-family: "Cinzel", Georgia, serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
+.pt-flank-list [data-tier="perfect"] { color: #f0d78c; }
+.pt-flank-list [data-tier="great"] { color: #7fd6ef; }
+.pt-flank-list [data-tier="good"] { color: #e6d7b0; }
+.pt-flank-list [data-tier="miss"] { color: #e2757b; }
+.pt-flank-list [data-tier="voided"] { color: #7c8797; }
+.pt-flank-note { margin: 0; font-size: 11px; line-height: 15px; color: #a9b3c1; }
+.pt-flank-note b { color: #efe8d6; font-weight: 600; }
+.pt-flank-rule { height: 1px; border: 0; margin: 0; background: linear-gradient(90deg, rgba(240, 215, 140, 0.4), transparent); }
