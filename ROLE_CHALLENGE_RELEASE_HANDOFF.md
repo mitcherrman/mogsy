@@ -6,8 +6,8 @@ _Last updated: 2026-10-15 (UTC). Owner decision required before merge/deploy._
 
 | Piece | Where | Head |
 |---|---|---|
-| Frontend release candidate | `mitcherrman/mogsy` PR #18, branch `rc7/role-challenge-hub-20261014` (same commits as `claude/relaxed-archimedes-8kq1vi`), **base retargeted to `main`** | `7985546` (code head `2738ad1`) |
-| Backend release candidate | `mitcherrman/League_Combat_Simulator` PR #14, branch `rc5/role-challenge-pools` | `a340b984` (code identical to `a4a96c0c`; `a340b984` adds only the acceptance script) |
+| Frontend release candidate | `mitcherrman/mogsy` PR #18, branch `rc7/role-challenge-hub-20261014` (same commits as `claude/relaxed-archimedes-8kq1vi`), **base retargeted to `main`** | `8424bee`+ (includes `main` `ecc6fcb`) |
+| Backend release candidate | `mitcherrman/League_Combat_Simulator` PR #14, branch `rc5/role-challenge-pools` | `29d27212` (includes `master` `7b4e35d3` and the owner's exact-865 guard `7edd840a`) |
 | Superseded | mogsy PR #12 (RC4 transport) and PR #13 (RC6 origin) — fully contained in PR #18 | — |
 
 **Verdict: NOT READY until the canonical 865 acceptance passes on the workstation** (everything else
@@ -89,6 +89,22 @@ Backend (PR #14) changes in this pass: merge of `master` `35bc16bf`; `scripts/ro
   `?play=1` still open the Ranked record, Daily button opens Daily. A run that crossed 00:00 UTC also showed the
   daily slot resetting at the UTC boundary as designed.
 
+
+### Re-integration (2026-10-15 ~01:00 UTC)
+
+Both default branches moved during the session; both candidates were re-merged (clean, no conflicts):
+
+- Frontend `8424bee` = candidate + `main` `ecc6fcb` (mobile arena visibility/sticky timeline, stat-check,
+  numeric lab, creator replay). Lockfile still in sync (`npm ci` dry-run OK); `tsc` app+node 0 errors;
+  CI-gate + hub suites **1,003 passed / 0 failed (88 files)**; live acceptance **27 / 27** on both
+  re-integrated candidates (incl. the new sticky mobile timeline).
+- Backend `29d27212` = candidate + `master` `7b4e35d3` (scrub S3, creator replay, numeric lab, Patch Ops).
+  Focused RC + Reconstruct **333 passed, 45 skipped (DB-gated)**. Wide differential over 190 files incl. the
+  new scrub/creator suites: master 4,026 passed / 743 failed / 33 errors, candidate 4,027 / 744 / 33. The
+  single delta, `test_rp1_ranked_points_v2.py::test_a_bot_scores_points_by_the_same_rules_with_no_bot_specific_branch`,
+  is **nondeterministic on master too** (passes alone on both trees; the file alternates 7/8 failures across
+  repeated runs on both). **No regression.**
+
 ## Blockers
 
 1. **Canonical 865 acceptance not run.** The canonical 5.9 GB `lol_calc.db` lives on the owner's Windows
@@ -103,7 +119,7 @@ Backend (PR #14) changes in this pass: merge of `master` `35bc16bf`; `scripts/ro
 ```powershell
 cd <League_Combat_Simulator checkout>
 git fetch origin rc5/role-challenge-pools
-git checkout --detach origin/rc5/role-challenge-pools   # a340b984 or later
+git checkout --detach origin/rc5/role-challenge-pools   # 29d27212 or later
 powershell -ExecutionPolicy Bypass -File scripts/role_challenge_canonical_acceptance.ps1 `
   -CanonicalDb C:\path\to\lol_calc.db -WorkDir C:\rc-accept
 ```
