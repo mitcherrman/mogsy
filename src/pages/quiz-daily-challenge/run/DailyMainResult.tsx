@@ -21,10 +21,31 @@
  * its score row, the snapshot has a declared floor, the optional panel is
  * built from the plan (known before scoring), and both actions are drawn
  * (disabled while pending). Settling fills slots; it does not create height.
+ *
+ * MPE-D — THE REVEAL, keyed on the settle. The frame above is right, but all
+ * of its motion happened at MOUNT (the pending frame), so the Daily score
+ * popped into its reserved row at the very instant `daily.stage.complete`
+ * sounded. Now the sequence starts when `settled` flips (`DAILY_REVEAL_BEATS`,
+ * with the hero's own `SCORE_REVEAL_BEATS`):
+ *
+ *   0 ms     "Scoring…" becomes "Complete"; Mogzy, who was THINKING through the
+ *            scoring, cheers; the completion sting (fired by `useDailyRun`).
+ *   160 ms   the Daily score counts 0 → `run.mainScore` (640 ms) and lands with
+ *            the shared reward-number bump; `daily.score.reveal` begins here so
+ *            its confirmation note lands with the number.
+ *   520 ms   one light sweep crosses the hero; 560 ms the "Daily score" label.
+ *   900 ms   the Performance snapshot enters inside its reserved floor.
+ *
+ * Nothing waits on it: both actions enable at 0 ms, and leaving mid-sequence
+ * cancels the timers. Reduced motion prints the final score at once. Only the
+ * mount that WATCHED the settle ever draws this screen (a reload lands on
+ * `OptionalEntryBeat`), so the ceremony is seen once and never replayed.
  */
+import { useEffect, useRef, type CSSProperties } from "react";
 import { ResultActions } from "@/components/game-results/ResultActions";
-import { ResultHero } from "@/components/game-results/ResultHero";
+import { ResultHero, SCORE_REVEAL_BEATS } from "@/components/game-results/ResultHero";
 import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
+import { useSfx } from "@/lib/audio/useSfx";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
 import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
@@ -38,6 +59,23 @@ import { StageTag } from "./StageTag";
  * its hint line): two rows below `sm`, one from it, as Standard's four did.
  */
 const MAIN_SNAPSHOT_FLOOR = "min-h-[10rem] sm:min-h-[6rem]";
+
+/** MPE-D — the section's beats, in ms after the result settles. */
+export const DAILY_REVEAL_BEATS = {
+  /** The score cue: with the count, so the confirmation lands with the number. */
+  cue: SCORE_REVEAL_BEATS.count,
+  /** The Performance snapshot enters, once the score has landed. */
+  snapshot: 900,
+} as const;
+
+/** The engine's identity for a run's score cue. Exported so a test can name it. */
+export function dailyScoreSoundEventId(runId: string): string {
+  return `daily:${runId}:main:score`;
+}
+
+function delayStyle(ms: number): CSSProperties {
+  return { "--reward-delay": `${ms}ms` } as CSSProperties;
+}
 
 export function DailyMainResult({
   run, stage, error, onRetry, busy, onProceed, onDone, placement,
@@ -62,6 +100,20 @@ export function DailyMainResult({
     ? placement({ runId: run.runId, stageId: stage.id, stageKind: stage.kind, stageIndex: stage.index })
     : null;
 
+  // The score cue, as the count begins. Marked fired only when the timer
+  // fires, so StrictMode's run → clean-up → run leaves exactly one timer
+  // standing; the engine's `eventId` dedupe is what makes a second mount silent.
+  const sfx = useSfx();
+  const cued = useRef(false);
+  useEffect(() => {
+    if (!settled || cued.current) return;
+    const timer = window.setTimeout(() => {
+      cued.current = true;
+      sfx.play("daily.score.reveal", { eventId: dailyScoreSoundEventId(run.runId) });
+    }, DAILY_REVEAL_BEATS.cue);
+    return () => window.clearTimeout(timer);
+  }, [settled, run.runId, sfx]);
+
   return (
     <section
       aria-label="Today's Challenge result"
@@ -69,16 +121,18 @@ export function DailyMainResult({
       data-testid="daily-main-result"
       data-stage-kind={stage.kind}
       data-pending={settled ? undefined : "true"}
+      data-settled={settled ? "true" : undefined}
       className="ranked-shell mx-auto flex w-full max-w-2xl flex-col gap-4"
     >
       <div className="flex justify-center">
         <StageTag stage={stage} size="lg" />
       </div>
-      <ResultHero model={model} reserveScore />
+      <ResultHero model={model} reserveScore revealScore pendingPose="thinking" />
 
       <div data-testid="daily-main-result-snapshot-slot" className={MAIN_SNAPSHOT_FLOOR}>
         {settled ? (
-          <div data-testid="daily-main-result-summary">
+          <div data-testid="daily-main-result-summary" className="reward-enter"
+            style={delayStyle(DAILY_REVEAL_BEATS.snapshot)}>
             <ResultStatGrid stats={model.snapshot ?? []} />
           </div>
         ) : (

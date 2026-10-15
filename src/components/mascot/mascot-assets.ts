@@ -58,6 +58,10 @@ export type MogzyArtScale = "full" | "medium" | "compact";
 /** 192x288 WebP panel portraits: the poses a small surface draws. */
 export const MOGZY_MASCOT_ASSETS_COMPACT: Partial<Record<MogzyMascotPose, string>> = {
   base: "/mascot/mogzy-mascot-base-v1-240.webp",
+  // MPE-D — 240x360, the base plate's size: the result hero draws these at
+  // 80–96 CSS px, where the 1024px sources cost 0.9–1.0 MB each per end screen.
+  cheering: "/mascot/mogzy-cheering-transparent-240.webp",
+  thinking: "/mascot/mogzy-thinking-transparent-240.webp",
   explaining: "/mascot/mogzy-explaining-transparent-192.webp",
   // 192x256: the source is 1086x1448, so the same 3:4 crop at compact width.
   // Drawn at <=64 CSS px by the Leaguecraft signup prompt.

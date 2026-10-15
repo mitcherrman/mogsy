@@ -108,6 +108,13 @@ export const SFX_REGISTRY = {
   // SFX2 — Daily stage completion outranks a module completion (the award
   // phrase). Reuses the existing resolved completion voice; no new asset.
   "daily.stage.complete": { group: "daily", minReplayMs: 1000, relativeGain: 1, builtInGeneratorId: "sfx.leaguecraft.quiz-complete" },
+  // MPE-D — the Daily SCORE landing, 160 ms after the stage's sting: the
+  // earned-XP voice (three ticks under a 640 ms count, confirmation as it
+  // lands), which is exactly the shape of the score's count-up. Reused, not
+  // duplicated — as `daily.stage.complete` reuses the quiz-complete voice.
+  // Between discovery (.9) and earned XP (.85) in the reward hierarchy, under
+  // the sting it follows. Callers pass `daily:<runId>:main:score`.
+  "daily.score.reveal": { group: "daily", minReplayMs: 1000, relativeGain: 0.9, builtInGeneratorId: "sfx.reward.xp-earned" },
   "combat.simulation.resolve": { group: "combat", minReplayMs: 220, relativeGain: 0.78, builtInGeneratorId: "sfx.combat.simulation-resolve" },
   "archives.reference.open": { group: "archives", minReplayMs: 120, relativeGain: 0.48, builtInGeneratorId: "sfx.archives.reference-open" },
   "pro-play.analysis.open": { group: "pro-play", minReplayMs: 160, relativeGain: 0.62, builtInGeneratorId: "sfx.pro-play.analysis-open" },

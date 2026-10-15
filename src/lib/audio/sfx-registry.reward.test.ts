@@ -57,6 +57,16 @@ describe("the reward cues", () => {
     expect(entry.minReplayMs).toBeGreaterThanOrEqual(1000);
   });
 
+  it("MPE-D — give the Daily score landing the earned-XP voice, under the stage's sting", () => {
+    const entry = SFX_REGISTRY["daily.score.reveal"];
+    expect(entry.group).toBe("daily");
+    expect(entry.builtInGeneratorId).toBe("sfx.reward.xp-earned");
+    expect(getSfxGenerator(entry.builtInGeneratorId)).toBe(SFX_GENERATORS["sfx.reward.xp-earned"]);
+    expect(entry.minReplayMs).toBeGreaterThanOrEqual(1000);
+    expect(gain("daily.stage.complete")).toBeGreaterThan(gain("daily.score.reveal"));
+    expect(gain("daily.score.reveal")).toBeGreaterThanOrEqual(gain("reward.xp.earned"));
+  });
+
   it("sit below the match result and above a module award", () => {
     expect(gain("ranked.match.victory")).toBeGreaterThan(gain("ranked.discovery.reveal"));
     expect(gain("ranked.discovery.reveal")).toBeGreaterThan(gain("reward.xp.earned"));

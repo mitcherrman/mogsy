@@ -310,7 +310,10 @@ describe("C — a v5 Daily, end to end", () => {
     expect(q("daily-stage-result")).toBeNull();
     expect(within(main).getByTestId("result-headline")).toHaveTextContent("Today's Challenge");
     expect(within(main).getByTestId("result-subheading")).toHaveTextContent("Complete");
-    expect(within(main).getByTestId("daily-main-score")).toHaveTextContent("1,234");
+    // MPE-D — the figure counts up on screen; the true value is spoken from
+    // the first settled frame (`DailyMainResult.reveal.test` covers the count).
+    expect(within(main).getByTestId("daily-main-score").querySelector(".sr-only"))
+      .toHaveTextContent("1,234");
     expect(within(main).getByTestId("daily-main-correct")).toHaveTextContent("9 / 10");
     expect(within(main).getByTestId("daily-main-accuracy")).toHaveTextContent("90%");
     // Optional content is offered as optional, and nothing optional has started.
