@@ -1,5 +1,7 @@
 # Perfect Timing — Implementation Handoff
 
+> **Status 2026-10-15:** PT1–PT4 are complete and integrated on `perfect-timing/pt4-integration`; see **§11** for the state, evidence, open defects and the owner-only release steps (G5).
+
 **Read first:** [PT0_ARCHITECTURE_AUDIT.md](PT0_ARCHITECTURE_AUDIT.md). It holds the evidence (file:line references) behind every decision here. Do not repeat the audit. If the code you find disagrees with it, trust the code and note the drift in your PR.
 
 **Baselines:**
@@ -507,8 +509,8 @@ On each, run 3 rounds. Check that no double-fire happens and that backgrounding 
 | G1 | PT2 is green and its interface matches §4.2 `PtPressSurfaceProps` | PT2 → PT4 |
 | G2 | PT3 is green and its capture JSON is committed. The §2 contract is unchanged, or this file was updated | PT3 → PT4 |
 | G3 | PT1 is green and its components consume only `viewModel.ts` types | PT1 → PT4 |
-| G4 | PT4 is green end-to-end against the capture, with the device check done | PT4 |
-| G5 | **Owner-only.** Review and merge the PRs, deploy the backend with `PERFECT_TIMING_LAB_ENABLED=1`, and confirm that `/admin/numeric-lab` works in production (owner auth live, audit unknown 4). Then playtest | Owner |
+| G4 | PT4 is green end-to-end against the capture, with the device check done. **2026-10-15: green against the capture and a local real PT3 router; real-device check (iOS/Android) still open — §11.5** | PT4 |
+| G5 | **Owner-only.** Review and merge the PRs, deploy the backend with `PERFECT_TIMING_LAB_ENABLED=1`, and confirm owner auth works in production with any Playtests hub lab (`/admin/numeric-lab` now redirects there since UGMP). Then playtest. **Exact steps: §11.6** | Owner |
 
 **Recommended sequence**
 1. Launch PT1, PT2 and PT3 in parallel.
@@ -551,3 +553,97 @@ Touch points:
 
 **PT4:**
 > After PT1–PT3 are green, implement PT4 from `docs/perfect-timing/PERFECT_TIMING_HANDOFF.md` §7 in mogsy on branch `perfect-timing/pt4-integration`, merging the PT1 and PT2 branches and consuming PT3's `capture_v1.json`. Open a PR; do not merge.
+
+## 11. PT4 — completed state (2026-10-15)
+
+**Status: PT4 integrated and green; G4 open only for the real-device check; G5 (owner) not started.**
+
+### 11.1 Commits
+
+| Repo | Branch | Tip | Contents |
+|---|---|---|---|
+| mogsy | `perfect-timing/pt4-integration` | tip of this branch (the commit that adds this section) | merges of PT1 `5307c9c5`, PT2 `c11ebc25`, `origin/main` `8b7d60d7` (UGMP) and this doc branch `104f7a8d`, plus the PT4 commit |
+| mogsy | `perfect-timing/pt1-ui` / `perfect-timing/pt2-timing-engine` | `5307c9c5` / `c11ebc25` | unchanged, drafts PR #39 / #40, superseded by the PT4 PR (do not merge them separately) |
+| LCS | `perfect-timing/pt3-cooldown-authority` | `1b81c460` | unchanged, draft PR #34 |
+
+PT4 files (handoff §3.2 ownership, nothing else): `src/lib/perfect-timing/{api,contract}.ts` (+ tests),
+`src/lib/perfect-timing/__fixtures__/captureV1.{json,md}`, `src/pages/admin/perfect-timing/{PerfectTimingPage.tsx,PerfectTimingPage.test.tsx,roundView.ts}`,
+`e2e/perfect-timing-owner.spec.ts`; edits to `src/App.tsx`, `src/lib/admin/admin-registry.ts`, `playwright.arena.config.ts`.
+
+### 11.2 What PT4 does
+
+* **Flow:** deal 5 → `engine.arm(roundId)` → Start/Stop (PT2) → `onStopped(elapsedMs, roundId)` → lock → reveal (PT1) → next → results.
+  The stop is submitted only when `roundId` is the round on screen and has not been sent before (stale-round and duplicate guard).
+  The phase reads `stopped` until the lock answers or 250 ms pass, then `submitting`, so PT1's lock cue fires on its own edge. The page plays no sound.
+* **Contract:** strict allow-list readers for `deal.v1` / `release.v1` (unknown contract, key, type or enum refused; `ability_haste` must be 0;
+  release arithmetic must be self-consistent and must answer the round and time that were sent). The deal reader refuses `target_ms`,
+  any `cooldown*` key and `by_rank` at any depth, before anything renders.
+* **Recovery:** interrupted (hidden / pagehide / clock / timeout) → "Run interrupted — round voided", never submitted, focus to Next.
+  Lock 404 → "Round expired — dealing a fresh one" (`deal(1)` at the same position); a round already past `expires_at` is replaced before it is armed.
+  Lock network/5xx → up to 3 retries (300/800/1600 ms backoff), then "Retry submission" (same `elapsed_ms`, idempotent server-side) or "Void round".
+  Any 4xx is never retried; 409 voids the round. Deal 404 / 401 / 403 explain the flag or the owner session.
+* **Icons:** `getAbilityIconUrl` → `getChampionSquareIconUrl` → PT1's slot monogram. Name bridge for the two pool champions whose canonical
+  name is not an asset folder: `Nunu & Willump` → `Nunu`, `Renata Glasc` → `Renata` (checked against PT3's eligible pool on the dev DB: 163/165 matched directly).
+* **Routes:** `/admin/perfect-timing` behind `AdminRoute`. DEV only: `/dev/perfect-timing` (the same page, for the e2e spec) and
+  `/dev/perfect-timing/demo` (PT1's fake-value demo). Registry entry `perfect-timing-lab` (Prototype; names `require_admin` and `PERFECT_TIMING_LAB_ENABLED`).
+
+### 11.3 Verification
+
+Baseline for every comparison: a clean detached checkout of `origin/main` `8b7d60d7` on the same machine.
+
+| Check | Branch | Clean `main` | Verdict |
+|---|---|---|---|
+| `npx tsc -p tsconfig.app.json` | 2 errors | the same 2 (`OnboardingProfile.tsx:180`, `identity/connections.ts:263`) | unchanged, pre-existing |
+| ESLint, PT4/PT1/PT2 files + edited files | 0 errors (1 pre-existing `App.tsx:438` fast-refresh warning) | — | clean |
+| ESLint, whole repo | 605 problems (312 errors) | 605 (312) | identical, pre-existing |
+| Vitest, PT suites (`src/lib/perfect-timing`, `src/components/perfect-timing`, `src/pages/admin/perfect-timing`) | **175/175** (PT4 40, PT1 66, PT2 69) | — | green |
+| Vitest, full suite (chunked per directory: one process OOMs here) | 106 failed / 17,122 passed | 106 failed / 16,947 passed | **identical failure set**; the +175 are the PT tests |
+| Vitest, `src/test` (run without `pt2cProfileFrameAuthority.test.ts`, which OOMs on both) | 25 failed / 503 passed | 25 / 503 | identical |
+| `noStaticLeagueFacts` guard | fails with 22 offenders | the same 22 | pre-existing; no PT file or fixture listed |
+| `admin-registry.routes.test.ts` | 2 failures | the same 2 | pre-existing; not PT |
+| `registry.test.ts` (Ranked modules), `InteractionLab.test.tsx` | unchanged files; `src/lib/ranked-core`, `ranked-public`, `ranked-arena`, `audio` have no diff vs `main` | — | untouched |
+| Contract tests over `captureV1.json` | green | — | capture byte-identical to PT3 `1b81c460` |
+| Playwright `e2e/perfect-timing-owner.spec.ts` (DEV mirror, routed stand-in from the capture) | 5/5, then 12/12 on `--repeat-each 4` | — | see 11.5 for one unreproduced failure |
+| `vite build` (production) | builds; the PT page chunk holds the API path and parser key names only; no `/dev/perfect-timing`, no demo, no capture id, no `cooldown_raw` value | — | clean |
+
+`npm run build:dev` is `vite build --mode development`, which does **not** set `import.meta.env.DEV` in Vite 5, so it also omits the DEV routes; the DEV mirror exists only under the dev server (where the e2e runs).
+
+**Real-backend browser run (local only).** PT3's router from the `1b81c460` worktree, mounted in a throwaway local FastAPI app over the 2026-09-26 dev DB (opened read-only by PT3), flag on and `require_admin` overridden in that local process only; everything else forwarded read-only to production. Vite pointed at it with `VITE_COMBAT_API_URL`.
+* In the Browser pane: a full five-round keyboard-only run (patch `26.18`, `patch_operations`; Shaco E, Aatrox Q, Mel Q, Diana W, Xerath Q) → results 69/500. Focus returned to the seal after every Next.
+* Playwright capture at 1440×900 (keyboard) and 375×812 (touch, `isMobile`): 5 rounds each, real ability icons from the asset store, one integer `elapsed_ms` per lock, 0 px horizontal overflow. Screenshots: `C:/Users/mlmit/mogzy-wt/pt4-evidence/` (armed, running, revealed, results × 2 sizes; `report.json`).
+* Answer isolation: nothing about a round's cooldown is in the DOM before its lock (spec + page test); while running the stage prints no digit (rank-invariant rounds) and `document.getAnimations()` reports no infinite animation in the stage or header; the arena header's pulsing note is blank while running (PT1).
+
+### 11.4 Drift found (and how it was resolved)
+
+* **UGMP landed on `main` mid-PT4** (`21a6705b`/`8b7d60d7`): owner labs now live in one Playtests hub (`/admin/playtests/:mode`), and
+  `/admin/numeric-lab` is a redirect. This handoff predates that. PT4 kept the §7.4 route and a separate registry entry, because hub
+  registration needs `src/lib/playtests/modes.ts`, the hub card and the backend `GET /api/admin/playtests/status`, none of which PT4 owns.
+  **Follow-up (PT4.1, needs owner OK):** add Perfect Timing as a hub mode (frontend card + backend status entry reporting `PERFECT_TIMING_LAB_ENABLED`),
+  then make `/admin/perfect-timing` a redirect like the other labs.
+* G5 below said "confirm `/admin/numeric-lab` works"; that URL now redirects to the hub. Use any hub lab (e.g. `/admin/playtests/stat-drop`) to confirm owner auth in production.
+* No wire-contract change. The capture is byte-identical to PT3's (`sha256 335c1f02…`).
+
+### 11.5 Outstanding defects and owner decisions
+
+1. **Device check not done (G4).** iOS Safari and Android Chrome were not available here. `event.timeStamp` granularity on devices is still unknown (audit unknown 7). Chromium desktop and emulated touch were verified.
+2. **One unreproduced e2e failure.** The first desktop keyboard run after merging `main` saw a Space press on an armed, focused seal not start the timer (`data-phase` stayed `armed`). 15 reruns passed. No reload was logged. Suspected cause: a cold-load remount took focus from the seal. Effect if real: one ignored press. Nothing can be submitted without a stop, so it cannot mis-grade.
+3. **Scoring reads oddly at the margin (owner, G0).** §2.3 gives points up to 25 % error but labels anything over 15 % `miss`, so a reveal can say "MISS +12 pts", and the results say "1 of 5 won" next to non-zero miss points. PT4 shows the server's numbers unchanged. To fix it, tune `scoring.py` (e.g. points floor at the miss threshold).
+4. **Playtests hub (UGMP) not integrated.** See 11.4; follow-up PT4.1.
+5. **Recovery buttons live in the arena's chrome row** (top of the page), not on the stage. Keyboard users get focus moved there; mouse/touch users must look up. A stage-level "Next" for voided/error rounds would need a PT1 component change.
+6. **Page frame.** `/admin/perfect-timing` is not in `Layout.tsx`'s `isFullBleed` list (which UGMP extended for `/admin/playtests/*`), so it renders inside the standard `max-w-7xl` frame with the site footer below. It looks correct; widen only if the owner wants the Ranked frame (one line in `Layout.tsx`, outside PT4's ownership).
+7. **Expired-round replacement** deals `count: 1` independently, so it can repeat an ability already in the run.
+8. **DEV only:** React StrictMode deals twice on mount (the first deal is discarded by a run token). Production deals once.
+
+### 11.6 Next release gate — owner-only deployment (G5)
+
+Nothing here has been done. In order:
+
+1. **Review** backend PR #34 and the PT4 PR (it contains PT1 and PT2; close #39/#40 as superseded, or merge them first — the PT4 merges are `--no-ff` of their exact tips).
+2. **Backend first.** Merge `perfect-timing/pt3-cooldown-authority` into LCS `master`; deploy Railway `web`. The flag is off by default, so every PT route answers 404 and nothing changes for users.
+3. Confirm `web` runs a **single** uvicorn process (no `--workers`; rounds live in process memory, §6.3).
+4. Set `PERFECT_TIMING_LAB_ENABLED=1` on the `web` service only; redeploy/restart.
+5. Smoke without a browser: `POST /api/admin/perfect-timing/deal` with no bearer → 403; with the owner session → 200 `perfect_timing.deal.v1` whose body has no `target_ms`/`cooldown*`.
+6. **Frontend.** Merge the PT4 branch into `main` (`--no-ff`), then Lovable **Publish**.
+7. As the owner, open `/admin/perfect-timing`: one full run; check that the data label shows the production patch. Signed out / non-owner: redirected by `AdminRoute`.
+8. Device check (§7.6) on iOS Safari and Android Chrome: 3 rounds each, no double-fire, backgrounding mid-run voids the round. Record `event.timeStamp` granularity (audit unknown 7).
+9. **Rollback:** unset `PERFECT_TIMING_LAB_ENABLED` (every route 404s; the page explains the flag). The frontend route can stay.
