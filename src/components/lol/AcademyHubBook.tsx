@@ -96,7 +96,13 @@ type Props = {
   splashPosition?: string;
   /** Id of the sr-only description this destination is described by. */
   describedBy?: string;
-  onClick?: () => void;
+  /**
+   * The Link's own click. ACADEMY CORE V3: the handler now receives the
+   * event (additive — every existing caller passes a zero-argument function
+   * and is unchanged), so a host can run a short activation before routing
+   * itself. The Hall ignores the argument.
+   */
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 };
 
 export default function AcademyHubBook({

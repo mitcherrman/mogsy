@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
   startEntryMusic: vi.fn(() => Promise.resolve(true)),
   warmAcademyWelcomeScene: vi.fn(),
   prefetchRoute: vi.fn(),
-  warmAcademyHub: vi.fn(() => Promise.resolve()),
+  warmAcademyCore: vi.fn(() => Promise.resolve()),
   // The Landing's own art; resolved by each test when it wants it "loaded".
   landingArt: null as null | { resolve: () => void },
   prepareImages: vi.fn(),
@@ -47,9 +47,10 @@ vi.mock("@/pages/welcome/sceneAssets", () => ({
   warmAcademyWelcomeScene: mocks.warmAcademyWelcomeScene,
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: mocks.prefetchRoute }));
-vi.mock("@/lib/hub/academy-hub-warm", () => ({
-  HUB_MOGZY_SRC: "/mascot/mogzy-mascot-base-v1-512.webp",
-  warmAcademyHub: mocks.warmAcademyHub,
+// The Landing now hands off to the Academy Core (`/lol`), not the Hall.
+vi.mock("@/pages/academy-core/academy-core-warm", () => ({
+  CORE_MOGZY_REST_SRC: "/mascot/mogzy-mascot-base-v1-512.webp",
+  warmAcademyCore: mocks.warmAcademyCore,
 }));
 vi.mock("@/lib/ranked-core/media/prepareImage", () => ({ prepareImages: mocks.prepareImages }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
@@ -155,7 +156,7 @@ describe("MogzyEntryV2 autoEnter — root boot sequence", () => {
     expect(set).not.toHaveBeenCalledWith("mogsy.academyWelcome.v1", expect.anything());
   });
 
-  it("warms the Hub route during the hold", () => {
+  it("warms the home route during the hold", () => {
     render(<MogzyEntryV2 seo="root" autoEnter />);
     expect(mocks.prefetchRoute).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE);
   });
@@ -268,20 +269,20 @@ describe("MogzyEntryV2 autoEnter — reduced motion", () => {
   });
 });
 
-describe("MogzyEntryV2 autoEnter — PERF1 Hub warm", () => {
-  it("waits for the Landing's own Mogzy and skyline before warming the Hub", async () => {
+describe("MogzyEntryV2 autoEnter — PERF1 Core warm", () => {
+  it("waits for the Landing's own Mogzy and skyline before warming the Core", async () => {
     render(<MogzyEntryV2 seo="root" autoEnter />);
     expect(mocks.prepareImages).toHaveBeenCalledTimes(1);
     const [urls, opts] = mocks.prepareImages.mock.calls[0];
     expect(urls).toContain("/mascot/mogzy-mascot-base-v1-512.webp");
     expect(urls.some((u: string) => u.includes("academy-skyline"))).toBe(true);
-    // The budget is the hold: once the visitor is leaving, the Hub goes first.
+    // The budget is the hold: once the visitor is leaving, the Core goes first.
     expect(opts).toMatchObject({ priority: "high", timeoutMs: AUTO_HOLD_MS });
-    expect(mocks.warmAcademyHub).not.toHaveBeenCalled();
+    expect(mocks.warmAcademyCore).not.toHaveBeenCalled();
     await act(async () => {
       mocks.landingArt?.resolve();
     });
-    expect(mocks.warmAcademyHub).toHaveBeenCalledTimes(1);
+    expect(mocks.warmAcademyCore).toHaveBeenCalledTimes(1);
     // Nothing waits on the warm: the hand-off still fires on the hold.
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
@@ -292,24 +293,24 @@ describe("MogzyEntryV2 autoEnter — PERF1 Hub warm", () => {
     await act(async () => {
       mocks.landingArt?.resolve();
     });
-    expect(mocks.warmAcademyHub).not.toHaveBeenCalled();
+    expect(mocks.warmAcademyCore).not.toHaveBeenCalled();
   });
 
-  it("warms the Hub at once when the visitor clicks in before the art settles", () => {
+  it("warms the Core at once when the visitor clicks in before the art settles", () => {
     render(<MogzyEntryV2 seo="root" autoEnter />);
     fireEvent.click(screen.getByRole("button", { name: "Enter Mogzy" }));
-    expect(mocks.warmAcademyHub).toHaveBeenCalledTimes(1);
+    expect(mocks.warmAcademyCore).toHaveBeenCalledTimes(1);
     act(() => {
       vi.advanceTimersByTime(ENTRY_DURATION_MS);
     });
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
-  it("the interactive preview never warms the Hub on its own", () => {
+  it("the interactive preview never warms the Core on its own", () => {
     render(<MogzyEntryV2 />);
     vi.advanceTimersByTime(60_000);
     expect(mocks.prepareImages).not.toHaveBeenCalled();
-    expect(mocks.warmAcademyHub).not.toHaveBeenCalled();
+    expect(mocks.warmAcademyCore).not.toHaveBeenCalled();
   });
 });
 

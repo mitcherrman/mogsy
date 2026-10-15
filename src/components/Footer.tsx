@@ -33,7 +33,9 @@ export default function Footer() {
     // Before this, `/lol` rendered a legal-only variant of this footer. That
     // narrowing is gone with it; `data-variant` on the nav below is therefore
     // always "full" now, and the /lol case is simply not rendered.
+    // `/lol/hall` is that same Hall, kept whole behind the Academy Core.
     pathname === "/lol" ||
+    pathname === "/lol/hall" ||
     pathname.startsWith("/swipe-game") ||
     pathname.startsWith("/swipe/preset") ||
     pathname.startsWith("/multiplayer/game") ||

@@ -1,9 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { SITE_URL } from "@/lib/site-config";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
 import MobileAcademyBookStack from "@/components/lol/MobileAcademyBookStack";
@@ -440,6 +439,23 @@ export default function LolHub() {
   // against the first-party visitor id with no session at all.
   useEffect(() => {
     markHubVisited();
+  }, []);
+
+  // ACADEMY CORE V2 — `#academy-commons` deep link (`/lol/hall#academy-commons`;
+  // a legacy `/lol#academy-commons` is forwarded here by the Core). The Commons section
+  // has carried `id="academy-commons"` since HUB-NEXT1, but the browser's own
+  // fragment scroll fires before this lazily loaded page has mounted, so the
+  // link always landed on the Hall. Honour the fragment ONCE on mount through
+  // the same fold navigation the "Explore the Academy" control uses (reduced
+  // motion jumps, phones use the authored pager). Nothing in production emits
+  // this hash today, so every other visit is byte-identical in behaviour.
+  const { hash: locationHash } = useLocation();
+  useEffect(() => {
+    if (locationHash !== "#academy-commons") return;
+    const frame = window.requestAnimationFrame(() => navigateHubFold("commons"));
+    return () => window.cancelAnimationFrame(frame);
+    // Mount only: a later in-page scroll must not re-snap to the Commons.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // PERF1 — the Hub's own art first, then its covers and the four destination
@@ -964,21 +980,11 @@ export default function LolHub() {
       <SEOHead
         title="Mogzy LoL Quiz | League of Legends Trivia and Training"
         description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."
-        path="/lol"
+        path="/lol/hall"
         keywords="league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, league learning game, league of legends training tool, combat lab, lol tier list"
-        jsonLd={[
-          {
-            "@context": "https://schema.org",
-            "@type": "WebApplication",
-            name: "Mogzy LoL Quiz",
-            url: `${SITE_URL}/lol`,
-            applicationCategory: "GameApplication",
-            operatingSystem: "Web",
-            description:
-              "League of Legends quiz and training tool: champion, item, ability, build and esports trivia, plus a damage simulator.",
-            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-          },
-        ]}
+        // The Hall is an alternate, non-indexed view of the home since the
+        // Academy Core took `/lol`: one indexed home, no duplicate structured data.
+        noindex
       />
 
       {/* ================= Academy Library — above-the-fold hub ================= */}

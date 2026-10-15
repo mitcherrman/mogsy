@@ -96,7 +96,7 @@ export default function Layout() {
   // `<main>` 1216px and the page's own max-w-6xl narrowed that to 1104px of
   // content — 57% of the viewport, with 408px of dead gutter each side. It
   // brings its own max-width and gutters (ResearchPage `wide`), like the rest.
-  const isFullBleed = isChampionCardDuelSurface || pathname === "/lol" || pathname === "/quiz"
+  const isFullBleed = isChampionCardDuelSurface || pathname === "/lol" || pathname === "/lol/hall" || pathname === "/quiz"
     || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector"
     || pathname === "/dev/ranked-shell-probe" || pathname === "/admin/quiz-content"
     || pathname === PRO_PLAY_MATCHUP_ROUTE
