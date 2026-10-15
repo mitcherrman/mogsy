@@ -108,8 +108,23 @@ for (const vp of CASES) {
         expect(m.timelineVisible, "timeline is not visible on capture").toBe(true);
         expect(m.timelineSticky).toBe("sticky");
         expect(m.horizontal, "Journey pushes viewport horizontally").toBeLessThanOrEqual(1);
-        if (vp.height >= 740) {
+        // JSPACE1 gives Journey's interactive state board first claim on
+        // narrow-phone height. 390x844 must still fit; 360x740 is allowed
+        // whole-page scrolling, but the last answer must remain reachable
+        // ABOVE the sticky timeline (never clipped underneath it).
+        if (vp.height >= 844) {
           expect(m.lastAnswerBottom, "all four answers must be visible without scrolling").toBeLessThanOrEqual(vp.height + 1);
+        } else {
+          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+          const after = await page.evaluate(() => {
+            const last = [...document.querySelectorAll<HTMLElement>(
+              '[data-testid="journey-question"] [data-quiz-choice]')].at(-1)!;
+            const bar = document.querySelector<HTMLElement>('[data-testid="ranked-mobile-bottombar"]')!;
+            return { answerBottom: last.getBoundingClientRect().bottom,
+              barTop: bar.getBoundingClientRect().top };
+          });
+          expect(after.answerBottom, "the last Journey answer must be reachable above the sticky controls")
+            .toBeLessThanOrEqual(after.barTop - 1);
         }
       });
     }
