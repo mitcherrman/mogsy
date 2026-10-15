@@ -626,8 +626,9 @@ export default function RankedLobbyHero({
           {selectedMode === "daily" ? (
             <CentreModePane mode="daily" active animate={modeSwitched}>
               <DailyModePanel daily={dailyChallenge}
-                paused={!queueModes.daily}
-                onPlay={queueModes.daily ? onPlayDailyChallenge : undefined} />
+                paused={!queueModes.daily && !dailyChallenge?.resumable && !dailyChallenge?.completed}
+                onPlay={queueModes.daily || dailyChallenge?.resumable || dailyChallenge?.completed
+                  ? onPlayDailyChallenge : undefined} />
             </CentreModePane>
           ) : null}
           {/* Mounted on first visit and then KEPT, hidden, so returning to Role
