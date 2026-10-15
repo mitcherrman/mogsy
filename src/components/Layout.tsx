@@ -105,8 +105,11 @@ export default function Layout() {
     || pathname === "/dev/arena-question-probe"
     // CE1 — the Combat Estimate lab mounts the arena's own frame, so it gets the same page frame as Ranked.
     || pathname === "/dev/combat-estimate"
-    // NUM-REC2 — the owner numeric lab mounts the same arena frame (and its DEV twin).
-    || pathname === "/admin/numeric-lab" || pathname === "/dev/numeric-lab"
+    // NUM-REC2 — the owner numeric lab's DEV twin mounts the same arena frame.
+    || pathname === "/dev/numeric-lab"
+    // UGMP — every owner lab mode (Rangefinder, Glyph Press, Stat Drop, Combat
+    // Estimate) mounts the arena's own frame at /admin/playtests/:mode.
+    || pathname.startsWith("/admin/playtests/")
     // PPQ2-INT — the playable Pro Play Arena gets the same arena frame. It sits
     // under /lol/ so it also gets the LoL theme (`dark theme-lol`) that every
     // production arena route has; outside it the header reads dark-on-navy.
@@ -125,8 +128,7 @@ export default function Layout() {
     // GM-M1 — the Match Grid lab brings its own max-width and gutters.
     || pathname === "/dev/match-grid"
     || pathname === "/dev/rangefinder"
-    || pathname === "/dev/word-puzzle"
-    || pathname.startsWith("/admin/interaction-labs");
+    || pathname === "/dev/word-puzzle";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

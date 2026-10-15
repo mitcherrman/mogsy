@@ -193,9 +193,12 @@ describe("playtest log", () => {
 describe("owner route and bundle secrecy", () => {
   const read = (f: string) => readFileSync(resolve(process.cwd(), f), "utf8");
 
-  it("mounts /admin/numeric-lab behind AdminRoute, and the unguarded twin only in DEV", () => {
+  it("plays behind AdminRoute at /admin/playtests/:mode, /admin/numeric-lab only redirects, and the unguarded twin is DEV-only", () => {
     const app = read("src/App.tsx");
-    expect(app).toContain('<Route path="/admin/numeric-lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><NumericLabPage /></Suspense></AdminRoute>} />');
+    // UGMP: the owner page is mounted by OwnerPlaytestPage (Ranked → Playtests).
+    expect(app).toContain('<Route path="/admin/playtests/:mode" element={<AdminRoute><Suspense fallback={<RouteFallback />}><OwnerPlaytestPage /></Suspense></AdminRoute>} />');
+    expect(app).toContain('<Route path="/admin/numeric-lab" element={<NumericLabRedirect />} />');
+    expect(read("src/pages/admin/playtests/OwnerPlaytestPage.tsx")).toContain('lazy(() => import("@/pages/admin/numeric-lab/NumericLabPage"))');
     expect(app).toMatch(/const NumericLabPageDev = import\.meta\.env\.DEV\s*\?\s*lazy\(/);
     expect(app).toMatch(/\{NumericLabPageDev \? \(\s*<Route path="\/dev\/numeric-lab"/);
   });

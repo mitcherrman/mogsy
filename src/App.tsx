@@ -22,6 +22,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { OwnerStepUpHost } from "./components/admin/OwnerStepUpHost";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
+import { InteractionLabsRedirect, NumericLabRedirect } from "./pages/admin/playtests/legacyRedirects";
 import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
 import {
@@ -279,9 +280,9 @@ const InteractionLab = isInteractionLabEnabled()
 // NUM-REC2: the owner-only numeric playtest (original Stat Drop + CE1 two-beam
 // Combat Estimate). It carries no round or answer: every round comes from
 // /api/admin/numeric-lab/*, gated server-side by require_admin and a flag.
-// Production: /admin/numeric-lab behind AdminRoute. DEV: the same page at
+// UGMP: production plays it at /admin/playtests/{stat-drop,combat-estimate}
+// (below); /admin/numeric-lab redirects there. DEV: the same page at
 // /dev/numeric-lab (no gate) so browser specs can stand in for the backend.
-const NumericLabPage = lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"));
 const NumericLabPageDev = import.meta.env.DEV
   ? lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"))
   : null;
@@ -301,7 +302,10 @@ const RangefinderLab = import.meta.env.DEV
 const WordPuzzleLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleDevLab"))
   : null;
-const InteractionLabPage = lazy(() => import("./pages/admin/interaction-labs/InteractionLabPage"));
+// UGMP: every owner-only lab mode (Rangefinder, Glyph Press, Stat Drop, Combat
+// Estimate) plays at /admin/playtests/:mode, launched from Ranked → Playtests.
+// The chunk carries no round or answer; the backend deals and reveals them.
+const OwnerPlaytestPage = lazy(() => import("./pages/admin/playtests/OwnerPlaytestPage"));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -541,11 +545,13 @@ export const appRouter = createBrowserRouter(
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
-                  {/* INT1 owner-only historic interaction prototypes. */}
-                  <Route path="/admin/interaction-labs" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
-                  <Route path="/admin/interaction-labs/:lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
+                  {/* UGMP — the owner-only lab modes, launched from Ranked → Playtests.
+                      The retired lab URLs redirect there; they mount nothing. */}
+                  <Route path="/admin/playtests/:mode" element={<AdminRoute><Suspense fallback={<RouteFallback />}><OwnerPlaytestPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/interaction-labs" element={<InteractionLabsRedirect />} />
+                  <Route path="/admin/interaction-labs/:lab" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
-                  <Route path="/admin/numeric-lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><NumericLabPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/numeric-lab" element={<NumericLabRedirect />} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />

@@ -80,8 +80,17 @@ describe("INT1 lab packs — file reading", () => {
 describe("INT1 production boundary (source)", () => {
   const src = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
   // Everything the owner-only admin route can load in a production build.
+  // UGMP: the file-loader page is gone; the owner plays at /admin/playtests/:mode,
+  // whose hosts receive every round from the backend.
   const PRODUCTION_REACHABLE = [
-    "src/pages/admin/interaction-labs/InteractionLabPage.tsx",
+    "src/pages/admin/playtests/OwnerPlaytestPage.tsx",
+    "src/pages/admin/playtests/RangefinderOwnerPlaytest.tsx",
+    "src/pages/admin/playtests/GlyphPressOwnerPlaytest.tsx",
+    "src/pages/admin/playtests/ownerArena.tsx",
+    "src/pages/admin/playtests/legacyRedirects.tsx",
+    "src/pages/dev/interaction-lab/labArenaView.ts",
+    "src/lib/playtests/api.ts",
+    "src/lib/playtests/modes.ts",
     "src/lib/interaction-labs/packs.ts",
     "src/pages/dev/rangefinder/RangefinderLab.tsx",
     "src/pages/dev/rangefinder/labAuthority.ts",
@@ -109,14 +118,19 @@ describe("INT1 production boundary (source)", () => {
     expect(app.match(/DevLab"\)/g)).toHaveLength(2);
   });
 
-  it("every /admin/interaction-labs route is wrapped in AdminRoute", () => {
-    const routes = src("src/App.tsx").split("\n").filter((l) => l.includes('path="/admin/interaction-labs'));
-    expect(routes).toHaveLength(2);
-    for (const r of routes) expect(r).toMatch(/element=\{<AdminRoute><Suspense fallback=\{<RouteFallback \/>\}><InteractionLabPage \/><\/Suspense><\/AdminRoute>\}/);
+  it("the owner play route is wrapped in AdminRoute, and the retired lab URLs only redirect", () => {
+    const app = src("src/App.tsx");
+    const play = app.split("\n").filter((l) => l.includes('path="/admin/playtests/:mode"'));
+    expect(play).toHaveLength(1);
+    expect(play[0]).toMatch(/element=\{<AdminRoute><Suspense fallback=\{<RouteFallback \/>\}><OwnerPlaytestPage \/><\/Suspense><\/AdminRoute>\}/);
+    const legacy = app.split("\n").filter((l) => l.includes('path="/admin/interaction-labs'));
+    expect(legacy).toHaveLength(2);
+    for (const r of legacy) expect(r).toMatch(/element=\{<InteractionLabsRedirect \/>\}/);
+    expect(app).not.toMatch(/InteractionLabPage\b/);
   });
 
-  it("both labs carry the prototype label", () => {
-    for (const p of ["src/pages/dev/rangefinder/RangefinderLab.tsx", "src/pages/dev/word-puzzle/WordPuzzleLab.tsx", "src/pages/admin/interaction-labs/InteractionLabPage.tsx"]) {
+  it("both DEV labs carry the prototype label", () => {
+    for (const p of ["src/pages/dev/rangefinder/RangefinderLab.tsx", "src/pages/dev/word-puzzle/WordPuzzleLab.tsx"]) {
       expect(src(p), p).toMatch(/data-testid="lab-prototype-label"[^{}]{0,300}\{PROTOTYPE_LABEL\}/);
     }
   });

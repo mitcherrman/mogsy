@@ -4,14 +4,15 @@
  * non-admin account (`RANKED_PRESET_NOT_AUTHORIZED`); these buttons are a
  * convenience, never the gate.
  */
-import { PresetLaunch } from "./PresetLaunch";
+import { PresetLaunch, type HubLaunchProps } from "./PresetLaunch";
 
 export const ROSTER_LOCK_PRESET = "admin.roster_lock";
 export const DRAFT_MEMORY_PRESET = "admin.draft_memory";
 
-export function RosterLockLaunch() {
+export function RosterLockLaunch(hub: HubLaunchProps = {}) {
   return (
     <PresetLaunch
+      {...hub}
       preset={ROSTER_LOCK_PRESET}
       testId="roster-lock-launch"
       buttonLabel="Play Roster Lock"
@@ -22,9 +23,10 @@ export function RosterLockLaunch() {
   );
 }
 
-export function DraftMemoryLaunch() {
+export function DraftMemoryLaunch(hub: HubLaunchProps = {}) {
   return (
     <PresetLaunch
+      {...hub}
       preset={DRAFT_MEMORY_PRESET}
       testId="draft-memory-launch"
       buttonLabel="Play Draft Memory"
