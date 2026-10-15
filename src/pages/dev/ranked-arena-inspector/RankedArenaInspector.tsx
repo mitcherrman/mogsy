@@ -28,7 +28,9 @@ import { RankedResultDuel } from "@/pages/quiz-ranked/RankedResultDuel";
 import type { MatchDiscoveriesView, MatchReviewView } from "@/lib/ranked-public/contracts";
 // MPE — the reward previews read the SAME engine state the product does, so
 // the inspector can say why a cue was silent (locked, muted, config pending).
-import { useSfxSnapshot } from "@/lib/audio/useSfx";
+import { useSfx, useSfxSnapshot } from "@/lib/audio/useSfx";
+import { DailyMainResult } from "@/pages/quiz-daily-challenge/run/DailyMainResult";
+import { V5_ELIGIBLE_DAY, fixtureV5Run, wireResult } from "@/lib/daily-challenge/run/fixtures";
 import { sfxController } from "@/lib/audio/sfx";
 import { APP_REDUCE_MOTION_CLASS } from "@/hooks/useReducedMotionPreference";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
@@ -1302,6 +1304,48 @@ function PracticeResultScene({ xpPerCorrect }: { xpPerCorrect: number | null }) 
   return <GameResultsShell model={model} />;
 }
 
+/**
+ * MPE-D — THE DAILY'S MAIN RESULT, pending and then settled, through the real
+ * `DailyMainResult` from the Daily's own wire fixtures. The scene stands in
+ * for the parent sync: it mounts the pending frame and, `DAILY_SETTLE_AFTER_MS`
+ * later, adopts the settled snapshot and plays the stage sting exactly where
+ * `useDailyRun.adopt` does — so the sting, the count and the score cue are
+ * heard in their production order. Every replay mints a new run id, so both
+ * cues (deduped by the engine under `daily:<runId>:…`) sound again. No
+ * transport, no controller, no persistence.
+ */
+const DAILY_SETTLE_AFTER_MS = 1400;
+
+function DailyMainResultScene({ replaySequence, settleAfterMs = DAILY_SETTLE_AFTER_MS }: {
+  replaySequence: number; settleAfterMs?: number;
+}) {
+  const runId = `dr_demo_preview_${replaySequence}`;
+  const [settled, setSettled] = useState(settleAfterMs <= 0);
+  const sfx = useSfx();
+  useEffect(() => {
+    if (settleAfterMs <= 0) return;
+    const timer = window.setTimeout(() => {
+      setSettled(true);
+      sfx.play("daily.stage.complete", { eventId: `daily:${runId}:stage:0:complete` });
+    }, settleAfterMs);
+    return () => window.clearTimeout(timer);
+  }, [runId, settleAfterMs, sfx]);
+  const run = settled
+    ? fixtureV5Run(V5_ELIGIBLE_DAY, {
+      run_id: runId, current_stage_index: 1, main_completed_at: "2026-10-08T12:00:00Z", main_score: 1234,
+    }, { 0: { status: "completed", child_match_id: "child-0",
+      result: wireResult({ correct: 9, answered: 10, score: 16, misses: 1 }) } })
+    : fixtureV5Run(V5_ELIGIBLE_DAY, { run_id: runId },
+      { 0: { status: "in_progress", child_match_id: "child-0" } });
+  return (
+    <div className="ranked-academy p-3 sm:p-5" data-testid="daily-main-result-scene"
+      data-settled={settled ? "true" : "false"}>
+      <DailyMainResult run={run} stage={run.stages[0]} onDone={() => {}}
+        onProceed={settled ? () => {} : undefined} />
+    </div>
+  );
+}
+
 /** The discovery panel alone, at the end screen's width, for judging one shape at a time. */
 function DiscoveryScene({ entries, replaySequence, ceremony = true }: {
   entries: MatchDiscoveriesView["newDiscoveries"]; replaySequence: number; ceremony?: boolean;
@@ -1672,6 +1716,11 @@ const STATES: InspectorState[] = [
     render: () => <PracticeResultScene xpPerCorrect={null} /> },
   { key: "results-earned-xp", label: "RESULT — practice quiz · +80 Academy XP earned",
     render: () => <PracticeResultScene xpPerCorrect={20} /> },
+  // MPE-D — the Daily's main result: 1.4 s pending (Mogzy thinking), then the
+  // settle — sting, score count-up and its cue, light, snapshot. Replay re-runs
+  // it from the pending frame under a fresh run id.
+  { key: "results-daily-main", label: "RESULT — Daily · Today's Challenge settles (score reveal)",
+    render: (replaySequence = 0) => <DailyMainResultScene replaySequence={replaySequence} /> },
   { key: "discovery-reveal", label: "Discovery — three new (one retired)",
     render: (replaySequence = 0) => (
       <DiscoveryScene entries={DISCOVERY_THREE} replaySequence={replaySequence} />) },

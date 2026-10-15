@@ -1527,6 +1527,17 @@ html.reduce-motion .ranked-award-pop--bonus {
   100% { opacity: 1; transform: none; }
 }
 
+/* MPE-D — the pose Mogzy held while a result was pending leaves as the
+   settled pose arrives (`.reward-mascot`). Both plates sit stacked in the
+   hero's one box, so the swap moves nothing; this is the leaving half. */
+.reward-mascot-out {
+  animation: reward-fade-out 200ms ease-out both;
+}
+@keyframes reward-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 /* The reward number: a brief bump as the count lands. Driven by
    `data-landed`, which the count-up sets when it reaches the true value. */
 .reward-xp-value { display: inline-flex; align-items: center; }
@@ -1547,6 +1558,7 @@ html.reduce-motion .ranked-award-pop--bonus {
 [data-ceremony="false"] .reward-glow,
 [data-ceremony="false"] .reward-mascot,
 [data-ceremony="false"] .reward-enter { animation: none; }
+[data-ceremony="false"] .reward-mascot-out { animation: none; opacity: 0; }
 [data-ceremony="false"] .reward-glow { opacity: 0.6; }
 [data-ceremony="false"] .reward-sheen { display: none; }
 

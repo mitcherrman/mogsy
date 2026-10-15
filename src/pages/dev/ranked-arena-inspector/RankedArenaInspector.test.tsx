@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import RankedArenaInspector from "./RankedArenaInspector";
 
 afterEach(() => {
@@ -88,6 +88,28 @@ describe("RankedArenaInspector", () => {
     select("results-practice");
     expect(screen.queryByTestId("result-progress-xp-earned")).toBeNull();
     expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("4,820");
+  });
+
+  it("previews the Daily's main result from the pending frame to the settled reveal, replayable", () => {
+    vi.useFakeTimers();
+    try {
+      render(<RankedArenaInspector />);
+      select("results-daily-main");
+      expect(screen.getByTestId("daily-main-result-scene")).toHaveAttribute("data-settled", "false");
+      expect(screen.getByTestId("daily-main-result")).toHaveAttribute("data-pending", "true");
+      expect(screen.getByTestId("result-mascot")).toHaveAttribute("data-pose", "thinking");
+      act(() => { vi.advanceTimersByTime(1400); });
+      expect(screen.getByTestId("daily-main-result")).toHaveAttribute("data-settled", "true");
+      expect(screen.getByTestId("result-mascot")).toHaveAttribute("data-pose", "cheering");
+      expect(screen.getByTestId("daily-main-score-reveal").querySelector(".sr-only"))
+        .toHaveTextContent("1,234");
+      const firstStage = screen.getByTestId("inspector-replay-stage");
+      fireEvent.click(screen.getByTestId("inspector-replay"));
+      expect(screen.getByTestId("inspector-replay-stage")).not.toBe(firstStage);
+      expect(screen.getByTestId("daily-main-result")).toHaveAttribute("data-pending", "true");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("toggles the app's own Reduce Motion for the page, and takes it off again on unmount", () => {
