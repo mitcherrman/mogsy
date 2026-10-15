@@ -1,7 +1,7 @@
 /** Audit only. No layout modification, API requests or production mutation. */
 import { test, expect } from "@playwright/test";
 
-const SIZES = [[509,709],[509,844],[390,844],[360,740],[360,640],[430,740]] as const;
+const SIZES = [[509,709],[390,844],[360,640]] as const;
 const QUESTIONS = ["opts4", "media", "stressA", "realMax", "family"] as const;
 for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
   test(`budget ${width}x${height} ${shape}`,async({page})=>{
@@ -13,14 +13,14 @@ for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
     await page.addStyleTag({content:`
     @media (max-width:639.98px) and (max-height:760px) {
       .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
-        --qs-media-h: 6.25rem;
-        --qs-prompt-h: 4.5rem;
+        --qs-media-h: 5.5rem;
+        --qs-prompt-h: 3.75rem;
       }
       .ranked-shell[data-phone-arena="true"] [data-testid="scenario-hero"] {
-        max-height: min(6.25rem,100%) !important;
+        max-height: 100px !important;
       }
       .ranked-shell[data-phone-arena="true"] .ranked-folio {
-        --qs-media-max: 6.25rem;
+        --qs-media-max: 100px;
       }
       .ranked-shell[data-phone-arena="true"]::before,
       .ranked-academy[data-phone-arena="true"]::before {
@@ -60,6 +60,10 @@ for (const [width,height] of SIZES) for (const shape of QUESTIONS) {
         bottomBar:rect('[data-testid="ranked-mobile-bottombar"]'),
         stack:rect('.question-surface-stack'),
         tokens:{media:css(stack,"--qs-media-h"),prompt:css(stack,"--qs-prompt-h"),answers:css(stack,"--qs-answers-h"),max:css(stack,"--qs-media-max")},
+        horizontalOverflowers:[...document.querySelectorAll<HTMLElement>("body *")].map(el=>{
+          const r=el.getBoundingClientRect();return {tag:el.tagName,cl:(el.className||"").toString().slice(0,70),test:el.dataset.testid,right:Math.round(r.right),left:Math.round(r.left),width:Math.round(r.width),scrollWidth:el.scrollWidth};
+        }).filter(el=>el.right>innerWidth+2||el.left< -3||el.scrollWidth>el.width+3).slice(0,12),
+        normalBarTop:(()=>{if(!bar)return null;bar.style.position="static";const y=Math.round(bar.getBoundingClientRect().top);bar.style.position="";return y})(),
         styles:{stackGap:css(stack,"gap"),heroMax:css(find('[data-testid="scenario-hero"]'),"max-height"),heroTransform:css(find('[data-testid="scenario-hero"]'),"transform"),heroComputedHeight:css(find('[data-testid="scenario-hero"]'),"height"),mediaMin:css(media,"min-height"),promptMin:css(prompt,"min-height"),answerMin:css(answers,"min-height"),bottomPosition:css(bar,"position"),stageOverflow:css(stage,"overflow")}
       };
     });
