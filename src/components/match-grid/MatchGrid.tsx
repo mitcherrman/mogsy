@@ -174,7 +174,12 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   // Owner-only visual correction inspector: opt-in after a server reveal,
   // overlays the reserved ledger rather than moving the board or footer.
   const [detailsOpen, setDetailsOpen] = useState(false);
-  useEffect(() => { setDetailsOpen(false); }, [reveal]);
+  const hasReveal = Boolean(reveal);
+  // Reset across rounds, not on every polling refresh that recreates the
+  // same authoritative reveal object.
+  useEffect(() => {
+    if (!hasReveal || phase === "open") setDetailsOpen(false);
+  }, [hasReveal, phase]);
   // MG-UX1 — who is being NAMED right now (the full-name plate): the pointer's
   // hover, the keyboard's focus, or a tap on a settled board. Presentation
   // only: none of it ever reaches `value` or the host.
