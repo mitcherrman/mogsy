@@ -1,0 +1,10 @@
+# CEG1 owner playtest log. Copy this file OUTSIDE the repo, fill one row per locked round, then:
+#   npx tsx scripts/combat-estimate/grading/grade_playtest.ts <your copy>.csv
+# round    = the ?round= id from the lab URL (e.g. jarvan-q-r3-l5-dirk-vs-olaf)
+# device   = desktop | phone
+# estimate = the locked whole number (the lab chrome shows it as {161})
+# seconds  = rough time from first touch to Lock (optional)
+# gut      = BEFORE reading any verdict: fair-correct | fair-incorrect | unsure  ("would I accept this as knowing the answer?")
+# note     = anything: the adjustment felt fiddly, the premise was unclear, the reveal explained / did not explain the miss
+round,device,estimate,seconds,gut,note
+jarvan-q-r3-l5-dirk-vs-olaf,desktop,150,25,fair-correct,example row - delete me

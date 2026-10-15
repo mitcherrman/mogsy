@@ -3,6 +3,8 @@
 //
 // Ported from the MIG1.2 lab (`mig1/1-interaction-lab`, certified b932af4b) by
 // DD1-B. Only Data Duel is in production; Stat Drop stayed in the lab (HOLD).
+// NUM-REC2 restored the original MIG1.2 Stat Drop contract and added CE1's
+// Estimate contract, both for the owner-only numeric playtest lab.
 //
 // A MIG primitive is an INPUT/PRESENTATION component a renderer composes. It is
 // not a module, a host, a mode or a content authority, so nothing here names a
@@ -425,3 +427,132 @@ export interface PositionalAssemblyReveal {
 // transport shape. The production seam (an `assembly.v1` module) widens
 // `SegmentChoice` then.
 export type _PositionalAssemblyIsNotSegmentChoiceYet = Assert<PositionalAssemblyResponse extends SegmentChoice ? false : true>;
+
+// ------------------------------------------------- Stat Drop (MIG1.2, b932af4b)
+
+/** A bounded scale. The same shape as Mastery's numeric input constraints. */
+export interface StatDropScale {
+  min: number;
+  max: number;
+  step: number;
+  /** Display precision of the estimate, not of the answer. */
+  decimals: number;
+}
+
+export interface StatDropPublic {
+  prompt: string;
+  metricLabel: string;
+  /** "seconds", "games". Empty for a unitless value. */
+  unit: string;
+  context?: string | null;
+  scale: StatDropScale;
+  subject?: {
+    label: string;
+    sublabel?: string | null;
+    media?: SubjectMedia | null;
+  } | null;
+}
+
+export interface StatDropReveal {
+  /** The authority's value, used only to PLACE the marker. */
+  canonicalValue: number;
+  /** The authority's formatted value, which is what the player reads. */
+  canonicalDisplay: string;
+  evidence?: string | null;
+  source?: string | null;
+}
+
+export type StatDropResponse = { selected: number };
+
+export type _DropIsSegmentChoice = Assert<StatDropResponse extends SegmentChoice ? true : false>;
+
+// ---------------------------------------------- Estimate (CE1, 7929f2dc)
+/**
+ * The instrument's range. PUBLIC and answer-independent: a host derives it
+ * from premise values the player can see, never from the hidden answer, so
+ * no bound can leak one. Values are whole numbers in `[0, max)`.
+ */
+export interface EstimateScale {
+  /** The far end of the beam. A positive multiple of `coarseStep`. */
+  max: number;
+  /** The coarse beam's notch spacing; the fine beam spans `0 .. coarseStep-1`. */
+  coarseStep: number;
+  /** Which notches carry an engraved figure. A multiple of `coarseStep`. */
+  figureEvery: number;
+}
+
+/** Whether the round's numbers are the authority's or a visual-only stand-in. */
+export interface EstimateCertification {
+  kind: "certified" | "synthetic";
+  /** Short engraved label: "Combat authority · 8829fc3c" / "SYNTHETIC — not certified". */
+  label: string;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface EstimatePublic {
+  prompt: string;
+  /** The quantity the beam measures, short: "Final damage". */
+  measureLabel: string;
+  /** The engraved unit: "damage". */
+  unitLabel: string;
+  /** What exactly is being estimated, in one or two sentences. */
+  definition?: string | null;
+  scale: EstimateScale;
+  certification: EstimateCertification;
+  /** The host's footnote under the instrument once the hand is off. */
+  footnote?: string | null;
+}
+
+/** The host-owned value: a whole number on the scale, or null before any setting. */
+export type EstimateValue = number | null;
+
+/** The response: the number the player locked. */
+export interface EstimateResponse {
+  estimate: number;
+}
+
+/**
+ * Authority-supplied, post-reveal only. Display only: the verdict, the error
+ * and every formatted string are the host's; the primitive draws them.
+ */
+export interface EstimateReveal {
+  /** The value the player locked, as the host recorded it. */
+  lockedValue: number;
+  truth: {
+    /** The true value on the beam's scale (the host's whole-number answer). */
+    value: number;
+    /** "144" */
+    valueText: string;
+    /** The unrounded authority value, when it differs: "144.2259". */
+    exactText?: string | null;
+    /** "Final damage" */
+    label: string;
+  };
+  /** The host's verdict; the primitive never derives it from the values. */
+  verdict: "exact" | "under" | "over";
+  error: {
+    /** estimate − truth, as the host computed it. */
+    signed: number;
+    /** "+124" / "−31" / "0" */
+    signedText: string;
+    absolute: number;
+    /** "124" */
+    absoluteText: string;
+    /** |signed| / exact truth, 0..∞, or null when undefined (a zero truth). */
+    relative: number | null;
+    /** "36% over" / "18% under" / null */
+    relativeText: string | null;
+  };
+  /**
+   * A DEVELOPMENT-ONLY descriptive closeness label ("within 10%"), or null.
+   * Never a pass/fail: the production grading policy is unresolved (CE1 §6).
+   */
+  closeness?: { label: string; development: true } | null;
+  /** A short line from the authority, if any (the modelled component, an assumption). */
+  note?: string | null;
+  source?: { label: string; url?: string | null } | null;
+}
+
+// Estimate is NOT a SegmentChoice yet: `{ estimate }` is a new transport shape.
+// The production seam (a `combat_estimate.v1` module) widens `SegmentChoice` then.
+export type _EstimateIsNotSegmentChoiceYet = Assert<EstimateResponse extends SegmentChoice ? false : true>;
