@@ -1,0 +1,38 @@
+name: Mobile Recording Fit
+on:
+  push:
+    branches: [fix/mobile-recording-viewport-fit-20261015]
+  pull_request:
+    paths:
+      - 'src/index.css'
+      - 'e2e/mobile-recording-fit.spec.ts'
+      - 'playwright.mobile-recording.config.ts'
+      - '.github/workflows/mobile-recording-fit.yml'
+permissions:
+  contents: read
+jobs:
+  mobile-fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install without rewriting existing stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser fit, visibility and continuity
+        run: npx playwright test -c playwright.mobile-recording.config.ts
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-recording-fit-evidence
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Production build
+        run: npx vite build
