@@ -19279,9 +19279,9 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     bottom: env(safe-area-inset-bottom, 0px);
     z-index: 30;
     flex-shrink: 0;
+    /* Opaque during a page scroll; no new border or padding may change
+       the canonical 50px bar's footprint in ordinary one-screen rounds. */
     background: #060c14;
-    border-top: 1px solid rgba(214, 184, 110, 0.22);
-    border-radius: 0.25rem;
   }
 }
 @media (max-width: 639.98px) {
