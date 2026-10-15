@@ -171,6 +171,10 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const [held, setHeld] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [note, setNote] = useState("");
+  // Owner-only visual correction inspector: opt-in after a server reveal,
+  // overlays the reserved ledger rather than moving the board or footer.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  useEffect(() => { setDetailsOpen(false); }, [reveal]);
   // MG-UX1 — who is being NAMED right now (the full-name plate): the pointer's
   // hover, the keyboard's focus, or a tap on a settled board. Presentation
   // only: none of it ever reaches `value` or the host.
@@ -446,6 +450,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
 
   const wrongCount = reveal ? entities.filter((e) => reveal.entityCorrect[e.token] === false).length : 0;
   const rightCount = N - wrongCount;
+  const canInspectCorrections = Boolean(reveal) && ledgerShown && wrongCount > 0;
   const plural = (n: number, noun: string) => (n === 1 ? noun : `${noun}s`);
   const seated = N - remaining;
 
@@ -725,6 +730,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
             content={content}
             reveal={reveal}
             shown={ledgerShown}
+            detailsOpen={detailsOpen && ledgerShown}
             box={plan.ledger}
             groupLabel={groupLabel}
             groupHue={(token) => groups.find((g) => g.token === token)?.hue ?? null}
@@ -739,12 +745,15 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
           className="mg-lock"
           data-part="lock"
           data-ready={open && complete ? "" : undefined}
-          aria-label={reveal ? "Resolved" : phase === "locked" ? "Locked in, waiting" : complete ? "Lock in" : `Lock in (seat every ${content.entityNoun} first)`}
-          disabled={!open || !complete}
-          onClick={lock}
+          aria-label={canInspectCorrections
+            ? detailsOpen ? "Hide correction details" : "Review all correction details"
+            : reveal ? "Resolved" : phase === "locked" ? "Locked in, waiting" : complete ? "Lock in" : `Lock in (seat every ${content.entityNoun} first)`}
+          aria-pressed={canInspectCorrections ? detailsOpen : undefined}
+          disabled={!canInspectCorrections && (!open || !complete)}
+          onClick={canInspectCorrections ? () => setDetailsOpen((v) => !v) : lock}
         >
           <Lock aria-hidden className="mg-lock-icon" />
-          <span>{reveal ? "Resolved" : phase === "locked" ? "Locked in" : "Lock in"}</span>
+          <span>{canInspectCorrections ? detailsOpen ? "Summary" : "Details" : reveal ? "Resolved" : phase === "locked" ? "Locked in" : "Lock in"}</span>
           {open && !complete ? <span className="mg-lock-count" aria-hidden>{seated}/{N}</span> : null}
         </button>
       </footer>
@@ -767,10 +776,11 @@ function matchesFocusVisible(el: Element): boolean {
  * corrected entities, each as "name → its group", in the richest arrangement
  * that fits the reserved room (`ledgerFit`) — never scrolled, never clipped.
  */
-function Ledger({ content, reveal, shown, box, groupLabel, groupHue }: {
+function Ledger({ content, reveal, shown, detailsOpen, box, groupLabel, groupHue }: {
   content: MatchPublic;
   reveal: MatchReveal;
   shown: boolean;
+  detailsOpen: boolean;
   box: { x: number; top: number; w: number; h: number };
   groupLabel: (token: string) => string;
   groupHue: (token: string) => number | null;
