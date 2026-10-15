@@ -155,11 +155,15 @@ for (const reduced of [false, true]) {
       }
       await expect(root).toHaveAttribute("data-reveal-stage", "done", { timeout: 5_000 });
       await shot(page, path.join(SHOTS, `${tag}-05-settled.png`), vp.width < 720);
+      // The sampler measures stability *within this round*, including its whole
+      // correction reveal. Stop before Next: the next deal may have a different
+      // tree count and therefore a deliberately different planned board height.
+      // React can commit its new reveal stage before the new "open" phase, so
+      // a phase-only filter cannot reliably identify that round boundary.
+      const frames = await page.evaluate(() => (window as unknown as { __mgStop: () => Frame[] }).__mgStop());
       await page.locator('[data-testid="lab-next"]').click();
       await expect(root).toHaveAttribute("data-phase", "open");
       await page.waitForTimeout(500);
-
-      const frames = await page.evaluate(() => (window as unknown as { __mgStop: () => Frame[] }).__mgStop());
       expect(frames.length).toBeGreaterThan(30);
       const worst = worstMovement(frames);
       const report = Object.entries(worst).map(([k, w]) => `${k}: ${w.max.toFixed(2)}px @${w.frame} (${w.from} → ${w.to})`).join("\n");
