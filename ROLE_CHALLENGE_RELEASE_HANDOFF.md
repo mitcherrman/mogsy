@@ -10,8 +10,13 @@ _Last updated: 2026-10-15 ~03:00 UTC. Owner deployment approval required before 
 | Backend release candidate | `mitcherrman/League_Combat_Simulator` PR #14, branch `rc5/role-challenge-pools`, base `master` | **`8fb9b50f`** (= canonically accepted `38aa1125` + `master` `ee722bc1`) |
 | Superseded | mogsy PR #12 (RC4 transport) and PR #13 (RC6 origin) — fully contained in PR #18 | — |
 
-**Verdict: READY for the owner's deployment approval** — see *Final reconciliation* below. Nothing has been
-merged to a default branch or deployed.
+**Backend MERGED by the owner** (2026-10-15 04:02 UTC): `master` `5bc5fe57` = "Merge PR #14: Role Challenge V1
+backend release", parents `ee722bc1` + `8fb9b50f`; its tree is **byte-identical to the reviewed `8fb9b50f`**, so the
+canonical acceptance on `38aa1125` carries to production unchanged (Role Challenge tree identical).
+
+**Frontend PR #18: READY for the owner's deployment approval** (clean, 0 behind `main`, CI green). Remaining
+owner steps: smoke `GET /api/role-challenges/catalog` in production (this cloud session's network policy
+blocks the Railway host, so it could not be run from here), then mark #18 ready and merge.
 
 ## Canonical acceptance (owner's workstation, 2026-10-15)
 
