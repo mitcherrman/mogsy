@@ -36,6 +36,7 @@ for (const vp of CASES) {
             stageClipsChoices: choiceBoxes.some(r =>
               r.top < stageBox.top - 1 || r.bottom > stageBox.bottom + 1),
             horizontal,
+            pageScroll: document.documentElement.scrollHeight - document.documentElement.clientHeight,
             hasNestedScroller: [stage, ...stage.querySelectorAll("*")].some(el => {
               const css = getComputedStyle(el);
               return /auto|scroll/.test(css.overflowY) && el.scrollHeight > el.clientHeight + 1;
@@ -46,6 +47,10 @@ for (const vp of CASES) {
         expect(measurement.barVisible, "the progression bar is offscreen").toBe(true);
         expect(measurement.horizontal, "the page overflows horizontally").toBeLessThanOrEqual(1);
         expect(measurement.hasNestedScroller, "a hidden scroll area clips gameplay").toBe(false);
+        if (vp.height >= 740 && shape !== "metareflex") {
+          expect(measurement.pageScroll,
+            "ordinary four-choice round gained vertical overflow from sticky timeline").toBeLessThanOrEqual(1);
+        }
         if (shape !== "metareflex") {
           expect(measurement.choiceCount).toBeGreaterThan(0);
           expect(measurement.stageClipsChoices, "answers leave the parchment").toBe(false);
