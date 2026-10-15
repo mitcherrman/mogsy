@@ -1,0 +1,30 @@
+name: stat-check-ack-regression
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/ranked-core/modules/metaReflexModule.tsx"
+      - "src/lib/ranked-core/modules/metaReflexModule.test.tsx"
+      - ".github/workflows/stat-check-ack-regression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Meta Reflex/Stat Check regression suite
+        run: npx vitest run src/lib/ranked-core/modules/metaReflexModule.test.tsx
+      - name: Production bundle
+        run: npx vite build
