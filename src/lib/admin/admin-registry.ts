@@ -761,6 +761,25 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "PROTOTYPE — not server-authoritatively graded. Values are historical captures (CE1: certified combat seam at backend 8829fc3c; MIG1.2: Pro Play and Journey captures), not current-patch facts. The page bundle holds no round or answer; a round's private block is released only by its own Lock. No tolerance is adopted (CEG1 is research): the reveal is descriptive and the owner's gut calls export as CEG1's playtest CSV. Writes nothing. Not part of Quiz, Daily or Ranked.",
   },
   {
+    id: "perfect-timing-lab",
+    title: "Perfect Timing Lab",
+    description:
+      "Owner playtest of Perfect Timing: a champion ability is shown with no number, you time its base cooldown with Start/Stop, and the server grades the stop against the canonical cooldown.",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "playtests",
+    kind: "route",
+    path: "/admin/perfect-timing",
+    oldLocation: "none — new owner-only lab (Perfect Timing PT1–PT4)",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Prototype",
+    authorization:
+      "AdminRoute; every round comes from /api/admin/perfect-timing/* behind backend require_admin and PERFECT_TIMING_LAB_ENABLED (off by default; 404 when off).",
+    notes:
+      "PROTOTYPE — elapsed time is measured in the browser and is NOT tamper-proof; the server grades it and reports an upper-bound plausibility verdict only. Targets are base cooldowns (0 ability haste) from champion_abilities via the backend; the deal carries no target and the page refuses one that does. Scoring tiers are playtest starting values. Rounds live in backend process memory (15 min TTL). Writes nothing. Not part of Quiz, Daily or Ranked.",
+  },
+  {
     id: "interaction-mode-labs",
     title: "Rangefinder + Glyph Press Labs",
     description: "Owner-only cast-range placement and League word puzzle prototypes.",

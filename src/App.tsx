@@ -284,6 +284,18 @@ const NumericLabPage = lazy(() => import("./pages/admin/numeric-lab/NumericLabPa
 const NumericLabPageDev = import.meta.env.DEV
   ? lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"))
   : null;
+// PT4: the owner-only Perfect Timing lab (/api/admin/perfect-timing/*, gated
+// server-side by require_admin and PERFECT_TIMING_LAB_ENABLED). Production:
+// /admin/perfect-timing behind AdminRoute. DEV only: the same page at
+// /dev/perfect-timing (no gate) so browser specs can stand in for the backend,
+// and PT1's fake-value presentation demo at /dev/perfect-timing/demo.
+const PerfectTimingPage = lazy(() => import("./pages/admin/perfect-timing/PerfectTimingPage"));
+const PerfectTimingPageDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/admin/perfect-timing/PerfectTimingPage"))
+  : null;
+const PerfectTimingDemo = import.meta.env.DEV
+  ? lazy(() => import("./components/perfect-timing/__stories__/PerfectTimingDemo"))
+  : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -536,6 +548,7 @@ export const appRouter = createBrowserRouter(
                   <Route path="/admin/interaction-labs/:lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   <Route path="/admin/numeric-lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><NumericLabPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/perfect-timing" element={<AdminRoute><Suspense fallback={<RouteFallback />}><PerfectTimingPage /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />
@@ -750,6 +763,12 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
+                  ) : null}
+                  {PerfectTimingPageDev ? (
+                    <Route path="/dev/perfect-timing" element={<Suspense fallback={<RouteFallback />}><PerfectTimingPageDev exitTo="/dev/perfect-timing" /></Suspense>} />
+                  ) : null}
+                  {PerfectTimingDemo ? (
+                    <Route path="/dev/perfect-timing/demo" element={<Suspense fallback={<RouteFallback />}><PerfectTimingDemo /></Suspense>} />
                   ) : null}
                   {ProPlayAssemblyLab ? (
                     <Route path="/dev/pro-play-assembly" element={<Suspense fallback={<RouteFallback />}><ProPlayAssemblyLab /></Suspense>} />
