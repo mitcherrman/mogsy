@@ -32,7 +32,19 @@ import {
   type RankedMatchHost,
 } from "@/lib/ranked-public/matchHost";
 
-export type RankedMatchOriginId = typeof MATCH_HOST.journeyLibrary | typeof MATCH_HOST.roleChallenge;
+/**
+ * UGMP — the owner's Playtests hub. NOT a host: an admin preset match persists
+ * host `playtest`, which the public guided Playtest (/quiz/playtest) shares. So
+ * no host ever implies this origin; it is a router-state REFINEMENT of
+ * `playtest` that the hub's launch puts beside the match id, and it stands only
+ * while the persisted host is `playtest` (or not reported yet). A reload loses
+ * it, and the match falls back to the ordinary result actions.
+ */
+export const ADMIN_PLAYTESTS_ORIGIN_ID = "admin_playtests";
+export const ADMIN_PLAYTESTS_ROUTE = "/admin/leaguecraft?section=ranked&view=playtests";
+
+type HostOriginId = typeof MATCH_HOST.journeyLibrary | typeof MATCH_HOST.roleChallenge;
+export type RankedMatchOriginId = HostOriginId | typeof ADMIN_PLAYTESTS_ORIGIN_ID;
 
 export interface RankedMatchOrigin {
   id: RankedMatchOriginId;
@@ -53,7 +65,16 @@ export const JOURNEY_LIBRARY_ROUTE = "/quiz/journeys";
 /** RC8: back to the hub with the centre parchment on Role Challenge. */
 export const ROLE_CHALLENGE_ROUTE = "/quiz?mode=role";
 
-export const RANKED_MATCH_ORIGINS: Record<RankedMatchOriginId, RankedMatchOrigin> = {
+export const ADMIN_PLAYTESTS_ORIGIN: RankedMatchOrigin = {
+  id: ADMIN_PLAYTESTS_ORIGIN_ID,
+  label: "Ranked Playtest",
+  href: ADMIN_PLAYTESTS_ROUTE,
+  returnLabel: "Back to Playtests",
+  navLabel: "Playtests",
+};
+
+/** The origins a persisted host implies. */
+export const RANKED_MATCH_ORIGINS: Record<HostOriginId, RankedMatchOrigin> = {
   [MATCH_HOST.journeyLibrary]: {
     id: MATCH_HOST.journeyLibrary,
     label: matchHostLabel(MATCH_HOST.journeyLibrary)!,
@@ -76,7 +97,7 @@ export function originForHost(
   host: RankedMatchHost | null | undefined,
 ): RankedMatchOrigin | null {
   return typeof host === "string" && Object.prototype.hasOwnProperty.call(RANKED_MATCH_ORIGINS, host)
-    ? RANKED_MATCH_ORIGINS[host as RankedMatchOriginId]
+    ? RANKED_MATCH_ORIGINS[host as HostOriginId]
     : null;
 }
 
@@ -84,6 +105,7 @@ export function originForHost(
 export function readMatchOrigin(state: unknown): RankedMatchOrigin | null {
   if (!state || typeof state !== "object") return null;
   const id = (state as { origin?: unknown }).origin;
+  if (id === ADMIN_PLAYTESTS_ORIGIN_ID) return ADMIN_PLAYTESTS_ORIGIN;
   return typeof id === "string" ? originForHost(id) : null;
 }
 
@@ -91,11 +113,14 @@ export function readMatchOrigin(state: unknown): RankedMatchOrigin | null {
  * THE PRECEDENCE RULE. A host the backend REPORTED (a string or `null`) wins,
  * even over a contradicting router-state hint. Only when the match has not
  * reported one — no snapshot yet, or a backend predating the field
- * (`undefined`) — does the hint stand.
+ * (`undefined`) — does the hint stand. The one exception is a refinement, not
+ * a contradiction: the admin Playtests hint survives a reported `playtest`.
  */
 export function resolveMatchOrigin(
   persistedHost: RankedMatchHost | null | undefined,
   hint: RankedMatchOrigin | null,
 ): RankedMatchOrigin | null {
-  return persistedHost === undefined ? hint : originForHost(persistedHost);
+  if (persistedHost === undefined) return hint;
+  if (hint?.id === ADMIN_PLAYTESTS_ORIGIN_ID && persistedHost === MATCH_HOST.playtest) return hint;
+  return originForHost(persistedHost);
 }

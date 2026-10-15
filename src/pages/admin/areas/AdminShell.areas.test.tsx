@@ -374,25 +374,37 @@ describe("7 · Ranked Admin home renders", () => {
     expect(screen.getByTestId("reference-journey-launch-button")).toBeTruthy();
   });
 
-  it("offers Play Reconstruct in Ranked > Playtests, in its own panel", async () => {
+  it("offers Play Reconstruct in Ranked > Playtests, on its own card", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
-    const panel = await screen.findByTestId("ranked-reconstruct");
+    const panel = await screen.findByTestId("reconstruct-launch");
     expect(within(panel).getByTestId("reconstruct-launch-button").textContent).toBe("Play Reconstruct");
     expect(panel.textContent).toMatch(/unrated/i);
   });
 
-  it("offers Play Match Grid in Ranked > Playtests, in its own panel (MG-P3)", async () => {
+  it("offers Play Match Grid in Ranked > Playtests, on its own card (MG-P3)", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
-    const panel = await screen.findByTestId("ranked-match-grid");
+    const panel = await screen.findByTestId("match-grid-launch");
     expect(within(panel).getByTestId("match-grid-launch-button").textContent).toBe("Play Match Grid");
     expect(panel.textContent).toMatch(/unrated/i);
   });
 
-  it("offers Play Chronoscope in Ranked > Playtests, in its own panel", async () => {
+  it("offers Play Chronoscope in Ranked > Playtests, on its own card", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
-    const panel = await screen.findByTestId("ranked-scrub");
+    const panel = await screen.findByTestId("scrub-launch");
     expect(within(panel).getByTestId("scrub-launch-button").textContent).toBe("Play Chronoscope");
     expect(panel.textContent).toMatch(/unrated/i);
+  });
+
+  it("UGMP: one Game modes grid holds all seven new modes beside the earlier Ranked Bot playtests", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const grid = await screen.findByTestId("playtest-mode-grid");
+    expect(within(grid).getAllByRole("heading").map((h) => h.textContent)).toEqual([
+      "Rangefinder", "Glyph Press", "Roster Lock", "Draft Memory", "Chronoscope", "Stat Drop", "Combat Estimate",
+      "Match Grid", "Reconstruct", "Order Forge",
+    ]);
+    // The retired labs are no longer separate destinations on this view.
+    expect(screen.queryByTestId("admin-tool-interaction-mode-labs")).toBeNull();
+    expect(screen.queryByTestId("admin-tool-numeric-lab")).toBeNull();
   });
 
   it("offers the Journey launches in Ranked > Playtests, extended one last", async () => {

@@ -167,7 +167,7 @@ export const ADMIN_AREAS: AdminArea[] = [
           { id: "format-builder", label: "Format Builder", summary: "The ordered module cycle for Admin Bot Ranked and Public Ranked." },
           { id: "question-bank", label: "Question Bank", summary: "Ranked Duel candidate review, validation and export." },
           { id: "matches", label: "Matches & Testing", summary: "Staff duels, test matches and bot-match administration." },
-          { id: "playtests", label: "Playtests", summary: "Playtest operations home, built on existing primitives." },
+          { id: "playtests", label: "Playtests", summary: "Play every game mode: Ranked Bot playtests, prototypes and experiments." },
           { id: "settings", label: "Ratings & Settings", summary: "Rating policy and the read-only Railway flag mirror." },
         ],
       },
@@ -742,25 +742,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "GENERATED questions, not stored ones. A mastery_slice question is synthesized when a match opens the segment and frozen onto that one round — it is never a row. This is deliberately NOT a Quiz Review tab: Quiz Review is a table of stored, approvable questions, and generated samples do not belong in it. Read-only — previewing creates no attempt, no history, no match, no round and no stored question, which the backend enforces with a sqlite authorizer rather than by convention. It calls the SAME generator a live match calls and draws the result with the SAME component the Ranked arena draws a challenge with.",
   },
   {
-    id: "numeric-lab",
-    title: "Numeric Modes Lab",
-    description:
-      "Owner playtest of the original Stat Drop (MIG1.2) and two-beam Combat Estimate (CE1) prototypes over historical authority captures, with a blind gut-call log for the grading decision.",
-    area: "leaguecraft",
-    section: "ranked",
-    subsection: "question-bank",
-    kind: "route",
-    path: "/admin/numeric-lab",
-    oldLocation: "none — both prototypes were DEV-only labs (MIG1 Interaction Lab, CE1 Combat Estimate lab)",
-    disposition: "KEEP",
-    dangerLevel: "none",
-    status: "Prototype",
-    authorization:
-      "AdminRoute; every round comes from /api/admin/numeric-lab/* behind backend require_admin and NUMERIC_LAB_ENABLED (off by default).",
-    notes:
-      "PROTOTYPE — not server-authoritatively graded. Values are historical captures (CE1: certified combat seam at backend 8829fc3c; MIG1.2: Pro Play and Journey captures), not current-patch facts. The page bundle holds no round or answer; a round's private block is released only by its own Lock. No tolerance is adopted (CEG1 is research): the reveal is descriptive and the owner's gut calls export as CEG1's playtest CSV. Writes nothing. Not part of Quiz, Daily or Ranked.",
-  },
-  {
     id: "perfect-timing-lab",
     title: "Perfect Timing Lab",
     description:
@@ -778,22 +759,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "AdminRoute; every round comes from /api/admin/perfect-timing/* behind backend require_admin and PERFECT_TIMING_LAB_ENABLED (off by default; 404 when off).",
     notes:
       "PROTOTYPE — elapsed time is measured in the browser and is NOT tamper-proof; the server grades it and reports an upper-bound plausibility verdict only. Targets are base cooldowns (0 ability haste) from champion_abilities via the backend; the deal carries no target and the page refuses one that does. Scoring tiers are playtest starting values. Rounds live in backend process memory (15 min TTL). Writes nothing. Not part of Quiz, Daily or Ranked.",
-  },
-  {
-    id: "interaction-mode-labs",
-    title: "Rangefinder + Glyph Press Labs",
-    description: "Owner-only cast-range placement and League word puzzle prototypes.",
-    area: "leaguecraft",
-    section: "ranked",
-    subsection: "playtests",
-    kind: "route",
-    path: "/admin/interaction-labs",
-    oldLocation: "Formerly DEV-only Rangefinder and Word Puzzle labs",
-    disposition: "KEEP",
-    dangerLevel: "none",
-    status: "Prototype",
-    authorization: "AdminRoute owner gate; local historical JSON pack stays in browser tab memory.",
-    notes: "Prototype — not server-authoritatively graded. Historical source fixtures are publicly readable on GitHub but absent from production JS. Select JSON pack from checkout each session. Not part of Ranked/Daily scoring.",
   },
   {
     id: "mastery-reviewer",
@@ -994,19 +959,21 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "ranked-playtests",
     title: "Playtests",
     description:
-      "The Playtests operations home: the existing primitives a playtest is assembled from, and the named gaps that remain.",
+      "One place to play every game mode: Ranked Bot playtests (Roster Lock, Draft Memory, Chronoscope, Match Grid, Reconstruct, Order Forge), the Rangefinder and Glyph Press prototypes, and the Stat Drop and Combat Estimate experiments.",
     area: "leaguecraft",
     section: "ranked",
     subsection: "playtests",
     kind: "panel",
     path: "/admin/leaguecraft?section=ranked&view=playtests",
-    oldLocation: "Does not exist — the primitives are scattered across five places",
-    disposition: "MOVE",
+    oldLocation: "/admin/interaction-labs (Rangefinder + Glyph Press, local JSON packs) and /admin/numeric-lab (Stat Drop + Combat Estimate)",
+    legacyRoutes: ["/admin/interaction-labs", "/admin/numeric-lab"],
+    disposition: "MERGE",
     dangerLevel: "none",
-    status: "Future gap",
-    authorization: "AdminRoute + AdminAuthGate — no new capability, no new restriction.",
+    status: "Internal",
+    authorization:
+      "AdminRoute + AdminAuthGate. Every round is the backend's: Ranked Bot presets are admin-only at the queue (RANKED_PRESET_NOT_AUTHORIZED); /api/admin/interaction-lab/* and /api/admin/numeric-lab/* sit behind require_admin (numeric also behind NUMERIC_LAB_ENABLED); availability is read from /api/admin/playtests/status.",
     notes:
-      "Navigation home only. No allowlist, no cohort mechanism and no restriction on normal Ranked PvP or Ranked Bot is introduced.",
+      "Lab modes play at /admin/playtests/:mode. Prototypes and experiments hold their historical, answer-bearing packs server-side (none ships in the bundle); Rangefinder/Glyph Press grade with their original prototype rules, Stat Drop/Combat Estimate reveal the historical value with no tolerance adopted. Nothing awards rating, points or leaderboard standing. No allowlist, cohort mechanism or restriction on normal Ranked PvP or Ranked Bot is introduced.",
   },
   {
     id: "ranked-lifecycle-worker",

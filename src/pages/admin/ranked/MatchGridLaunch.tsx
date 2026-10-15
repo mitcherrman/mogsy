@@ -1,11 +1,12 @@
 /** MG-P3 — owner playtest launcher for the admin-only `admin.match` preset. */
-import { PresetLaunch } from "./PresetLaunch";
+import { PresetLaunch, type HubLaunchProps } from "./PresetLaunch";
 
 export const MATCH_GRID_PRESET = "admin.match";
 
-export function MatchGridLaunch() {
+export function MatchGridLaunch(hub: HubLaunchProps = {}) {
   return (
     <PresetLaunch
+      {...hub}
       preset={MATCH_GRID_PRESET}
       testId="match-grid-launch"
       buttonLabel="Play Match Grid"
