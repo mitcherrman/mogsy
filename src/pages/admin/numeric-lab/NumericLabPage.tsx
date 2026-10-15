@@ -15,7 +15,7 @@
  * descriptive, and the owner's gut call is logged blind for CEG1's offline
  * grader. Nothing is stored server-side.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Download, FlaskConical } from "lucide-react";
 import {
@@ -77,10 +77,16 @@ function LoadState({ s }: { s: Load<unknown> }) {
   return <p role="alert" data-testid="numeric-lab-error" className="mx-auto max-w-2xl p-6 text-center text-sm text-red-300">{why}</p>;
 }
 
-export default function NumericLabPage({ api: injected }: { api?: NumericLabApi } = {}) {
+export default function NumericLabPage({ api: injected, mode: fixedMode, lead }: {
+  api?: NumericLabApi;
+  /** UGMP: launched for ONE mechanic from Ranked → Playtests; the switch gives way to `lead`. */
+  mode?: Mode;
+  /** UGMP: what the arena's chrome row starts with in place of the switch (the way back to Playtests). */
+  lead?: ReactNode;
+} = {}) {
   const api = useMemo(() => injected ?? numericLabApi(), [injected]);
   const [params, setParams] = useSearchParams();
-  const mode: Mode = params.get("mode") === "combat-estimate" ? "combat-estimate" : "stat-drop";
+  const mode: Mode = fixedMode ?? (params.get("mode") === "combat-estimate" ? "combat-estimate" : "stat-drop");
   const sd = useRounds<StatDropRounds>(api.statDropRounds, `sd:${String(!!injected)}`);
   const ce = useRounds<CombatEstimateRounds>(api.combatEstimateRounds, `ce:${String(!!injected)}`);
 
@@ -102,7 +108,7 @@ export default function NumericLabPage({ api: injected }: { api?: NumericLabApi 
     ? (ce.state === "ready" ? `CE1 capture of ${ce.data.capture.implementation} at backend ${ce.data.capture.backend_commit.slice(0, 8)}, captured ${ce.data.capture.captured_at.slice(0, 10)}. Beam scale: ${ce.data.capture.scale_policy.id} (development-only).` : "")
     : (sd.state === "ready" ? `MIG1.2 rounds from ${sd.data.capture_source.branch} @ ${sd.data.capture_source.commit.slice(0, 8)}: Pro Play and Journey authority captures; scales are lab-authored per metric family.` : "");
 
-  const modeSwitch = (
+  const modeSwitch = fixedMode ? lead : (
     <nav aria-label="Mechanic" className="flex shrink-0 gap-1">
       {(["stat-drop", "combat-estimate"] as Mode[]).map((m) => (
         <button key={m} type="button" data-testid={`numeric-lab-tab-${m}`} aria-pressed={mode === m} onClick={() => setMode(m)}

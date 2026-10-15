@@ -1,11 +1,12 @@
 /** OF1 — owner playtest launcher for the admin-only `admin.order_forge` preset. */
-import { PresetLaunch } from "./PresetLaunch";
+import { PresetLaunch, type HubLaunchProps } from "./PresetLaunch";
 
 export const ORDER_FORGE_PRESET = "admin.order_forge";
 
-export function OrderForgeLaunch() {
+export function OrderForgeLaunch(hub: HubLaunchProps = {}) {
   return (
     <PresetLaunch
+      {...hub}
       preset={ORDER_FORGE_PRESET}
       testId="order-forge-launch"
       buttonLabel="Play Order Forge"
