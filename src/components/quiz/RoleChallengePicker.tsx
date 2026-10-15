@@ -421,7 +421,7 @@ export default function RoleChallengePicker({
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  aria-label={`${c.name}${c.conventional ? "" : ", off-meta in this role"}`}
+                  aria-label={c.name}
                   disabled={busy}
                   onClick={() => choose(() => setChampion(c.id))}
                   className="group flex min-w-0 flex-col items-center gap-0.5 rounded-md p-1 transition-colors hover:bg-[#fff4d6]/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[#5e1220] disabled:opacity-60"
@@ -439,11 +439,7 @@ export default function RoleChallengePicker({
                     style={{ color: active ? INK.strong : INK.body }} title={c.name}>
                     {c.name}
                   </span>
-                  {c.conventional ? null : (
-                    <span className="whitespace-nowrap text-[8.5px] font-extrabold uppercase tracking-wide" style={{ color: INK.faint }}>
-                      Off-meta
-                    </span>
-                  )}
+
                 </button>
               );
             })}
@@ -462,9 +458,7 @@ export default function RoleChallengePicker({
                 {selected.name} · {RANKED_ROLE_LABELS[role]}
               </p>
               <p className="text-[11px] font-semibold" style={{ color: INK.faint }}>
-                {selected.conventional
-                  ? "A conventional pick for this role"
-                  : "Off-meta — still a full challenge"}
+                Any champion can be played in any role.
               </p>
             </div>
           </>

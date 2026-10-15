@@ -91,15 +91,16 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("RC8 Role Challenge picker", () => {
-  it("offers every champion in an off-meta role, with Data Dragon portraits", async () => {
+  it("offers every champion in every role without off-meta labels, with Data Dragon portraits", async () => {
     renderPicker();
     await pickAatroxMid();
-    expect(screen.getByRole("radio", { name: "Aatrox, off-meta in this role" })
+    expect(screen.getByRole("radio", { name: "Aatrox" })
       .getAttribute("aria-checked")).toBe("true");
     const srcs = screen.getAllByTestId("rc-champion-portrait").map((img) => img.getAttribute("src"));
     expect(srcs.some((s) => s?.endsWith("assets/champions/MonkeyKing/icon.png"))).toBe(true);
     expect(srcs.some((s) => s?.includes("/monkeyking/"))).toBe(false);
     expect(screen.getByTestId("rc-selection").textContent).toContain("Aatrox · Mid");
+    expect(screen.getByTestId("role-challenge-picker").textContent).not.toMatch(/off.meta/i);
   });
 
   it("starts with one key and enters the server's match", async () => {
