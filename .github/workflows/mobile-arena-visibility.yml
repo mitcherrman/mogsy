@@ -30,5 +30,15 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Phone viewport and Journey reserve acceptance
         run: npx playwright test -c playwright.arena.config.ts e2e/mobile-arena-visibility.spec.ts --workers=1
+      - name: Preserve real-browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-arena-failure-evidence
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Production bundle
         run: npx vite build
