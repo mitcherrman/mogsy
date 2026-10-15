@@ -12,8 +12,8 @@ and plays. There are no separate labs, no local JSON files, and no answers in th
 
 | Repo | Branch | Base merged in | Work commits |
 |---|---|---|---|
-| frontend `mitcherrman/mogsy` | `ugmp/unified-playtests-fe` (worktree `C:/Users/mlmit/mogzy-wt/ugmp-fe`) | `main` `805529a0` (PR #37) | `ac69ea75` hub + hosts + redirects; later commits: phone stage room, e2e, handoff |
-| backend `mitcherrman/League_Combat_Simulator` | `ugmp/unified-playtests-be` (worktree `.worktrees/ugmp-be`) | `master` `b84b17bc` (PR #32) | `65e52f6e` interaction lab + status; `20552ac5` queue-pause reporting |
+| frontend `mitcherrman/mogsy` | `ugmp/unified-playtests-fe` (worktree `C:/Users/mlmit/mogzy-wt/ugmp-fe`) | `main` `805529a0` (PR #37) | `ac69ea75` hub + hosts + redirects; `d080fb2b` phone stage room, chip contrast, e2e, handoff; merged to `main` as `21a6705b` |
+| backend `mitcherrman/League_Combat_Simulator` | `ugmp/unified-playtests-be` (worktree `.worktrees/ugmp-be`) | `master` `b84b17bc` (PR #32) | `65e52f6e` interaction lab + status; `20552ac5` queue-pause reporting; `32b851de` handoff; merged to `master` as `8c1d9b16` |
 
 Production at the start (2026-10-15): frontend `main` `8afb0ea2` (PR #30/#34 were already in it via
 `1df306a5`; PR #36 followed). Backend `master` and Railway `web` were both at `9fc8a034`.
@@ -143,7 +143,26 @@ Everything else is real: routes, `require_admin`, packs, the Ranked queue, the b
 
 ## 7. PRs and deployment
 
-See §9 for the live status of each step.
+No PR objects exist, because `gh` is not installed and the browser is not signed in to GitHub.
+Each branch was pushed and merged `--no-ff`. The merge commit's tree is byte-identical to the
+tested branch tip.
+
+| Step | Status (2026-10-15) |
+|---|---|
+| Backend `ugmp/unified-playtests-be` → `master` | **merged** as `8c1d9b16` |
+| Railway `web` | **deployed** `8c1d9b16`, status SUCCESS, startup complete. The new routes answer 403 without an owner session (before: `/api/admin/playtests/status` was 404). `/api/meta/champions` and `/assets` return 200. `NUMERIC_LAB_ENABLED=1` is already set on `web`; no variable changed. |
+| Frontend `ugmp/unified-playtests-fe` → `main` | **merged** as `21a6705b` (handoff fast-forwards follow) |
+| Lovable sync + publish | **NOT PUBLISHED.** mogzy.lol still served `index-DnSOZ4RY.js` (no `/admin/playtests/` route) 6+ minutes after the push. Lovable needs its Publish step, and this session cannot sign in to Lovable. The new frontend is not live yet. |
+
+Local re-run recipe (nothing committed beyond the spec):
+* Run the backend through `run_backend.py` (HS256 secret, owner-state and queue-switch stand-ins,
+  disposable DB copy via the SQLite backup API).
+* Run vite with `VITE_E2E_AUTH=1 VITE_COMBAT_API_URL=… VITE_SUPABASE_URL=<dummy>`.
+* Mint a persona with `admin: true`. The PA2B L7 fix makes the E2E admin persona work.
+* Run `UGMP_E2E_PERSONA=… UGMP_E2E_API=… npx playwright test e2e/unified-playtests-live.spec.ts`
+  with a local config whose `baseURL` is that vite.
+* The DEV continuity specs need a plain vite (real `.env`), because they cannot render under the
+  dummy Supabase URL.
 
 ## 8. Not verified here (owner-only)
 
@@ -154,4 +173,20 @@ See §9 for the live status of each step.
 
 ## 9. Next exact action
 
-(updated as the release proceeds)
+1. **Owner: publish the frontend in Lovable.** Confirm that Lovable shows `main` at `21a6705b` or
+   a later docs-only commit, then Publish. Verify that mogzy.lol's entry bundle changed (it was
+   `index-DnSOZ4RY.js`) and that it contains `/admin/playtests/`.
+2. **Owner smoke on the live site,** signed in with MFA:
+   1. Open Admin → Leaguecraft → Ranked → Playtests. All 10 cards should be available.
+   2. Play one Rangefinder and one Glyph Press round. Check that the Glyph Press clue image shows.
+   3. Lock one Stat Drop and one Combat Estimate round.
+   4. Start Match Grid and leave it; the leave guard should take you back to Playtests.
+   5. Open `/admin/interaction-labs` and `/admin/numeric-lab`; both should redirect.
+3. Optional follow-ups, not started:
+   * a tolerance policy for the numeric experiments (CEG1 owner decision);
+   * fresh, server-only content before Rangefinder or Glyph Press could ever be competitive,
+     since the packs are public on GitHub.
+
+Rollback: revert `21a6705b` on `main`, then republish; revert `8c1d9b16` on `master`. Neither
+involves a schema change or data, and the old lab URLs only redirect, so a frontend-only rollback
+is safe.
