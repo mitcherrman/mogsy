@@ -57,10 +57,12 @@ for (const vp of CASES) {
     // captured mastery_slice.v2 / Journey J3 responses read via the production
     // parser, production Mastery renderer and CanonicalArena.
     for (const [capture, step] of [
-      ["jp5-ref-zed-ahri", 1],
-      ["jext-ashe-jinx", 1],
+      ["jp5-ref-zed-ahri", 1],   // four long damage-formula options
+      ["jp5-ref-zed-ahri", 6],   // medium calculation prompt and numbers
+      ["jp5-ref-zed-ahri", 16],  // long composite damage prompt after progression
+      ["jext-ashe-jinx", 1],    // eleven-child Journey with different champions
     ] as const) {
-      test(`real Journey ${capture} child 1 keeps every answer and the timeline visible`, async ({ page }) => {
+      test(`real Journey ${capture} step ${step} keeps every answer and the timeline visible`, async ({ page }) => {
         await page.goto(`/dev/journey-arena?capture=${capture}&step=${step}&host=ranked`);
         await page.waitForSelector('[data-testid="journey-stage"]');
         await page.waitForSelector('[data-testid="ranked-mobile-bottombar"]');
