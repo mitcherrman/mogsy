@@ -205,7 +205,10 @@ export default function AcademyCorePage() {
   }, []);
   const ambient = onScreen && !reduced;
 
-  /* ---------------- the floor: bench edge from the chassis feet ---------------- */
+  /* ---------------- the floor: bench edge from the chassis feet ----------------
+     Capped: the island's bottom padding derives from this value, so an uncapped
+     measurement feeds back into the hero's height on short desktops. */
+  const FLOOR_MAX = 140;
   const heroRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const stage = stageRef.current;
@@ -215,7 +218,7 @@ export default function AcademyCorePage() {
       const s = stage.getBoundingClientRect();
       const h = hero.getBoundingClientRect();
       const feetY = s.top + s.height * (814 / CORE_VIEWBOX.height);
-      hero.style.setProperty("--acore-floor", `${Math.max(0, Math.round(h.bottom - feetY))}px`);
+      hero.style.setProperty("--acore-floor", `${Math.min(FLOOR_MAX, Math.max(0, Math.round(h.bottom - feetY)))}px`);
     };
     measure();
     const ro = new ResizeObserver(measure);

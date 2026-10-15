@@ -1,5 +1,5 @@
 /**
- * Academy Core V2 — performance comparison: existing Home Hub (/lol) vs the
+ * Academy Core V3 — performance comparison: existing Home Hub (/lol) vs the
  * refined Core (/lol/dev/academy-core), same production build, equivalent
  * conditions. PERF1's method, re-run fresh rather than reused as absolutes.
  *
@@ -21,14 +21,14 @@
  * book card's hover class (Hall), and from a click to the destination's
  * content.
  *
- * Writes docs/handoffs/academy-core-v2/perf.json and perf.md.
+ * Writes docs/handoffs/academy-core-v3/perf.json and perf.md.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const BASE = process.env.PERF_BASE ?? "http://127.0.0.1:8126";
-const OUT = path.resolve("docs/handoffs/academy-core-v2");
+const OUT = path.resolve("docs/handoffs/academy-core-v3");
 mkdirSync(OUT, { recursive: true });
 
 type Probe = Record<string, number>;
@@ -102,21 +102,21 @@ async function loadAndMeasure(page: Page, route: string, waitMs = 9000) {
 async function interactionTimings(page: Page, which: keyof typeof PAGES) {
   // hover → state flip
   if (which === "core") {
-    const bay = page.getByTestId("academy-core-bay-combat-lab");
+    const bay = page.getByTestId("academy-core-slot-combat-lab");
     const t = await page.evaluate(() => performance.now());
     await bay.hover();
     await page.waitForFunction(() => document.querySelector('[data-testid="academy-core-stage"]')?.getAttribute("data-focus") === "combat-lab");
     const flip = Math.round((await page.evaluate(() => performance.now())) - t);
     // long tasks during the swing
     await page.evaluate(() => { (window as unknown as { __lt: number[] }).__lt = []; new PerformanceObserver((l) => { for (const e of l.getEntries()) (window as unknown as { __lt: number[] }).__lt.push(Math.round(e.duration)); }).observe({ type: "longtask" }); });
-    await page.getByTestId("academy-core-bay-pro-play").hover();
+    await page.getByTestId("academy-core-slot-pro-play").hover();
     await page.waitForTimeout(900);
-    await page.getByTestId("academy-core-bay-archives").hover();
+    await page.getByTestId("academy-core-slot-archives").hover();
     await page.waitForTimeout(900);
     const longTasks = await page.evaluate(() => (window as unknown as { __lt: number[] }).__lt);
     // click → destination content
     const c0 = Date.now();
-    await page.getByTestId("academy-core-bay-archives").click();
+    await page.getByTestId("academy-core-slot-archives").locator("a").first().click(); // includes the 240 ms activation
     await page.waitForURL(/\/lol\/docs/);
     await page.locator("main h1, main h2").first().waitFor({ state: "visible", timeout: 15000 });
     return { hoverToStateMs: flip, longTasksMs: longTasks, clickToArchivesContentMs: Date.now() - c0 };

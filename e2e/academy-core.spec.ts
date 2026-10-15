@@ -282,7 +282,10 @@ test.describe("desktop", () => {
     expect(real.filter((u) => /academy-library-(desktop|mobile)|book-spine|academy-commons-desktop/.test(u))).toEqual([]);
     expect(real.filter((u) => /academy-book-frame.*\.webp/.test(u))).toHaveLength(1);
     expect(real.filter((u) => /\/splash\//.test(u)).length).toBe(4);
-    expect(real.filter((u) => /champions\/(Ryze|Ahri)\/icon\.png/.test(u))).toEqual([]);
+    // The only champion icons are the live Patch Brief's own (the Patch Report island and the
+    // strata projection reuse them); the destination books use cover art, never manifest icons.
+    const icons = new Set(real.filter((u) => /\/champions\/[^/]+\/icon\.png/.test(u)));
+    expect(icons.size).toBeLessThanOrEqual(CHAMPS.length);
     expect(real.some((u) => u.includes("academy-broadcast-book.webp"))).toBe(true);
   });
 });
