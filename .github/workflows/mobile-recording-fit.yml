@@ -21,10 +21,12 @@ jobs:
           cache: npm
       - name: Install without rewriting existing stale lockfile
         run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
-      - name: Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Chromium and Firefox
+        run: npx playwright install --with-deps chromium firefox
       - name: Browser fit, visibility and continuity
         run: npx playwright test -c playwright.mobile-recording.config.ts
+      - name: Firefox Shorts recording viewport smoke
+        run: MVFIT_FIREFOX=1 npx playwright test -c playwright.mobile-recording.config.ts --grep=509x709
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4

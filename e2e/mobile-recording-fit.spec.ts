@@ -42,7 +42,7 @@ async function inspect(page:import("@playwright/test").Page){
   });
 }
 for(const vp of sizes)for(const shape of shapes){
-  test("mobile fit "+vp.w+"x"+vp.h+" "+shape,async({page})=>{
+  test("mobile fit "+vp.w+"x"+vp.h+" "+shape,async({page,browserName})=>{
     await page.setViewportSize({width:vp.w,height:vp.h});
     await openShape(page,shape);
     let m=await inspect(page);
@@ -69,7 +69,7 @@ for(const vp of sizes)for(const shape of shapes){
       expect(m.choices[3].bottom,JSON.stringify(m)).toBeLessThanOrEqual(m.bar.top-1);
     }
     if(vp.w===509 && shape==="media"){
-      await page.screenshot({path:"test-results/mvfit-"+vp.w+"x"+vp.h+"-item.png",fullPage:false});
+      await page.screenshot({path:"test-results/mvfit-"+vp.w+"x"+vp.h+"-item-"+browserName+".png",fullPage:false});
     }
   });
 }

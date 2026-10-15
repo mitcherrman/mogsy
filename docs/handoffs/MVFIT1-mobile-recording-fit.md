@@ -44,8 +44,10 @@ phone Ranked/Daily arena, **not** a recording-only or Daily-only fork.
 - PR #29 on branch `fix/mobile-recording-viewport-fit-20261015`.
 - Initial run with 3 viewport sizes: 16/16 Chromium tests passed,
   answer-grid anchor spread 0px at 509×709, Vite production build succeeded.
-- This commit extends the test matrix to 509×739, 509×761 and 600×820,
-  and smooths the art cap across the 760px seam.
+- Extended Chromium matrix: 6 viewports × 5 shapes + stable answer-anchor
+  test, 31/31 passed; October 14 phone visibility regression passed.
+- Firefox 509×709 smoke (five shapes + anchor stability) added to the PR
+  workflow as the final cross-browser verification gate.
 
 ## Next
 Wait for final PR check run. Inspect the 509×709 artifact screenshot and
