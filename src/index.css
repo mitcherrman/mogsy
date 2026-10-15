@@ -1572,6 +1572,7 @@ html.reduce-motion .ranked-award-pop--bonus {
     transform: none;
   }
   .reward-card__spine { animation: none; }
+  .reward-mascot-out { animation: none; opacity: 0; }
   .reward-sheen { display: none; }
   .reward-glow { animation: none; opacity: 0.6; }
   .reward-xp-value[data-landed="true"] .reward-xp-value__figure { animation: none; }
@@ -1583,6 +1584,7 @@ html.reduce-motion .reward-card,
 html.reduce-motion .reward-card__spine,
 html.reduce-motion .reward-mascot,
 html.reduce-motion .reward-glow { animation-delay: 0ms !important; }
+html.reduce-motion .reward-mascot-out { animation: none; opacity: 0; }
 html.reduce-motion .reward-sheen { display: none; }
 html.reduce-motion .reward-glow { opacity: 0.6; }
 @keyframes reward-fade {
