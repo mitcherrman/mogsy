@@ -35,9 +35,20 @@ export const POLICY_KEYS = {
   // Deliberately a POLICY row and not an entitlement column: policy is global
   // and reversible, entitlement is per-account and owned.
   globalPremiumAccess: "global_premium_access",
+  // Live operational kill switches. Unlike the legacy Play-menu visibility
+  // controls, these are enforced on backend NEW starts/joins.
+  queueDailyEnabled: "queue_daily_enabled",
+  queueRoleEnabled: "queue_role_challenge_enabled",
+  queueRankedEnabled: "queue_ranked_enabled",
 } as const;
 
 export interface PlatformPolicy {
+  /** Owner-operated backend enforced controls for new game/queue starts. */
+  queues: {
+    daily: boolean;
+    role: boolean;
+    ranked: boolean;
+  };
   combatSim: {
     /** Non-Pro users must possess/spend Combat Sim tokens to run a simulation. */
     tokensRequiredForNonPro: boolean;
@@ -163,6 +174,7 @@ export interface PlatformPolicy {
  * be a regression, and a missing or malformed row correctly means "no badge".
  */
 export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
+  queues: { daily: true, role: true, ranked: true },
   combatSim: { tokensRequiredForNonPro: true },
   navigation: { globalNavbarVisible: true },
   community: { showBotLabels: false },
@@ -209,6 +221,7 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
     navigation: { ...DEFAULT_PLATFORM_POLICY.navigation },
     community: { ...DEFAULT_PLATFORM_POLICY.community },
     play: { modes: { ...DEFAULT_PLATFORM_POLICY.play.modes } },
+    queues: { ...DEFAULT_PLATFORM_POLICY.queues },
     academy: { ...DEFAULT_PLATFORM_POLICY.academy },
     premium: { ...DEFAULT_PLATFORM_POLICY.premium },
   };
@@ -216,6 +229,15 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
 
   for (const row of rows) {
     switch (row?.key) {
+      case POLICY_KEYS.queueDailyEnabled:
+        policy.queues.daily = readEnabled(row.value, DEFAULT_PLATFORM_POLICY.queues.daily);
+        break;
+      case POLICY_KEYS.queueRoleEnabled:
+        policy.queues.role = readEnabled(row.value, DEFAULT_PLATFORM_POLICY.queues.role);
+        break;
+      case POLICY_KEYS.queueRankedEnabled:
+        policy.queues.ranked = readEnabled(row.value, DEFAULT_PLATFORM_POLICY.queues.ranked);
+        break;
       case POLICY_KEYS.combatSimTokensRequiredForNonPro:
         policy.combatSim.tokensRequiredForNonPro = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.combatSim.tokensRequiredForNonPro);
