@@ -38,3 +38,11 @@ Follow-up to draft PR #30: retain MG-UX1 component and real Ranked grading, impr
 ## CI evidence
 - First MG-UX2 code checkpoint [run 38691995426](https://github.com/mitcherrman/mogsy/actions/runs/38691995426) passed **123/123 Vitest**, lint, production build, **13/13** dev browser cases (including answer-secrecy pre-lock and 6 viewports with reduced-motion).
 - The later opt-in inspector and row typography commits require **fresh CI**. Track the latest code SHA, not prior successes. No real backend scoring E2E is included.
+
+## Final targeted CI checkpoint — 2026-10-14 PT
+- **Exact code SHA:** `e20c883ae6486d7c126042382e953e448175307b`.
+- **CI run:** https://github.com/mitcherrman/mogsy/actions/runs/38692720273 — **SUCCESS, both jobs**. Vitest **124/124**, ESLint, production Vite build; self-contained Chromium DEV continuity **13/13** across six viewport sizes × normal/reduced motion, plus pre-lock secrecy assertion.
+- The first 123/13 green checkpoint before the optional teaching inspector: https://github.com/mitcherrman/mogsy/actions/runs/38691995426. Neither result substitutes for an actual server-backed Ranked owner match.
+- **Ranked mobile structural source audit:** `src/components/ranked-arena/ArenaShell.tsx` explicitly documents that below `lg`, natural-height contents grow the shell and **scroll the document**; `src/components/ranked-arena/CanonicalArena.tsx` preserves this page-scrolling architecture. `QuizRankedMatch.tsx` supplies ForfeitControl through `hudAction`. Thus the screenshot's controls below the viewport are **consistent with intended page scrolling**, not proof of clipping. A real owner-action scroll/tap smoke remains required.
+- **Interaction caveat:** server-held reveal windows are short; the optional details panel should not be presented as a replacement for persistent post-match Review. Verify it does not interfere with automatic round advance or the real host's ability to reach controls.
+- PR #34 remains **draft**; original PR #30 remains draft. Fresh visual evidence of MG-UX2 on the real arena and authenticated graded backend E2E are **not** yet certified. Do not publish or merge into production based only on DEV CI.
