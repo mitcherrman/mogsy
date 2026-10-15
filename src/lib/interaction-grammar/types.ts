@@ -556,3 +556,192 @@ export interface EstimateReveal {
 // Estimate is NOT a SegmentChoice yet: `{ estimate }` is a new transport shape.
 // The production seam (a `combat_estimate.v1` module) widens `SegmentChoice` then.
 export type _EstimateIsNotSegmentChoiceYet = Assert<EstimateResponse extends SegmentChoice ? false : true>;
+
+// ---------------------------------------------------------------- Rangefinder
+//
+// GM-R1 — PLACE. The player puts a target on a field at the distance a
+// subject's measure reaches. The field is a set of discrete STOPS (opaque
+// tokens with a presentation distance); the response is one stop token. The
+// primitive draws distance; it never knows which stop is canonical until a
+// reveal hands it one.
+
+/** One legal placement. `units` is for drawing and reading; `token` is what is submitted. */
+export interface RangefinderStop {
+  token: string;
+  units: number;
+}
+
+/** One optical setting of the instrument: how far the field shows. Presentation only. */
+export interface RangefinderLens {
+  id: string;
+  /** Short engraved label, e.g. "Field" / "Horizon". */
+  label: string;
+  /** The distance at the field's far edge. */
+  maxUnits: number;
+  /** Calibration ring spacing, e.g. 100. */
+  ringEveryUnits: number;
+  /** Which rings carry an engraved figure, e.g. 500. A multiple of `ringEveryUnits`. */
+  labelEveryUnits: number;
+}
+
+export interface RangefinderField {
+  /** "units" — the engraved unit name. */
+  unitLabel: string;
+  /** Ascending by `units`, distinct tokens, distinct units. Every stop behaves identically. */
+  stops: readonly RangefinderStop[];
+  /** At least one; the first is the default. The player chooses; nothing in a round suggests one. */
+  lenses: readonly RangefinderLens[];
+}
+
+export interface RangefinderSubject {
+  /** The ability's name. */
+  label: string;
+  /** Under the label: "Janna · W". */
+  sublabel?: string | null;
+  /** The slot letter drawn on the art bezel, if any. */
+  slot?: string | null;
+  /** Ability art. */
+  media?: SubjectMedia | null;
+  /** Art for the origin piece (the champion). */
+  originMedia?: SubjectMedia | null;
+  monogram?: string | null;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface RangefinderPublic {
+  prompt: string;
+  /** The measure the ring stands for, e.g. "Cast range". */
+  measureLabel: string;
+  subject: RangefinderSubject;
+  field: RangefinderField;
+  /** The host's footnote under the instrument once the hand is off, e.g. a source line. */
+  footnote?: string | null;
+}
+
+/** The host-owned value: a stop token, or null before any placement. */
+export type RangefinderValue = string | null;
+
+/** The response: the stop the player locked. Opaque to the client. */
+export interface RangefinderResponse {
+  stop: string;
+}
+
+/** Authority-supplied, post-reveal only. Display only. */
+export interface RangefinderReveal {
+  /** The stop the player locked, as the host recorded it. */
+  lockedToken: string;
+  /** The stop the authority says is right. */
+  canonicalToken: string;
+  /** The host's verdict; the primitive never derives it from the tokens. */
+  verdict: "exact" | "short" | "long";
+  /** The fact plate: "Cast range" / "550". */
+  measurement: { label: string; valueText: string };
+  /** The player's reading, formatted by the host: "600". */
+  lockedText: string;
+  /** The signed difference, formatted by the host: "+50 units". Null when exact. */
+  deltaText?: string | null;
+  /** A short line from the authority, if any. */
+  note?: string | null;
+  source?: { label: string; url?: string | null } | null;
+}
+
+// Rangefinder is NOT a SegmentChoice yet: `{ stop }` is a new transport shape.
+// The production seam (a `rangefinder.v1` module) widens `SegmentChoice` then.
+export type _RangefinderIsNotSegmentChoiceYet = Assert<RangefinderResponse extends SegmentChoice ? false : true>;
+
+// ---------------------------------------------------------------- Glyph Press
+//
+// WP1 — SPELL. The player completes a partially engraved word or phrase. The
+// authority publishes only the phrase's STRUCTURE (which positions are glyph
+// sockets, which are engraved marks such as an apostrophe, where the words
+// break) plus whatever it has chosen to disclose: the given glyphs and the
+// result of every sounding so far. The response is one glyph per socket. The
+// primitive draws sockets; it never knows a canonical glyph until the ledger
+// or a reveal hands it one.
+
+/** One position in the phrase, in reading order. */
+export type GlyphPressCell =
+  /** A socket the player fills. `index` is its position among the sockets. */
+  | { kind: "glyph"; index: number }
+  /** A character engraved as given (punctuation, a digit, an ampersand). */
+  | { kind: "mark"; text: string }
+  /** A word boundary. */
+  | { kind: "gap" };
+
+export interface GlyphPressStructure {
+  cells: readonly GlyphPressCell[];
+  /** How many `glyph` cells there are. */
+  glyphCount: number;
+}
+
+export interface GlyphPressClue {
+  media?: SubjectMedia | null;
+  /** One short line under the prompt, e.g. "Janna · W". The line is reserved even when null. */
+  caption?: string | null;
+  /** 1–3 characters drawn when there is no art. */
+  monogram?: string | null;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface GlyphPressPublic {
+  prompt: string;
+  /** The content family, short: "Ability", "Item". */
+  categoryLabel: string;
+  clue: GlyphPressClue;
+  structure: GlyphPressStructure;
+  /** The glyphs the drum carries, in drum order. Uppercase, distinct. */
+  alphabet: string;
+  /** How many soundings the authority allows this round. */
+  soundingsAllowed: number;
+  /** The host's footnote under the instrument once the hand is off, e.g. a source line. */
+  footnote?: string | null;
+}
+
+/** One sounding the authority has answered. `hits` is how many sockets hold the glyph. */
+export interface GlyphPressSounding {
+  glyph: string;
+  hits: number;
+}
+
+/**
+ * Everything the authority has DISCLOSED so far this round. The host owns it
+ * and replaces it after every sounding; the primitive only reads it.
+ */
+export interface GlyphPressLedger {
+  /** Per socket: the disclosed glyph, or null while the socket is the player's to fill. */
+  engraved: readonly (string | null)[];
+  soundings: readonly GlyphPressSounding[];
+}
+
+/** The host-owned value: the player's glyph per socket (null = blank). Engraved sockets are ignored. */
+export type GlyphPressValue = readonly (string | null)[];
+
+/** The response: one glyph per socket (engraved sockets carry their engraved glyph), null where left blank. */
+export interface GlyphPressResponse {
+  glyphs: readonly (string | null)[];
+}
+
+export type GlyphPressCellResult = "given" | "sounded" | "right" | "wrong" | "missing";
+
+/** Authority-supplied, post-reveal only. Display only. */
+export interface GlyphPressReveal {
+  /** The canonical glyph per socket. Only ever supplied here. */
+  glyphs: readonly string[];
+  /** Per socket, straight from the grader. */
+  results: readonly GlyphPressCellResult[];
+  /** What the player locked, as the host recorded it. */
+  locked: readonly (string | null)[];
+  /** The host's verdict on the whole answer. */
+  verdict: "solved" | "partial" | "missed";
+  /** The completed answer in its display form: "Rabadon's Deathcap". */
+  answerText: string;
+  /** The host's own score line: "7 of 9 glyphs". */
+  scoreText: string;
+  /** A short line from the authority, if any. */
+  note?: string | null;
+  source?: { label: string; url?: string | null } | null;
+}
+
+// Glyph Press is NOT a SegmentChoice yet: `{ glyphs }` is a new transport shape.
+// The production seam (a `glyph_press.v1` module) widens `SegmentChoice` then.
+export type _GlyphPressIsNotSegmentChoiceYet = Assert<GlyphPressResponse extends SegmentChoice ? false : true>;

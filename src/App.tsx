@@ -293,6 +293,14 @@ const CombatEstimateLab = import.meta.env.DEV
 const ProPlayAssemblyLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/pro-play-assembly/ProPlayAssemblyLab"))
   : null;
+// INT1 owner-only Rangefinder and Glyph Press prototypes; captures are not in prod chunks.
+const RangefinderLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/rangefinder/RangefinderDevLab"))
+  : null;
+const WordPuzzleLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleDevLab"))
+  : null;
+const InteractionLabPage = lazy(() => import("./pages/admin/interaction-labs/InteractionLabPage"));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -523,6 +531,9 @@ export const appRouter = createBrowserRouter(
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
+                  {/* INT1 owner-only historic interaction prototypes. */}
+                  <Route path="/admin/interaction-labs" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/interaction-labs/:lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   <Route path="/admin/numeric-lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><NumericLabPage /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
@@ -717,6 +728,12 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
+                  ) : null}
+                  {RangefinderLab ? (
+                    <Route path="/dev/rangefinder" element={<Suspense fallback={<RouteFallback />}><RangefinderLab /></Suspense>} />
+                  ) : null}
+                  {WordPuzzleLab ? (
+                    <Route path="/dev/word-puzzle" element={<Suspense fallback={<RouteFallback />}><WordPuzzleLab /></Suspense>} />
                   ) : null}
                   {isInteractionLabEnabled() && InteractionLab ? (
                     <Route path={INTERACTION_LAB_ROUTE} element={<Suspense fallback={<RouteFallback />}><InteractionLab /></Suspense>} />
