@@ -281,6 +281,8 @@ export function CanonicalArena({
   // banners; a card flank (Daily, staff duel) or a mode panel is left alone.
   const mobileDuel = [view.left, view.right].every((r) =>
     r.kind === "combatant" && r.presentation === "banner");
+  // JSPACE1: only a real Journey state gets condensed mobile chrome.
+  const journeyMobile = mobileDuel && moduleSurface?.segmentState?.journey != null;
   // PPQ2-A — a `panel` flank is a DESKTOP flank. Below `lg` the arena stacks,
   // and a panel's row there would sit between the header and the question —
   // the same reason the duel banners give way on a phone. So it is not
@@ -356,7 +358,9 @@ export function CanonicalArena({
       mobileDuel ? "" : "pb-[var(--mogzy-dock-clearance)] lg:pb-0"}`}
       data-testid="ranked-match"
       // RMOB2 — the phone one-screen composition keys off this (index.css).
-      data-phone-arena={mobileDuel ? "true" : undefined} data-reveal-hold={view.revealHold ? "true" : "false"}
+      data-phone-arena={mobileDuel ? "true" : undefined}
+      data-mobile-journey={journeyMobile ? "true" : undefined}
+      data-reveal-hold={view.revealHold ? "true" : "false"}
       // RFX1 2B1 — the presentation the arena is in, observable without
       // reading text: `module-intro` may never be up once input is open.
       data-presentation-phase={view.presentationPhase}
@@ -587,6 +591,7 @@ export function CanonicalArena({
           Ranked banners only; any other flank keeps its own presentation. */}
       {mobileDuel && view.left.kind === "combatant" && view.right.kind === "combatant" && (
         <MobileMatchBar left={view.left} right={view.right} header={header}
+          compactJourney={journeyMobile}
           progressionEnabled={view.progressionEnabled} className="lg:hidden" />
       )}
       {/* THE CARD-BY-CARD TRANSCRIPT — the one thing the retired segment
@@ -922,7 +927,7 @@ export function CanonicalArena({
           timeline · Rules. Mounted only on a phone viewport (see the bar). The
           strip below stays the arena's last child and the desktop floor; on a
           phone Ranked arena CSS hides it in favour of the bar. */}
-      {mobileDuel && timeline && <MobileBottomBar timeline={timeline} className="lg:hidden" />}
+      {mobileDuel && timeline && <MobileBottomBar timeline={timeline} journeyCompact={journeyMobile} className="lg:hidden" />}
       {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
 
       {/* RFX1 2B3 — the PRESENTATION OVERLAY. LAST, so it lays over everything
