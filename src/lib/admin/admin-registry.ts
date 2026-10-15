@@ -145,6 +145,7 @@ export const ADMIN_AREAS: AdminArea[] = [
     sections: [
       { id: "questions", label: "Questions", summary: "The unified Builder / Review / Ranked Duel workspace." },
       { id: "reports", label: "Reports & Overrides", summary: "User-reported questions and authoritative answer overrides." },
+      { id: "creator", label: "Creator Replay", summary: "Owner filming sessions, independent of official daily attempts." },
       { id: "mastery", label: "Mastery", summary: "Mastery artifacts and coverage." },
       {
         id: "premium-preview",
@@ -610,6 +611,20 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // LEAGUECRAFT
   // =========================================================================
   {
+    id: "creator-replay",
+    title: "Creator Replay",
+    description: "Record unlimited independent Daily Challenge takes without clearing official results.",
+    area: "leaguecraft",
+    section: "creator",
+    kind: "route",
+    path: "/admin/creator-replay",
+    oldLocation: "Not previously implemented",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    authorization: "AdminRoute + backend require_admin; separate Daily policy per take.",
+  },
+  {
     id: "quiz-content-workspace",
     title: "Admin Quiz Review",
     description:
@@ -725,6 +740,41 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Inherits the /admin layout gate; backend require_admin on /api/ranked/admin/mastery-slice/*.",
     notes:
       "GENERATED questions, not stored ones. A mastery_slice question is synthesized when a match opens the segment and frozen onto that one round — it is never a row. This is deliberately NOT a Quiz Review tab: Quiz Review is a table of stored, approvable questions, and generated samples do not belong in it. Read-only — previewing creates no attempt, no history, no match, no round and no stored question, which the backend enforces with a sqlite authorizer rather than by convention. It calls the SAME generator a live match calls and draws the result with the SAME component the Ranked arena draws a challenge with.",
+  },
+  {
+    id: "numeric-lab",
+    title: "Numeric Modes Lab",
+    description:
+      "Owner playtest of the original Stat Drop (MIG1.2) and two-beam Combat Estimate (CE1) prototypes over historical authority captures, with a blind gut-call log for the grading decision.",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "question-bank",
+    kind: "route",
+    path: "/admin/numeric-lab",
+    oldLocation: "none — both prototypes were DEV-only labs (MIG1 Interaction Lab, CE1 Combat Estimate lab)",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Prototype",
+    authorization:
+      "AdminRoute; every round comes from /api/admin/numeric-lab/* behind backend require_admin and NUMERIC_LAB_ENABLED (off by default).",
+    notes:
+      "PROTOTYPE — not server-authoritatively graded. Values are historical captures (CE1: certified combat seam at backend 8829fc3c; MIG1.2: Pro Play and Journey captures), not current-patch facts. The page bundle holds no round or answer; a round's private block is released only by its own Lock. No tolerance is adopted (CEG1 is research): the reveal is descriptive and the owner's gut calls export as CEG1's playtest CSV. Writes nothing. Not part of Quiz, Daily or Ranked.",
+  },
+  {
+    id: "interaction-mode-labs",
+    title: "Rangefinder + Glyph Press Labs",
+    description: "Owner-only cast-range placement and League word puzzle prototypes.",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "playtests",
+    kind: "route",
+    path: "/admin/interaction-labs",
+    oldLocation: "Formerly DEV-only Rangefinder and Word Puzzle labs",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Prototype",
+    authorization: "AdminRoute owner gate; local historical JSON pack stays in browser tab memory.",
+    notes: "Prototype — not server-authoritatively graded. Historical source fixtures are publicly readable on GitHub but absent from production JS. Select JSON pack from checkout each session. Not part of Ranked/Daily scoring.",
   },
   {
     id: "mastery-reviewer",

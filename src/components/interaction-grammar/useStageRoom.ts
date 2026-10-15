@@ -4,11 +4,10 @@
  * The CanonicalArena wraps a module's viewport in a content-sized, centred box
  * (`lg:my-auto`), so a primitive that wants to SPEND the stage rather than sit
  * in the middle of it has to be told the stage's inner height. Match Grid
- * (GM-M1 / P3) established the pattern and Rangefinder (GM-R1) reused it:
- * measure the nearest `.ranked-question-stage` before paint, re-measure on
- * resize, and hand the primitive a definite `maxHeight`. Outside a stage
- * (tests, a bare lab) it reads `undefined` and the primitive keeps its natural
- * height.
+ * (GM-M1 / P3) established the pattern: measure the nearest
+ * `.ranked-question-stage` before paint, re-measure on resize, and hand the
+ * primitive a definite `maxHeight`. Outside a stage (tests, a bare lab) it
+ * reads `undefined` and the primitive keeps its natural height.
  *
  * The HOST calls this, never the primitive: the primitive knows nothing about
  * the arena's class names.

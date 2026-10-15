@@ -30,6 +30,11 @@ export interface OwnerAuthHookState extends OwnerAuthState {
   ensureAuthorized: () => Promise<boolean>;
 }
 
+// Dev/E2E only: ONE stable function. A fresh closure per render re-fired
+// AdminAuthProvider's effect (it depends on `ensureAuthorized`) every render,
+// so the admin workspace never settled under the E2E identity (PA2B L7).
+const E2E_ENSURE_AUTHORIZED = async () => true;
+
 export function useOwnerAuth(): OwnerAuthHookState {
   const { user, loading: authLoading } = useAuth();
   // Anonymous sessions are never the owner; don't ask the server about them.
@@ -51,7 +56,7 @@ export function useOwnerAuth(): OwnerAuthHookState {
     if (e2e && e2e.admin && userId && e2e.user.id === userId) {
       return {
         userId, isOwner: true, authorized: true, aal: "aal2", trustedDevice: false, freshAal2: true,
-        loading: false, phase: "authorized", stale: false, recheck, ensureAuthorized: async () => true,
+        loading: false, phase: "authorized", stale: false, recheck, ensureAuthorized: E2E_ENSURE_AUTHORIZED,
       };
     }
   }

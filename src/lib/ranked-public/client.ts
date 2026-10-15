@@ -572,7 +572,12 @@ export type SegmentChoice =
    * server's opaque positional tokens only (`e0..` / `g0..`). Row order
    * carries no meaning; never a rune/tree name, key, or correctness.
    */
-  | { assignments: readonly { readonly entity_id: string; readonly group_id: string }[] };
+  | { assignments: readonly { readonly entity_id: string; readonly group_id: string }[] }
+  /**
+   * `scrub.v1` (SCRUB-S2): the ONE checkpoint token the player locked
+   * (`"w4"`). Never a level, an XP figure or a verdict.
+   */
+  | { checkpoint: string };
 
 const assertNever = (x: never): never => {
   throw new Error(`Unsupported segment choice: ${JSON.stringify(x)}`);
@@ -602,6 +607,7 @@ export const submitSegmentChallenge = (
         : "assignments" in choice ? {
           assignments: choice.assignments.map((r) => ({ entity_id: r.entity_id, group_id: r.group_id })),
         }
+        : "checkpoint" in choice ? { checkpoint: choice.checkpoint }
         : "itemId" in choice ? { item_id: choice.itemId }
         : assertNever(choice),
       signal,

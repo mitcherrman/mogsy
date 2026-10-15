@@ -213,3 +213,6 @@ Both original handoffs already scope this; INT1 confirms it is required, not opt
   (verified heads above). Cloud agent could not reach the Windows checkout, which
   is why recovery went through the owner.
 - INT1 (this revision): merged originals, owner-only production entry, audit, tests.
+
+## INT1.2 — Command Center integration (2026-10-14)
+Original prototype branch `a4400ccb` merged onto `main` `ecc6fcbe`, preserving Assembly, Scrub, Numeric, Creator Replay and mobile arena regression work. Added owner `/admin/interaction-labs` routes and Leaguecraft → Ranked → Playtests registry entry; DEV-only originals remain. Shared stage hook retained from main because implementation body is identical. Original 124+16 unit and 44 browser tests need rerun against merged main. Not public Ranked/Daily, not server-graded. Owner must choose historic pack from disk each session; content was already public on GitHub. Real owner MFA smoke still required.

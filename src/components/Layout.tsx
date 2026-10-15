@@ -103,10 +103,16 @@ export default function Layout() {
     // PPQ2-A — the neutral question-surface probe measures the arena's own
     // footprint, so it gets the same page frame as Ranked.
     || pathname === "/dev/arena-question-probe"
+    // CE1 — the Combat Estimate lab mounts the arena's own frame, so it gets the same page frame as Ranked.
+    || pathname === "/dev/combat-estimate"
+    // NUM-REC2 — the owner numeric lab mounts the same arena frame (and its DEV twin).
+    || pathname === "/admin/numeric-lab" || pathname === "/dev/numeric-lab"
     // PPQ2-INT — the playable Pro Play Arena gets the same arena frame. It sits
     // under /lol/ so it also gets the LoL theme (`dark theme-lol`) that every
     // production arena route has; outside it the header reads dark-on-navy.
     || pathname === "/lol/dev/pro-play-arena"
+    // PAV1 — the Pro Play Assembly lab mounts the arena's own frame, so it gets the same page frame as Ranked.
+    || pathname === "/dev/pro-play-assembly"
     // PPQ2-E — the production Pro Play Quiz IS that arena now (it was a
     // max-w-2xl reading column). Already in the LoL section for its theme.
     || pathname === PRO_PLAY_QUIZ_ROUTE
@@ -118,12 +124,9 @@ export default function Layout() {
     || isWorldsExperienceSurface(pathname)
     // GM-M1 — the Match Grid lab brings its own max-width and gutters.
     || pathname === "/dev/match-grid"
-    // GM-R1 — the Rangefinder lab mounts the arena's own frame, so it gets the same page frame as Ranked.
     || pathname === "/dev/rangefinder"
-    // WP1 — the Word Puzzle lab mounts the arena's own frame, so it gets the same page frame as Ranked.
     || pathname === "/dev/word-puzzle"
-    // INT1 — the owner-only production entry for the same two labs.
-    || pathname.startsWith("/admin/interaction-labs/");
+    || pathname.startsWith("/admin/interaction-labs");
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

@@ -45,6 +45,7 @@ import {
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
+import { INTERACTION_LAB_ROUTE, isInteractionLabEnabled } from "@/lib/interaction-grammar/featureGate";
 import { isWorldsExperienceEnabled, WORLDS_EXPERIENCE_ROUTE } from "@/lib/pro-play/worldsExperience/productionGate";
 import { Suspense } from "react";
 import { lazy } from "react";
@@ -140,6 +141,8 @@ const AdminOverviewPage = lazy(() => import("./pages/admin/areas/AdminOverviewPa
 const AdminAllToolsPage = lazy(() => import("./pages/admin/areas/AdminAllToolsPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/areas/AdminUsersPage"));
 const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
+const CreatorReplayPage = lazy(() => import("./pages/admin/CreatorReplayPage"));
+const CreatorReplayRunPage = lazy(() => import("./pages/admin/CreatorReplayRunPage"));
 const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulationPage"));
 const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPage"));
 const ContentAtlasPage = lazy(() => import("./pages/admin/ContentAtlasPage"));
@@ -266,16 +269,37 @@ const WorldsExperienceDev = import.meta.env.DEV
 const MatchGridLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
   : null;
-// GM-R1: the Rangefinder playtest lab. Same DEVELOPMENT-ONLY rule.
+// MIG1.1 — DEV-ONLY Interaction Lab. The lazy import itself is gated, not just
+// the route: in a production build the gate is the literal `false`, so neither
+// the route nor the chunk exists there (see interaction-grammar/featureGate).
+const InteractionLab = isInteractionLabEnabled()
+  ? lazy(() => import("./pages/dev/interaction-lab/InteractionLab"))
+  : null;
+// NUM-REC2: the owner-only numeric playtest (original Stat Drop + CE1 two-beam
+// Combat Estimate). It carries no round or answer: every round comes from
+// /api/admin/numeric-lab/*, gated server-side by require_admin and a flag.
+// Production: /admin/numeric-lab behind AdminRoute. DEV: the same page at
+// /dev/numeric-lab (no gate) so browser specs can stand in for the backend.
+const NumericLabPage = lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"));
+const NumericLabPageDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"))
+  : null;
+// CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
+const CombatEstimateLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
+  : null;
+// PAV1: the Pro Play Assembly (Roster Lock / Draft Memory) playtest lab. Same
+// DEVELOPMENT-ONLY rule: frozen PA1 content, a stand-in grader, no API.
+const ProPlayAssemblyLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/pro-play-assembly/ProPlayAssemblyLab"))
+  : null;
+// INT1 owner-only Rangefinder and Glyph Press prototypes; captures are not in prod chunks.
 const RangefinderLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/rangefinder/RangefinderDevLab"))
   : null;
-// WP1: the Word Puzzle (Glyph Press) playtest lab. Same DEVELOPMENT-ONLY rule.
 const WordPuzzleLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleDevLab"))
   : null;
-// INT1: the owner-only production entry for the Rangefinder / Glyph Press
-// labs. Its chunk carries no answer bank: the owner loads the fixture file.
 const InteractionLabPage = lazy(() => import("./pages/admin/interaction-labs/InteractionLabPage"));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
@@ -472,6 +496,8 @@ export const appRouter = createBrowserRouter(
                         backend-authority admin reads are. */}
                     <Route path="pro-play-coverage" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
+                    <Route path="creator-replay" element={<Suspense fallback={<RouteFallback />}><CreatorReplayPage /></Suspense>} />
+                    <Route path="creator-replay/:runId" element={<Suspense fallback={<RouteFallback />}><CreatorReplayRunPage legacyRedirect /></Suspense>} />
                     <Route path="playtest-director" element={<Suspense fallback={<RouteFallback />}><PlaytestDirectorPage /></Suspense>} />
                     {/* USERS1 — Ranked is a section of Leaguecraft now, not an
                         area. The path resolves so bookmarks land somewhere
@@ -505,12 +531,11 @@ export const appRouter = createBrowserRouter(
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
-                  {/* INT1 — owner-only interaction-mode playtests (Rangefinder, Glyph Press).
-                      Outside the admin shell because the labs own the arena frame;
-                      gated by the same <AdminRoute>. Not linked from any public surface. */}
+                  {/* INT1 owner-only historic interaction prototypes. */}
                   <Route path="/admin/interaction-labs" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/interaction-labs/:lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><InteractionLabPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
+                  <Route path="/admin/numeric-lab" element={<AdminRoute><Suspense fallback={<RouteFallback />}><NumericLabPage /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />
@@ -562,6 +587,12 @@ export const appRouter = createBrowserRouter(
                   <Route path="/quiz/matchup" element={<Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense>} />
                   <Route path="/quiz/daily" element={<Navigate to="/quiz/daily-challenge" replace />} />
                   <Route path="/quiz/daily-challenge" element={<Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense>} />
+                  {/* Creator filming plays in EXACTLY the same /quiz page framing
+                      as official Daily; never nest the fixed-height Ranked arena
+                      beneath AdminShell's capped width, rail and padding.
+                      AdminRoute keeps the owner/MFA gate; backend still owns
+                      authorization and run isolation. */}
+                  <Route path="/quiz/daily-challenge/creator/:runId" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CreatorReplayRunPage /></Suspense></AdminRoute>} />
                   {/* RB3 — the guided playtest. A separate route so canonical
                       Ranked is untouched and the whole session can be removed
                       by deleting this line. */}
@@ -703,6 +734,18 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {WordPuzzleLab ? (
                     <Route path="/dev/word-puzzle" element={<Suspense fallback={<RouteFallback />}><WordPuzzleLab /></Suspense>} />
+                  ) : null}
+                  {isInteractionLabEnabled() && InteractionLab ? (
+                    <Route path={INTERACTION_LAB_ROUTE} element={<Suspense fallback={<RouteFallback />}><InteractionLab /></Suspense>} />
+                  ) : null}
+                  {CombatEstimateLab ? (
+                    <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
+                  ) : null}
+                  {NumericLabPageDev ? (
+                    <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
+                  ) : null}
+                  {ProPlayAssemblyLab ? (
+                    <Route path="/dev/pro-play-assembly" element={<Suspense fallback={<RouteFallback />}><ProPlayAssemblyLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

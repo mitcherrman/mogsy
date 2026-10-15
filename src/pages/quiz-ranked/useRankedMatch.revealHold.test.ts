@@ -80,12 +80,14 @@ import { finalServerPacedHoldMs } from "@/lib/ranked-core/pacing";
 import { SERVER_PACED_REVEAL_MODULES } from "@/lib/ranked-core/orderForgeLockReveal";
 import { readResolvedPresentationMs, readSegmentSettlement } from "@/lib/ranked-public/contracts";
 
-describe("the shared server-paced hold (Reconstruct + Match Grid)", () => {
+describe("the shared server-paced hold (Reconstruct + Match Grid + Assembly + Scrub)", () => {
   const TITLE = 1400;
 
-  it("is exactly Match Grid and Reconstruct; every other module keeps its beat", () => {
-    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["match", "reconstruct"]);
-    for (const id of ["scrub", "assembly", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
+  it("is exactly Assembly, Match Grid, Reconstruct and Scrub; every other module keeps its beat", () => {
+    // ASSEMBLY-PA3: Assembly joins (backend `AssemblyModule.settlement_hold_ms`).
+    // SCRUB-S3: so does Scrub (4000 wrong / 3400 exact).
+    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["assembly", "match", "reconstruct", "scrub"]);
+    for (const id of ["order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
       expect(SERVER_PACED_REVEAL_MODULES.has(id)).toBe(false);
     }
   });
@@ -143,6 +145,85 @@ describe("RECONSTRUCT-R3B — Reconstruct's server-paced hold", () => {
     expect(readResolvedPresentationMs(incorrect)).toBe(4000 + TITLE);
     // The final round (a timeout): no next board, so the stored value holds it.
     const final = cap.resolved_timeout.payload;
+    expect(final.round_number).toBe(3);
+    expect(readResolvedPresentationMs(final)).toBe(4000 + TITLE);
+    expect(finalServerPacedHoldMs(readResolvedPresentationMs(final), TITLE)).toBe(4000);
+    const resumed = (cap.resume_final.payload as { latest_resolved_round: { payload: unknown } })
+      .latest_resolved_round.payload;
+    expect(readResolvedPresentationMs(resumed)).toBe(4000 + TITLE);
+  });
+});
+
+// ASSEMBLY-PA3 — Roster Lock / Draft Memory join the shared server-paced hold.
+// The backend window (`assembly.SETTLEMENT_REVEAL_WINDOW_MS` 4400, exact 3600)
+// is the PositionalAssembly primitive's own clock plus 2500 ms to read the
+// context plate and the notes under each wrong pick.
+import { ASSEMBLY_TIMING, planAssemblyReveal } from "@/lib/interaction-grammar/positionalAssembly";
+
+describe("ASSEMBLY-PA3 — Assembly's server-paced hold", () => {
+  const TITLE = 1400;
+  const READ = 2500;
+
+  it("the window is the primitive's own reveal plus reading time", () => {
+    const wrong = planAssemblyReveal({ reduced: false, anyWrong: true });
+    const exact = planAssemblyReveal({ reduced: false, anyWrong: false });
+    expect(wrong.totalMs).toBe(ASSEMBLY_TIMING.contextEnd);
+    expect(4400 - wrong.totalMs).toBe(READ);
+    expect(3600 - exact.totalMs).toBe(READ);
+  });
+
+  it("an ordinary wrong board holds the whole window (5800 → 4400)", () => {
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(5800, TITLE));
+    expect(anchoredRevealHoldMs(nominal, 5800, TITLE)).toBe(4400);
+  });
+
+  it("the FINAL board holds its stored window before the outro", () => {
+    // backend test_assembly_pa3_admin_live: final presentation_ms = 4400 + title.
+    expect(finalServerPacedHoldMs(4400 + TITLE, TITLE)).toBe(4400);
+    expect(finalServerPacedHoldMs(3600 + TITLE, TITLE)).toBe(3600);
+  });
+});
+
+// SCRUB-S3 — the Chronoscope joins the shared server-paced hold. The backend window
+// (`scrub.SETTLEMENT_REVEAL_WINDOW_MS` 4000, exact 3400) is THIS primitive's reveal clock
+// plus 2500 ms to read the before -> first proof.
+import { planChronoscopeReveal } from "@/lib/interaction-grammar/chronoscope";
+import { SCRUB_REVEAL_BUDGET_MS } from "@/lib/ranked-core/modules/scrubModule";
+import scrubCapture from "@/lib/ranked-public/__fixtures__/scrubServerCapture.json";
+
+describe("SCRUB-S3 — Scrub's server-paced hold", () => {
+  const TITLE = 1400;
+  const READ = 2500;
+
+  it("the window is the primitive's own reveal plus reading time", () => {
+    const wrong = planChronoscopeReveal({ reduced: false, distance: 9, budgetMs: SCRUB_REVEAL_BUDGET_MS });
+    const exact = planChronoscopeReveal({ reduced: false, distance: 0, budgetMs: SCRUB_REVEAL_BUDGET_MS });
+    expect(SCRUB_REVEAL_BUDGET_MS).toBe(1500);
+    expect(wrong.totalMs).toBe(1500);
+    expect(exact.totalMs).toBe(900);
+    expect(4000 - wrong.totalMs).toBe(READ);
+    expect(3400 - exact.totalMs).toBe(READ);
+    // Reduced motion settles at t = 0, so the whole hold is readable.
+    expect(planChronoscopeReveal({ reduced: true, distance: 9, budgetMs: SCRUB_REVEAL_BUDGET_MS }).totalMs).toBe(0);
+  });
+
+  it("an ordinary wrong round holds the whole window (5400 → 4000)", () => {
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(5400, TITLE));
+    expect(anchoredRevealHoldMs(nominal, 5400, TITLE)).toBe(4000);
+  });
+
+  it("reads the REAL captured rounds' stored presentations", () => {
+    const cap = scrubCapture as unknown as Record<string, { payload: Record<string, unknown> }>;
+    const first = cap.resolved_correct.payload;
+    expect(readSegmentSettlement(first)?.reveal.moduleId).toBe("scrub");
+    // The viewer locked exactly; the shorter 3400 hold applies only when the bot was exact too
+    // (the bot's pick varies per capture), otherwise the whole 4000 window.
+    const allExact = Object.values(readSegmentSettlement(first)!.reveal.players).every((pl) => pl.correct === 1);
+    expect(readResolvedPresentationMs(first)).toBe((allExact ? 3400 : 4000) + TITLE);
+    // The penultimate round also carries the Final Round warning lead-in.
+    expect(readResolvedPresentationMs(cap.resolved_wrong.payload)).toBeGreaterThan(4000 + TITLE);
+    // The final round: no next instrument, so the stored value holds it.
+    const final = cap.resolved_held.payload;
     expect(final.round_number).toBe(3);
     expect(readResolvedPresentationMs(final)).toBe(4000 + TITLE);
     expect(finalServerPacedHoldMs(readResolvedPresentationMs(final), TITLE)).toBe(4000);

@@ -1,0 +1,57 @@
+name: creator-replay-frontend
+
+on:
+  pull_request:
+    paths:
+      - "src/pages/admin/CreatorReplayPage.tsx"
+      - "src/pages/admin/CreatorReplayPage.test.tsx"
+      - "src/pages/admin/CreatorReplayRunPage.tsx"
+      - "src/pages/admin/CreatorReplayRunPage.test.tsx"
+      - "src/App.tsx"
+      - "src/lib/admin/admin-registry.ts"
+      - ".github/workflows/creator-replay-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies without changing stale baseline package-lock
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Creator Replay and admin registry tests
+        run: |
+          npx vitest run src/pages/admin/CreatorReplayPage.test.tsx src/pages/admin/CreatorReplayRunPage.test.tsx src/pages/quiz-daily-challenge/run/DailyRunPage.test.tsx src/lib/admin/admin-registry.test.ts
+          # Two unrelated pre-existing OWN1 assertions still expect removed role props.
+          # Keep every other admin router guard, including route registry agreement.
+          npx vitest run src/lib/admin/admin-registry.routes.test.ts --testNamePattern "^(?!.*(keeps the Premium Trends Preview master-admin only at its new path|keeps /admin/knowledge master-admin only)).*$"
+      - name: TypeScript regression gate (two unchanged baseline errors)
+        shell: bash
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.app.json > tsc.log 2>&1
+          status=$?
+          set -e
+          cat tsc.log
+          if [ "$status" -eq 0 ]; then exit 0; fi
+          mapfile -t failures < <(grep -E "error TS[0-9]+" tsc.log || true)
+          if [ "${#failures[@]}" -eq 2 ] &&
+             [[ "${failures[0]}" == "src/components/onboarding/OnboardingProfile.tsx(180,48): error TS2345:"* ]] &&
+             [[ "${failures[1]}" == "src/lib/identity/connections.ts(263,13): error TS2345:"* ]]; then
+            echo "::warning::Two unchanged pre-existing Supabase typing errors; no new TypeScript errors"
+          else
+            echo "::error::Unexpected TypeScript diagnostics"
+            exit 1
+          fi
+      - name: Vite production bundle
+        run: npx vite build

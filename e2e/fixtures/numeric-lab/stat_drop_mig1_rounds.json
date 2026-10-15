@@ -1,0 +1,210 @@
+{
+  "contract": "numeric_lab.stat_drop_rounds.v1",
+  "source": {
+    "branch": "mig1/1-interaction-lab",
+    "commit": "b932af4b65e1a2225e4adb20a87430723788b358",
+    "builder": "src/pages/dev/interaction-lab/labFixtures.ts (labFixturesFor('stat-drop'))",
+    "exported_on": "lab/numeric-mode-playtests @ 6512932 (NUM-REC2)",
+    "note": "Historical authority captures adapted by MIG1.2; values are the captures' own, scales are MIG1 LAB_SCALES (per metric family, never answer-derived). Not re-certified at the current patch."
+  },
+  "rounds": [
+    {
+      "id": "drop.pp.peanut-sejuani",
+      "domain": "pro-play",
+      "title": "Peanut · Sejuani games",
+      "shape": "integer · broad range (0–200)",
+      "provenance": "Pro Play authority · pro_play sample",
+      "content": {
+        "prompt": "How many pro games has Peanut played on Sejuani?",
+        "metricLabel": "Games on Sejuani",
+        "unit": "games",
+        "context": "Peanut's pro career",
+        "scale": {
+          "min": 0,
+          "max": 200,
+          "step": 1,
+          "decimals": 0
+        },
+        "subject": {
+          "label": "Peanut",
+          "sublabel": "Sejuani",
+          "media": {
+            "src": "assets/champions/Sejuani/icon.png",
+            "alt": ""
+          }
+        }
+      },
+      "hidden": {
+        "canonicalValue": 113,
+        "canonicalDisplay": "113",
+        "evidence": "Peanut leads with 113 pro games on Sejuani (authority revision 2).",
+        "source": "Pro Play authority · player_champion_v1 · pro_default_v1"
+      }
+    },
+    {
+      "id": "drop.pp.nuguri-kennen-wr",
+      "domain": "pro-play",
+      "title": "Nuguri · Kennen win rate",
+      "shape": "decimal percent · 0.1 step",
+      "provenance": "Pro Play authority · nuguri_clear sample",
+      "content": {
+        "prompt": "What is Nuguri's win rate on Kennen in LCK?",
+        "metricLabel": "Win rate on Kennen",
+        "unit": "%",
+        "context": "Kennen in LCK",
+        "scale": {
+          "min": 0,
+          "max": 100,
+          "step": 0.1,
+          "decimals": 1
+        },
+        "subject": {
+          "label": "Nuguri",
+          "sublabel": "Kennen",
+          "media": {
+            "src": "assets/champions/Kennen/icon.png",
+            "alt": ""
+          }
+        }
+      },
+      "hidden": {
+        "canonicalValue": 75,
+        "canonicalDisplay": "75.0",
+        "evidence": "Nuguri has 75% win rate on Kennen versus Clear's 60%, in LCK (authority revision 1 / 1).",
+        "source": "Pro Play authority · player_champion_v1 · pro_default_v1"
+      }
+    },
+    {
+      "id": "drop.pp.splyce-gangplank",
+      "domain": "pro-play",
+      "title": "Splyce · Gangplank at Worlds",
+      "shape": "integer · small range (0–40)",
+      "provenance": "Pro Play authority · champion_team sample",
+      "content": {
+        "prompt": "How many World Championship games has Splyce played on Gangplank?",
+        "metricLabel": "Games on Gangplank",
+        "unit": "games",
+        "context": "Gangplank in World Championship",
+        "scale": {
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "decimals": 0
+        },
+        "subject": {
+          "label": "Splyce",
+          "sublabel": "Gangplank",
+          "media": {
+            "src": "assets/champions/Gangplank/icon.png",
+            "alt": ""
+          }
+        }
+      },
+      "hidden": {
+        "canonicalValue": 16,
+        "canonicalDisplay": "16",
+        "evidence": "Splyce has 16 games played on Gangplank versus Fnatic's 7, in World Championship (authority revision 1 / 2).",
+        "source": "Pro Play authority · team_champion_v1 · pro_default_v1"
+      }
+    },
+    {
+      "id": "drop.lc.olaf-undertow-haste",
+      "domain": "leaguecraft",
+      "title": "Olaf Q · cooldown @ 10 AH",
+      "shape": "decimal · narrow range (0–20, 0.1)",
+      "provenance": "Mastery Journey capture · J4 olaf.standard · child 2",
+      "content": {
+        "prompt": "With 10 Ability Haste, what is Olaf Q (Undertow)'s cooldown, in seconds?",
+        "metricLabel": "Cooldown",
+        "unit": "seconds",
+        "context": "League 26.16",
+        "scale": {
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "decimals": 1
+        },
+        "subject": {
+          "label": "Olaf Q",
+          "sublabel": "Undertow",
+          "media": {
+            "src": "assets/champions/Olaf/Q_OlafAxeThrowCast.png",
+            "alt": ""
+          }
+        }
+      },
+      "hidden": {
+        "canonicalValue": 8.181818181818182,
+        "canonicalDisplay": "8.2",
+        "evidence": "Olaf Undertow cooldown at 10 ability haste: 8.2 seconds.",
+        "source": "Mogzy champion data · League 26.16"
+      }
+    },
+    {
+      "id": "drop.lc.ahri-armor-l3",
+      "domain": "leaguecraft",
+      "title": "Ahri · armor at level 3",
+      "shape": "champion stat · integer (0–100)",
+      "provenance": "Mastery Journey capture · J3 zed.standard · child 0",
+      "content": {
+        "prompt": "At level 3, what is Ahri's Armor?",
+        "metricLabel": "Armor",
+        "unit": "armor",
+        "context": "League 26.16",
+        "scale": {
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "decimals": 0
+        },
+        "subject": {
+          "label": "Ahri",
+          "sublabel": "armor",
+          "media": {
+            "src": "assets/champions/Ahri/icon.png",
+            "alt": ""
+          }
+        }
+      },
+      "hidden": {
+        "canonicalValue": 27,
+        "canonicalDisplay": "27",
+        "evidence": "Ahri's Armor at level 3: 27.195 armor, which rounds to 27 for this question.",
+        "source": "Mogzy champion data · League 26.16"
+      }
+    },
+    {
+      "id": "drop.lc.zed-shadow-slash",
+      "domain": "leaguecraft",
+      "title": "Zed E · damage vs Ahri",
+      "shape": "combat calculation · broad (0–300)",
+      "provenance": "Mastery Journey capture · J3 zed.standard · child 2",
+      "content": {
+        "prompt": "How much physical damage does Zed's Rank 1 Shadow Slash deal to Ahri?",
+        "metricLabel": "Physical damage",
+        "unit": "damage",
+        "context": "Target level 3 · Attacker level 3 · No items",
+        "scale": {
+          "min": 0,
+          "max": 300,
+          "step": 1,
+          "decimals": 0
+        },
+        "subject": {
+          "label": "Zed E",
+          "sublabel": "Shadow Slash",
+          "media": {
+            "src": "assets/champions/Zed/E_ZedE.png",
+            "alt": ""
+          }
+        }
+      },
+      "hidden": {
+        "canonicalValue": 55,
+        "canonicalDisplay": "55",
+        "evidence": "Zed Shadow Slash (rank 1) ability physical damage after armor at Ahri target, 3 target level, none target items, recalled target armor, 3 attacker level, none attacker items, 0 bonus attack damage, 0 lethality, 0 armor penetration percent: 55.034 damage, which rounds to 55 for this question.",
+        "source": "Mogzy champion data · League 26.16"
+      }
+    }
+  ]
+}

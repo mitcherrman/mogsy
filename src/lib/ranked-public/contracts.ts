@@ -240,6 +240,147 @@ export const ORDER_FORGE_MODULE_ID = "order_forge";
 /** GM1-R1 — rebuild a legendary item's direct recipe from a six-piece tray. */
 export const RECONSTRUCT_MODULE_ID = "reconstruct";
 
+// ------------------------------------------- Pro Play Assembly (PA2B)
+
+/** PA2A/PA2B — seat five historical players / champions in their lane positions. */
+export const ASSEMBLY_MODULE_ID = "assembly";
+
+/**
+ * The server's lane order (`assembly.SLOT_IDS`). A `{placement}` lists one
+ * token per position IN THIS ORDER, and the public block must list its
+ * positions in it too — the reader refuses anything else rather than sorting.
+ */
+export const ASSEMBLY_LANE_ORDER = ["top", "jungle", "mid", "adc", "support"] as const;
+export type AssemblyLaneId = (typeof ASSEMBLY_LANE_ORDER)[number];
+export type AssemblyFamilyId = "roster_lock" | "draft_memory";
+
+export interface AssemblyPositionView {
+  slotId: AssemblyLaneId;
+  label: string;
+  short: string;
+}
+
+/** One dealt card: an opaque per-round token and what the card shows. No role, no tier. */
+export interface AssemblyCardView {
+  token: string;
+  entityType: "player" | "champion";
+  label: string;
+  sublabel: string | null;
+  /** Champion key for icon art; null for a player (identity cards are seals). */
+  mediaKey: string | null;
+}
+
+export interface AssemblySubjectView {
+  teamKey: string | null;
+  opponentKey: string | null;
+  team: string | null;
+  opponent: string | null;
+  event: string | null;
+  league: string | null;
+  stage: string | null;
+  season: number | null;
+  /** Draft Memory: the game this composition was played in. */
+  gameNumber: number | null;
+  /** Roster Lock: how many games the series ran. */
+  gamesPlayed: number | null;
+}
+
+/** The pre-reveal public block of an `assembly` segment. No field can hold the answer. */
+export interface AssemblyBlockView {
+  family: AssemblyFamilyId;
+  prompt: string;
+  eyebrow: string;
+  cardKind: "identity" | "icon";
+  subject: AssemblySubjectView;
+  contentRef: string;
+  catalogRevision: string;
+  positions: AssemblyPositionView[];
+  cards: AssemblyCardView[];
+}
+
+/** One position of the authoritative lineup (reveal-only). */
+export interface AssemblyLineupEntry {
+  slotId: AssemblyLaneId;
+  role: string | null;
+  token: string;
+  label: string;
+  fullLabel: string | null;
+  sublabel: string | null;
+  mediaKey: string | null;
+}
+
+/** The server's facts about one dealt card (reveal-only): what it WAS. */
+export interface AssemblyCardFact {
+  label: string;
+  fullLabel: string | null;
+  /** `answer` | `opponent` | `bench` | `tournament` | `series` — the server's word. */
+  tier: string | null;
+  roleAnchor: string | null;
+  slotAnchor: string | null;
+}
+
+/** Where and when (reveal-only), structured; the host words it. */
+export interface AssemblyHistoricalContext {
+  family: AssemblyFamilyId;
+  team: string | null;
+  opponent: string | null;
+  event: string | null;
+  league: string | null;
+  stage: string | null;
+  season: number | null;
+  contentId: string | null;
+  rulesVersion: string | null;
+  catalogRevision: string | null;
+  /** Roster Lock: the series' games. */
+  games: { gameNumber: number | null; gameDate: string | null; side: string | null }[] | null;
+  /** Draft Memory: the one game. */
+  game: { gameNumber: number | null; gameDate: string | null; patch: string | null; side: string | null } | null;
+  pickOrder: string | null;
+  /** Draft Memory provenance path: `canonical` | `source_recovered`. */
+  path: string | null;
+}
+
+/** The viewer's own post-lock reveal: their board beside the true lineup. */
+export interface AssemblyChallengeReveal {
+  placement: string[];
+  isCorrect: boolean | null;
+  matched: number;
+  positionCorrect: Partial<Record<AssemblyLaneId, boolean>>;
+  canonicalLineup: AssemblyLineupEntry[];
+  cardFacts: Record<string, AssemblyCardFact>;
+  context: AssemblyHistoricalContext;
+}
+
+/** A settled `assembly` segment, from `segment_reveal` (both players' boards). */
+export interface AssemblySettlement {
+  family: AssemblyFamilyId;
+  canonicalLineup: AssemblyLineupEntry[];
+  cardFacts: Record<string, AssemblyCardFact>;
+  context: AssemblyHistoricalContext;
+  placements: Record<string, string[] | null>;
+  positionCorrect: Record<string, Partial<Record<AssemblyLaneId, boolean>>>;
+  matched: Record<string, number>;
+}
+
+/** One reviewed `assembly` round (`ranked_duel.match_review.v1`). */
+export interface ReviewAssembly {
+  family: AssemblyFamilyId | null;
+  prompt: string | null;
+  eyebrow: string | null;
+  cardKind: "identity" | "icon" | null;
+  subject: AssemblySubjectView | null;
+  positions: AssemblyPositionView[];
+  cards: AssemblyCardView[];
+  viewerPlacement: string[] | null;
+  canonicalLineup: AssemblyLineupEntry[] | null;
+  cardFacts: Record<string, AssemblyCardFact> | null;
+  context: AssemblyHistoricalContext | null;
+  positionCorrect: Partial<Record<AssemblyLaneId, boolean>> | null;
+  matched: number | null;
+  /** The backend's word: `correct`, `incorrect` or `timeout`. */
+  outcome: string | null;
+}
+
 /** Art as the server sends it: a raw path (resolved by the renderer), never a URL guess. */
 export type ReconstructMedia = { src: string | null; alt: string } | null;
 
@@ -416,6 +557,110 @@ export interface ReviewReconstruct {
   recipeTarget: ReconstructRecipeTarget | null;
   slotCorrect: boolean[];
   settledPlacement: string[];
+  /** The backend's word: `correct`, `incorrect` or `timeout`. */
+  outcome: string | null;
+}
+
+// ------------------------------------------------- Scrub / Chronoscope (SCRUB-S2)
+
+/** SCRUB-S2 — the Chronoscope: find the first checkpoint where a lane state becomes true. */
+export const SCRUB_MODULE_ID = "scrub";
+
+/**
+ * One checkpoint of a `scrub` rail: the lane's PUBLIC state at one wave spawn,
+ * every figure an authority string. It has no field that could say whether
+ * the objective holds here; every checkpoint carries the same fields.
+ */
+export interface ScrubCheckpointView {
+  /** Opaque-in-role token (`w4`): the wave identity, already engraved on the rail. */
+  token: string;
+  waveNumber: number;
+  spawnTimeDisplay: string;
+  isCannonWave: boolean;
+  meleeCount: number;
+  casterCount: number;
+  cannonCount: number;
+  /** The engine's level after the wave. */
+  level: number;
+  cumulativeXp: string;
+  waveXp: string;
+  /** The level curve's thresholds bracketing `cumulativeXp` (ceiling null at the cap). */
+  levelFloorXp: string | null;
+  levelCeilingXp: string | null;
+}
+
+export interface ScrubObjectiveView {
+  lane: "solo" | "duo";
+  targetLevel: number;
+  cannonOnly: boolean;
+  text: string;
+}
+
+/** The pre-reveal public block of a `scrub` segment. No canonical checkpoint, no proof. */
+export interface ScrubBlockView {
+  family: string;
+  prompt: string;
+  objective: ScrubObjectiveView;
+  source: { patch: string | null; map: string | null; mode: string | null };
+  unitLabel: string;
+  footnote: string | null;
+  checkpoints: ScrubCheckpointView[];
+}
+
+/** One reading of the before → after proof, as the authority states it (reveal-only). */
+export interface ScrubProofReadingView {
+  token: string;
+  waveNumber: number;
+  spawnTimeDisplay: string;
+  level: number | null;
+  cumulativeXp: string;
+  isCannonWave: boolean;
+  breakpointNote: string | null;
+  satisfied: boolean;
+}
+
+export interface ScrubProofView {
+  lane: "solo" | "duo";
+  targetLevel: number;
+  cannonOnly: boolean;
+  thresholdXp: string | null;
+  before: ScrubProofReadingView | null;
+  after: ScrubProofReadingView;
+}
+
+/** The viewer's own post-lock reveal: their checkpoint, the first one, the path between. */
+export interface ScrubChallengeReveal {
+  checkpoint: string | null;
+  isCorrect: boolean | null;
+  /** chosen → canonical inclusive (`[canonical]` for an exact lock), the SERVER's. */
+  traversePath: string[];
+  canonicalCheckpoint: string;
+  satisfiedCheckpoints: string[];
+  proof: ScrubProofView;
+  granularityCaveat: string | null;
+}
+
+/** A settled `scrub` segment, from `segment_reveal` (both players' checkpoints). */
+export interface ScrubSettlement {
+  canonicalCheckpoint: string;
+  satisfiedCheckpoints: string[];
+  proof: ScrubProofView;
+  checkpoints: string[];
+  /** player id -> that player's locked checkpoint (null: never locked). */
+  picks: Record<string, string | null>;
+}
+
+/** One reviewed `scrub` round (`ranked_duel.match_review.v1`). */
+export interface ReviewScrub {
+  objective: ScrubObjectiveView | null;
+  unitLabel: string;
+  checkpoints: ScrubCheckpointView[];
+  viewerCheckpoint: string | null;
+  canonicalCheckpoint: string | null;
+  satisfiedCheckpoints: string[];
+  proof: ScrubProofView | null;
+  traversePath: string[];
+  granularityCaveat: string | null;
   /** The backend's word: `correct`, `incorrect` or `timeout`. */
   outcome: string | null;
 }
@@ -744,6 +989,10 @@ export interface MasteryChallengeReveal {
   reconstruct?: ReconstructChallengeReveal | null;
   /** MG-P3 — present only on a `match` reveal. */
   match?: MatchChallengeReveal | null;
+  /** PA2B — present only on an `assembly` reveal. */
+  assembly?: AssemblyChallengeReveal | null;
+  /** Present only on a `scrub` reveal. */
+  scrub?: ScrubChallengeReveal | null;
   explanation: string | null;
   answerOptions: string[];
   /**
@@ -773,7 +1022,9 @@ export type SegmentBlockView =
   | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] }
   | ({ contract: "order_forge" } & OrderForgeBlockView)
   | ({ contract: "reconstruct" } & ReconstructBlockView)
-  | ({ contract: "match" } & MatchBlockView);
+  | ({ contract: "match" } & MatchBlockView)
+  | ({ contract: "assembly" } & AssemblyBlockView)
+  | ({ contract: "scrub" } & ScrubBlockView);
 
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
@@ -808,7 +1059,8 @@ export interface SegmentStateView {
   opponentAbilityConfirmed: boolean;
   ownNextChallengeIndex: number;
   /** A scalar token per challenge; an `order_forge` challenge echoes its whole
-   * order, a `reconstruct` challenge its whole placement. */
+   * order, a `reconstruct` challenge its whole placement, a `scrub` challenge
+   * its checkpoint token. */
   ownSubmittedChoices: (string | readonly string[] | null)[];
   /**
    * MG-P3 — a `match` segment's lock echo (one `{entity_id, group_id}` row per
@@ -1430,6 +1682,19 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   "answers", "entity_correct", "correct_group", "entity_facts",
   // ...and the private half's names for the authority's identities.
   "rune_key", "tree_key", "is_keystone", "rune_type", "tree_label",
+  // SCRUB-S2 - a scrub segment's canonical checkpoint, the checkpoints that
+  // satisfy the objective, the before/after proof, the traverse path, the
+  // objective's threshold, the authority's caveat and its breakpoint notes are
+  // reveal-only (backend `FORBIDDEN_PRE_REVEAL_KEYS`); they may arrive only
+  // inside `own_challenge_reveals`.
+  "canonical_checkpoint", "satisfied_checkpoints", "proof", "traverse_path",
+  "threshold_xp", "granularity_caveat", "breakpoint_note",
+  // PA2B - an assembly segment's true lineup, per-position marks, card facts
+  // and historical context are reveal-only (backend `FORBIDDEN_PRE_REVEAL_KEYS`,
+  // `assembly.REVEAL_ONLY_KEYS`); so are the private payload's names for a
+  // card's role anchor and the registry evidence behind the lineup.
+  "canonical_lineup", "card_facts", "historical_context", "matched",
+  "role_anchor", "slot_anchor", "registry_evidence",
 ]);
 
 /**
@@ -1705,6 +1970,92 @@ function readReconstructPieces(v: unknown, label: string): ReconstructPieceView[
   return Array.isArray(v) ? v.map((e, i) => readReconstructPiece(e, `${label}[${i}]`)) : [];
 }
 
+/** The `scrub` public block. Reads ONLY the allow-listed public fields. */
+function readScrubBlock(block: Record<string, unknown>, list: unknown[]): ScrubBlockView {
+  const first = rec(list[0], "challenges[0]");
+  const objective = readScrubObjective(first.objective, "challenges[0].objective");
+  const source = first.source && typeof first.source === "object"
+    ? first.source as Record<string, unknown> : {};
+  const checkpoints = Array.isArray(first.checkpoints) ? first.checkpoints : [];
+  if (checkpoints.length < 2) {
+    throw new RankedPublicParseError("challenges[0].checkpoints must hold at least two checkpoints");
+  }
+  return {
+    family: str(block.family, "challenges.family"),
+    prompt: str(block.prompt, "challenges.prompt"),
+    objective,
+    source: {
+      patch: nstr(source.patch, "challenges[0].source.patch"),
+      map: nstr(source.map, "challenges[0].source.map"),
+      mode: nstr(source.mode, "challenges[0].source.mode"),
+    },
+    unitLabel: str(first.unit_label, "challenges[0].unit_label"),
+    footnote: nstr(first.footnote, "challenges[0].footnote"),
+    checkpoints: checkpoints.map((c, i) => readScrubCheckpoint(c, `checkpoints[${i}]`)),
+  };
+}
+
+function readScrubLane(v: unknown, label: string): "solo" | "duo" {
+  const lane = str(v, label);
+  if (lane !== "solo" && lane !== "duo") throw new RankedPublicParseError(`${label} is unknown: ${lane}`);
+  return lane;
+}
+
+function readScrubObjective(v: unknown, label: string): ScrubObjectiveView {
+  const o = rec(v, label);
+  return {
+    lane: readScrubLane(o.lane, `${label}.lane`),
+    targetLevel: num(o.target_level, `${label}.target_level`),
+    cannonOnly: bool(o.cannon_only, `${label}.cannon_only`),
+    text: str(o.text, `${label}.text`),
+  };
+}
+
+function readScrubCheckpoint(raw: unknown, label: string): ScrubCheckpointView {
+  const o = rec(raw, label);
+  return {
+    token: str(o.token, `${label}.token`),
+    waveNumber: num(o.wave_number, `${label}.wave_number`),
+    spawnTimeDisplay: str(o.spawn_time_display, `${label}.spawn_time_display`),
+    isCannonWave: bool(o.is_cannon_wave, `${label}.is_cannon_wave`),
+    meleeCount: num(o.melee_count, `${label}.melee_count`),
+    casterCount: num(o.caster_count, `${label}.caster_count`),
+    cannonCount: num(o.cannon_count, `${label}.cannon_count`),
+    level: num(o.level, `${label}.level`),
+    cumulativeXp: str(o.cumulative_xp, `${label}.cumulative_xp`),
+    waveXp: str(o.wave_xp, `${label}.wave_xp`),
+    levelFloorXp: nstr(o.level_floor_xp, `${label}.level_floor_xp`),
+    levelCeilingXp: nstr(o.level_ceiling_xp, `${label}.level_ceiling_xp`),
+  };
+}
+
+function readScrubProofReading(v: unknown, label: string): ScrubProofReadingView {
+  const o = rec(v, label);
+  return {
+    token: str(o.token, `${label}.token`),
+    waveNumber: num(o.wave_number, `${label}.wave_number`),
+    spawnTimeDisplay: str(o.spawn_time_display, `${label}.spawn_time_display`),
+    level: nnum(o.level, `${label}.level`),
+    cumulativeXp: str(o.cumulative_xp, `${label}.cumulative_xp`),
+    isCannonWave: bool(o.is_cannon_wave, `${label}.is_cannon_wave`),
+    breakpointNote: nstr(o.breakpoint_note, `${label}.breakpoint_note`),
+    satisfied: bool(o.satisfied, `${label}.satisfied`),
+  };
+}
+
+function readScrubProof(v: unknown, label: string): ScrubProofView {
+  const o = rec(v, label);
+  return {
+    lane: readScrubLane(o.lane, `${label}.lane`),
+    targetLevel: num(o.target_level, `${label}.target_level`),
+    cannonOnly: bool(o.cannon_only, `${label}.cannon_only`),
+    thresholdXp: nstr(o.threshold_xp, `${label}.threshold_xp`),
+    before: o.before === null || o.before === undefined
+      ? null : readScrubProofReading(o.before, `${label}.before`),
+    after: readScrubProofReading(o.after, `${label}.after`),
+  };
+}
+
 /** A list of ids, refusing anything else (an order is ids and nothing more). */
 function idList(v: unknown, label: string): string[] {
   if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
@@ -1916,6 +2267,12 @@ function readSegmentBlock(
   if (moduleId === MATCH_MODULE_ID) {
     return { contract: "match", ...readMatchBlock(block, list) };
   }
+  if (moduleId === SCRUB_MODULE_ID) {
+    return { contract: "scrub", ...readScrubBlock(block, list) };
+  }
+  if (moduleId === ASSEMBLY_MODULE_ID) {
+    return { contract: "assembly", ...readAssemblyBlock(block, list) };
+  }
   if (moduleId === MASTERY_SLICE_MODULE_ID) {
     return {
       contract: "mastery_slice",
@@ -1967,6 +2324,20 @@ function readSubmittedChoices(
   }
   // MG-P3 - a match echo is a map, read by `readSubmittedAssignments`.
   if (moduleId === MATCH_MODULE_ID) return choices.map(() => null);
+  if (moduleId === SCRUB_MODULE_ID) {
+    return choices.map((c) => {
+      if (c === null || c === undefined) return null;
+      return str(rec(c, "own_submitted_choices[]").checkpoint,
+        "own_submitted_choices[].checkpoint");
+    });
+  }
+  if (moduleId === ASSEMBLY_MODULE_ID) {
+    return choices.map((c) => {
+      if (c === null || c === undefined) return null;
+      return assemblyPlacement(rec(c, "own_submitted_choices[]").placement,
+        "own_submitted_choices[].placement");
+    });
+  }
   const key = moduleId === MASTERY_SLICE_MODULE_ID
     ? "selected"
     : moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
@@ -2115,6 +2486,30 @@ function readChallengeReveals(
         isCorrect: match.isCorrect === true,
         playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
         match,
+      };
+    }
+    if (moduleId === ASSEMBLY_MODULE_ID) {
+      return {
+        challengeIndex,
+        isCorrect: o.is_correct === true,
+        playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
+        assembly: readAssemblyChallengeReveal(o, label),
+      };
+    }
+    if (moduleId === SCRUB_MODULE_ID) {
+      return {
+        challengeIndex,
+        isCorrect: o.is_correct === true,
+        playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
+        scrub: {
+          checkpoint: nstr(o.checkpoint, `${label}.checkpoint`),
+          isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+          traversePath: idList(o.traverse_path ?? [], `${label}.traverse_path`),
+          canonicalCheckpoint: str(o.canonical_checkpoint, `${label}.canonical_checkpoint`),
+          satisfiedCheckpoints: idList(o.satisfied_checkpoints ?? [], `${label}.satisfied_checkpoints`),
+          proof: readScrubProof(o.proof, `${label}.proof`),
+          granularityCaveat: nstr(o.granularity_caveat, `${label}.granularity_caveat`),
+        },
       };
     }
     const asText = (raw: unknown): string | null =>
@@ -2420,6 +2815,10 @@ export interface SegmentRevealView {
   reconstruct?: ReconstructSettlement | null;
   /** MG-P3 — present only on a `match` settlement; null on every other. */
   match?: MatchSettlement | null;
+  /** PA2B — present only on an `assembly` settlement; null on every other. */
+  assembly?: AssemblySettlement | null;
+  /** Present only on a `scrub` settlement; null on every other. */
+  scrub?: ScrubSettlement | null;
   players: Record<string, SegmentRevealPlayer>;
   /** Already-public display metadata, keyed by item id. Empty for v4, whose
    * cards carry their own labels. */
@@ -2447,12 +2846,14 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   const isOrderForge = moduleId === ORDER_FORGE_MODULE_ID;
   const isReconstruct = moduleId === RECONSTRUCT_MODULE_ID;
   const isMatch = moduleId === MATCH_MODULE_ID;
+  const isAssembly = moduleId === ASSEMBLY_MODULE_ID;
+  const isScrub = moduleId === SCRUB_MODULE_ID;
   const players: Record<string, SegmentRevealPlayer> = {};
   for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
     const p = rec(value, `players.${pid}`);
     const result = nstr(p.segment_result, `players.${pid}.segment_result`);
-    if (isOrderForge || isReconstruct || isMatch) {
-      // An order_forge / reconstruct player has no per-card tallies: one sequence, one
+    if (isOrderForge || isReconstruct || isMatch || isAssembly || isScrub) {
+      // An order_forge / reconstruct / match / assembly / scrub player has no per-card tallies: one sequence, one
       // verdict. Tolerant on purpose - every field here is display-only.
       players[pid] = {
         segmentResult: result && _SEGMENT_RESULTS.has(result) ? (result as SegmentResult) : null,
@@ -2506,12 +2907,14 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
     moduleId,
     moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: isMastery || isOrderForge || isReconstruct || isMatch
+    challenges: isMastery || isOrderForge || isReconstruct || isMatch || isAssembly || isScrub
       ? []
       : challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
     orderForge: isOrderForge ? readOrderForgeSettlement(o) : null,
     reconstruct: isReconstruct ? readReconstructSettlement(o) : null,
     match: isMatch ? readMatchSettlement(o) : null,
+    assembly: isAssembly ? readAssemblySettlement(o) : null,
+    scrub: isScrub ? readScrubSettlement(o) : null,
     masteryChallenges: isMastery
       ? challenges.map((c, i) => readRevealMasteryChallenge(c, i))
       : [],
@@ -2558,6 +2961,329 @@ function readReconstructSettlement(o: Record<string, unknown>): ReconstructSettl
     canonicalParts: readReconstructParts(o.canonical_parts, "segment_reveal.canonical_parts"),
     target: readReconstructTarget(o.target, "segment_reveal.target"),
     pieces, labels, placements, slotCorrect,
+  };
+}
+
+// --------------------------------------------- Pro Play Assembly readers
+
+const ASSEMBLY_FAMILIES: ReadonlySet<string> = new Set(["roster_lock", "draft_memory"]);
+const ASSEMBLY_TOKEN_RE = /^[A-Za-z0-9_]{1,16}$/;
+
+/**
+ * The EXACT public vocabulary of an assembly block (the backend's
+ * `AssemblyModule.public_view` allow-list). Anything else — `canonical`,
+ * `answer`, a tier, a role — is a parse error, not a dropped field: a block
+ * that grew a key is a contract breach the client must refuse to render.
+ */
+const ASSEMBLY_BLOCK_KEYS: ReadonlySet<string> = new Set([
+  "family", "prompt", "eyebrow", "card_kind", "subject", "content_ref", "catalog_revision",
+  "challenges", "reveal_window_ms", "prompt_requires_starters"]);
+const ASSEMBLY_CHALLENGE_KEYS: ReadonlySet<string> = new Set([
+  "challenge_index", "slot_count", "positions", "cards"]);
+const ASSEMBLY_CARD_KEYS: ReadonlySet<string> = new Set([
+  "token", "entity_type", "label", "sublabel", "media_key"]);
+const ASSEMBLY_POSITION_KEYS: ReadonlySet<string> = new Set(["slot_id", "label", "short"]);
+const ASSEMBLY_SUBJECT_KEYS: ReadonlySet<string> = new Set([
+  "team_key", "opponent_key", "team", "opponent", "event", "league", "stage", "season",
+  "game_number", "games_played"]);
+
+function onlyKeys(o: Record<string, unknown>, allowed: ReadonlySet<string>, label: string): void {
+  for (const k of Object.keys(o)) {
+    if (!allowed.has(k)) throw new RankedPublicParseError(`${label} carries an unknown field: ${k}`);
+  }
+}
+
+function assemblyFamily(v: unknown, label: string): AssemblyFamilyId {
+  const f = str(v, label);
+  if (!ASSEMBLY_FAMILIES.has(f)) throw new RankedPublicParseError(`${label} is unknown: ${f}`);
+  return f as AssemblyFamilyId;
+}
+
+function assemblyToken(v: unknown, label: string): string {
+  const t = str(v, label);
+  if (!ASSEMBLY_TOKEN_RE.test(t)) throw new RankedPublicParseError(`${label} is not a card token`);
+  return t;
+}
+
+function assemblyLane(v: unknown, label: string): AssemblyLaneId {
+  const id = str(v, label);
+  if (!(ASSEMBLY_LANE_ORDER as readonly string[]).includes(id)) {
+    throw new RankedPublicParseError(`${label} is not a lane position: ${id}`);
+  }
+  return id as AssemblyLaneId;
+}
+
+/** Exactly the five lane positions, in lane order. Refused, never re-sorted. */
+function readAssemblyPositions(v: unknown, label: string): AssemblyPositionView[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  const out = v.map((raw, i) => {
+    const o = rec(raw, `${label}[${i}]`);
+    onlyKeys(o, ASSEMBLY_POSITION_KEYS, `${label}[${i}]`);
+    return {
+      slotId: assemblyLane(o.slot_id, `${label}[${i}].slot_id`),
+      label: str(o.label, `${label}[${i}].label`),
+      short: str(o.short, `${label}[${i}].short`),
+    };
+  });
+  if (out.length !== ASSEMBLY_LANE_ORDER.length
+    || out.some((p, i) => p.slotId !== ASSEMBLY_LANE_ORDER[i])) {
+    throw new RankedPublicParseError(`${label} must be the five lane positions in lane order`);
+  }
+  return out;
+}
+
+function readAssemblyCards(v: unknown, label: string): AssemblyCardView[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  const out = v.map((raw, i) => {
+    const o = rec(raw, `${label}[${i}]`);
+    onlyKeys(o, ASSEMBLY_CARD_KEYS, `${label}[${i}]`);
+    const entityType = str(o.entity_type, `${label}[${i}].entity_type`);
+    if (entityType !== "player" && entityType !== "champion") {
+      throw new RankedPublicParseError(`${label}[${i}].entity_type is unknown: ${entityType}`);
+    }
+    return {
+      token: assemblyToken(o.token, `${label}[${i}].token`),
+      entityType: entityType as "player" | "champion",
+      label: str(o.label, `${label}[${i}].label`),
+      sublabel: nstr(o.sublabel, `${label}[${i}].sublabel`),
+      mediaKey: nstr(o.media_key, `${label}[${i}].media_key`),
+    };
+  });
+  if (new Set(out.map((c) => c.token)).size !== out.length) {
+    throw new RankedPublicParseError(`${label} deals a token twice`);
+  }
+  return out;
+}
+
+function readAssemblySubject(v: unknown, label: string): AssemblySubjectView {
+  const o = rec(v, label);
+  onlyKeys(o, ASSEMBLY_SUBJECT_KEYS, label);
+  return {
+    teamKey: nstr(o.team_key, `${label}.team_key`),
+    opponentKey: nstr(o.opponent_key, `${label}.opponent_key`),
+    team: nstr(o.team, `${label}.team`),
+    opponent: nstr(o.opponent, `${label}.opponent`),
+    event: nstr(o.event, `${label}.event`),
+    league: nstr(o.league, `${label}.league`),
+    stage: nstr(o.stage, `${label}.stage`),
+    season: nnum(o.season, `${label}.season`),
+    gameNumber: nnum(o.game_number, `${label}.game_number`),
+    gamesPlayed: nnum(o.games_played, `${label}.games_played`),
+  };
+}
+
+/**
+ * The `assembly` public block. Reads ONLY the allow-listed public fields (the
+ * disclosure walk has already refused any reveal-only key beneath it) and
+ * refuses a board that is not one five-position challenge over at least five
+ * distinct cards whose face matches the family.
+ */
+function readAssemblyBlock(block: Record<string, unknown>, list: unknown[]): AssemblyBlockView {
+  if (list.length !== 1) throw new RankedPublicParseError("assembly has exactly one challenge");
+  onlyKeys(block, ASSEMBLY_BLOCK_KEYS, "challenges");
+  const first = rec(list[0], "challenges[0]");
+  onlyKeys(first, ASSEMBLY_CHALLENGE_KEYS, "challenges[0]");
+  if (first.challenge_index !== 0 || first.slot_count !== ASSEMBLY_LANE_ORDER.length) {
+    throw new RankedPublicParseError("assembly challenge must be index 0 with five positions");
+  }
+  const family = assemblyFamily(block.family, "challenges.family");
+  const cardKind = str(block.card_kind, "challenges.card_kind");
+  const wantKind = family === "roster_lock" ? "identity" : "icon";
+  if (cardKind !== wantKind) {
+    throw new RankedPublicParseError(`challenges.card_kind must be ${wantKind} for ${family}`);
+  }
+  const cards = readAssemblyCards(first.cards, "challenges[0].cards");
+  const wantType = family === "roster_lock" ? "player" : "champion";
+  if (cards.length < ASSEMBLY_LANE_ORDER.length || cards.some((c) => c.entityType !== wantType)) {
+    throw new RankedPublicParseError(`challenges[0].cards must be at least five ${wantType} cards`);
+  }
+  return {
+    family,
+    prompt: str(block.prompt, "challenges.prompt"),
+    eyebrow: str(block.eyebrow, "challenges.eyebrow"),
+    cardKind: cardKind as "identity" | "icon",
+    subject: readAssemblySubject(block.subject, "challenges.subject"),
+    contentRef: str(block.content_ref, "challenges.content_ref"),
+    catalogRevision: str(block.catalog_revision, "challenges.catalog_revision"),
+    positions: readAssemblyPositions(first.positions, "challenges[0].positions"),
+    cards,
+  };
+}
+
+/** A five-token placement in lane order (the server's `{placement}`). */
+function assemblyPlacement(v: unknown, label: string): string[] {
+  const ids = idList(v, label).map((t, i) => assemblyToken(t, `${label}[${i}]`));
+  if (ids.length !== ASSEMBLY_LANE_ORDER.length || new Set(ids).size !== ids.length) {
+    throw new RankedPublicParseError(`${label} must be five distinct tokens`);
+  }
+  return ids;
+}
+
+function readAssemblyLineup(v: unknown, label: string): AssemblyLineupEntry[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  const out = v.map((raw, i) => {
+    const o = rec(raw, `${label}[${i}]`);
+    return {
+      slotId: assemblyLane(o.slot_id, `${label}[${i}].slot_id`),
+      role: nstr(o.role, `${label}[${i}].role`),
+      token: assemblyToken(o.token, `${label}[${i}].token`),
+      label: str(o.label, `${label}[${i}].label`),
+      fullLabel: nstr(o.full_label, `${label}[${i}].full_label`),
+      sublabel: nstr(o.sublabel, `${label}[${i}].sublabel`),
+      mediaKey: nstr(o.media_key, `${label}[${i}].media_key`),
+    };
+  });
+  if (out.length !== ASSEMBLY_LANE_ORDER.length
+    || out.some((e, i) => e.slotId !== ASSEMBLY_LANE_ORDER[i])
+    || new Set(out.map((e) => e.token)).size !== out.length) {
+    throw new RankedPublicParseError(`${label} must be five distinct cards in lane order`);
+  }
+  return out;
+}
+
+function readAssemblyFacts(v: unknown, label: string): Record<string, AssemblyCardFact> {
+  const o = rec(v, label);
+  const out: Record<string, AssemblyCardFact> = {};
+  for (const [token, raw] of Object.entries(o)) {
+    const f = rec(raw, `${label}.${token}`);
+    out[assemblyToken(token, `${label} key`)] = {
+      label: str(f.label, `${label}.${token}.label`),
+      fullLabel: nstr(f.full_label, `${label}.${token}.full_label`),
+      tier: nstr(f.tier, `${label}.${token}.tier`),
+      roleAnchor: nstr(f.role_anchor, `${label}.${token}.role_anchor`),
+      slotAnchor: nstr(f.slot_anchor, `${label}.${token}.slot_anchor`),
+    };
+  }
+  return out;
+}
+
+function readAssemblyContext(v: unknown, label: string): AssemblyHistoricalContext {
+  const o = rec(v, label);
+  const family = assemblyFamily(o.family, `${label}.family`);
+  const games = Array.isArray(o.games)
+    ? o.games.map((g, i) => {
+      const x = rec(g, `${label}.games[${i}]`);
+      return {
+        gameNumber: nnum(x.game_number, `${label}.games[${i}].game_number`),
+        gameDate: nstr(x.game_date, `${label}.games[${i}].game_date`),
+        side: nstr(x.side, `${label}.games[${i}].side`),
+      };
+    }) : null;
+  const g = o.game && typeof o.game === "object" ? rec(o.game, `${label}.game`) : null;
+  const prov = o.provenance && typeof o.provenance === "object"
+    ? o.provenance as Record<string, unknown> : {};
+  return {
+    family,
+    team: nstr(o.team, `${label}.team`),
+    opponent: nstr(o.opponent, `${label}.opponent`),
+    event: nstr(o.event, `${label}.event`),
+    league: nstr(o.league, `${label}.league`),
+    stage: nstr(o.stage, `${label}.stage`),
+    season: nnum(o.season, `${label}.season`),
+    contentId: nstr(o.content_id, `${label}.content_id`),
+    rulesVersion: nstr(o.rules_version, `${label}.rules_version`),
+    catalogRevision: nstr(o.catalog_revision, `${label}.catalog_revision`),
+    games,
+    game: g ? {
+      gameNumber: nnum(g.game_number, `${label}.game.game_number`),
+      gameDate: nstr(g.game_date, `${label}.game.game_date`),
+      patch: nstr(g.patch, `${label}.game.patch`),
+      side: nstr(g.side, `${label}.game.side`),
+    } : null,
+    pickOrder: nstr(o.pick_order, `${label}.pick_order`),
+    path: typeof prov.path === "string" ? prov.path : null,
+  };
+}
+
+/** `{top: true, ...}` — the server's per-position marks, keyed by lane id only. */
+function readAssemblyMarks(v: unknown, label: string): Partial<Record<AssemblyLaneId, boolean>> {
+  if (v === null || v === undefined) return {};
+  const o = rec(v, label);
+  const out: Partial<Record<AssemblyLaneId, boolean>> = {};
+  for (const [k, val] of Object.entries(o)) out[assemblyLane(k, `${label} key`)] = bool(val, `${label}.${k}`);
+  return out;
+}
+
+function readAssemblyChallengeReveal(o: Record<string, unknown>, label: string): AssemblyChallengeReveal {
+  return {
+    placement: assemblyPlacement(o.placement, `${label}.placement`),
+    isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+    matched: num(o.matched, `${label}.matched`),
+    positionCorrect: readAssemblyMarks(o.position_correct, `${label}.position_correct`),
+    canonicalLineup: readAssemblyLineup(o.canonical_lineup, `${label}.canonical_lineup`),
+    cardFacts: readAssemblyFacts(o.card_facts, `${label}.card_facts`),
+    context: readAssemblyContext(o.historical_context, `${label}.historical_context`),
+  };
+}
+
+function readAssemblySettlement(o: Record<string, unknown>): AssemblySettlement {
+  const placements: Record<string, string[] | null> = {};
+  const positionCorrect: Record<string, Partial<Record<AssemblyLaneId, boolean>>> = {};
+  const matched: Record<string, number> = {};
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    placements[pid] = p.placement === null || p.placement === undefined
+      ? null : assemblyPlacement(p.placement, `players.${pid}.placement`);
+    positionCorrect[pid] = readAssemblyMarks(p.position_correct, `players.${pid}.position_correct`);
+    matched[pid] = nnum(p.matched, `players.${pid}.matched`) ?? 0;
+  }
+  return {
+    family: assemblyFamily(o.family, "segment_reveal.family"),
+    canonicalLineup: readAssemblyLineup(o.canonical_lineup, "segment_reveal.canonical_lineup"),
+    cardFacts: readAssemblyFacts(o.card_facts, "segment_reveal.card_facts"),
+    context: readAssemblyContext(o.historical_context, "segment_reveal.historical_context"),
+    placements, positionCorrect, matched,
+  };
+}
+
+/**
+ * One `assembly` review round, with the same inverse guard as Order Forge:
+ * an unrevealed round must carry no lineup, mark, card fact or context.
+ */
+function reviewAssembly(r: Record<string, unknown>, label: string, revealed: boolean): ReviewAssembly {
+  const present = (x: unknown) => x !== null && x !== undefined;
+  if (!revealed && (present(r.canonical_lineup) || present(r.card_facts)
+    || present(r.historical_context) || present(r.position_correct) || present(r.matched))) {
+    throw new RankedPublicParseError(`${label} is not revealed but carried the lineup`);
+  }
+  const family = typeof r.family === "string" && ASSEMBLY_FAMILIES.has(r.family)
+    ? r.family as AssemblyFamilyId : null;
+  const kind = r.card_kind === "identity" || r.card_kind === "icon" ? r.card_kind : null;
+  return {
+    family,
+    prompt: nstr(r.prompt, `${label}.prompt`),
+    eyebrow: nstr(r.eyebrow, `${label}.eyebrow`),
+    cardKind: kind,
+    subject: present(r.subject) ? readAssemblySubject(r.subject, `${label}.subject`) : null,
+    positions: Array.isArray(r.positions) && r.positions.length > 0
+      ? readAssemblyPositions(r.positions, `${label}.positions`) : [],
+    cards: Array.isArray(r.cards) ? readAssemblyCards(r.cards, `${label}.cards`) : [],
+    viewerPlacement: present(r.viewer_placement)
+      ? assemblyPlacement(r.viewer_placement, `${label}.viewer_placement`) : null,
+    canonicalLineup: present(r.canonical_lineup)
+      ? readAssemblyLineup(r.canonical_lineup, `${label}.canonical_lineup`) : null,
+    cardFacts: present(r.card_facts) ? readAssemblyFacts(r.card_facts, `${label}.card_facts`) : null,
+    context: present(r.historical_context)
+      ? readAssemblyContext(r.historical_context, `${label}.historical_context`) : null,
+    positionCorrect: present(r.position_correct)
+      ? readAssemblyMarks(r.position_correct, `${label}.position_correct`) : null,
+    matched: nnum(r.matched, `${label}.matched`),
+    outcome: nstr(r.outcome, `${label}.outcome`),
+  };
+}
+
+function readScrubSettlement(o: Record<string, unknown>): ScrubSettlement {
+  const picks: Record<string, string | null> = {};
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    picks[pid] = nstr(p.checkpoint, `players.${pid}.checkpoint`);
+  }
+  return {
+    canonicalCheckpoint: str(o.canonical_checkpoint, "segment_reveal.canonical_checkpoint"),
+    satisfiedCheckpoints: idList(o.satisfied_checkpoints ?? [], "segment_reveal.satisfied_checkpoints"),
+    proof: readScrubProof(o.proof, "segment_reveal.proof"),
+    checkpoints: idList(o.checkpoints ?? [], "segment_reveal.checkpoints"),
+    picks,
   };
 }
 
@@ -3064,7 +3790,7 @@ export interface ReviewMasteryChallenge {
 
 export interface ReviewRound {
   roundNumber: number;
-  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct" | "match";
+  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct" | "match" | "assembly" | "scrub";
   moduleId: string;
   category: string | null;
   canonicalQuestionRef: string | null;
@@ -3094,6 +3820,10 @@ export interface ReviewRound {
   reconstruct?: ReviewReconstruct | null;
   /** MG-P3 — present only on a `match` round; null on every other kind. */
   match?: ReviewMatch | null;
+  /** PA2B — present only on an `assembly` round; null on every other kind. */
+  assembly?: ReviewAssembly | null;
+  /** Present only on a `scrub` round; null on every other kind. */
+  scrub?: ReviewScrub | null;
   viewerSubmission: ReviewSubmission;
 }
 
@@ -3300,6 +4030,36 @@ function reviewReconstruct(
 }
 
 /**
+ * One `scrub` review round, with the same inverse guard as Reconstruct: an
+ * unrevealed round must carry no canonical checkpoint, proof or traverse.
+ */
+function reviewScrub(r: Record<string, unknown>, label: string, revealed: boolean): ReviewScrub {
+  const hasAnswer = (r.canonical_checkpoint !== null && r.canonical_checkpoint !== undefined)
+    || (r.proof !== null && r.proof !== undefined)
+    || (Array.isArray(r.satisfied_checkpoints) && r.satisfied_checkpoints.length > 0)
+    || (Array.isArray(r.traverse_path) && r.traverse_path.length > 0);
+  if (!revealed && hasAnswer) {
+    throw new RankedPublicParseError(`${label} is not revealed but carried the checkpoint`);
+  }
+  const checkpoints = Array.isArray(r.checkpoints) ? r.checkpoints : [];
+  return {
+    objective: r.objective === null || r.objective === undefined
+      ? null : readScrubObjective(r.objective, `${label}.objective`),
+    unitLabel: typeof r.unit_label === "string" ? r.unit_label : "Wave",
+    checkpoints: checkpoints.map((c, i) => readScrubCheckpoint(c, `${label}.checkpoints[${i}]`)),
+    viewerCheckpoint: nstr(r.viewer_checkpoint, `${label}.viewer_checkpoint`),
+    canonicalCheckpoint: nstr(r.canonical_checkpoint, `${label}.canonical_checkpoint`),
+    satisfiedCheckpoints: r.satisfied_checkpoints === null || r.satisfied_checkpoints === undefined
+      ? [] : idList(r.satisfied_checkpoints, `${label}.satisfied_checkpoints`),
+    proof: r.proof === null || r.proof === undefined ? null : readScrubProof(r.proof, `${label}.proof`),
+    traversePath: r.traverse_path === null || r.traverse_path === undefined
+      ? [] : idList(r.traverse_path, `${label}.traverse_path`),
+    granularityCaveat: nstr(r.granularity_caveat, `${label}.granularity_caveat`),
+    outcome: nstr(r.outcome, `${label}.outcome`),
+  };
+}
+
+/**
  * Post-match review (`ranked_duel.match_review.v1`).
  *
  * This is the ONE reader that expects a correct answer, so the guard that
@@ -3319,7 +4079,8 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const r = rec(raw, label);
     const kind = str(r.kind, `${label}.kind`);
     if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice"
-      && kind !== "order_forge" && kind !== "reconstruct" && kind !== "match") {
+      && kind !== "order_forge" && kind !== "reconstruct" && kind !== "match"
+      && kind !== "assembly" && kind !== "scrub") {
       throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
     }
     const revealed = bool(r.revealed, `${label}.revealed`);
@@ -3356,7 +4117,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     let challenges: ReviewChallenge[] | null = null;
     let masteryChallenges: ReviewMasteryChallenge[] | null = null;
     if (Array.isArray(r.challenges) && kind !== "order_forge" && kind !== "reconstruct"
-      && kind !== "match") {
+      && kind !== "match" && kind !== "assembly" && kind !== "scrub") {
       if (kind === "mastery_slice") {
         masteryChallenges = r.challenges.map((c, j) =>
           reviewMasteryChallenge(c, `${label}.challenges[${j}]`, revealed));
@@ -3373,6 +4134,8 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const orderForge = kind === "order_forge" ? reviewOrderForge(r, label, revealed) : null;
     const reconstruct = kind === "reconstruct" ? reviewReconstruct(r, label, revealed) : null;
     const match = kind === "match" ? reviewMatch(r, label, revealed) : null;
+    const assembly = kind === "assembly" ? reviewAssembly(r, label, revealed) : null;
+    const scrub = kind === "scrub" ? reviewScrub(r, label, revealed) : null;
     const sub = rec(r.viewer_submission, `${label}.viewer_submission`);
     return {
       roundNumber: num(r.round_number, `${label}.round_number`),
@@ -3390,6 +4153,8 @@ export function readMatchReview(body: unknown): MatchReviewView {
       orderForge,
       reconstruct,
       match,
+      assembly,
+      scrub,
       viewerSubmission: {
         answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
         isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),

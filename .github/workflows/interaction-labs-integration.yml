@@ -1,0 +1,33 @@
+name: interaction-labs-integration
+on:
+  pull_request:
+    paths:
+      - 'src/pages/admin/interaction-labs/**'
+      - 'src/pages/dev/rangefinder/**'
+      - 'src/pages/dev/word-puzzle/**'
+      - 'src/lib/interaction-grammar/**'
+      - 'src/components/interaction-grammar/**'
+      - 'src/lib/interaction-labs/**'
+      - 'src/lib/rangefinder/**'
+      - 'src/lib/word-puzzle/**'
+      - 'src/App.tsx'
+      - 'src/lib/admin/admin-registry.ts'
+      - '.github/workflows/interaction-labs-integration.yml'
+jobs:
+  owner-prototypes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false
+      - name: Original and owner unit suites
+        run: npx vitest run src/lib/rangefinder src/lib/word-puzzle src/lib/interaction-grammar src/components/interaction-grammar src/lib/interaction-labs src/pages/admin/interaction-labs
+      - name: Production Vite build
+        run: npx vite build
+      - name: Chromium setup
+        run: npx playwright install --with-deps chromium
+      - name: Owner production-bundle browser suite
+        run: npx playwright test -c playwright.interaction-labs.config.ts
