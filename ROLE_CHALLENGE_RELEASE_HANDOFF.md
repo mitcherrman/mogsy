@@ -1,12 +1,12 @@
 # Role Challenge — release handoff (RC8)
 
-_Last updated: 2026-10-14 (UTC). Owner decision required before merge/deploy._
+_Last updated: 2026-10-15 (UTC). Owner decision required before merge/deploy._
 
 ## Current state
 
 | Piece | Where | Head |
 |---|---|---|
-| Frontend release candidate | `mitcherrman/mogsy` PR #18, branch `rc7/role-challenge-hub-20261014` (same commits as `claude/relaxed-archimedes-8kq1vi`), **base retargeted to `main`** | see PR |
+| Frontend release candidate | `mitcherrman/mogsy` PR #18, branch `rc7/role-challenge-hub-20261014` (same commits as `claude/relaxed-archimedes-8kq1vi`), **base retargeted to `main`** | `7985546` (code head `2738ad1`) |
 | Backend release candidate | `mitcherrman/League_Combat_Simulator` PR #14, branch `rc5/role-challenge-pools` | `a340b984` (code identical to `a4a96c0c`; `a340b984` adds only the acceptance script) |
 | Superseded | mogsy PR #12 (RC4 transport) and PR #13 (RC6 origin) — fully contained in PR #18 | — |
 
@@ -45,7 +45,9 @@ below is green). Run it with one command (see *Next action*).
 5. **Mogzy's Ranked role guide** mounts only on the Ranked mode it points at.
 6. **Review Match** for a Role Challenge opens the end screen's Match details in place instead of
    `/quiz#history` (which correctly does not contain it).
-7. **Module statistics** (`/api/ranked/module-stats`, a per-module accuracy read) *do* include Role
+7. Dev-only `/dev/lobby-preview` mounts the real picker, so its Role tab would read the public catalog
+   (the route 404s in production builds).
+8. **Module statistics** (`/api/ranked/module-stats`, a per-module accuracy read) *do* include Role
    Challenge answers, the same policy the backend already applies to Daily-hosted matches (a genuine
    attempt is a genuine attempt). It is not rating, history, achievements or role W/L. Flip it in
    `services/ranked_module_stats.py` if the owner wants it excluded.
@@ -65,18 +67,27 @@ Backend (PR #14) changes in this pass: merge of `master` `35bc16bf`; `scripts/ro
 
 ## Tests (this pass)
 
-Filled from the runs in this session — see the PR descriptions for the same numbers.
-
-- Frontend focused (Role Challenge, hub, arena, rules, results): **see PR #18** — all passing.
-- Frontend full suite differential vs `main`: **see PR #18**.
+- **Frontend focused / CI gate** (Role Challenge, hub, arena, rules, results; `role-challenge-review.yml`):
+  **905 passed, 0 failed (82 files)** locally; the GitHub workflow (npm ci → tests → tsc → vite build) is green.
+- **Frontend full suite, candidate `2738ad1`** vs **`main` `0210282`**: candidate **16,771 passed / 34 failed /
+  7 skipped** (16,812 total; +37 tests); main **16,739 / 29 / 7**. Every failing file fails on `main` too.
+  The only per-test differences were in two slow timing-sensitive files (`LobbyPreviewPage.premiumAnalytics`,
+  `PatchReports.catchup`); rerun alone on both trees they give **identical results** (2 failed / 70 passed on
+  both). **No regression.** Pre-existing failures (not touched here): App routing/route guards, admin
+  registry routes, QuizCategoryRail (Vision), arena boundary/geometry, Quiz.hub h1 + rail, users1/pt14/
+  admin-notification guards, noStaticLeagueFacts, DailyHistory, syntheticRankedHistory, useSafeTemporalBack.
 - `tsc` app + node: **0 errors**. `vite build` (production): **passes**.
 - ESLint on touched files: 0 new errors (the 12 `no-explicit-any` errors in `Quiz.tsx` are identical on `main`).
-- Backend focused CI set on the master-merged candidate: **293 passed, 45 skipped (DB-gated), 179 subtests**; Reconstruct timing **40 passed**.
-- Backend wide differential (ranked/assembly/match/journey/daily/quiz suites, 154 files) master vs candidate:
-  **identical failure sets** (414 failed / 33 errors on both — inherited, mostly DB/bank-dependent);
-  candidate 3739 passed vs master 3737 (+2 new isolation tests). **No regression.**
-- Live acceptance (real backend app on a scratch DB, real arena, Chromium, desktop 1440×900 + mobile
-  390×844): **see PR #18** for the scenario table and screenshots.
+- **Backend** on the master-merged candidate: GitHub **3/3 green**; focused **293 passed, 45 skipped (DB-gated),
+  179 subtests**; Reconstruct timing **40 passed**; wide differential over 154 files **identical failure sets**
+  (414 failed / 33 errors on both, inherited), candidate +2 passes. **No regression.**
+- **Live acceptance** (real `api_server:app` on a scratch DB, real arena, Chromium; desktop 1440×900 + mobile
+  390×844) on PR head `2738ad1`: **27 / 27 PASS** — hub modes and parchments, 173-champion picker with portraits,
+  off-meta pick, full 12-question play, reload resume, hub Resume card, in-place review, Free daily gating with
+  reset/Premium offer, server 403 on a second Free start, lost-response retry → same run, Premium repeat
+  (premium slot), 409 on a second active match, Ranked history/rating/placements untouched, Ranked seal and
+  `?play=1` still open the Ranked record, Daily button opens Daily. A run that crossed 00:00 UTC also showed the
+  daily slot resetting at the UTC boundary as designed.
 
 ## Blockers
 
