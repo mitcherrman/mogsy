@@ -11,6 +11,7 @@
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, Link, RouterProvider } from "react-router-dom";
+import { MORE_CHALLENGES_STAND_IN, MoreChallengesStandIn } from "@/test/moreChallengesStandIn";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "userA", is_anonymous: false } }) }));
@@ -83,6 +84,7 @@ function mountAt(t: FixtureTransport) {
   const router = createMemoryRouter([
     { path: "/quiz", element: <h1>Quiz</h1> },
     { path: "/lol", element: <h1>Home</h1> },
+    { path: "/quiz/more-challenges", element: <MoreChallengesStandIn /> },
     { path: "/quiz/daily-challenge", element: <>
       <DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA" />
       <Link to="/lol">HUD Home</Link>
@@ -216,7 +218,7 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("is starting");
   });
 
-  it("from the in-session MAIN result, Play More Challenges guards at once too", async () => {
+  it("from the MAIN result, Play More Challenges → the catalog's Play guards at once too", async () => {
     const t = createFixtureTransport(V5_ELIGIBLE_DAY, { planVersion: 5,
       existing: wireV5Run(V5_ELIGIBLE_DAY, {}, { 0: { status: "in_progress", child_match_id: "child-0" } }) });
     holdLaunches(t);
@@ -227,7 +229,12 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     await waitFor(() => expect(screen.getByTestId("daily-main-result")).not.toHaveAttribute("data-pending"));
     // The main result itself: free to leave (P2A, unchanged).
     expect(shouldGuardDailyLeave(readDailyRun(t.wire()), null)).toBe(false);
+    // PGM1 — the main result opens the catalog (free to leave: nothing started);
+    // the card's Play comes back and commits the launch at once.
     fireEvent.click(screen.getByTestId("daily-main-continue"));
+    expect(router.state.location.pathname).toBe("/quiz/more-challenges");
+    fireEvent.click(await screen.findByTestId(MORE_CHALLENGES_STAND_IN));
+    await waitFor(() => expect(phase()).toBe("stage-intro"));
     leaveVia();
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("Time Trial is starting");
     expect(router.state.location.pathname).toBe("/quiz/daily-challenge");

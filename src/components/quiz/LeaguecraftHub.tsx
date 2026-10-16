@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, Library } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { GraduationCap, Library, Trophy } from "lucide-react";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import type { HubCentreMode } from "@/lib/role-challenge/presentation";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
@@ -29,6 +29,7 @@ import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuesti
 import { SectionHeading } from "@/components/quiz/workspace/primitives";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
 import { authHref } from "@/lib/auth/auth-destination";
+import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
 
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
@@ -701,6 +702,39 @@ export default function LeaguecraftHub({
         />
       </section>
       </div>
+
+      {/* PGM1 — MORE CHALLENGES. The returning player's way back to the bonus
+              modes (the Daily's result is the other). One quiet row below
+              the first screen, so it never competes with the lobby; it is a
+              plain link and reads nothing, so the lobby load is unchanged. The
+              catalog page owns every mode, status and Play action. */}
+      <section
+        className="flex flex-col gap-1.5"
+        data-testid="hub-more-challenges"
+        aria-labelledby="hub-more-challenges-heading"
+      >
+        <SectionHeading
+          id="hub-more-challenges-heading"
+          icon={Trophy}
+          title="More Challenges"
+          hint="Bonus modes to play after your Daily Challenge."
+        />
+        <div className="ranked-subpanel flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-[color:var(--ranked-muted)]">
+            Time Trial, Survival and the new bonus modes. None of them change your Daily score or Ranked rating.
+          </p>
+          <Link
+            to={MORE_CHALLENGES_ROUTE}
+            state={moreChallengesState("leaguecraft")}
+            data-testid="hub-more-challenges-link"
+            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-[rgba(201,168,76,0.55)]
+              bg-[rgba(201,168,76,0.12)] px-4 text-sm font-semibold text-[#f0d78c] hover:bg-[rgba(201,168,76,0.2)]
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(201,168,76,0.6)]"
+          >
+            Browse More Challenges
+          </Link>
+        </div>
+      </section>
 
       {/* 3 ── (HUB7) THE STUDY ROW IS GONE FROM THE HUB.
               It held the curated Practice Packs, the Premium Practice Builder
