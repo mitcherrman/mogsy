@@ -21,7 +21,7 @@ describe("defaults reproduce current production behaviour", () => {
       // PLAY1: all three match-entry options visible, which is the intended
       // presentation of the Ranked lobby's PLAY scroll.
       play: { modes: { ranked: true, dailyChallenge: true, invite: true } },
-      queues: { daily: true, role: true, ranked: true },
+      queues: { daily: true, role: true, ranked: true, bonus: true },
       // WHATSNEW2: off, so an unreadable settings table never makes an
       // announcement surface appear by accident.
       academy: { updatesEnabled: false },
@@ -37,13 +37,14 @@ describe("defaults reproduce current production behaviour", () => {
       { key: POLICY_KEYS.queueDailyEnabled, value: { enabled: false } },
       { key: POLICY_KEYS.queueRoleEnabled, value: { enabled: true } },
       { key: POLICY_KEYS.queueRankedEnabled, value: { enabled: false } },
+      { key: POLICY_KEYS.queueBonusGamesEnabled, value: { enabled: false } },
     ]);
-    expect(policy.queues).toEqual({ daily: false, role: true, ranked: false });
-    expect(parsePlatformPolicy([]).queues).toEqual({ daily: true, role: true, ranked: true });
+    expect(policy.queues).toEqual({ daily: false, role: true, ranked: false, bonus: false });
+    expect(parsePlatformPolicy([]).queues).toEqual({ daily: true, role: true, ranked: true, bonus: true });
     expect(parsePlatformPolicy([
       { key: POLICY_KEYS.queueDailyEnabled, value: "false" },
       { key: POLICY_KEYS.queueRoleEnabled, value: {} },
-    ]).queues).toEqual({ daily: true, role: true, ranked: true });
+    ]).queues).toEqual({ daily: true, role: true, ranked: true, bonus: true });
   });
 
   it("defaults global Premium access OFF, so an unreadable table never opens Premium", () => {

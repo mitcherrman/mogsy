@@ -23,7 +23,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "time_trial",
-      "report_id": "time_trial"
+      "report_id": "time_trial",
+      "rules": []
     },
     {
       "id": "survival",
@@ -47,7 +48,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "survival",
-      "report_id": "survival"
+      "report_id": "survival",
+      "rules": []
     },
     {
       "id": "roster_lock",
@@ -67,7 +69,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "roster_lock",
-      "report_id": "roster_lock"
+      "report_id": "roster_lock",
+      "rules": []
     },
     {
       "id": "draft_memory",
@@ -87,7 +90,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "draft_memory",
-      "report_id": "draft_memory"
+      "report_id": "draft_memory",
+      "rules": []
     },
     {
       "id": "chronoscope",
@@ -107,7 +111,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "chronoscope",
-      "report_id": "chronoscope"
+      "report_id": "chronoscope",
+      "rules": []
     },
     {
       "id": "match_grid",
@@ -116,18 +121,35 @@
       "theme": "Runes",
       "summary": "Seat each rune under the rune tree it belongs to.",
       "availability": {
-        "status": "coming_soon",
-        "reason_code": "PUBLIC_LAUNCH_PENDING",
-        "message": "Coming soon."
+        "status": "available",
+        "reason_code": null,
+        "message": null
       },
-      "launch": null,
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
       "scoring": {
-        "summary": null,
+        "summary": "Each board scores 2 points only when every rune is under its own tree; a partly right board scores nothing. A correct board locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
         "affects_daily_score": false,
         "affects_ranked_rating": false
       },
       "rules_id": "match_grid",
-      "report_id": "match_grid"
+      "report_id": "match_grid",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Three boards against a bot: 3 rune trees, then 4, then 5. You have 45 seconds for each board."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Seat every rune under a tree, then Lock. Many runes can share one tree."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each board, every rune's real tree is shown."
+        }
+      ]
     },
     {
       "id": "reconstruct",
@@ -147,7 +169,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "reconstruct",
-      "report_id": "reconstruct"
+      "report_id": "reconstruct",
+      "rules": []
     },
     {
       "id": "order_forge",
@@ -167,7 +190,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "order_forge",
-      "report_id": "order_forge"
+      "report_id": "order_forge",
+      "rules": []
     },
     {
       "id": "rangefinder",
@@ -187,7 +211,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "rangefinder",
-      "report_id": "rangefinder"
+      "report_id": "rangefinder",
+      "rules": []
     },
     {
       "id": "glyph_press",
@@ -207,7 +232,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "glyph_press",
-      "report_id": "glyph_press"
+      "report_id": "glyph_press",
+      "rules": []
     },
     {
       "id": "perfect_timing",
@@ -227,7 +253,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "perfect_timing",
-      "report_id": "perfect_timing"
+      "report_id": "perfect_timing",
+      "rules": []
     },
     {
       "id": "stat_drop",
@@ -247,7 +274,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "stat_drop",
-      "report_id": "stat_drop"
+      "report_id": "stat_drop",
+      "rules": []
     },
     {
       "id": "combat_estimate",
@@ -267,7 +295,8 @@
         "affects_ranked_rating": false
       },
       "rules_id": "combat_estimate",
-      "report_id": "combat_estimate"
+      "report_id": "combat_estimate",
+      "rules": []
     }
   ]
 }

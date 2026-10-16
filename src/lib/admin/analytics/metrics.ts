@@ -191,6 +191,7 @@ export type RankedHostBucketId =
   | "study_hall"
   | "daily_challenge"
   | "journey_library"
+  | "bonus_game"
   | "legacy_unknown";
 
 export interface RankedHostBucket {
@@ -219,6 +220,8 @@ export const RANKED_HOST_BUCKETS: RankedHostBucket[] = [
       "host = daily_challenge: one Daily stage's Ranked child (metadata.parent_activity_id = run, parent_stage_index/kind = stage). A child completing is NOT the Daily completing. Unrated." },
   { id: "journey_library", label: "Journey Library",
     definition: "host = journey_library: a public Journey Library launch (POST /api/journeys/.../launch) against a bot. Unrated." },
+  { id: "bonus_game", label: "Bonus games (More Challenges)",
+    definition: "host = bonus_game: a public More Challenges launch (POST /api/game-modes/.../start) against a bot; metadata.session_preset = bonus.<mode>. Unrated." },
   { id: "legacy_unknown", label: "Legacy / unknown host",
     definition:
       "No recognised metadata.host (rows recorded before host provenance existed — Daily children were not emitted then). Not guessed into another bucket." },
@@ -233,7 +236,7 @@ export function rankedHostBucket(e: Pick<AnalyticsEventRecord, "metadata">): Ran
     return "legacy_unknown";
   }
   if (host === "playtest" || host === "study_hall" || host === "daily_challenge"
-    || host === "journey_library") return host;
+    || host === "journey_library" || host === "bonus_game") return host;
   return "legacy_unknown";
 }
 

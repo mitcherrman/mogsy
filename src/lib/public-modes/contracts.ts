@@ -41,6 +41,28 @@ export const PUBLIC_MODE_IDS = [
 
 export type PublicModeId = (typeof PUBLIC_MODE_IDS)[number];
 
+/**
+ * PGM2 — each mode's display title, for surfaces that must name a mode without
+ * the catalog in hand (a match's result eyebrow, its report label). The
+ * catalog stays the authority for everything a player reads about a mode; a
+ * test pins these to the captured backend catalog.
+ */
+export const PUBLIC_MODE_TITLES: Readonly<Record<PublicModeId, string>> = {
+  time_trial: "Time Trial",
+  survival: "Survival",
+  roster_lock: "Roster Lock",
+  draft_memory: "Draft Memory",
+  chronoscope: "Chronoscope",
+  match_grid: "Match Grid",
+  reconstruct: "Reconstruct",
+  order_forge: "Order Forge",
+  rangefinder: "Rangefinder",
+  glyph_press: "Glyph Press",
+  perfect_timing: "Perfect Timing",
+  stat_drop: "Stat Drop",
+  combat_estimate: "Combat Estimate",
+};
+
 export function isPublicModeId(value: unknown): value is PublicModeId {
   return typeof value === "string" && (PUBLIC_MODE_IDS as readonly string[]).includes(value);
 }
@@ -53,7 +75,8 @@ const LAUNCH_KINDS: readonly PublicModeLaunchKind[] = ["daily_stage", "ranked_ma
 
 export type PublicModeLaunch =
   | { kind: "daily_stage"; stageKind: string; minPlanVersion: number }
-  | { kind: "ranked_match" | "session" };
+  /** PGM2 — `guestsAllowed`: a verified guest session may start it. */
+  | { kind: "ranked_match" | "session"; guestsAllowed: boolean };
 
 export interface PublicModeAvailability {
   status: PublicModeStatus;
@@ -82,6 +105,8 @@ export interface PublicModeEntry {
   rulesId: string;
   /** Key the mode's report snapshots carry (`game_mode_id`). */
   reportId: string;
+  /** PGM2 — the mode's own Rules sections, from the server; [] until published. */
+  rules: { heading: string; body: string }[];
 }
 
 export interface PublicModeCatalog {
@@ -129,7 +154,17 @@ function readLaunch(value: unknown, what: string): PublicModeLaunch | null {
     if (typeof min !== "number" || !Number.isInteger(min) || min < 1) fail(`${what}.min_plan_version: expected an integer`);
     return { kind, stageKind: str(raw.stage_kind, `${what}.stage_kind`), minPlanVersion: min };
   }
-  return { kind: kind as "ranked_match" | "session" };
+  return { kind: kind as "ranked_match" | "session", guestsAllowed: raw.guests_allowed === true };
+}
+
+function readRules(value: unknown, what: string): { heading: string; body: string }[] {
+  // Absent on a PGM1 backend: no mode-specific rules yet.
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) fail(`${what}: expected an array`);
+  return value.map((row, i) => {
+    const r = obj(row, `${what}[${i}]`);
+    return { heading: str(r.heading, `${what}[${i}].heading`), body: str(r.body, `${what}[${i}].body`) };
+  });
 }
 
 function readEntry(value: unknown, index: number): PublicModeEntry | null {
@@ -163,6 +198,7 @@ function readEntry(value: unknown, index: number): PublicModeEntry | null {
     },
     rulesId: str(raw.rules_id, `${what}.rules_id`),
     reportId: str(raw.report_id, `${what}.report_id`),
+    rules: readRules(raw.rules, `${what}.rules`),
   };
 }
 

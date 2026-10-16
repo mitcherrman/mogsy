@@ -39,7 +39,8 @@ type PolicyField =
   | "playModeInvite"
   | "queueDaily"
   | "queueRole"
-  | "queueRanked";
+  | "queueRanked"
+  | "queueBonusGames";
 
 const GLOBAL_PREMIUM_ACCESS_FIELD: PolicyField = "globalPremiumAccess";
 
@@ -125,6 +126,14 @@ const CONTROLS: {
     warnWhen: "off",
     warning: "New Ranked queue joins are paused. Existing matches and results remain accessible. Backend checks the setting within 60 seconds.",
   },
+  {
+    field: "queueBonusGames",
+    settingKey: POLICY_KEYS.queueBonusGamesEnabled,
+    label: "Queue · Bonus Games",
+    description: "Allow new More Challenges bonus games (independent of Daily and Ranked).",
+    warnWhen: "off",
+    warning: "New bonus games are paused. A game already in progress can still be finished. Backend checks the setting within 60 seconds.",
+  },
   // ── PLAY1 · the LEGACY Ranked lobby's match-entry scroll ───────────────
   // Three independent switches rather than one "which modes" setting, so a
   // single entry can be withdrawn during an incident without implying
@@ -174,6 +183,7 @@ function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
     queueDaily: policy.queues.daily,
     queueRole: policy.queues.role,
     queueRanked: policy.queues.ranked,
+    queueBonusGames: policy.queues.bonus,
   };
 }
 

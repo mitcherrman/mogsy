@@ -32,6 +32,11 @@ import {
   type RankedMatchHost,
 } from "@/lib/ranked-public/matchHost";
 
+/** PGM2 — More Challenges, the public catalog a bonus game returns to.
+ *  Spelled here (not imported from public-modes) to keep this module free of
+ *  the Daily imports that the launch module carries. */
+export const MORE_CHALLENGES_ORIGIN_ROUTE = "/quiz/more-challenges";
+
 /**
  * UGMP — the owner's Playtests hub. NOT a host: an admin preset match persists
  * host `playtest`, which the public guided Playtest (/quiz/playtest) shares. So
@@ -43,7 +48,8 @@ import {
 export const ADMIN_PLAYTESTS_ORIGIN_ID = "admin_playtests";
 export const ADMIN_PLAYTESTS_ROUTE = "/admin/leaguecraft?section=ranked&view=playtests";
 
-type HostOriginId = typeof MATCH_HOST.journeyLibrary | typeof MATCH_HOST.roleChallenge;
+type HostOriginId = typeof MATCH_HOST.journeyLibrary | typeof MATCH_HOST.roleChallenge
+  | typeof MATCH_HOST.bonusGame;
 export type RankedMatchOriginId = HostOriginId | typeof ADMIN_PLAYTESTS_ORIGIN_ID;
 
 export interface RankedMatchOrigin {
@@ -88,6 +94,15 @@ export const RANKED_MATCH_ORIGINS: Record<HostOriginId, RankedMatchOrigin> = {
     href: ROLE_CHALLENGE_ROUTE,
     returnLabel: "Back to Role Challenge",
     navLabel: "Role Challenge",
+  },
+  // PGM2 — implied by the PERSISTED host, so it survives a reload: a bonus
+  // game always finds its way back to More Challenges.
+  [MATCH_HOST.bonusGame]: {
+    id: MATCH_HOST.bonusGame,
+    label: matchHostLabel(MATCH_HOST.bonusGame)!,
+    href: MORE_CHALLENGES_ORIGIN_ROUTE,
+    returnLabel: "Back to More Challenges",
+    navLabel: "Challenges",
   },
 };
 

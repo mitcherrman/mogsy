@@ -75,7 +75,9 @@ import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import { getActiveMatch, getMatchResult, isAborted, RankedApiError } from "@/lib/ranked-public/client";
 import { MATCH_HOST } from "@/lib/ranked-public/matchHost";
 import { QuizRankedMatch } from "./QuizRankedMatch";
-import { originForHost, readMatchOrigin, type RankedMatchOrigin } from "./matchOrigin";
+import {
+  MORE_CHALLENGES_ORIGIN_ROUTE, originForHost, readMatchOrigin, type RankedMatchOrigin,
+} from "./matchOrigin";
 import { forgetPresentedMatch, readPresentedMatch, rememberPresentedMatch } from "./presentedMatchHint";
 import type { MatchPhase } from "./useRankedMatch";
 import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
@@ -118,6 +120,18 @@ export function Frame({ children, size = "default" }:
   );
 }
 
+/**
+ * PGM2 — a bonus game handed over by More Challenges: its match id with the
+ * `bonus_game` origin. A verified GUEST may play exactly that match (the
+ * backend admits a guest only on their own `bonus_game` match); every other
+ * Ranked entry keeps the account gate. History state survives a reload, so the
+ * hand-off does too.
+ */
+export function isBonusHandoff(state: unknown): boolean {
+  const s = state as { matchId?: unknown; origin?: unknown } | null;
+  return typeof s?.matchId === "string" && s.matchId !== "" && s.origin === MATCH_HOST.bonusGame;
+}
+
 /** This page's own route — the destination auth must return the user to. */
 const RANKED_ROUTE = "/quiz/ranked";
 
@@ -136,9 +150,11 @@ export default function QuizRankedPage() {
   useSurfaceEvent("ranked_opened");
 
   const { user } = useAuth();
+  const location = useLocation();
   const account = user && !(user as { is_anonymous?: boolean }).is_anonymous ? user : null;
+  const viewer = account ?? (user && isBonusHandoff(location.state) ? user : null);
 
-  if (!account) {
+  if (!viewer) {
     return (
       <>
         <SEOHead
@@ -164,6 +180,12 @@ export default function QuizRankedPage() {
                 <Link to={authHref(RANKED_ROUTE)}>Sign in</Link>
               </Button>
             </div>
+            {/* PGM2 — bonus games need no account: their way back in. */}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Playing a bonus game?{" "}
+              <Link to={MORE_CHALLENGES_ORIGIN_ROUTE} className="underline underline-offset-2"
+                data-testid="ranked-bonus-return">Return to More Challenges</Link>
+            </p>
           </section>
         </Frame>
       </>
@@ -177,7 +199,7 @@ export default function QuizRankedPage() {
         path="/quiz/ranked"
         noindex
       />
-      <RankedMatchHost viewerUserId={account.id} />
+      <RankedMatchHost viewerUserId={viewer.id} />
     </>
   );
 }

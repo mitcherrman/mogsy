@@ -26,6 +26,8 @@ export const MATCH_HOST = {
   studyHall: "study_hall",
   playtest: "playtest",
   direct: "direct",
+  /** PGM2 — a public bonus game launched from More Challenges. */
+  bonusGame: "bonus_game",
 } as const;
 
 export type KnownRankedMatchHost = (typeof MATCH_HOST)[keyof typeof MATCH_HOST];
@@ -48,6 +50,7 @@ export function readMatchHost(value: unknown): RankedMatchHost | null {
 const HOST_LABELS: Partial<Record<KnownRankedMatchHost, string>> = {
   [MATCH_HOST.journeyLibrary]: "Journey Library",
   [MATCH_HOST.roleChallenge]: "Role Challenge",
+  [MATCH_HOST.bonusGame]: "More Challenges",
 };
 
 export function matchHostLabel(host: RankedMatchHost | null | undefined): string | null {

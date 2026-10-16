@@ -8,11 +8,14 @@ import { describe, expect, it } from "vitest";
 import wire from "./__fixtures__/publicModeCatalog.json";
 import {
   PUBLIC_MODE_IDS,
+  PUBLIC_MODE_TITLES,
   PublicModeCatalogParseError,
   readPublicModeCatalog,
   type PublicModeEntry,
 } from "./contracts";
-import { DAILY_CHALLENGE_ROUTE, readMoreChallengesSource, moreChallengesState, resolveModeAction } from "./launch";
+import {
+  DAILY_CHALLENGE_ROUTE, readMoreChallengesSource, moreChallengesState, resolveModeAction, sessionModeRoute,
+} from "./launch";
 import { SCORING_NOT_PUBLISHED, buildModeRules } from "./rules";
 import { PUBLIC_MODE_FEEDBACK_CATEGORY, modeSelectedMetadata, publicModeReportSnapshot } from "./report";
 import { DAILY_CONTINUE_STATE, DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
@@ -40,14 +43,26 @@ describe("PGM1 — the public catalog contract", () => {
     }
   });
 
-  it("publishes a launch only for the two Daily bonus stages", () => {
+  it("publishes a launch only where the backend built one, with its rules and scoring", () => {
     const launchable = catalog().modes.filter((m) => m.launch).map((m) => m.id);
-    expect(launchable).toEqual(["time_trial", "survival"]);
+    // The Daily stages plus every Ranked-backed / session mode opened so far.
+    expect(launchable.slice(0, 2)).toEqual(["time_trial", "survival"]);
+    expect(launchable).toContain("match_grid");
     expect(entry("time_trial").launch).toEqual({ kind: "daily_stage", stageKind: "time_trial", minPlanVersion: 5 });
+    expect(entry("match_grid").launch).toEqual({ kind: "ranked_match", guestsAllowed: true });
+    for (const m of catalog().modes.filter((x) => x.launch && x.launch.kind !== "daily_stage")) {
+      expect(m.scoring.summary, m.id).toBeTruthy();
+      expect(m.rules.length, m.id).toBeGreaterThan(0);
+    }
     for (const m of catalog().modes.filter((x) => !x.launch)) {
       expect(m.availability.status).toBe("coming_soon");
       expect(m.scoring.summary).toBeNull();
+      expect(m.rules).toEqual([]);
     }
+  });
+
+  it("names every mode exactly as the server catalog does", () => {
+    for (const m of catalog().modes) expect(PUBLIC_MODE_TITLES[m.id]).toBe(m.title);
   });
 
   it("orders by `order`, not by array position", () => {
@@ -84,7 +99,7 @@ const mainDone = (stageOverrides = {}, overrides = {}) => fixtureV5Run(V5_ELIGIB
 
 describe("PGM1 — resolveModeAction", () => {
   it("never offers Play for a coming-soon mode, whatever the player's Daily", () => {
-    for (const id of PUBLIC_MODE_IDS.slice(2)) {
+    for (const id of PUBLIC_MODE_IDS.filter((x) => !entry(x).launch)) {
       for (const daily of [{ state: "loading" as const }, { state: "error" as const },
         { state: "ready" as const, run: mainDone() }]) {
         expect(resolveModeAction(entry(id), daily)).toEqual({ kind: "coming_soon" });
@@ -148,14 +163,31 @@ describe("PGM1 — resolveModeAction", () => {
       .toEqual({ kind: "blocked", label: "Not in today's Daily", note: null });
   });
 
-  it("an unavailable mode or an unknown launch kind is never drawn as Play", () => {
+  it("an unavailable or paused mode is never drawn as Play", () => {
     const off = { ...entry("time_trial"), launch: null,
       availability: { status: "unavailable" as const, reasonCode: "DAILY_UNAVAILABLE", message: "Not today." } };
     expect(resolveModeAction(off, { state: "ready", run: null }))
       .toEqual({ kind: "blocked", label: "Unavailable right now", note: "Not today." });
-    const future = { ...entry("match_grid"), launch: { kind: "ranked_match" as const },
+    const paused = { ...entry("match_grid"), launch: null,
+      availability: { status: "paused" as const, reasonCode: "BONUS_PAUSED", message: "Paused for now." } };
+    expect(resolveModeAction(paused, { state: "ready", run: null }))
+      .toEqual({ kind: "blocked", label: "Paused", note: "Paused for now." });
+  });
+
+  it("PGM2: a Ranked-backed bonus game starts from its card, whatever the Daily", () => {
+    for (const daily of [{ state: "loading" as const }, { state: "error" as const },
+      { state: "ready" as const, run: null }, { state: "ready" as const, run: mainDone() }]) {
+      expect(resolveModeAction(entry("match_grid"), daily))
+        .toEqual({ kind: "start", label: "Play", modeId: "match_grid", note: null });
+    }
+  });
+
+  it("PGM2: a session mode plays on its own public page", () => {
+    const session = { ...entry("rangefinder"), launch: { kind: "session" as const, guestsAllowed: true },
       availability: { status: "available" as const, reasonCode: null, message: null } };
-    expect(resolveModeAction(future, { state: "ready", run: null }).kind).toBe("blocked");
+    expect(resolveModeAction(session, { state: "loading" }))
+      .toEqual({ kind: "play", label: "Play", to: sessionModeRoute("rangefinder"), state: null, note: null });
+    expect(sessionModeRoute("rangefinder")).toBe("/quiz/more-challenges/rangefinder");
   });
 
   it("names where the catalog was opened from, for telemetry only", () => {
@@ -178,9 +210,18 @@ describe("PGM1 — Rules and Report contracts", () => {
     expect(tt.sections.map((s) => s.heading)).toEqual(["How to play", "Scoring", "Your standing"]);
     expect(tt.sections[1].body).toMatch(/correctly before the clock runs out/);
     expect(tt.sections[2].body).toBe("Never changes your Daily score. Never changes your Ranked rating.");
-    const mg = buildModeRules(entry("match_grid"), [{ heading: "Board", body: "Runes by tree." }]);
-    expect(mg.sections.find((s) => s.heading === "Scoring")!.body).toBe(SCORING_NOT_PUBLISHED);
-    expect(mg.sections.map((s) => s.heading)).toEqual(["How to play", "Board", "Scoring", "Your standing"]);
+    // PGM2: an opened mode carries the server's own sections and scoring.
+    const mg = buildModeRules(entry("match_grid"));
+    expect(mg.sections.map((s) => s.heading)).toEqual(
+      ["How to play", "The match", "Your answer", "The reveal", "Scoring", "Your standing"]);
+    expect(mg.sections.find((s) => s.heading === "Scoring")!.body).toMatch(/^Each board scores 2 points/);
+    // A mode not yet open says its scoring is unpublished, never a guess.
+    const closed = catalog().modes.find((m) => !m.launch);
+    if (closed) {
+      const r = buildModeRules(closed, [{ heading: "Board", body: "Extra." }]);
+      expect(r.sections.find((s) => s.heading === "Scoring")!.body).toBe(SCORING_NOT_PUBLISHED);
+      expect(r.sections.map((s) => s.heading)).toEqual(["How to play", "Board", "Scoring", "Your standing"]);
+    }
   });
 
   it("files reports under an existing feedback category, with the stable mode id", () => {

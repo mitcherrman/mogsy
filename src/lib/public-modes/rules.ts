@@ -23,7 +23,12 @@ export interface ModeRules {
 
 export const SCORING_NOT_PUBLISHED = "Scoring is published when this mode opens to everyone.";
 
-export function buildModeRules(entry: PublicModeEntry, extra: readonly ModeRulesSection[] = []): ModeRules {
+/**
+ * PGM2 — `extra` defaults to the server's own sections for the mode
+ * (`entry.rules`), so every caller renders the same accurate rules.
+ */
+export function buildModeRules(entry: PublicModeEntry,
+                               extra: readonly ModeRulesSection[] = entry.rules ?? []): ModeRules {
   const effects: string[] = [];
   effects.push(entry.scoring.affectsDailyScore
     ? "Counts toward your Daily score." : "Never changes your Daily score.");
