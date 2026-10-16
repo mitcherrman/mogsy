@@ -78,10 +78,17 @@ export interface UseTimingEngineOptions {
    * See {@link documentKeyIsForTimer} for the keys it leaves alone.
    */
   documentKeys?: boolean;
+  /**
+   * PT4.4: asked on every Space/Enter press (seal or document). While it returns
+   * true the press is dropped, so a key that ADVANCED the reveal cannot, in the
+   * same double-tap, also start the round it armed. Pointer presses are never
+   * guarded. Off by default (PT2 tests).
+   */
+  keyGuard?: () => boolean;
 }
 
 /** Elements that own Space/Enter themselves: typing, or a separate control. */
-const OWNS_KEYS_SELECTOR = [
+export const OWNS_KEYS_SELECTOR = [
   "input", "textarea", "select", "button", "a[href]", "summary", "label",
   "[contenteditable]:not([contenteditable='false'])",
   "[role='button']", "[role='link']", "[role='checkbox']", "[role='switch']", "[role='menuitem']",
@@ -162,6 +169,7 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
 
   const handlePress = useCallback(
     (t: number, source: "pointer" | "key") => {
+      if (source === "key" && optionsRef.current.keyGuard?.()) return;
       const last = lastAcceptedRef.current;
       if (last !== null && Math.abs(t - last) <= PRESS_DEDUPE_MS) {
         optionsRef.current.onDiagnostic?.({ kind: "dedupe", source, t, sincePreviousMs: t - last });

@@ -12,6 +12,7 @@
  *   ?scene=results
  *   &motion=reduce        force the reduced-motion path
  *   &icon=<url>           an ability icon to draw on the seal (none by default)
+ *   &splash=<url>         a champion splash for the hero and the backdrop (none by default)
  *
  * THE "LIVE" SCENE has a demo press surface that flips armed → running →
  * stopped → revealed on each press, with a fixed demo reveal — it measures
@@ -19,11 +20,11 @@
  */
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { APP_REDUCE_MOTION_CLASS } from "@/hooks/useReducedMotionPreference";
 import type { PtPhase, PtPressSurfaceProps, PtStageModel } from "@/lib/perfect-timing/viewModel";
 import { PerfectTimingArena } from "../PerfectTimingArena";
 import { PerfectTimingResults } from "../PerfectTimingResults";
+import { PerfectTimingBar, PerfectTimingScreen } from "../PerfectTimingScreen";
 import { DEMO_HUD, DEMO_LABEL, DEMO_REVEALS, DEMO_ROUNDS, DEMO_SUMMARY, demoPress } from "./demoViewModels";
 
 type Scene = "stage" | "reveal" | "results" | "live";
@@ -59,6 +60,7 @@ export default function PerfectTimingDemo() {
   const caseParam = (params.get("case") as keyof typeof DEMO_REVEALS | null) ?? "early";
   const forceReduce = params.get("motion") === "reduce";
   const iconUrl = params.get("icon");
+  const splash = params.get("splash");
   const roundIndex = Math.min(5, Math.max(1, Number(params.get("round") ?? 2)));
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function PerfectTimingDemo() {
     setParams(p, { replace: true });
   };
 
-  const round = useMemo(() => ({ ...DEMO_ROUNDS[roundIndex - 1], iconUrl: iconUrl ?? null }), [roundIndex, iconUrl]);
+  const round = useMemo(() => ({ ...DEMO_ROUNDS[roundIndex - 1], iconUrl: iconUrl ?? null, splashUrl: splash ?? null }), [roundIndex, iconUrl, splash]);
 
   // ---- the live scene's demo state machine (no clock, no measurement).
   const [livePhase, setLivePhase] = useState<PtPhase>("armed");
@@ -114,9 +116,9 @@ export default function PerfectTimingDemo() {
     };
   }, [scene, round, livePhase, livePress, liveCase, onNext, caseParam, phaseParam]);
 
-  const chrome = (
-    <div data-testid="pt-demo-chrome" className={`${arenaHeaderRowClass("wide")} flex-nowrap gap-x-2 overflow-x-auto whitespace-nowrap text-[11px] text-[#a9b3c1] [scrollbar-width:thin]`}>
-      <span className="shrink-0 rounded border border-amber-400/60 bg-amber-950/60 px-2 py-0.5 uppercase tracking-[0.14em] text-amber-100">{DEMO_LABEL} · fake values</span>
+  const lead = (
+    <span data-testid="pt-demo-chrome" className="flex min-w-0 items-center gap-2 text-[11px] text-[#a9b3c1]">
+      <span className="shrink-0 rounded border border-amber-400/60 bg-amber-950/60 px-2 py-0.5 uppercase tracking-[0.14em] text-amber-100">{DEMO_LABEL}</span>
       <nav aria-label="Scene" className="flex shrink-0 gap-1">
         {(["live", "stage", "reveal", "results"] as Scene[]).map((s) => (
           <button key={s} type="button" aria-pressed={scene === s} onClick={() => go({ scene: s })} className={BTN}>{s}</button>
@@ -134,22 +136,21 @@ export default function PerfectTimingDemo() {
           {CASES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       )}
-      <span className="ml-auto flex shrink-0 items-center gap-1">
-        <button type="button" aria-pressed={forceReduce} onClick={() => go({ motion: forceReduce ? null : "reduce" })} className={BTN}>reduce motion</button>
-      </span>
-    </div>
+      <button type="button" aria-pressed={forceReduce} onClick={() => go({ motion: forceReduce ? null : "reduce" })} className={BTN}>reduce motion</button>
+    </span>
+  );
+  const bar = (
+    <PerfectTimingBar lead={lead} index={scene === "results" ? 5 : model.round?.index ?? 0} total={5}
+      outcomes={DEMO_HUD.outcomes} points={DEMO_HUD.pointsSoFar} />
   );
 
   return (
-    <div data-testid="perfect-timing-demo" data-scene={scene} className="min-h-screen w-full bg-[#050b15] pb-10 text-[#efe8d6]">
+    <PerfectTimingScreen bar={bar} art={splash} stage={scene}>
       {scene === "results" ? (
-        <div className="mx-auto w-full max-w-3xl px-3 pt-4">
-          <div className="mb-3">{chrome}</div>
-          <PerfectTimingResults summary={DEMO_SUMMARY} onPlayAgain={() => go({ scene: "live" })} onExit={() => go({ scene: "stage" })} />
-        </div>
+        <PerfectTimingResults summary={DEMO_SUMMARY} onPlayAgain={() => go({ scene: "live" })} onExit={() => go({ scene: "stage" })} />
       ) : (
-        <PerfectTimingArena model={model} chrome={chrome} header={{ eyebrow: "Perfect Timing · demo", playtestNote: "Demo · fake values" }} />
+        <PerfectTimingArena model={model} />
       )}
-    </div>
+    </PerfectTimingScreen>
   );
 }

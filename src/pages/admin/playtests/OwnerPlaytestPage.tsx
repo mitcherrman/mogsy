@@ -39,7 +39,7 @@ export default function OwnerPlaytestPage() {
       <Suspense fallback={<div aria-hidden className="min-h-screen w-full bg-[#050b15]" />}>
         {mode === "rangefinder" ? <RangefinderOwnerPlaytest lead={lead} />
           : mode === "glyph-press" ? <GlyphPressOwnerPlaytest lead={lead} />
-          : mode === "perfect-timing" ? <PerfectTimingPage lead={lead} />
+          : mode === "perfect-timing" ? <PerfectTimingPage lead={<PlaytestLead mode={mode} bare />} />
           : <NumericLabPage mode={mode} lead={lead} />}
       </Suspense>
     </div>

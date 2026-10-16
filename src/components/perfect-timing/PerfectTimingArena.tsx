@@ -1,21 +1,22 @@
 /**
- * PERFECT TIMING — THE LAB ARENA HOST.
+ * PERFECT TIMING — THE ARENA: the stage or the reveal inside the fixed screen.
  *
- * Mounts the REAL `CanonicalArena` with the lab's projected view (see
- * `arenaView.tsx`) and provides the stage model to the lab renderer's
- * Viewport. The page owns every value in the model; this component reads it,
- * draws it, and plays the three existing Ranked cues on the phase edges: the
- * module-start cue when a round is armed, the lock cue on stop, and the
- * correct / incorrect verdict by tier on reveal. Nothing sounds while running.
+ * The page owns every value in the model; this component reads it, draws it,
+ * and plays the three existing Ranked cues on the phase edges: the module-start
+ * cue when a round is armed, the lock cue on stop, and the correct / incorrect
+ * verdict by tier on reveal. Nothing sounds while running.
+ *
+ * PT4.4: it no longer mounts Ranked's `CanonicalArena` (whose header, flanks and
+ * round rail made the page taller than the viewport). The frame is
+ * `PerfectTimingScreen`; this draws what goes in it.
  */
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useSfx } from "@/lib/audio/useSfx";
 import type { PtStageModel } from "@/lib/perfect-timing/viewModel";
-import type { ArenaViewModel } from "@/lib/ranked-core/arenaView";
-import { perfectTimingArenaView, type PerfectTimingArenaHeader } from "./arenaView";
+import { PerfectTimingReveal } from "./PerfectTimingReveal";
+import { PerfectTimingHero, PerfectTimingStage } from "./PerfectTimingStage";
 import { tierSfx } from "./presentation";
-import { PerfectTimingStageContext } from "./stageContext";
+import "./perfectTiming.css";
 
 /** The three existing cues, edge-triggered on the phase. Nothing sounds while running. */
 function usePerfectTimingSfx(model: PtStageModel) {
@@ -36,22 +37,34 @@ function usePerfectTimingSfx(model: PtStageModel) {
   }, [model.phase, model.round?.roundId, model.reveal, sfx]);
 }
 
-/**
- * The arena with the stage in it. `chrome` is the host's control row. A
- * host that wants a different header passes `view`; otherwise the view is
- * projected from the stage model.
- */
-export function PerfectTimingArena({ model, chrome, view, header }: {
+export function PerfectTimingArena({ model, actions }: {
   model: PtStageModel;
-  chrome?: ReactNode;
-  view?: ArenaViewModel;
-  header?: PerfectTimingArenaHeader;
+  /** Recovery buttons for a voided or failed round, drawn under the status line. */
+  actions?: ReactNode;
 }) {
   usePerfectTimingSfx(model);
-  const projected = useMemo(() => view ?? perfectTimingArenaView(model, header), [view, model, header]);
+  // The phase drawn last: a round armed straight after a reveal (or a voided
+  // round) has just taken the player's focused control away.
+  const prevPhase = useRef<PtStageModel["phase"] | null>(null);
+  const cameFrom = prevPhase.current;
+  useEffect(() => { prevPhase.current = model.phase; });
+
+  const focusSeal = model.phase === "armed" && (cameFrom === "revealed" || cameFrom === "interrupted" || cameFrom === "error");
+  const lastRound = model.round !== null && model.round.index >= model.round.total;
+
+  if (model.phase === "revealed" && model.reveal) {
+    return (
+      <div className="pt-stage" data-testid="pt-reveal-stage" data-phase="revealed" data-tier={model.reveal.tier}>
+        <PerfectTimingHero round={model.round} compact />
+        <div className="pt-column">
+          <PerfectTimingReveal key={model.round?.roundId ?? "reveal"} reveal={model.reveal} onNext={model.onNext}
+            nextLabel={lastRound ? "See results" : "Next round"} />
+        </div>
+      </div>
+    );
+  }
   return (
-    <PerfectTimingStageContext.Provider value={model}>
-      <CanonicalArena view={projected} chrome={chrome} />
-    </PerfectTimingStageContext.Provider>
+    <PerfectTimingStage key={model.round?.roundId ?? "stage"} round={model.round} phase={model.phase} press={model.press}
+      statusText={model.statusText ?? null} actions={actions} autoFocusSeal={focusSeal} />
   );
 }

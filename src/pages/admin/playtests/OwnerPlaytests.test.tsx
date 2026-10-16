@@ -258,9 +258,10 @@ describe("/admin/playtests/:mode and the retired lab URLs", () => {
     at("/admin/playtests/perfect-timing", "/admin/playtests/:mode", <OwnerPlaytestPage />);
     expect(await screen.findByTestId("perfect-timing-page", {}, { timeout: 5_000 })).toBeInTheDocument();
     expect(screen.getByTestId("owner-playtest-page").dataset.mode).toBe("perfect-timing");
-    expect(screen.getByTestId("playtest-mode-title").textContent).toBe("Perfect Timing");
+    // PT4.4: the way back alone — no mode title, no prototype badge.
+    expect(screen.queryByTestId("playtest-mode-title")).toBeNull();
     expect(screen.getByTestId("playtest-back").getAttribute("href")).toBe("/admin/leaguecraft?section=ranked&view=playtests");
-    expect(screen.queryByRole("link", { name: "Exit lab" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Exit" })).toBeNull();
     expect(await screen.findByText(/PERFECT_TIMING_LAB_ENABLED/)).toBeInTheDocument();
   });
 

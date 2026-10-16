@@ -44,6 +44,8 @@ export interface PtRoundView {
   rankCount: number;
   /** PT4 fills via `getAbilityIconUrl()`; null draws the slot monogram. */
   iconUrl: string | null;
+  /** PT4.4: the champion's splash art from Mogzy's asset manifest; null/absent draws the ability icon alone. */
+  splashUrl?: string | null;
   /** 1-based position in the run. */
   index: number;
   total: number;
@@ -121,8 +123,8 @@ export interface PtStageModel {
   statusText?: string | null;
   /** Non-null exactly while `phase === "revealed"`. */
   reveal: PtRevealView | null;
-  /** Advance past the reveal. */
-  onNext: () => void;
+  /** Advance past the reveal. `"key"` when Space/Enter did it (PT4.4: the page then guards the next round's keys briefly). */
+  onNext: (source?: "key") => void;
   /** Flank and round-rail content; absent flanks draw the quiet defaults. */
   hud?: PtRunHud | null;
 }

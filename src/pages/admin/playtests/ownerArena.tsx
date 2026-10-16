@@ -50,8 +50,11 @@ export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | 
   return phoneRoom ?? measured;
 }
 
-/** The chrome row's lead: back to Playtests, then the mode's name. */
-export function PlaytestLead({ mode }: { mode: LabModeId }) {
+/**
+ * The chrome row's lead: back to Playtests, then the mode's name. `bare` (PT4.4,
+ * the fixed-screen Perfect Timing) is the way back alone.
+ */
+export function PlaytestLead({ mode, bare = false }: { mode: LabModeId; bare?: boolean }) {
   return (
     <span className="flex shrink-0 items-center gap-2" data-testid="playtest-lead">
       <Link
@@ -61,7 +64,7 @@ export function PlaytestLead({ mode }: { mode: LabModeId }) {
       >
         <ArrowLeft className="h-3 w-3" aria-hidden /> Playtests
       </Link>
-      <span className="ranked-eyebrow shrink-0" data-testid="playtest-mode-title">{LAB_MODES[mode].title}</span>
+      {bare ? null : <span className="ranked-eyebrow shrink-0" data-testid="playtest-mode-title">{LAB_MODES[mode].title}</span>}
     </span>
   );
 }
