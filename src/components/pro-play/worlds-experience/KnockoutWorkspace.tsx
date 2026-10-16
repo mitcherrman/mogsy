@@ -21,6 +21,7 @@
 import { useMemo, useState } from "react";
 import { Trophy } from "lucide-react";
 
+import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import {
   BracketMatchCard,
   BracketSelectContext,
@@ -32,7 +33,7 @@ import {
 import { useKit } from "@/components/pro-play/tournament/TournamentParts";
 import { localStart } from "@/lib/pro-play/hubSeries";
 import type { TournamentMatchV2 } from "@/lib/pro-play/tournamentApi";
-import { awaitingDraw, singleElimRounds, stageMatches, stageOf, stageShortName } from "@/lib/pro-play/tournamentV2View";
+import { awaitingDraw, championMatch, displayName, singleElimRounds, stageMatches, stageOf, stageShortName } from "@/lib/pro-play/tournamentV2View";
 import { cn } from "@/lib/utils";
 
 import { useExperience } from "./ExperienceContext";
@@ -137,6 +138,31 @@ function Schematic({ matches, tight }: { matches: TournamentMatchV2[]; tight: bo
   );
 }
 
+/** The certified champion in one line (the round view's room goes to the round). */
+function ChampionLine() {
+  const kit = useKit();
+  const code = kit.state.knockout.bracket_authority === "standings" ? kit.state.knockout.champion_code : null;
+  if (!code) return null;
+  const final = championMatch(kit.state);
+  const p = kit.byCode.get(code);
+  const team = final?.teams.find((t) => t.code === code);
+  const other = final?.teams.find((t) => t.code !== code);
+  return (
+    <p className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-[#c9a84c]/50 bg-[#c9a84c]/[0.08] px-3 py-1.5 text-sm" data-testid="champion" data-layout="line">
+      <Trophy className="h-4 w-4 text-[#c9a84c]" aria-hidden="true" />
+      <TeamCrest teamKey={team?.team_key ?? p?.team_key} name={p ? displayName(p) : code} shortCode={code} size="xs" />
+      <b className="font-bold text-[#f1dc9c]">{p ? displayName(p) : code}</b>
+      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#c9a84c]">{kit.ctx.short_name} champion</span>
+      {final && other && (
+        <span className="text-xs text-muted-foreground">
+          won the final <b className="font-semibold tabular-nums text-foreground">{team?.game_wins}–{other.game_wins}</b>
+          {other.code ? ` against ${other.code}` : ""}
+        </span>
+      )}
+    </p>
+  );
+}
+
 /**
  * One round at a time: the round control, then the round's matches (schematic
  * nodes before the draw, bracket cards after), paged when they do not fit.
@@ -163,7 +189,7 @@ function RoundFocus({ matches, preDraw }: { matches: TournamentMatchV2[]; preDra
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-2.5", x.desktop && "p-4")} data-testid={preDraw ? "knockout-schematic" : "knockout-bracket"} data-view="rounds" data-round={round.cell}>
       {preDraw && x.desktop && <DrawLine rounds={rounds} />}
-      {!preDraw && <ChampionBanner />}
+      {!preDraw && <ChampionLine />}
       <ViewTabs
         label="Knockout rounds"
         testId="knockout-rounds"
@@ -189,7 +215,8 @@ function RoundFocus({ matches, preDraw }: { matches: TournamentMatchV2[]; preDra
             if (x.loc.matchId && !shown.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
           }}
           className="min-h-[72px]"
-          listClassName={cn("grid gap-2", x.desktop ? "grid-cols-2 2xl:grid-cols-4" : "grid-cols-2")}
+          // Bracket cards name their match in one line: a phone gives each the full width.
+          listClassName={cn("grid gap-2", x.desktop ? "grid-cols-2 2xl:grid-cols-4" : preDraw ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}
           render={(m) =>
             preDraw ? <SchematicNode match={m} final={last} tight /> : <BracketMatchCard match={m} summary={kit.state.knockout} stageName={name} winnerTag="Champion" />
           }

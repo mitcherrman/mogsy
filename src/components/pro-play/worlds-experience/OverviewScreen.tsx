@@ -525,13 +525,13 @@ function RoadStages({ d }: { d: Density }) {
         return (
           <li key={s.key} className="relative" data-testid="road-stage" data-stage={s.key} data-progress={progress ?? "none"}>
             {i < ctx.stages.length - 1 && (
-              <span aria-hidden="true" className={cn("absolute bottom-[-4px] w-px bg-gradient-to-b from-[#c9a84c]/45 to-white/[0.06]", d === 2 ? "left-[21px] top-[34px]" : "left-[25px] top-[42px]")} />
+              <span aria-hidden="true" className={cn("absolute bottom-[-4px] w-px bg-gradient-to-b from-[#c9a84c]/45 to-white/[0.06]", d >= 2 ? "left-[21px] top-[34px]" : "left-[25px] top-[42px]")} />
             )}
             <Link
               to={x.hrefFor({ screen: "stages", stageKey: s.key })}
               className={cn(
                 "group relative grid gap-3 rounded-xl outline-none transition-colors hover:bg-white/[0.035] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70",
-                d === 2 ? "grid-cols-[20px_minmax(0,1fr)] p-2.5" : "grid-cols-[28px_minmax(0,1fr)] p-3",
+                d >= 2 ? cn("grid-cols-[20px_minmax(0,1fr)]", d === 3 ? "p-2" : "p-2.5") : "grid-cols-[28px_minmax(0,1fr)] p-3",
                 progress === "current" && "bg-[#c9a84c]/[0.05]",
               )}
             >
@@ -539,7 +539,7 @@ function RoadStages({ d }: { d: Density }) {
                 aria-hidden="true"
                 className={cn(
                   "mt-0.5 inline-flex items-center justify-center rounded-full border font-bold tabular-nums",
-                  d === 2 ? "h-5 w-5 text-[10px]" : "h-7 w-7 text-[11px]",
+                  d >= 2 ? "h-5 w-5 text-[10px]" : "h-7 w-7 text-[11px]",
                   progress === "complete" ? "border-white/15 bg-white/10 text-foreground/80" : "border-[#c9a84c]/60 bg-[hsl(214_52%_7%)] text-[#e3c66f]",
                   progress === "current" && "shadow-[0_0_0_4px_hsl(42_70%_50%/0.12)]",
                 )}
@@ -548,7 +548,7 @@ function RoadStages({ d }: { d: Density }) {
               </span>
               <span className="min-w-0">
                 <span className="flex items-center gap-2">
-                  <span className={cn("font-semibold text-foreground", d === 2 ? "text-sm" : "text-[15px]")}>{stageLabel(s)}</span>
+                  <span className={cn("font-semibold text-foreground", d >= 2 ? "text-sm" : "text-[15px]")}>{stageLabel(s)}</span>
                   {chip && <span className={cn("rounded px-1.5 py-[3px] text-[9.5px] font-bold uppercase leading-none tracking-[0.12em]", chip.cls)}>{chip.label}</span>}
                   {done > 0 && all.length > 0 && d > 0 && <span className="text-[10.5px] tabular-nums text-muted-foreground" data-testid="road-progress">{done}/{all.length} played</span>}
                   <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-[#c9a84c] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
@@ -597,7 +597,7 @@ function ExplorerButton() {
 function StageRoad({ d, framed = true }: { d: Density; framed?: boolean }) {
   const kit = useKit();
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", framed && (d === 2 ? "p-4" : "p-5"))}>
+    <div className={cn("flex h-full min-h-0 flex-col", framed && (d === 3 ? "p-3.5" : d >= 2 ? "p-4" : "p-5"))}>
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="road-title" className="text-lg leading-none">Road to the Final</h2>
         <span className="text-[11px] tabular-nums text-muted-foreground">{kit.state.counts.matches} matches</span>
@@ -606,7 +606,7 @@ function StageRoad({ d, framed = true }: { d: Density; framed?: boolean }) {
         <RoadStages d={d} />
       </div>
       <FieldSummary d={d} />
-      <div className={cn("flex flex-col", d === 2 ? "mt-2.5" : "mt-3")}>
+      <div className={cn("flex flex-col", d === 3 ? "mt-2" : d >= 2 ? "mt-2.5" : "mt-3")}>
         <ExplorerButton />
       </div>
     </div>
@@ -620,7 +620,7 @@ function FieldSummary({ d }: { d: Density }) {
   const direct = ctx.participants.filter((p) => p.entry_stage === "swiss").length;
   const playIn = ctx.participants.filter((p) => p.entry_stage === "play_in").length;
   return (
-    <div className={cn("mt-auto border-t border-white/[0.06]", d === 2 ? "pt-2.5" : "pt-3")} data-testid="field-summary">
+    <div className={cn("mt-auto border-t border-white/[0.06]", d === 3 ? "pt-2" : d >= 2 ? "pt-2.5" : "pt-3")} data-testid="field-summary">
       <p className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <Link
           to={x.hrefFor({ screen: "teams" })}
@@ -757,7 +757,7 @@ function FixtureRow({ match, showScore }: { match: TournamentMatchV2; showScore?
       state={{ ux1Panel: true }}
       data-testid="fixture"
       data-match-id={match.match_id}
-      className="grid h-[52px] grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 outline-none transition-colors hover:bg-white/[0.04] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70"
+      className="grid min-h-[52px] grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 py-1.5 outline-none transition-colors hover:bg-white/[0.04] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70"
     >
       <span className="whitespace-nowrap text-xs font-medium tabular-nums leading-tight text-foreground/80">
         <span className="block text-[10.5px] font-normal text-muted-foreground">{day ? dayLabel(localDayKey(match.scheduled_start) ?? "") : ""}</span>
@@ -773,7 +773,8 @@ function FixtureRow({ match, showScore }: { match: TournamentMatchV2; showScore?
         ) : (
           <span className="block truncate text-sm font-semibold text-foreground/90">{matchCaption(match, kit)}</span>
         )}
-        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground" title={origins ?? undefined}>
+        {/* The sides' origins wrap rather than cut (rows are measured, so a taller row just pages sooner). */}
+        <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">
           {origins ?? matchCaption(match, kit)}
         </span>
       </span>
@@ -791,8 +792,9 @@ function ComingUpBody({ framed = true }: { framed?: boolean }) {
   const exclude = focus.kind === "next" ? [focus.match.match_id] : [];
   const results = recentResults(kit.state, Number.POSITIVE_INFINITY);
   const next = upcoming(kit.state, Number.POSITIVE_INFINITY, exclude);
-  const [view, setView] = useState<FixtureView>("upcoming");
-  const shown: FixtureView = results.length ? view : "upcoming";
+  const [view, setView] = useState<FixtureView | null>(null);
+  // Nothing left to play: open on the results.
+  const shown: FixtureView = !results.length ? "upcoming" : (view ?? (next.length ? "upcoming" : "results"));
   const items = shown === "results" ? results : next;
   return (
     <div className={cn("flex h-full min-h-0 flex-col", framed && "p-5")} data-testid="coming-up" data-view={shown}>
@@ -975,7 +977,7 @@ export function OverviewScreen() {
               <div className="col-span-4 flex min-h-0 flex-col">
                 <ShortMiddle watch={watch} />
               </div>
-              <Panel className="col-span-3" label="road-title" testId="stage-road" levels={2} watch={watch}>{(l) => <StageRoad d={(l + 1) as Density} />}</Panel>
+              <Panel className="col-span-3" label="road-title" testId="stage-road" levels={3} watch={watch}>{(l) => <StageRoad d={(l + 1) as Density} />}</Panel>
             </div>
           )
         }

@@ -179,7 +179,7 @@ function TeamTile({ p, wide, withRegion = false }: { p: TournamentParticipantV2;
       {status && status.kind !== "alive" && (
         <span aria-label={status.label} className={cn("absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full", out ? "bg-white/25" : "bg-[#e3c66f]")} />
       )}
-      {status?.kind === "alive" && (wide || withRegion) && (
+      {status?.kind === "alive" && wide && (
         <span className="shrink-0 text-[10.5px] font-semibold tabular-nums text-foreground/70" data-testid="tile-record">
           {status.label.split(" · ")[1]}
         </span>

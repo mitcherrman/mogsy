@@ -153,7 +153,9 @@ function PhaseChip({ compact = false }: { compact?: boolean }) {
       break;
     default: {
       const stage = stageOf(ctx, state.phase);
-      label = `${stage ? stageLabel(stage) : "Stage"} ${live ? "live" : compact ? "now" : "in progress"}`;
+      // A phone's bar has room for a short stage name only ("KO live").
+      const name = stage ? (compact && stage.key === "knockout" ? "KO" : stageLabel(stage)) : "Stage";
+      label = `${name} ${live ? "live" : compact ? "now" : "in progress"}`;
       if (live) tone = "live";
     }
   }
@@ -353,8 +355,11 @@ function Identity({ compact }: { compact: boolean }) {
   const { ctx } = useKit();
   const year = ctx.starts.slice(0, 4);
   return (
-    <div className={cn("flex min-w-0 items-center gap-3", !compact && "shrink-0")}>
-      <EventMark name={ctx.short_name} slug={ctx.league.slug} size={compact ? "xs" : "sm"} />
+    <div className={cn("flex items-center gap-3", compact ? "min-w-0 shrink-0" : "shrink-0")}>
+      {/* A narrow phone keeps the title whole beside the phase; the event's mark yields. */}
+      <span className={cn("shrink-0", compact && "hidden min-[420px]:inline-flex")}>
+        <EventMark name={ctx.short_name} slug={ctx.league.slug} size={compact ? "xs" : "sm"} />
+      </span>
       <div className="min-w-0">
         <h1 className={cn("whitespace-nowrap leading-none", compact ? "text-[15px]" : "text-[17px]")} title={ctx.name}>
           {ctx.short_name} {year}
