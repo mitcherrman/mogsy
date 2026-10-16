@@ -113,6 +113,11 @@ describe("the captures carry the semantic beat policy", () => {
 });
 
 describe("the changed object — and only it — carries the transition state", () => {
+  it("newly served state marks the board for an arrival flash", () => {
+    play("voli.standard", "child2-beat");
+    expect(screen.getByTestId("journey-board")).toHaveAttribute("data-update-flash", "true");
+  });
+
   it("a single purchase: only the new slot is new; no level, rank or unlock moves", () => {
     play("voli.standard", "child2-beat");
     expect(beat()).toBe("active");
