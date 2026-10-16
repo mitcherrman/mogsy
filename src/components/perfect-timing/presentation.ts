@@ -8,7 +8,7 @@
  * constants live in the backend's `scoring.py`, and a copy here would go stale
  * the first time the owner tunes them.
  */
-import type { PtPhase, PtRevealView, PtRoundView, PtRunSummary, PtTier } from "@/lib/perfect-timing/viewModel";
+import type { PtPhase, PtRevealView, PtRoundView, PtRunSummary, PtSliceKind, PtTier } from "@/lib/perfect-timing/viewModel";
 
 // ------------------------------------------------------------------ tiers
 
@@ -206,4 +206,61 @@ export function ladderScaleMs(summary: PtRunSummary): number {
   const worst = Math.max(0, ...summary.rounds.map((r) => r.reveal?.absErrorMs ?? 0));
   const steps = [100, 250, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000, 60000];
   return steps.find((s) => s >= worst) ?? Math.max(worst, 1);
+}
+
+// ------------------------------------------------------------ PT5 slices
+
+/** The stage's name on the plate, the reveal and the results. */
+export const SLICE_STAGE_WORD: Record<PtSliceKind, string> = {
+  foundation: "Foundation",
+  rank_up: "Rank up",
+  equipped: "Equipped",
+};
+
+/** Milliseconds as seconds with three places, for the haste arithmetic: 4545 → "4.545 s", 4545.4545 → "4.545 s". */
+export function formatSecondsExact(ms: number): string {
+  return `${(Math.round(ms) / 1000).toFixed(3)} s`;
+}
+
+/**
+ * A slice duration at the precision the server graded it: two places when the
+ * millisecond count is a multiple of ten (5000 → "5.00 s"), three when it is
+ * not (4545 → "4.545 s"). Integer arithmetic, so 4545 can never print as
+ * "4.54" (`(4.545).toFixed(2)` rounds the binary value down).
+ */
+export function formatSliceSeconds(ms: number): string {
+  const n = Math.round(Math.abs(ms));
+  const whole = Math.trunc(n / 1000);
+  const frac = String(n % 1000).padStart(3, "0");
+  return `${ms < 0 ? "−" : ""}${whole}.${n % 10 === 0 ? frac.slice(0, 2) : frac} s`;
+}
+
+/** A change between two server durations, signed: −500 → "−0.50 s", −455 → "−0.455 s". */
+export function deltaSecondsText(fromMs: number, toMs: number): string {
+  const d = toMs - fromMs;
+  const sign = d < 0 ? "−" : d > 0 ? "+" : "±";
+  return `${sign}${formatSliceSeconds(Math.abs(d))}`;
+}
+
+/** "+10 Ability Haste" (or "+10 AH" short). */
+export function hasteText(haste: number, short = false): string {
+  const n = Number.isInteger(haste) ? String(haste) : haste.toFixed(1);
+  return short ? `+${n} AH` : `+${n} Ability Haste`;
+}
+
+/** The slice's stated scenario, as one quiet phrase. */
+export function assumptionText(assumption: string): string {
+  return assumption === "no_cooldown_refunds" ? "cast without cooldown refunds" : assumption.replace(/_/g, " ");
+}
+
+/** The slice's lesson in one line, from revealed truths only. Null when nothing was revealed to compare. */
+export function sliceStory(summary: PtRunSummary): string | null {
+  const [f, r, e] = summary.rounds;
+  const parts: string[] = [];
+  // Rank 3's base: stage 2's truth, or stage 3's released base when stage 2 was voided.
+  const rank3 = r?.reveal?.targetMs ?? e?.reveal?.slice?.baseCooldownMs ?? null;
+  if (f?.reveal && rank3 !== null) parts.push(`Rank 1 → ${r?.round.rank ?? 3}: ${deltaSecondsText(f.reveal.targetMs, rank3)}`);
+  const item = e?.reveal?.slice?.item;
+  if (e?.reveal && item) parts.push(`${item.name} ${hasteText(item.abilityHaste, true)}: ${deltaSecondsText(e.reveal.slice!.baseCooldownMs, e.reveal.targetMs)}`);
+  return parts.length ? parts.join(" · ") : null;
 }

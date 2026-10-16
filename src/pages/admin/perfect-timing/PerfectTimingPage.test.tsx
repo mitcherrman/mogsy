@@ -83,7 +83,7 @@ function standIn(override?: Override) {
 
 function mount(be: ReturnType<typeof standIn>) {
   const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-  return render(<MemoryRouter><PerfectTimingPage api={api} /></MemoryRouter>);
+  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode="random" /></MemoryRouter>);
 }
 
 function key(el: Element, t: number, init: KeyboardEventInit = {}) {
@@ -297,7 +297,7 @@ describe("PerfectTimingPage — the integrated owner run", () => {
   it("PT4.1: hosted from the Playtests hub, the top bar leads with the way back instead of Exit", async () => {
     const be = standIn();
     const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-    render(<MemoryRouter><PerfectTimingPage api={api} lead={<a data-testid="hub-lead" href="/hub">Playtests</a>} /></MemoryRouter>);
+    render(<MemoryRouter><PerfectTimingPage api={api} initialMode="random" lead={<a data-testid="hub-lead" href="/hub">Playtests</a>} /></MemoryRouter>);
     await armed();
     const chrome = screen.getByTestId("pt-chrome");
     expect(chrome.firstElementChild).toBe(screen.getByTestId("hub-lead"));

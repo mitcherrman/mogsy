@@ -16,13 +16,20 @@
  *
  * NOTHING HERE MEASURES OR GRADES. The phase, the handlers and the status
  * line arrive through props; this component draws them.
+ *
+ * PT5 MASTERY SLICE. When the round carries `slice`, the hero also draws the
+ * three-stage track (Foundation › Rank up › Equipped) over the art, and the
+ * one input that changed since the last stage is marked: the rank on Rank up,
+ * the item chip (icon, name, its ability haste) on Equipped. The mark's entry
+ * is a single finite flourish shown only while ARMED — it is gone the moment
+ * the timer runs, so nothing moves on a period while timing.
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { SubjectArt } from "@/components/interaction-grammar/shared";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import type { PtPhase, PtPressSurfaceProps, PtRoundView } from "@/lib/perfect-timing/viewModel";
-import { PHASE_FACE, rankText } from "./presentation";
+import type { PtPhase, PtPressSurfaceProps, PtRoundView, PtSliceItemView, PtSliceStageView } from "@/lib/perfect-timing/viewModel";
+import { PHASE_FACE, SLICE_STAGE_WORD, hasteText, rankText } from "./presentation";
 import "./perfectTiming.css";
 
 export interface PerfectTimingStageProps {
@@ -54,6 +61,35 @@ function HeroArt({ src }: { src: string | null | undefined }) {
   );
 }
 
+/** The slice's three stages as a track over the hero art: done, current, upcoming. */
+function SliceTrack({ slice }: { slice: PtSliceStageView }) {
+  const kinds = ["foundation", "rank_up", "equipped"] as const;
+  return (
+    <ol className="pt-slice-track" data-testid="pt-slice-track" aria-label={`Stage ${slice.stage} of ${slice.total}: ${SLICE_STAGE_WORD[slice.kind]}`}>
+      {kinds.slice(0, slice.total).map((kind, i) => (
+        <li key={kind} data-state={i + 1 < slice.stage ? "done" : i + 1 === slice.stage ? "current" : "upcoming"}
+          data-testid={`pt-slice-step-${kind}`} aria-hidden>
+          {SLICE_STAGE_WORD[kind]}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** The equipped item: its icon, its name, and the ability haste it brings. */
+export function SliceItemChip({ item, changed = false, short = false }: { item: PtSliceItemView; changed?: boolean; short?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="pt-item-chip" data-testid="pt-item-chip" data-changed={changed ? "true" : undefined}>
+      <span className="pt-item-icon" aria-hidden>
+        {item.iconUrl && !failed ? <img src={item.iconUrl} alt="" draggable={false} onError={() => setFailed(true)} data-testid="pt-item-icon" /> : null}
+      </span>
+      <span className="pt-item-name" data-testid="pt-item-name">{item.name}</span>
+      <span className="pt-item-haste" data-testid="pt-item-haste">{hasteText(item.abilityHaste, short)}</span>
+    </span>
+  );
+}
+
 /**
  * The hero: who, which ability, which rank — over the champion's art. Shared by
  * the stage and (compact) the reveal, so the ability the player timed is still
@@ -75,10 +111,14 @@ export function PerfectTimingHero({ round, compact = false }: { round: PtRoundVi
       </header>
     );
   }
+  const slice = round.slice ?? null;
+  const rankChanged = slice?.kind === "rank_up" && slice.previous !== null && slice.previous.rank !== round.rank;
+  const itemChanged = slice?.kind === "equipped" && slice.item !== null;
   return (
     <header className="pt-hero" data-testid="pt-round-plate" data-compact={compact ? "true" : undefined}
-      aria-labelledby={headingId}>
+      data-slice={slice ? slice.kind : undefined} aria-labelledby={headingId}>
       <HeroArt src={round.splashUrl} />
+      {slice ? <SliceTrack slice={slice} /> : null}
       <div className="pt-hero-body">
         <span className="pt-hero-icon" data-testid="pt-hero-icon">
           <SubjectArt media={round.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={round.slot} className="h-full w-full" />
@@ -91,14 +131,30 @@ export function PerfectTimingHero({ round, compact = false }: { round: PtRoundVi
               <span className="pt-prompt-ability" data-testid="pt-ability">{round.abilityName}</span>
             </span>
           </h2>
-          <p className="pt-rank" data-testid="pt-rank">
-            {rankText(round.rank, round.rankCount)}
-            {!compact && (
-              <>
-                <span className="pt-rank-base"><span className="pt-rank-dot" aria-hidden>·</span>base cooldown</span>
-              </>
-            )}
-          </p>
+          {slice ? (
+            <p className="pt-rank pt-rank--slice" data-testid="pt-rank">
+              <span className="pt-rank-value" data-changed={rankChanged ? "true" : undefined} data-testid="pt-rank-value">
+                {rankText(round.rank, round.rankCount)}
+              </span>
+              {rankChanged && slice.previous ? (
+                <span className="pt-rank-from" data-testid="pt-rank-from">from {slice.previous.rank}</span>
+              ) : null}
+              {slice.item ? (
+                <SliceItemChip item={slice.item} changed={itemChanged} short={compact} />
+              ) : (
+                <span className="pt-rank-base"><span className="pt-rank-dot" aria-hidden>·</span>no ability haste</span>
+              )}
+            </p>
+          ) : (
+            <p className="pt-rank" data-testid="pt-rank">
+              {rankText(round.rank, round.rankCount)}
+              {!compact && (
+                <>
+                  <span className="pt-rank-base"><span className="pt-rank-dot" aria-hidden>·</span>base cooldown</span>
+                </>
+              )}
+            </p>
+          )}
         </div>
       </div>
     </header>

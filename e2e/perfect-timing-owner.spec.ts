@@ -21,6 +21,9 @@
  * size in FIT_SIZES; no key and no wheel moves the page; leaving restores page
  * scroll. Screenshots go to PERFECT_TIMING_SHOTS (default test-results/perfect-timing).
  *
+ * PT5: the mode pick, and the Mastery Slice (one ability, three stages) under the
+ * same fit, scroll, answer-isolation and input rules, at every size in FIT_SIZES.
+ *
  *   npx playwright test -c playwright.arena.config.ts perfect-timing-owner
  */
 import { mkdirSync, readFileSync } from "node:fs";
@@ -33,6 +36,8 @@ mkdirSync(SHOTS, { recursive: true });
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const CAPTURE: Json = JSON.parse(readFileSync(path.resolve("src/lib/perfect-timing/__fixtures__/captureV1.json"), "utf8"));
 const RELEASES: Record<string, Json> = Object.fromEntries(CAPTURE.locks.map((l: Json) => [l.round_id, l.response]));
+/** PT5: the page opens on the mode pick; the PT4.4 specs below play the Random Run directly. */
+const RANDOM_RUN = "/dev/perfect-timing?run=random";
 
 /** The v1 scoring (handoff §2.3, pt-scoring-0.2: 0 points on a miss), for the stand-in only. */
 function grade(round_id: string, elapsed_ms: number, lie: number | null = null): Json {
@@ -221,7 +226,7 @@ for (const vp of VIEWPORTS) {
 
     test(`a full five-round run by ${vp.touch ? "touch" : "keyboard"}`, async ({ page }) => {
       const be = await standInBackend(page);
-      await page.goto("/dev/perfect-timing");
+      await page.goto(RANDOM_RUN);
       const seal = page.getByTestId("pt-press-surface");
       const rounds: Json[] = CAPTURE.deal.response.rounds;
       for (let i = 0; i < rounds.length; i++) {
@@ -287,7 +292,7 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
       await page.setViewportSize({ width: w, height: h });
       const tag = `${w}x${h}`;
       const be = await standInBackend(page, { dealDelayMs: 1500 });
-      await page.goto("/dev/perfect-timing");
+      await page.goto(RANDOM_RUN);
       // dealing
       await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "dealing");
       await assertFits(page, `${tag} dealing`);
@@ -343,7 +348,7 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
       const tag = `${w}x${h}`;
       // voided
       await standInBackend(page);
-      await page.goto("/dev/perfect-timing");
+      await page.goto(RANDOM_RUN);
       const seal = page.getByTestId("pt-press-surface");
       await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
       await seal.focus();
@@ -360,14 +365,14 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
       await page.unroute("**/api/admin/perfect-timing/**");
       // refused deal
       await standInBackend(page, 403);
-      await page.goto("/dev/perfect-timing");
+      await page.goto(RANDOM_RUN);
       await expect(page.getByTestId("pt-status")).toContainText("owner session", { timeout: 30_000 });
       await assertFits(page, `${tag} refused`);
       await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-refused.png`) });
       await page.unroute("**/api/admin/perfect-timing/**");
       // failed lock (409: never retried, a long message plus a recovery button)
       await standInBackend(page, { lockStatus: 409 });
-      await page.goto("/dev/perfect-timing");
+      await page.goto(RANDOM_RUN);
       await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
       await seal.focus();
       await page.keyboard.press("Space");
@@ -381,7 +386,7 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
       const be = await standInBackend(page);
       for (const [label, lie] of [["perfect", 0.02], ["exact", 0]] as const) {
         be.lie = lie;
-        await page.goto("/dev/perfect-timing");
+        await page.goto(RANDOM_RUN);
         await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
         await seal.focus();
         await page.keyboard.press("Space");
@@ -397,7 +402,7 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
 
   test("the page behind scrolls normally again once the mode is left", async ({ page }) => {
     await standInBackend(page);
-    await page.goto("/dev/perfect-timing");
+    await page.goto(RANDOM_RUN);
     await expect(page.getByTestId("pt-press-surface")).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
     expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe("hidden");
     // Leave through the app's own routing (no reload): the hub is a long, scrollable page.
@@ -415,7 +420,7 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
 
 test("hiding the tab mid-run voids the round and never submits it", async ({ page }) => {
   const be = await standInBackend(page);
-  await page.goto("/dev/perfect-timing");
+  await page.goto(RANDOM_RUN);
   const seal = page.getByTestId("pt-press-surface");
   await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
   await seal.focus();
@@ -439,7 +444,7 @@ test("hiding the tab mid-run voids the round and never submits it", async ({ pag
 
 test("a refused owner session shows the reason, not rounds", async ({ page }) => {
   await standInBackend(page, 403);
-  await page.goto("/dev/perfect-timing");
+  await page.goto(RANDOM_RUN);
   await expect(page.getByTestId("pt-status")).toContainText("owner session", { timeout: 30_000 });
   await expect(page.getByTestId("pt-champion")).toHaveCount(0);
   await page.screenshot({ path: path.join(SHOTS, "1440x900-refused.png") });
@@ -456,7 +461,7 @@ test.describe("PT4.3 keyboard without seal focus", () => {
 
   test("Space and Enter start and stop every round with focus on <body>; Next never starts a round", async ({ page }) => {
     const be = await standInBackend(page);
-    await page.goto("/dev/perfect-timing");
+    await page.goto(RANDOM_RUN);
     const seal = page.getByTestId("pt-press-surface");
     const rounds: Json[] = CAPTURE.deal.response.rounds;
     for (let i = 0; i < rounds.length; i++) {
@@ -494,7 +499,7 @@ test.describe("PT4.3 keyboard without seal focus", () => {
 
   test("PT4.4: after the reveal settles, one Space advances exactly one round and a double-tap cannot skip the next", async ({ page }) => {
     const be = await standInBackend(page);
-    await page.goto("/dev/perfect-timing");
+    await page.goto(RANDOM_RUN);
     const seal = page.getByTestId("pt-press-surface");
     await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
     await blurAll(page);
@@ -517,7 +522,7 @@ test.describe("PT4.3 keyboard without seal focus", () => {
 
   test("mixed controls: mouse start + Space stop, Enter start + mouse stop", async ({ page }) => {
     const be = await standInBackend(page);
-    await page.goto("/dev/perfect-timing");
+    await page.goto(RANDOM_RUN);
     const seal = page.getByTestId("pt-press-surface");
     await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
     await seal.click();
@@ -540,7 +545,7 @@ test.describe("PT4.3 keyboard without seal focus", () => {
 
   test("a held key and a pointer+key on one press submit once", async ({ page }) => {
     const be = await standInBackend(page);
-    await page.goto("/dev/perfect-timing");
+    await page.goto(RANDOM_RUN);
     const seal = page.getByTestId("pt-press-surface");
     await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
     await blurAll(page);
@@ -557,4 +562,274 @@ test.describe("PT4.3 keyboard without seal focus", () => {
     await page.waitForTimeout(300);
     expect(be.locks).toHaveLength(1);
   });
+});
+
+// ── PT5: the mode pick and the Mastery Slice ───────────────────────────────
+//
+// The slice stand-in deals the REAL backend slice capture
+// (`src/lib/perfect-timing/__fixtures__/sliceCaptureV1.json`, Ezreal Q:
+// 5500 → 5000 → 4545 ms) and grades each stage against its captured target
+// with the same v1 scoring as above. A resume (`{resume: …}`) mints fresh ids
+// over the captured stages from `from_stage`, as the backend does.
+
+const SLICE: Json = JSON.parse(readFileSync(path.resolve("src/lib/perfect-timing/__fixtures__/sliceCaptureV1.json"), "utf8"));
+const SLICE_RELEASES: Json[] = SLICE.locks.map((l: Json) => l.response);
+const SLICE_RUN = "/dev/perfect-timing?run=slice";
+
+interface SliceBackend { deals: Json[]; locks: { slice: string; id: string; body: Json }[]; lie: number | null }
+
+async function standInSlices(page: Page, opts: { dealStatus?: number; dealDelayMs?: number; lockStatus?: number } = {}): Promise<SliceBackend> {
+  const be: SliceBackend = { deals: [], locks: [], lie: null };
+  const stageOf = new Map<string, { i: number; slice: string }>();
+  let minted = 0;
+  await page.route("**/api/admin/perfect-timing/**", async (route: Route) => {
+    const p = new URL(route.request().url()).pathname.replace("/api/admin/perfect-timing", "");
+    const json = (body: unknown, code = 200) => route.fulfill({ status: code, contentType: "application/json", body: JSON.stringify(body) });
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST" } });
+    const body = route.request().postDataJSON() as Json;
+    if (p === "/slices/deal") {
+      be.deals.push(body);
+      if (opts.dealDelayMs) await new Promise((r) => setTimeout(r, opts.dealDelayMs));
+      if (opts.dealStatus && opts.dealStatus !== 200) return json({ detail: "Owner authorization required" }, opts.dealStatus);
+      const deal = JSON.parse(JSON.stringify(SLICE.deal.response));
+      if (body.resume) {
+        const hex = (n: number) => n.toString(16).padStart(32, "0");
+        deal.slice_id = `pts_${hex(++minted)}`;
+        deal.start_stage = body.resume.from_stage;
+        for (const s of deal.stages) s.round_id = s.stage < body.resume.from_stage ? null : `pt_${hex(1000 + ++minted)}`;
+      }
+      deal.expires_at = new Date(Date.now() + 15 * 60_000).toISOString();
+      deal.stages.forEach((s: Json, i: number) => { if (s.round_id) stageOf.set(s.round_id, { i, slice: deal.slice_id }); });
+      return json(deal);
+    }
+    const m = p.match(/^\/slices\/([^/]+)\/rounds\/([^/]+)\/lock$/);
+    if (m) {
+      const [sid, rid] = [decodeURIComponent(m[1]), decodeURIComponent(m[2])];
+      be.locks.push({ slice: sid, id: rid, body });
+      if (opts.lockStatus) return json({ detail: { error: { code: "PT_STAGE_CLOSED", message: "closed" } } }, opts.lockStatus);
+      const known = stageOf.get(rid);
+      if (!known || known.slice !== sid) return json({ detail: { error: { code: "PT_ROUND_NOT_FOUND", message: "Unknown or expired slice round." } } }, 404);
+      const cap = SLICE_RELEASES[known.i];
+      const elapsed_ms: number = body.elapsed_ms;
+      const target_ms: number = be.lie === null ? cap.target_ms : Math.round(elapsed_ms / (1 + be.lie));
+      const error_ms = elapsed_ms - target_ms;
+      const rel = Math.abs(error_ms) / target_ms;
+      const tier = rel <= 0.03 ? "perfect" : rel <= 0.07 ? "great" : rel <= 0.15 ? "good" : "miss";
+      return json({
+        ...cap, slice_id: sid, round_id: rid, elapsed_ms, target_ms, error_ms, abs_error_ms: Math.abs(error_ms),
+        relative_error: Math.round(rel * 10_000) / 10_000, tier,
+        points: tier === "miss" ? 0 : Math.round(100 * Math.max(0, 1 - rel / 0.25)),
+        plausibility: { server_window_ms: elapsed_ms + 500, verdict: "ok" },
+        // The stand-in's lie moves the target; move the base with it so the shown arithmetic stays true
+        // (base × 100 ÷ (100 + AH) = target), as the real server's always is.
+        calculation: be.lie === null ? cap.calculation : {
+          ...cap.calculation,
+          base_cooldown_ms: Math.round((target_ms * (100 + cap.calculation.ability_haste)) / 100),
+          exact_ms: `${target_ms}.0000`,
+        },
+        slice_expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      });
+    }
+    return json({ detail: "not found" }, 404);
+  });
+  return be;
+}
+
+/** While a slice stage runs: only public inputs as digits, no truth in the DOM, nothing looping. */
+async function assertSliceSilentWhileRunning(page: Page, stage: number) {
+  const probe = await page.evaluate((s: number) => {
+    const stageEl = document.querySelector('[data-testid="pt-stage"]') as HTMLElement;
+    const digits = [...new Set((stageEl.textContent ?? "").match(/\d+/g) ?? [])].sort();
+    const html = document.body.innerHTML;
+    const looping = document.getAnimations().filter((a) => {
+      const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
+      const timing = a.effect?.getComputedTiming();
+      return t && t.closest('[data-testid="perfect-timing-page"]') && timing && timing.iterations === Infinity && a.playState === "running";
+    }).map((a) => ((a.effect as KeyframeEffect).target as Element).className);
+    // PT5's "what changed" mark animates only while ARMED: once the timer runs it must be at rest.
+    const running = document.getAnimations().filter((a) => {
+      const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
+      return t && t.closest('[data-changed="true"]') && a.playState === "running";
+    }).map((a) => ((a.effect as KeyframeEffect).target as Element).className);
+    return { s, digits, truth: /5\.50 s|5\.00 s|4\.545|5\.5 \/ 5\.25|target_ms|cooldown_raw|base_cooldown_ms/.test(html), looping, running };
+  }, stage);
+  const allowed = [["1", "5"], ["1", "3", "5"], ["10", "3", "5"]][stage - 1];
+  expect(probe).toEqual({ s: stage, digits: allowed, truth: false, looping: [], running: [] });
+}
+
+test.describe("PT5 mode pick", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("the page opens on the two modes; Enter starts a Random Run, the slice tile starts a slice", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto("/dev/perfect-timing");
+    await expect(page.getByTestId("pt-mode-select")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("pt-mode-random")).toBeFocused();
+    await assertFits(page, "mode pick");
+    await assertNoClutter(page);
+    await page.screenshot({ path: path.join(SHOTS, "1440x900-mode-pick.png") });
+    expect(be.deals).toHaveLength(0);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("pt-press-surface")).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    expect(be.deals).toEqual([{ count: 5 }]);
+    expect(new URL(page.url()).searchParams.get("run")).toBe("random");
+  });
+});
+
+for (const vp of [
+  { name: "1440x900", width: 1440, height: 900, touch: false },
+  { name: "390x844", width: 390, height: 844, touch: true },
+] as const) {
+  test.describe(`PT5 slice ${vp.name}`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch });
+
+    test(`a full Mastery Slice by ${vp.touch ? "touch" : "keyboard"}`, async ({ page }) => {
+      test.setTimeout(120_000);
+      const be = await standInSlices(page);
+      await page.goto("/dev/perfect-timing");
+      const tile = page.getByTestId("pt-mode-slice");
+      if (vp.touch) await tile.tap(); else { await tile.focus(); await page.keyboard.press("Enter"); }
+      const seal = page.getByTestId("pt-press-surface");
+      const kinds = ["foundation", "rank_up", "equipped"];
+      for (let i = 0; i < 3; i++) {
+        await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+        await page.waitForTimeout(1000); // the "what changed" mark settles; past the key guard
+        const hero = page.getByTestId("pt-round-plate");
+        await expect(hero).toHaveAttribute("data-slice", kinds[i]);
+        await expect(hero.getByTestId("pt-champion")).toHaveText("Ezreal");
+        await expect(hero.getByTestId("pt-ability")).toHaveText("Mystic Shot");
+        await expect(hero.locator(".pt-hero-icon img")).toHaveAttribute("src", /assets\/champions\/Ezreal\/Q_EzrealQ\.png$/);
+        await expect(page.getByTestId(`pt-slice-step-${kinds[i]}`)).toHaveAttribute("data-state", "current");
+        await expect(hero.getByTestId("pt-rank-value")).toHaveText(new RegExp(`Rank ${i === 0 ? 1 : 3} / 5`));
+        if (i === 2) {
+          await expect(hero.getByTestId("pt-item-icon")).toHaveAttribute("src", /assets\/items\/3057\.png$/);
+          await expect(hero.getByTestId("pt-item-name")).toHaveText("Sheen");
+          await expect(hero.getByTestId("pt-item-haste")).toHaveText(/\+10/);
+        } else {
+          await expect(hero.getByTestId("pt-item-chip")).toHaveCount(0);
+        }
+        await assertFits(page, `${vp.name} slice stage ${i + 1} armed`);
+        await assertNoClutter(page);
+        await page.screenshot({ path: path.join(SHOTS, `${vp.name}-slice-${i + 1}-armed.png`) });
+        if (vp.touch) await seal.tap(); else { await seal.focus(); await page.keyboard.press("Space"); }
+        await expect(seal).toHaveAttribute("data-phase", "running");
+        await assertSliceSilentWhileRunning(page, i + 1);
+        if (i === 2) await page.screenshot({ path: path.join(SHOTS, `${vp.name}-slice-3-running.png`) });
+        await page.waitForTimeout(1200 + i * 150);
+        if (vp.touch) await seal.tap(); else await page.keyboard.press("Enter");
+        await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+        await page.waitForTimeout(1900);
+        // The graded precision: 5500 → "5.50 s", 4545 → "4.545 s" (never the float-rounded "4.54 s").
+        await expect(page.getByTestId("pt-true-time")).toHaveText(["5.50 s", "5.00 s", "4.545 s"][i]);
+        await expect(page.getByTestId("pt-slice-delta")).toBeVisible();
+        if (i === 2) await expect(page.getByTestId("pt-slice-math")).toContainText("5.000 s × 100 ÷ (100 + 10) = 4.545 s");
+        await assertFits(page, `${vp.name} slice stage ${i + 1} revealed`);
+        await page.screenshot({ path: path.join(SHOTS, `${vp.name}-slice-${i + 1}-revealed.png`) });
+        const next = page.getByRole("button", { name: i === 2 ? /see results/i : /next stage/i });
+        if (vp.touch) await next.tap(); else { await next.focus(); await page.keyboard.press("Enter"); }
+      }
+      await expect(page.getByTestId("pt-results")).toHaveAttribute("data-mode", "slice");
+      await expect(page.getByTestId("pt-slice-story")).toContainText("Sheen +10 AH");
+      expect(be.deals).toEqual([{}]);
+      expect(be.locks.map((l) => l.id)).toEqual(SLICE.deal.response.stages.map((s: Json) => s.round_id));
+      for (const l of be.locks) {
+        expect(Object.keys(l.body)).toEqual(["elapsed_ms"]);
+        expect(Number.isInteger(l.body.elapsed_ms)).toBe(true);
+      }
+      await page.waitForTimeout(600);
+      await assertFits(page, `${vp.name} slice results`);
+      await assertNoClutter(page);
+      await page.screenshot({ path: path.join(SHOTS, `${vp.name}-slice-results.png`) });
+      // Change mode goes back to the pick, which fits too.
+      const change = page.getByTestId("pt-exit");
+      if (vp.touch) await change.tap(); else await change.click();
+      await expect(page.getByTestId("pt-mode-select")).toBeVisible();
+      await assertFits(page, `${vp.name} mode pick after results`);
+    });
+  });
+}
+
+test.describe("PT5 every slice state fits and cannot scroll", () => {
+  for (const { w, h } of FIT_SIZES) {
+    test(`${w}x${h}: mode pick, three stages, reveals, results, resume, voided`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width: w, height: h });
+      const tag = `${w}x${h}`;
+      // mode pick
+      await standInBackend(page);
+      await page.goto("/dev/perfect-timing");
+      await expect(page.getByTestId("pt-mode-select")).toBeVisible({ timeout: 30_000 });
+      await assertFits(page, `${tag} mode pick`);
+      await assertNothingScrolls(page, `${tag} mode pick`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-mode-pick.png`) });
+      await page.unroute("**/api/admin/perfect-timing/**");
+      // a slice, the widest verdict on the equipped stage
+      const be = await standInSlices(page, { dealDelayMs: 800 });
+      await page.goto(SLICE_RUN);
+      await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "dealing");
+      await assertFits(page, `${tag} slice dealing`);
+      const seal = page.getByTestId("pt-press-surface");
+      for (let i = 0; i < 3; i++) {
+        be.lie = i === 2 ? 0.02 : null;
+        await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+        await page.waitForTimeout(1000);
+        await assertFits(page, `${tag} slice ${i + 1} armed`);
+        await assertNothingScrolls(page, `${tag} slice ${i + 1} armed`);
+        await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-${i + 1}-armed.png`) });
+        await seal.focus();
+        await page.keyboard.press("Space");
+        await expect(seal).toHaveAttribute("data-phase", "running");
+        await assertFits(page, `${tag} slice ${i + 1} running`);
+        await page.waitForTimeout(1100);
+        await page.keyboard.press("Space");
+        await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+        await page.waitForTimeout(2000);
+        await assertFits(page, `${tag} slice ${i + 1} revealed`);
+        await assertNothingScrolls(page, `${tag} slice ${i + 1} revealed`);
+        await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-${i + 1}-revealed.png`) });
+        await page.keyboard.press("Space"); // advance the settled reveal
+      }
+      await expect(page.getByTestId("pt-results")).toBeVisible({ timeout: 10_000 });
+      expect(be.locks, "exactly one lock per stage").toHaveLength(3);
+      await page.waitForTimeout(600);
+      await assertFits(page, `${tag} slice results`);
+      await assertNothingScrolls(page, `${tag} slice results`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-results.png`) });
+      await page.unroute("**/api/admin/perfect-timing/**");
+      // an expired stage: the resume message, then the same ability again
+      const first = await standInSlices(page);
+      await page.goto(SLICE_RUN);
+      await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+      const expiredSlice = first.locks.length === 0 ? null : first.locks[0].slice;
+      await page.unroute("**/api/admin/perfect-timing/**");
+      // A new stand-in that has never seen this slice: its lock answers 404, as after a restart.
+      const be2 = await standInSlices(page, { dealDelayMs: 1500 });
+      expect(expiredSlice).toBeNull();
+      await seal.focus();
+      await page.keyboard.press("Space");
+      await page.waitForTimeout(1100);
+      await page.keyboard.press("Space"); // the new stand-in does not know this slice: 404 → resume
+      await expect(page.getByTestId("pt-status")).toContainText("re-dealing Ezreal Mystic Shot", { timeout: 10_000 });
+      await assertFits(page, `${tag} slice resuming`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-resuming.png`) });
+      await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+      expect(be2.deals[0].resume).toMatchObject({ champion: "Ezreal", slot: "Q", from_stage: 1 });
+      // voided
+      await seal.focus();
+      await page.keyboard.press("Space");
+      await expect(seal).toHaveAttribute("data-phase", "running");
+      await page.evaluate(() => {
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+        document.dispatchEvent(new Event("visibilitychange"));
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+      });
+      await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided");
+      await assertFits(page, `${tag} slice voided`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-voided.png`) });
+      // One lock reached the server: the stop that met the expired slice (404 → resume). The voided stage sent nothing.
+      expect(be2.locks).toHaveLength(1);
+      expect(be2.locks[0].slice).toBe(SLICE.deal.response.slice_id);
+      expect(be2.locks[0].id).toBe(SLICE.deal.response.stages[0].round_id);
+    });
+  }
 });
