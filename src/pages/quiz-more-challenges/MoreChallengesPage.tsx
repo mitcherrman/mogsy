@@ -29,7 +29,9 @@ import { track } from "@/lib/analytics/track";
 import { httpDailyRunTransport } from "@/lib/daily-challenge/run/client";
 import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import { usePublicModeCatalog } from "@/lib/public-modes/client";
-import { isPublicModeId, type PublicModeEntry, type PublicModeId } from "@/lib/public-modes/contracts";
+import {
+  isPublicModeId, PUBLIC_MODE_TITLES, type PublicModeEntry, type PublicModeId,
+} from "@/lib/public-modes/contracts";
 import { RankedApiError, startBonusGame } from "@/lib/ranked-public/client";
 import {
   BONUS_GAME_ORIGIN_ID,
@@ -49,12 +51,14 @@ import { cn } from "@/lib/utils";
 
 type StartNotice =
   | { kind: "active_match"; title: string }
+  /** A bonus game of ANOTHER mode is still live: name it, offer the way back. */
+  | { kind: "other_game"; title: string; liveTitle: string; matchId: string }
   | { kind: "paused"; title: string }
   | { kind: "unavailable"; title: string }
   | { kind: "rate_limited"; title: string }
   | { kind: "failed"; title: string };
 
-const NOTICE_COPY: Record<StartNotice["kind"], string> = {
+const NOTICE_COPY: Record<Exclude<StartNotice["kind"], "other_game">, string> = {
   active_match: "You already have a match in progress. Finish it first.",
   paused: "New bonus games are paused for now. Please check back soon.",
   unavailable: "This game can't be started right now. Try another one.",
@@ -116,6 +120,13 @@ export default function MoreChallengesPage() {
     setNotice(null);
     try {
       const out = await startBonusGame(entry.id, newStartKey());
+      // The server handed back a bonus game of another mode that is still
+      // live: say which, and let the player return to it on purpose.
+      if (out.result === "resumed" && out.modeId && out.modeId !== entry.id && out.status.matchId) {
+        setNotice({ kind: "other_game", title: entry.title, matchId: out.status.matchId,
+          liveTitle: isPublicModeId(out.modeId) ? PUBLIC_MODE_TITLES[out.modeId] : "bonus" });
+        return;
+      }
       if (out.status.status === "matched" && out.status.matchId) {
         navigate("/quiz/ranked", { state: { matchId: out.status.matchId, origin: BONUS_GAME_ORIGIN_ID } });
         return;
@@ -207,7 +218,14 @@ export default function MoreChallengesPage() {
               data-testid={`more-challenges-notice-${notice.kind}`} role="status">
               <p>
                 <span className="font-semibold">{notice.title}: </span>
-                {NOTICE_COPY[notice.kind]}
+                {notice.kind === "other_game"
+                  ? <>Your {notice.liveTitle} game is still in progress. Finish it first.{" "}
+                    <button type="button" className="underline underline-offset-2" data-testid="more-challenges-notice-return"
+                      onClick={() => navigate("/quiz/ranked", {
+                        state: { matchId: notice.matchId, origin: BONUS_GAME_ORIGIN_ID } })}>
+                      Return to it
+                    </button></>
+                  : NOTICE_COPY[notice.kind]}
                 {notice.kind === "active_match" && (
                   <> <Link to="/quiz/ranked" className="underline underline-offset-2"
                     data-testid="more-challenges-notice-resume">Return to it</Link></>

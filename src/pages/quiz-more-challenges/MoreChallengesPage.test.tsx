@@ -253,4 +253,19 @@ describe("PGM1 — More Challenges", () => {
     await waitFor(() => expect(router.state.location.search).toBe(""));
     expect(h.startBonusGame).not.toHaveBeenCalled();
   });
+
+  it("PGM2: a live bonus game of another mode is named, not silently opened", async () => {
+    h.startBonusGame.mockResolvedValue({
+      status: { status: "matched", matchId: "rbg_live" } as never, modeId: "reconstruct", result: "resumed",
+    });
+    const router = renderPage();
+    await waitFor(() => expect(within(card("match_grid")).getByTestId("mode-card-play")).toBeInTheDocument());
+    fireEvent.click(within(card("match_grid")).getByTestId("mode-card-play"));
+    const notice = await screen.findByTestId("more-challenges-notice-other_game");
+    expect(notice).toHaveTextContent("Your Reconstruct game is still in progress");
+    expect(router.state.location.pathname).toBe("/quiz/more-challenges");
+    fireEvent.click(screen.getByTestId("more-challenges-notice-return"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/ranked"));
+    expect(JSON.parse(screen.getByTestId("ranked-route").textContent!)).toEqual({ matchId: "rbg_live", origin: "bonus_game" });
+  });
 });

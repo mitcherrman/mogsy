@@ -21,7 +21,8 @@ import { labArenaView } from "@/pages/dev/interaction-lab/labArenaView";
 import { BonusSessionError, bonusSessionsApi, describeBonusError, type BonusSessionsApi } from "@/lib/public-modes/sessionsApi";
 import type { PublicModeEntry } from "@/lib/public-modes/contracts";
 import {
-  BONUS_GAME_NOTE, GameError, GameLead, GameRail, GameResults, GameState, RoundBar, useBonusRoundReport,
+  BONUS_GAME_NOTE, GameError, GameLead, GameRail, GameResults, GameState, PHONE_DOCK_RESERVE_PX, RoundBar,
+  useBonusRoundReport,
 } from "./publicGame";
 
 const MIN_LOCK_BEAT_MS = 420;
@@ -43,7 +44,7 @@ const StageContext = createContext<Stage | null>(null);
 function Viewport() {
   const s = useContext(StageContext);
   const ref = useRef<HTMLDivElement>(null);
-  const maxHeight = useOwnerStageRoom(ref);
+  const maxHeight = useOwnerStageRoom(ref, PHONE_DOCK_RESERVE_PX);
   if (!s) return null;
   return (
     <div ref={ref} data-testid="glyph-press-game-viewport" className="flex min-h-0 flex-col">

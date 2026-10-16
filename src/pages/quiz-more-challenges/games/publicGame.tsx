@@ -19,14 +19,19 @@ import type { PublicModeEntry } from "@/lib/public-modes/contracts";
 /** The arena header's honest one-liner for every public session game. */
 export const BONUS_GAME_NOTE = "Bonus game · unrated";
 
+/** The band the floating Report / Rules dock tabs take at the foot of a phone. */
+export const PHONE_DOCK_RESERVE_PX = 64;
+
 export function GameLead({ title }: { title: string }) {
   return (
     <span className="flex shrink-0 items-center gap-2" data-testid="bonus-game-lead">
       <Link to={MORE_CHALLENGES_ROUTE} data-testid="bonus-game-back"
         className="inline-flex min-h-[28px] items-center gap-1 rounded border border-[#d5b66f]/40 px-2 py-0.5 text-[11px] text-[#f6e6bb] hover:border-[#d5b66f]">
-        <ArrowLeft className="h-3 w-3" aria-hidden /> More Challenges
+        <ArrowLeft className="h-3 w-3" aria-hidden />
+        <span className="hidden sm:inline">More Challenges</span>
+        <span className="sm:hidden">Back</span>
       </Link>
-      <span className="ranked-eyebrow shrink-0" data-testid="bonus-game-title">{title}</span>
+      <span className="ranked-eyebrow hidden shrink-0 sm:inline" data-testid="bonus-game-title">{title}</span>
     </span>
   );
 }
@@ -88,7 +93,7 @@ export function RoundBar({ index, total, revealed, onNext, onFinish }: {
   return (
     <span className="ml-auto flex shrink-0 items-center gap-2">
       <span data-testid="bonus-game-counter" className="font-mono tabular-nums opacity-80">
-        Round {index + 1} / {total}
+        <span className="hidden sm:inline">Round </span>{index + 1} / {total}
       </span>
       <button type="button" data-testid={last ? "bonus-game-finish" : "bonus-game-next"}
         onClick={last ? onFinish : onNext} disabled={!revealed}
