@@ -11,6 +11,10 @@
  * PHONE: `BottomSheet` (a focus-trapped Radix dialog with drag-to-dismiss),
  * used by the match sheet and the Teams sheet. Close, drag down, overlay tap,
  * Escape and Back all dismiss it.
+ *
+ * NEITHER SCROLLS (UX4). The column is the workspace's height and the sheet
+ * is capped below the screen's; what they hold compacts, then divides into
+ * views, to fit (`fit.tsx`).
  */
 import { useCallback, useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -80,12 +84,12 @@ export function ContextColumn({ brief, briefLabel, briefKey }: {
           animate={{ opacity: 1, x: 0 }}
           exit={x.reduced ? { opacity: 0 } : { opacity: 0, x: -OFFSET.panel / 2 }}
           transition={slideTransition(DURATION.panel, x.reduced)}
-          className="h-full w-[320px] 2xl:w-[360px]"
+          className={cn("flex h-full flex-col", open ? "w-[318px] 2xl:w-[358px]" : "w-full")}
         >
           {match ? (
             <MatchDetail match={match} onClose={() => x.selectMatch(null)} />
           ) : open ? (
-            <div className="relative h-full">
+            <div className="relative flex h-full flex-col">
               {brief}
               <button
                 type="button"
@@ -105,7 +109,7 @@ export function ContextColumn({ brief, briefLabel, briefKey }: {
               aria-label={`Show ${briefLabel.toLowerCase()}`}
               aria-expanded="false"
               data-testid="brief-toggle"
-              className="flex h-full w-12 flex-col items-center gap-3 pt-4 text-muted-foreground outline-none transition-colors hover:bg-white/[0.03] hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
+              className="flex h-full w-full flex-col items-center gap-3 pt-4 text-muted-foreground outline-none transition-colors hover:bg-white/[0.03] hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
             >
               <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
               <span className="whitespace-nowrap text-[10.5px] font-bold uppercase tracking-[0.22em] [writing-mode:vertical-rl]">{briefLabel}</span>
@@ -119,12 +123,14 @@ export function ContextColumn({ brief, briefLabel, briefKey }: {
 
 /* ── phone sheet ────────────────────────────────────────────────────────── */
 
-export function BottomSheet({ open, onClose, title, testId, children }: {
+export function BottomSheet({ open, onClose, title, testId, fill = false, children }: {
   open: boolean;
   onClose: () => void;
   /** Read by screen readers as the dialog's name. */
   title: string;
   testId: string;
+  /** A fixed height (content with views and pages) instead of the content's own, up to the cap. */
+  fill?: boolean;
   children: ReactNode;
 }) {
   const x = useExperience();
@@ -146,12 +152,17 @@ export function BottomSheet({ open, onClose, title, testId, children }: {
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.6 }}
             onDragEnd={onDragEnd}
-            className="mx-auto flex max-h-[86dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-b-0 border-white/10 bg-[hsl(214_50%_8%)] pb-[env(safe-area-inset-bottom)] text-foreground shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.9)]"
+            // UX4: the sheet never outgrows the screen and never scrolls
+            // inside; what it holds is composed to fit (views, pages).
+            className={cn(
+              "mx-auto flex max-h-[min(88dvh,46rem)] w-full max-w-lg flex-col overflow-clip rounded-t-3xl border border-b-0 border-white/10 bg-[hsl(214_50%_8%)] pb-[env(safe-area-inset-bottom)] text-foreground shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.9)]",
+              fill && "h-[min(88dvh,46rem)]",
+            )}
           >
-            <div className="flex justify-center pb-1 pt-2.5" aria-hidden="true">
+            <div className="flex shrink-0 justify-center pb-1 pt-2.5" aria-hidden="true">
               <span className="h-1 w-10 rounded-full bg-white/20" />
             </div>
-            {children}
+            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </motion.div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -7,9 +7,13 @@
  * Discover, the last shown as the structure to come, not as a link) and
  * the event's live status. Beneath it one workspace holds the current screen;
  * moving between screens slides it in the direction of travel, and coming
- * back slides it the other way. On desktop the frame is exactly the viewport
- * (content scrolls inside its own regions); on a phone it is an ordinary
- * scrolling column under a sticky bar.
+ * back slides it the other way.
+ *
+ * NOTHING SCROLLS (UX4). At every size the frame is exactly the viewport the
+ * shell leaves under the global HUD, the document is locked while it is
+ * mounted, and each screen is composed to fit its workspace: more data than
+ * fits is reached through visible controls (pages, views, steppers), never
+ * by moving the page or a panel (`fit.tsx`).
  *
  * DATA IS THE PAGE'S. The shell takes a `tournament_context_v2` body exactly
  * as `useTournament` serves it (or a fixture of the same shape) and adds no
@@ -19,10 +23,12 @@
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, Info, RefreshCw } from "lucide-react";
 
 import { EventMark } from "@/components/pro-play/media/EventMark";
 import { TournamentKitProvider, useKit } from "@/components/pro-play/tournament/TournamentParts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useViewportLock } from "@/lib/pro-play/worldsExperience/viewportLock";
 import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 import type { TournamentResponseV2 } from "@/lib/pro-play/tournamentApi";
 import { dateRange } from "@/lib/pro-play/tournamentView";
@@ -37,6 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { ExperienceProvider, useExperience } from "./ExperienceContext";
+import { FitCascade, PagerButton } from "./fit";
 import { DURATION, OFFSET, slideTransition, slideVariants } from "./motion";
 import { OverviewScreen } from "./OverviewScreen";
 import { calendarDay, rovingKeys } from "./parts";
@@ -121,7 +128,8 @@ function PrimaryNav({ compact }: { compact: boolean }) {
 
 /* ── status (right of the bar) ──────────────────────────────────────────── */
 
-function PhaseChip() {
+/** The phase in the bar; `compact` (a phone's bar) says it in fewer words. */
+function PhaseChip({ compact = false }: { compact?: boolean }) {
   const { ctx, state } = useKit();
   const live = state.matches.some((m) => m.state === "live");
   let label: string;
@@ -132,20 +140,20 @@ function PhaseChip() {
       break;
     case "between_stages": {
       const done = stageOf(ctx, state.phase_detail?.completed_stage);
-      label = done ? `${stageLabel(done)} complete` : "Between stages";
+      label = done ? `${stageLabel(done)} ${compact ? "done" : "complete"}` : "Between stages";
       break;
     }
     case "complete":
-      label = "Event complete";
+      label = compact ? "Complete" : "Event complete";
       tone = "muted";
       break;
     case "unknown":
-      label = "Schedule unavailable";
+      label = compact ? "No schedule" : "Schedule unavailable";
       tone = "muted";
       break;
     default: {
       const stage = stageOf(ctx, state.phase);
-      label = `${stage ? stageLabel(stage) : "Stage"} ${live ? "live" : "in progress"}`;
+      label = `${stage ? stageLabel(stage) : "Stage"} ${live ? "live" : compact ? "now" : "in progress"}`;
       if (live) tone = "live";
     }
   }
@@ -184,28 +192,32 @@ function FeedChip({ data, refreshFailed }: { data: TournamentResponseV2; refresh
   );
 }
 
-/* ── degraded sources: one quiet line each ──────────────────────────────── */
+/* ── degraded sources: one line, every notice reachable ─────────────────── */
 
-function StatusStrip({ data, onRetry, retrying, refreshFailed }: {
-  data: TournamentResponseV2;
-  onRetry?: () => void;
-  retrying?: boolean;
-  refreshFailed?: boolean;
-}) {
-  const { state } = useKit();
+interface Notice {
+  key: string;
+  /** The whole statement. */
+  text: ReactNode;
+  /** The same fact in a few words, for a strip too narrow for `text`. */
+  short: ReactNode;
+  retry?: boolean;
+}
+
+function notices(data: TournamentResponseV2, state: TournamentResponseV2["state"], refreshFailed?: boolean): Notice[] {
   const fresh = freshness(data);
   const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : null);
-  const lines: { key: string; text: ReactNode; retry?: boolean }[] = [];
+  const lines: Notice[] = [];
   if (refreshFailed) {
+    const at = time(data.generated_at);
     lines.push({
       key: "refresh",
       retry: true,
       text: (
         <>
-          <b className="font-semibold">Couldn't get the latest update.</b> Showing the last successful response
-          {time(data.generated_at) ? ` (${time(data.generated_at)})` : ""}.
+          <b className="font-semibold">Couldn't get the latest update.</b> Showing the last successful response{at ? ` (${at})` : ""}.
         </>
       ),
+      short: <><b className="font-semibold">Update failed</b>{at ? ` · showing ${at}` : ""}</>,
     });
   }
   if (state.phase === "unknown") {
@@ -217,18 +229,21 @@ function StatusStrip({ data, onRetry, retrying, refreshFailed }: {
           <b className="font-semibold">Schedule unavailable.</b> The official schedule couldn't be read: matches, brackets and results aren't shown. The field and Swiss seeding come from the tournament registry.
         </>
       ),
+      short: <b className="font-semibold">Schedule unavailable</b>,
     });
   } else if (fresh.stale) {
     const which = fresh.scheduleStale && fresh.standingsStale ? "schedule and standings" : fresh.standingsStale ? "standings" : "schedule";
+    const at = time(fresh.fetchedAt);
     lines.push({
       key: "stale",
       retry: true,
       text: (
         <>
           Showing a recent copy of the official {which}
-          {time(fresh.fetchedAt) ? ` from ${time(fresh.fetchedAt)}` : ""}: the live source isn't answering right now.
+          {at ? ` from ${at}` : ""}: the live source isn't answering right now.
         </>
       ),
+      short: <>Recent copy{at ? ` from ${at}` : ""}</>,
     });
   }
   if (state.phase !== "unknown" && state.coverage.complete === false) {
@@ -239,37 +254,96 @@ function StatusStrip({ data, onRetry, retrying, refreshFailed }: {
           <b className="font-semibold">Partial schedule.</b> {state.coverage.found_matches} of {state.coverage.expected_matches} matches could be read; missing matches aren't drawn.
         </>
       ),
+      short: <><b className="font-semibold">Partial</b> · {state.coverage.found_matches} of {state.coverage.expected_matches} matches</>,
     });
   }
   if (state.phase !== "unknown" && state.coverage.basis === "unverified") {
     lines.push({
       key: "standings",
       text: <>Official standings aren't available: bracket positions, advancement and eliminations aren't shown. Times and results still are.</>,
+      short: <>Standings unavailable</>,
     });
   }
   if (state.warnings.some((w) => w.kind === "results_behind_calendar")) {
-    lines.push({ key: "lag", text: <>Results may be behind the official calendar: the latest matches haven't been confirmed yet.</> });
+    lines.push({
+      key: "lag",
+      text: <>Results may be behind the official calendar: the latest matches haven't been confirmed yet.</>,
+      short: <>Results may be behind</>,
+    });
   }
+  return lines;
+}
+
+/**
+ * One line under the bar, never more (UX4): the notice in full where it fits,
+ * else in a few words with its full statement one tap away (Details). Several
+ * notices are stepped through, "1 / 3", rather than stacked.
+ */
+function StatusStrip({ data, onRetry, retrying, refreshFailed }: {
+  data: TournamentResponseV2;
+  onRetry?: () => void;
+  retrying?: boolean;
+  refreshFailed?: boolean;
+}) {
+  const { state } = useKit();
+  const lines = notices(data, state, refreshFailed);
+  const [index, setIndex] = useState(0);
   if (!lines.length) return null;
+  const at = Math.min(index, lines.length - 1);
+  const retry = (
+    <button
+      type="button"
+      onClick={onRetry}
+      disabled={retrying}
+      aria-label="Try again"
+      className="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-amber-200/30 px-2 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-amber-200/70 disabled:opacity-60"
+    >
+      <RefreshCw className={cn("h-3 w-3", retrying && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+      <span className="hidden sm:inline">Try again</span>
+    </button>
+  );
   return (
-    <div className="space-y-px border-b border-amber-500/20 bg-amber-500/[0.06]" role="status" data-testid="status-strip">
-      {lines.map((l) => (
-        <p key={l.key} data-testid={`status-${l.key}`} className="flex items-center gap-3 px-4 py-1.5 text-[12px] leading-snug text-amber-100/90 lg:px-6">
-          <span className="min-w-0 flex-1">{l.text}</span>
-          {l.retry && onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              disabled={retrying}
-              className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded border border-amber-200/30 px-2 text-[11px] font-semibold disabled:opacity-60"
-            >
-              <RefreshCw className={cn("h-3 w-3", retrying && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
-              Try again
-            </button>
-          )}
-        </p>
-      ))}
+    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-amber-500/20 bg-amber-500/[0.06] px-3 text-amber-100/90 lg:px-6" role="status" data-testid="status-strip" data-count={lines.length}>
+      <FitCascade levels={2} watch={`${at}|${lines.map((l) => l.key).join(",")}`} className="flex h-full flex-1 items-center">
+        {(level) =>
+          lines.map((l, k) => (
+            <p key={l.key} hidden={k !== at} data-testid={`status-${l.key}`} data-length={level === 0 ? "full" : "short"} className="flex h-full min-w-0 items-center gap-2 whitespace-nowrap text-[12px] leading-none">
+              <span>{level === 0 ? l.text : l.short}</span>
+              {level > 0 && <NoticeDetails lines={lines} />}
+              {l.retry && onRetry && retry}
+            </p>
+          ))
+        }
+      </FitCascade>
+      {lines.length > 1 && (
+        <span className="flex shrink-0 items-center gap-1" data-testid="status-pager">
+          <span className="text-[11px] tabular-nums text-amber-100/70" aria-live="polite">
+            {at + 1} / {lines.length}
+          </span>
+          <PagerButton dir="prev" label="Previous notice" onClick={at > 0 ? () => setIndex(at - 1) : undefined} testId="status-prev" />
+          <PagerButton dir="next" label="Next notice" onClick={at < lines.length - 1 ? () => setIndex(at + 1) : undefined} testId="status-next" />
+        </span>
+      )}
     </div>
+  );
+}
+
+/** Every notice in full, for the strip that can only say each in a few words. */
+function NoticeDetails({ lines }: { lines: Notice[] }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        className="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-amber-200/30 px-1.5 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-amber-200/70"
+        data-testid="status-details"
+      >
+        <Info className="h-3 w-3" aria-hidden="true" /> Details
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(22rem,calc(100vw-1.5rem))] space-y-2 border-amber-500/30 bg-[hsl(214_50%_8%)] p-3 text-[12px] leading-snug text-amber-100/90" data-testid="status-details-body">
+        {lines.map((l) => (
+          <p key={l.key}>{l.text}</p>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -301,17 +375,17 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
   if (!x.desktop) {
     return (
       <header
-        className="sticky top-[var(--app-header-h)] z-30 border-b border-white/[0.07] bg-[hsl(215_55%_6%/0.92)] backdrop-blur-md"
+        className="relative z-30 shrink-0 border-b border-white/[0.07] bg-[hsl(215_55%_6%/0.92)] backdrop-blur-md"
         data-testid="command-bar"
         data-layout="compact"
       >
-        <div className="flex h-12 items-center gap-2 px-3">
+        <div className="flex h-11 items-center gap-2 px-3">
           <Link to={PRO_PLAY_ROUTE} aria-label="Back to Pro Play" className="-ml-1 inline-flex h-11 w-9 items-center justify-center text-muted-foreground">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Identity compact />
-          <span className="ml-auto flex items-center gap-2">
-            <PhaseChip />
+          <span className="ml-auto flex shrink-0 items-center gap-2">
+            <PhaseChip compact />
           </span>
         </div>
         <PrimaryNav compact />
@@ -381,15 +455,9 @@ function Workspace() {
     if (next) x.go({ screen: next });
   };
 
-  // A phone keeps the bar in view when the screen changes under it.
-  const screenKey = `${x.loc.screen}`;
-  useEffect(() => {
-    if (!x.desktop && x.move.level === "screen") window.scrollTo({ top: 0 });
-  }, [screenKey, x.desktop, x.move.level]);
-
   return (
     <div
-      className={cn("relative", x.desktop ? "min-h-0 flex-1 overflow-hidden" : "overflow-x-clip")}
+      className="relative min-h-0 flex-1 overflow-clip"
       data-testid="workspace"
       data-screen={x.loc.screen}
       data-direction={dir}
@@ -406,7 +474,7 @@ function Workspace() {
           animate="center"
           exit="exit"
           transition={slideTransition(DURATION.screen, x.reduced)}
-          className={cn(x.desktop && "h-full")}
+          className="h-full"
           data-testid="screen"
           data-screen-view={x.loc.screen}
           data-screen-index={screenIndex(x.loc.screen)}
@@ -488,15 +556,19 @@ function Frame({ data, onRetry, retrying, refreshFailed, badge, tools }: {
   tools?: ReactNode;
 }) {
   const x = useExperience();
+  useViewportLock();
   return (
     <div
       data-testid="worlds-experience"
       data-phase={data.state.phase}
       data-layout={x.desktop ? "wide" : "compact"}
+      data-viewport="fixed"
       className={cn(
         // An opaque ground of its own: the site's ambience runes stay outside the instrument.
         "relative flex flex-col bg-[radial-gradient(80%_55%_at_50%_0%,hsl(42_70%_50%/0.06),transparent_70%),linear-gradient(hsl(215_55%_5%),hsl(215_55%_5%))]",
-        x.desktop ? "h-[var(--app-viewport-h)] min-h-[620px]" : "min-h-[var(--app-viewport-h)]",
+        // Exactly the room under the HUD, at every size; the device's home
+        // indicator keeps its inset.
+        "h-[var(--app-viewport-h)] overflow-clip pb-[env(safe-area-inset-bottom,0px)]",
       )}
     >
       <CommandBar data={data} refreshFailed={refreshFailed} badge={badge} tools={x.desktop ? tools : undefined} />

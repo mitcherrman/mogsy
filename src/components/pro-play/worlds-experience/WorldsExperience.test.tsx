@@ -493,14 +493,16 @@ describe("reduced motion", () => {
 });
 
 describe("phone layout", () => {
-  it("compact bar, round stepper instead of the full graph, detail in a dismissible sheet", async () => {
+  it("compact bar, round control instead of the full graph, detail in a dismissible sheet", async () => {
     renderAt(`${BASE}/stages/play-in`, { desktop: false });
     expect(screen.getByTestId("command-bar")).toHaveAttribute("data-layout", "compact");
     expect(screen.queryByTestId("context-panel")).toBeNull();
     expect(screen.queryByTestId("lane-upper")).toBeNull();
     const steps = screen.getAllByTestId("round-step");
-    expect(steps.map((s) => s.textContent)).toEqual(["Upper Semifinal", "Upper Final", "Lower Semifinal", "Lower Final", "Final"]);
-    expect(steps[0]).toHaveAttribute("aria-pressed", "true");
+    // UX4: one row of rounds, abbreviated on screen and named in full for assistive tech.
+    expect(steps.map((s) => s.textContent)).toEqual(["UB SF", "UB F", "LB SF", "LB F", "Final"]);
+    expect(steps.map((s) => s.getAttribute("aria-label"))).toEqual(["Upper Semifinal", "Upper Final", "Lower Semifinal", "Lower Final", "Final"]);
+    expect(steps[0]).toHaveAttribute("aria-selected", "true");
     fireEvent.click(steps[4]);
     expect(within(screen.getByTestId("round-cards")).getAllByTestId("bracket-match")).toHaveLength(1);
     expect(screen.getByTestId("swiss-end-cap")).toBeInTheDocument();
@@ -527,19 +529,21 @@ describe("phone layout", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("Swiss on a phone: the round's fixtures, then records; the format on request", () => {
+  it("Swiss on a phone: round tabs, then the round's fixtures, records and format as views", () => {
     renderAt(`${BASE}/stages/swiss`, { desktop: false, data: swissThrough(2.5) });
     const phone = screen.getByTestId("swiss-phone");
     const tabs = screen.getAllByTestId("swiss-round-tab");
     expect(tabs).toHaveLength(5);
     expect(tabs[2]).toHaveAttribute("aria-selected", "true");
-    // Order: round tabs, the round's fixtures, the records, then the format.
-    const order = ["swiss-round", "swiss-phone-records", "swiss-phone-format"].map((id) => [...phone.querySelectorAll("[data-testid]")].findIndex((el) => el.getAttribute("data-testid") === id));
-    expect(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1]))).toBe(true);
+    // The round's fixtures first; records and the format are one tap away, not below.
+    expect(phone).toHaveAttribute("data-view", "fixtures");
+    expect(within(phone).getByTestId("swiss-round")).toHaveAttribute("data-round", "3");
+    expect(screen.queryByTestId("swiss-phone-records")).toBeNull();
+    const views = within(screen.getByTestId("swiss-phone-views")).getAllByTestId("view-tab");
+    expect(views.map((v) => v.textContent)).toEqual(["Fixtures", "Records", "Format"]);
+    fireEvent.click(views[1]);
     expect(screen.getAllByTestId("phone-record-group").length).toBeGreaterThan(0);
-    expect(screen.queryByTestId("swiss-round-pools")).toBeNull();
-    fireEvent.click(screen.getByTestId("swiss-format-toggle"));
-    expect(screen.getByTestId("swiss-format-toggle")).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(views[2]);
     expect(within(screen.getByTestId("swiss-round-pools")).getAllByTestId("swiss-pool").map((p) => p.getAttribute("data-record"))).toEqual(["2-0", "1-1", "0-2"]);
     expect(screen.getByTestId("swiss-legend")).toHaveTextContent(/verified results/);
   });
@@ -547,6 +551,9 @@ describe("phone layout", () => {
   it("Swiss on a phone before a result: fixtures summary, then the certified seeding", () => {
     renderAt(`${BASE}/stages/swiss`, { desktop: false });
     expect(screen.getByTestId("swiss-round-unpaired")).toBeInTheDocument();
+    const views = within(screen.getByTestId("swiss-phone-views")).getAllByTestId("view-tab");
+    expect(views[1]).toHaveTextContent("Seeding");
+    fireEvent.click(views[1]);
     expect(screen.getAllByTestId("swiss-tier")).toHaveLength(4);
     expect(screen.queryByTestId("swiss-phone-records")).toBeNull();
   });
@@ -558,24 +565,89 @@ describe("phone layout", () => {
     expect(params().get("round")).toBe("2");
     cleanup();
     renderAt(`${BASE}/stages/play-in?step=lower_bracket_finals`, { desktop: false });
-    expect(screen.getAllByTestId("round-step")[3]).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByTestId("round-step")[3]).toHaveAttribute("aria-selected", "true");
     const cards = within(screen.getByTestId("round-cards")).getAllByTestId("bracket-match");
     expect(cards.map((c) => c.getAttribute("data-bracket-match"))).toEqual([PI.lbf]);
   });
 
-  it("swipes between the built screens, but not from a sideways scroller", async () => {
+  it("swipes between the built screens; a mostly vertical drag does nothing", async () => {
     renderAt(BASE, { desktop: false });
     const ws = workspace();
     fireEvent.touchStart(ws, { touches: [{ clientX: 300, clientY: 400 }] });
     fireEvent.touchEnd(ws, { changedTouches: [{ clientX: 120, clientY: 410 }] });
     await waitFor(() => expect(currentScreen()).toBe("stages"));
-    const rail = document.querySelector("[data-swipe-ignore]") as HTMLElement;
-    fireEvent.touchStart(rail, { touches: [{ clientX: 120, clientY: 300 }] });
-    fireEvent.touchEnd(rail, { changedTouches: [{ clientX: 330, clientY: 300 }] });
-    expect(currentScreen()).toBe("stages");
-    // A mostly vertical drag is a scroll, not a swipe.
+    // A mostly vertical drag is neither a swipe nor (UX4) a scroll.
     fireEvent.touchStart(workspace(), { touches: [{ clientX: 100, clientY: 100 }] });
     fireEvent.touchEnd(workspace(), { changedTouches: [{ clientX: 180, clientY: 400 }] });
     expect(currentScreen()).toBe("stages");
+  });
+
+  it("the phone Overview holds its panels as views, not a column", () => {
+    renderAt(BASE, { desktop: false });
+    expect(screen.getByTestId("overview")).toHaveAttribute("data-layout", "compact");
+    const views = within(screen.getByTestId("overview-panels")).getAllByTestId("view-tab");
+    expect(views.map((v) => v.textContent)).toEqual(["Coming up", "At stake", "Road"]);
+    expect(screen.getByTestId("coming-up")).toBeInTheDocument();
+    expect(screen.queryByTestId("stakes")).toBeNull();
+    fireEvent.click(views[1]);
+    expect(screen.getByTestId("stakes")).toHaveAttribute("data-stage", "play_in");
+    fireEvent.click(views[2]);
+    expect(screen.getAllByTestId("road-stage")).toHaveLength(3);
+  });
+});
+
+/* ── UX4: a fixed viewport ──────────────────────────────────────────────── */
+
+describe("fixed viewport (UX4)", () => {
+  const SCROLLING = /\boverflow-(?:y-|x-)?(?:auto|scroll)\b/;
+
+  it("locks the document while mounted and releases it on the way out", () => {
+    const { unmount } = renderAt(BASE);
+    expect(document.documentElement).toHaveClass("worlds-viewport-locked");
+    expect(screen.getByTestId("worlds-experience")).toHaveAttribute("data-viewport", "fixed");
+    unmount();
+    expect(document.documentElement).not.toHaveClass("worlds-viewport-locked");
+  });
+
+  it.each([
+    ["overview", ""],
+    ["play-in", "/stages/play-in"],
+    ["swiss", "/stages/swiss"],
+    ["knockouts", "/stages/knockouts"],
+    ["teams", "/teams?team=KC"],
+    ["schedule", `/schedule?match=${PI.ubsf1}`],
+  ])("%s: no element in the frame is a scroll container, at either layout", (_name, path) => {
+    for (const desktop of [true, false]) {
+      renderAt(`${BASE}${path}`, { desktop, data: path.includes("swiss") ? swissThrough(2.5) : WORLDS_PRE });
+      const frame = screen.getByTestId("worlds-experience");
+      const scrollers = [frame, ...frame.querySelectorAll<HTMLElement>("*")].filter((el) => SCROLLING.test(el.getAttribute("class") ?? ""));
+      expect(scrollers.map((el) => el.getAttribute("data-testid") ?? el.tagName)).toEqual([]);
+      cleanup();
+    }
+  });
+
+  it("the frame is the viewport under the HUD at every width (no minimum height)", () => {
+    for (const desktop of [true, false]) {
+      renderAt(BASE, { desktop });
+      const cls = screen.getByTestId("worlds-experience").getAttribute("class") ?? "";
+      expect(cls).toMatch(/h-\[var\(--app-viewport-h\)\]/);
+      expect(cls).not.toMatch(/min-h-/);
+      cleanup();
+    }
+  });
+
+  it("several degraded notices share one line, stepped through", () => {
+    const d = partialSchedule();
+    d.state.coverage.basis = "unverified";
+    renderAt(BASE, { data: d });
+    const strip = screen.getByTestId("status-strip");
+    const count = Number(strip.getAttribute("data-count"));
+    expect(count).toBeGreaterThan(1);
+    const visible = () => [...strip.querySelectorAll<HTMLElement>("[data-testid^='status-']")].filter((p) => /^status-(refresh|unknown|stale|partial|standings|lag)$/.test(p.dataset.testid!) && !p.hidden);
+    expect(visible()).toHaveLength(1);
+    const first = visible()[0].dataset.testid;
+    fireEvent.click(screen.getByTestId("status-next"));
+    expect(visible()).toHaveLength(1);
+    expect(visible()[0].dataset.testid).not.toBe(first);
   });
 });
