@@ -222,12 +222,11 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
       )}
     </>
   );
-  return (
-    <article className="flex min-h-0 flex-1 flex-col" data-testid="match-detail" data-match-id={match.match_id} aria-labelledby="match-detail-title">
-      <header className="flex shrink-0 items-start gap-3 border-b border-white/[0.07] px-5 pb-3.5 pt-4">
+  const head = (tight: boolean) => (
+      <header className={cn("flex shrink-0 items-start gap-3 border-b border-white/[0.07] px-5", tight ? "pb-2.5 pt-3" : "pb-3.5 pt-4")}>
         <div className="min-w-0 flex-1">
           <Eyebrow>{[stage ? stageLabel(stage) : null, match.best_of ? `Bo${match.best_of}` : null].filter(Boolean).join(" · ")}</Eyebrow>
-          <h3 id="match-detail-title" className="mt-2 text-xl font-bold leading-tight text-foreground">
+          <h3 id="match-detail-title" className={cn("font-bold leading-tight text-foreground", tight ? "mt-1.5 text-lg" : "mt-2 text-xl")}>
             {ref && ref !== name ? ref : (name ?? "Match")}
           </h3>
           {ref && name && ref !== name && <p className="mt-0.5 text-xs font-medium text-muted-foreground">{name}</p>}
@@ -255,37 +254,9 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
           </button>
         )}
       </header>
-      {/* UX4: all at once where it fits, then tighter, then two views. */}
-      {/* UX4: all at once where it fits, then tighter, then two views, then three. */}
-      <FitCascade levels={hasStakes ? 4 : 3} watch={`${match.match_id}|${match.state}|${centre.state}`} className="flex min-h-0 flex-1 flex-col" testId="detail-body">
-        {(level) =>
-          level < 2 ? (
-            <div className={cn("px-5", level === 0 ? "space-y-5 py-4" : "space-y-3 py-3")}>
-              {sides(level === 1)}
-              {drawNote}
-              {whenWhere(level === 1)}
-              {stakes(level === 1)}
-              {note}
-            </div>
-          ) : level === 2 && hasStakes ? (
-            <DetailViews
-              views={[
-                { key: "match", label: "Match", body: <>{sides(true)}{drawNote}{whenWhere(true)}{note}</> },
-                { key: "stakes", label: "What it decides", body: stakes(true) },
-              ]}
-            />
-          ) : (
-            <DetailViews
-              views={[
-                { key: "teams", label: "Teams", body: <>{sides(true)}{drawNote}</> },
-                { key: "when", label: "When", name: "When and where", body: <>{whenWhere(true)}{note}</> },
-                ...(hasStakes ? [{ key: "stakes", label: "Decides", name: "What the result decides", body: stakes(true) }] : []),
-              ]}
-            />
-          )
-        }
-      </FitCascade>
-      <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.07] px-5 py-3" data-testid="detail-footer" data-match-centre={centre.state}>
+  );
+  const foot = (tight: boolean) => (
+      <footer className={cn("flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.07] px-5", tight ? "py-2" : "py-3")} data-testid="detail-footer" data-match-centre={centre.state}>
         {href && (
           <Link to={href} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[linear-gradient(180deg,#e9cf7d,#c9a84c)] px-3.5 text-sm font-semibold text-[#14110a] outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]" data-testid="detail-match-centre">
             Match centre <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -312,16 +283,59 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
           </button>
         )}
       </footer>
+  );
+  return (
+    <article className="flex min-h-0 flex-1 flex-col" data-testid="match-detail" data-match-id={match.match_id} aria-labelledby="match-detail-title">
+      {/* UX4: one composition for the whole detail: all at once where it fits,
+          then tighter, then two views, then three with a compact header and footer. */}
+      <FitCascade levels={hasStakes ? 4 : 3} watch={`${match.match_id}|${match.state}|${centre.state}`} className="flex min-h-0 flex-1 flex-col" testId="detail-body">
+        {(level) => {
+          const last = level === (hasStakes ? 3 : 2);
+          return (
+            <>
+              {head(last)}
+              <div className="flex min-h-0 flex-1 flex-col">
+                {level < 2 ? (
+                  <div className={cn("px-5", level === 0 ? "space-y-5 py-4" : "space-y-3 py-3")}>
+                    {sides(level === 1)}
+                    {drawNote}
+                    {whenWhere(level === 1)}
+                    {stakes(level === 1)}
+                    {note}
+                  </div>
+                ) : !last ? (
+                  <DetailViews
+                    views={[
+                      { key: "match", label: "Match", body: <>{sides(true)}{drawNote}{whenWhere(true)}{note}</> },
+                      { key: "stakes", label: "What it decides", body: stakes(true) },
+                    ]}
+                  />
+                ) : (
+                  <DetailViews
+                    tight
+                    views={[
+                      { key: "teams", label: "Teams", body: sides(true) },
+                      { key: "when", label: "When", name: "When and where", body: <>{whenWhere(true)}{drawNote}{note}</> },
+                      ...(hasStakes ? [{ key: "stakes", label: "Decides", name: "What the result decides", body: stakes(true) }] : []),
+                    ]}
+                  />
+                )}
+              </div>
+              {foot(last)}
+            </>
+          );
+        }}
+      </FitCascade>
     </article>
   );
 }
 
 /** The detail as views (two, then three on the shortest columns) when it cannot be one. */
-function DetailViews({ views }: { views: { key: string; label: string; name?: string; body: ReactNode }[] }) {
+function DetailViews({ views, tight = false }: { views: { key: string; label: string; name?: string; body: ReactNode }[]; tight?: boolean }) {
   const [chosen, setView] = useState(views[0].key);
   const view = views.find((v) => v.key === chosen) ?? views[0];
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-5 py-3" data-testid="detail-views" data-views={views.length}>
+    <div className={cn("flex min-h-0 flex-1 flex-col px-5", tight ? "gap-2 py-2" : "gap-2.5 py-3")} data-testid="detail-views" data-views={views.length}>
       <ViewTabs label="Match detail views" value={view.key} onChange={setView} views={views.map((v) => ({ key: v.key, label: v.label, name: v.name }))} />
       <div role="tabpanel" aria-label={view.name ?? view.label} className="space-y-3" data-view={view.key}>
         {view.body}
