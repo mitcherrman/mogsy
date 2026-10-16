@@ -280,19 +280,35 @@
       "theme": "Abilities",
       "summary": "Drag the target to an ability's exact cast range on the targeting board.",
       "availability": {
-        "status": "coming_soon",
-        "reason_code": "PUBLIC_LAUNCH_PENDING",
-        "message": "Coming soon."
+        "status": "available",
+        "reason_code": null,
+        "message": null
       },
-      "launch": null,
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
       "scoring": {
-        "summary": null,
+        "summary": "An ability counts as exact only when you stop on its exact cast range; otherwise the reveal says short or long, and by how many units. Unrated, so it never changes your Daily score or your Ranked rating.",
         "affects_daily_score": false,
         "affects_ranked_rating": false
       },
       "rules_id": "rangefinder",
       "report_id": "rangefinder",
-      "rules": []
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Ten abilities, one at a time. The board is marked every 25 units, from 100 to 6000."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Drag the target to where the ability's cast range ends, then Lock. Each ability locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each lock, the real cast range is shown with its source."
+        }
+      ]
     },
     {
       "id": "glyph_press",
@@ -301,19 +317,35 @@
       "theme": "Names",
       "summary": "Complete a partially engraved champion, ability or item name.",
       "availability": {
-        "status": "coming_soon",
-        "reason_code": "PUBLIC_LAUNCH_PENDING",
-        "message": "Coming soon."
+        "status": "available",
+        "reason_code": null,
+        "message": null
       },
-      "launch": null,
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
       "scoring": {
-        "summary": null,
+        "summary": "Every open letter is graded right or wrong, and a name is solved only when every letter is right. Unrated, so it never changes your Daily score or your Ranked rating.",
         "affects_daily_score": false,
         "affects_ranked_rating": false
       },
       "rules_id": "glyph_press",
       "report_id": "glyph_press",
-      "rules": []
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "A run of names, each with a picture clue and some letters already engraved."
+        },
+        {
+          "heading": "Soundings",
+          "body": "Up to three soundings per name: pick a letter and every place it appears is engraved for you."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Fill the open letters, then Lock. After each lock, the full name is shown."
+        }
+      ]
     },
     {
       "id": "perfect_timing",
@@ -322,19 +354,35 @@
       "theme": "Cooldowns",
       "summary": "Time an ability's base cooldown with Start and Stop, with no number on screen.",
       "availability": {
-        "status": "coming_soon",
-        "reason_code": "PUBLIC_LAUNCH_PENDING",
-        "message": "Coming soon."
+        "status": "available",
+        "reason_code": null,
+        "message": null
       },
-      "launch": null,
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
       "scoring": {
-        "summary": null,
+        "summary": "Each stop scores up to 100 points, more the closer you are: within 3% of the real cooldown is Perfect, within 7% Great, within 15% Good, and anything further is a miss worth 0. Your time is measured in your browser, so this is practice, not a verified score. Unrated, so it never changes your Daily score or your Ranked rating.",
         "affects_daily_score": false,
         "affects_ranked_rating": false
       },
       "rules_id": "perfect_timing",
       "report_id": "perfect_timing",
-      "rules": []
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Five abilities, each at a stated rank, with 0 ability haste."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Press Start, wait for the cooldown in your head, and press Stop. Each ability locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each stop, the real cooldown and how far off you were are shown."
+        }
+      ]
     },
     {
       "id": "stat_drop",
@@ -343,19 +391,35 @@
       "theme": "Stats",
       "summary": "Drop a marker where a historical stat lands on its scale.",
       "availability": {
-        "status": "coming_soon",
-        "reason_code": "PUBLIC_LAUNCH_PENDING",
-        "message": "Coming soon."
+        "status": "available",
+        "reason_code": null,
+        "message": null
       },
-      "launch": null,
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
       "scoring": {
-        "summary": null,
+        "summary": "Not graded: after you lock, the real value is revealed with how far off you were. No pass mark is applied. Unrated, so it never changes your Daily score or your Ranked rating.",
         "affects_daily_score": false,
         "affects_ranked_rating": false
       },
       "rules_id": "stat_drop",
       "report_id": "stat_drop",
-      "rules": []
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Six historical stats, one at a time, each on its own scale."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Drop the marker where you think the value lands, then Lock. Each stat locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each lock, the real value and its source are shown, with your error."
+        }
+      ]
     },
     {
       "id": "combat_estimate",
@@ -364,19 +428,35 @@
       "theme": "Damage",
       "summary": "Set the two-beam balance to the damage one hit deals.",
       "availability": {
-        "status": "coming_soon",
-        "reason_code": "PUBLIC_LAUNCH_PENDING",
-        "message": "Coming soon."
+        "status": "available",
+        "reason_code": null,
+        "message": null
       },
-      "launch": null,
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
       "scoring": {
-        "summary": null,
+        "summary": "Not graded: after you lock, the real damage is revealed with how far off you were. No pass mark is applied. Unrated, so it never changes your Daily score or your Ranked rating.",
         "affects_daily_score": false,
         "affects_ranked_rating": false
       },
       "rules_id": "combat_estimate",
       "report_id": "combat_estimate",
-      "rules": []
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Six hits, one at a time: an ability, its rank, the attacker's items and the target."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Set the balance to the damage one hit deals, then Lock. Each hit locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each lock, the real damage is shown with the working behind it, and your error."
+        }
+      ]
     }
   ]
 }

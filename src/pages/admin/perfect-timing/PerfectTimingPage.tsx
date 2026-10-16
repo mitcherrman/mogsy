@@ -84,13 +84,30 @@ function dealErrorText(status: number | null, message: string): string {
 
 const isExpired = (r: PtDealRound) => Date.parse(r.expires_at) <= Date.now();
 
-export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead }: {
+/**
+ * PGM2 — the public bonus game host (More Challenges). Absent on the owner
+ * lab, which keeps every word and action it had.
+ */
+export interface PerfectTimingPublicHost {
+  /** Player-facing copy for a failed deal (never a flag or an owner session). */
+  dealErrorText: (status: number | null, message: string) => string;
+  /** The results' way out, e.g. back to More Challenges. */
+  exitLabel: string;
+  onExit: () => void;
+  /** The round on screen and its reveal (null until locked), for reports. */
+  onRound?: (round: PtDealRound | null, reveal: PtRevealView | null, index: number) => void;
+}
+
+export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, publicHost }: {
   api?: PerfectTimingApi;
   exitTo?: string;
   /** PT4.1: launched from Ranked → Playtests; heads the top bar and replaces "Exit". */
   lead?: ReactNode;
+  publicHost?: PerfectTimingPublicHost;
 } = {}) {
   const api = useMemo(() => injected ?? perfectTimingApi(), [injected]);
+  const publicHostRef = useRef(publicHost);
+  publicHostRef.current = publicHost;
   const manifest = useSplashManifest();
   const [run, setRun] = useState<Run | null>(null);
   const [index, setIndex] = useState(0);
@@ -182,7 +199,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     } catch (err) {
       if (!alive.current || token !== runToken.current) return;
       const e = err instanceof PerfectTimingApiError ? err : null;
-      setStage({ kind: "deal-error", message: dealErrorText(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
+      setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
     }
   }, [api, index, reset, commitRun, beginRound]);
   const replaceRef = useRef(replace);
@@ -205,7 +222,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     } catch (err) {
       if (!alive.current || token !== runToken.current) return;
       const e = err instanceof PerfectTimingApiError ? err : null;
-      setStage({ kind: "deal-error", message: dealErrorText(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
+      setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
     }
   }, [api, reset, commitRun, beginRound]);
 
@@ -295,6 +312,14 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     hud,
   };
 
+  // PGM2 — tell a public host which round is on screen (and its reveal), so
+  // the round can be reported. Keyed by value, not identity.
+  const reportKey = `${slot?.wire.round_id ?? ""}:${slot?.reveal ? "r" : "o"}:${index}`;
+  useEffect(() => {
+    publicHostRef.current?.onRound?.(slot?.wire ?? null, slot?.reveal ?? null, index);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportKey]);
+
   const summary: PtRunSummary | null = run && stage.kind === "complete" ? {
     rounds: slots.map((s, i) => ({ round: toRoundView(s.wire, i, slots.length, manifest), reveal: s.reveal })),
     totalPoints: slots.reduce((n, s) => n + (s.reveal?.points ?? 0), 0),
@@ -344,7 +369,8 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   return (
     <PerfectTimingScreen bar={bar} art={art} stage={stage.kind}>
       {summary ? (
-        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()} onExit={null} />
+        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()}
+          onExit={publicHost?.onExit ?? null} exitLabel={publicHost?.exitLabel} />
       ) : (
         <PerfectTimingArena model={model} actions={actions} />
       )}

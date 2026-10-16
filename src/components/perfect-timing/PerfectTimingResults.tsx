@@ -21,9 +21,11 @@ export interface PerfectTimingResultsProps {
   onPlayAgain: () => void;
   /** An optional quiet exit ("Back to the lab"). */
   onExit?: (() => void) | null;
+  /** PGM2 — the exit's words (a public host: "Back to More Challenges"). */
+  exitLabel?: string;
 }
 
-export function PerfectTimingResults({ summary, onPlayAgain, onExit = null }: PerfectTimingResultsProps) {
+export function PerfectTimingResults({ summary, onPlayAgain, onExit = null, exitLabel = "Back to the lab" }: PerfectTimingResultsProps) {
   const stats = runStats(summary);
   return (
     <section data-testid="pt-results" className="pt-results" aria-label="Run results" data-total-points={stats.totalPoints}>
@@ -55,7 +57,7 @@ export function PerfectTimingResults({ summary, onPlayAgain, onExit = null }: Pe
         </dl>
         <div className="pt-results-actions">
           <button type="button" className="pt-next" data-testid="pt-play-again" onClick={onPlayAgain}>Play again</button>
-          {onExit ? <button type="button" className="pt-quiet" data-testid="pt-exit" onClick={onExit}>Back to the lab</button> : null}
+          {onExit ? <button type="button" className="pt-quiet" data-testid="pt-exit" onClick={onExit}>{exitLabel}</button> : null}
         </div>
         <p className="pt-results-data" data-testid="pt-results-data">{dataLabelText(summary.patchLabel, summary.patchSource)}</p>
       </div>

@@ -47,7 +47,7 @@ describe.each(CASES)("PGM2 — %s board report", (_name, capture, key) => {
     expect(report).not.toBeNull();
     expect(report!.prompt.length).toBeGreaterThan(0);
     const revealed = pub.segmentState!.ownChallengeReveals
-      .some((r) => r.challengeIndex === 0 && !!(r as Record<string, unknown>)[key]);
+      .some((r) => r.challengeIndex === 0 && !!(r as unknown as Record<string, unknown>)[key]);
     if (revealed) {
       expect(report!.canonical).toBeTruthy();
     } else {
@@ -70,7 +70,7 @@ describe("PGM2 — the captures exercise the revealed branch too", () => {
     const revealedModules = new Set<string>();
     for (const [, capture, key] of CASES) {
       for (const [, pub] of publicSnapshots(capture)) {
-        if (pub.segmentState!.ownChallengeReveals.some((r) => !!(r as Record<string, unknown>)[key])) {
+        if (pub.segmentState!.ownChallengeReveals.some((r) => !!(r as unknown as Record<string, unknown>)[key])) {
           revealedModules.add(key);
         }
       }
