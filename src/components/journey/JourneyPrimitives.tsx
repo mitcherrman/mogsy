@@ -135,13 +135,16 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
       data-changed={changed ? "true" : undefined}
       data-relevant={relevant ? "true" : undefined}
       className="journey-ability relative flex shrink-0 flex-col items-center gap-[3px]">
-      <span className={`relative flex items-center justify-center overflow-hidden rounded-md border bg-black/70 ${
+      {/* JUX1 — the `journey-ability__*` hooks let the compact (stacked) board
+          lift the slot letter and rank off the art into a caption; the
+          side-by-side board has no rule for them and draws exactly as before. */}
+      <span className={`journey-ability__tile relative flex items-center justify-center overflow-hidden rounded-md border bg-black/70 ${
         changed ? "journey-changed" : ""} ${sideRim(side)}`}
         style={{ width: "var(--jb-ability)", height: "var(--jb-ability)" }}>
-        <span className={locked ? "h-full w-full opacity-30 grayscale" : `h-full w-full ${unlocked ? "journey-unlock-art" : ""}`}>
+        <span className={`journey-ability__art ${locked ? "h-full w-full opacity-30 grayscale" : `h-full w-full ${unlocked ? "journey-unlock-art" : ""}`}`}>
           <Art url={url} alt="" mono={ability.slot} />
         </span>
-        <span aria-hidden className="absolute bottom-0 right-0 rounded-tl-[4px] bg-[#d4b35a] px-[3px] text-[0.5625rem] font-black leading-[0.8rem] text-[#2a1f08]">
+        <span aria-hidden className="journey-ability__slot absolute bottom-0 right-0 rounded-tl-[4px] bg-[#d4b35a] px-[3px] text-[0.5625rem] font-black leading-[0.8rem] text-[#2a1f08]">
           {ability.slot}
         </span>
         {locked && (

@@ -19644,3 +19644,94 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     min-height: 2.75rem;
   }
 }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JUX1 — THE COMPACT (TOP-AND-BOTTOM) BOARD, REFINED.
+   Phone boards only (`@container (max-width: 25.99rem)`, the existing
+   stacked-rows breakpoint); the side-by-side board has no rule here.
+
+   Measured on main (real captures, Daily phone shell):
+     360×640  board 160px: the short tier — 16px abilities, 16px items and a
+              26px portrait, with ~86px of the ability row unused;
+     360×740  board 190px: 24px abilities need 111px but the kit column had
+              99px, so the R tile ran ~4px under the first item slot;
+     390×844  board 200px: 24px abilities, 22px items, 40px portrait.
+   And every 16–24px ability tile carried its rank digit (top-left), its slot
+   letter (bottom-right) and often the `!` (top-right) ON the art.
+
+   Now one row budget, from the row's real width: the portrait is a fixed
+   size per tier and the four abilities and six item slots share the rest
+   (an item slot is 0.8 of an ability), so the row always fits its box:
+     360×640 ≈ 26px abilities, 21px items, 34px portrait;
+     360×740 ≈ 25px abilities, 20px items, 38px portrait;
+     390×844 ≈ 28px abilities, 23px items, 38px portrait.
+   The slot letter and rank leave the art for a small key-cap caption under
+   the tile ([Q|2]: gold letter, rank in dark — green while a rank is new),
+   so the art is whole; the `!` keeps its corner. The board's height, the
+   rows' heights and every JATTN1 cue (green changed rim, gold `!` and Saved
+   tag, ice rails) are unchanged in meaning; the caption sits below the ice
+   rail's lower bar, never under it.
+   ────────────────────────────────────────────────────────────────────────── */
+@container (max-width: 25.99rem) {
+  .journey-vars {
+    --jbc-pad: 8px;
+    --jbc-col: 6px;
+    --jbc-kit-gap: 5px;
+    --jbc-cap: 14px;
+    --jb-portrait: 2.125rem;
+    --jb-ability: clamp(1.25rem,
+      calc((100cqw - 2 * var(--jbc-pad) - var(--jb-portrait) - 2 * var(--jbc-col) - 3 * var(--jbc-kit-gap) - 15px) / 8.8),
+      1.875rem);
+    --jb-slot: calc(var(--jb-ability) * 0.8);
+    --jb-mono: 0.6875rem;
+  }
+  .journey-side { column-gap: var(--jbc-col); }
+  .journey-side__kit { gap: var(--jbc-kit-gap); }
+  .journey-side__champion { font-size: 0.75rem; line-height: 0.875rem; }
+
+  /* The art is whole: the tile clips only the picture, not its caption. */
+  .journey-side .journey-ability__tile { overflow: visible; }
+  .journey-side .journey-ability__art { overflow: hidden; border-radius: inherit; }
+  /* Room for the caption under the tile (pips, when a maximum is served,
+     already sit under it in flow and keep their own layout). */
+  .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) { padding-bottom: var(--jbc-cap); }
+  .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) .journey-ability__slot,
+  .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) .journey-rank-digit {
+    top: calc(100% + 3px);
+    bottom: auto;
+    height: 11px;
+    padding: 0 3px;
+    font-size: 0.5625rem;
+    line-height: 11px;
+    border-radius: 0;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  }
+  .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) .journey-ability__slot {
+    left: auto;
+    right: 50%;
+    border-radius: 3px 0 0 3px;
+  }
+  .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) .journey-rank-digit {
+    left: 50%;
+    right: auto;
+    border-radius: 0 3px 3px 0;
+  }
+  /* No rank to show (not learned, or a served maximum without a digit): the
+     letter alone, centred. */
+  .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])):not(:has(.journey-rank-digit)) .journey-ability__slot {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 3px;
+  }
+  .journey-side .journey-ability[data-locked="true"] .journey-ability__slot { opacity: 0.6; }
+}
+@container (max-width: 25.99rem) and (min-height: 11rem) {
+  .journey-vars {
+    --jbc-pad: 10px;
+    --jbc-col: 8px;
+    --jb-portrait: 2.375rem;
+  }
+  .journey-side__champion { font-size: 0.8125rem; line-height: 1rem; }
+}
