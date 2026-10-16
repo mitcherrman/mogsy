@@ -1225,6 +1225,95 @@ export type Database = {
           },
         ]
       }
+      custom_offer_claims: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          note: string | null
+          redeemed_at: string | null
+          redeemed_by_user_id: string | null
+          stripe_session_id: string | null
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          note?: string | null
+          redeemed_at?: string | null
+          redeemed_by_user_id?: string | null
+          stripe_session_id?: string | null
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          note?: string | null
+          redeemed_at?: string | null
+          redeemed_by_user_id?: string | null
+          stripe_session_id?: string | null
+          token_hash?: string
+        }
+        Relationships: []
+      }
+      custom_offer_purchases: {
+        Row: {
+          amount_cents: number
+          claim_id: string
+          created_at: string
+          currency: string
+          entitlement_ends_at: string
+          id: string
+          profile_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          claim_id: string
+          created_at?: string
+          currency: string
+          entitlement_ends_at: string
+          id?: string
+          profile_id: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          claim_id?: string
+          created_at?: string
+          currency?: string
+          entitlement_ends_at?: string
+          id?: string
+          profile_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_offer_purchases_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "custom_offer_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_global_sessions: {
         Row: {
           created_at: string
@@ -4389,6 +4478,10 @@ export type Database = {
       normalize_display_name: { Args: { _name: string }; Returns: string }
       owner_auth_state: { Args: never; Returns: Json }
       owner_configured_id: { Args: never; Returns: string }
+      owner_create_custom_offer_claim: {
+        Args: { _expires_at?: string; _note?: string }
+        Returns: string
+      }
       owner_device_attest: { Args: { _token: string }; Returns: Json }
       owner_device_enroll: {
         Args: { _label?: string; _user_agent?: string }
@@ -4543,6 +4636,18 @@ export type Database = {
         Args: { _topic: string }
         Returns: boolean
       }
+      record_custom_offer_purchase: {
+        Args: {
+          _amount_cents: number
+          _claim_id: string
+          _currency: string
+          _entitlement_ends_at: string
+          _stripe_payment_intent_id: string
+          _stripe_session_id: string
+          _user_id: string
+        }
+        Returns: string
+      }
       record_dual_preset_match: {
         Args: {
           _caller_profile_id: string
@@ -4613,10 +4718,18 @@ export type Database = {
         }
         Returns: Json
       }
+      redeem_custom_offer_claim: {
+        Args: { _token_hash: string; _user_id: string }
+        Returns: string
+      }
       redeem_gift_code: { Args: { _code: string }; Returns: Json }
       redeem_invite_link: {
         Args: { _code: string; _user_id: string }
         Returns: Json
+      }
+      refund_custom_offer_purchase: {
+        Args: { _stripe_payment_intent_id: string }
+        Returns: string
       }
       resolve_custom_link: {
         Args: { _slug: string }
@@ -4632,6 +4745,10 @@ export type Database = {
           slug: string
           visits: number
         }[]
+      }
+      restore_custom_offer_claim: {
+        Args: { _claim_id: string }
+        Returns: undefined
       }
       rewind_user_match: {
         Args: {
