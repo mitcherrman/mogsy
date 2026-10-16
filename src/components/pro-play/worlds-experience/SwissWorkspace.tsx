@@ -265,7 +265,7 @@ function PairingButton({ match, withDay = false }: { match: TournamentMatchV2; w
       data-match-id={match.match_id}
       data-state={match.state}
       className={cn(
-        "flex h-[60px] w-full flex-col justify-center gap-1.5 rounded-xl border px-3 text-left outline-none transition-[border-color,box-shadow,background-color] duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]",
+        "flex min-h-[60px] w-full flex-col justify-center gap-1.5 rounded-xl border px-3 py-1.5 text-left outline-none transition-[border-color,box-shadow,background-color] duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]",
         match.state === "live" ? "border-emerald-500/50" : "border-white/[0.08] hover:border-white/20",
         selected && "border-[#c9a84c] shadow-[0_0_0_1px_#c9a84c]",
       )}

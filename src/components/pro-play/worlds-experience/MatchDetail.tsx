@@ -50,12 +50,12 @@ import { Eyebrow, Figure, GOLD_TEXT, SideMark, calendarDay } from "./parts";
 
 /* ── match ──────────────────────────────────────────────────────────────── */
 
-function Side({ team, match, compact = false }: { team: TournamentMatchTeamV2; match: TournamentMatchV2; compact?: boolean }) {
+function Side({ team, match, compact = false, dense = false }: { team: TournamentMatchTeamV2; match: TournamentMatchV2; compact?: boolean; dense?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const started = match.state !== "upcoming";
   const outcome = outcomeOf(match, team);
-  const row = compact ? "py-1.5" : "py-2.5";
+  const row = dense ? "py-1" : compact ? "py-1.5" : "py-2.5";
   if (team.tbd || !team.code) {
     const src = team.slot;
     const ref = src?.match_id ? kit.byId.get(src.match_id) : null;
@@ -173,9 +173,9 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
   const drawn = awaitingDraw(match) && match.teams.some((t) => t.slot?.kind === "draw");
   const when = localStart(match.scheduled_start);
   const until = match.state === "upcoming" ? countdown(match.scheduled_start, kit.now) : null;
-  const sides = (compact: boolean) => (
+  const sides = (compact: boolean, dense = false) => (
     <ul className="divide-y divide-white/[0.06]" aria-label="Teams">
-      {match.teams.map((t, i) => <Side key={i} team={t} match={match} compact={compact} />)}
+      {match.teams.map((t, i) => <Side key={i} team={t} match={match} compact={compact} dense={dense} />)}
     </ul>
   );
   const drawNote = drawn && <p className="text-xs text-muted-foreground" data-testid="detail-draw">Both teams are decided by the official draw.</p>;
@@ -223,7 +223,7 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
     </>
   );
   const head = (tight: boolean) => (
-      <header className={cn("flex shrink-0 items-start gap-3 border-b border-white/[0.07] px-5", tight ? "pb-2.5 pt-3" : "pb-3.5 pt-4")}>
+      <header className={cn("flex shrink-0 items-start gap-3 border-b border-white/[0.07] px-5", tight ? "pb-2 pt-2.5" : "pb-3.5 pt-4")}>
         <div className="min-w-0 flex-1">
           <Eyebrow>{[stage ? stageLabel(stage) : null, match.best_of ? `Bo${match.best_of}` : null].filter(Boolean).join(" · ")}</Eyebrow>
           <h3 id="match-detail-title" className={cn("font-bold leading-tight text-foreground", tight ? "mt-1.5 text-lg" : "mt-2 text-xl")}>
@@ -256,7 +256,7 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
       </header>
   );
   const foot = (tight: boolean) => (
-      <footer className={cn("flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.07] px-5", tight ? "py-2" : "py-3")} data-testid="detail-footer" data-match-centre={centre.state}>
+      <footer className={cn("flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.07] px-5", tight ? "py-1.5" : "py-3")} data-testid="detail-footer" data-match-centre={centre.state}>
         {href && (
           <Link to={href} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[linear-gradient(180deg,#e9cf7d,#c9a84c)] px-3.5 text-sm font-semibold text-[#14110a] outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]" data-testid="detail-match-centre">
             Match centre <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -294,7 +294,10 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
           return (
             <>
               {head(last)}
-              <div className="flex min-h-0 flex-1 flex-col">
+              {/* Not shrinkable (no min-h-0): content that does not fit must
+                  grow this box, where the cascade sees it, rather than slide
+                  under the footer. */}
+              <div className="flex flex-1 flex-col">
                 {level < 2 ? (
                   <div className={cn("px-5", level === 0 ? "space-y-5 py-4" : "space-y-3 py-3")}>
                     {sides(level === 1)}
@@ -314,7 +317,7 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
                   <DetailViews
                     tight
                     views={[
-                      { key: "teams", label: "Teams", body: sides(true) },
+                      { key: "teams", label: "Teams", body: sides(true, true) },
                       { key: "when", label: "When", name: "When and where", body: <>{whenWhere(true)}{drawNote}{note}</> },
                       ...(hasStakes ? [{ key: "stakes", label: "Decides", name: "What the result decides", body: stakes(true) }] : []),
                     ]}
@@ -335,7 +338,7 @@ function DetailViews({ views, tight = false }: { views: { key: string; label: st
   const [chosen, setView] = useState(views[0].key);
   const view = views.find((v) => v.key === chosen) ?? views[0];
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col px-5", tight ? "gap-2 py-2" : "gap-2.5 py-3")} data-testid="detail-views" data-views={views.length}>
+    <div className={cn("flex min-h-0 flex-1 flex-col px-5", tight ? "gap-1.5 py-1.5" : "gap-2.5 py-3")} data-testid="detail-views" data-views={views.length}>
       <ViewTabs label="Match detail views" value={view.key} onChange={setView} views={views.map((v) => ({ key: v.key, label: v.label, name: v.name }))} />
       <div role="tabpanel" aria-label={view.name ?? view.label} className="space-y-3" data-view={view.key}>
         {view.body}

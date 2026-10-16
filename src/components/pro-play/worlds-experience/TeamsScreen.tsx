@@ -406,7 +406,7 @@ function TeamMatchRow({ m, p }: { m: TournamentMatchV2; p: TournamentParticipant
       data-testid="team-match"
       data-match-id={m.match_id}
       data-state={m.state}
-      className="grid h-[52px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-left outline-none transition-colors hover:bg-white/[0.04] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70"
+      className="grid min-h-[52px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-white/[0.04] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70"
     >
       <span className="min-w-0">
         <span className="flex items-center gap-2 text-sm">

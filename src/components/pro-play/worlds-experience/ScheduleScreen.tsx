@@ -388,8 +388,8 @@ function FixtureRow({ m, withStage }: { m: TournamentMatchV2; withStage: boolean
       className={cn(
         "relative grid w-full items-center text-left outline-none transition-[border-color,background-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]",
         x.desktop
-          ? "h-[60px] grid-cols-[86px_minmax(0,0.9fr)_minmax(0,1fr)_72px_minmax(0,1fr)_96px] gap-4 rounded-xl border px-4"
-          : "h-[64px] grid-cols-[58px_minmax(0,1fr)] gap-x-3 rounded-xl border px-3",
+          ? "min-h-[60px] grid-cols-[86px_minmax(0,0.9fr)_minmax(0,1fr)_72px_minmax(0,1fr)_96px] gap-4 rounded-xl border px-4 py-1.5"
+          : "min-h-[64px] grid-cols-[58px_minmax(0,1fr)] gap-x-3 rounded-xl border px-3 py-1.5",
         selected
           ? "border-[#c9a84c] bg-[#c9a84c]/[0.07] shadow-[0_0_0_1px_#c9a84c]"
           : m.state === "live"
