@@ -59,7 +59,7 @@
  *
  * Presentation only: nothing here grades, computes or rounds.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import type { AnswerOptionView, QuestionView } from "@/lib/ranked-core/viewTypes";
@@ -277,7 +277,7 @@ const CHAIN_TEST_IDS: Record<Reasoning["kind"], string> = {
  * keeps the served explanation, whole-number display.
  */
 function JourneyReveal({ challenge, journey, question, correct, timedOut, answer, explanation, working,
-  comparison, winnerToken, learnedFormula, rawRecalled, windowMs, endsAt, savedLine }: {
+  comparison, winnerToken, learnedFormula, rawRecalled, windowMs, endsAt, savedLine, strip = null }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   question: JourneyQuestion;
@@ -299,6 +299,8 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   endsAt: number | null;
   /** JATTN1 — "Saved to the board: …" (the facts this reveal saved; never a verdict). */
   savedLine: string | null;
+  /** JUX1-F2 — the answer strip, under the verdict (drawn on a phone only). */
+  strip?: ReactNode;
 }) {
   const shown = displayExplanation(explanation);
   const statRecall = statRecallOf(challenge);
@@ -337,6 +339,7 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
           {correct ? "Correct" : timedOut ? "Time's up" : "Not quite"}
           {answer !== null && !fact && <> · <span data-testid="journey-reveal-answer">{answer}</span></>}
         </p>
+        {strip}
         {reasoning && <JourneyReasoningHead reasoning={reasoning} testId={chainId} />}
       </div>
       {reasoning ? (
@@ -503,21 +506,18 @@ export function JourneyStageQuestion({
         )}
       />
       {revealing && (
-        // JUX1-F2 — the stack lays out nothing (`display: contents`) except on a
-        // phone, where it takes the whole question box: the reveal grows into
-        // the answer region and the strip stands in for the (hidden) tablets.
-        <div className="journey-reveal-stack">
-          <JourneyReveal challenge={challenge} journey={journey} question={question}
-            correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
-            answer={labelOf(reveal.correctValue)}
-            explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
-            working={working} comparison={reveal.comparisonValues ?? null} winnerToken={reveal.correctValue}
-            learnedFormula={journey.learnedFormula ?? null}
-            rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
-            windowMs={revealWindowMs} endsAt={revealEndsAt} savedLine={savedLine} />
-          <JourneyAnswerStrip correct={reveal.correct} picked={labelOf(reveal.selectedValue)}
-            answer={labelOf(reveal.correctValue)} />
-        </div>
+        <JourneyReveal challenge={challenge} journey={journey} question={question}
+          correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
+          answer={labelOf(reveal.correctValue)}
+          explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
+          working={working} comparison={reveal.comparisonValues ?? null} winnerToken={reveal.correctValue}
+          learnedFormula={journey.learnedFormula ?? null}
+          rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
+          windowMs={revealWindowMs} endsAt={revealEndsAt} savedLine={savedLine}
+          // JUX1-F2 — on a phone the reveal takes the whole question box and this
+          // strip stands in for the (hidden) tablets; elsewhere it is not drawn.
+          strip={<JourneyAnswerStrip correct={reveal.correct} picked={labelOf(reveal.selectedValue)}
+            answer={labelOf(reveal.correctValue)} />} />
       )}
     </div>
   );

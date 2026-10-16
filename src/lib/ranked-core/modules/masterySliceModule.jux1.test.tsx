@@ -56,7 +56,7 @@ describe("before the answer nothing changes", () => {
       show(snap(n, label));
       expect(document.querySelectorAll("[data-quiz-choice]")).toHaveLength(4);
       expect(q("journey-answer-strip")).toBeNull();
-      expect(document.querySelector(".journey-reveal-stack")).toBeNull();
+      expect(q("journey-reveal")).toBeNull();
     });
 });
 
@@ -77,6 +77,14 @@ describe("the reveal's answer strip says what the tablets said", () => {
     expect(text("journey-reveal-answer")).toBe(correctValue);
     // the four tablets are still there (hidden on a phone by the stylesheet only)
     expect(document.querySelectorAll("[data-quiz-choice]")).toHaveLength(4);
+  });
+
+  it("sits in the verdict's line, right after the verdict, inside the reveal's polite region", () => {
+    show(snap("jattn1/pantheon.standard", "child2-reveal"));
+    const strip = q("journey-answer-strip")!;
+    expect(strip.parentElement!.className).toBe("journey-reveal__top");
+    expect(strip.previousElementSibling).toBe(q("journey-reveal-verdict"));
+    expect(q("journey-reveal")!.contains(strip)).toBe(true);
   });
 
   it("a correct answer: one item, marked correct", () => {
@@ -120,7 +128,7 @@ describe("the stylesheet: phones only, nothing clipped, nothing scrolls", () => 
 
   it("is the last section, and outside a phone it lays out nothing and draws no strip", () => {
     expect(start).toBeGreaterThan(0);
-    expect(outside.trim()).toBe(".journey-reveal-stack { display: contents; }\n.journey-answer-strip { display: none; }");
+    expect(outside.trim()).toBe(".journey-answer-strip { display: none; }");
   });
   it("hides the tablets (keeping their box) only during a reveal", () => {
     expect(inside).toMatch(/\.journey-ask\[data-revealing="true"\] \[data-surface-region="answers"\] \{ visibility: hidden; \}/);

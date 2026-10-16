@@ -461,11 +461,7 @@ describe("the fixed stage: structure the pixel invariant rests on", () => {
           const reveal = ask.querySelector("[data-testid='journey-reveal']");
           const answers = ask.querySelector("[data-surface-region='answers']")!;
           expect(answers.nextElementSibling?.getAttribute("data-testid") ?? null, `${n} ${s.label}`).not.toBe("journey-reveal");
-          // JUX1-F2: inside its stack (layout-free off a phone), which is the ask's own child.
-          if (reveal) {
-            expect(reveal.parentElement!.className).toBe("journey-reveal-stack");
-            expect(reveal.parentElement!.parentElement).toBe(ask);
-          }
+          if (reveal) expect(reveal.parentElement).toBe(ask);
         }
       });
       cleanup();
