@@ -1,7 +1,7 @@
 # Academy Core V3.5 — The Living Hextech Orrery (Phase 1 – Phase 3 production integration)
 
 Design branch `design/academy-core-v35-floating-orrery` (cut from `origin/main` `6407559a`; approved at **`abd50e5a`**, preserved).
-Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633`), PR → `main`.
+Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633` and `f6e5f6ca`), PR → `main`.
 The Orrery is the `/lol` home on that branch. Nothing is merged, deployed or published. Frontend only: no backend, Supabase, Railway,
 database, env, flag or audio change.
 
@@ -67,7 +67,14 @@ any route; I left them in place (removing them is optional cleanup, not release 
      - run captures go to `test-results/` instead of overwriting the committed V3 evidence.
 3. **`a757f1a5`** — merge of `origin/main` `10534633`. `main` moved during verification: PR #50, Perfect Timing PT5. Clean, and no file
    overlaps the Core.
-4. This handoff and the production-build evidence (the tip; its SHA is in the PR and the release report).
+4. `202069c9` — this handoff and the production-build evidence.
+5. **`f2d3257f`** — merge of `origin/main` `f6e5f6ca`. `main` moved again: PR #51, JUX1-F1 Journey board attention and the compact board.
+   Clean, and no file overlaps the Core. Re-verified on this merge:
+   - `tsc`: the 2 baseline errors only;
+   - the Core, funnel and routing unit suites plus JUX1's changed tests: 359 passed, the 3 baseline `App.*` failures;
+   - `npm run build`: exit 0, with the Orrery chunk unchanged (60.6 kB JS);
+   - the Core specs in Chromium: 78 / 78.
+6. The tip: this record. Its SHA is in the PR and the release report.
 
 ### Verification
 
@@ -172,7 +179,7 @@ Frontend only: no backend, Supabase, Railway, database, env, flag or audio step.
 connected to this GitHub repository: Lovable builds whatever is on `main`, and nothing reaches `mogzy.lol` until someone presses
 **Publish** in Lovable (the same procedure as V3's release, `ACADEMY_CORE_V3_INTEGRATION_HANDOFF.md` §7–§8).
 
-1. **Re-check `main`.** `git fetch origin`. If `origin/main` moved past `10534633`, merge it into
+1. **Re-check `main`.** `git fetch origin`. If `origin/main` moved past `f6e5f6ca`, merge it into
    `academy-core/v35-production-integration` (merge, do not rebase). Then re-run `tsc`, the Core unit tests and
    `npx playwright test -c playwright.academy-core.config.ts e2e/academy-core.spec.ts e2e/academy-core-v35.spec.ts --grep-invert evidence --project=chromium`
    (headless Firefox is too slow for this scene's motion assertions; see "Unresolved" 2).
