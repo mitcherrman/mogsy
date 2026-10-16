@@ -7,6 +7,7 @@
  *   /admin/interaction-labs/rangefinder  → /admin/playtests/rangefinder
  *   /admin/interaction-labs/word-puzzle  → /admin/playtests/glyph-press
  *   /admin/numeric-lab[?mode=…]          → /admin/playtests/{stat-drop|combat-estimate}
+ *   /admin/perfect-timing                → /admin/playtests/perfect-timing (PT4.1)
  */
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { PLAYTESTS_HUB_ROUTE, labModeRoute } from "@/lib/playtests/modes";
@@ -17,6 +18,10 @@ export function InteractionLabsRedirect() {
     : lab === "word-puzzle" ? labModeRoute("glyph-press")
     : PLAYTESTS_HUB_ROUTE;
   return <Navigate to={to} replace />;
+}
+
+export function PerfectTimingRedirect() {
+  return <Navigate to={labModeRoute("perfect-timing")} replace />;
 }
 
 export function NumericLabRedirect() {

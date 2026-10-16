@@ -1,5 +1,7 @@
 /**
- * PT4 — `/admin/perfect-timing`: the owner-only Perfect Timing Lab.
+ * PT4 — the owner-only Perfect Timing Lab. PT4.1: played from the Playtests hub
+ * at `/admin/playtests/perfect-timing` (`OwnerPlaytestPage` passes `lead`, the
+ * way back to Playtests); `/admin/perfect-timing` only redirects there.
  *
  * Orchestrates one five-round run: deal → arm → start → stop → lock → reveal →
  * next → results. The pieces it joins:
@@ -22,7 +24,7 @@
  * verdict only. Scoring constants are playtest starting values. Nothing is
  * stored. Not part of Quiz, Daily or Ranked.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { FlaskConical } from "lucide-react";
 import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
@@ -78,7 +80,12 @@ function dealErrorText(status: number | null, message: string): string {
 
 const isExpired = (r: PtDealRound) => Date.parse(r.expires_at) <= Date.now();
 
-export default function PerfectTimingPage({ api: injected, exitTo = "/admin" }: { api?: PerfectTimingApi; exitTo?: string } = {}) {
+export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead }: {
+  api?: PerfectTimingApi;
+  exitTo?: string;
+  /** PT4.1: launched from Ranked → Playtests; heads the chrome row and replaces "Exit lab". */
+  lead?: ReactNode;
+} = {}) {
   const api = useMemo(() => injected ?? perfectTimingApi(), [injected]);
   const [run, setRun] = useState<Run | null>(null);
   const [index, setIndex] = useState(0);
@@ -305,13 +312,14 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin" }: 
 
   const chrome = (
     <div data-testid="pt-chrome" className={`${arenaHeaderRowClass("wide")} flex-nowrap gap-x-2 overflow-x-auto whitespace-nowrap text-[11px] text-[#a9b3c1] [scrollbar-width:thin]`}>
+      {lead}
       <span className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-400/60 bg-amber-950/60 px-2 py-0.5 uppercase tracking-[0.14em] text-amber-100">
         <FlaskConical aria-hidden className="size-3" /> Prototype · owner lab
       </span>
       {/* Left-aligned: the app's floating account cluster covers this row's right end at lg. */}
       <span className="flex shrink-0 items-center gap-1">
         {actions}
-        <Link to={exitTo} className="rounded px-2 py-0.5 underline-offset-2 hover:underline">Exit lab</Link>
+        {lead ? null : <Link to={exitTo} className="rounded px-2 py-0.5 underline-offset-2 hover:underline">Exit lab</Link>}
       </span>
     </div>
   );

@@ -556,7 +556,7 @@ Touch points:
 
 ## 11. PT4 — completed state (2026-10-15)
 
-**Status: PT4 integrated and green; G4 open only for the real-device check; G5 (owner) not started.**
+**Status: PT4 integrated and green; PT4.1 registered it in the Playtests hub (11.4.1); G4 open only for the real-device check; G5 (owner) not started.**
 
 ### 11.1 Commits
 
@@ -616,21 +616,58 @@ Baseline for every comparison: a clean detached checkout of `origin/main` `8b7d6
 ### 11.4 Drift found (and how it was resolved)
 
 * **UGMP landed on `main` mid-PT4** (`21a6705b`/`8b7d60d7`): owner labs now live in one Playtests hub (`/admin/playtests/:mode`), and
-  `/admin/numeric-lab` is a redirect. This handoff predates that. PT4 kept the §7.4 route and a separate registry entry, because hub
-  registration needs `src/lib/playtests/modes.ts`, the hub card and the backend `GET /api/admin/playtests/status`, none of which PT4 owns.
-  **Follow-up (PT4.1, needs owner OK):** add Perfect Timing as a hub mode (frontend card + backend status entry reporting `PERFECT_TIMING_LAB_ENABLED`),
-  then make `/admin/perfect-timing` a redirect like the other labs.
+  `/admin/numeric-lab` is a redirect. PT4 kept the §7.4 route and a separate registry entry, because hub registration needed
+  `src/lib/playtests/modes.ts`, the hub card and the backend `GET /api/admin/playtests/status`, none of which PT4 owned.
+  **Resolved by PT4.1 (2026-10-15), below.**
 * G5 below said "confirm `/admin/numeric-lab` works"; that URL now redirects to the hub. Use any hub lab (e.g. `/admin/playtests/stat-drop`) to confirm owner auth in production.
 * No wire-contract change. The capture is byte-identical to PT3's (`sha256 335c1f02…`).
+
+#### 11.4.1 PT4.1 — Perfect Timing is a Playtests hub mode
+
+| Repo | Branch | Base | Commits |
+|---|---|---|---|
+| mogsy | `perfect-timing/pt41-playtests-hub` (worktree `C:/Users/mlmit/mogzy-wt/pt41-hub`) | PT4 `6041c6f6` | one PT4.1 commit (the tip; it adds this subsection) |
+| LCS | `perfect-timing/pt41-playtests-status` (worktree `.worktrees/pt41-status`) | PT3 `1b81c460` + merge of `master` `8c1d9b16` (UGMP) as `5c88cc53` | `e089b237` status entry |
+
+Supersedes, for review/merge: the PT4 branch (mogsy) and PT3 / draft PR #34 (LCS) — each PT4.1 branch contains its parent unchanged.
+
+**Frontend.** `perfect-timing` is a lab mode in `src/lib/playtests/modes.ts` (tier `prototype`, status key `perfect_timing`), placed after
+Combat Estimate in `HUB_ORDER` (11 cards). Its card reads `N certified abilities, 5 per run · current ability data` (not "historical capture":
+PT deals from the backend's live `champion_abilities`). `OwnerPlaytestPage` hosts `PerfectTimingPage` at `/admin/playtests/perfect-timing`
+with the shared `PlaytestLead` (back to Playtests + title) heading PT's chrome row; given a `lead`, the page drops its own "Exit lab".
+`/admin/perfect-timing` is now `PerfectTimingRedirect` (no `AdminRoute`; the target is gated), like the other retired lab URLs. The page
+gets the Ranked frame through Layout's existing `/admin/playtests/` prefix (closes 11.5 item 6). The `perfect-timing-lab` registry entry is
+folded into `ranked-playtests` (`legacyRoutes` + authorization/notes). DEV `/dev/perfect-timing` and `/dev/perfect-timing/demo` are unchanged.
+
+**Backend.** `routes/admin_playtests.py` adds `labs.perfect_timing`, read from PT3's own gate and pool exactly as `/deal` reads them:
+flag off → `PERFECT_TIMING_LAB_ENABLED is not set on this backend.`; database missing/unreadable → that reason (never created);
+pool < 5 → `Only N certified abilities; a run needs 5.`; else available with `rounds` = pool size and
+`authority_label` `Ability data · 0 ability haste · patch <resolve_canonical_patch>`. Only the size is reported (no cooldown,
+champion, ability or round id). The deal/lock routes and `deal.v1`/`release.v1` are untouched. A backend that predates PT4.1 omits the
+key, and the hub then says "This backend does not report this mode" and does not offer Play.
+
+**Verification (PT4.1).**
+
+| Check | Result |
+|---|---|
+| LCS `perfect_timing/tests` + `interaction_lab/tests` + `numeric_lab/tests` | **172/172** (9 new in `test_playtests_status.py`; UGMP's every-hub-mode test now expects `perfect_timing`) |
+| Status over the local dev DB (`mogzy-data/lol_calc.db`, flag on) | `available: true, rounds: 460, "Ability data · 0 ability haste · patch 26.18"` |
+| Vitest: `src/pages/admin`, `src/components/admin`, `src/lib/{playtests,admin,perfect-timing,ranked-arena}`, `src/components/perfect-timing` | 4 failures, the **identical set** on clean `main` `7f6b365e` (`admin-registry.routes` ×2, `AdminPlatformPolicies`, `AdminQuizReview.proPlay`); all hub, owner-playtest, PT and AdminShell tests pass |
+| `tsc -p tsconfig.app.json` / ESLint changed files | only the 2 pre-existing tsc errors / 0 errors |
+| `e2e/perfect-timing-owner.spec.ts` (dev server on 8123, started manually) | **5/5** |
+| `e2e/interaction-labs-access.spec.ts` (production `vite build` + `vite preview` on 8125, started manually) | **21/21**, incl. new: non-owner refused at `/admin/playtests/perfect-timing` and `/admin/perfect-timing`; owner bookmark `/admin/perfect-timing` → `/admin/playtests/perfect-timing` with back link and actionable error; signed-out refused at both; `/dev/perfect-timing` absent in production |
+
+Not verified here: the hub against a real local backend in a browser (the status contract is covered by the backend tests and the mocked hub
+tests), a live owner sign-in, and the device check (11.5 item 1).
 
 ### 11.5 Outstanding defects and owner decisions
 
 1. **Device check not done (G4).** iOS Safari and Android Chrome were not available here. `event.timeStamp` granularity on devices is still unknown (audit unknown 7). Chromium desktop and emulated touch were verified.
 2. **One unreproduced e2e failure.** The first desktop keyboard run after merging `main` saw a Space press on an armed, focused seal not start the timer (`data-phase` stayed `armed`). 15 reruns passed. No reload was logged. Suspected cause: a cold-load remount took focus from the seal. Effect if real: one ignored press. Nothing can be submitted without a stop, so it cannot mis-grade.
 3. **Scoring reads oddly at the margin (owner, G0).** §2.3 gives points up to 25 % error but labels anything over 15 % `miss`, so a reveal can say "MISS +12 pts", and the results say "1 of 5 won" next to non-zero miss points. PT4 shows the server's numbers unchanged. To fix it, tune `scoring.py` (e.g. points floor at the miss threshold).
-4. **Playtests hub (UGMP) not integrated.** See 11.4; follow-up PT4.1.
+4. ~~**Playtests hub (UGMP) not integrated.**~~ Done in PT4.1 (11.4.1).
 5. **Recovery buttons live in the arena's chrome row** (top of the page), not on the stage. Keyboard users get focus moved there; mouse/touch users must look up. A stage-level "Next" for voided/error rounds would need a PT1 component change.
-6. **Page frame.** `/admin/perfect-timing` is not in `Layout.tsx`'s `isFullBleed` list (which UGMP extended for `/admin/playtests/*`), so it renders inside the standard `max-w-7xl` frame with the site footer below. It looks correct; widen only if the owner wants the Ranked frame (one line in `Layout.tsx`, outside PT4's ownership).
+6. ~~**Page frame.**~~ Resolved by PT4.1: the page now plays at `/admin/playtests/perfect-timing`, inside Layout's existing full-bleed prefix. Was: `/admin/perfect-timing` is not in `Layout.tsx`'s `isFullBleed` list (which UGMP extended for `/admin/playtests/*`), so it renders inside the standard `max-w-7xl` frame with the site footer below. It looks correct; widen only if the owner wants the Ranked frame (one line in `Layout.tsx`, outside PT4's ownership).
 7. **Expired-round replacement** deals `count: 1` independently, so it can repeat an ability already in the run.
 8. **DEV only:** React StrictMode deals twice on mount (the first deal is discarded by a run token). Production deals once.
 
@@ -638,12 +675,12 @@ Baseline for every comparison: a clean detached checkout of `origin/main` `8b7d6
 
 Nothing here has been done. In order:
 
-1. **Review** backend PR #34 and the PT4 PR (it contains PT1 and PT2; close #39/#40 as superseded, or merge them first — the PT4 merges are `--no-ff` of their exact tips).
-2. **Backend first.** Merge `perfect-timing/pt3-cooldown-authority` into LCS `master`; deploy Railway `web`. The flag is off by default, so every PT route answers 404 and nothing changes for users.
+1. **Review** the PT4.1 branches (11.4.1; they contain PT3 / PT4 unchanged) — or backend PR #34 and the PT4 PR (it contains PT1 and PT2; close #39/#40 as superseded, or merge them first — the PT4 merges are `--no-ff` of their exact tips).
+2. **Backend first.** Merge `perfect-timing/pt41-playtests-status` (or PT3 `perfect-timing/pt3-cooldown-authority`) into LCS `master`; deploy Railway `web`. The flag is off by default, so every PT route answers 404 and nothing changes for users.
 3. Confirm `web` runs a **single** uvicorn process (no `--workers`; rounds live in process memory, §6.3).
 4. Set `PERFECT_TIMING_LAB_ENABLED=1` on the `web` service only; redeploy/restart.
 5. Smoke without a browser: `POST /api/admin/perfect-timing/deal` with no bearer → 403; with the owner session → 200 `perfect_timing.deal.v1` whose body has no `target_ms`/`cooldown*`.
-6. **Frontend.** Merge the PT4 branch into `main` (`--no-ff`), then Lovable **Publish**.
-7. As the owner, open `/admin/perfect-timing`: one full run; check that the data label shows the production patch. Signed out / non-owner: redirected by `AdminRoute`.
+6. **Frontend.** Merge `perfect-timing/pt41-playtests-hub` (or the PT4 branch) into `main` (`--no-ff`), then Lovable **Publish**. With PT4.1, deploy the backend first so the hub card reports availability instead of "does not report this mode".
+7. As the owner, open Admin → Leaguecraft → Ranked → Playtests → Perfect Timing (`/admin/playtests/perfect-timing`; the card should read `N certified abilities…` with the flag on): one full run; check that the data label shows the production patch. Signed out / non-owner: redirected by `AdminRoute`.
 8. Device check (§7.6) on iOS Safari and Android Chrome: 3 rounds each, no double-fire, backgrounding mid-run voids the round. Record `event.timeStamp` granularity (audit unknown 7).
-9. **Rollback:** unset `PERFECT_TIMING_LAB_ENABLED` (every route 404s; the page explains the flag). The frontend route can stay.
+9. **Rollback:** unset `PERFECT_TIMING_LAB_ENABLED` (every route 404s; the page explains the flag, and the hub card shows the flag as the reason). The frontend route can stay.

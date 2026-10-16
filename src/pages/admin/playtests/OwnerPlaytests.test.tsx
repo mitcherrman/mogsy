@@ -15,7 +15,7 @@ import {
 import RangefinderOwnerPlaytest, { toRangefinderReveal } from "./RangefinderOwnerPlaytest";
 import GlyphPressOwnerPlaytest from "./GlyphPressOwnerPlaytest";
 import OwnerPlaytestPage from "./OwnerPlaytestPage";
-import { InteractionLabsRedirect, NumericLabRedirect } from "./legacyRedirects";
+import { InteractionLabsRedirect, NumericLabRedirect, PerfectTimingRedirect } from "./legacyRedirects";
 import { PlaytestLead } from "./ownerArena";
 
 vi.mock("@/lib/admin-auth/adminCredentials", () => ({
@@ -249,6 +249,21 @@ describe("/admin/playtests/:mode and the retired lab URLs", () => {
       .toBe("/admin/leaguecraft?section=ranked&view=playtests");
   });
 
+  it("hosts Perfect Timing at /admin/playtests/perfect-timing with the way back to Playtests", async () => {
+    // The page deals on mount; a 404 with the PT3 flag code stands in for a backend with the lab off.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(
+      JSON.stringify({ detail: { error: { code: "PT_LAB_DISABLED", message: "off" } } }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    ));
+    at("/admin/playtests/perfect-timing", "/admin/playtests/:mode", <OwnerPlaytestPage />);
+    expect(await screen.findByTestId("perfect-timing-page", {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(screen.getByTestId("owner-playtest-page").dataset.mode).toBe("perfect-timing");
+    expect(screen.getByTestId("playtest-mode-title").textContent).toBe("Perfect Timing");
+    expect(screen.getByTestId("playtest-back").getAttribute("href")).toBe("/admin/leaguecraft?section=ranked&view=playtests");
+    expect(screen.queryByRole("link", { name: "Exit lab" })).toBeNull();
+    expect(await screen.findByText(/PERFECT_TIMING_LAB_ENABLED/)).toBeInTheDocument();
+  });
+
   it.each([
     ["/admin/interaction-labs", "/admin/interaction-labs", "/admin/leaguecraft?section=ranked&view=playtests"],
     ["/admin/interaction-labs/rangefinder", "/admin/interaction-labs/:lab", "/admin/playtests/rangefinder"],
@@ -265,6 +280,11 @@ describe("/admin/playtests/:mode and the retired lab URLs", () => {
   ])("redirects %s", async (url, to) => {
     at(url, "/admin/numeric-lab", <NumericLabRedirect />);
     expect((await screen.findByTestId("where")).textContent).toBe(to);
+  });
+
+  it("redirects the PT4 lab URL /admin/perfect-timing to its hub route", async () => {
+    at("/admin/perfect-timing", "/admin/perfect-timing", <PerfectTimingRedirect />);
+    expect((await screen.findByTestId("where")).textContent).toBe("/admin/playtests/perfect-timing");
   });
 });
 
@@ -317,5 +337,6 @@ describe("no answer-bearing data in the owner chunks (source walk)", () => {
     expect([...seen].some((f) => f.endsWith("RangefinderOwnerPlaytest.tsx"))).toBe(true);
     expect([...seen].some((f) => f.endsWith("GlyphPressOwnerPlaytest.tsx"))).toBe(true);
     expect([...seen].some((f) => f.endsWith("NumericLabPage.tsx"))).toBe(true);
+    expect([...seen].some((f) => f.endsWith("PerfectTimingPage.tsx"))).toBe(true);
   });
 });

@@ -22,7 +22,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { OwnerStepUpHost } from "./components/admin/OwnerStepUpHost";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
-import { InteractionLabsRedirect, NumericLabRedirect } from "./pages/admin/playtests/legacyRedirects";
+import { InteractionLabsRedirect, NumericLabRedirect, PerfectTimingRedirect } from "./pages/admin/playtests/legacyRedirects";
 import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
 import {
@@ -286,11 +286,11 @@ const NumericLabPageDev = import.meta.env.DEV
   ? lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"))
   : null;
 // PT4: the owner-only Perfect Timing lab (/api/admin/perfect-timing/*, gated
-// server-side by require_admin and PERFECT_TIMING_LAB_ENABLED). Production:
-// /admin/perfect-timing behind AdminRoute. DEV only: the same page at
+// server-side by require_admin and PERFECT_TIMING_LAB_ENABLED). PT4.1:
+// production plays it at /admin/playtests/perfect-timing (OwnerPlaytestPage);
+// /admin/perfect-timing redirects there. DEV only: the same page at
 // /dev/perfect-timing (no gate) so browser specs can stand in for the backend,
 // and PT1's fake-value presentation demo at /dev/perfect-timing/demo.
-const PerfectTimingPage = lazy(() => import("./pages/admin/perfect-timing/PerfectTimingPage"));
 const PerfectTimingPageDev = import.meta.env.DEV
   ? lazy(() => import("./pages/admin/perfect-timing/PerfectTimingPage"))
   : null;
@@ -554,7 +554,7 @@ export const appRouter = createBrowserRouter(
                   <Route path="/admin/interaction-labs/:lab" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   <Route path="/admin/numeric-lab" element={<NumericLabRedirect />} />
-                  <Route path="/admin/perfect-timing" element={<AdminRoute><Suspense fallback={<RouteFallback />}><PerfectTimingPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/perfect-timing" element={<PerfectTimingRedirect />} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />

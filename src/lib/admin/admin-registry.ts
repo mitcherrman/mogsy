@@ -742,25 +742,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "GENERATED questions, not stored ones. A mastery_slice question is synthesized when a match opens the segment and frozen onto that one round — it is never a row. This is deliberately NOT a Quiz Review tab: Quiz Review is a table of stored, approvable questions, and generated samples do not belong in it. Read-only — previewing creates no attempt, no history, no match, no round and no stored question, which the backend enforces with a sqlite authorizer rather than by convention. It calls the SAME generator a live match calls and draws the result with the SAME component the Ranked arena draws a challenge with.",
   },
   {
-    id: "perfect-timing-lab",
-    title: "Perfect Timing Lab",
-    description:
-      "Owner playtest of Perfect Timing: a champion ability is shown with no number, you time its base cooldown with Start/Stop, and the server grades the stop against the canonical cooldown.",
-    area: "leaguecraft",
-    section: "ranked",
-    subsection: "playtests",
-    kind: "route",
-    path: "/admin/perfect-timing",
-    oldLocation: "none — new owner-only lab (Perfect Timing PT1–PT4)",
-    disposition: "KEEP",
-    dangerLevel: "none",
-    status: "Prototype",
-    authorization:
-      "AdminRoute; every round comes from /api/admin/perfect-timing/* behind backend require_admin and PERFECT_TIMING_LAB_ENABLED (off by default; 404 when off).",
-    notes:
-      "PROTOTYPE — elapsed time is measured in the browser and is NOT tamper-proof; the server grades it and reports an upper-bound plausibility verdict only. Targets are base cooldowns (0 ability haste) from champion_abilities via the backend; the deal carries no target and the page refuses one that does. Scoring tiers are playtest starting values. Rounds live in backend process memory (15 min TTL). Writes nothing. Not part of Quiz, Daily or Ranked.",
-  },
-  {
     id: "mastery-reviewer",
     title: "Mastery Artifact Reviewer",
     description: "Read-only inspection of a mastery artifact by digest.",
@@ -959,21 +940,21 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "ranked-playtests",
     title: "Playtests",
     description:
-      "One place to play every game mode: Ranked Bot playtests (Roster Lock, Draft Memory, Chronoscope, Match Grid, Reconstruct, Order Forge), the Rangefinder and Glyph Press prototypes, and the Stat Drop and Combat Estimate experiments.",
+      "One place to play every game mode: Ranked Bot playtests (Roster Lock, Draft Memory, Chronoscope, Match Grid, Reconstruct, Order Forge), the Rangefinder, Glyph Press and Perfect Timing prototypes, and the Stat Drop and Combat Estimate experiments.",
     area: "leaguecraft",
     section: "ranked",
     subsection: "playtests",
     kind: "panel",
     path: "/admin/leaguecraft?section=ranked&view=playtests",
-    oldLocation: "/admin/interaction-labs (Rangefinder + Glyph Press, local JSON packs) and /admin/numeric-lab (Stat Drop + Combat Estimate)",
-    legacyRoutes: ["/admin/interaction-labs", "/admin/numeric-lab"],
+    oldLocation: "/admin/interaction-labs (Rangefinder + Glyph Press, local JSON packs), /admin/numeric-lab (Stat Drop + Combat Estimate) and /admin/perfect-timing (Perfect Timing, PT4)",
+    legacyRoutes: ["/admin/interaction-labs", "/admin/numeric-lab", "/admin/perfect-timing"],
     disposition: "MERGE",
     dangerLevel: "none",
     status: "Internal",
     authorization:
-      "AdminRoute + AdminAuthGate. Every round is the backend's: Ranked Bot presets are admin-only at the queue (RANKED_PRESET_NOT_AUTHORIZED); /api/admin/interaction-lab/* and /api/admin/numeric-lab/* sit behind require_admin (numeric also behind NUMERIC_LAB_ENABLED); availability is read from /api/admin/playtests/status.",
+      "AdminRoute + AdminAuthGate. Every round is the backend's: Ranked Bot presets are admin-only at the queue (RANKED_PRESET_NOT_AUTHORIZED); /api/admin/interaction-lab/*, /api/admin/numeric-lab/* and /api/admin/perfect-timing/* sit behind require_admin (numeric also behind NUMERIC_LAB_ENABLED, Perfect Timing behind PERFECT_TIMING_LAB_ENABLED, off by default); availability is read from /api/admin/playtests/status.",
     notes:
-      "Lab modes play at /admin/playtests/:mode. Prototypes and experiments hold their historical, answer-bearing packs server-side (none ships in the bundle); Rangefinder/Glyph Press grade with their original prototype rules, Stat Drop/Combat Estimate reveal the historical value with no tolerance adopted. Nothing awards rating, points or leaderboard standing. No allowlist, cohort mechanism or restriction on normal Ranked PvP or Ranked Bot is introduced.",
+      "Lab modes play at /admin/playtests/:mode. Prototypes and experiments hold their historical, answer-bearing packs server-side (none ships in the bundle); Rangefinder/Glyph Press grade with their original prototype rules, Stat Drop/Combat Estimate reveal the historical value with no tolerance adopted. Perfect Timing deals from the backend's current champion_abilities (base cooldowns, 0 ability haste) and grades a BROWSER-measured stop — not tamper-proof, upper-bound plausibility only; its rounds live in backend process memory (15 min TTL). Nothing awards rating, points or leaderboard standing. No allowlist, cohort mechanism or restriction on normal Ranked PvP or Ranked Bot is introduced.",
   },
   {
     id: "ranked-lifecycle-worker",

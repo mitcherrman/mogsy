@@ -25,7 +25,7 @@ export class PlaytestApiError extends Error {
   }
 }
 
-export type LabStatusKey = "rangefinder" | "glyph_press" | "stat_drop" | "combat_estimate";
+export type LabStatusKey = "rangefinder" | "glyph_press" | "stat_drop" | "combat_estimate" | "perfect_timing";
 
 export interface LabStatus {
   available: boolean;

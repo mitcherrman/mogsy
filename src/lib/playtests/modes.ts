@@ -12,6 +12,10 @@
  *   historical value after Lock and nothing is graded, because no tolerance
  *   policy has been approved (Stat Drop, Combat Estimate).
  *
+ * Perfect Timing (PT4.1) is a `prototype`: the backend deals the ability and
+ * grades the stop against the current base cooldown, but the elapsed time is
+ * measured in the browser, so its card and page say it is not tamper-proof.
+ *
  * None of them awards rating, points or leaderboard standing.
  */
 import type { LabStatusKey } from "./api";
@@ -26,9 +30,9 @@ export const PLAYTEST_TIER_LABEL: Record<PlaytestTier, string> = {
   experiment: "Experiment · no grading",
 };
 
-export type LabModeId = "rangefinder" | "glyph-press" | "stat-drop" | "combat-estimate";
+export type LabModeId = "rangefinder" | "glyph-press" | "stat-drop" | "combat-estimate" | "perfect-timing";
 
-export const LAB_MODE_IDS: readonly LabModeId[] = ["rangefinder", "glyph-press", "stat-drop", "combat-estimate"];
+export const LAB_MODE_IDS: readonly LabModeId[] = ["rangefinder", "glyph-press", "stat-drop", "combat-estimate", "perfect-timing"];
 
 export function isLabModeId(value: string | undefined): value is LabModeId {
   return value !== undefined && (LAB_MODE_IDS as readonly string[]).includes(value);
@@ -62,13 +66,17 @@ export const LAB_MODES: Record<LabModeId, LabMode> = {
     id: "combat-estimate", title: "Combat Estimate", tier: "experiment", statusKey: "combat_estimate",
     description: "Set the two-beam balance to the damage one hit deals. The captured value is revealed after Lock; no tolerance is applied.",
   },
+  "perfect-timing": {
+    id: "perfect-timing", title: "Perfect Timing", tier: "prototype", statusKey: "perfect_timing",
+    description: "Time an ability's base cooldown with Start/Stop, with no number on screen. Five abilities per run; the server grades the stop. Your time is measured in the browser, so it is not tamper-proof.",
+  },
 };
 
 export type HubEntry =
   | { kind: "lab"; id: LabModeId }
   | { kind: "preset"; id: "roster-lock" | "draft-memory" | "chronoscope" | "match-grid" | "reconstruct" | "order-forge" };
 
-/** The hub's one grid: the seven new modes first, then the earlier Ranked Bot playtests. */
+/** The hub's one grid: the new modes first, then the earlier Ranked Bot playtests. */
 export const HUB_ORDER: readonly HubEntry[] = [
   { kind: "lab", id: "rangefinder" },
   { kind: "lab", id: "glyph-press" },
@@ -77,6 +85,7 @@ export const HUB_ORDER: readonly HubEntry[] = [
   { kind: "preset", id: "chronoscope" },
   { kind: "lab", id: "stat-drop" },
   { kind: "lab", id: "combat-estimate" },
+  { kind: "lab", id: "perfect-timing" },
   { kind: "preset", id: "match-grid" },
   { kind: "preset", id: "reconstruct" },
   { kind: "preset", id: "order-forge" },

@@ -284,6 +284,20 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     expect(document.body.textContent).not.toContain("12000");
   });
 
+  it("PT4.1: hosted from the Playtests hub, the chrome row leads with the way back instead of Exit lab", async () => {
+    const be = standIn();
+    const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
+    render(<MemoryRouter><PerfectTimingPage api={api} lead={<a data-testid="hub-lead" href="/hub">Playtests</a>} /></MemoryRouter>);
+    await armed();
+    const chrome = screen.getByTestId("pt-chrome");
+    expect(chrome.firstElementChild).toBe(screen.getByTestId("hub-lead"));
+    expect(screen.queryByRole("link", { name: "Exit lab" })).toBeNull();
+    cleanup();
+    mount(standIn());
+    await armed();
+    expect(screen.getByRole("link", { name: "Exit lab" })).toHaveAttribute("href", "/admin");
+  });
+
   it("resolves ability icons through the approved asset helpers", async () => {
     mount(standIn());
     await armed();

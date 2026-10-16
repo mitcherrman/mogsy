@@ -28,6 +28,7 @@ const READY: PlaytestStatus = {
     glyph_press: { available: true, rounds: 9, authority_label: "x", reason: null },
     stat_drop: { available: true, rounds: 6, authority_label: "x", reason: null },
     combat_estimate: { available: true, rounds: 12, authority_label: "x", reason: null },
+    perfect_timing: { available: true, rounds: 460, authority_label: "Ability data · 0 ability haste · patch 26.18", reason: null },
   },
   presets: Object.fromEntries(
     ["admin.match", "admin.reconstruct", "admin.order_forge", "admin.roster_lock", "admin.draft_memory", "admin.scrub"]
@@ -84,12 +85,12 @@ describe("PlaytestHub", () => {
     await waitFor(() => expect(screen.getByTestId("rangefinder-launch").dataset.available).toBe("true"));
     expect(titles()).toEqual([
       "Rangefinder", "Glyph Press", "Roster Lock", "Draft Memory", "Chronoscope", "Stat Drop", "Combat Estimate",
-      "Match Grid", "Reconstruct", "Order Forge",
+      "Perfect Timing", "Match Grid", "Reconstruct", "Order Forge",
     ]);
-    expect(HUB_ORDER).toHaveLength(10);
+    expect(HUB_ORDER).toHaveLength(11);
     const chips = within(screen.getByTestId("playtest-mode-grid")).getAllByTestId("playtest-tier").map((c) => c.dataset.tier);
-    expect(chips).toEqual(["prototype", "prototype", "ranked-bot", "ranked-bot", "ranked-bot", "experiment", "experiment", "ranked-bot", "ranked-bot", "ranked-bot"]);
-    for (const id of ["rangefinder", "glyph-press", "stat-drop", "combat-estimate"]) {
+    expect(chips).toEqual(["prototype", "prototype", "ranked-bot", "ranked-bot", "ranked-bot", "experiment", "experiment", "prototype", "ranked-bot", "ranked-bot", "ranked-bot"]);
+    for (const id of ["rangefinder", "glyph-press", "stat-drop", "combat-estimate", "perfect-timing"]) {
       const link = screen.getByTestId(`${id}-launch-button`);
       expect(link.getAttribute("href")).toBe(`/admin/playtests/${id}`);
     }
@@ -97,6 +98,8 @@ describe("PlaytestHub", () => {
       expect(screen.getByTestId(`${id}-launch-button`).tagName).toBe("BUTTON");
     }
     expect(screen.getByTestId("rangefinder-launch-status").textContent).toContain("227 abilities");
+    // Perfect Timing deals from the backend's current ability data, not a frozen capture.
+    expect(screen.getByTestId("perfect-timing-launch-status").textContent).toBe("460 certified abilities, 5 per run · current ability data");
     expect(new Headers(statusHeaders).get("Authorization")).toBe("Bearer owner-session");
   });
 
@@ -126,6 +129,27 @@ describe("PlaytestHub", () => {
     expect(screen.getByTestId("combat-estimate-launch-button").tagName).toBe("A");
   });
 
+  it("does not offer Perfect Timing when its flag is off, and says so", async () => {
+    statusReply = () => json({
+      ...READY,
+      labs: { ...READY.labs, perfect_timing: { available: false, rounds: 0, authority_label: "x", reason: "PERFECT_TIMING_LAB_ENABLED is not set on this backend." } },
+    });
+    renderHub();
+    await waitFor(() => expect(screen.getByTestId("perfect-timing-launch").dataset.available).toBe("false"));
+    expect(screen.getByTestId("perfect-timing-launch-status").textContent).toBe("PERFECT_TIMING_LAB_ENABLED is not set on this backend.");
+    expect((screen.getByTestId("perfect-timing-launch-button") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("rangefinder-launch-button").tagName).toBe("A");
+  });
+
+  it("does not offer Perfect Timing from a backend that predates it (no status entry)", async () => {
+    const { perfect_timing: _omitted, ...older } = READY.labs;
+    statusReply = () => json({ ...READY, labs: older });
+    renderHub();
+    await waitFor(() => expect(screen.getByTestId("perfect-timing-launch").dataset.available).toBe("false"));
+    expect(screen.getByTestId("perfect-timing-launch-status").textContent).toMatch(/does not report this mode/);
+    expect(screen.getByTestId("stat-drop-launch-button").tagName).toBe("A");
+  });
+
   it.each([
     [403, null, /owner session/],
     [404, null, /does not serve the owner playtests yet/],
@@ -134,7 +158,7 @@ describe("PlaytestHub", () => {
     statusReply = () => json(code ? { detail: { error: { code, message: "x" } } } : { detail: "x" }, status);
     renderHub();
     await waitFor(() => expect(screen.getByTestId("rangefinder-launch").dataset.available).toBe("false"));
-    for (const id of ["rangefinder", "glyph-press", "stat-drop", "combat-estimate"]) {
+    for (const id of ["rangefinder", "glyph-press", "stat-drop", "combat-estimate", "perfect-timing"]) {
       expect(screen.getByTestId(`${id}-launch-status`).textContent).toMatch(text);
     }
     expect((screen.getByTestId("roster-lock-launch-button") as HTMLButtonElement).disabled).toBe(false);
