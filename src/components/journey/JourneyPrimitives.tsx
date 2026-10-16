@@ -15,10 +15,10 @@
  * Every value drawn is the server's. These components format; they never
  * derive, add or convert.
  *
- * JATTN1 — two board cues live here: RELEVANT NOW (`RelevantReticle`, ice
- * corner ticks outset from the object; the old gold `.journey-focus` glow is
- * gone from the board) and the CHANGED resting face (`.journey-changed`: one
- * thin green inner rim, the same on an ability tile and an item slot).
+ * JATTN1 → JUX1-F1 — the RELEVANT cue lives here (`RelevantReticle`: a
+ * continuous gold ring outset from the object). `.journey-changed` /
+ * `data-new` still mark a changed object for the child, but draw no rim; a
+ * just-bought slot carries `data-arrival` for the double flash.
  */
 import { useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
@@ -57,10 +57,10 @@ function Art({ url, alt, mono }: { url: string | null; alt: string; mono: string
 }
 
 /**
- * JATTN1 — the RELEVANT NOW cue: four outset corner ticks (ice, never gold),
- * drawn in once when the child opens (keyed on the step, so the next child
- * draws them again) and static after. Decorative: what it means is in its
- * object's accessible name (`RELEVANT_LABEL`). It lays out nothing.
+ * JATTN1 → JUX1-F1 — the RELEVANT cue: one continuous gold ring around the
+ * object (keyed on the step, so each child draws its own), steady — it never
+ * blinks. Decorative: what it means is in its object's accessible name
+ * (`RELEVANT_LABEL`). It lays out nothing.
  */
 export function RelevantReticle({ step, testId }: { step: number; testId?: string }) {
   return <span key={step} aria-hidden data-testid={testId} data-step={step} className="journey-reticle" />;
@@ -135,13 +135,16 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
       data-changed={changed ? "true" : undefined}
       data-relevant={relevant ? "true" : undefined}
       className="journey-ability relative flex shrink-0 flex-col items-center gap-[3px]">
-      <span className={`relative flex items-center justify-center overflow-hidden rounded-md border bg-black/70 ${
+      {/* JUX1 — the `journey-ability__*` hooks let the compact (stacked) board
+          lift the slot letter and rank off the art into a caption; the
+          side-by-side board has no rule for them and draws exactly as before. */}
+      <span className={`journey-ability__tile relative flex items-center justify-center overflow-hidden rounded-md border bg-black/70 ${
         changed ? "journey-changed" : ""} ${sideRim(side)}`}
         style={{ width: "var(--jb-ability)", height: "var(--jb-ability)" }}>
-        <span className={locked ? "h-full w-full opacity-30 grayscale" : `h-full w-full ${unlocked ? "journey-unlock-art" : ""}`}>
+        <span className={`journey-ability__art ${locked ? "h-full w-full opacity-30 grayscale" : `h-full w-full ${unlocked ? "journey-unlock-art" : ""}`}`}>
           <Art url={url} alt="" mono={ability.slot} />
         </span>
-        <span aria-hidden className="absolute bottom-0 right-0 rounded-tl-[4px] bg-[#d4b35a] px-[3px] text-[0.5625rem] font-black leading-[0.8rem] text-[#2a1f08]">
+        <span aria-hidden className="journey-ability__slot absolute bottom-0 right-0 rounded-tl-[4px] bg-[#d4b35a] px-[3px] text-[0.5625rem] font-black leading-[0.8rem] text-[#2a1f08]">
           {ability.slot}
         </span>
         {locked && (
@@ -187,10 +190,12 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
  * wears the game's count in its bottom-right corner — absolutely positioned,
  * so a stack changes nothing about the slot's box.
  */
-export function InventorySlots({ side, items, newSlots, relevantSlots, step = 0, gainTags }: {
+export function InventorySlots({ side, items, newSlots, arrivedSlots, relevantSlots, step = 0, gainTags }: {
   side: JourneySide;
   items: JourneyItem[];
   newSlots: ReadonlySet<number>;
+  /** JUX1-F1 — slots whose purchase the viewer just watched (`useItemArrivals`): the double flash. */
+  arrivedSlots?: ReadonlySet<number>;
   /** JATTN1 — occupied slots the current question is about (the server's focus). */
   relevantSlots: ReadonlySet<number>;
   step?: number;
@@ -234,6 +239,7 @@ export function InventorySlots({ side, items, newSlots, relevantSlots, step = 0,
             data-item-id={it?.itemId}
             data-quantity={qty > 1 ? qty : undefined}
             data-new={isNew ? "true" : undefined}
+            data-arrival={isNew && arrivedSlots?.has(slot) ? "true" : undefined}
             data-relevant={relevant ? "true" : undefined}
             data-inspect={it?.itemId ? "true" : undefined}
             className={`relative flex items-center justify-center overflow-hidden rounded-[5px] border ${

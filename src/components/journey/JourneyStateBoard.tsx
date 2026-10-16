@@ -98,6 +98,7 @@ import { ShardIcon } from "./JourneyIcons";
 import { JourneyShardReference } from "./JourneyReferencePopover";
 import { useBoardCoach } from "./useKnowledgeCoach";
 import { useSavedNow, type SavedNow } from "./useSavedNow";
+import { useItemArrivals } from "./useItemArrivals";
 
 /**
  * JP4 — the board's shared ground: ONE lane scene under both champions, so the
@@ -107,13 +108,14 @@ import { useSavedNow, type SavedNow } from "./useSavedNow";
 const BOARD_SCENE = resolveEnvironmentSceneArt("lane_minion")?.background ?? null;
 
 /**
- * JATTN1 — the SAVED moment: a small gold tag anchored to the exact object a
- * reveal just saved a fact on, for the ~1.6s fresh window. Says only "Saved"
- * (never "Correct", never "You learned"); the value is the `!` card's.
+ * JUX1-F1 — the ARRIVAL moment (replaces JATTN1's transient "Saved" tag): the
+ * exact object that just became inspectable — a fact a reveal saved (its `!`)
+ * or an item the viewer watched being bought — carries `data-arrival`, and the
+ * stylesheet flashes that object exactly twice in white / gold (a static
+ * white-gold edge under reduced motion). The `!` and, when relevant, the gold
+ * ring remain afterwards; the polite "Saved to the board: …" line still speaks.
  */
-function SavedTag({ testId }: { testId: string }) {
-  return <span aria-hidden data-testid={testId} className="journey-saved-tag">Saved</span>;
-}
+const arrival = (on: boolean) => (on ? { "data-arrival": "true" } : {});
 
 /**
  * JP3 — one champion's art on the band, at the board's outer edge. The
@@ -180,7 +182,7 @@ function ShardPage({ side, popup }: { side: JourneySide; popup: ChampionPortrait
   );
 }
 
-function SidePanel({ state, side, marks, knowledge, gains, saved, attention, popup, shardColumn }: {
+function SidePanel({ state, side, marks, knowledge, gains, saved, itemArrivals, attention, popup, shardColumn }: {
   state: JourneyPublicState;
   side: JourneySide;
   marks: JourneyMarks;
@@ -189,6 +191,8 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, attention, pop
   gains: ReadonlyMap<string, string[]> | null;
   /** JATTN1 — the facts / objects a reveal saved just now (`useSavedNow`). */
   saved: SavedNow;
+  /** JUX1-F1 — the items the viewer just watched being bought (`useItemArrivals`, `side:slot`). */
+  itemArrivals: ReadonlySet<string>;
   /** JATTN1 — each object's Changed / Saved / Relevant states. */
   attention: BoardAttention;
   /** JP4 — either side has a shard page: both halves draw the column. */
@@ -217,13 +221,13 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, attention, pop
       <SideSplash side={side} />
       <header className="journey-side__id">
         {shardColumn && <ShardPage side={side} popup={popup} />}
-        <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
-          {/* JP5 — the portrait opens the champion portrait popup. JATTN1: its
-              `!` is SAVED (a revealed stat), its brackets RELEVANT (the server's focus). */}
+        <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}
+          data-testid={`journey-portrait-host-${id}`} {...arrival(portraitFresh)}>
+          {/* JP5 — the portrait opens the champion portrait popup. Its `!` is
+              SAVED (a revealed stat); JUX1-F1: its gold ring is RELEVANT (the server's focus). */}
           <JourneyChampionPortraitPopup side={side} popup={popup}
             saved={portrait.saved} relevant={portrait.relevant} step={step} fresh={portraitFresh}
             testId={`journey-portrait-popup-${id}`} />
-          {portraitFresh && <SavedTag testId={`journey-saved-tag-${id}-portrait`} />}
         </span>
         <div className="journey-side__name min-w-0">
           <span className="journey-side__champion truncate font-black uppercase tracking-[0.08em] text-white"
@@ -253,7 +257,8 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, attention, pop
           const known = knowledge.get(key) ?? null;
           const relevant = attention.of({ kind: "ability", side: id, slot: a.slot }).relevant;
           return (
-            <span key={a.slot} className="journey-know-host journey-know-host--ability" data-know-key={key}>
+            <span key={a.slot} className="journey-know-host journey-know-host--ability" data-know-key={key}
+              data-testid={`journey-ability-host-${id}-${a.slot}`} {...arrival(saved.objects.has(key))}>
               <AbilityRankPips ability={a} champion={side.championName} side={id}
                 rankFrom={marks.rank.has(markKey(id, a.slot)) ? rankFrom(state.transition, id, a.slot) : null}
                 unlocked={marks.unlocked.has(markKey(id, a.slot))}
@@ -263,13 +268,13 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, attention, pop
                   placement="ability" fresh={known.facts.some((f) => isFresh(known.key, f))} relevant={relevant}
                   testId={`journey-know-${id}-${a.slot}`} />
               )}
-              {saved.objects.has(key) && <SavedTag testId={`journey-saved-tag-${id}-${a.slot}`} />}
             </span>
           );
         })}
       </div>
       <div className="journey-side__items">
         <InventorySlots side={side} items={side.items} newSlots={newSlots} step={step}
+          arrivedSlots={new Set([...newSlots].filter((s) => itemArrivals.has(markKey(id, s))))}
           relevantSlots={new Set(side.items.map((it) => it.slot)
             .filter((slot) => attention.of({ kind: "item", side: id, slot }).relevant))}
           gainTags={gains ? new Map([...newSlots].flatMap((slot) => {
@@ -425,7 +430,11 @@ export function JourneyStateBoard({
   const boardRef = useRef<HTMLDivElement>(null);
   // JATTN1 — the first fact the board saves (any fact) teaches the board once.
   const coarse = useCoarsePointer();
-  const coach = useBoardCoach({ savedNow: saved.objects.size > 0, clockFreeUntil, coarse, boardRef });
+  // JUX1-F1 — the items the viewer just watched being bought (never on a mount or reload).
+  const itemArrivals = useItemArrivals(state.transition, marks.newItems);
+  // JUX1-F1 — the first board update that brings something new to inspect (a
+  // saved fact or a bought item) teaches the board once: "check board to see more".
+  const coach = useBoardCoach({ savedNow: saved.objects.size > 0 || itemArrivals.size > 0, clockFreeUntil, coarse, boardRef });
   return (
     <div ref={boardRef} data-testid="journey-board" data-journey-key={state.journeyKey}
       data-step={state.step.index} data-node={state.step.nodeId}
@@ -480,7 +489,7 @@ export function JourneyStateBoard({
       <SideArt side={subject} />
       <SideArt side={opponent} />
       <div className="journey-board__sides">
-        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} saved={saved}
+        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} saved={saved} itemArrivals={itemArrivals}
           attention={attention} popup={popups.subject ?? null} shardColumn={shardColumn} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
@@ -490,7 +499,7 @@ export function JourneyStateBoard({
             <span className="font-black tracking-[0.2em] text-[#e8c97a]/80">VS</span>
           )}
         </div>
-        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} saved={saved}
+        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} saved={saved} itemArrivals={itemArrivals}
           attention={attention} popup={popups.opponent ?? null} shardColumn={shardColumn} />
       </div>
       {coach.visible && <BoardCoach text={coach.text} onDismiss={coach.dismiss} />}
