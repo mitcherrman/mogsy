@@ -19,6 +19,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import type { JourneyPublicState } from "@/lib/journey/contract";
 import { journeySide } from "@/lib/journey/contract";
 import { beatShortStamp, beatStamps, eventLine } from "@/lib/journey/beat";
+import { formatStatGain, JOURNEY_STAT_META } from "@/lib/journey/stats";
 
 /** The visible stamp, in the board's header row (replaces the node label while the beat runs). */
 export function JourneyBeatStamp({ state }: { state: JourneyPublicState }) {
@@ -40,16 +41,50 @@ export function JourneyTransitionBeat({ state }: { state: JourneyPublicState }) 
   const t = state.transition;
   if (!t) return null;
   const name = (side: "subject" | "opponent") => journeySide(state, side).championName;
+
+  // A real purchase, never an inferred stat or a question answer. Match stat
+  // changes to the item the server names (prefer item ID over display name).
+  // The full status region below already announces these events to AT.
+  const notices = t.events.flatMap((event, index) => event.kind === "purchase"
+    ? event.items.map((item) => ({
+        key: `${index}:${event.side}:${item.slot}`,
+        headline: `${name(event.side)} ${event.group === "recall" ? "recalls" : "buys"} ${item.name}`,
+        gains: t.events.flatMap((change) => {
+          if (change.kind !== "stat_change" || change.side !== event.side) return [];
+          const matches = change.sourceItemId != null
+            ? item.itemId != null && change.sourceItemId === item.itemId
+            : change.source === item.name;
+          return matches ? [`${formatStatGain(change.delta, change.key)} ${JOURNEY_STAT_META[change.key].short}`] : [];
+        }),
+      }))
+    : []);
+
   return (
-    <div data-testid="journey-beat" role="status" aria-live="polite" className="journey-beat sr-only">
-      {beatStamps(t).map((w, i) => (
-        <span key={w}>{i > 0 && <span> · </span>}<span className="journey-beat__word">{w}</span></span>
-      ))}
-      <ul>
-        {t.events.map((e, i) => (
-          <li key={i} data-testid="journey-beat-line" className="journey-beat__line">{eventLine(e, name)}</li>
+    <>
+      {/* Centered over the board seam, NOT the answer grid. It has no layout
+          footprint, no pointer target, and lasts only for the server's beat. */}
+      {notices.length > 0 && (
+        <div className="journey-beat__purchases" data-testid="journey-purchase-notices" aria-hidden="true">
+          {notices.map((notice) => (
+            <div key={notice.key} className="journey-beat__purchase" data-testid="journey-purchase-notice">
+              <span className="journey-beat__purchase-headline">{notice.headline}</span>
+              {notice.gains.length > 0 && (
+                <span className="journey-beat__purchase-gains">{notice.gains.join(" · ")}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <div data-testid="journey-beat" role="status" aria-live="polite" className="journey-beat sr-only">
+        {beatStamps(t).map((w, i) => (
+          <span key={w}>{i > 0 && <span> · </span>}<span className="journey-beat__word">{w}</span></span>
         ))}
-      </ul>
-    </div>
+        <ul>
+          {t.events.map((e, i) => (
+            <li key={i} data-testid="journey-beat-line" className="journey-beat__line">{eventLine(e, name)}</li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }

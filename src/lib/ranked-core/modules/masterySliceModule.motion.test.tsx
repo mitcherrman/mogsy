@@ -189,6 +189,18 @@ describe("a grouped beat renders as one coherent moment", () => {
     expect(screen.getByTestId("journey-item-gain-subject-0")).toHaveTextContent("+10 AD");
   });
 
+  it("visible purchase notice names the buyer, item and sourced gain, without moving the layout", () => {
+    play("voli.standard", "child4-beat");
+    const notice = screen.getByTestId("journey-purchase-notice");
+    expect(notice).toHaveTextContent("Lee Sin buys Cloth Armor");
+    expect(notice).toHaveTextContent("+15 Armor");
+    expect(notice.closest(".journey-board")).not.toBeNull();
+    expect(notice.parentElement).toHaveAttribute("aria-hidden", "true");
+    expect(notice.parentElement).toHaveClass("journey-beat__purchases");
+    expect(screen.getByTestId("journey-beat")).toHaveClass("sr-only");
+    expect(screen.getAllByTestId("journey-purchase-notice")).toHaveLength(1);
+  });
+
   it("level 6 + R + Lee Sin's Cloth Armor: one stamp, one status region, every object in the same beat", () => {
     play("voli.standard", "child4-beat");
     expect(screen.getAllByTestId("journey-beat")).toHaveLength(1);
@@ -213,6 +225,7 @@ describe("a grouped beat renders as one coherent moment", () => {
     act(() => { vi.advanceTimersByTime(2); });
     expect(beat()).toBe("idle");
     expect(screen.queryByTestId("journey-beat-stamp")).toBeNull();
+    expect(screen.queryByTestId("journey-purchase-notices")).toBeNull();
     expect(screen.queryAllByTestId(/^journey-item-gain-/)).toHaveLength(0);
   });
 });

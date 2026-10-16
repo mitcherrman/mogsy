@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Test Journey purchase transition regressions
+        run: npx vitest run src/lib/ranked-core/modules/masterySliceModule.motion.test.tsx
       - name: Install browser
         run: npx playwright install --with-deps chromium
       - name: Inspect actual Journey geometry and timeline interaction
