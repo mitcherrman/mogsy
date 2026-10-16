@@ -1,14 +1,268 @@
-# Academy Core V3.5 — The Living Hextech Orrery (Phase 1, Phase 2, targeted changes, crystal redesign, Leaguecraft mystery + iris)
+# Academy Core V3.5 — The Living Hextech Orrery (Phase 1 – Phase 3 production integration)
 
-Branch `design/academy-core-v35-floating-orrery`, cut from `origin/main` **`6407559a`** (fetched at the start of the pass).
-Preview route: **`/lol/dev/academy-core-v35`** (development-only; see "Guarantees"). Nothing is merged, deployed, PR'd or published.
-Frontend only: no backend, Supabase or Railway change.
+Design branch `design/academy-core-v35-floating-orrery` (cut from `origin/main` `6407559a`; approved at **`abd50e5a`**, preserved).
+Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633`), PR → `main`.
+The Orrery is the `/lol` home on that branch. Nothing is merged, deployed or published. Frontend only: no backend, Supabase, Railway,
+database, env, flag or audio change.
 
-> Status: Phase 1, Phase 2 and the Phase 2 targeted changes (arrow selector, larger crystal; §P2T, `2a543a0f`) are approved. The crystal
-> redesign (§P2C, `4b77dd9c`) was reviewed. Its Pro Play projection stands, and its Leaguecraft projection was replaced by §P2L,
-> "Arcane Mystery: Lux" (`1be55f14`, reviewed). **§P2L.1, the Lux geometry correction (the free glass panes replaced by the
-> chamber's own six-shutter iris), is built and STOPPED FOR OWNER REVIEW.** Watch
-> `docs/handoffs/academy-core-v35/orrery-lux-iris-loop-closeup.webm` (14 s, one loop) first.
+> Status: the whole V3.5 experience (Phase 1, Phase 2, P2T, P2C's Pro Play, P2L.1's six-shutter Lux iris) is **approved** at `abd50e5a`.
+> **§P3, the production integration, is built and verified, and STOPPED at release readiness for the owner's inspection.** Start with
+> §P3 "Unresolved" and the release procedure.
+
+## P3. Phase 3 — production integration (`/lol` becomes the Orrery)
+
+The owner approved the whole V3.5 experience at `abd50e5a` (including the six-shutter Lux iris) and asked for it to be prepared for
+`https://mogzy.lol/lol`. Design is closed: this pass changes no visual. Work happened on a dedicated branch,
+**`academy-core/v35-production-integration`**, cut from the latest `main`. `design/academy-core-v35-floating-orrery` is preserved
+untouched at `abd50e5a`. Nothing is merged, deployed or published.
+
+### Starting state (re-verified at the start of the pass)
+
+- `origin/main` = **`f5f90c72`**; `design/academy-core-v35-floating-orrery` = **`abd50e5a`**.
+- The V3.5 branch is **6 ahead / 25 behind** `main`; merge-base `6407559a`.
+- The 25 `main` commits are Perfect Timing PT0–PT4.4, PGM1 More Challenges and a custom one-time offer. **None touch the Core**: not
+  `src/pages/academy-core/`, `route-prefetch`, `Layout`, the Landing or the Hall. On shared files, `main` added routes to `src/App.tsx`
+  (Perfect Timing, More Challenges) plus one analytics contract entry, `sitemap.xml` and two e2e specs. `package.json` is unchanged.
+
+### Audit: what production `/lol` needed beyond the preview
+
+| Concern | Production V3 (`main`) | V3.5 preview | Integration decision |
+|---|---|---|---|
+| Route | `/lol` → `R.AcademyCore` (route-prefetch registry → `pages/academy-core/AcademyCorePage`) | DEV-only lazy route `/lol/dev/academy-core-v35` | The Orrery **takes the production entry file** `AcademyCorePage.tsx`, so the route, the registry, the prefetch map and the Landing hand-off are unchanged |
+| Code location | `src/pages/academy-core/` | `src/pages/dev/academy-core-v35/` | Modules move (`git mv`, history kept) to `src/pages/academy-core/orrery/`; no production code under `pages/dev/` |
+| `hub_entered` (funnel) | emitted by the home | deliberately not emitted (dev preview) | **Emitted** (`useSurfaceEvent("hub_entered")`). `src/test/funnel/canonicalSurfaces.test.tsx` requires exactly one emitter, so the V3 page could not stay alongside |
+| SEO | indexed: Hall title, description, keywords, JSON-LD, canonical `/lol` | `noindex`, preview title | **The V3 block verbatim** |
+| Book doors analytics, book-open and focus cues, 240 ms activation, modified clicks, reduced motion | V3 page inline | already ported in `useCoreNavigator` | kept (no audio change: the same cues V3 plays) |
+| Daily / Ranked / Patch Report / radio / Mogzy / Hall / Commons | V3 | the same components and links | unchanged |
+| Preview URLs | `/lol/dev/academy-core`, `/dev/academy-core` → `/lol` | — | plus `/lol/dev/academy-core-v35`, `/dev/academy-core-v35` → `/lol` in every build |
+| Auth | Daily status read only with a session | same hook | unchanged (verified, below) |
+| Backend / Supabase / Railway / DB / env / flags / audio | — | — | **none needed**, none made |
+
+The V3 Four-Book Core's implementation is replaced, not kept beside the Orrery: the funnel test forbids a second `hub_entered` emitter,
+and an unrouted copy would be dead code. It stays in git history, and the rollback below restores it mechanically. Its shared
+modules (`AcademyCoreInstrument`, `MogzyOperator`, `academy-core-destinations`, `academy-core-warm`, `academy-core.css`) are the
+Orrery's own dependencies and are unchanged in this pass. The instrument's non-compact V3 path and its V3-only CSS are now unused by
+any route; I left them in place (removing them is optional cleanup, not release work).
+
+### Commits on `academy-core/v35-production-integration`
+
+1. **`608d72ac`** — merge of `design/academy-core-v35-floating-orrery` (`abd50e5a`) into `main` `f5f90c72`. Clean: `src/App.tsx`
+   auto-merged, keeping `main`'s Perfect Timing and More Challenges routes and the V3.5 DEV route. No conflict anywhere, so no
+   blanket resolution was needed.
+2. **`06eb0566`** — the cutover:
+   - `src/pages/academy-core/AcademyCorePage.tsx`: the Orrery page, with `hub_entered`, the production SEO and a production header.
+   - `src/pages/academy-core/orrery/*`: the Orrery modules, moved unchanged (one comment updated).
+   - `src/App.tsx`: the DEV-only lazy route removed; the two V3.5 preview URLs redirect to `/lol`; the comment updated. Against
+     `main` this is +2 routes and a comment.
+   - `src/pages/academy-core/AcademyCorePage.test.tsx`: the Orrery's page test, mounted at `/lol`. The preview-only "noindex, no
+     `hub_entered`" test is inverted to "indexed home: V3 SEO block, `hub_entered` once".
+   - `e2e/academy-core-v35.spec.ts`: targets `/lol`. "/lol is still V3" becomes "/lol is the Orrery and the preview URLs redirect";
+     the two tests that asserted the V3 page's crystal and projections at `/lol` are removed. The instrument's V3 defaults stay
+     covered by unit tests: `AcademyCoreInstrument.lens.test.tsx` and "V3 stays V3 unless a caller opts in".
+   - `e2e/academy-core.spec.ts`, the home's contract spec, now runs against the Orrery:
+     - books are aimed by position, because they orbit (a locator click waits for an element to stop moving);
+     - V3's fixed-pair geometry checks are dropped (upper/lower pair ratios, level pairs);
+     - the phone check becomes "upper tier, then the Core, then lower tier";
+     - the projections' manifest icons (Lux and the Pro Play lineup) are an allowed set, not "none";
+     - run captures go to `test-results/` instead of overwriting the committed V3 evidence.
+3. **`a757f1a5`** — merge of `origin/main` `10534633`. `main` moved during verification: PR #50, Perfect Timing PT5. Clean, and no file
+   overlaps the Core.
+4. This handoff and the production-build evidence (the tip; its SHA is in the PR and the release report).
+
+### Verification
+
+All results below are measured on the integration branch. The full unit-suite comparison ran at `06eb0566`. After `main` moved and was merged in (`a757f1a5`), typecheck, the targeted suites, the build and the browser suites were re-run there.
+
+**Unit tests: full suite, compared with pristine `main` `f5f90c72`.** The whole vitest suite cannot run in one process on this machine
+(it runs out of heap), so both trees were run the same way: 27 chunks of 40 files, then the files of each crashed chunk in groups of 8,
+then one by one.
+
+| | `main` `f5f90c72` | integration | |
+|---|---|---|---|
+| test files | 1,047 | 1,051 | +4: `OrreryEngine`, `OrreryProjections`, `orrery-motion` and `AcademyCoreInstrument.lens` tests (the page test replaces V3's) |
+| passed (chunked run) | 16,706 | 16,751 | |
+| distinct failing tests | 113 in 48 files, plus `pt2cProfileFrameAuthority` out of memory | the same set | **0 new failures** |
+
+The integration-only names were checked one by one:
+- 6 `pt2eProfileThemeAuthority` tests fail identically on `main` when run alone; they sat in `main`'s crashed chunk.
+- 7 `LobbyPreviewPage.premiumAnalytics` tests are flaky on both trees, failing at random between runs.
+
+Examples of the baseline: `App.routeGuards` (platform-policies route) and `App.routing-contract` (retired multiplayer routes), 3 tests
+failing identically on `main`.
+
+Tests this release depends on, all passing:
+- `src/test/funnel/canonicalSurfaces.test.tsx`: exactly one `hub_entered` emitter, which is the home.
+- `src/pages/academy-core/academyCoreRoute.test.ts`: the route and the prefetch registry.
+- `route-prefetch`.
+- The Orrery suites: page 41, projections 12, motion, engine, lens.
+
+**Typecheck and lint.**
+- `tsc -p tsconfig.app.json`: only the 2 baseline errors (`OnboardingProfile.tsx:180`, `connections.ts:263`, both on `main`).
+- `eslint` on every changed file: 0 errors; 2 warnings, both on `main` (`App.tsx:453`, `AcademyCoreInstrument.tsx:55`).
+
+**Production build.**
+- `npm run build` (vite build, then the item and champion prerender and their verifiers) exits 0.
+- The Orrery is its own lazy chunk: `AcademyCorePage` 60.6 kB JS (18.7 kB gzip) + 53.5 kB CSS (11.6 kB gzip).
+- The Tailwind "ambiguous class" warnings come from files this branch does not change.
+- The build regenerates `public/sitemap.xml` (423 entries); see "Unresolved" below. Not committed.
+
+**Browser, development server** (`playwright.academy-core.config.ts`, the frontend-only config with deterministic stubs):
+
+| Spec | Chromium | Firefox |
+|---|---|---|
+| `e2e/academy-core.spec.ts`: the home's contracts at `/lol` (23) | 23 / 23 (re-run on `a757f1a5`: 23 / 23) | 20 / 23 headless* |
+| `e2e/academy-core-v35.spec.ts --grep-invert evidence`: the Orrery (55) | 55 / 55 (re-run on `a757f1a5`: 55 / 55) | 40 / 55 headless* |
+
+\* Headless Firefox renders this scene at about 2 fps on this machine, so every Firefox failure is a motion or timing magnitude
+(for example, the activation measured at 522 ms, or the orbit travelling 77 px against a 100 px floor). See "Unresolved" 1–2. Firefox
+behaviour was certified separately, headed, against the production build: **12 / 12**.
+- the orbit runs;
+- Combat routes by pointer, with a 285 ms activation;
+- Ctrl-click opens a new tab and Enter routes;
+- the crystal cycles all four previews;
+- the arrows step one book per press and hold;
+- Lux and the six shutters render;
+- reduced motion routes immediately;
+- the lite orbit runs;
+- no page errors.
+
+These cover:
+- desktop 1366×768, 1920×1080 and 1280×660, and phones 390×844, 320×568 and 430×932: no overflow, covers, first screen, 44 px targets,
+  200 % text zoom;
+- all four book destinations by pointer, and Enter by keyboard;
+- the measured 240 ms activation; rapid clicks; Ctrl-click left to the browser;
+- the crystal readout and keyboard;
+- drag, fling and snap; the two-arrow selector;
+- the six-shutter Lux iris (geometry and reveal), the Pro Play 5 v 5, Combat and Archives;
+- quality tiers, reduced motion, and the loop paused when not shown;
+- Daily / Ranked / Patch Report links; the preview redirects; `/lol#academy-commons`; client-side Hall and Commons links;
+- `/lol/hall` preserved and `noindex`, with `/lol` indexable;
+- the Landing hand-off with no Hall-only art; the Daily read only with a session; silence before a gesture and when muted;
+- what art loads.
+
+**Browser, production build** (`vite preview` of `dist/`, Edge, real production reads, nothing stubbed): **51 / 51 checks**:
+- direct load and reload of `/lol` (HTTP 200 through the SPA fallback) and of `/lol/hall`;
+- the production title, canonical `https://mogzy.lol/lol`, no `robots` on `/lol`, and `noindex, nofollow` on `/lol/hall`;
+- the orbit moving (about 38 px in 1.5 s);
+- Lux from the live manifest (`…/assets/champions/Lux/icon.png`), six shutters, and ten Pro Play icons;
+- an arrow turn that holds the orbit;
+- all four books routing (pointer: Combat, Leaguecraft, Archives, Pro Play), Enter on Archives, and Back to the Orrery;
+- `/lol/dev/academy-core-v35`, `/dev/academy-core-v35` and `/lol/dev/academy-core` → `/lol`, and
+  `/lol#academy-commons` → `/lol/hall#academy-commons`;
+- `/` → `/lol`, with no Hall chunk or Hall art and no `daily-run` read without a session;
+- `main`'s new `/quiz/more-challenges` rendering;
+- the phone stacked layout with no overflow, and reload;
+- reduced motion: no running loop and still books; lite honoured; a hidden tab freezing the engine's transforms (resuming when visible);
+- no page errors. The only console errors are anonymous `401`s from `/quiz`'s own reads after a book opens it, as on `main`.
+
+Stills: `docs/handoffs/academy-core-v35/prod-*.png`.
+
+**Newer `main` functionality.** `main`'s 25 commits do not touch the Core. Their own unit tests are inside the full-suite comparison
+above, with no new failures. Their e2e specs:
+- `perfect-timing-owner` (arena config): **55 / 55** on `a757f1a5`, including PT5's new tests; 38 / 38 before PT5 landed.
+- `interaction-labs-access` (production bundle): 20 / 21. The one failure ("the owner's bookmark /admin/perfect-timing lands on …")
+  fails identically against `main`'s own bundle.
+
+After merging PT5: `tsc` shows only the 2 baseline errors. Unit tests for the Core, funnel, routing, Perfect Timing and playtests:
+564 passed, 3 failed, the same 3 `App.*` baseline failures. `npm run build` exits 0.
+
+### Release procedure (not executed: it needs the owner's explicit go) and rollback
+
+Frontend only: no backend, Supabase, Railway, database, env, flag or audio step. Production for `mogzy.lol` is the Lovable project
+connected to this GitHub repository: Lovable builds whatever is on `main`, and nothing reaches `mogzy.lol` until someone presses
+**Publish** in Lovable (the same procedure as V3's release, `ACADEMY_CORE_V3_INTEGRATION_HANDOFF.md` §7–§8).
+
+1. **Re-check `main`.** `git fetch origin`. If `origin/main` moved past `10534633`, merge it into
+   `academy-core/v35-production-integration` (merge, do not rebase). Then re-run `tsc`, the Core unit tests and
+   `npx playwright test -c playwright.academy-core.config.ts e2e/academy-core.spec.ts e2e/academy-core-v35.spec.ts --grep-invert evidence --project=chromium`
+   (headless Firefox is too slow for this scene's motion assertions; see "Unresolved" 2).
+2. **Merge the PR** into `main` with a **merge commit**, not squash or rebase, so rollback is a single revert.
+3. **Lovable Publish** from `main`. Note the previous published version in Lovable's history first: it is the fastest rollback.
+4. **Verify on `https://mogzy.lol`**, in a private window, then signed in:
+   - `/` → automatic hand-off → `/lol` shows the Orrery: the four books orbit the Core, the Patch Report and radio float on the left,
+     Daily and Ranked are present, and Mogzy is at the edge.
+   - Reload `/lol` (F5) and open `/lol` directly in a new tab: the Orrery, not a 404.
+   - Each book routes after the short activation (Leaguecraft `/quiz`, Pro Play `/lol/pro-play`, Combat `/combat-lab`, Archives
+     `/lol/docs`). Ctrl-click opens a new tab. The crystal cycles the four projections without navigating (Leaguecraft shows Lux behind
+     the six-shutter iris; Pro Play the 5 v 5 around the Rift). The two arrows turn the orbit.
+   - `/lol/hall` (direct and reloaded) shows the Hall, and its Commons are reachable. `/lol#academy-commons` ends on
+     `/lol/hall#academy-commons`. `/lol/dev/academy-core-v35` and `/lol/dev/academy-core` redirect to `/lol`.
+   - DevTools: `/lol` has the title "Mogzy LoL Quiz | League of Legends Trivia and Training", a canonical `…/lol` and no `robots`
+     meta; `/lol/hall` has `noindex`.
+   - Network, cold `/` → `/lol`: no `academy-library-*`, `book-spine-*` or `LolHub-*` request; `/api/daily-run/today` only when
+     signed in.
+   - Phone (or DevTools 390×844): the composed two-tier arrangement, no horizontal scroll, and books and crystal respond to taps.
+   - OS "reduce motion" on: nothing loops, and books route at once.
+   - Console clean. Analytics: `hub_entered` once per session. Audio: nothing on arrival; mute silences everything.
+   - New `main` features still reachable: `/quiz/more-challenges`, the Daily, `/admin/playtests/perfect-timing` (owner).
+5. **Watch for about an hour:** the error rate, the `/lol` funnel (`hub_entered`, `leaguecraft_cta_clicked`), and Search Console coverage
+   of `/lol` (the crawled DOM changes; the title, description and canonical do not).
+
+**Rollback**
+
+Frontend only, with no data to undo.
+
+- **Fastest:** in Lovable, re-publish the previous version noted in step 3. That restores the prior build within minutes.
+- **Source of truth:** `git revert -m 1 <merge commit>` on `main` (one PR), then Lovable **Publish**.
+  - `/lol` returns to the V3 Four-Book Core: its implementation comes back with the revert, and its route, registry and funnel wiring
+    never changed.
+  - All V3.5 code leaves `main` (it stays on `design/academy-core-v35-floating-orrery` and on this branch), so
+    `/lol/dev/academy-core-v35` 404s again.
+  - Nothing else moves, because the merge touches only the Core's own files, `App.tsx` (two redirects and a comment) and the two Core
+    specs.
+
+### Unresolved / for the owner
+
+1. **Firefox frame rate in the full tier (owner decision; I don't consider it release-blocking).** On this machine, with Playwright's Firefox
+   build headed, `/lol` runs at **60.3 fps on V3 (`main`)** and **33–35 fps on the V3.5 full tier** (median frame 33.3 ms, p95 50.1 ms,
+   three rounds). The **lite tier runs at 57.8 fps**. Edge and Chromium hold 60 fps on the full tier.
+   - Behaviour in Firefox is correct (12/12 functional probe), and the orbit moves at full speed: motion is time-based, so it is only
+     less smooth.
+   - The automatic step-down to lite does not trigger, because Firefox alternates ~33 ms and ~17 ms frames and the counter (frames over
+     30 ms, minus two per fast frame) never reaches 150.
+   - Not verified in a stock Firefox with hardware WebRender: Playwright's build may render without GPU acceleration.
+   - Options:
+     - (a) ship as is;
+     - (b) a small follow-up: judge the step-down on a rolling median frame time (for example > 25 ms over 2 s) instead of a run of
+       slow frames, so a sustained ~30 fps scene drops to lite on its own;
+     - (c) start Firefox in lite.
+
+   (b) and (c) change what some visitors see (lite drops decorative extras), so I have not made either.
+2. **Headless Firefox cannot certify this scene.** It renders at about 2 fps here (7 frames in 3 s), so 18 of the 78 browser tests fail
+   on motion and timing magnitudes, not behaviour. Run headed, 7 of those 18 pass. The rest hit a harness problem:
+   `page.setViewportSize` hangs in headed Firefox on Windows (8 tests), plus waits that expire under an occluded headed window. The
+   direct headed functional probe passed 12/12. V3's Firefox certification ran the lighter V3 scene.
+3. **PR tooling.** The `gh` CLI is not installed on this machine. The branch is pushed; the PR's state is in the release report.
+4. **The Lovable side cannot be inspected from here.** The publish and rollback steps above follow the repository's documented practice
+   (`README.md`; `ACADEMY_CORE_V3_INTEGRATION_HANDOFF.md` §7–§8). The previous published version must be noted in Lovable's history
+   before publishing.
+5. **Observed on `main`, not changed here.**
+   - Lovable commit `96d0bb7d` ("Changes") removed 865 lines (the champion pages) from `public/sitemap.xml`. `npm run build` regenerates
+     the sitemap (423 entries) before the bundle is assembled, so the built sitemap is complete; only the committed copy is stale.
+   - The test baselines listed under Verification.
+   - `interaction-labs-access` "the owner's bookmark /admin/perfect-timing lands on …" fails identically on `main`'s bundle.
+   - The `arena` and `interaction-labs` Playwright configs start their web server with a Unix path (`node_modules/.bin/vite`) that
+     Windows `cmd` cannot run. I started those servers by hand.
+6. **Now-unused V3 code.** The instrument's non-compact (V3 chassis) path and V3-only rules in `academy-core.css` are no longer used by
+   any route. Removing them is optional cleanup, deliberately left out of this release.
+7. **Known since earlier passes.** The 128 px Lux icon is soft on HiDPI. The admin registry still labels `/lol` "LoL Hub" (cosmetic).
+   Click latency includes the approved 240 ms activation, as V3 did.
+
+### Evidence (production build, real data, Edge)
+
+- `prod-desktop-1366x768-lol.png` (`/lol` at 1366×768) and `prod-phone-390x844-lol.png` (the phone composition).
+- `prod-desktop-leaguecraft-lux.png` (the six-shutter Lux iris) and `prod-desktop-pro-play.png` (the 5 v 5).
+- `prod-desktop-lol-hall.png` (the Hall at `/lol/hall`).
+- `prod-check.json`: the 52 production-build checks, with their measured details.
+
+All of these are in `docs/handoffs/academy-core-v35/`.
+
+### Next
+
+Owner inspection of the PR (`academy-core/v35-production-integration` → `main`), then the release procedure above. Nothing is merged,
+deployed or published.
+
+---
 
 ## P2L.1. Leaguecraft — Lux geometry correction: the chamber's iris
 
@@ -772,7 +1026,7 @@ Candidates, in the order I would take them, once you have judged the look and mo
 4. Patch Report: keep it as a floating artifact in a left column, or integrate it into the orbit space more (e.g. closer to the Core)?
 5. Phone: composed floating arrangement (current), or a very slow, small-amplitude drift as well?
 
-## 9. Run it
+## 9. Run it (Phase 1; historical — the route is now `/lol`, the code `src/pages/academy-core/`)
 
 ```bash
 cd <worktree>            # C:\Users\mlmit\mogzy-wt\acore-v35
@@ -782,7 +1036,7 @@ npx vitest run src/pages/dev/academy-core-v35
 npx playwright test -c playwright.frontend.config.ts e2e/academy-core-v35.spec.ts --grep-invert evidence
 ```
 
-## 10. Guarantees
+## 10. Guarantees (Phase 1; historical — see §P3 for the production integration)
 
 - Production `/lol` is unchanged: the only edit to an existing file is `src/App.tsx` (+12 lines, DEV-gated, identical in form to the other dev previews); the route does not exist in a production build.
 - No backend / Supabase / Railway changes. No PR, merge or deploy. Only the V3.5 branch is pushed.
