@@ -284,7 +284,8 @@ html:has(.o35-root) { overflow-x: clip; }
   filter: drop-shadow(0 14px 22px rgba(2, 6, 20, 0.55)) drop-shadow(0 0 12px var(--accent-soft));
 }
 .o35-root .o35-slot[data-active="true"] .academy-hub-book-body {
-  transform: translateY(-1.2%);
+  transform-origin: 9% 50%;
+  transform: translateY(-1.2%) perspective(900px) rotateY(-24deg);
   filter: drop-shadow(0 20px 28px rgba(2, 6, 20, 0.6)) drop-shadow(0 0 24px var(--accent-glow));
 }
 .o35-root .o35-slot[data-activating="true"] .academy-hub-book-body {
@@ -294,7 +295,7 @@ html:has(.o35-root) { overflow-x: clip; }
 }
 /* the engine already grows a focused book: neutralise the Hall's own hover scale */
 .o35-root.acore-root .academy-hub-book:hover .academy-hub-book-body,
-.o35-root.acore-root .academy-hub-book:focus-visible .academy-hub-book-body { transform: translateY(-1.2%); }
+.o35-root.acore-root .academy-hub-book:focus-visible .academy-hub-book-body { transform: translateY(-1.2%) perspective(900px) rotateY(-24deg); }
 .o35-root.acore-root .o35-slot[data-activating="true"] .academy-hub-book:hover .academy-hub-book-body { transform: translateY(0.6%) scale(0.99); }
 
 /* ------------------------------------------------------------- the Core */
@@ -479,3 +480,74 @@ html:has(.o35-root) { overflow-x: clip; }
   .o35-patch-rune::before, .o35-patch-rune::after { transform: rotateX(74deg); }
   .o35-book { opacity: 1; }
 }
+
+/* ==========================================================================
+   PHASE 2 — direct manipulation, focus choreography, quality tiers
+   ========================================================================== */
+
+/* drag the orbit from empty space; vertical touch drags still scroll the page */
+.o35-stage[data-mode="orbit"] { cursor: grab; touch-action: pan-y; }
+.o35-stage[data-mode="orbit"][data-dragging="true"] { cursor: grabbing; }
+.o35-stage[data-mode="orbit"] .o35-slot, .o35-stage[data-mode="orbit"] .o35-crystal-hit { cursor: pointer; }
+.o35-stage[data-dragging="true"] .o35-slot { pointer-events: none; }
+
+/* the focused book opens a crack: the cover swings on its spine and light spills from the pages */
+.o35-pagelight {
+  position: absolute; z-index: 0; left: 14%; top: 6%; width: 86%; height: 86%; border-radius: 3% 6% 6% 3%;
+  pointer-events: none; opacity: 0; transition: opacity 320ms ease;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 246, 214, 0.95) 70%, #fff 100%),
+    radial-gradient(closest-side, var(--accent-glow), transparent);
+  box-shadow: 0 0 calc(var(--u) * 22) calc(var(--u) * 4) var(--accent-glow);
+}
+.o35-lev[data-active="true"] .o35-pagelight { opacity: 0.9; }
+
+/* the Core's comet takes the colour of the room it is attending to */
+@property --c { syntax: "<color>"; inherits: true; initial-value: #78d6ff; }
+.o35-comet-a { transition: --c 500ms ease; }
+.o35-core[data-focus="leaguecraft"] .o35-comet-a { --c: #ffd98a; }
+.o35-core[data-focus="pro-play"] .o35-comet-a { --c: #b9a6ff; }
+.o35-core[data-focus="combat-lab"] .o35-comet-a { --c: #8ff1ff; }
+.o35-core[data-focus="archives"] .o35-comet-a { --c: #ffc98c; }
+
+/* the lit tether becomes a beam */
+.o35-tether[data-on="true"] { filter: drop-shadow(0 0 5px var(--t)) drop-shadow(0 0 14px var(--t)); }
+
+/* activation: a short camera push toward the Core while the chosen book pushes home */
+.o35-scene { transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: 50% 42%; }
+.o35-stage:not([data-activating=""]) .o35-scene { transform: scale(1.04); transition-duration: 240ms; }
+
+/* nothing animates while the stage is off screen or the tab is hidden */
+.o35-root[data-ambient="off"] .o35-env *,
+.o35-root[data-ambient="off"] .o35-core *,
+.o35-root[data-ambient="off"] .o35-core *::before,
+.o35-root[data-ambient="off"] .o35-patch *,
+.o35-root[data-ambient="off"] .o35-patch *::before,
+.o35-root[data-ambient="off"] .o35-patch *::after { animation-play-state: paused; }
+
+/* LITE tier: the orbit, the books and the Core's dial stay; the extras go */
+.o35-root[data-quality="lite"] .o35-frag,
+.o35-root[data-quality="lite"] .o35-twinkle,
+.o35-root[data-quality="lite"] .o35-aurora-gold,
+.o35-root[data-quality="lite"] .o35-shaft-2,
+.o35-root[data-quality="lite"] .o35-shaft-3,
+.o35-root[data-quality="lite"] .o35-comet-b,
+.o35-root[data-quality="lite"] .o35-comet-c,
+.o35-root[data-quality="lite"] .o35-gyro-b,
+.o35-root[data-quality="lite"] .o35-gyro-c,
+.o35-root[data-quality="lite"] .o35-ring-rune,
+.o35-root[data-quality="lite"] .o35-core-halo-inner,
+.o35-root[data-quality="lite"] .o35-spark,
+.o35-root[data-quality="lite"] .o35-patch-rune { display: none; }
+.o35-root[data-quality="lite"] .o35-aurora,
+.o35-root[data-quality="lite"] .o35-shaft { animation: none; }
+.o35-root[data-quality="lite"] .o35-gyro-ring,
+.o35-root[data-quality="lite"] .o35-comet,
+.o35-root[data-quality="lite"] .o35-frag-svg,
+.o35-root[data-quality="lite"] .o35-patch-float { filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .o35-scene { transition: none; transform: none !important; }
+  .o35-pagelight { transition: none; }
+}
+html.reduce-motion .o35-scene { transition: none; transform: none !important; }

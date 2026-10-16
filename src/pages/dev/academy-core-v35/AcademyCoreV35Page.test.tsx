@@ -428,3 +428,133 @@ describe("hygiene", () => {
     expect(screen.getByTestId("probe")).toHaveTextContent("hall|/lol/hall");
   });
 });
+
+describe("phase 2: drag the orbit", () => {
+  const fake = () => vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "clearTimeout"] });
+  const stage = () => screen.getByTestId("academy-core-stage");
+  const xs = () => IDS.map((id) => translateOf(id)[0]);
+
+  it("dragging empty space moves the books with the pointer, a fling coasts, and the books settle symmetric", () => {
+    fake();
+    mount();
+    act(() => { vi.advanceTimersByTime(500); });
+    const before = xs();
+    fireEvent.pointerDown(stage(), { pointerId: 1, clientX: 400, clientY: 600, button: 0, pointerType: "mouse" });
+    expect(stage()).toHaveAttribute("data-dragging", "true");
+    for (let i = 1; i <= 8; i++) fireEvent.pointerMove(stage(), { pointerId: 1, clientX: 400 + i * 40, clientY: 600, pointerType: "mouse" });
+    expect(xs()).not.toEqual(before);
+    const during = xs();
+    fireEvent.pointerUp(stage(), { pointerId: 1, pointerType: "mouse" });
+    expect(stage()).not.toHaveAttribute("data-dragging");
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(xs()).not.toEqual(during); // momentum carries on after release
+    // coast, then settle: advance until the books stop (the snap), within 8 s
+    let prev = xs();
+    let stopped = false;
+    for (let i = 0; i < 80 && !stopped; i++) {
+      act(() => { vi.advanceTimersByTime(100); });
+      const now = xs();
+      stopped = now.every((x, j) => Math.abs(x - prev[j]) < 0.05);
+      prev = now;
+    }
+    expect(stopped, "the books come to rest on a composition").toBe(true);
+    // and they hold there for a moment (the dwell) before the slow orbit resumes
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(xs().every((x, i) => Math.abs(x - prev[i]) < 0.5)).toBe(true);
+  });
+
+  it("never starts from a book, a link or the crystal, so every click contract is untouched", () => {
+    fake();
+    mount();
+    for (const el of [book("combat-lab"), screen.getByTestId("academy-core-crystal")]) {
+      fireEvent.pointerDown(el, { pointerId: 2, clientX: 500, clientY: 400, button: 0, pointerType: "mouse" });
+      expect(stage()).not.toHaveAttribute("data-dragging");
+    }
+    fireEvent.click(book("combat-lab"));
+    act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 10); });
+    expect(screen.getByTestId("probe")).toHaveTextContent("combat|/combat-lab");
+  });
+
+  it("is off under reduced motion and in the phone composition", () => {
+    reduced.current = true;
+    const { unmount } = mount();
+    fireEvent.pointerDown(stage(), { pointerId: 3, clientX: 400, clientY: 600, button: 0, pointerType: "mouse" });
+    expect(stage()).not.toHaveAttribute("data-dragging");
+    unmount();
+    reduced.current = false;
+    setLayout(false);
+    mount();
+    fireEvent.pointerDown(stage(), { pointerId: 4, clientX: 200, clientY: 300, button: 0, pointerType: "touch" });
+    expect(stage()).not.toHaveAttribute("data-dragging");
+  });
+
+  it("ignores secondary mouse buttons", () => {
+    mount();
+    fireEvent.pointerDown(stage(), { pointerId: 5, clientX: 400, clientY: 600, button: 2, pointerType: "mouse" });
+    expect(stage()).not.toHaveAttribute("data-dragging");
+  });
+});
+
+describe("phase 2: arrow keys, quality tiers", () => {
+  it("arrow keys step focus through the books and wrap; other keys and other controls are untouched", () => {
+    mount();
+    const links = IDS.map((id) => book(id));
+    act(() => { links[0].focus(); });
+    fireEvent.keyDown(links[0], { key: "ArrowRight" });
+    expect(links[1]).toHaveFocus();
+    fireEvent.keyDown(links[1], { key: "ArrowLeft" });
+    expect(links[0]).toHaveFocus();
+    fireEvent.keyDown(links[0], { key: "ArrowLeft" });
+    expect(links[3]).toHaveFocus();
+    const notPrevented = fireEvent.keyDown(links[3], { key: "Enter" });
+    expect(notPrevented).toBe(true);
+    const prevented = fireEvent.keyDown(links[3], { key: "ArrowRight", ctrlKey: true });
+    expect(prevented).toBe(true); // modified arrows are left alone
+  });
+
+  it("defaults to the full scene; ?quality=lite selects the lite tier; a forced tier is honoured", () => {
+    const a = mount();
+    expect(screen.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "full");
+    a.unmount();
+    window.history.pushState({}, "", "/?quality=lite");
+    mount();
+    expect(screen.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "lite");
+    window.history.pushState({}, "", "/");
+  });
+
+  it("the lite tier keeps the orbit, the books and the Core's dial", () => {
+    window.history.pushState({}, "", "/?quality=lite");
+    const { container } = mount();
+    expect(container.querySelectorAll(".o35-book")).toHaveLength(4);
+    expect(container.querySelector(".acore-crystal")).not.toBeNull();
+    for (const id of IDS) expect(book(id)).toHaveAttribute("href");
+    window.history.pushState({}, "", "/");
+  });
+
+  it("focus moving from one book to another leaves only the new book focused (no stale emphasis)", () => {
+    mount();
+    const keyboard = (el: HTMLElement) => {
+      const orig = el.matches.bind(el);
+      el.matches = (q: string) => (q === ":focus-visible" ? true : orig(q));
+    };
+    const [a, b] = [book("leaguecraft"), book("pro-play")];
+    keyboard(a);
+    keyboard(b);
+    // a hover first (the pointer channel), then keyboard focus A, then B
+    fireEvent.pointerEnter(slot("leaguecraft"), { pointerType: "mouse" });
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "leaguecraft");
+    act(() => { a.focus(); });
+    act(() => { b.focus(); });
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "pro-play");
+    expect(slot("leaguecraft")).toHaveAttribute("data-active", "false");
+    expect(slot("pro-play")).toHaveAttribute("data-active", "true");
+  });
+
+  it("the focused book opens a crack: its page light is lit and its levitation wrapper is marked active", () => {
+    mount();
+    fireEvent.pointerEnter(slot("archives"), { pointerType: "mouse" });
+    const lev = bookBox("archives").querySelector(".o35-lev")!;
+    expect(lev).toHaveAttribute("data-active", "true");
+    expect(lev.querySelector(".o35-pagelight")).not.toBeNull();
+  });
+});

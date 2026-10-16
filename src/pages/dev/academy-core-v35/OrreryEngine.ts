@@ -36,7 +36,7 @@ import {
   DESKTOP_ORBIT,
   EMPHASIS_SCALE,
   ORBIT_OMEGA,
-  REST_THETA,
+  SpinModel,
   STAGE,
   STAGE_COMPOSED,
   SUPPORT_SCALE,
@@ -61,6 +61,8 @@ export interface EngineElements {
   needle: HTMLElement | null;
   /** Elements that drift opposite the pointer by `data-depth` (0…1). */
   parallax: HTMLElement[];
+  /** Elements whose CSS animations the Core speeds up / slows down with the room in focus. */
+  tempo?: HTMLElement[];
 }
 
 export interface EngineTargets {
@@ -71,6 +73,13 @@ export interface EngineTargets {
 }
 
 export type EngineMode = "orbit" | "composed";
+
+export interface EngineOptions {
+  mode: EngineMode;
+  animate: boolean;
+  /** Called once if the loop cannot hold ~40 fps for a sustained stretch. */
+  onDegrade?: () => void;
+}
 
 interface BookState {
   emphasis: number;
@@ -84,7 +93,11 @@ interface BookState {
 
 const TAU_FRONT = 0.34;
 const TAU_EMPHASIS = 0.2;
-const TAU_OMEGA = 0.6;
+const TAU_TEMPO = 0.5;
+/** Frames to ignore after the loop starts, frames over budget before degrading, and the budget (s/frame). */
+const WARMUP_FRAMES = 90;
+const SLOW_FRAMES = 150;
+const SLOW_FRAME_S = 0.03;
 const TAU_NEEDLE = 0.22;
 const TETHER_START_R = 168;
 const TETHER_START_R_COMPOSED = 124;
@@ -95,8 +108,14 @@ export class OrreryEngine {
   private mode: EngineMode;
   private animate: boolean;
   private u = 1;
-  private theta = REST_THETA;
-  private omega: number;
+  private spin: SpinModel;
+  private tempo = 1;
+  private tempoTarget = 1;
+  private tempoApplied = 1;
+  private slow = 0;
+  private warm = 0;
+  private degraded = false;
+  private onDegrade?: () => void;
   private targets: EngineTargets = { emphasis: null, front: null, calm: CALM.free, activating: null };
   private states: Record<BookId, BookState>;
   private raf = 0;
@@ -113,11 +132,12 @@ export class OrreryEngine {
   private frame = 0;
   private parallaxLast = new WeakMap<HTMLElement, string>();
 
-  constructor(els: EngineElements, opts: { mode: EngineMode; animate: boolean }) {
+  constructor(els: EngineElements, opts: EngineOptions) {
     this.els = els;
     this.mode = opts.mode;
     this.animate = opts.animate;
-    this.omega = this.animate && this.mode === "orbit" ? ORBIT_OMEGA : 0;
+    this.onDegrade = opts.onDegrade;
+    this.spin = new SpinModel(this.animate && this.mode === "orbit" ? ORBIT_OMEGA : 0);
     const blank = (): BookState => ({ emphasis: 0, front: 0, side: 1, lastTransform: "", lastZ: -1, lastShade: "", lastSide: "" });
     this.states = { leaguecraft: blank(), "pro-play": blank(), "combat-lab": blank(), archives: blank() };
   }
@@ -136,7 +156,7 @@ export class OrreryEngine {
     // never crosses the Core on its way.
     if (next.front && next.front !== prev.front && this.mode === "orbit") {
       const i = BOOK_ORDER.indexOf(next.front);
-      const p = orbitPose(bookAngle(i, this.theta), DESKTOP_ORBIT);
+      const p = orbitPose(bookAngle(i, this.spin.theta), DESKTOP_ORBIT);
       this.states[next.front].side = p.x >= DESKTOP_ORBIT.cx ? 1 : -1;
     }
     // Without the loop (reduced motion, composed) targets apply at once.
@@ -158,7 +178,38 @@ export class OrreryEngine {
 
   /** Current orbit phase (radians) — exposed for inspection and tests. */
   get phase(): number {
-    return this.theta;
+    return this.spin.theta;
+  }
+
+  /** The spin state machine's phase (free / grabbed / inertia / snapping / dwell). */
+  get spinPhase(): string {
+    return this.spin.phase;
+  }
+
+  /** Speed multiplier for the Core's ring / comet animations (eased). */
+  setTempo(rate: number): void {
+    this.tempoTarget = rate;
+    if (!this.animate) this.applyTempo(rate);
+  }
+
+  /** Direct manipulation (orbit mode, motion allowed): the pointer takes the orbit. */
+  grab(): void {
+    if (!this.animate || this.mode !== "orbit") return;
+    this.spin.grab();
+    this.wake();
+  }
+
+  /** The pointer moved the orbit by `dx` screen px over `dt` seconds. */
+  dragBy(dx: number, dt: number): void {
+    if (this.spin.phase !== "grabbed") return;
+    // front books follow the pointer: dx/dtheta at the near side of the orbit is -rx * u
+    this.spin.drag(-dx / (DESKTOP_ORBIT.rx * this.u), dt);
+    this.renderFrame(0);
+  }
+
+  release(): void {
+    this.spin.release();
+    this.wake();
   }
 
   start(): void {
@@ -175,6 +226,8 @@ export class OrreryEngine {
     if (typeof document !== "undefined" && document.hidden) return;
     this.running = true;
     this.last = 0;
+    this.warm = 0;
+    this.slow = 0;
     this.raf = requestAnimationFrame(this.tick);
   }
 
@@ -186,8 +239,20 @@ export class OrreryEngine {
 
   private tick = (now: number): void => {
     if (!this.running) return;
-    const dt = this.last ? Math.min(MAX_DT, (now - this.last) / 1000) : 1 / 60;
+    const raw = this.last ? (now - this.last) / 1000 : 1 / 60;
+    const dt = Math.min(MAX_DT, raw);
     this.last = now;
+    // Sustained slow frames (after warm-up) mean this device cannot afford the full
+    // scene: tell the page once, which drops to the lite tier.
+    if (!this.degraded && this.onDegrade) {
+      if (this.warm < WARMUP_FRAMES) this.warm++;
+      else if (raw > SLOW_FRAME_S) this.slow++;
+      else this.slow = Math.max(0, this.slow - 2);
+      if (this.slow >= SLOW_FRAMES) {
+        this.degraded = true;
+        this.onDegrade();
+      }
+    }
     this.clock += dt;
     this.renderFrame(dt);
     this.raf = requestAnimationFrame(this.tick);
@@ -204,16 +269,25 @@ export class OrreryEngine {
     this.renderFrame(0);
   }
 
+  private applyTempo(rate: number): void {
+    if (Math.abs(rate - this.tempoApplied) < 0.005 && rate !== this.tempoTarget) return;
+    this.tempoApplied = rate;
+    for (const el of this.els.tempo ?? []) {
+      for (const a of el.getAnimations?.() ?? []) a.playbackRate = rate;
+    }
+  }
+
   private renderFrame(dt: number): void {
     const t = this.targets;
     const u = this.u;
     const orbit = this.mode === "orbit";
     this.frame++;
 
-    if (orbit) {
-      const omegaTarget = this.animate ? ORBIT_OMEGA * t.calm : 0;
-      this.omega = approach(this.omega, omegaTarget, dt, TAU_OMEGA);
-      this.theta += this.omega * dt;
+    if (orbit) this.spin.step(dt, t.calm, this.animate);
+    const theta = this.spin.theta;
+    if (dt > 0 && this.animate && Math.abs(this.tempo - this.tempoTarget) > 0.005) {
+      this.tempo = approach(this.tempo, this.tempoTarget, dt, TAU_TEMPO);
+      this.applyTempo(this.tempo);
     }
 
     const baseW = orbit ? BOOK_BASE_W : BOOK_BASE_W_COMPOSED;
@@ -230,7 +304,7 @@ export class OrreryEngine {
         s.front = approach(s.front, t.front === id ? 1 : 0, dt, TAU_FRONT);
       }
 
-      let pose: BookPose = orbit ? orbitPose(bookAngle(i, this.theta), DESKTOP_ORBIT) : COMPOSED_POSES[id];
+      let pose: BookPose = orbit ? orbitPose(bookAngle(i, theta), DESKTOP_ORBIT) : COMPOSED_POSES[id];
       if (orbit && s.front > 0.001) pose = blendPose(pose, frontPose(s.side), s.front);
       // Float the phone books a touch differently so they never read as a grid.
       let scale = pose.scale * (1 + EMPHASIS_SCALE * s.emphasis);

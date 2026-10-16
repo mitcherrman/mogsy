@@ -1,11 +1,67 @@
-# Academy Core V3.5 — The Living Hextech Orrery (Phase 1)
+# Academy Core V3.5 — The Living Hextech Orrery (Phase 1 + Phase 2)
 
 Branch `design/academy-core-v35-floating-orrery`, cut from `origin/main` **`6407559a`** (fetched at the start of the pass).
 Preview route: **`/lol/dev/academy-core-v35`** (development-only; see "Guarantees"). Nothing is merged, deployed, PR'd or published.
 Frontend only: no backend, Supabase or Railway change.
 
-> Status: **STOPPED FOR OWNER VISUAL REVIEW.** Phase 1 asked for a motion demonstration, not a finished product. Please watch
-> `docs/handoffs/academy-core-v35/orrery-motion-desktop.webm` first, then run the route locally (below).
+> Status: **Phase 1 approved by the owner (look and motion); Phase 2 (advanced interaction polish) built and STOPPED FOR OWNER REVIEW.**
+> Phase 2 is documented first (§P2); Phase 1 follows unchanged below. Watch `docs/handoffs/academy-core-v35/orrery-phase2-interaction.webm`
+> (38 s) for Phase 2 and `orrery-motion-desktop.webm` (29 s) for Phase 1.
+
+## P2. Phase 2 — advanced interaction polish
+
+Scope was handoff §7 items 2, 3 and 5 (items 1 and 6 had nothing to fix / need the owner; item 4 is deferred, see below).
+
+| Item | What changed |
+|---|---|
+| **Drag-to-spin** | Grab the orbit from **empty space** (never from a book, link or the crystal, so every click contract is untouched). The orbit follows the pointer; a fast release **flings** (inertia, capped at ~1.7 rad/s); the books then **settle onto the nearest symmetric composition** (the four corners: none behind the dial), **pause 1.8 s**, and the slow orbit resumes. A slow release is a nudge (no inertia, no snap). A hovered book damps the coast quickly and cancels the snap, so a book never slides out from under a resting cursor. `cursor: grab / grabbing`; `touch-action: pan-y` so vertical touch still scrolls. Off under reduced motion and in the phone layout. State machine = `SpinModel` in `orrery-motion.ts` (pure, tested); the engine owns the pointer API (`grab` / `dragBy` / `release`). |
+| **Richer focus** | (a) The focused cover **swings open on its spine** (3D, −24°) and **light spills from its pages** (accent-coloured `pagelight`). (b) The Core's rings and comets change **tempo per room** (Measure ×2.5 races, Observe ×1.3, Inquiry ×1.6, Strata ×0.65 slow), eased through `Animation.playbackRate`, no restart. (c) The attended **comet takes the room's colour**. (d) The lit tether is a **beam** (double glow). (e) **Activation camera push**: the scene scales 4 % toward the Core for the 240 ms. |
+| **Keyboard** | **Arrow keys** step focus through the books (wrapping), on top of Tab; modified arrows and other controls are untouched. Fixed a bug found while capturing: moving keyboard focus between books left the *previous* book emphasised behind the new one (blur's release was cancelled by the next focus in the same tick); now each focus clears the other channel. A unit test fails without the fix. |
+| **Performance** | (a) **Quality tiers**: `?quality=lite|full` (forced, never overridden), else Save-Data / ≤2 cores / ≤2 GB → lite, else full; and a **frame-rate monitor** drops a full scene to lite once if ≥150 frames after warm-up exceed 30 ms. Lite keeps the orbit, books, dial, first comet/gyro/ring set, tethers, Patch Report; it drops fragments, twinkle, extra comets/gyro rings/rune ring, sparks, one aurora, two shafts and the glow filters. (b) Every CSS animation in the Core, environment and Patch Report is **paused when the stage is off screen / the tab is hidden** (`data-ambient=off`). |
+| **Sound** | **Deferred, deliberately.** The only way to add orbit / focus cues is to extend the shared audio registry and renderers (`sfx-registry.ts`, `sfx-renderers.ts`), which are used by the whole app and have per-cue user settings. That is a cross-cutting change that needs your go-ahead, not a preview-only one. V3's `hub.destination.focus` and `bookRuffle` cues are reused as before. |
+
+### Phase 2 verification
+
+| Suite | Result |
+|---|---|
+| `vitest src/pages/dev/academy-core-v35` | **63 / 63** (28 motion-maths incl. 6 for the spin state machine; 5 engine tests: drag API, frame-rate monitor, tempo ramp; 30 rendered-page tests incl. drag, arrow keys, quality tiers, the focus bug) |
+| `playwright … e2e/academy-core-v35.spec.ts --grep-invert evidence` | **32 / 32** (22 Phase 1 + 10 Phase 2: drag → coast → symmetric snap → dwell → resume; click-after-drag; cursor; reduced motion; ring tempo; cover swing + page light + comet colour; arrow keys; lite tier; **auto-degrade under a 40 ms/frame main-thread hog**; forced `full` never degrades) |
+| V3 regression `vitest src/pages/academy-core src/lib/route-prefetch.test.ts` | 53 / 53 (run at the end of Phase 1; no V3 file touched in Phase 2) |
+| `eslint` on the new files | clean |
+
+Two e2e assertions were load-sensitive and were made robust rather than loosened blindly: total orbit travel (≈1,300 px / 9 s on an idle machine; the loop slows with frame rate, so the floor is 450 px) and "the books pass each other" (now watches until they have, up to ~35 s). Locator clicks cannot be used on orbiting targets (Playwright waits for them to hold still), so the tests aim by coordinates or at a point proven to hit the book.
+
+Performance, same harness as Phase 1 (headless Chromium, software compositing, 1366×768, main-thread busy / style recalc, 60 fps held in every case):
+
+| | busy | style |
+|---|---|---|
+| V3 `/lol` | 7.4–7.9 % | 1.8–2.0 % |
+| V3.5 **full** | 24–27 % | 9–11 % |
+| V3.5 **lite** | 18–20 % (15 % in a quieter run) | 6 % |
+| V3.5 full / lite, phone | 17 % / 14 % | 8 % / 5 % |
+
+(The machine was busier than in Phase 1, so the V3 baseline also read higher; the ratio is what to compare: full ≈ 3.3× V3, lite ≈ 2.4×.) Ablating the lite tier moved the number by ≤ 2 points per item (books' glow filters, Patch Report animation, instrument internals): the remaining cost is spread thin, not one hotspot. Not measured on real GPUs or low-end devices: the quality monitor exists because that cannot be known from here.
+
+Evidence added (`docs/handoffs/academy-core-v35/`): `orrery-phase2-interaction.webm` (38 s: idle, fling right → coast → snap → dwell → resume, fling left, hover with cover swing and beam, crystal through all four rooms with tempo changes, keyboard arrow + Enter with the camera push), `phase2-1366x768-{fling-midcoast,snapped,hover-cover-crack,crystal-measure,keyboard-focus,lite}.png`.
+
+### Phase 2 known issues / owner questions
+
+1. The cover swing and page light are **subtle** at 1366 wide (a thin lit edge on the right of the focused cover). Easy to push further (angle, glow); I held back so it does not fight the crystal. Your call.
+2. **Fling feel** (max speed, coast length, 1.8 s dwell, snap stiffness) is tuned by reasoning and a handful of recordings, not by hands-on play. Constants are at the top of the drag section of `orrery-motion.ts`.
+3. A book can still slide under a *resting* cursor during a fling; hovering damps the coast within ~0.3 s and holds it there. If you would rather the orbit never stop for a passing book, say so.
+4. The front-right focus pose now sometimes overlaps Mogzy's bubble (bubble is on top, not clickable): shift the pose or Mogzy.
+5. Sound is deferred (above). Lite tier visuals have not been reviewed by you; `?quality=lite` shows them.
+6. Still Chromium-only; still no real-GPU numbers; the integration items (§7.6) are untouched.
+
+### Phase 3 candidates (not started)
+
+Integration plan (swap `/lol` to the orrery via `useCoreNavigator`, `bare` instrument prop, Layout full-bleed, restore `hub_entered`, delete the V3 chassis, Firefox/WebKit runs, release and rollback notes); sound design if you approve touching the shared audio registry; real-device performance pass; tuning from your hands-on notes.
+
+---
+
+# Phase 1 (approved)
+
+> Phase 1 status at the time: STOPPED FOR OWNER VISUAL REVIEW; approved ("the look and motion work").
 
 ## 1. Objective
 

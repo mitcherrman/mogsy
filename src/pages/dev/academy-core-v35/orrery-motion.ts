@@ -144,6 +144,126 @@ export function poseRect(p: BookPose, baseW = BOOK_BASE_W) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Direct manipulation: drag-to-spin with inertia and a soft snap.      */
+/* ------------------------------------------------------------------ */
+
+/** Fastest a fling may leave the orbit (rad/s) — about a quarter turn a second. */
+export const MAX_FLING = 1.7;
+/** A release slower than this is just a nudge: no inertia, no snap. */
+export const FLING_MIN = 0.12;
+/** Inertia decay time constant (s), and the speed below which the orbit snaps. */
+export const TAU_INERTIA = 0.85;
+export const SNAP_ENTER = 0.32;
+/** Time constant of the snap spring (s) and the pause on the snapped composition (s). */
+export const TAU_SNAP = 0.3;
+export const DWELL_S = 1.8;
+/** The books' composition is symmetric (none behind the dial) every quarter turn from REST_THETA. */
+export const SNAP_STEP = Math.PI / 2;
+
+/**
+ * The nearest resting phase ahead of `theta` in the direction of travel
+ * (`dir` = +1 / -1); when one is already within a hair, that one.
+ */
+export function snapTarget(theta: number, dir: number): number {
+  const k = (theta - REST_THETA) / SNAP_STEP;
+  const nearest = Math.round(k);
+  if (Math.abs(k - nearest) * SNAP_STEP < 0.1) return REST_THETA + nearest * SNAP_STEP;
+  return REST_THETA + (dir >= 0 ? Math.ceil(k) : Math.floor(k)) * SNAP_STEP;
+}
+
+export type SpinPhase = "free" | "grabbed" | "inertia" | "snapping" | "dwell";
+
+/**
+ * The orbit's phase and angular velocity, as a small state machine (no DOM, no
+ * clock): `free` idles at ORBIT_OMEGA × calm; `grabbed` follows the pointer;
+ * a fast release becomes `inertia` (exponential decay), which `snapping`
+ * settles onto the nearest symmetric composition, where it `dwell`s briefly
+ * before the slow orbit resumes. A slow release, or any focused book (calm < 1),
+ * skips inertia and snap: the orbit just eases back to its calm speed.
+ */
+export class SpinModel {
+  theta = REST_THETA;
+  omega: number;
+  phase: SpinPhase = "free";
+  /** Smoothed pointer angular velocity while grabbed (rad/s). */
+  velocity = 0;
+  private dwell = 0;
+  private snapTo = 0;
+
+  constructor(omega = ORBIT_OMEGA) {
+    this.omega = omega;
+  }
+
+  grab(): void {
+    this.phase = "grabbed";
+    this.omega = 0;
+    this.velocity = 0;
+  }
+
+  /** Move the orbit by `dTheta` over `dt` seconds of pointer travel. */
+  drag(dTheta: number, dt: number): void {
+    if (this.phase !== "grabbed") return;
+    this.theta += dTheta;
+    const v = dt > 0 ? dTheta / dt : 0;
+    this.velocity = lerp(this.velocity, v, 0.4);
+  }
+
+  release(): void {
+    if (this.phase !== "grabbed") return;
+    const v = Math.max(-MAX_FLING, Math.min(MAX_FLING, this.velocity));
+    if (Math.abs(v) < FLING_MIN) {
+      this.phase = "free";
+      this.omega = v;
+    } else {
+      this.phase = "inertia";
+      this.omega = v;
+    }
+  }
+
+  step(dt: number, calm: number, animate = true): void {
+    if (dt <= 0) return;
+    const free = animate ? ORBIT_OMEGA * calm : 0;
+    switch (this.phase) {
+      case "grabbed":
+        return;
+      case "inertia": {
+        // a hovered book wants the orbit to settle quickly under the cursor
+        this.omega *= Math.exp(-dt / (calm < 1 ? TAU_INERTIA * 0.3 : TAU_INERTIA));
+        this.theta += this.omega * dt;
+        if (Math.abs(this.omega) < SNAP_ENTER) {
+          if (calm >= 1) {
+            this.phase = "snapping";
+            this.snapTo = snapTarget(this.theta, this.omega);
+          } else {
+            this.phase = "free";
+          }
+        }
+        return;
+      }
+      case "snapping": {
+        const before = this.theta;
+        this.theta = approach(this.theta, this.snapTo, dt, TAU_SNAP);
+        this.omega = (this.theta - before) / dt;
+        if (Math.abs(this.snapTo - this.theta) < 0.004) {
+          this.theta = this.snapTo;
+          this.omega = 0;
+          this.phase = "dwell";
+          this.dwell = DWELL_S;
+        }
+        return;
+      }
+      case "dwell":
+        this.dwell -= dt;
+        if (this.dwell <= 0 || calm < 1) this.phase = "free";
+        return;
+      default:
+        this.omega = approach(this.omega, free, dt, 0.6);
+        this.theta += this.omega * dt;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Phone composition: a deliberate floating arrangement, not an orbit.  */
 /* ------------------------------------------------------------------ */
 

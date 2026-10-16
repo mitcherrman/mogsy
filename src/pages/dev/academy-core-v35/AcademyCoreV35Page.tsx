@@ -29,7 +29,7 @@
  *                      around the Core), limited levitation, tap to focus
  *   reduced motion     the full layout, placed once at its rest phase, no loop
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -76,6 +76,33 @@ import { useCoreNavigator } from "./useCoreNavigator";
 import { BOOK_ORDER, CALM, DESKTOP_ORBIT, STAGE, STAGE_COMPOSED, type BookId } from "./orrery-motion";
 
 export const V35_ROUTE = "/lol/dev/academy-core-v35";
+
+/**
+ * Quality tiers. `full` is the whole scene; `lite` keeps the orbit, the books
+ * and the Core's crystal / first ring set but drops the decorative extras
+ * (fragments, aurora drift, extra comets and gyro rings, sparks, twinkle).
+ * Chosen by `?quality=lite|full` (a forced choice is never overridden), else
+ * by cheap device hints (Save-Data, <= 2 cores or <= 2 GB), else `full`; and a
+ * `full` scene that cannot hold its frame rate steps down to `lite` once.
+ */
+export type SceneQuality = "full" | "lite";
+function readQualityChoice(): "full" | "lite" | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search).get("quality");
+  return q === "lite" || q === "full" ? q : null;
+}
+function initialQuality(): SceneQuality {
+  const forced = readQualityChoice();
+  if (forced) return forced;
+  if (typeof navigator === "undefined") return "full";
+  const n = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if (n.connection?.saveData) return "lite";
+  if ((n.hardwareConcurrency ?? 8) <= 2 || (n.deviceMemory ?? 8) <= 2) return "lite";
+  return "full";
+}
+
+/** How fast the Core's rings and comets turn for each room (1 = rest). */
+const TEMPO: Record<string, number> = { idle: 1, leaguecraft: 1.6, "pro-play": 1.3, "combat-lab": 2.5, archives: 0.65 };
 const IDLE_LINE = "Pick a book and I'll take a reading.";
 
 function useMediaQuery(query: string): boolean {
@@ -114,6 +141,7 @@ function AcademyCoreV35() {
   const sfx = useSfx();
   const queryClient = useQueryClient();
   const nav = useCoreNavigator(reduced);
+  const [quality, setQuality] = useState<SceneQuality>(initialQuality);
   const { focus, pointerFocus, keyboardFocus, pinned, activating } = nav;
 
   // The same session flag the Hall and the V3 Core set on arrival.
@@ -183,8 +211,13 @@ function AcademyCoreV35() {
         tethers: tetherEls.current,
         needle: needleEl.current,
         parallax: animate ? Array.from(hero.querySelectorAll<HTMLElement>("[data-parallax]")) : [],
+        tempo: animate ? Array.from(hero.querySelectorAll<HTMLElement>(".o35-comet, .o35-gyro-ring, .o35-ring")) : [],
       },
-      { mode, animate },
+      {
+        mode,
+        animate,
+        onDegrade: readQualityChoice() === "full" ? undefined : () => setQuality("lite"),
+      },
     );
     engineRef.current = engine;
     const r = stage.getBoundingClientRect();
@@ -223,6 +256,49 @@ function AcademyCoreV35() {
   }, [mode, reduced]);
 
   useEffect(() => { engineRef.current?.setTargets(targets); }, [targets]);
+  // each room sets the Core's tempo: Measure races, Strata is slow and deliberate
+  useEffect(() => { engineRef.current?.setTempo(TEMPO[focus] ?? 1); }, [focus, mode, reduced]);
+
+  /* ---------------- direct manipulation: drag the orbit ---------------- */
+  // Only from empty space (never from a book, link or the crystal), so every
+  // click contract is untouched; the orbit follows the pointer, a fling keeps
+  // its momentum, and the books settle on the nearest symmetric composition.
+  const drag = useRef<{ id: number; x: number; t: number } | null>(null);
+  const onStageDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (mode !== "orbit" || reduced || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if ((e.target as Element).closest("a,button,.o35-slot")) return;
+    drag.current = { id: e.pointerId, x: e.clientX, t: e.timeStamp };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.currentTarget.dataset.dragging = "true";
+    nav.cancelRelease();
+    engineRef.current?.grab();
+  };
+  const onStageMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    const dt = Math.max(0.001, (e.timeStamp - d.t) / 1000);
+    engineRef.current?.dragBy(e.clientX - d.x, dt);
+    d.x = e.clientX;
+    d.t = e.timeStamp;
+  };
+  const onStageUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    drag.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    delete e.currentTarget.dataset.dragging;
+    engineRef.current?.release();
+  };
+  // Arrow keys step through the books (a roving aid on top of Tab; never on other controls).
+  const onBooksKey = (e: ReactKeyboardEvent<HTMLElement>) => {
+    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!dir || e.altKey || e.ctrlKey || e.metaKey) return;
+    const links = Array.from(e.currentTarget.querySelectorAll<HTMLAnchorElement>("a"));
+    const i = links.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    e.preventDefault();
+    links[(i + dir + links.length) % links.length].focus();
+  };
 
   const ambient = onScreen && !reduced;
 
@@ -270,6 +346,7 @@ function AcademyCoreV35() {
           }}
         >
           <div className="o35-underglow" aria-hidden />
+          <div className="o35-pagelight" aria-hidden />
           <div
             className="o35-slot"
             data-bay={d.id}
@@ -363,6 +440,7 @@ function AcademyCoreV35() {
       data-layout={fullLayout ? "full" : "stacked"}
       data-ambient={ambient ? "on" : "off"}
       data-reduced={reduced ? "true" : "false"}
+      data-quality={quality}
       data-testid="academy-core-v35"
     >
       <SEOHead
@@ -407,6 +485,10 @@ function AcademyCoreV35() {
           className="o35-stage"
           data-mode={mode}
           data-focus={focus}
+          onPointerDown={onStageDown}
+          onPointerMove={onStageMove}
+          onPointerUp={onStageUp}
+          onPointerCancel={onStageUp}
           data-activating={activating ?? ""}
           data-testid="academy-core-stage"
         >
@@ -425,7 +507,7 @@ function AcademyCoreV35() {
               ))}
             </svg>
 
-            <nav className="o35-books" aria-label="Academy rooms">
+            <nav className="o35-books" aria-label="Academy rooms" onKeyDown={onBooksKey}>
               {CORE_DESTINATIONS.map((d) => renderBook(d))}
             </nav>
 

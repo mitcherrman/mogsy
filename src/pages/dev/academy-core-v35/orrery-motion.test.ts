@@ -18,6 +18,14 @@ import {
   STAGE_COMPOSED,
   Z_CORE,
   Z_FOCUS,
+  DWELL_S,
+  FLING_MIN,
+  MAX_FLING,
+  ORBIT_OMEGA,
+  REST_THETA,
+  SNAP_STEP,
+  SpinModel,
+  snapTarget,
   angleDelta,
   approach,
   approachAngle,
@@ -278,5 +286,92 @@ describe("phone composition (no orbit)", () => {
 
   it("BEZEL_R is consistent with the lens", () => {
     expect(BEZEL_R).toBeGreaterThan(LENS_R);
+  });
+});
+
+describe("drag-to-spin: grab, inertia, snap, dwell", () => {
+  const run = (m: SpinModel, seconds: number, calm = 1) => {
+    for (let t = 0; t < seconds; t += 1 / 60) m.step(1 / 60, calm);
+  };
+  const offGrid = (theta: number) => {
+    const k = (theta - REST_THETA) / SNAP_STEP;
+    return Math.abs(k - Math.round(k)) * SNAP_STEP;
+  };
+
+  it("snap targets are the symmetric compositions, ahead of the direction of travel", () => {
+    expect(snapTarget(REST_THETA, 1)).toBeCloseTo(REST_THETA, 9);
+    expect(snapTarget(REST_THETA + 0.5, 1)).toBeCloseTo(REST_THETA + SNAP_STEP, 9);
+    expect(snapTarget(REST_THETA + 0.5, -1)).toBeCloseTo(REST_THETA, 9);
+    expect(snapTarget(REST_THETA + SNAP_STEP - 0.05, -1)).toBeCloseTo(REST_THETA + SNAP_STEP, 9); // already within a hair
+  });
+
+  it("while grabbed the pointer owns the orbit: nothing advances on its own", () => {
+    const m = new SpinModel();
+    m.grab();
+    const t0 = m.theta;
+    run(m, 1);
+    expect(m.theta).toBe(t0);
+    m.drag(0.4, 0.05);
+    expect(m.theta).toBeCloseTo(t0 + 0.4, 9);
+    expect(m.phase).toBe("grabbed");
+  });
+
+  it("a fast fling coasts, settles onto a resting composition, pauses, then resumes the slow orbit", () => {
+    const m = new SpinModel();
+    m.grab();
+    for (let i = 0; i < 10; i++) m.drag(0.05, 1 / 60); // 3 rad/s of pointer travel
+    m.release();
+    expect(m.phase).toBe("inertia");
+    expect(m.omega).toBeLessThanOrEqual(MAX_FLING + 1e-9);
+    const t0 = m.theta;
+    run(m, 0.5);
+    expect(m.theta).toBeGreaterThan(t0 + 0.3); // it keeps moving after release
+    const seen = new Set<string>([m.phase]);
+    for (let t = 0; t < 8; t += 1 / 60) {
+      m.step(1 / 60, 1);
+      seen.add(m.phase);
+      if (m.phase === "dwell") break;
+    }
+    expect(seen.has("snapping")).toBe(true);
+    expect(m.phase).toBe("dwell");
+    expect(offGrid(m.theta)).toBeLessThan(0.005);
+    expect(m.omega).toBe(0);
+    const held = m.theta;
+    run(m, DWELL_S - 0.3);
+    expect(m.theta).toBe(held); // still on the composition
+    run(m, 0.6);
+    expect(m.phase).toBe("free");
+    run(m, 4);
+    expect(m.omega).toBeCloseTo(ORBIT_OMEGA, 2); // the slow orbit is back
+  });
+
+  it("a fling the other way reverses, then the orbit returns to its own direction", () => {
+    const m = new SpinModel();
+    m.grab();
+    for (let i = 0; i < 10; i++) m.drag(-0.05, 1 / 60);
+    m.release();
+    expect(m.omega).toBeLessThan(0);
+    run(m, 12);
+    expect(m.omega).toBeGreaterThan(0);
+  });
+
+  it("a slow release is a nudge: no inertia, no snap", () => {
+    const m = new SpinModel();
+    m.grab();
+    for (let i = 0; i < 10; i++) m.drag((FLING_MIN / 60) * 0.5, 1 / 60);
+    m.release();
+    expect(m.phase).toBe("free");
+    run(m, 3);
+    expect(m.phase).toBe("free");
+  });
+
+  it("a focused book (calm < 1) cancels the snap", () => {
+    const m = new SpinModel();
+    m.grab();
+    for (let i = 0; i < 10; i++) m.drag(0.05, 1 / 60);
+    m.release();
+    run(m, 4, 0.035);
+    expect(m.phase).toBe("free");
+    expect(m.omega).toBeLessThan(ORBIT_OMEGA * 0.3);
   });
 });

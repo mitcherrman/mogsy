@@ -175,7 +175,11 @@ export function useCoreNavigator(reduced: boolean): CoreNavigator {
       // `:focus-visible` = the keyboard (or an assistive tool) put it here.
       let visible = true;
       try { visible = (e.target as HTMLElement).matches(":focus-visible"); } catch { /* old engines: treat as keyboard */ }
-      if (visible) { setKeyboardFocus(d.id); cue("keyboard"); } else setPointerFocus(d.id);
+      // Focus moving from one book to another blurs and focuses in one tick, which
+      // cancels the blur's pending release: clear the other channel here, or the old
+      // book would stay "focused" behind the new one.
+      if (visible) { setPointerFocus("idle"); setKeyboardFocus(d.id); cue("keyboard"); }
+      else { setKeyboardFocus("idle"); setPointerFocus(d.id); }
     },
     onBlur: () => release(),
   }), [cancelRelease, cue, release]);

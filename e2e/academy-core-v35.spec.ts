@@ -166,17 +166,21 @@ test.describe("desktop: the books genuinely orbit", () => {
   test("every book travels hundreds of px in 9 s, changes size with depth, and the books pass each other", async ({ page }) => {
     await open(page, 1366, 768);
     const samples: Record<Id, Box>[] = [];
+    const orderOf = (s: Record<Id, Box>) => [...IDS].sort((a, b) => s[a].cx - s[b].cx).join(">");
     for (let i = 0; i < 7; i++) { samples.push(await boxes(page)); await page.waitForTimeout(1500); }
+    // the books pass each other somewhere on the orbit: keep watching (up to ~35 s) until they have
+    while (new Set(samples.map(orderOf)).size < 2 && samples.length < 24) { samples.push(await boxes(page)); await page.waitForTimeout(1500); }
     let total = 0;
     for (const id of IDS) {
       let path = 0;
       for (let i = 1; i < samples.length; i++) path += dist(samples[i][id], samples[i - 1][id]);
       total += path;
       // a book near the orbit's left / right extreme moves mostly in depth, so the floor is per-book modest ...
-      expect(path, `${id} travelled`).toBeGreaterThan(100);
+      expect(path, `${id} travelled`).toBeGreaterThan(60);
     }
     // ... while the four together sweep a long way
-    expect(total, "total distance travelled by the four books").toBeGreaterThan(800);
+    // (about 1,300 px on an idle machine; the loop slows with the frame rate, so the floor leaves room for a busy CI box)
+    expect(total, "total distance travelled by the four books").toBeGreaterThan(450);
     // depth: over ~9 s (65 degrees of the orbit) at least two books visibly change size
     const grew = IDS.filter((id) => {
       const widths = samples.map((s) => s[id].w);
@@ -499,6 +503,204 @@ test.describe("production /lol is untouched", () => {
 /* EVIDENCE — opt-in (V35_EVIDENCE=1). Real art, real motion recording.   */
 /* ===================================================================== */
 
+/* ===================================================================== */
+/* PHASE 2 — direct manipulation, focus choreography, quality tiers        */
+/* ===================================================================== */
+
+/** Left-to-right x of the four books, the same way every time. */
+const xsOf = (b: Record<Id, Box>) => IDS.map((id) => Math.round(b[id].cx));
+
+test.describe("phase 2: drag the orbit", () => {
+  test("dragging empty space moves the books with the pointer; a fling coasts; the books settle symmetric, hold, then resume", async ({ page }) => {
+    await open(page, 1366, 768);
+    const start = await boxes(page);
+    await page.mouse.move(640, 700);
+    await page.mouse.down();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-dragging", "true");
+    for (let i = 1; i <= 14; i++) { await page.mouse.move(640 + i * 36, 700); await page.waitForTimeout(16); }
+    const dragged = await boxes(page);
+    expect(xsOf(dragged)).not.toEqual(xsOf(start));
+    await page.mouse.up();
+    await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-dragging");
+    // momentum: the books keep moving after release
+    const a = await boxes(page);
+    await page.waitForTimeout(350);
+    const b = await boxes(page);
+    expect(IDS.reduce((s, id) => s + dist(a[id], b[id]), 0), "movement after release").toBeGreaterThan(30);
+    // settle: wait for the books to stop, then check the symmetric composition
+    let prev = b;
+    let stopped: Record<Id, Box> | null = null;
+    for (let i = 0; i < 40 && !stopped; i++) {
+      await page.waitForTimeout(250);
+      const now = await boxes(page);
+      if (IDS.every((id) => dist(now[id], prev[id]) < 1.5)) stopped = now;
+      prev = now;
+    }
+    expect(stopped, "books come to rest").not.toBeNull();
+    const xs = xsOf(stopped!).sort((p, q) => p - q);
+    // two on the left, two on the right of the Core, mirrored about the stage centre
+    expect(Math.abs(xs[0] + xs[3] - (xs[1] + xs[2])), "mirror symmetry of the resting composition").toBeLessThan(25);
+    // after the pause the slow orbit resumes
+    await page.waitForTimeout(4800);
+    const later = await boxes(page);
+    expect(IDS.reduce((s, id) => s + dist(stopped![id], later[id]), 0), "orbit resumed").toBeGreaterThan(20);
+  });
+
+  test("a book is still one clean click after dragging; a drag never begins on a book", async ({ page }) => {
+    await open(page, 1366, 768);
+    await page.mouse.move(640, 700);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) await page.mouse.move(640 + i * 30, 700);
+    await page.mouse.up();
+    // park the pointer off the books so nothing is hovered, let the fling settle
+    await page.mouse.move(60, 420);
+    let last = await boxes(page);
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(250);
+      const now = await boxes(page);
+      if (IDS.every((id) => dist(now[id], last[id]) < 1.5)) break;
+      last = now;
+    }
+    // aim at a point that really hits a near-side book (far books may sit behind the dial)
+    const target = await page.evaluate(() => {
+      for (const b of document.querySelectorAll<HTMLElement>(".o35-book")) {
+        if (b.dataset.depth !== "near") continue;
+        const r = b.getBoundingClientRect();
+        for (const f of [0.55, 0.65, 0.45, 0.75]) {
+          const x = r.x + r.width / 2;
+          const y = r.y + r.height * f;
+          if (document.elementFromPoint(x, y)?.closest(".o35-book") === b) return { id: b.dataset.bay!, x, y };
+        }
+      }
+      return null;
+    });
+    expect(target, "a clickable near-side book").not.toBeNull();
+    await page.mouse.move(target!.x, target!.y, { steps: 4 });
+    await page.mouse.down();
+    await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-dragging");
+    await page.mouse.up();
+    await page.waitForURL((u) => u.pathname === ROOMS[target!.id as Id].href);
+  });
+
+  test("the cursor says so: grab on open space, pointer on books", async ({ page }) => {
+    await open(page, 1366, 768);
+    const c = await page.evaluate(() => ({
+      stage: getComputedStyle(document.querySelector('[data-testid="academy-core-stage"]')!).cursor,
+      slot: getComputedStyle(document.querySelector('[data-testid="academy-core-slot-archives"]')!).cursor,
+    }));
+    expect(c.stage).toBe("grab");
+    expect(c.slot).toBe("pointer");
+  });
+
+  test("off under reduced motion: no drag, nothing moves", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, 1366, 768);
+    const a = await boxes(page);
+    await page.mouse.move(640, 700);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(640 + i * 40, 700);
+    await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-dragging");
+    await page.mouse.up();
+    const b = await boxes(page);
+    for (const id of IDS) expect(dist(a[id], b[id])).toBeLessThan(0.5);
+  });
+});
+
+test.describe("phase 2: focus choreography", () => {
+  test("the Core's rings change tempo with the room and return to rest", async ({ page }) => {
+    await open(page, 1366, 768);
+    const rate = () => page.evaluate(() => document.querySelector(".o35-comet-a")!.getAnimations()[0].playbackRate);
+    expect(await rate()).toBeCloseTo(1, 1);
+    const crystal = page.getByTestId("academy-core-crystal");
+    await crystal.click(); // leaguecraft
+    await crystal.click(); // pro-play
+    await crystal.click(); // combat-lab: Measure races
+    await expect.poll(rate, { timeout: 4000 }).toBeGreaterThan(2);
+    await crystal.click(); // archives: Strata is slow
+    await expect.poll(rate, { timeout: 4000 }).toBeLessThan(0.9);
+    await crystal.click(); // idle
+    await expect.poll(rate, { timeout: 4000 }).toBeGreaterThan(0.97);
+  });
+
+  test("the attended comet takes the room's colour; the focused cover swings on its spine and its pages light up", async ({ page }) => {
+    await open(page, 1366, 768);
+    const b = (await boxes(page))["pro-play"];
+    await page.mouse.move(b.cx, b.cy + b.h * 0.15, { steps: 8 });
+    await expect.poll(() => focusOf(page)).toBe("pro-play");
+    await page.waitForTimeout(900);
+    const r = await page.evaluate(() => {
+      const body = document.querySelector('[data-testid="academy-core-slot-pro-play"] .academy-hub-book-body')!;
+      return {
+        tf: getComputedStyle(body).transform,
+        light: Number(getComputedStyle(document.querySelector('.o35-book[data-bay="pro-play"] .o35-pagelight')!).opacity),
+        comet: getComputedStyle(document.querySelector(".o35-comet-a")!).getPropertyValue("--c").trim().toLowerCase(),
+      };
+    });
+    expect(r.tf, "3D cover swing").toMatch(/^matrix3d/);
+    expect(r.light, "page light").toBeGreaterThan(0.7);
+    expect(r.comet).toMatch(/^(#b9a6ff|rgb\(185, 166, 255\))$/i);
+  });
+
+  test("arrow keys step focus through the books", async ({ page }) => {
+    await open(page, 1366, 768);
+    await bookLink(page, "leaguecraft").focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(bookLink(page, "pro-play")).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await expect(bookLink(page, "archives")).toBeFocused();
+  });
+});
+
+/** Make every frame cost ~40 ms of main-thread work (a ~25 fps machine). */
+async function hogMainThread(page: Page) {
+  await page.evaluate(() => {
+    const burn = () => { const t = performance.now(); while (performance.now() - t < 40) { /* busy */ } requestAnimationFrame(burn); };
+    requestAnimationFrame(burn);
+  });
+}
+
+test.describe("phase 2: quality tiers and pausing", () => {
+  const countAnims = (page: Page) => page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running").length);
+
+  test("?quality=lite keeps the orbit, the books and drag, with far fewer running animations", async ({ page }) => {
+    await open(page, 1366, 768);
+    const full = await countAnims(page);
+    await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "full");
+    await page.goto(`${ROUTE}?quality=lite`);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    await page.waitForTimeout(1500);
+    await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "lite");
+    const lite = await countAnims(page);
+    expect(lite, `lite ${lite} vs full ${full}`).toBeLessThan(full * 0.65);
+    const a = await boxes(page);
+    await page.waitForTimeout(2500);
+    const b = await boxes(page);
+    expect(IDS.reduce((s, id) => s + dist(a[id], b[id]), 0), "the orbit still runs").toBeGreaterThan(100);
+    for (const id of IDS) await expect(bookLink(page, id)).toBeVisible();
+    await page.screenshot({ path: path.join("test-results", "behaviour-desktop-lite.png") });
+  });
+
+  test("a device that cannot hold its frame rate steps down to lite by itself", async ({ page }) => {
+    test.setTimeout(90_000);
+    await open(page, 1366, 768);
+    await hogMainThread(page);
+    await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "lite", { timeout: 60_000 });
+  });
+
+  test("a forced ?quality=full is never overridden", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubCommon(page);
+    await stubChampions(page);
+    await page.goto(`${ROUTE}?quality=full`);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    await hogMainThread(page);
+    await page.waitForTimeout(16_000);
+    await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "full");
+  });
+});
+
 const evidence = process.env.V35_EVIDENCE ? test.describe : test.describe.skip;
 
 evidence("evidence", () => {
@@ -602,5 +804,126 @@ evidence("evidence", () => {
     expect(existsSync(file)).toBe(true);
     copyFileSync(file, path.join(OUT, "_video", "raw.webm"));
     writeFileSync(path.join(OUT, "_video", "meta.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
+  });
+});
+
+evidence("evidence: phase 2", () => {
+  test.setTimeout(240_000);
+
+  test("evidence: phase 2 stills (fling, snapped composition, cover crack, keyboard, lite)", async ({ page }) => {
+    await open(page, 1366, 768, { real: true });
+    // a fling, mid-coast
+    await page.mouse.move(560, 700);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) { await page.mouse.move(560 + i * 40, 700); await page.waitForTimeout(16); }
+    await page.mouse.up();
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(450);
+    await page.screenshot({ path: path.join(OUT, "phase2-1366x768-fling-midcoast.png") });
+    // settled on a symmetric composition
+    let last = await boxes(page);
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(250);
+      const now = await boxes(page);
+      if (IDS.every((id) => dist(now[id], last[id]) < 1.5)) break;
+      last = now;
+    }
+    await page.screenshot({ path: path.join(OUT, "phase2-1366x768-snapped.png") });
+    // the focused cover opens a crack
+    const b = (await boxes(page))["pro-play"];
+    await page.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 8 });
+    await expect.poll(() => focusOf(page)).toBe("pro-play");
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: path.join(OUT, "phase2-1366x768-hover-cover-crack.png") });
+    await page.mouse.move(60, 420, { steps: 6 });
+    await page.waitForTimeout(1400);
+    // Measure races: the combat room via the crystal
+    const crystal = page.getByTestId("academy-core-crystal");
+    for (let i = 0; i < 3; i++) await crystal.click();
+    await page.waitForTimeout(2200);
+    await page.screenshot({ path: path.join(OUT, "phase2-1366x768-crystal-measure.png") });
+    await crystal.click();
+    await crystal.click();
+    await page.waitForTimeout(800);
+    // keyboard: focus a book, arrow to the next
+    await bookLink(page, "leaguecraft").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(1800);
+    await page.screenshot({ path: path.join(OUT, "phase2-1366x768-keyboard-focus.png") });
+    // lite tier
+    await page.goto(`${ROUTE}?quality=lite`);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: path.join(OUT, "phase2-1366x768-lite.png") });
+  });
+
+  test("evidence: the phase 2 interaction recording", async ({ browser }) => {
+    const videoDir = path.join(OUT, "_video");
+    mkdirSync(videoDir, { recursive: true });
+    const tCtx = Date.now();
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, recordVideo: { dir: videoDir, size: { width: 1366, height: 768 } } });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      window.addEventListener("DOMContentLoaded", () => {
+        const c = document.createElement("div");
+        c.style.cssText = "position:fixed;z-index:99999;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid #fff;background:rgba(255,255,255,.18);box-shadow:0 0 10px rgba(0,0,0,.6);pointer-events:none;left:-40px;top:-40px;transition:transform 80ms";
+        document.body.appendChild(c);
+        window.addEventListener("mousemove", (e) => { c.style.left = e.clientX + "px"; c.style.top = e.clientY + "px"; }, true);
+        window.addEventListener("mousedown", () => { c.style.transform = "scale(.7)"; }, true);
+        window.addEventListener("mouseup", () => { c.style.transform = ""; }, true);
+      });
+    });
+    await open(page, 1366, 768, { real: true });
+    const tReady = Date.now();
+    const sweep = async (fromX: number, toX: number, y: number, steps: number) => {
+      for (let i = 0; i <= steps; i++) { await page.mouse.move(fromX + ((toX - fromX) * i) / steps, y); await page.waitForTimeout(16); }
+    };
+    // 1. idle orbit
+    await page.mouse.move(700, 700);
+    await page.waitForTimeout(3500);
+    // 2. grab the orbit and fling it right; it coasts, settles symmetric, pauses, then resumes
+    await page.mouse.move(560, 705);
+    await page.mouse.down();
+    await sweep(560, 1000, 705, 16);
+    await page.mouse.up();
+    await page.mouse.move(60, 420, { steps: 10 });
+    await page.waitForTimeout(6500);
+    // 3. fling the other way
+    await page.mouse.move(1000, 705, { steps: 8 });
+    await page.mouse.down();
+    await sweep(1000, 560, 705, 14);
+    await page.mouse.up();
+    await page.mouse.move(60, 420, { steps: 10 });
+    await page.waitForTimeout(5500);
+    // 4. hover a book: the cover opens a crack, the beam lights
+    const b = (await boxes(page))["pro-play"];
+    await page.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 14 });
+    await page.waitForTimeout(2300);
+    await page.mouse.move(60, 420, { steps: 10 });
+    await page.waitForTimeout(900);
+    // 5. the crystal: Inquiry, Observe, Measure (rings race), Strata (rings slow)
+    const cr = (await page.getByTestId("academy-core-crystal").boundingBox())!;
+    const cx = cr.x + cr.width / 2;
+    const cy = cr.y + cr.height / 2;
+    await page.mouse.move(cx, cy, { steps: 12 });
+    for (let i = 0; i < 4; i++) { await page.mouse.click(cx, cy); await page.waitForTimeout(1500); }
+    await page.mouse.click(cx, cy);
+    await page.mouse.move(60, 420, { steps: 8 });
+    await page.waitForTimeout(500);
+    // 6. keyboard: arrows move the focus book to the front, Enter opens it
+    await bookLink(page, "leaguecraft").focus();
+    await page.waitForTimeout(1300);
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(1500);
+    await page.keyboard.press("Enter");
+    await page.waitForURL(/\/lol\/pro-play$/);
+    await page.waitForTimeout(600);
+    const tEnd = Date.now();
+    const video = page.video()!;
+    await ctx.close();
+    const file = await video.path();
+    expect(existsSync(file)).toBe(true);
+    copyFileSync(file, path.join(OUT, "_video", "raw-p2.webm"));
+    writeFileSync(path.join(OUT, "_video", "meta-p2.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
   });
 });
