@@ -60,6 +60,7 @@
  * Presentation only: nothing here grades, computes or rounds.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, X } from "lucide-react";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import type { AnswerOptionView, QuestionView } from "@/lib/ranked-core/viewTypes";
 import type { MasterySliceChallengeView } from "@/lib/ranked-public/contracts";
@@ -360,6 +361,52 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   );
 }
 
+/**
+ * JUX1-F2 — THE ANSWER STRIP: on a phone's reveal the four tablets give their
+ * room to the working, and this one line keeps what they were showing — the
+ * player's own answer and the correct one, as their tablets drew them. A
+ * correct answer is one item; a timeout says no answer was given. Desktop
+ * keeps the tablets (the stylesheet hides the strip there).
+ */
+const STRIP_INLINE_MAX = 16;
+
+function JourneyAnswerStrip({ correct, picked, answer }: {
+  correct: boolean;
+  /** The player's submitted option, as its tablet drew it; null on a timeout. */
+  picked: string | null;
+  /** The correct option, as its tablet drew it. */
+  answer: string | null;
+}) {
+  const outcome = correct ? "correct" : picked === null ? "timeout" : "wrong";
+  // A formula-length label (a damage formula option) takes the full width, so
+  // the two answers stack rather than each wrapping to four short lines.
+  const stacked = [picked, answer].some((v) => (v?.length ?? 0) > STRIP_INLINE_MAX);
+  return (
+    <div data-testid="journey-answer-strip" data-outcome={outcome} className="journey-answer-strip"
+      data-layout={stacked ? "stacked" : "inline"}>
+      <p className="journey-answer-strip__item" data-testid="journey-answer-strip-picked"
+        data-tone={correct ? "correct" : "wrong"}>
+        <span className="journey-answer-strip__key">{correct ? "Your answer · correct" : "Your answer"}</span>
+        <span className="journey-answer-strip__value">
+          {picked ?? "No answer"}
+          {picked !== null && (correct
+            ? <Check aria-hidden className="journey-answer-strip__mark" strokeWidth={3} />
+            : <X aria-hidden className="journey-answer-strip__mark" strokeWidth={3} />)}
+        </span>
+      </p>
+      {!correct && answer !== null && (
+        <p className="journey-answer-strip__item" data-testid="journey-answer-strip-correct" data-tone="correct">
+          <span className="journey-answer-strip__key">Correct answer</span>
+          <span className="journey-answer-strip__value">
+            {answer}
+            <Check aria-hidden className="journey-answer-strip__mark" strokeWidth={3} />
+          </span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function JourneyStageQuestion({
   challenge, journey, submitting, onSubmit, reveal, working = null, revealWindowMs = null, revealEndsAt = null,
   savedLine = null,
@@ -456,14 +503,21 @@ export function JourneyStageQuestion({
         )}
       />
       {revealing && (
-        <JourneyReveal challenge={challenge} journey={journey} question={question}
-          correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
-          answer={labelOf(reveal.correctValue)}
-          explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
-          working={working} comparison={reveal.comparisonValues ?? null} winnerToken={reveal.correctValue}
-          learnedFormula={journey.learnedFormula ?? null}
-          rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
-          windowMs={revealWindowMs} endsAt={revealEndsAt} savedLine={savedLine} />
+        // JUX1-F2 — the stack lays out nothing (`display: contents`) except on a
+        // phone, where it takes the whole question box: the reveal grows into
+        // the answer region and the strip stands in for the (hidden) tablets.
+        <div className="journey-reveal-stack">
+          <JourneyReveal challenge={challenge} journey={journey} question={question}
+            correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
+            answer={labelOf(reveal.correctValue)}
+            explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
+            working={working} comparison={reveal.comparisonValues ?? null} winnerToken={reveal.correctValue}
+            learnedFormula={journey.learnedFormula ?? null}
+            rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
+            windowMs={revealWindowMs} endsAt={revealEndsAt} savedLine={savedLine} />
+          <JourneyAnswerStrip correct={reveal.correct} picked={labelOf(reveal.selectedValue)}
+            answer={labelOf(reveal.correctValue)} />
+        </div>
       )}
     </div>
   );
