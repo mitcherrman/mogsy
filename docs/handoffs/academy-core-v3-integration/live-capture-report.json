@@ -1,0 +1,57 @@
+{
+  "shots": [
+    {
+      "name": "live-desktop-1366x768",
+      "bookText": "Patch 26.20BuffsRead full reportNerfsAdjustmentsExperimental HexplateHextech RocketbeltRunaan's HurricaneTidecallerTune in to listen15%Only one track is availab",
+      "scrollH": 768,
+      "overflowX": 0,
+      "covers": 4
+    },
+    {
+      "name": "live-desktop-1920x1080",
+      "bookText": "Patch 26.20BuffsRead full reportNerfsAdjustmentsExperimental HexplateHextech RocketbeltRunaan's HurricaneTidecallerTune in to listen15%Only one track is availab",
+      "scrollH": 1080,
+      "overflowX": 0,
+      "covers": 4
+    },
+    {
+      "name": "live-desktop-1280x660-short",
+      "bookText": "Patch 26.20BuffsRead full reportNerfsAdjustmentsExperimental HexplateHextech RocketbeltRunaan's HurricaneTidecallerTune in to listen15%Only one track is availab",
+      "scrollH": 764,
+      "overflowX": 0,
+      "covers": 4
+    },
+    {
+      "name": "live-mobile-390x844",
+      "bookText": "Patch 26.20BuffsRead full reportNerfsAdjustmentsExperimental HexplateHextech RocketbeltRunaan's Hurricane",
+      "scrollH": 1284,
+      "overflowX": 0,
+      "covers": 4
+    },
+    {
+      "name": "live-mobile-320x568",
+      "bookText": "Patch 26.20BuffsRead full reportNerfsAdjustmentsExperimental HexplateHextech RocketbeltRunaan's Hurricane",
+      "scrollH": 1116,
+      "overflowX": 0,
+      "covers": 4
+    }
+  ],
+  "errors": [],
+  "failed": [
+    "live-desktop-1366x768: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-desktop-1366x768: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-desktop-1920x1080: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-desktop-1920x1080: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-desktop-1280x660-short: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-desktop-1280x660-short: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-mobile-390x844: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-mobile-390x844: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-mobile-320x568: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED",
+    "live-mobile-320x568: http://127.0.0.1:8141/audio/music/tidecaller.webm net::ERR_ABORTED"
+  ],
+  "metrics": {
+    "reducedMotionRunningAnimations": 0,
+    "reducedMotionClickToRouteMs": 69,
+    "commonsTop": 0
+  }
+}

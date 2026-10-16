@@ -184,7 +184,7 @@ export type AnalyticsEventName = MacroEventName | ProductEventName;
 export const RETIRED_EVENTS: Readonly<Record<string, string>> = {
   // Fired on /lol, which is the Hub. Its name has claimed otherwise since the
   // root entrance shipped, and `/` — the real landing — emitted nothing at all.
-  lol_landing_viewed: "hub_entered, emitted by LolHub; landing_viewed now comes from MogzyEntryV2",
+  lol_landing_viewed: "hub_entered, emitted by the Academy Core (/lol); landing_viewed now comes from MogzyEntryV2",
   // One CTA standing in for a page entry. Replaced by a true surface event at
   // /quiz, with the click retained separately as leaguecraft_cta_clicked.
   lol_start_quiz_clicked: "leaguecraft_opened (surface) + leaguecraft_cta_clicked (diagnostic)",

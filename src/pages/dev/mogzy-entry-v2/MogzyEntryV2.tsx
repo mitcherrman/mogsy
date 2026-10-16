@@ -16,7 +16,7 @@ import { useSurfaceEvent } from "@/lib/analytics";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
-import { HUB_MOGZY_SRC, warmAcademyHub } from "@/lib/hub/academy-hub-warm";
+import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
 import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
@@ -289,7 +289,7 @@ export default function MogzyEntryV2({
     } else {
       // Committed to the Hub: nothing on this screen is worth yielding to any
       // more. A no-op when the hold below already started it.
-      void warmAcademyHub(queryClient);
+      void warmAcademyCore(queryClient);
     }
     navigateTimerRef.current = window.setTimeout(
       () => navigate(destination, { replace: true }),
@@ -316,8 +316,8 @@ export default function MogzyEntryV2({
     // (or the hold is over and the visitor is about to leave anyway), so the
     // warm never takes bandwidth from the Mogzy and skyline being looked at.
     let alive = true;
-    void prepareImages([HUB_MOGZY_SRC, ACADEMY_SKYLINE_SRC], { priority: "high", timeoutMs: hold }).then(() => {
-      if (alive) void warmAcademyHub(queryClientRef.current);
+    void prepareImages([CORE_MOGZY_REST_SRC, ACADEMY_SKYLINE_SRC], { priority: "high", timeoutMs: hold }).then(() => {
+      if (alive) void warmAcademyCore(queryClientRef.current);
     });
     const id = window.setTimeout(() => handleEnterRef.current(), hold);
     return () => {
