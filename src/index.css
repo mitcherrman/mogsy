@@ -19690,3 +19690,24 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     min-height: 2.75rem;
   }
 }
+
+/* JUX: unabridged calculation wording; scoped to the reveal, after legacy
+   phone-size and container rules so older clamping cannot win the cascade. */
+.journey-reveal .journey-reasoning__caption {
+  display: inline;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.journey-reveal .journey-node__label {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+  overflow-wrap: anywhere;
+}
+.journey-reveal .journey-exact-btn__text { display: inline; }
+.journey-reveal .journey-reasoning__subject,
+.journey-reveal .journey-reasoning__head { white-space: normal; flex-wrap: wrap; }
