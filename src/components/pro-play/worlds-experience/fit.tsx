@@ -24,7 +24,7 @@
  * The boxes use `overflow: clip`, not `hidden`: a clip box is not a scroll
  * container, so not even focus or `scrollIntoView` can scroll it.
  */
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -65,6 +65,27 @@ function useBoxSize(ref: React.RefObject<HTMLElement>) {
   return size;
 }
 
+/**
+ * Bumps when web fonts finish loading. Text measured before then can grow
+ * without its box resizing, so every fit measures again (from the top).
+ */
+function useFontEpoch() {
+  const [epoch, setEpoch] = useState(0);
+  useEffect(() => {
+    const fonts = typeof document !== "undefined" ? (document as Document & { fonts?: FontFaceSet }).fonts : undefined;
+    if (!fonts) return;
+    let live = true;
+    const bump = () => live && setEpoch((e) => e + 1);
+    void fonts.ready.then(bump);
+    fonts.addEventListener?.("loadingdone", bump);
+    return () => {
+      live = false;
+      fonts.removeEventListener?.("loadingdone", bump);
+    };
+  }, []);
+  return epoch;
+}
+
 /* ── compositions ───────────────────────────────────────────────────────── */
 
 export function FitCascade({ levels, watch, className, testId, children }: {
@@ -82,7 +103,8 @@ export function FitCascade({ levels, watch, className, testId, children }: {
   const [, setTick] = useState(0);
   const recheck = useCallback(() => setTick((t) => t + 1), []);
   const size = useBoxSize(ref);
-  const sig = `${size}|${watch ?? ""}`;
+  const fonts = useFontEpoch();
+  const sig = `${size}|${fonts}|${watch ?? ""}`;
   const seen = useRef(sig);
   // Runs after every commit: a new box or new content starts again from the
   // top; otherwise step down while the content (or a nested fit) overflows.
@@ -157,6 +179,7 @@ export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, rese
   const [measured, setMeasured] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const boxSize = useBoxSize(region);
+  useFontEpoch();
 
   // A new day / filter starts on the first page.
   const lastReset = useRef(resetKey);
