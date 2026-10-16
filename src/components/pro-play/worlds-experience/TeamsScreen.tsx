@@ -316,6 +316,8 @@ function CrestButton({ p, tight, chip = false }: { p: TournamentParticipantV2; t
 function FieldFocus({ level }: { level: number }) {
   const tight = level > 0;
   const chip = level > 1;
+  // The tightest level keeps every team and fact; only the "select a team" hint goes.
+  const hint = level < 3;
   const kit = useKit();
   const { ctx } = kit;
   const tiers = swissTiers(ctx);
@@ -331,7 +333,7 @@ function FieldFocus({ level }: { level: number }) {
             {ctx.participants.length} teams · {ctx.regions.length} regions
           </h2>
         </div>
-        <p className="max-w-md text-sm text-muted-foreground">Select a team to see its way through Worlds, its matches and where to read more.</p>
+        {hint && <p className="max-w-md text-sm text-muted-foreground">Select a team to see its way through Worlds, its matches and where to read more.</p>}
       </div>
       <div className={cn("grid min-h-0 flex-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]", tight ? "gap-3" : "gap-5")}>
         {tiers.length > 0 && swiss && (
@@ -739,7 +741,7 @@ export function TeamsScreen() {
               {selected ? (
                 <TeamFocus p={selected} onClose={() => x.selectTeam(null)} />
               ) : (
-                <FitCascade levels={3} watch="field" className="h-full">
+                <FitCascade levels={4} watch="field" className="h-full">
                   {(level) => <FieldFocus level={level} />}
                 </FitCascade>
               )}

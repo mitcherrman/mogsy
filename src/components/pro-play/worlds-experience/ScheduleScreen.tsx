@@ -414,7 +414,7 @@ function FixtureRow({ m, withStage }: { m: TournamentMatchV2; withStage: boolean
         )}
       </span>
       {x.desktop && (
-        <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid="row-caption">
+        <span className="min-w-0 text-[11px] font-semibold uppercase leading-tight tracking-[0.12em] text-muted-foreground" data-testid="row-caption">
           {rowCaption(m, kit.names, stage ? stageLabel(stage) : "Match", withStage)}
         </span>
       )}
