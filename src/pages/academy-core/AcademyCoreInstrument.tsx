@@ -113,6 +113,13 @@ export interface AcademyCoreInstrumentProps {
   ambient?: boolean;
   media?: CoreMedia;
   className?: string;
+  /**
+   * Scale of the crystal assembly (lens, facets, projections, iris) onto the
+   * dial. Defaults to the V3 value; the V3.5 preview passes a larger one so the
+   * crystal fills more of the dial. Everything inside is authored in the lens's
+   * local space, so projections, clips and iris blades scale together.
+   */
+  lensScale?: number;
 }
 
 export default function AcademyCoreInstrument({
@@ -122,6 +129,7 @@ export default function AcademyCoreInstrument({
   ambient = true,
   media = {},
   className,
+  lensScale = LENS_SCALE,
 }: AcademyCoreInstrumentProps) {
   const reduced = useReducedMotionPreference();
   const dest = destinationById(focus);
@@ -376,7 +384,7 @@ export default function AcademyCoreInstrument({
         <circle cx={CORE_CENTER.x} cy={CORE_CENTER.y} r="100" className="acore-hairline" />
 
         {/* everything from here is authored around (0,0) at r=118 and scaled onto the chassis */}
-        <g transform={`translate(${CORE_CENTER.x} ${CORE_CENTER.y}) scale(${LENS_SCALE})`}>
+        <g transform={`translate(${CORE_CENTER.x} ${CORE_CENTER.y}) scale(${lensScale})`}>
           <g className="acore-crystal">
             <circle r={LENS_LOCAL_R} className="acore-lens-plate" />
             {facets}

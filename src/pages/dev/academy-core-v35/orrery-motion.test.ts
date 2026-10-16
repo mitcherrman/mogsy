@@ -26,6 +26,12 @@ import {
   SNAP_STEP,
   SpinModel,
   snapTarget,
+  FRONT_ANGLE,
+  MIN_STEER,
+  SELECTED_EMPHASIS_SCALE,
+  hermite,
+  nextArrival,
+  steerDuration,
   angleDelta,
   approach,
   approachAngle,
@@ -40,8 +46,15 @@ import {
 } from "./orrery-motion";
 
 const TAU = Math.PI * 2;
-/** Crystal lens radius at the desktop instrument width (92 / 460 of 470 units). */
-const LENS_R = (92 / 460) * 470;
+/**
+ * Crystal lens radius at the desktop instrument width, stage units: local r 118 x
+ * V35_LENS_SCALE 0.96 on a 460-wide viewBox drawn 470 units wide (V3's 0.78 gave ~94).
+ */
+const LENS_R = ((118 * 0.96) / 460) * 470;
+/** The projection art inside the lens (local clip r 46), stage units. */
+const ART_R = ((46 * 0.96) / 460) * 470;
+/** How far a near-side book may reach into the bottom of the (larger) lens: its lower rim only. */
+const LENS_RIM_ALLOWANCE = 26;
 /** Outermost visible radius of the Core's rings (scale ring ticks and hexes). */
 const CORE_VISUAL_R = 290;
 /** The dial (bezel) radius in stage units. */
@@ -146,14 +159,22 @@ describe("orbit: clickability", () => {
     expect(worst).toBeLessThan(0.1);
   });
 
-  it("a near-side book never covers the crystal lens (the control stays reachable)", () => {
+  it("a near-side book reaches at most the lower rim of the (larger) lens, never its centre or projection art", () => {
+    // the V3.5 lens is larger than the V3 one; a book passing front-centre (and the
+    // selector's held book) overlaps only the bottom rim — the crystal stays clickable
+    // above it and the projection art is never covered
     for (let s = 0; s < 720; s++) {
       BOOK_ORDER.forEach((_, i) => {
         const p = orbitPose(bookAngle(i, theta(s)));
         if (p.depth <= 0) return; // far books pass BEHIND the Core
-        expect(circleHitsRect(CORE_CENTER, LENS_R - 6, poseRect(p)), `step ${s} book ${i}`).toBe(false);
+        expect(circleHitsRect(CORE_CENTER, LENS_R - LENS_RIM_ALLOWANCE, poseRect(p)), `step ${s} book ${i}`).toBe(false);
+        expect(circleHitsRect(CORE_CENTER, ART_R, poseRect(p)), `art: step ${s} book ${i}`).toBe(false);
       });
     }
+    // the selector's held book: front-centre with its (small) selected emphasis
+    const held = orbitPose(FRONT_ANGLE);
+    const r = poseRect({ ...held, scale: held.scale * (1 + SELECTED_EMPHASIS_SCALE) });
+    expect(circleHitsRect(CORE_CENTER, LENS_R - LENS_RIM_ALLOWANCE, r)).toBe(false);
   });
 
   it("every book stays inside the stage with room for its levitation", () => {
@@ -373,5 +394,186 @@ describe("drag-to-spin: grab, inertia, snap, dwell", () => {
     run(m, 4, 0.035);
     expect(m.phase).toBe("free");
     expect(m.omega).toBeLessThan(ORBIT_OMEGA * 0.3);
+  });
+});
+
+describe("arrow selector: the orbit turns one book at a time and holds it at the front", () => {
+  const step = (m: SpinModel, seconds: number, calm = 1) => {
+    for (let t = 0; t < seconds; t += 1 / 60) m.step(1 / 60, calm);
+  };
+  /** Angle of book i, normalised to [0, 2pi). */
+  const angleOf = (m: SpinModel, i: number) => (((bookAngle(i, m.theta) % TAU) + TAU) % TAU);
+  const atFront = (m: SpinModel, i: number) => Math.abs(angleDelta(angleOf(m, i), FRONT_ANGLE)) < 1e-6;
+  const settle = (m: SpinModel) => step(m, 3);
+
+  it("the right arrow brings the book arriving from the right; the left arrow the one from the left", () => {
+    // at rest the books sit at 45 / 135 / 225 / 315 degrees: Leaguecraft front-right, Pro Play front-left
+    const r = nextArrival(REST_THETA, 1);
+    expect(BOOK_ORDER[r.index]).toBe("leaguecraft");
+    expect(r.target - REST_THETA).toBeCloseTo(Math.PI / 4, 9);
+    const l = nextArrival(REST_THETA, -1);
+    expect(BOOK_ORDER[l.index]).toBe("pro-play");
+    expect(REST_THETA - l.target).toBeCloseTo(Math.PI / 4, 9);
+  });
+
+  it("from idle the first press is always a visible turn (a book already at the front is skipped)", () => {
+    for (let k = 0; k < 360; k++) {
+      const theta = (k / 360) * TAU;
+      for (const dir of [1, -1] as const) {
+        const d = Math.abs(nextArrival(theta, dir).target - theta);
+        expect(d).toBeGreaterThanOrEqual(MIN_STEER - 1e-9);
+        expect(d).toBeLessThanOrEqual(Math.PI / 2 + MIN_STEER + 1e-9);
+      }
+    }
+  });
+
+  it("one press turns the whole orbit (all four books together) and holds the chosen book exactly at the front", () => {
+    const m = new SpinModel();
+    const before = BOOK_ORDER.map((_, i) => angleOf(m, i));
+    const i = m.steer(1);
+    expect(m.phase).toBe("steering");
+    step(m, 0.3);
+    const mid = BOOK_ORDER.map((_, j) => angleOf(m, j));
+    // every book moved by the same angle: the orbit turned as one
+    const moved = mid.map((a, j) => angleDelta(before[j], a));
+    for (const d of moved) expect(d).toBeCloseTo(moved[0], 9);
+    expect(moved[0]).toBeGreaterThan(0);
+    settle(m);
+    expect(m.phase).toBe("held");
+    expect(atFront(m, i)).toBe(true);
+    const held = m.theta;
+    step(m, 10); // the idle orbit does not carry it away
+    expect(m.theta).toBe(held);
+  });
+
+  it("each press advances exactly one book, wraps after four, and the left arrow reverses", () => {
+    const m = new SpinModel();
+    const seen: string[] = [];
+    for (let k = 0; k < 5; k++) { seen.push(BOOK_ORDER[m.steer(1)]); settle(m); }
+    // right arrow from rest: Leaguecraft, then the book behind it on the right, ... and round again
+    expect(seen).toEqual(["leaguecraft", "archives", "combat-lab", "pro-play", "leaguecraft"]);
+    const back: string[] = [];
+    for (let k = 0; k < 4; k++) { back.push(BOOK_ORDER[m.steer(-1)]); settle(m); }
+    expect(back).toEqual(["pro-play", "combat-lab", "archives", "leaguecraft"]);
+    expect(atFront(m, 0)).toBe(true);
+  });
+
+  it("all four books can be brought to the front", () => {
+    const m = new SpinModel();
+    const fronted = new Set<number>();
+    for (let k = 0; k < 4; k++) { const i = m.steer(-1); settle(m); expect(atFront(m, i)).toBe(true); fronted.add(i); }
+    expect(fronted.size).toBe(4);
+  });
+
+  it("rapid presses: N presses before the turn finishes = exactly N books, one smooth turn, no overshoot", () => {
+    const m = new SpinModel();
+    const start = m.theta;
+    let i = -1;
+    for (let k = 0; k < 3; k++) { i = m.steer(1); step(m, 0.08); }
+    expect(BOOK_ORDER[i]).toBe("combat-lab"); // leaguecraft -> archives -> combat-lab
+    let last = m.theta;
+    let monotone = true;
+    for (let t = 0; t < 4; t += 1 / 60) {
+      m.step(1 / 60, 1);
+      if (m.theta < last - 1e-9) monotone = false;
+      last = m.theta;
+    }
+    expect(monotone).toBe(true);
+    expect(m.phase).toBe("held");
+    expect(atFront(m, i)).toBe(true);
+    expect(m.theta - start).toBeCloseTo(Math.PI / 4 + Math.PI, 6); // 45 deg to the first book, then two quarters... plus one
+    // right then left quickly cancel out: back to the same book
+    const m2 = new SpinModel();
+    const a = m2.steer(1);
+    step(m2, 0.1);
+    m2.steer(1);
+    step(m2, 0.1);
+    const b = m2.steer(-1);
+    settle(m2);
+    expect(b).toBe(a);
+    expect(atFront(m2, a)).toBe(true);
+  });
+
+  it("takes over a fling smoothly (no jump in position or speed, no overshoot past the target)", () => {
+    const m = new SpinModel();
+    m.grab();
+    for (let k = 0; k < 10; k++) m.drag(0.04, 1 / 60);
+    m.release();
+    step(m, 0.2);
+    expect(m.phase).toBe("inertia");
+    const theta0 = m.theta;
+    const omega0 = m.omega;
+    const i = m.steer(1);
+    m.step(1 / 60, 1);
+    // continuity: the first frame of the turn moves as the fling was moving
+    expect(m.theta - theta0).toBeCloseTo(omega0 / 60, 2);
+    let last = m.theta;
+    for (let t = 0; t < 4; t += 1 / 60) {
+      m.step(1 / 60, 1);
+      expect(m.theta).toBeGreaterThanOrEqual(last - 1e-9); // never runs backwards past the target
+      last = m.theta;
+    }
+    expect(atFront(m, i)).toBe(true);
+  });
+
+  it("interrupts a snap without a jump, and a fling the other way is turned round smoothly", () => {
+    const m = new SpinModel();
+    m.grab();
+    for (let k = 0; k < 10; k++) m.drag(0.05, 1 / 60);
+    m.release();
+    while (m.phase !== "snapping") m.step(1 / 60, 1);
+    const t0 = m.theta;
+    const i = m.steer(-1);
+    m.step(1 / 60, 1);
+    expect(Math.abs(m.theta - t0)).toBeLessThan(0.05); // no jump
+    settle(m);
+    expect(atFront(m, i)).toBe(true);
+  });
+
+  it("is a single controller: grab releases it; releaseHold resumes the idle orbit", () => {
+    const m = new SpinModel();
+    m.steer(1);
+    settle(m);
+    m.grab();
+    expect(m.phase).toBe("grabbed");
+    expect(m.selected).toBe(-1);
+    m.release();
+    const n = new SpinModel();
+    n.steer(1);
+    settle(n);
+    n.releaseHold();
+    expect(n.phase).toBe("free");
+    expect(n.selected).toBe(-1);
+    const t = n.theta;
+    step(n, 3);
+    expect(n.theta).toBeGreaterThan(t); // the slow orbit is back
+    // a press while grabbed changes nothing
+    const g = new SpinModel();
+    g.grab();
+    const th = g.theta;
+    g.steer(1);
+    expect(g.phase).toBe("grabbed");
+    expect(g.theta).toBe(th);
+  });
+
+  it("without animation (reduced motion) the selection is placed at once", () => {
+    const m = new SpinModel(0);
+    const i = m.steer(1, false);
+    expect(m.phase).toBe("held");
+    expect(atFront(m, i)).toBe(true);
+  });
+
+  it("timing and easing: a quarter turn takes ~1.2 s, accelerates and decelerates", () => {
+    expect(steerDuration(Math.PI / 2)).toBeCloseTo(1.2, 2);
+    expect(steerDuration(Math.PI)).toBeGreaterThan(steerDuration(Math.PI / 2));
+    expect(steerDuration(10)).toBeLessThanOrEqual(2.2);
+    const start = hermite(0, 1, 0, 0);
+    const end = hermite(0, 1, 0, 1);
+    const mid = hermite(0, 1, 0, 0.5);
+    expect(start.v).toBe(0);
+    expect(end.v).toBe(1);
+    expect(start.d).toBe(0);
+    expect(end.d).toBe(0);
+    expect(mid.d).toBeGreaterThan(1);
   });
 });

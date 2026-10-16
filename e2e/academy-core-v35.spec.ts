@@ -26,6 +26,12 @@ const ROUTE = "/lol/dev/academy-core-v35";
 const OUT = path.resolve("docs/handoffs/academy-core-v35");
 mkdirSync(OUT, { recursive: true });
 
+// Evidence runs may pick a GPU-composited browser: Playwright's bundled headless
+// Chromium renders this scene at ~8 fps while recording on this machine (Edge:
+// ~70 fps), which slows the motion (the engine caps a frame step at 50 ms) and
+// makes it choppy. e.g. V35_EVIDENCE_CHANNEL=msedge.
+if (process.env.V35_EVIDENCE_CHANNEL) test.use({ channel: process.env.V35_EVIDENCE_CHANNEL });
+
 const IDS = ["leaguecraft", "pro-play", "combat-lab", "archives"] as const;
 type Id = (typeof IDS)[number];
 const ROOMS: Record<Id, { title: string; href: string }> = {
@@ -522,6 +528,8 @@ test.describe("phase 2: drag the orbit", () => {
     expect(xsOf(dragged)).not.toEqual(xsOf(start));
     await page.mouse.up();
     await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-dragging");
+    // park the pointer off the scene: a book that stops under a resting cursor holds the orbit (by design)
+    await page.mouse.move(60, 420);
     // momentum: the books keep moving after release
     const a = await boxes(page);
     await page.waitForTimeout(350);
@@ -540,10 +548,12 @@ test.describe("phase 2: drag the orbit", () => {
     const xs = xsOf(stopped!).sort((p, q) => p - q);
     // two on the left, two on the right of the Core, mirrored about the stage centre
     expect(Math.abs(xs[0] + xs[3] - (xs[1] + xs[2])), "mirror symmetry of the resting composition").toBeLessThan(25);
-    // after the pause the slow orbit resumes
-    await page.waitForTimeout(4800);
+    // after the pause the slow orbit resumes (wait on the engine's phase: headless frame rates vary a lot)
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-spin", "free", { timeout: 15_000 });
+    const resumedAt = await boxes(page);
+    await page.waitForTimeout(3000);
     const later = await boxes(page);
-    expect(IDS.reduce((s, id) => s + dist(stopped![id], later[id]), 0), "orbit resumed").toBeGreaterThan(20);
+    expect(IDS.reduce((s, id) => s + dist(resumedAt[id], later[id]), 0), "orbit resumed").toBeGreaterThan(20);
   });
 
   test("a book is still one clean click after dragging; a drag never begins on a book", async ({ page }) => {
@@ -698,6 +708,289 @@ test.describe("phase 2: quality tiers and pausing", () => {
     await hogMainThread(page);
     await page.waitForTimeout(16_000);
     await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "full");
+  });
+});
+
+/* ===================================================================== */
+/* PHASE 2 TARGETED — the arrow selector and the larger crystal           */
+/* ===================================================================== */
+
+const arrow = (page: Page, dir: "left" | "right") => page.getByTestId(`academy-core-arrow-${dir}`);
+/** The book nearest the front of the orbit (largest, lowest, top of the stack). */
+async function frontBook(page: Page): Promise<Id> {
+  const b = await boxes(page);
+  return [...IDS].sort((x, y) => b[y].cy - b[x].cy)[0];
+}
+/**
+ * Wait until a selector turn has finished: the engine reports `held` (a "books
+ * stopped moving" heuristic misfires on a cold page, where frames can stall for
+ * a few hundred ms), then return the resting positions.
+ */
+async function waitStill(page: Page, ms = 8000) {
+  await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-spin", "held", { timeout: ms });
+  return boxes(page);
+}
+const indexOf = (id: string) => IDS.indexOf(id as Id);
+
+test.describe("selector: two arrows beneath the Core", () => {
+  test("exactly two arrows, no text, comfortable and unobstructed targets, beneath the Core", async ({ page }) => {
+    await open(page, 1366, 768);
+    const sel = page.getByTestId("academy-core-selector");
+    await expect(sel.getByRole("button")).toHaveCount(2);
+    expect((await sel.innerText()).trim()).toBe("");
+    await expect(arrow(page, "left")).toHaveAccessibleName("Previous book");
+    await expect(arrow(page, "right")).toHaveAccessibleName("Next book");
+    const core = (await page.locator(".o35-instrument").boundingBox())!;
+    for (const dir of ["left", "right"] as const) {
+      const b = (await arrow(page, dir).boundingBox())!;
+      expect(b.width).toBeGreaterThanOrEqual(44);
+      expect(b.height).toBeGreaterThanOrEqual(44);
+      expect(b.y, `${dir} arrow beneath the Core`).toBeGreaterThan(core.y + core.height);
+      const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x as number, y as number)?.closest("[data-testid^='academy-core-arrow']")?.getAttribute("data-testid"), [b.x + b.width / 2, b.y + b.height / 2]);
+      expect(hit).toBe(`academy-core-arrow-${dir}`);
+    }
+    const l = (await arrow(page, "left").boundingBox())!;
+    const r = (await arrow(page, "right").boundingBox())!;
+    expect(l.x + l.width / 2).toBeLessThan(core.x + core.width / 2);
+    expect(r.x + r.width / 2).toBeGreaterThan(core.x + core.width / 2);
+    await noHorizontalOverflow(page);
+  });
+
+  test("right advances exactly one book per press through the orbit order, wraps after four; left reverses", async ({ page }) => {
+    await open(page, 1366, 768);
+    const url = page.url();
+    const picks: Id[] = [];
+    for (let k = 0; k < 5; k++) {
+      await arrow(page, "right").click();
+      await waitStill(page);
+      const f = await frontBook(page);
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", f); // crystal / Mogzy agree
+      picks.push(f);
+    }
+    expect(new Set(picks.slice(0, 4)).size, `all four come forward: ${picks}`).toBe(4);
+    expect(picks[4]).toBe(picks[0]);
+    for (let k = 1; k < picks.length; k++) expect(indexOf(picks[k])).toBe((indexOf(picks[k - 1]) + 3) % 4); // right = previous index
+    await arrow(page, "left").click();
+    await waitStill(page);
+    expect(await frontBook(page)).toBe(picks[3]);
+    expect(page.url()).toBe(url); // never navigates
+  });
+
+  test("the whole orbit turns: every book moves together, and the chosen one is held at the front", async ({ page }) => {
+    await open(page, 1366, 768);
+    const a = await boxes(page);
+    await arrow(page, "left").click();
+    await page.waitForTimeout(450);
+    const mid = await boxes(page);
+    // every book moves mid-turn (a short first turn moves the books at the orbit's ends only a few px)
+    for (const id of IDS) expect(dist(a[id], mid[id]), `${id} turned with the orbit`).toBeGreaterThan(1.5);
+    expect(IDS.reduce((sum, id) => sum + dist(a[id], mid[id]), 0), "the orbit as a whole turned").toBeGreaterThan(40);
+    const still = await waitStill(page);
+    const f = await frontBook(page);
+    const core = (await page.locator(".o35-instrument").boundingBox())!;
+    expect(Math.abs(still[f].cx - (core.x + core.width / 2)), "front and centre").toBeLessThan(4);
+    await page.waitForTimeout(3000);
+    const later = await boxes(page);
+    for (const id of IDS) expect(dist(still[id], later[id]), `${id} held`).toBeLessThan(1);
+    // the selected book is the top of the stack and one click from its room
+    const z = await page.locator(`.o35-book[data-bay="${f}"]`).evaluate((el) => Number(getComputedStyle(el).zIndex));
+    expect(z).toBeGreaterThanOrEqual(60);
+    const p = await page.evaluate((id) => {
+      const r = document.querySelector(`.o35-book[data-bay="${id}"]`)!.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height * 0.6 };
+    }, f);
+    await page.mouse.click(p.x, p.y);
+    await page.waitForURL((u) => u.pathname === ROOMS[f].href);
+  });
+
+  test("a previously back-facing book comes all the way round to the front", async ({ page }) => {
+    await open(page, 1366, 768);
+    const b = await boxes(page);
+    const back = [...IDS].sort((x, y) => b[x].cy - b[y].cy)[0]; // highest = farthest
+    for (let k = 0; k < 4; k++) {
+      await arrow(page, "right").click();
+      await waitStill(page);
+      if ((await frontBook(page)) === back) break;
+    }
+    expect(await frontBook(page)).toBe(back);
+  });
+
+  test("rapid presses: each counts exactly once, one continuous turn", async ({ page }) => {
+    await open(page, 1366, 768);
+    await arrow(page, "right").click();
+    await waitStill(page);
+    const start = await frontBook(page);
+    for (let k = 0; k < 3; k++) await arrow(page, "right").click({ delay: 10 });
+    const end = await (async () => { await waitStill(page); return frontBook(page); })();
+    expect(indexOf(end)).toBe((indexOf(start) + 3 * 3) % 4);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", end);
+  });
+
+  test("takes over a fling (inertia) and a snap without waiting; drag still works and releases the hold", async ({ page }) => {
+    await open(page, 1366, 768);
+    // fling, then press during the coast
+    await page.mouse.move(560, 700);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) { await page.mouse.move(560 + i * 40, 700); await page.waitForTimeout(16); }
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    await arrow(page, "right").click();
+    const still = await waitStill(page);
+    const f = await frontBook(page);
+    const core = (await page.locator(".o35-instrument").boundingBox())!;
+    expect(Math.abs(still[f].cx - (core.x + core.width / 2))).toBeLessThan(4);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", f);
+    // a drag takes the orbit back (and the hold with it)
+    await page.mouse.move(700, 705);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(700 - i * 30, 705);
+    await page.mouse.up();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "idle");
+    const a = await boxes(page);
+    await page.waitForTimeout(4000);
+    const later = await boxes(page);
+    expect(IDS.reduce((s, id) => s + dist(a[id], later[id]), 0), "the orbit runs again").toBeGreaterThan(20);
+  });
+
+  test("the crystal projects the selected room; its own cycle still works and continues from it", async ({ page }) => {
+    await open(page, 1366, 768);
+    await arrow(page, "right").click();
+    await waitStill(page);
+    const f = await frontBook(page);
+    const modeClass: Record<Id, string> = { leaguecraft: "leaguecraft", "pro-play": "pro-play", "combat-lab": "combat", archives: "archives" };
+    await expect.poll(() => page.locator(`.acore-mode-${modeClass[f]}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.9);
+    const order: Id[] = ["leaguecraft", "pro-play", "combat-lab", "archives"];
+    await page.getByTestId("academy-core-crystal").click();
+    const next = order[order.indexOf(f) + 1] ?? "idle";
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", next);
+    expect(page.url()).toContain(ROUTE);
+  });
+
+  test("keyboard: the arrows are reachable and operate with Enter and Space", async ({ page }) => {
+    await open(page, 1366, 768);
+    await arrow(page, "right").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-focus", "idle");
+    const first = await page.getByTestId("academy-core-stage").getAttribute("data-focus");
+    await page.keyboard.press(" ");
+    await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-focus", first!);
+    await expect(arrow(page, "right")).toBeFocused();
+    const ring = await arrow(page, "right").evaluate((el) => getComputedStyle(el).outlineStyle);
+    expect(ring).toBe("solid");
+  });
+
+  test("reduced motion: the selection is placed at once and navigation still works", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, 1366, 768);
+    await arrow(page, "right").click();
+    const a = await boxes(page);
+    const f = await frontBook(page);
+    await page.waitForTimeout(800);
+    const b = await boxes(page);
+    for (const id of IDS) expect(dist(a[id], b[id])).toBeLessThan(0.5);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", f);
+  });
+
+  for (const vp of [{ name: "390x844", width: 390, height: 844 }, { name: "320x568", width: 320, height: 568 }]) {
+    test(`phones (${vp.name}): two arrows under the composed books step the preview clockwise; nothing orbits`, async ({ page }) => {
+      await open(page, vp.width, vp.height);
+      await noHorizontalOverflow(page);
+      const sel = page.getByTestId("academy-core-selector");
+      await expect(sel.getByRole("button")).toHaveCount(2);
+      expect((await sel.innerText()).trim()).toBe("");
+      const stageBox = (await page.getByTestId("academy-core-stage").boundingBox())!;
+      for (const dir of ["left", "right"] as const) {
+        const b = (await arrow(page, dir).boundingBox())!;
+        expect(b.width).toBeGreaterThanOrEqual(44);
+        expect(b.y).toBeGreaterThanOrEqual(stageBox.y + stageBox.height - 8);
+      }
+      // positions relative to the stage: the page scrolls to reach the arrows
+      const rel = () => page.evaluate((ids) => {
+        const s = document.querySelector('[data-testid="academy-core-stage"]')!.getBoundingClientRect();
+        return ids.map((id) => { const r = document.querySelector(`.o35-book[data-bay="${id}"]`)!.getBoundingClientRect(); return [r.x - s.x + r.width / 2, r.y - s.y + r.height / 2]; });
+      }, IDS as unknown as string[]);
+      const a = await rel();
+      const seq: string[] = [];
+      for (let k = 0; k < 4; k++) {
+        await arrow(page, "right").scrollIntoViewIfNeeded();
+        await arrow(page, "right").click();
+        seq.push((await page.getByTestId("academy-core-stage").getAttribute("data-focus"))!);
+      }
+      expect(seq).toEqual(["leaguecraft", "pro-play", "archives", "combat-lab"]);
+      await page.waitForTimeout(800);
+      const b = await rel();
+      for (let i = 0; i < 4; i++) expect(Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]), `${IDS[i]} does not orbit`).toBeLessThan(20);
+      await page.screenshot({ path: path.join("test-results", `selector-mobile-${vp.name}.png`), fullPage: true });
+    });
+  }
+});
+
+test.describe("crystal: larger inside the same Core", () => {
+  test("the lens is ~23 % wider than V3's within an unchanged dial and rings", async ({ page }) => {
+    await open(page, 1366, 768);
+    const m = await page.evaluate(() => {
+      const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
+      const scene = r(".o35-scene");
+      const u = scene.width / 960;
+      return {
+        u,
+        instrument: r(".o35-instrument").width,
+        crystal: r(".acore-crystal").width,
+        bezel: r(".acore-bezel-outer").width,
+        core: (document.querySelector(".o35-core") as HTMLElement).offsetWidth,
+        ring: (document.querySelector(".o35-ring-scale") as HTMLElement).offsetWidth, // layout size: the ring itself rotates
+      };
+    });
+    const ratio = m.crystal / m.instrument;
+    expect(ratio, "crystal / instrument").toBeGreaterThan(0.48); // V3.5 before: 0.400 (0.78 lens)
+    expect(ratio).toBeLessThan(0.51);
+    expect(m.crystal / m.bezel, "crystal fills more of the dial").toBeGreaterThan(0.72);
+    // the outer Core is unchanged: container 640 u, scale ring 92 % of it, dial = 300/460 of the instrument
+    expect(m.core / m.u).toBeCloseTo(640, 0);
+    expect(m.ring / m.core).toBeCloseTo(0.92, 2);
+    expect(m.bezel / m.instrument).toBeCloseTo(300 / 460, 1);
+  });
+
+  test("iris, hit area and all four projections stay aligned with the larger lens", async ({ page }) => {
+    await open(page, 1366, 768);
+    const centre = (r: DOMRect | { x: number; y: number; width: number; height: number }) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+    const crystal = (await page.locator(".acore-crystal").boundingBox())!;
+    const iris = (await page.locator(".acore-iris-rim").boundingBox())!;
+    const hit = (await page.getByTestId("academy-core-crystal").boundingBox())!;
+    const c = centre(crystal);
+    for (const [name, r] of [["iris", iris], ["hit", hit]] as const) {
+      const k = centre(r);
+      expect(Math.hypot(k.x - c.x, k.y - c.y), `${name} centred on the lens`).toBeLessThan(2.5);
+    }
+    expect(Math.abs(hit.width - crystal.width), "hit area matches the lens").toBeLessThan(8);
+    expect(iris.width / crystal.width).toBeGreaterThan(1);
+    expect(iris.width / crystal.width).toBeLessThan(1.1);
+    const modes = ["leaguecraft", "pro-play", "combat", "archives"];
+    for (const mode of modes) {
+      await page.getByTestId("academy-core-crystal").click();
+      await expect.poll(() => page.locator(`.acore-mode-${mode}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.9);
+      const box = (await page.locator(`.acore-mode-${mode}`).boundingBox())!;
+      const k = centre(box);
+      expect(Math.hypot(k.x - c.x, k.y - c.y), `${mode} projection centred`).toBeLessThan(crystal.width * 0.2);
+      expect(box.width, `${mode} projection inside the lens`).toBeLessThanOrEqual(crystal.width * 1.15);
+      const img = page.locator(`.acore-mode-${mode} image`).first();
+      if (await img.count()) {
+        const ib = (await img.boundingBox())!;
+        expect(Math.hypot(centre(ib).x - c.x, centre(ib).y - c.y), `${mode} art near the centre`).toBeLessThan(crystal.width * 0.45);
+      }
+    }
+    await page.getByTestId("academy-core-crystal").click();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "idle");
+  });
+
+  test("production /lol keeps the V3 crystal size", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubCommon(page);
+    await stubChampions(page);
+    await page.goto("/lol");
+    await expect(page.getByTestId("academy-core")).toBeVisible();
+    const ratio = await page.evaluate(() => document.querySelector(".acore-crystal")!.getBoundingClientRect().width / document.querySelector(".acore-svg")!.getBoundingClientRect().width);
+    expect(ratio).toBeCloseTo((2 * 118 * 0.78) / 960, 2); // V3 full layout: 0.78 lens on the 960-wide chassis
   });
 });
 
@@ -925,5 +1218,123 @@ evidence("evidence: phase 2", () => {
     expect(existsSync(file)).toBe(true);
     copyFileSync(file, path.join(OUT, "_video", "raw-p2.webm"));
     writeFileSync(path.join(OUT, "_video", "meta-p2.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
+  });
+});
+
+evidence("evidence: selector and crystal", () => {
+  test.setTimeout(240_000);
+
+  test("evidence: selector stills (desktop, selected, phone)", async ({ page }) => {
+    await open(page, 1366, 768, { real: true });
+    await page.mouse.move(60, 420);
+    await page.screenshot({ path: path.join(OUT, "selector-desktop-1366x768-idle.png") });
+    await arrow(page, "right").click();
+    await waitStill(page);
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: path.join(OUT, "selector-desktop-1366x768-selected.png") });
+    await open(page, 1920, 1080, { real: true });
+    await arrow(page, "left").click();
+    await waitStill(page);
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: path.join(OUT, "selector-desktop-1920x1080-selected.png") });
+    await open(page, 390, 844, { real: true });
+    await arrow(page, "right").scrollIntoViewIfNeeded();
+    await arrow(page, "right").click();
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: path.join(OUT, "selector-mobile-390x844-full.png"), fullPage: true });
+    await page.evaluate(() => {
+      const s = document.querySelector('[data-testid="academy-core-stage"]')!.getBoundingClientRect();
+      window.scrollTo(0, window.scrollY + s.top - 40);
+    });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(OUT, "selector-mobile-390x844-stage.png") });
+  });
+
+  test("evidence: the selector recording", async ({ browser }) => {
+    const videoDir = path.join(OUT, "_video");
+    mkdirSync(videoDir, { recursive: true });
+    const tCtx = Date.now();
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, recordVideo: { dir: videoDir, size: { width: 1366, height: 768 } } });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      window.addEventListener("DOMContentLoaded", () => {
+        const c = document.createElement("div");
+        c.style.cssText = "position:fixed;z-index:99999;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid #fff;background:rgba(255,255,255,.18);box-shadow:0 0 10px rgba(0,0,0,.6);pointer-events:none;left:-40px;top:-40px;transition:transform 80ms";
+        document.body.appendChild(c);
+        window.addEventListener("mousemove", (e) => { c.style.left = e.clientX + "px"; c.style.top = e.clientY + "px"; }, true);
+        window.addEventListener("mousedown", () => { c.style.transform = "scale(.7)"; }, true);
+        window.addEventListener("mouseup", () => { c.style.transform = ""; }, true);
+      });
+    });
+    await open(page, 1366, 768, { real: true });
+    const tReady = Date.now();
+    const at = async (dir: "left" | "right") => {
+      const b = (await arrow(page, dir).boundingBox())!;
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    };
+    const press = async (dir: "left" | "right", steps = 10) => {
+      const p = await at(dir);
+      await page.mouse.move(p.x, p.y, { steps });
+      await page.mouse.down();
+      await page.waitForTimeout(60);
+      await page.mouse.up();
+    };
+    // 1. idle orbit
+    await page.mouse.move(700, 740);
+    await page.waitForTimeout(3200);
+    // 2-3. right: the whole orbit turns and the next book is held at the front
+    await press("right", 16);
+    await waitStill(page);
+    await page.waitForTimeout(900);
+    // 4. right again
+    await press("right", 4);
+    await waitStill(page);
+    await page.waitForTimeout(900);
+    // 5. left reverses
+    await press("left", 16);
+    await waitStill(page);
+    await page.waitForTimeout(900);
+    // 6. the book at the back (behind the dial) comes all the way round: two steps, the second mid-turn
+    await press("left", 4);
+    await page.waitForTimeout(500);
+    await press("left", 2);
+    await waitStill(page);
+    await page.waitForTimeout(1000);
+    // 7. rapid presses: three quick ones, one continuous turn
+    for (let k = 0; k < 3; k++) { await press("right", 2); await page.waitForTimeout(120); }
+    await waitStill(page);
+    await page.waitForTimeout(900);
+    // 9. the larger crystal cycles its four projections (and lets the hold go)
+    const cr = (await page.getByTestId("academy-core-crystal").boundingBox())!;
+    const cx = cr.x + cr.width / 2;
+    const cy = cr.y + cr.height / 2 - cr.height * 0.25;
+    await page.mouse.move(cx, cy, { steps: 14 });
+    for (let k = 0; k < 4; k++) { await page.mouse.click(cx, cy); await page.waitForTimeout(1400); }
+    await page.mouse.click(cx, cy); // back to rest
+    await page.waitForTimeout(500);
+    // 8. select a book with the arrow, then click it: the 240 ms activation, then its room
+    await press("right", 14);
+    await waitStill(page);
+    await page.waitForTimeout(700);
+    const f = await frontBook(page);
+    const p = await page.evaluate((id) => {
+      const r = document.querySelector(`.o35-book[data-bay="${id}"]`)!.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height * 0.62 };
+    }, f);
+    await page.mouse.move(p.x, p.y, { steps: 14 });
+    await page.waitForTimeout(500);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForURL((u) => u.pathname === ROOMS[f].href);
+    await page.waitForTimeout(800);
+    const tEnd = Date.now();
+    const video = page.video()!;
+    await ctx.close();
+    const file = await video.path();
+    expect(existsSync(file)).toBe(true);
+    copyFileSync(file, path.join(OUT, "_video", "raw-sel.webm"));
+    writeFileSync(path.join(OUT, "_video", "meta-sel.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
   });
 });

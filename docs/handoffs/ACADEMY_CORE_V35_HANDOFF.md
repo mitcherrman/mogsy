@@ -4,9 +4,144 @@ Branch `design/academy-core-v35-floating-orrery`, cut from `origin/main` **`6407
 Preview route: **`/lol/dev/academy-core-v35`** (development-only; see "Guarantees"). Nothing is merged, deployed, PR'd or published.
 Frontend only: no backend, Supabase or Railway change.
 
-> Status: **Phase 1 approved by the owner (look and motion); Phase 2 (advanced interaction polish) built and STOPPED FOR OWNER REVIEW.**
-> Phase 2 is documented first (§P2); Phase 1 follows unchanged below. Watch `docs/handoffs/academy-core-v35/orrery-phase2-interaction.webm`
-> (38 s) for Phase 2 and `orrery-motion-desktop.webm` (29 s) for Phase 1.
+> Status: Phase 1 and Phase 2 accepted as the foundation. **Phase 2 targeted improvements (exactly two owner-approved changes: the
+> two-arrow orbit selector and a larger central crystal) built and STOPPED FOR OWNER REVIEW** — §P2T below. Watch
+> `docs/handoffs/academy-core-v35/orrery-selector-and-crystal.webm` (32 s) first. Phase 2 (§P2) and Phase 1 follow unchanged.
+
+## P2T. Phase 2 targeted improvements — the arrow selector and the larger crystal
+
+Base: `b2518371` (verified HEAD and remote, clean tree before work). Nothing else was changed: no new text, no other visual work, no audio,
+no backend. Production `/lol` is untouched (the shared instrument got one opt-in prop whose default is the V3 value; verified by test).
+
+### Change 1 — two arrows that turn the orbit
+
+**What you see.** Two small round Hextech buttons (navy disc, gold ring, blue inner ring, gold chevron) beneath the Core, flanking the
+front of the orbit — exactly the place a selected book comes to rest, so the pair reads `‹ [book] ›`. No text, labels, counters or panels;
+the names are `aria-label` only ("Previous book" / "Next book", group "Turn the orbit"). Hover brightens, press dips, keyboard focus shows a
+gold outline. Targets are ≥ 44 px. On phones the same pair sits centred under the composed books.
+
+**Direction.** `›` (right) turns the orbit the way it already idles: the near side moves left and the book coming from the **right** is
+brought to the front; `‹` does the opposite. Each press advances exactly one book in the books' real order around the orbit; it wraps after four.
+
+**Motion lifecycle (one controller, in the existing state machine).** `SpinModel` (orrery-motion.ts) gained two phases:
+
+```
+free / inertia / snapping / dwell --arrow--> steering --(turn ends)--> held
+held --arrow--> steering (one more book)      steering --arrow--> steering (re-planned, one more book)
+held | steering --grab (drag / press on open space)--> grabbed --> (existing fling/snap/dwell/free)
+held | steering --crystal click--> free (the crystal's own preview takes over)
+```
+
+- *Which book*: from any free-running phase the target is the **next book to arrive at the front** in the arrow's direction
+  (`nextArrival`); a book already within 20° of the front is skipped, so the first press from idle is always a visible turn (20°–110°).
+  While steering or held, each press adds exactly one quarter turn to the planned target, so rapid presses are counted exactly, never dropped
+  or doubled, and opposite presses cancel cleanly. No timers, no completion callbacks: nothing can go stale.
+- *How it moves*: a cubic Hermite from the orbit's **current position and angular velocity** to the target with zero end velocity
+  (accelerate, glide, decelerate); ~1.2 s a quarter turn, up to 2.2 s for several queued steps. Taking over a fling or a snap keeps position
+  and speed continuous; the start slope is bounded so the turn can never overshoot its target or reverse unexpectedly.
+- *Foreground*: the selected book comes to rest **in the orbit** at front-centre (angle 90°), directly beneath the crystal — the whole orbit
+  turns, all four books keep their relative positions, depth and scale. It is lit and on top, but grows only 4 % (not the hover 14 %) so it
+  does not climb over the lens. It is **held**: the idle orbit does not resume and carry it away. Releasing is intentional: a drag of the orbit,
+  a press on open space, or using the crystal.
+- *Reduced motion*: the orbit is placed at the selection at once; no loop runs. *Phones* (no orbit): the arrows step the preview round the
+  composed ring clockwise (right) / anticlockwise (left); the chosen book is lit and grows slightly with a 300 ms transform transition;
+  nothing moves away from the finger.
+
+**One preview, two sources.** `useCoreNavigator` keeps a single `pinned` destination plus `pinSource: "crystal" | "selector"`. The arrows
+set it (`select`), so the crystal projection, its tint and tempo, the bearing needle, the tether, Mogzy's line and the screen-reader readout
+all show the selected book. The crystal still only cycles previews and never navigates; its cycle continues from whatever is previewed
+(after an arrow selected Leaguecraft, the crystal shows Pro Play next) and it releases the arrow hold first (the crystal-pinned book then
+rests beside the lens, as before). Only crystal pins pull a book out of the orbit; selector pins never do. Hover and keyboard focus are
+temporary emphasis layered on top: one emphasised book at a time, and the selection comes back when they leave. The arrows never navigate;
+books still navigate with the 240 ms activation, modified clicks, prefetch (an arrow selection also prefetches its room) and analytics unchanged.
+
+### Change 2 — a larger crystal inside the same Core
+
+`AcademyCoreInstrument` gained one optional prop, `lensScale` (default **0.78**, the V3 value — production unchanged). V3.5 passes
+**0.96** (`V35_LENS_SCALE`, OrreryCore.tsx). Everything in the crystal assembly — lens plate, facets, inner hexagon, glow, all four projections,
+their clip paths, and the iris blades and rim — is authored in the lens's local space under that one transform, so it scales as one
+coherent unit with no clipping or misalignment. Geometry (viewBox units): lens radius 92 → **113** (+23 % across, +51 % area), now filling
+the dial's dark enamel band up to its edge (r 118); the iris rim sits at r ≈ 117–120, clear of the scale ticks (r 128+); the bezel (r 150),
+ticks, rings, gyroscopes, orbit and the whole 640-unit Core are unchanged. The crystal button's hit area is resized to match the lens
+(40 % → 49.2 % of the instrument), and the inner energy is a little brighter (glow opacity 0.55 → 0.75, a soft accent glow on the inner hexagon) —
+V3.5-scoped CSS only. Measured at 1366×768: lens 178.8 px → **220.0 px** wide in the same 446.75 px instrument (ratio 0.400 → 0.493).
+
+Consequence (accepted, tested): a near-side book passing front-centre — including the selector's held book — now overlaps the **bottom rim**
+of the larger lens by up to ~25 stage units. It never reaches the projection art or the lens centre (unit-tested over the whole orbit), and the
+crystal remains clickable everywhere above it.
+
+### Files
+
+`orrery-motion.ts` (selector phases, `nextArrival`, `steerDuration`, `hermite`), `OrreryEngine.ts` (`steer`, `releaseSelection`, `selected`,
+smaller held emphasis, `data-spin` on the stage for inspection/tests), `useCoreNavigator.ts` (`pinSource`, `select`, `clearSelection`),
+`AcademyCoreV35Page.tsx` (arrows, crystal/drag release wiring, phone ring), `OrreryCore.tsx` (`V35_LENS_SCALE`), `academy-core-v35.css`
+(selector, crystal hit area/glow, phone transition), shared `src/pages/academy-core/AcademyCoreInstrument.tsx` (+`lensScale` prop, 9 lines),
+tests: `orrery-motion.test.ts`, `OrreryEngine.test.ts`, `AcademyCoreV35Page.test.tsx`, new `AcademyCoreInstrument.lens.test.tsx`, `e2e/academy-core-v35.spec.ts`.
+
+### Tests
+
+| Suite | Result |
+|---|---|
+| vitest: V3.5 (`orrery-motion` 39, `OrreryEngine` 7, page 39) + V3 (`AcademyCorePage` 32, route 9, warm 5, **lens 2**) + `route-prefetch` 7 | **140 / 140** |
+| Playwright `e2e/academy-core-v35.spec.ts --grep-invert evidence` (Chromium) | **46 / 46** (32 previous + 14 new) |
+| `tsc -p tsconfig.app.json` | only the 2 pre-existing baseline errors (`OnboardingProfile.tsx`, `identity/connections.ts`) |
+| `eslint` on changed files | 0 errors; 1 pre-existing warning (`react-refresh/only-export-components`, `AcademyCoreInstrument.tsx:55`, the existing `BOOK_SLOTS` export) |
+
+New coverage — selector: exactly two buttons, no visible text, names, ≥ 44 px, unobstructed, beneath the Core; right advances one book per press
+in orbit order and wraps after four, left reverses; all four (including a back-facing book) reach the front; the whole orbit turns together;
+the held book is front-centre, still for 3 s, on top, and one click navigates; rapid presses count exactly; takes over a fling and a snap;
+a drag releases the hold and the orbit resumes; the crystal projects the selection and its own cycle continues from it; Enter/Space and focus
+ring; reduced motion places at once; phones 390 / 320 step clockwise without orbiting. Crystal: lens/instrument 0.48–0.51 (was 0.400), Core,
+rings and dial unchanged; iris, hit area and all four projections centred and inside the lens; `/lol` keeps the V3 ratio (0.192).
+Unit: turns preserve relative positions exactly, monotone with no overshoot, continuity on take-over, single controller, reduced-motion placement.
+
+Not new failures but fixed test design along the way: two Phase 2 tests relied on wall-clock timing / a stationary pointer and became flaky
+under load; they now wait on the engine's `data-spin` phase and park the pointer. A "books stopped moving" heuristic misfired on cold pages
+(frames can stall for a few hundred ms), which is why `data-spin` exists. No console errors were seen in the browser probes.
+
+### Performance (measured, same harness, A/B against `b2518371` served side by side)
+
+Headless Edge, 1366×768, CDP main-thread busy / style recalc over 6 s idle, alternating before/after:
+
+| | before (b2518371) | after |
+|---|---|---|
+| full, steady pairs | 38.0 % / 34.3 % | 35.3 % / 35.0 % |
+| lite | 28.7 % | 30.1 % |
+| full, 390×844 | 24.5 % | 27.6 % |
+
+All runs held the display rate (75 Hz in this session, rAF p95 13.4 ms). Differences are within run-to-run noise (±3 points); I see no
+measurable regression. (These absolute numbers are higher than Phase 2's because this session ran at 75 Hz rather than 60 Hz: more frames
+per second. Compare within a table only.) Not measured on real GPU hardware.
+
+**Recording caveat found while doing this:** Playwright's bundled headless Chromium renders this scene at **~8 fps while recording** on this
+machine (Edge: ~70 fps), and the engine caps a frame step at 50 ms, so recordings made in it show the motion slowed and choppy. The new
+recording was made in Edge (`V35_EVIDENCE_CHANNEL=msedge`). The earlier Phase 1 and Phase 2 recordings were made with the bundled Chromium
+and therefore **understate the real speed and smoothness**; they were not re-recorded (out of scope).
+
+### Evidence (`docs/handoffs/academy-core-v35/`, real art)
+
+- `orrery-selector-and-crystal.webm` — 32 s, 1366×768, Edge: idle orbit → `›` (whole orbit turns, book held) → `›` → `‹` (reverses) → a
+  back-facing book brought round (two steps, the second mid-turn) → three rapid `›` → the enlarged crystal cycling all four projections →
+  `›` then a click on the selected book → its room (Pro Play). A white ring marks the pointer.
+- `selector-desktop-1366x768-idle.png`, `selector-desktop-1366x768-selected.png`, `selector-desktop-1920x1080-selected.png`
+- `selector-mobile-390x844-stage.png`, `selector-mobile-390x844-full.png`
+- `crystal-before-after.png` — identical framing (1366×768, reduced motion so books and rings hold still, 380 px crop on the instrument),
+  before = `b2518371`, after = this change, for idle and all four projections.
+
+### Outstanding / for the owner
+
+1. The held book overlaps the bottom rim of the larger lens (see Change 2). If you want a clean gap, the options are a slightly smaller lens
+   (0.90 gives ~+15 % instead of +23 %) or holding the selected book a little lower — your call; neither was done unasked.
+2. On phones the arrows sit under the composed books (there is no room beneath the Core between the tiers without redesigning the layout).
+3. Hover / keyboard on another book temporarily shows that book while the selection stays held — this is deliberate; say if you would rather a
+   focused book become the selection.
+4. Still Chromium/Edge only; no real-GPU numbers; Phase 1/2 recordings understate motion (above).
+
+### Next recommended work (not started)
+
+Owner review of these two changes; then Phase 3 as previously proposed (integration plan), sound only with your go-ahead on the shared audio registry.
+
+---
 
 ## P2. Phase 2 — advanced interaction polish
 

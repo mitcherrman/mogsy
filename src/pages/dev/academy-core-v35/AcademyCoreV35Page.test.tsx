@@ -558,3 +558,139 @@ describe("phase 2: arrow keys, quality tiers", () => {
     expect(lev.querySelector(".o35-pagelight")).not.toBeNull();
   });
 });
+
+describe("the arrow selector", () => {
+  const fake = () => vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "clearTimeout"] });
+  const stage = () => screen.getByTestId("academy-core-stage");
+  const right = () => screen.getByTestId("academy-core-arrow-right");
+  const left = () => screen.getByTestId("academy-core-arrow-left");
+  const xy = () => IDS.map((id) => translateOf(id));
+
+  it("is exactly two arrow buttons with accessible names and no visible text", () => {
+    mount();
+    const sel = screen.getByTestId("academy-core-selector");
+    const buttons = within(sel).getAllByRole("button");
+    expect(buttons).toHaveLength(2);
+    expect(sel.children).toHaveLength(2);
+    expect(sel.textContent?.trim()).toBe("");
+    expect(right()).toHaveAccessibleName("Next book");
+    expect(left()).toHaveAccessibleName("Previous book");
+    for (const b of buttons) expect(b).toHaveAttribute("type", "button");
+  });
+
+  it("a press turns the whole orbit, previews the chosen book everywhere, holds it, and never navigates", () => {
+    fake();
+    mount();
+    act(() => { vi.advanceTimersByTime(200); });
+    const before = xy();
+    fireEvent.click(right());
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft"); // crystal, Mogzy, tether follow at once
+    expect(screen.getByTestId("academy-core-mogzy")).toHaveAttribute("data-pose", "holdingBook");
+    act(() => { vi.advanceTimersByTime(400); });
+    const mid = xy();
+    for (let i = 0; i < 4; i++) expect(mid[i], `${IDS[i]} moved with the orbit`).not.toEqual(before[i]);
+    act(() => { vi.advanceTimersByTime(2000); });
+    const held = xy();
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(xy()).toEqual(held); // held at the front: no drift
+    expect(Number(bookBox("leaguecraft").style.zIndex)).toBeGreaterThanOrEqual(60);
+    expect(document.querySelector(".o35-tether[data-bay='leaguecraft']")).toHaveAttribute("data-on", "true");
+    expect(screen.queryByTestId("probe")).toBeNull();
+    expect(screen.getByTestId("academy-core-preview")).toHaveTextContent("Previewing Leaguecraft");
+  });
+
+  it("each press advances exactly one book; rapid presses all count; left reverses; it wraps", () => {
+    fake();
+    mount();
+    fireEvent.click(right());
+    fireEvent.click(right());
+    fireEvent.click(right());
+    expect(stage()).toHaveAttribute("data-focus", "combat-lab");
+    act(() => { vi.advanceTimersByTime(3000); });
+    fireEvent.click(right());
+    fireEvent.click(right());
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft"); // pro-play, then round to leaguecraft
+    fireEvent.click(left());
+    expect(stage()).toHaveAttribute("data-focus", "pro-play");
+  });
+
+  it("the selected book is one click from its room (the 240 ms activation, as ever)", () => {
+    fake();
+    mount();
+    fireEvent.click(right());
+    act(() => { vi.advanceTimersByTime(2500); });
+    fireEvent.click(book("leaguecraft"));
+    act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 10); });
+    expect(screen.getByTestId("probe")).toHaveTextContent("quiz|/quiz");
+  });
+
+  it("the crystal keeps its own cycle: it continues from the selected book and lets the orbit go", () => {
+    fake();
+    mount();
+    fireEvent.click(right()); // leaguecraft
+    act(() => { vi.advanceTimersByTime(2500); });
+    const held = xy();
+    fireEvent.click(screen.getByTestId("academy-core-crystal"));
+    expect(stage()).toHaveAttribute("data-focus", "pro-play"); // the crystal's next after leaguecraft
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(xy()).not.toEqual(held); // the hold is released (pro-play comes beside the lens; the orbit drifts)
+    expect(screen.queryByTestId("probe")).toBeNull();
+  });
+
+  it("a press on open space releases the selection (the orbit resumes)", () => {
+    fake();
+    mount();
+    fireEvent.click(right());
+    act(() => { vi.advanceTimersByTime(2500); });
+    fireEvent.pointerDown(stage(), { pointerId: 9, clientX: 400, clientY: 600, button: 0, pointerType: "mouse" });
+    fireEvent.pointerUp(stage(), { pointerId: 9, pointerType: "mouse" });
+    expect(stage()).toHaveAttribute("data-focus", "idle");
+    const a = xy();
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(xy()).not.toEqual(a);
+  });
+
+  it("hover and keyboard focus layer on top of the selection and give it back", () => {
+    fake();
+    mount();
+    fireEvent.click(right()); // leaguecraft
+    act(() => { vi.advanceTimersByTime(2500); });
+    fireEvent.pointerEnter(slot("archives"), { pointerType: "mouse" });
+    expect(stage()).toHaveAttribute("data-focus", "archives");
+    expect(slot("leaguecraft")).toHaveAttribute("data-active", "false"); // one emphasised book at a time
+    fireEvent.pointerLeave(slot("archives"));
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft");
+    expect(slot("leaguecraft")).toHaveAttribute("data-active", "true");
+  });
+
+  it("reduced motion: the selection is placed at once, with no animation loop", () => {
+    reduced.current = true;
+    const raf = vi.spyOn(window, "requestAnimationFrame");
+    mount();
+    const before = xy();
+    fireEvent.click(right());
+    expect(xy()).not.toEqual(before);
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft");
+    expect(raf).not.toHaveBeenCalled();
+    raf.mockRestore();
+  });
+
+  it("phones: no orbit; the arrows step the preview round the composed ring (right = clockwise)", () => {
+    setLayout(false);
+    fake();
+    mount();
+    const before = xy();
+    const seq: string[] = [];
+    for (let k = 0; k < 5; k++) { fireEvent.click(right()); seq.push(stage().getAttribute("data-focus")!); }
+    expect(seq).toEqual(["leaguecraft", "pro-play", "archives", "combat-lab", "leaguecraft"]);
+    fireEvent.click(left());
+    expect(stage()).toHaveAttribute("data-focus", "combat-lab");
+    // the books stay where they are (only the chosen one is lit, a little larger) ...
+    const after = xy();
+    for (let i = 0; i < 4; i++) expect(Math.hypot(after[i][0] - before[i][0], after[i][1] - before[i][1])).toBeLessThan(15);
+    // ... and nothing orbits afterwards
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(xy()).toEqual(after);
+  });
+});

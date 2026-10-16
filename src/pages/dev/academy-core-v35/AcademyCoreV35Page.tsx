@@ -102,6 +102,9 @@ function initialQuality(): SceneQuality {
 }
 
 /** How fast the Core's rings and comets turn for each room (1 = rest). */
+/** The phone composition's books in clockwise order (the right arrow steps this way). */
+const COMPOSED_RING: BookId[] = ["leaguecraft", "pro-play", "archives", "combat-lab"];
+
 const TEMPO: Record<string, number> = { idle: 1, leaguecraft: 1.6, "pro-play": 1.3, "combat-lab": 2.5, archives: 0.65 };
 const IDLE_LINE = "Pick a book and I'll take a reading.";
 
@@ -142,7 +145,7 @@ function AcademyCoreV35() {
   const queryClient = useQueryClient();
   const nav = useCoreNavigator(reduced);
   const [quality, setQuality] = useState<SceneQuality>(initialQuality);
-  const { focus, pointerFocus, keyboardFocus, pinned, activating } = nav;
+  const { focus, pointerFocus, keyboardFocus, pinned, pinSource, activating } = nav;
 
   // The same session flag the Hall and the V3 Core set on arrival.
   useEffect(() => { markHubVisited(); }, []);
@@ -189,7 +192,11 @@ function AcademyCoreV35() {
   const needleEl = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<OrreryEngine | null>(null);
 
-  const front: BookId | null = keyboardFocus !== "idle" ? keyboardFocus : pointerFocus === "idle" && pinned !== "idle" ? pinned : null;
+  // Only the crystal's preview brings a book out of the orbit to rest beside the lens;
+  // the arrow selector's book is brought forward BY the orbit and stays in it.
+  const front: BookId | null = keyboardFocus !== "idle"
+    ? keyboardFocus
+    : pointerFocus === "idle" && pinned !== "idle" && pinSource === "crystal" ? pinned : null;
   const targets = useMemo(() => ({
     emphasis: focus === "idle" ? null : focus,
     front,
@@ -210,6 +217,7 @@ function AcademyCoreV35() {
         books: bookEls.current,
         tethers: tetherEls.current,
         needle: needleEl.current,
+        host: stage,
         parallax: animate ? Array.from(hero.querySelectorAll<HTMLElement>("[data-parallax]")) : [],
         tempo: animate ? Array.from(hero.querySelectorAll<HTMLElement>(".o35-comet, .o35-gyro-ring, .o35-ring")) : [],
       },
@@ -265,8 +273,12 @@ function AcademyCoreV35() {
   // its momentum, and the books settle on the nearest symmetric composition.
   const drag = useRef<{ id: number; x: number; t: number } | null>(null);
   const onStageDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (mode !== "orbit" || reduced || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (mode !== "orbit" || (e.pointerType === "mouse" && e.button !== 0)) return;
     if ((e.target as Element).closest("a,button,.o35-slot")) return;
+    // an intentional press on open space lets go of the arrow selector's hold
+    engineRef.current?.releaseSelection();
+    nav.clearSelection();
+    if (reduced) return;
     drag.current = { id: e.pointerId, x: e.clientX, t: e.timeStamp };
     e.currentTarget.setPointerCapture?.(e.pointerId);
     e.currentTarget.dataset.dragging = "true";
@@ -309,6 +321,40 @@ function AcademyCoreV35() {
   const stageSize = fullLayout ? STAGE : STAGE_COMPOSED;
   const anyFocus = focus !== "idle";
 
+  /* ---------------- the arrow selector ---------------- */
+  // Desktop: each press turns the whole orbit one book (the engine plans the turn
+  // and holds the book at the front). Phones do not orbit: the arrows step the
+  // preview around the composed ring (right = clockwise) and the chosen book is lit.
+  const onArrow = (dir: 1 | -1) => {
+    let id: BookId | null = null;
+    if (mode === "orbit") {
+      id = engineRef.current?.steer(dir) ?? null;
+    } else {
+      const i = COMPOSED_RING.indexOf(pinned as BookId);
+      id = i < 0 ? (dir > 0 ? COMPOSED_RING[0] : COMPOSED_RING[COMPOSED_RING.length - 1]) : COMPOSED_RING[(i + dir + COMPOSED_RING.length) % COMPOSED_RING.length];
+    }
+    if (!id) return;
+    nav.select(id);
+    const d = destinationById(id);
+    if (d) prefetchRoute(d.to, { intent: true });
+  };
+  // The crystal keeps its own preview cycle; using it lets go of an arrow hold first.
+  const onCrystal = () => {
+    engineRef.current?.releaseSelection();
+    nav.cycle();
+  };
+
+  const selector = (
+    <div className="o35-selector" role="group" aria-label="Turn the orbit" data-testid="academy-core-selector">
+      <button type="button" className="o35-arrow" aria-label="Previous book" data-testid="academy-core-arrow-left" onClick={() => onArrow(-1)}>
+        <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
+      </button>
+      <button type="button" className="o35-arrow" aria-label="Next book" data-testid="academy-core-arrow-right" onClick={() => onArrow(1)}>
+        <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+      </button>
+    </div>
+  );
+
   const crystalButton = (
     <div className="acore-crystal-hit acore-crystal-hit-compact o35-crystal-hit">
       <button
@@ -317,7 +363,7 @@ function AcademyCoreV35() {
         data-testid="academy-core-crystal"
         aria-label="Cycle the room preview in the crystal"
         aria-describedby="acore-preview-readout"
-        onClick={nav.cycle}
+        onClick={onCrystal}
         onPointerEnter={nav.cancelRelease}
       >
         <span className="sr-only">{previewLabel}</span>
@@ -519,6 +565,8 @@ function AcademyCoreV35() {
               {previewLabel}
             </p>
 
+            {fullLayout && selector}
+
             <div className="o35-mogzy">
               <MogzyOperator
                 focus={focus}
@@ -531,6 +579,8 @@ function AcademyCoreV35() {
             </div>
           </div>
         </div>
+
+        {!fullLayout && selector}
 
         {!fullLayout && (
           <div className="o35-island-mobile">

@@ -52,9 +52,19 @@ export interface CoreNavigator {
   pointerFocus: CoreFocus;
   keyboardFocus: CoreFocus;
   pinned: CoreFocus;
+  /**
+   * Who set `pinned`: the crystal's preview cycle, or the arrow selector. There is
+   * ONE previewed destination; the source only decides how the scene shows it
+   * (the crystal brings the book beside the lens, the selector turns the orbit).
+   */
+  pinSource: "crystal" | "selector";
   activating: CoreFocus | null;
   cancelRelease: () => void;
   cycle: () => void;
+  /** The arrow selector chose `id` (never navigates). */
+  select: (id: CoreFocus) => void;
+  /** Drop a selector choice (a grab of the orbit); a crystal preview is left alone. */
+  clearSelection: () => void;
   bookHandlers: (d: CoreDestination) => {
     onPointerEnter: (e: React.PointerEvent) => void;
     onPointerLeave: () => void;
@@ -73,6 +83,7 @@ export function useCoreNavigator(reduced: boolean): CoreNavigator {
   const [pointerFocus, setPointerFocus] = useState<CoreFocus>("idle");
   const [keyboardFocus, setKeyboardFocus] = useState<CoreFocus>("idle");
   const [pinned, setPinned] = useState<CoreFocus>("idle");
+  const [pinSource, setPinSource] = useState<"crystal" | "selector">("crystal");
   const focus: CoreFocus = pointerFocus !== "idle" ? pointerFocus : keyboardFocus !== "idle" ? keyboardFocus : pinned;
 
   const releaseTimer = useRef<number | null>(null);
@@ -154,10 +165,25 @@ export function useCoreNavigator(reduced: boolean): CoreNavigator {
       const i = CORE_CYCLE_ORDER.indexOf(prev as (typeof CORE_CYCLE_ORDER)[number]);
       return i < 0 ? CORE_CYCLE_ORDER[0] : i === CORE_CYCLE_ORDER.length - 1 ? "idle" : CORE_CYCLE_ORDER[i + 1];
     });
+    setPinSource("crystal");
     cancelRelease();
     setPointerFocus("idle");
     setKeyboardFocus("idle");
   }, [cancelRelease]);
+
+  /* ---------------- the arrow selector: the same preview, a different source ---------------- */
+  const select = useCallback((id: CoreFocus) => {
+    setPinned(id);
+    setPinSource("selector");
+    cancelRelease();
+    setPointerFocus("idle");
+    setKeyboardFocus("idle");
+  }, [cancelRelease]);
+  const clearSelection = useCallback(() => {
+    if (pinSource !== "selector") return;
+    setPinned("idle");
+    setPinSource("crystal");
+  }, [pinSource]);
 
   const bookHandlers = useCallback((d: CoreDestination) => ({
     onPointerEnter: (e: React.PointerEvent) => {
@@ -184,5 +210,5 @@ export function useCoreNavigator(reduced: boolean): CoreNavigator {
     onBlur: () => release(),
   }), [cancelRelease, cue, release]);
 
-  return { focus, pointerFocus, keyboardFocus, pinned, activating, cancelRelease, cycle, bookHandlers, onBookClick };
+  return { focus, pointerFocus, keyboardFocus, pinned, pinSource, activating, cancelRelease, cycle, select, clearSelection, bookHandlers, onBookClick };
 }

@@ -16,7 +16,10 @@
  *   · a bearing needle that points at the book the Core is attending to
  *     (the engine rotates it; the V3 bezel cursor is hidden because its
  *     fixed per-channel angles are meaningless when the books move);
- *   · the mode readout, set on a curve over the top of the ring.
+ *   · the mode readout, set on a curve over the top of the ring;
+ *   · a larger crystal: the instrument's `lensScale` (V3.5 only) fills the dial's
+ *     inner band, so the luminous lens, its projections and the iris all grow
+ *     together while the dial, rings and orbit keep their size.
  *
  * Every animation is a transform / opacity keyframe on its own element; there
  * is no JS in the loop except the needle, which the engine writes.
@@ -25,6 +28,14 @@ import { forwardRef, memo, type ReactNode } from "react";
 
 import AcademyCoreInstrument, { type CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
 import { CORE_IDLE_READOUT, destinationById, type CoreFocus } from "@/pages/academy-core/academy-core-destinations";
+
+/**
+ * The crystal's scale on the dial in V3.5 (V3 uses 0.78). 0.96 makes the lens
+ * ~23 % wider (~51 % more area) and fills the dark enamel band up to its edge:
+ * lens r 118 -> 113 viewBox units inside the band's r 118, iris rim at ~117-120,
+ * clear of the scale ticks (r 128+). The outer dial and rings are unchanged.
+ */
+export const V35_LENS_SCALE = 0.96;
 
 export interface OrreryCoreProps {
   focus: CoreFocus;
@@ -134,7 +145,7 @@ const OrreryCore = forwardRef<HTMLDivElement, OrreryCoreProps>(function OrreryCo
 
       {/* the V3 crystal assembly, unchanged */}
       <div className="o35-instrument">
-        <AcademyCoreInstrument focus={focus} activating={activating} compact ambient={ambient} media={media} />
+        <AcademyCoreInstrument focus={focus} activating={activating} compact ambient={ambient} media={media} lensScale={V35_LENS_SCALE} />
         {children}
       </div>
     </div>

@@ -35,6 +35,7 @@ import {
   CORE_CENTER_COMPOSED,
   DESKTOP_ORBIT,
   EMPHASIS_SCALE,
+  SELECTED_EMPHASIS_SCALE,
   ORBIT_OMEGA,
   SpinModel,
   STAGE,
@@ -63,6 +64,8 @@ export interface EngineElements {
   parallax: HTMLElement[];
   /** Elements whose CSS animations the Core speeds up / slows down with the room in focus. */
   tempo?: HTMLElement[];
+  /** Receives `data-spin` (the spin phase) when it changes: for inspection and tests. */
+  host?: HTMLElement | null;
 }
 
 export interface EngineTargets {
@@ -130,6 +133,7 @@ export class OrreryEngine {
   private pyTarget = 0;
   private lastNeedle = "";
   private frame = 0;
+  private lastSpin = "";
   private parallaxLast = new WeakMap<HTMLElement, string>();
 
   constructor(els: EngineElements, opts: EngineOptions) {
@@ -181,7 +185,7 @@ export class OrreryEngine {
     return this.spin.theta;
   }
 
-  /** The spin state machine's phase (free / grabbed / inertia / snapping / dwell). */
+  /** The spin state machine's phase (free / grabbed / inertia / snapping / dwell / steering / held). */
   get spinPhase(): string {
     return this.spin.phase;
   }
@@ -210,6 +214,40 @@ export class OrreryEngine {
   release(): void {
     this.spin.release();
     this.wake();
+  }
+
+  /**
+   * The arrow selector (orbit mode): turn the whole orbit so the next book in
+   * direction `dir` comes to the front, then hold it there. Under reduced motion
+   * the orbit is placed at once. Returns the book now selected.
+   */
+  steer(dir: 1 | -1): BookId | null {
+    if (this.mode !== "orbit") return null;
+    const i = this.spin.steer(dir, this.animate);
+    this.syncSpin(); // at once, not on the next frame: a reader must never see the previous "held"
+    if (!this.animate) this.renderFrame(0);
+    this.wake();
+    return i >= 0 ? BOOK_ORDER[i] : null;
+  }
+
+  /** Release a selector hold; the orbit resumes. */
+  releaseSelection(): void {
+    this.spin.releaseHold();
+    this.syncSpin();
+    this.wake();
+  }
+
+  private syncSpin(): void {
+    if (this.spin.phase === this.lastSpin) return;
+    this.lastSpin = this.spin.phase;
+    this.els.host?.setAttribute("data-spin", this.spin.phase);
+  }
+
+  /** The book the selector holds (or is turning) to the front, if any. */
+  get selected(): BookId | null {
+    return this.spin.selected >= 0 && (this.spin.phase === "steering" || this.spin.phase === "held")
+      ? BOOK_ORDER[this.spin.selected]
+      : null;
   }
 
   start(): void {
@@ -284,6 +322,7 @@ export class OrreryEngine {
     this.frame++;
 
     if (orbit) this.spin.step(dt, t.calm, this.animate);
+    this.syncSpin();
     const theta = this.spin.theta;
     if (dt > 0 && this.animate && Math.abs(this.tempo - this.tempoTarget) > 0.005) {
       this.tempo = approach(this.tempo, this.tempoTarget, dt, TAU_TEMPO);
@@ -294,6 +333,7 @@ export class OrreryEngine {
     const baseH = baseW * BOOK_RATIO;
     const core = orbit ? CORE_CENTER : CORE_CENTER_COMPOSED;
     const anyFocus = t.emphasis !== null;
+    const selected = this.selected;
     let needleTarget: BookPose | null = null;
 
     BOOK_ORDER.forEach((id, i) => {
@@ -307,7 +347,10 @@ export class OrreryEngine {
       let pose: BookPose = orbit ? orbitPose(bookAngle(i, theta), DESKTOP_ORBIT) : COMPOSED_POSES[id];
       if (orbit && s.front > 0.001) pose = blendPose(pose, frontPose(s.side), s.front);
       // Float the phone books a touch differently so they never read as a grid.
-      let scale = pose.scale * (1 + EMPHASIS_SCALE * s.emphasis);
+      // the selector's book sits in the orbit right under the crystal: it is lit and
+      // on top, but grows less than a hovered book so it does not climb over the lens
+      const held = selected === id;
+      let scale = pose.scale * (1 + (held ? SELECTED_EMPHASIS_SCALE : EMPHASIS_SCALE) * s.emphasis);
       if (anyFocus && t.emphasis !== id) scale *= lerp(1, SUPPORT_SCALE, 1 - s.emphasis);
       if (t.activating === id) scale *= 1.06;
 

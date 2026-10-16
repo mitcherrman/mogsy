@@ -171,7 +171,57 @@ export function snapTarget(theta: number, dir: number): number {
   return REST_THETA + (dir >= 0 ? Math.ceil(k) : Math.floor(k)) * SNAP_STEP;
 }
 
-export type SpinPhase = "free" | "grabbed" | "inertia" | "snapping" | "dwell";
+/* ------------------------------------------------------------------ */
+/* The arrow selector: rotate the whole orbit one book at a time.       */
+/* ------------------------------------------------------------------ */
+
+/** The foreground position on the orbit: front and centre, below the crystal. */
+export const FRONT_ANGLE = Math.PI / 2;
+/** A book closer to the front than this is already "there": the arrow takes the next one. */
+export const MIN_STEER = 0.35;
+/** Emphasis growth for a book the selector holds at the front (smaller than hover: it sits under the crystal). */
+export const SELECTED_EMPHASIS_SCALE = 0.04;
+
+const posMod = (v: number, m: number) => ((v % m) + m) % m;
+
+/**
+ * The next book to arrive at the front if the orbit turns in direction `dir`
+ * (+1: theta increases — the near side of the orbit moves left, so the book on
+ * the RIGHT comes forward; -1: the reverse), and the phase that puts it there.
+ * A book already within MIN_STEER of the front is skipped, so an arrow press
+ * always produces a visible turn.
+ */
+export function nextArrival(theta: number, dir: 1 | -1, count = BOOK_ORDER.length): { index: number; target: number } {
+  let best = { index: 0, d: Infinity };
+  for (let i = 0; i < count; i++) {
+    const a = bookAngle(i, theta, count);
+    let d = dir > 0 ? posMod(FRONT_ANGLE - a, TAU) : posMod(a - FRONT_ANGLE, TAU);
+    if (d < MIN_STEER) d += TAU;
+    if (d < best.d) best = { index: i, d };
+  }
+  return { index: best.index, target: theta + dir * best.d };
+}
+
+/** Seconds for a selector turn of `delta` radians: ~1.2 s a quarter turn, longer for more. */
+export function steerDuration(delta: number): number {
+  const quarters = Math.abs(delta) / (Math.PI / 2);
+  return Math.min(2.2, Math.max(0.7, 0.75 + 0.45 * quarters));
+}
+
+/**
+ * Cubic Hermite from (p0, slope m0) to (p1, slope 0) at s in [0, 1]: value and
+ * d/ds. Starting from the orbit's current velocity keeps the hand-over smooth
+ * (no jump in position or speed); ending at zero slope is the deceleration.
+ */
+export function hermite(p0: number, p1: number, m0: number, s: number): { v: number; d: number } {
+  const s2 = s * s;
+  const s3 = s2 * s;
+  const v = (2 * s3 - 3 * s2 + 1) * p0 + (s3 - 2 * s2 + s) * m0 + (-2 * s3 + 3 * s2) * p1;
+  const d = (6 * s2 - 6 * s) * p0 + (3 * s2 - 4 * s + 1) * m0 + (-6 * s2 + 6 * s) * p1;
+  return { v, d };
+}
+
+export type SpinPhase = "free" | "grabbed" | "inertia" | "snapping" | "dwell" | "steering" | "held";
 
 /**
  * The orbit's phase and angular velocity, as a small state machine (no DOM, no
@@ -180,6 +230,12 @@ export type SpinPhase = "free" | "grabbed" | "inertia" | "snapping" | "dwell";
  * settles onto the nearest symmetric composition, where it `dwell`s briefly
  * before the slow orbit resumes. A slow release, or any focused book (calm < 1),
  * skips inertia and snap: the orbit just eases back to its calm speed.
+ *
+ * The arrow selector adds `steering` (one planned turn that brings a chosen book
+ * to the front, taking over from whatever the orbit was doing) and `held` (the
+ * orbit stays still with that book in front until something intentional
+ * releases it: a grab, or `releaseHold`). There is exactly one controller: a
+ * new arrow press re-plans the same turn from the current position and speed.
  */
 export class SpinModel {
   theta = REST_THETA;
@@ -187,8 +243,15 @@ export class SpinModel {
   phase: SpinPhase = "free";
   /** Smoothed pointer angular velocity while grabbed (rad/s). */
   velocity = 0;
+  /** Index (BOOK_ORDER) of the book the selector is bringing / holding at the front; -1 when none. */
+  selected = -1;
   private dwell = 0;
   private snapTo = 0;
+  private steerFrom = 0;
+  private steerTo = 0;
+  private steerM0 = 0;
+  private steerT = 1;
+  private steerT0 = 0;
 
   constructor(omega = ORBIT_OMEGA) {
     this.omega = omega;
@@ -198,6 +261,54 @@ export class SpinModel {
     this.phase = "grabbed";
     this.omega = 0;
     this.velocity = 0;
+    this.selected = -1;
+  }
+
+  /**
+   * One arrow press: advance the selection one book in direction `dir` and plan
+   * the turn that brings it to the front. Repeated presses accumulate exactly
+   * one quarter turn each on top of the current target. Without animation the
+   * orbit is placed at once. Returns the selected book's index.
+   */
+  steer(dir: 1 | -1, animate = true, count = BOOK_ORDER.length): number {
+    if (this.phase === "grabbed") return this.selected;
+    let target: number;
+    if ((this.phase === "steering" || this.phase === "held") && this.selected >= 0) {
+      target = this.steerTo + (dir * TAU) / count;
+      this.selected = posMod(this.selected - dir, count);
+    } else {
+      const next = nextArrival(this.theta, dir, count);
+      target = next.target;
+      this.selected = next.index;
+    }
+    this.steerTo = target;
+    if (!animate) {
+      this.theta = target;
+      this.omega = 0;
+      this.phase = "held";
+      return this.selected;
+    }
+    const delta = target - this.theta;
+    const T = steerDuration(delta);
+    // Start from the current angular velocity, bounded so the turn can never
+    // overshoot its target (m0/delta <= 3) nor swing far the wrong way first.
+    const sign = delta >= 0 ? 1 : -1;
+    const a = Math.abs(delta);
+    const m0 = sign * Math.max(-a, Math.min(3 * a, sign * this.omega * T));
+    this.steerFrom = this.theta;
+    this.steerM0 = m0;
+    this.steerT = T;
+    this.steerT0 = 0;
+    this.phase = "steering";
+    return this.selected;
+  }
+
+  /** Let go of a selector hold (or an unfinished turn): the slow orbit resumes from here. */
+  releaseHold(): void {
+    if (this.phase !== "steering" && this.phase !== "held") return;
+    this.phase = "free";
+    this.omega = 0;
+    this.selected = -1;
   }
 
   /** Move the orbit by `dTheta` over `dt` seconds of pointer travel. */
@@ -225,7 +336,21 @@ export class SpinModel {
     const free = animate ? ORBIT_OMEGA * calm : 0;
     switch (this.phase) {
       case "grabbed":
+      case "held":
         return;
+      case "steering": {
+        this.steerT0 += dt;
+        const s = Math.min(1, this.steerT0 / this.steerT);
+        const h = hermite(this.steerFrom, this.steerTo, this.steerM0, s);
+        this.theta = h.v;
+        this.omega = h.d / this.steerT;
+        if (s >= 1) {
+          this.theta = this.steerTo;
+          this.omega = 0;
+          this.phase = "held";
+        }
+        return;
+      }
       case "inertia": {
         // a hovered book wants the orbit to settle quickly under the cursor
         this.omega *= Math.exp(-dt / (calm < 1 ? TAU_INERTIA * 0.3 : TAU_INERTIA));

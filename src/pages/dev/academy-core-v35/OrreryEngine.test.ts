@@ -110,3 +110,52 @@ describe("tempo", () => {
     expect(a.playbackRate).toBeCloseTo(1, 1);
   });
 });
+
+describe("arrow selector API", () => {
+  it("steer turns the orbit to the selected book and holds it; releaseSelection lets the orbit go", () => {
+    const raf = manualRaf();
+    const e = new OrreryEngine(els(), { mode: "orbit", animate: true });
+    e.resize(960, 700);
+    e.start();
+    raf.frames(5, 16.7);
+    const id = e.steer(1);
+    expect(id).toBe("leaguecraft");
+    expect(e.selected).toBe("leaguecraft");
+    expect(e.spinPhase).toBe("steering");
+    raf.frames(150, 16.7);
+    expect(e.spinPhase).toBe("held");
+    const held = e.phase;
+    raf.frames(300, 16.7);
+    expect(e.phase).toBe(held);
+    expect(e.steer(1)).toBe("archives");
+    expect(e.steer(-1)).toBe("leaguecraft");
+    e.releaseSelection();
+    expect(e.selected).toBeNull();
+    expect(e.spinPhase).toBe("free");
+    raf.frames(120, 16.7);
+    expect(e.phase).not.toBe(held);
+  });
+
+  it("a grab drops the selection; reduced motion places the selection at once; phones have no orbit to steer", () => {
+    const raf = manualRaf();
+    const e = new OrreryEngine(els(), { mode: "orbit", animate: true });
+    e.resize(960, 700);
+    e.start();
+    e.steer(1);
+    raf.frames(20, 16.7);
+    e.grab();
+    expect(e.selected).toBeNull();
+    e.release();
+
+    const r = new OrreryEngine(els(), { mode: "orbit", animate: false });
+    r.resize(960, 700);
+    const before = r.phase;
+    expect(r.steer(1)).toBe("leaguecraft");
+    expect(r.spinPhase).toBe("held");
+    expect(r.phase).toBeCloseTo(before + Math.PI / 4, 9);
+
+    const c = new OrreryEngine(els(), { mode: "composed", animate: true });
+    c.resize(360, 640);
+    expect(c.steer(1)).toBeNull();
+  });
+});
