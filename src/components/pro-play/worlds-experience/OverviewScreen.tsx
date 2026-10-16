@@ -633,7 +633,7 @@ function FieldSummary({ d }: { d: Density }) {
           {direct > 0 && playIn > 0 ? `${direct} straight to Swiss · ${playIn} in the Play-In` : `${ctx.participants.length} teams`}
         </span>
       </p>
-      <ul className={cn("grid", d === 0 ? "mt-3 grid-cols-3 gap-x-3 gap-y-2.5" : "mt-1.5 grid-cols-6 gap-x-2")}>
+      <ul className={cn(d === 0 ? "mt-3 grid grid-cols-3 gap-x-3 gap-y-2.5" : "mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5")}>
         {ctx.regions.map((r) => {
           const n = ctx.participants.filter((p) => p.region === r).length;
           if (!n) return null;
