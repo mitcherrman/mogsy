@@ -124,6 +124,19 @@ export interface ReportableQuestionSnapshot {
   sessionId?: string | null;
   /** Round, step or sequence number within that match/session. */
   roundNumber?: number | null;
+
+  /**
+   * PGM1 — the public game mode's stable id (`PublicModeId`), when the report
+   * comes from a More Challenges mode. Lets the owner file reports per mode
+   * without parsing the human `mode` label.
+   */
+  gameModeId?: string | null;
+  /**
+   * PGM1 — the evidence behind the answer (the stat, value or source line the
+   * mode revealed), under the SAME rule as `canonicalAnswer`: only once the
+   * mode has revealed it to this player.
+   */
+  answerEvidence?: string | null;
 }
 
 /* ─────────────────────────────── the payload ─────────────────────────── */
@@ -152,6 +165,8 @@ export interface QuestionReportContext {
   match_id?: string;
   session_id?: string;
   round_number?: number;
+  game_mode_id?: string;
+  answer_evidence?: string;
 }
 
 export interface PageReportContext {
@@ -237,6 +252,8 @@ export function buildQuestionReportContext(args: {
   assign("match_id", text(snapshot.matchId, MAX_SHORT));
   assign("session_id", text(snapshot.sessionId, MAX_SHORT));
   assign("round_number", count(snapshot.roundNumber));
+  assign("game_mode_id", text(snapshot.gameModeId, MAX_SHORT));
+  assign("answer_evidence", text(snapshot.answerEvidence, MAX_ANSWER));
 
   if (snapshot.choices && snapshot.choices.length) {
     const choices = snapshot.choices

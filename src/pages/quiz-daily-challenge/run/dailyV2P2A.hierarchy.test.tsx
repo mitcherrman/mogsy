@@ -47,6 +47,7 @@ import {
   fixtureRun, fixtureV5Run, wireResult, wireRun, wireV5Run, type FixtureTransport,
 } from "@/lib/daily-challenge/run/fixtures";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
+import { MORE_CHALLENGES_STAND_IN, MoreChallengesStandIn } from "@/test/moreChallengesStandIn";
 import { DAILY_INTRO_MS, STAGE_INTRO_MIN_MS, type DailyFlowView } from "@/lib/daily-challenge/run/flow";
 import { DAILY_STAGE_CATEGORY, dailySection, dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyMainResult, stagePositionLabel } from "@/lib/daily-challenge/run/stageResultModel";
@@ -87,6 +88,7 @@ function mount(t: FixtureTransport, { play = true }: { play?: boolean } = {}) {
         <Route path="/quiz/daily-challenge"
           element={<DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA" />} />
         <Route path="/quiz" element={<div data-testid="hub-stand-in" />} />
+        <Route path="/quiz/more-challenges" element={<MoreChallengesStandIn />} />
       </Routes>
     </MemoryRouter>);
 }
@@ -336,8 +338,12 @@ describe("C — a v5 Daily, end to end", () => {
     expect(main.textContent).not.toMatch(NO_FAKE_AUTHORITY);
     expect(document.body.textContent).not.toMatch(NO_GLOBAL_COUNT);
 
-    // More Challenges: section-scoped, optional, in the server's order.
+    // More Challenges: PGM1 — "Play More Challenges" opens the public catalog;
+    // its Play for the run's current bonus stage comes back into the Daily.
     await click("daily-main-continue");
+    expect(q(MORE_CHALLENGES_STAND_IN)).toBeInTheDocument();
+    await click(MORE_CHALLENGES_STAND_IN);
+    // Section-scoped, optional, in the server's order.
     expect(phase()).toBe("stage-intro");
     expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "time_trial");
     expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-section", "more");
@@ -562,6 +568,7 @@ describe("E — leaving", () => {
     expect(q("daily-main-result")).toBeInTheDocument();
     expect(guardActive.at(-1)).toBe(false);
     await click("daily-main-continue");
+    await click(MORE_CHALLENGES_STAND_IN);
     await flush(STAGE_INTRO_MIN_MS + 50);
     expect(phase()).toBe("stage-play");
     expect(guardActive.at(-1)).toBe(true);

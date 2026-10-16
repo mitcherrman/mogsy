@@ -1,0 +1,273 @@
+{
+  "contract": "public_game_modes.catalog.v1",
+  "modes": [
+    {
+      "id": "time_trial",
+      "order": 1,
+      "title": "Time Trial",
+      "theme": "Speed",
+      "summary": "Answer as many questions as you can on a 90-second clock. The clock only runs while a question is waiting for your answer.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "daily_stage",
+        "stage_kind": "time_trial",
+        "min_plan_version": 5
+      },
+      "scoring": {
+        "summary": "Your result is the number of questions you answer correctly before the clock runs out. It never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "time_trial",
+      "report_id": "time_trial"
+    },
+    {
+      "id": "survival",
+      "order": 2,
+      "title": "Survival",
+      "theme": "Endurance",
+      "summary": "Keep answering until you make three mistakes. A wrong answer or a timeout costs a strike.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "daily_stage",
+        "stage_kind": "survival",
+        "min_plan_version": 5
+      },
+      "scoring": {
+        "summary": "Your result is the number of questions you answer correctly before your third strike. It never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "survival",
+      "report_id": "survival"
+    },
+    {
+      "id": "roster_lock",
+      "order": 3,
+      "title": "Roster Lock",
+      "theme": "Pro Play",
+      "summary": "Rebuild a historical pro team: seat each of its five players in the lane they played.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "roster_lock",
+      "report_id": "roster_lock"
+    },
+    {
+      "id": "draft_memory",
+      "order": 4,
+      "title": "Draft Memory",
+      "theme": "Pro Play",
+      "summary": "Recall a historical pro draft: seat each of its five champions in the position it was played.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "draft_memory",
+      "report_id": "draft_memory"
+    },
+    {
+      "id": "chronoscope",
+      "order": 5,
+      "title": "Chronoscope",
+      "theme": "Laning",
+      "summary": "Scrub a lane's timeline wave by wave and stop on the first wave where the stated condition comes true.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "chronoscope",
+      "report_id": "chronoscope"
+    },
+    {
+      "id": "match_grid",
+      "order": 6,
+      "title": "Match Grid",
+      "theme": "Runes",
+      "summary": "Seat each rune under the rune tree it belongs to.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "match_grid",
+      "report_id": "match_grid"
+    },
+    {
+      "id": "reconstruct",
+      "order": 7,
+      "title": "Reconstruct",
+      "theme": "Items",
+      "summary": "Rebuild a legendary item's recipe from its components.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "reconstruct",
+      "report_id": "reconstruct"
+    },
+    {
+      "id": "order_forge",
+      "order": 8,
+      "title": "Order Forge",
+      "theme": "Ordering",
+      "summary": "Put champions in order by a stat, then items by gold cost.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "order_forge",
+      "report_id": "order_forge"
+    },
+    {
+      "id": "rangefinder",
+      "order": 9,
+      "title": "Rangefinder",
+      "theme": "Abilities",
+      "summary": "Drag the target to an ability's exact cast range on the targeting board.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "rangefinder",
+      "report_id": "rangefinder"
+    },
+    {
+      "id": "glyph_press",
+      "order": 10,
+      "title": "Glyph Press",
+      "theme": "Names",
+      "summary": "Complete a partially engraved champion, ability or item name.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "glyph_press",
+      "report_id": "glyph_press"
+    },
+    {
+      "id": "perfect_timing",
+      "order": 11,
+      "title": "Perfect Timing",
+      "theme": "Cooldowns",
+      "summary": "Time an ability's base cooldown with Start and Stop, with no number on screen.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "perfect_timing",
+      "report_id": "perfect_timing"
+    },
+    {
+      "id": "stat_drop",
+      "order": 12,
+      "title": "Stat Drop",
+      "theme": "Stats",
+      "summary": "Drop a marker where a historical stat lands on its scale.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "stat_drop",
+      "report_id": "stat_drop"
+    },
+    {
+      "id": "combat_estimate",
+      "order": 13,
+      "title": "Combat Estimate",
+      "theme": "Damage",
+      "summary": "Set the two-beam balance to the damage one hit deals.",
+      "availability": {
+        "status": "coming_soon",
+        "reason_code": "PUBLIC_LAUNCH_PENDING",
+        "message": "Coming soon."
+      },
+      "launch": null,
+      "scoring": {
+        "summary": null,
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "combat_estimate",
+      "report_id": "combat_estimate"
+    }
+  ]
+}

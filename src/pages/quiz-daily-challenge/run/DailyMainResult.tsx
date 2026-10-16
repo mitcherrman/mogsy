@@ -48,7 +48,7 @@ import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
 import { useSfx } from "@/lib/audio/useSfx";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
-import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
+import { dailySection, dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyMainResult, optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import type { StageResultPlacement } from "./DailyStageResult";
 import { StageTag } from "./StageTag";
@@ -78,7 +78,7 @@ function delayStyle(ms: number): CSSProperties {
 }
 
 export function DailyMainResult({
-  run, stage, error, onRetry, busy, onProceed, onDone, placement,
+  run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges,
 }: {
   run: DailyRun;
   /** The MAIN stage (Standard). */
@@ -91,11 +91,19 @@ export function DailyMainResult({
   /** Leave for the hub. Presentation only. */
   onDone: () => void;
   placement?: StageResultPlacement;
+  /**
+   * PGM1 — open the public More Challenges catalog. When given and the run's
+   * next stage is a bonus ("More Challenges") stage, "Play More Challenges"
+   * goes there, where the player picks a mode, instead of straight into the
+   * run's next stage. Review and the recap still proceed in place.
+   */
+  onMoreChallenges?: () => void;
 }) {
   const settled = isMainDailyComplete(run) && stage.status === "completed";
   const model = buildDailyMainResult(run, stage);
   const optional = dailySections(run).filter((g) => g.id !== "today");
   const next = currentStage(run);
+  const toCatalog = !!onMoreChallenges && next !== null && dailySection(next) === "more";
   const placed = settled && placement
     ? placement({ runId: run.runId, stageId: stage.id, stageKind: stage.kind, stageIndex: stage.index })
     : null;
@@ -185,8 +193,8 @@ export function DailyMainResult({
       <ResultActions actions={{
         primary: {
           label: settled ? optionalNextLabel(next) : "Scoring…",
-          onClick: () => onProceed?.(),
-          disabled: !settled || !onProceed,
+          onClick: () => (toCatalog ? onMoreChallenges?.() : onProceed?.()),
+          disabled: !settled || !(toCatalog || onProceed),
           testId: "daily-main-continue",
         },
         secondary: {
