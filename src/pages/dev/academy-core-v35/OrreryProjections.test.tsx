@@ -7,8 +7,8 @@ import { render } from "@testing-library/react";
 vi.mock("@/hooks/useReducedMotionPreference", () => ({ useReducedMotionPreference: () => true }));
 
 import AcademyCoreInstrument from "@/pages/academy-core/AcademyCoreInstrument";
-import { MatchupProjection, StudyProjection } from "./OrreryProjections";
-import { MATCHUP_LINEUP, RIFT_CENTRE_ART, TEAM_ARC_R, TEAM_ICON_R, teamSlot } from "./orrery-projections-data";
+import { LuxMysteryProjection, MatchupProjection } from "./OrreryProjections";
+import { LUX_GLASS_SCALE, LUX_WINDOW_RADIUS, MATCHUP_LINEUP, MYSTERY_CHAMPION, RIFT_CENTRE_ART, TEAM_ARC_R, TEAM_ICON_R, teamSlot } from "./orrery-projections-data";
 
 const ROLES = ["/r/top.svg", "/r/jungle.svg", "/r/mid.svg", "/r/bot.svg", "/r/support.svg"];
 const icons = (side: string) => [0, 1, 2, 3, 4].map((i) => `/icons/${side}-${i}.png`);
@@ -37,7 +37,7 @@ describe("V3 stays V3 unless a caller opts in", () => {
         focus="idle"
         compact
         media={{ observeRoles: ROLES }}
-        projectionOverrides={{ leaguecraft: <StudyProjection roles={ROLES} />, "pro-play": <MatchupProjection media={MATCHUP} /> }}
+        projectionOverrides={{ leaguecraft: <LuxMysteryProjection portrait="/lux.png" />, "pro-play": <MatchupProjection media={MATCHUP} /> }}
       />,
     );
     expect(container.querySelector(".acore-mode-leaguecraft")).toHaveAttribute("data-projection", "override");
@@ -52,30 +52,63 @@ describe("V3 stays V3 unless a caller opts in", () => {
   });
 });
 
-describe("Leaguecraft: the pentagon of roles with a scroll and quill at its heart", () => {
-  it("draws the reticle, exactly five role icons on the pentagon, and the emblem — no champion portrait", () => {
-    const { container } = render(<svg><StudyProjection roles={ROLES} /></svg>);
-    expect(container.querySelector(".acore-reticle")).not.toBeNull();
-    const roles = [...container.querySelectorAll(".acore-role")];
-    expect(roles).toHaveLength(5);
-    expect(roles.map((r) => r.querySelector("image")!.getAttribute("href"))).toEqual(ROLES);
-    // the five sit on r 76 at 72 degree steps, starting at the top
-    roles.forEach((r, i) => {
-      const [x, y] = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(r.getAttribute("transform")!)!.slice(1).map(Number);
-      expect(Math.hypot(x, y)).toBeCloseTo(76, 0);
-      const ang = (Math.atan2(y, x) * 180) / Math.PI;
-      const want = -90 + i * 72;
-      expect(((ang - want + 540) % 360) - 180).toBeCloseTo(0, 0);
-    });
-    expect(container.querySelector("[data-testid='academy-core-v35-study-emblem']")).not.toBeNull();
-    expect(container.querySelector(".acore-track-mark")).toBeNull();
-    const images = [...container.querySelectorAll("image")].map((i) => i.getAttribute("href"));
-    expect(images).toEqual(ROLES); // the role icons are the only raster images: the emblem is vector
+describe("Leaguecraft: Arcane Mystery — Lux behind shifting Hextech glass", () => {
+  const LUX = "/assets/champions/Lux/icon.png";
+  const LEAGUECRAFT_IRIS = 104;
+
+  it("one large subject: Lux's icon in a hexagonal window, with three glass panes in front of it", () => {
+    const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
+    const portrait = container.querySelector("[data-testid='academy-core-v35-lux-portrait']")!;
+    expect(portrait.getAttribute("href")).toBe(LUX);
+    expect(Number(portrait.getAttribute("width"))).toBeCloseTo(2 * LUX_WINDOW_RADIUS, 6);
+    expect(portrait.closest("[clip-path='url(#o35-lux-window)']")).not.toBeNull();
+    const panes = ["blue", "violet", "gold"].map((id) => container.querySelector(`[data-testid='academy-core-v35-pane-${id}']`));
+    expect(panes.every(Boolean)).toBe(true);
+    // the panes are drawn after (in front of) the portrait
+    const order = [...container.querySelectorAll("[data-testid='academy-core-v35-lux-portrait'], [data-testid^='academy-core-v35-pane-']")];
+    expect(order[0]).toBe(portrait);
+    // through the glass the portrait is refracted: a magnified, displaced copy masked to the panes
+    const refract = container.querySelector(".o35-lux-refract")!;
+    expect(refract.getAttribute("href")).toBe(LUX);
+    expect(refract.closest("[mask='url(#o35-lux-glass-mask)']")).not.toBeNull();
+    expect(container.querySelectorAll("#o35-lux-glass-mask polygon")).toHaveLength(3);
+    // the mask's silhouettes carry the same motion classes as the visible panes, so they move together
+    for (const id of ["blue", "violet", "gold"]) {
+      expect(container.querySelectorAll(`.o35-pane-drift-${id}`)).toHaveLength(2);
+      expect(container.querySelectorAll(`.o35-pane-engage-${id}`)).toHaveLength(2);
+    }
+    // the light sweep: across the portrait and along the glass
+    expect(container.querySelectorAll(".o35-lux-beam")).toHaveLength(2);
   });
 
-  it("is never more than five roles even if more are passed", () => {
-    const { container } = render(<svg><StudyProjection roles={[...ROLES, "/r/extra.svg"]} /></svg>);
-    expect(container.querySelectorAll(".acore-role")).toHaveLength(5);
+  it("nothing of the previous design remains: no reticle, role icons, scroll or quill, and no text", () => {
+    const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
+    for (const sel of [".acore-reticle", ".acore-role", "[data-testid='academy-core-v35-study-emblem']", ".o35-study-emblem", "text"]) {
+      expect(container.querySelector(sel), sel).toBeNull();
+    }
+    // the only raster images are the portrait and its refraction
+    expect([...container.querySelectorAll("image")].map((i) => i.getAttribute("href"))).toEqual([LUX, LUX]);
+  });
+
+  it("before the art is due it draws the window and the glass, and never a guessed image", () => {
+    const { container } = render(<svg><LuxMysteryProjection portrait={null} /></svg>);
+    expect(container.querySelectorAll("image")).toHaveLength(0);
+    expect(container.querySelector(".o35-lux-frame")).not.toBeNull();
+    expect(container.querySelector("[data-testid='academy-core-v35-pane-blue']")).not.toBeNull();
+  });
+
+  it("geometry: the window sits inside Leaguecraft's open iris and the lens, aligned with the iris", () => {
+    // pointy-top hexagon of corner radius R: its corners project to R * cos(30deg) on the iris's blade normals (0, 60, ... deg)
+    const R = LUX_WINDOW_RADIUS;
+    for (const corner of [-90, -30, 30, 90, 150, 210]) {
+      for (let k = 0; k < 6; k++) {
+        const proj = R * Math.cos(((corner - k * 60) * Math.PI) / 180);
+        expect(proj, `corner ${corner} vs blade ${k}`).toBeLessThan(LEAGUECRAFT_IRIS);
+      }
+    }
+    expect(R).toBeLessThan(LENS_R);
+    expect(LUX_GLASS_SCALE).toBeCloseTo((2 * R) / 157, 9);
+    expect(MYSTERY_CHAMPION).toBe("Lux");
   });
 });
 

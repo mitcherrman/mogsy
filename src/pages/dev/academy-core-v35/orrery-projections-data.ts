@@ -18,6 +18,21 @@
 import riftLaneTurret from "@/assets/academy-core/rift-lane-turret.webp";
 
 export const RIFT_CENTRE_ART: string = riftLaneTurret;
+
+/**
+ * LEAGUECRAFT ("Arcane Mystery"): the champion examined behind the glass. The
+ * manifest key, resolved to the manifest's own square icon (128 px) with
+ * `getChampionIcon`; no splash, no invented URL.
+ */
+export const MYSTERY_CHAMPION = "Lux";
+/**
+ * The portrait window: a pointy-top hexagon with this corner radius (local lens
+ * units; inradius ~74.5), aligned with and inside Leaguecraft's iris opening
+ * (inradius 104). ~140 x 162 px at 1366 wide: the 128 px icon drawn at ~1.25x.
+ */
+export const LUX_WINDOW_RADIUS = 86;
+/** The glass is authored for a 157-unit portrait and scaled with the window. */
+export const LUX_GLASS_SCALE = (2 * LUX_WINDOW_RADIUS) / 157;
 export const MATCHUP_LINEUP = {
   blue: ["Gnar", "Lee Sin", "Azir", "Jinx", "Thresh"],
   red: ["K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"],

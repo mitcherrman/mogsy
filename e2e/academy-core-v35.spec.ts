@@ -44,7 +44,7 @@ const ROOMS: Record<Id, { title: string; href: string }> = {
 const ICON_PNG = readFileSync(path.resolve("public/images/library/champion-ahri.png"));
 const CHAMPS = ["Ryze", "Ahri", "Akali", "Viktor", "Jinx", "Yasuo"];
 /** The Pro Play crystal's 5 v 5 lineup (orrery-projections-data.ts), so the stub manifest can name them. */
-const LINEUP = ["Gnar", "Lee Sin", "Azir", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"];
+const LINEUP = ["Gnar", "Lee Sin", "Azir", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus", "Lux"];
 
 async function stubCommon(page: Page) {
   await page.route("**/api/patch-reports", (route) =>
@@ -971,7 +971,10 @@ test.describe("crystal: larger inside the same Core", () => {
     for (const mode of modes) {
       await page.getByTestId("academy-core-crystal").click();
       await expect.poll(() => page.locator(`.acore-mode-${mode}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.9);
-      const box = (await page.locator(`.acore-mode-${mode}`).boundingBox())!;
+      // Leaguecraft parks its (transparent, lens-clipped) light beam off to one side between
+      // sweeps, which a group's client rect still counts, so its footprint is the Lux window.
+      const footprint = mode === "leaguecraft" ? ".acore-mode-leaguecraft .o35-lux-halo" : `.acore-mode-${mode}`;
+      const box = (await page.locator(footprint).boundingBox())!;
       const k = centre(box);
       expect(Math.hypot(k.x - c.x, k.y - c.y), `${mode} projection centred`).toBeLessThan(crystal.width * 0.2);
       expect(box.width, `${mode} projection inside the lens`).toBeLessThanOrEqual(crystal.width * 1.15);
@@ -1008,29 +1011,6 @@ async function lensGeometry(page: Page) {
 const centreOf = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
 
 test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
-  test("Leaguecraft: exactly five role icons on the pentagon around a centred scroll-and-quill emblem; no portrait", async ({ page }) => {
-    const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(String(e)));
-    await open(page, 1366, 768);
-    await page.getByTestId("academy-core-crystal").click(); // Leaguecraft
-    await expect.poll(() => page.locator(".acore-mode-leaguecraft").evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
-    await page.waitForTimeout(800);
-    const L = await lensGeometry(page);
-    const roles = page.locator(".acore-mode-leaguecraft .acore-role");
-    await expect(roles).toHaveCount(5);
-    for (let i = 0; i < 5; i++) {
-      const p = centreOf((await roles.nth(i).boundingBox())!);
-      expect(Math.hypot(p.x - L.cx, p.y - L.cy) / L.k, `role ${i} on r 76`).toBeCloseTo(76, -1);
-    }
-    const emblem = (await page.getByTestId("academy-core-v35-study-emblem").boundingBox())!;
-    const e = centreOf(emblem);
-    expect(Math.hypot(e.x - L.cx, e.y - L.cy), "emblem centred").toBeLessThan(4);
-    expect(emblem.width, "emblem large enough to read at 1366 wide").toBeGreaterThanOrEqual(56);
-    await expect(page.locator(".acore-mode-leaguecraft image[href*='splash']")).toHaveCount(0);
-    await expect(page.locator(".acore-mode-leaguecraft .acore-reticle")).toHaveCount(1);
-    expect(errors).toEqual([]);
-  });
-
   test("Pro Play: ten champion icons, five per side, framing Summoner's Rift — all inside the lens and the open iris", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
@@ -1114,12 +1094,183 @@ test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
     await open(page, 390, 844);
     const crystal = page.getByTestId("academy-core-crystal");
     await crystal.click();
-    await expect(page.getByTestId("academy-core-v35-study-emblem")).toBeVisible();
-    expect((await page.getByTestId("academy-core-v35-study-emblem").boundingBox())!.width).toBeGreaterThan(28);
+    await expect(page.getByTestId("academy-core-v35-lux-portrait")).toBeVisible();
+    expect((await page.locator(".o35-lux-frame").boundingBox())!.width, "Lux window on a phone").toBeGreaterThan(60);
+    // reduced motion: a still composition, Lux partly behind the glass, nothing running in the projection
+    const running = await page.evaluate(() => [...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-")).filter((a) => a.playState === "running").length);
+    expect(running).toBe(0);
     await crystal.click();
     await expect(page.locator(".o35-team-icon")).toHaveCount(10);
     await expect(page.locator("[data-testid='academy-core-v35-rift'] image")).toBeVisible();
     await noHorizontalOverflow(page);
+  });
+});
+
+/* ===================================================================== */
+/* LEAGUECRAFT — Arcane Mystery: Lux                                       */
+/* ===================================================================== */
+
+/** Pin Leaguecraft with the crystal and wait for the projection to be fully shown. */
+async function pinLeaguecraft(page: Page) {
+  await page.getByTestId("academy-core-crystal").click();
+  await page.mouse.move(40, 300);
+  await expect.poll(() => page.locator(".acore-mode-leaguecraft").evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
+  await page.waitForTimeout(1000); // the panes' entry (900 ms)
+}
+
+/** Seek every Lux animation to `fraction` of its 14 s loop and pause (deterministic sampling). */
+async function seekLux(page: Page, fraction: number) {
+  await page.evaluate((f) => {
+    for (const a of [...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-"))) {
+      a.pause();
+      a.currentTime = f * 14000; // the loop's phase (the glass beam keeps its own small offset via its delay)
+    }
+  }, fraction);
+}
+const paneMatrices = (page: Page) => page.evaluate(() =>
+  ["blue", "violet", "gold"].map((id) => getComputedStyle(document.querySelector(`[data-testid='academy-core-v35-pane-${id}']`)!.parentElement!).transform));
+
+test.describe("Leaguecraft: Arcane Mystery — Lux", () => {
+  test("Lux's genuine manifest icon, large and centred in the crystal, with three panes in front", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    const href = await page.getByTestId("academy-core-v35-lux-portrait").getAttribute("href");
+    expect(href, "the manifest's square icon").toMatch(/assets\/champions\/Lux\/icon\.png$/);
+    expect(href).not.toMatch(/splash|loading/);
+    const L = await lensGeometry(page);
+    const win = (await page.locator(".o35-lux-frame").boundingBox())!;
+    const c = centreOf(win);
+    expect(Math.hypot(c.x - L.cx, c.y - L.cy), "centred").toBeLessThan(3);
+    expect(win.width, "the portrait is the main attraction").toBeGreaterThanOrEqual(130);
+    expect(win.width / (2 * L.r), "share of the lens").toBeGreaterThan(0.6);
+    await expect(page.locator(".acore-mode-leaguecraft [data-testid^='academy-core-v35-pane-']")).toHaveCount(3);
+    for (const sel of [".acore-reticle", ".acore-role", "[data-testid='academy-core-v35-study-emblem']"]) {
+      await expect(page.locator(`.acore-mode-leaguecraft ${sel}`), sel).toHaveCount(0);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test("the glass genuinely moves: four arrangements in the loop, and the loop closes without a jump", async ({ page }) => {
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    const frames: string[][] = [];
+    for (const f of [0, 0.28, 0.52, 0.76]) { await seekLux(page, f); frames.push(await paneMatrices(page)); }
+    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) expect(frames[i], `arrangement ${i} vs ${j}`).not.toEqual(frames[j]);
+    await seekLux(page, 0.99995);
+    const end = await paneMatrices(page);
+    const nums = (m: string) => (m.match(/-?[\d.]+/g) ?? []).map(Number);
+    for (let k = 0; k < 3; k++) nums(end[k]).forEach((v, i) => expect(Math.abs(v - nums(frames[0][k])[i]), `pane ${k} loop seam`).toBeLessThan(0.05));
+  });
+
+  test("the panes conceal different parts of Lux at different times (measured at the eyes and mouth)", async ({ page }) => {
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    const covered = async () => page.evaluate(() => {
+      // feature points in the portrait's local space (the icon's eyes and mouth), mapped to the screen through the portrait's matrix
+      const img = document.querySelector("[data-testid='academy-core-v35-lux-portrait']") as SVGGraphicsElement;
+      const m = img.getScreenCTM()!;
+      const toScreen = (x: number, y: number) => new DOMPoint(x, y).matrixTransform(m);
+      const R = Number(img.getAttribute("width")) / 2;
+      const feat = { leftEye: [45, 55], rightEye: [85, 58], mouth: [70, 95] } as const;
+      const out: Record<string, boolean> = {};
+      for (const [k, [px, py]] of Object.entries(feat)) {
+        const p = toScreen((px / 128) * 2 * R - R, (py / 128) * 2 * R - R);
+        out[k] = [...document.querySelectorAll("[data-testid^='academy-core-v35-pane-'] .o35-pane-body")].some((poly) => {
+          const g = poly as SVGGeometryElement;
+          const inv = g.getScreenCTM()!.inverse();
+          const q = new DOMPoint(p.x, p.y).matrixTransform(inv);
+          return g.isPointInFill(new DOMPoint(q.x, q.y));
+        });
+      }
+      return out;
+    });
+    const states: Record<string, boolean>[] = [];
+    for (const f of [0, 0.28, 0.52, 0.76]) { await seekLux(page, f); states.push(await covered()); }
+    // in every arrangement something is hidden and something is visible
+    for (const s of states) {
+      const n = Object.values(s).filter(Boolean).length;
+      expect(n, JSON.stringify(s)).toBeGreaterThan(0);
+      expect(n, JSON.stringify(s)).toBeLessThan(3);
+    }
+    // and what is hidden changes over the loop
+    expect(new Set(states.map((s) => JSON.stringify(s))).size).toBeGreaterThan(1);
+  });
+
+  test("the light sweep crosses once per loop: dark before, bright mid-sweep, gone after", async ({ page }) => {
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    const beam = async () => page.evaluate(() => {
+      const t = document.querySelector(".o35-lux-beam-track:not(.o35-lux-beam-track-glass)")!;
+      const m = new DOMMatrix(getComputedStyle(t).transform);
+      return { opacity: Number(getComputedStyle(t).opacity), x: m.e };
+    });
+    await seekLux(page, 0.2);
+    const before = await beam();
+    await seekLux(page, 0.49);
+    const mid = await beam();
+    await seekLux(page, 0.8);
+    const after = await beam();
+    expect(before.opacity).toBeLessThan(0.05);
+    expect(mid.opacity).toBeGreaterThan(0.9);
+    expect(after.opacity).toBeLessThan(0.05);
+    expect(before.x).toBeLessThan(mid.x);
+    expect(mid.x).toBeLessThan(after.x);
+  });
+
+  test("the loop runs while Leaguecraft is shown and holds still otherwise (no work for a hidden projection)", async ({ page }) => {
+    await open(page, 1366, 768);
+    // the projection's own keyframe loops (not the images' one-off fade-in, not transitions)
+    const states = () => page.evaluate(() => [...new Set([...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-")).map((a) => a.playState))]);
+    expect(await states()).toEqual(["paused"]);
+    await pinLeaguecraft(page);
+    expect(await states()).toEqual(["running"]);
+    const a = await paneMatrices(page);
+    await page.waitForTimeout(1500);
+    expect(await paneMatrices(page), "the glass moved in 1.5 s").not.toEqual(a);
+    await page.getByTestId("academy-core-crystal").click(); // on to Pro Play
+    await page.waitForTimeout(300);
+    expect(await states()).toEqual(["paused"]);
+  });
+
+  test("reaching for the Leaguecraft book parts the glass; opening it parts it fully", async ({ page }) => {
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    const engage = () => page.evaluate(() => ["blue", "violet", "gold"].map((id) => new DOMMatrix(getComputedStyle(document.querySelector(`.o35-pane-engage-${id}`)!).transform)).map((m) => Math.hypot(m.e, m.f)));
+    const pinned = await engage();
+    for (const d of pinned) expect(d, "pinned: panes in place").toBeLessThan(1);
+    // hover the book (where it is now)
+    const b = (await boxes(page)).leaguecraft;
+    await page.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 6 });
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "book");
+    await page.waitForTimeout(1100);
+    const parted = await engage();
+    for (const d of parted) expect(d, "hover: panes part a little").toBeGreaterThan(10);
+    // activation: the glass parts fully. The real 240 ms activation navigates before a slow
+    // headless browser paints a frame (Edge, measured: 25 -> 72 units by ~230 ms), so the
+    // activating STATE is checked directly, then the real click is checked to navigate.
+    await page.evaluate(() => document.querySelector(".acore-svg")!.setAttribute("data-activating", "leaguecraft"));
+    await page.waitForTimeout(700);
+    const full = await engage();
+    for (const d of full) expect(d, "activation: panes part fully").toBeGreaterThan(40);
+    await page.evaluate(() => document.querySelector(".acore-svg")!.setAttribute("data-activating", ""));
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForURL(/\/quiz$/);
+  });
+
+  test("lite quality keeps the mystery still (panes in place, no loop or sweep)", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubCommon(page);
+    await stubChampions(page);
+    await page.goto(`${ROUTE}?quality=lite`);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    await pinLeaguecraft(page);
+    const anims = await page.evaluate(() => [...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-")).length);
+    expect(anims).toBe(0);
+    await expect(page.getByTestId("academy-core-v35-lux-portrait")).toBeVisible();
+    await expect(page.locator("[data-testid^='academy-core-v35-pane-']")).toHaveCount(3);
   });
 });
 
@@ -1558,5 +1709,157 @@ evidence("evidence: crystal redesign", () => {
     expect(existsSync(file)).toBe(true);
     copyFileSync(file, path.join(OUT, "_video", "raw-crystal.webm"));
     writeFileSync(path.join(OUT, "_video", "meta-crystal.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
+  });
+});
+
+evidence("evidence: Lux mystery", () => {
+  test.setTimeout(300_000);
+
+  /** The real Lux icon (asset host) decoded, so no still catches it mid-load. */
+  async function luxReady(page: Page) {
+    await page.waitForFunction(() => !!document.querySelector("[data-testid='academy-core-v35-lux-portrait']"), undefined, { timeout: 60_000 });
+    await page.evaluate(async () => {
+      const href = document.querySelector("[data-testid='academy-core-v35-lux-portrait']")!.getAttribute("href")!;
+      const img = new Image();
+      img.src = href;
+      await img.decode();
+    });
+  }
+  async function lensClip(page: Page, margin: number) {
+    const c = (await page.locator(".acore-crystal").boundingBox())!;
+    const h = c.width / 2 + margin;
+    return { x: c.x + c.width / 2 - h, y: c.y + c.height / 2 - h, width: 2 * h, height: 2 * h };
+  }
+  /** Seek to `fraction` of the loop and let the frame paint. */
+  async function frame(page: Page, fraction: number) {
+    await seekLux(page, fraction);
+    await page.waitForTimeout(250);
+  }
+
+  test("evidence: Lux stills (actual size, close-up, loop frames, states, phone, Pro Play regression)", async ({ browser }) => {
+    // actual desktop size (1x)
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+    const page = await ctx.newPage();
+    await open(page, 1366, 768, { real: true });
+    await luxReady(page);
+    await pinLeaguecraft(page);
+    await frame(page, 0);
+    await page.screenshot({ path: path.join(OUT, "lux-1366x768-leaguecraft.png") });
+    await page.screenshot({ path: path.join(OUT, "lux-actual-size.png"), clip: await lensClip(page, 60) });
+    // Pro Play, one click on, for regression comparison with crystal-redesign-actual-size-pro-play.png
+    await page.getByTestId("academy-core-crystal").click();
+    await page.mouse.move(40, 300);
+    await page.waitForTimeout(1600);
+    await page.screenshot({ path: path.join(OUT, "lux-regression-actual-size-pro-play.png"), clip: await lensClip(page, 60) });
+    await ctx.close();
+
+    // close-up (3x device pixels): the rest arrangement, the loop's frames, the sweep, the reach
+    const hi = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 3 });
+    const hp = await hi.newPage();
+    await open(hp, 1366, 768, { real: true });
+    await luxReady(hp);
+    await pinLeaguecraft(hp);
+    const clip = await lensClip(hp, 8);
+    for (const [name, f] of [["closeup", 0], ["frame-b", 0.28], ["frame-sweep", 0.47], ["frame-c", 0.52], ["frame-d", 0.76]] as const) {
+      await frame(hp, f);
+      await hp.screenshot({ path: path.join(OUT, `lux-${name}.png`), clip });
+    }
+    // reaching for the Leaguecraft book: the glass parts
+    await frame(hp, 0);
+    const b = (await boxes(hp)).leaguecraft;
+    await hp.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 6 });
+    await hp.waitForTimeout(1200);
+    await hp.screenshot({ path: path.join(OUT, "lux-book-intent.png"), clip });
+    await hi.close();
+
+    // reduced motion: a polished still
+    const rm = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 2, reducedMotion: "reduce" });
+    const rp = await rm.newPage();
+    await open(rp, 1366, 768, { real: true });
+    await luxReady(rp);
+    await pinLeaguecraft(rp);
+    await rp.screenshot({ path: path.join(OUT, "lux-reduced-motion.png"), clip: await lensClip(rp, 8) });
+    await rm.close();
+
+    // lite tier
+    const lt = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 2 });
+    const lp = await lt.newPage();
+    await lp.setViewportSize({ width: 1366, height: 768 });
+    await stubCommon(lp);
+    await lp.goto(`${ROUTE}?quality=lite`);
+    await expect(lp.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    await luxReady(lp);
+    await pinLeaguecraft(lp);
+    await lp.screenshot({ path: path.join(OUT, "lux-lite.png"), clip: await lensClip(lp, 8) });
+    await lt.close();
+
+    // phone
+    const mob = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    const mp = await mob.newPage();
+    await open(mp, 390, 844, { real: true });
+    await luxReady(mp);
+    await pinLeaguecraft(mp);
+    await frame(mp, 0);
+    await mp.screenshot({ path: path.join(OUT, "lux-mobile-390x844.png") });
+    await mp.screenshot({ path: path.join(OUT, "lux-mobile-390x844-crystal.png"), clip: await lensClip(mp, 40) });
+    await mob.close();
+  });
+
+  test("evidence: the Lux recording", async ({ browser }) => {
+    const videoDir = path.join(OUT, "_video");
+    mkdirSync(videoDir, { recursive: true });
+    const tCtx = Date.now();
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, recordVideo: { dir: videoDir, size: { width: 1366, height: 768 } } });
+    const page = await ctx.newPage();
+    await open(page, 1366, 768, { real: true });
+    await luxReady(page);
+    const tReady = Date.now();
+    const marks: Record<string, number> = {};
+    const mark = (k: string) => { marks[k] = (Date.now() - tCtx) / 1000; };
+    const crystal = page.getByTestId("academy-core-crystal");
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(1200);
+    // the panes slide in; one whole 14 s loop (arrangements, the sweep, back to the start)
+    mark("pin");
+    await crystal.click();
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(15_500);
+    // reaching for the Leaguecraft book parts the glass; moving away closes it
+    mark("intent");
+    const b = (await boxes(page)).leaguecraft;
+    await page.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 10 });
+    await page.waitForTimeout(2600);
+    await page.mouse.move(60, 420, { steps: 10 });
+    await page.waitForTimeout(1800);
+    // Leaguecraft -> Pro Play (crystal), then the selector arrows bring Leaguecraft round again
+    mark("transition");
+    await crystal.click();
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(2600);
+    const stage = page.getByTestId("academy-core-stage");
+    for (let i = 0; i < 4 && (await stage.getAttribute("data-focus")) !== "leaguecraft"; i++) {
+      await arrow(page, "left").click();
+      await page.mouse.move(60, 420);
+      await waitStill(page);
+      await page.waitForTimeout(1400);
+    }
+    await expect(stage).toHaveAttribute("data-focus", "leaguecraft");
+    await page.waitForTimeout(1500);
+    // opening the Leaguecraft book (held in front by the selector): the glass parts fully, then the room opens
+    mark("activate");
+    const b2 = (await boxes(page)).leaguecraft;
+    await page.mouse.move(b2.cx, b2.cy + b2.h * 0.2, { steps: 10 });
+    await page.waitForTimeout(1400);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForURL(/\/quiz$/);
+    await page.waitForTimeout(900);
+    const tEnd = Date.now();
+    const video = page.video()!;
+    await ctx.close();
+    const file = await video.path();
+    expect(existsSync(file)).toBe(true);
+    copyFileSync(file, path.join(OUT, "_video", "raw-lux.webm"));
+    writeFileSync(path.join(OUT, "_video", "meta-lux.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000, marks }));
   });
 });

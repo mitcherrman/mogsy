@@ -29,7 +29,7 @@ import { forwardRef, memo, useMemo, type ReactNode } from "react";
 import AcademyCoreInstrument, { type CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
 import { CORE_IDLE_READOUT, destinationById, type CoreFocus } from "@/pages/academy-core/academy-core-destinations";
 
-import { MatchupProjection, StudyProjection } from "./OrreryProjections";
+import { LuxMysteryProjection, MatchupProjection } from "./OrreryProjections";
 import type { MatchupMedia } from "./orrery-projections-data";
 
 /**
@@ -47,6 +47,8 @@ export interface OrreryCoreProps {
   media: CoreMedia;
   /** Pro Play's 5 v 5 lineup and Rift image (V3.5 projection); null until the art is due. */
   matchup?: MatchupMedia | null;
+  /** Leaguecraft's mystery portrait (the manifest's Lux icon); null until the art is due. */
+  mystery?: string | null;
   /** The crystal's accessible button (the page owns its behaviour). */
   children: ReactNode;
 }
@@ -93,15 +95,14 @@ function RuneRing() {
 }
 
 const OrreryCore = forwardRef<HTMLDivElement, OrreryCoreProps>(function OrreryCore(
-  { focus, activating, ambient, media, matchup = null, children },
+  { focus, activating, ambient, media, matchup = null, mystery = null, children },
   needleRef,
 ) {
   // V3.5's own Leaguecraft and Pro Play projections (V3 keeps its originals).
-  const roles = media.observeRoles;
   const projectionOverrides = useMemo(() => ({
-    leaguecraft: <StudyProjection roles={roles ?? []} />,
+    leaguecraft: <LuxMysteryProjection portrait={mystery} />,
     "pro-play": <MatchupProjection media={matchup} />,
-  }), [roles, matchup]);
+  }), [mystery, matchup]);
   const dest = destinationById(focus);
   const readout = dest ? dest.readout : CORE_IDLE_READOUT;
   const arcId = "o35-readout-arc";

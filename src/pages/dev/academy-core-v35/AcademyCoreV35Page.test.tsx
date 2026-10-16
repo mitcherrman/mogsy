@@ -46,7 +46,9 @@ vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({ usePatchBriefFe
 
 const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Viktor",
   // the Pro Play crystal's 5 v 5 lineup (orrery-projections-data.ts)
-  "Gnar", "Lee Sin", "Azir", "Jinx", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"].map((n) => [n, {
+  "Gnar", "Lee Sin", "Azir", "Jinx", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus",
+  // the Leaguecraft crystal's mystery champion
+  "Lux"].map((n) => [n, {
   icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
 }])) };
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
@@ -698,14 +700,16 @@ describe("the arrow selector", () => {
 });
 
 describe("the redesigned crystal projections, in the page", () => {
-  it("Leaguecraft shows the role pentagon with the scroll-and-quill emblem; Pro Play shows the 5 v 5 lineup around the Rift", async () => {
+  it("Leaguecraft shows Lux behind the glass; Pro Play shows the 5 v 5 lineup around the Rift", async () => {
     const { container } = mount();
     await act(async () => { await Promise.resolve(); }); // the (mocked) warm resolves -> the art is due
     const lc = container.querySelector(".acore-mode-leaguecraft")!;
     expect(lc).toHaveAttribute("data-projection", "override");
-    expect(lc.querySelectorAll(".acore-role")).toHaveLength(5);
-    expect(lc.querySelector("[data-testid='academy-core-v35-study-emblem']")).not.toBeNull();
-    expect(lc.querySelector("image[href*='splash']")).toBeNull(); // no champion portrait any more
+    expect(lc.querySelector("[data-testid='academy-core-v35-lux-portrait']")?.getAttribute("href")).toContain("assets/champions/Lux/icon.png");
+    expect(lc.querySelectorAll("[data-testid^='academy-core-v35-pane-']")).toHaveLength(3);
+    expect(lc.querySelectorAll(".acore-role")).toHaveLength(0);
+    expect(lc.querySelector("[data-testid='academy-core-v35-study-emblem']")).toBeNull();
+    expect(lc.querySelector("image[href*='splash']")).toBeNull(); // the square icon, never the splash
     const pp = container.querySelector(".acore-mode-pro-play")!;
     expect(pp).toHaveAttribute("data-projection", "override");
     const hrefs = (side: string) => [...pp.querySelectorAll(`[data-testid='academy-core-v35-team-${side}'] .o35-team-icon`)].map((i) => i.getAttribute("href"));

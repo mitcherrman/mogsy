@@ -1,14 +1,171 @@
-# Academy Core V3.5 — The Living Hextech Orrery (Phase 1, Phase 2, targeted changes, crystal redesign)
+# Academy Core V3.5 — The Living Hextech Orrery (Phase 1, Phase 2, targeted changes, crystal redesign, Leaguecraft mystery)
 
 Branch `design/academy-core-v35-floating-orrery`, cut from `origin/main` **`6407559a`** (fetched at the start of the pass).
 Preview route: **`/lol/dev/academy-core-v35`** (development-only; see "Guarantees"). Nothing is merged, deployed, PR'd or published.
 Frontend only: no backend, Supabase or Railway change.
 
-> Status: Phase 1, Phase 2 and the Phase 2 targeted changes (arrow selector, larger crystal; §P2T, `2a543a0f`) are approved.
-> **Crystal redesign (exactly two projections: Leaguecraft and Pro Play) built and STOPPED FOR OWNER REVIEW** — §P2C below. Watch
-> `docs/handoffs/academy-core-v35/orrery-crystal-redesign.webm` (26 s) first.
+> Status: Phase 1, Phase 2 and the Phase 2 targeted changes (arrow selector, larger crystal; §P2T, `2a543a0f`) are approved. The crystal
+> redesign (§P2C, `4b77dd9c`) was reviewed. Its Pro Play projection stands, and its Leaguecraft projection is replaced by
+> **§P2L, Leaguecraft "Arcane Mystery: Lux", built and STOPPED FOR OWNER REVIEW.** Watch
+> `docs/handoffs/academy-core-v35/orrery-lux-mystery-closeup.webm` (42 s) first.
+
+## P2L. Leaguecraft — "Arcane Mystery: Lux"
+
+Base `4b77dd9c`. Only the Leaguecraft crystal projection changed (plus its crystal tint, below). Pro Play (5 v 5 + Rift), Combat,
+Archives, the books, orbit, drag, arrow selector, crystal/dial/Orrery sizes, Patch Report, radio, Mogzy, Daily/Ranked, routing, audio,
+analytics, auth and production V3 are untouched. No backend, database, Supabase or Railway change. Phase 3 has not started.
+
+### Objective
+
+Replace the pentagon, the five role icons and the scroll/quill with one large, recognisable champion, Lux, partially concealed by moving
+Hextech glass, as a cinematic mystery that loops seamlessly and reacts to the existing navigator only.
+
+### Design
+
+- **The subject.** Lux's genuine square champion icon fills a pointy-top hexagonal window of corner radius 86 (inradius ≈ 74.5) inside
+  the Leaguecraft iris opening (104). The window is aligned with the iris, so the blades frame it and never cover it. At 1366×768 the window
+  measures **140 × 162 px** (e2e: ≥ 130 px wide and > 60 % of the lens). It is the projection's main attraction: there is no medallion,
+  text or other subject. The window has a dark backing, a soft vignette, a pale-gold frame and an outer halo.
+- **The glass.** Three translucent panes in front of her: a **blue** lens slab, a **violet** hexagonal shard and a **pale-gold** blade. Each
+  has a defined double edge (dark outer line, bright inner line), a reeded texture, a sheen, light streaks and a drop shadow, with
+  controlled opacity, so she is visible through the glass but obscured. A **refraction copy** of the portrait (offset and magnified 1.14×)
+  is drawn only where the panes are (an SVG mask that reuses the panes' own animation classes, so the refraction moves exactly with the
+  glass). Under each pane her features are visibly displaced, which is what sells it as glass.
+- **The loop (14 s, CSS).** The panes drift and rotate through four arrangements: A (0 %) → B (28 %) → C (52 %) → D (76 %) → A (100 %).
+  Each arrangement covers different regions (e.g. A: eyes and mouth; B: mouth exposed, one eye covered; C: eyes exposed, mouth covered).
+  From 36–62 % a beam of arcane light sweeps across the portrait, then a beat later along the glass. The pane edges glint as it passes,
+  and the portrait breathes 3.5 % at the midpoint. Keyframe 100 % equals 0 %, so the loop has no seam.
+- **Reactions, via the existing navigator only (no new controls, no second click).**
+  - Entering Leaguecraft: the panes slide in from the rim (900 ms).
+  - Reaching for the Leaguecraft **book** (hover or keyboard focus, `data-intent="book"` on the stage): the panes part a little
+    (≈ 20–27 units), revealing more of her.
+  - **Opening** the book (`data-activating="leaguecraft"`, the existing 240 ms activation): they part fully (≈ 72 units) and dim to 0.5,
+    so Lux is revealed as the room opens.
+  - Leaving: they slide back to the rim.
+- **Crystal tint.** P2C had made the Leaguecraft crystal violet, sharing Pro Play's colour. It is now a deeper **gold** (one
+  V3.5-scoped rule), so the violet and blue glass reads against it and Leaguecraft and Pro Play are distinct again.
+
+### Asset source
+
+The manifest's own `Lux` icon (`/api/assets/champions` → `assets/champions/Lux/icon.png`, 128 × 128, served 200), resolved with
+`getChampionIcon(manifest, "Lux")`. It is the same authority and request the book covers and the Pro Play plates use. No splash art, no
+invented or external URL, no fallback image: if the manifest lacks Lux, the window stays dark glass (unit-tested). The icon loads after the
+critical art, like the other projections.
+
+### Animation implementation
+
+- Everything is CSS transforms and opacity on SVG groups, plus one SVG mask and one clip path. There is no script, React state, canvas or
+  WebGL in the animation. Each pane is nested `engage > drift > pane`: `engage` carries the focus/intent/activation states (CSS
+  transitions), and `drift` carries the 14 s keyframes. With `transform-box: view-box; transform-origin: 0 0`, the CSS transforms behave
+  like SVG transform attributes in the lens's local units.
+- **Suspension.** The loop's animations are `paused` by default and run only under
+  `.acore-svg[data-ambient="on"][data-focus="leaguecraft"]`. They hold still (paused, not removed) when another room is shown, the scene is
+  off screen, or the tab is hidden (the instrument's existing `data-ambient`), so returning never jumps.
+- **Reduced motion:** a polished still in arrangement A (no loop, no sweep).
+- **Lite tier:** the mystery stays (panes in arrangement A, the engage/intent/activation transitions); the loop, beam, glints, breathing
+  and the halo's filter are removed (`animation: none`).
+
+### Files
+
+Changed only:
+- `src/pages/dev/academy-core-v35/OrreryProjections.tsx`: `LuxMysteryProjection` replaces the study composition. The Pro Play section is
+  byte-unchanged.
+- `orrery-projections-data.ts`: `MYSTERY_CHAMPION`, `LUX_WINDOW_RADIUS`, `LUX_GLASS_SCALE`.
+- `OrreryCore.tsx`: a `mystery` prop feeds the Leaguecraft override.
+- `AcademyCoreV35Page.tsx`: resolves the Lux icon from the manifest and sets `data-intent` on the stage.
+- `academy-core-v35.css`: the Lux block replaces the Leaguecraft pentagon/emblem block, plus the gold Leaguecraft crystal.
+- `OrreryProjections.test.tsx`, `AcademyCoreV35Page.test.tsx`, `e2e/academy-core-v35.spec.ts`: tests and an evidence suite.
+
+**The shared `AcademyCoreInstrument.tsx` is not modified in this pass**: it already has the opt-in `projectionOverrides` and `lensScale`
+from P2C/P2T, and V3 passes neither.
+
+### Tests (measured)
+
+| Suite | Result |
+|---|---|
+| vitest: V3.5 (motion, engine, page 41, **projections 10**) + V3 (`AcademyCorePage`, route, warm, lens) + `route-prefetch` | **152 / 152** |
+| Playwright `e2e/academy-core-v35.spec.ts --grep-invert evidence` (bundled Chromium) | **58 / 58** (7 new Lux tests; the P2C pentagon test removed) |
+| Playwright `e2e/academy-core.spec.ts` (production V3) | **23 / 23** |
+| `tsc` | only the 2 pre-existing baseline errors |
+| `eslint` | 0 errors; the 1 pre-existing warning (`AcademyCoreInstrument.tsx:55`) |
+
+What the new e2e tests check (frames are sampled deterministically by seeking the CSS animations with the Web Animations API):
+
+1. **Genuine icon:** the portrait's href is the manifest's Lux icon, the window is ≥ 130 px wide at 1366 and > 60 % of the lens, and
+   there are three panes in front.
+2. **Motion and seam:** the panes take four distinct arrangements over the loop, and the 0 % and 100 % matrices agree within 0.05.
+3. **Genuine concealment:** `isPointInFill` on the pane geometry at her eyes and mouth shows the covered set changes between arrangements.
+4. **Light sweep:** the beam is dark before the sweep, bright mid-sweep, and gone after.
+5. **Off-focus suspension:** the loop runs only while Leaguecraft is shown and is paused otherwise.
+6. **Intent and activation:** hovering the book parts each pane by > 10 units, the activating state parts each by > 40 (measured ≈ 72),
+   and the real click still navigates to the room.
+7. **Lite:** no `o35-` animations, with the portrait and three panes present.
+
+Phones and reduced motion are covered by the extended responsive test (portrait visible, window > 60 px, no running `o35-` animation).
+Unit tests cover:
+- the no-reticle / no-roles / no-emblem / no-text rule, and that the only images are Lux;
+- a null portrait renders no image;
+- the window's corners project below the iris's 104 on every blade normal;
+- isolation: Combat and Archives markup is byte-identical with and without the overrides, and `/lol` has no override.
+
+**Pixel regression** (Edge, reduced motion, identical framing, against the `4b77dd9c` captures): **idle, Pro Play, Combat and Archives
+have 0 changed pixels**. Only Leaguecraft differs.
+
+### Performance (A/B against `4b77dd9c` served side by side, headless Edge, 1366×768, manifest including Lux)
+
+| main-thread busy | before | after |
+|---|---|---|
+| idle | 37.8 / 33.1 % | 37.7 / 36.3 % |
+| Leaguecraft pinned | 57.0 / 52.3 % | 51.8 / 58.1 % |
+| Pro Play pinned | 47.3 / 53.2 % | 51.8 / 51.6 % |
+
+The differences are within run-to-run noise (each pair overlaps), and rAF stayed at a 16.7 ms median in every run. The document carries 12
+more animation objects, the paused Lux loop. This machine's absolute numbers are higher than in P2C's session; compare within the table
+only. No console or page errors.
+
+### Evidence (`docs/handoffs/academy-core-v35/`, real art from the asset host, recorded in Edge at its real frame rate)
+
+- `orrery-lux-mystery-closeup.webm` (42 s, the lens cropped and enlarged 2×) and `orrery-lux-mystery.webm` (43 s, full 1366×768
+  frame). The sequence:
+  - 0 s: the panes slide in;
+  - ~1–16 s: one whole loop (four arrangements, the sweep near 6–9 s, back to A with no jump);
+  - ~17 s: hovering the Leaguecraft book parts the glass, then it closes;
+  - ~22 s: the crystal goes to Pro Play;
+  - ~25–38 s: the arrow selector brings Leaguecraft back, with the crystal following;
+  - ~39 s: the book is opened, the glass parts fully, and the room opens.
+- Actual size: `lux-1366x768-leaguecraft.png` (full frame) and `lux-actual-size.png` (lens at 1×).
+- Close-up at 3× device pixels: `lux-closeup.png` (arrangement A).
+- Loop frames: `lux-frame-b.png` (28 %), `lux-frame-sweep.png` (47 %, beam crossing), `lux-frame-c.png` (52 %), `lux-frame-d.png` (76 %).
+- States: `lux-book-intent.png` (book hovered), `lux-reduced-motion.png`, `lux-lite.png`.
+- Phone 390×844 at 2×: `lux-mobile-390x844.png` (full) and `lux-mobile-390x844-crystal.png`. The window measures 72 × 83 CSS px (the
+  phone lens is about half the desktop one); she is still the clear subject and recognisable.
+- Pro Play regression: `lux-regression-actual-size-pro-play.png`, for comparison with `crystal-redesign-actual-size-pro-play.png`. The
+  pixel-exact comparison is the reduced-motion diff above. These two motion-on stills differ only where the rings and orbit lines turned.
+
+### Limitations and owner questions
+
+1. **Resolution.** The manifest's icon is 128 px. At 1366 it is drawn about 1.25× (sharp enough to read at a glance). On 2×/3× HiDPI
+   screens and in the 3× close-ups it is visibly soft. A sharper source would need a larger manifest asset (e.g. a square crop of the
+   loading art), which the brief excluded ("no splash"), so it is not done.
+2. **Activation timing in headless tests.** The full reveal happens within the existing 240 ms activation, before the route changes. Edge
+   measures 25 → 72 units by ~230 ms (and the recording shows it). Bundled headless Chromium paints too slowly to catch it reliably, so the
+   e2e test asserts the activating state directly and then checks that the real click navigates.
+3. **Reveal duration.** Because the activation is 240 ms, the full reveal is brief by design: the brief allowed no extra delay or second
+   click. The longer, intentional reveal is the book hover.
+4. **Leaguecraft's crystal is gold again** (it was violet in P2C). Say if you would rather keep it violet.
+5. **Test-suite side effect (pre-existing, not changed):** `e2e/academy-core.spec.ts` rewrites the committed V3 stills in
+   `docs/handoffs/academy-core-v3-integration/` whenever it runs. I restored them before committing.
+
+### Next
+
+Owner review of the Leaguecraft mystery. Nothing else is started: no PR, merge, deploy, publish, audio change, other projection or
+Phase 3.
+
+---
 
 ## P2C. Crystal redesign — Leaguecraft (pentagon + scroll/quill) and Pro Play (5 v 5)
+
+> Superseded for Leaguecraft by §P2L. The Pro Play half below is current.
 
 Base `2a543a0f` (branch, HEAD and remote verified; clean tree). Only the Leaguecraft and Pro Play projections changed. The books, orbit,
 drag and inertia, arrow selector and hold, lens size, Core and rings, Patch Report, radio, Mogzy, Daily/Ranked, navigation, analytics,

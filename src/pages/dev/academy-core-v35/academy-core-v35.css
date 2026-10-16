@@ -615,25 +615,100 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
    Archives are the V3 originals, untouched.
    ========================================================================== */
 
-/* Leaguecraft takes the composition Pro Play had — including its violet crystal field */
-.o35-root .acore-svg[data-focus="leaguecraft"] { --cr-hi: #b9a6ff; --cr-mid: #7a62e6; --cr-lo: #3a2c8a; --cr-core: #f3eeff; }
-/* ... and its reticle locks on, as Pro Play's did */
-.o35-root .acore-svg[data-focus="leaguecraft"] .acore-reticle { transform: rotate(0deg); }
+/* LEAGUECRAFT — Arcane Mystery: Lux, examined through shifting Hextech glass.
+   One 14 s loop: four pane arrangements (A at 0 %, B 28 %, C 52 %, D 76 %, back
+   to A), a beam of light across the portrait and the glass at 36-62 %, the pane
+   edges glinting as it passes, and a slow breath in the portrait. Everything
+   holds still (paused, not removed) unless Leaguecraft is the projection and
+   the scene is on screen, so leaving and returning never jumps. Positions are
+   in the lens's local units (an SVG px inside the instrument). */
 
-/* the scroll-and-quill medallion */
-.o35-emblem-inner-ring { fill: none; stroke: #b9a6ff; stroke-opacity: 0.45; stroke-width: 0.8; }
-.o35-emblem-ink { stroke: #6b4f2a; stroke-opacity: 0.8; stroke-width: 1.15; stroke-linecap: round; }
-.o35-emblem-shaft { stroke: #fff3cf; stroke-width: 0.9; stroke-linecap: round; }
-.o35-emblem-barb { stroke: #7a62e6; stroke-opacity: 0.55; stroke-width: 0.6; stroke-linecap: round; }
-.o35-emblem-glint { fill: #fff6dd; filter: drop-shadow(0 0 2px #ffe9b8); }
-.o35-emblem-glow { opacity: 0.6; }
-.o35-emblem-float, .o35-emblem-glow { transform-box: fill-box; transform-origin: 50% 50%; }
-/* the medallion is drawn at r 26 and shown 20 % larger (~60 px at 1366 wide); it grows into place as the room is focused */
-.o35-study-emblem { transform-box: fill-box; transform-origin: 50% 50%; transform: scale(1); transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-.acore-svg[data-focus="leaguecraft"] .o35-study-emblem { transform: scale(1.2); }
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-emblem-float { animation: o35-emblem-float 4.6s ease-in-out infinite; }
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-emblem-glow { animation: acore-pulse 3.2s ease-in-out infinite; }
-@keyframes o35-emblem-float { 0%, 100% { transform: translateY(1.2px); } 50% { transform: translateY(-1.2px); } }
+.o35-lux-halo { fill: none; stroke: #ffe9b8; stroke-opacity: 0.32; stroke-width: 6; filter: drop-shadow(0 0 6px rgba(255, 233, 184, 0.5)); }
+.o35-lux-backing { fill: #0b1030; }
+.o35-lux-frame { fill: none; stroke: #fff3cf; stroke-opacity: 0.9; stroke-width: 1.4; stroke-linejoin: round; }
+
+/* every moving part transforms about its own local origin, as an SVG transform attribute would */
+.o35-pane-engage, .o35-pane-drift, .o35-lux-beam-track, .o35-lux-portrait { transform-box: view-box; transform-origin: 0 0; }
+
+/* the glass */
+.o35-pane-shadow { fill: #050816; fill-opacity: 0.3; }
+.o35-pane-sheen { opacity: 0.7; }
+.o35-pane-streak { stroke: #ffffff; stroke-opacity: 0.38; stroke-width: 0.9; stroke-linecap: round; }
+.o35-pane-edge { fill: none; stroke: #f6f9ff; stroke-opacity: 0.6; stroke-width: 1.2; stroke-linejoin: round; }
+.o35-pane-gold .o35-pane-edge { stroke: #fff3cf; }
+
+/* engage: the panes wait at the rim and slide in when the room is focused */
+.o35-pane-engage { opacity: 0; transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 600ms ease; }
+.o35-pane-engage-blue { transform: translate(-84px, 10px); }
+.o35-pane-engage-violet { transform: translate(54px, 72px); }
+.o35-pane-engage-gold { transform: translate(72px, -72px); }
+.acore-svg[data-focus="leaguecraft"] .o35-pane-engage { transform: translate(0px, 0px); opacity: 1; }
+/* reaching for the Leaguecraft book (hover / keyboard): the glass parts a little */
+.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-pane-engage-blue { transform: translate(-24px, 6px); }
+.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-pane-engage-violet { transform: translate(14px, 20px); }
+.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-pane-engage-gold { transform: translate(18px, -20px); }
+/* opening the book: the glass parts fully and Lux is revealed (outranks the hover rule above) */
+.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-pane-engage-blue { transform: translate(-72px, 8px); opacity: 0.5; transition-duration: 240ms; }
+.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-pane-engage-violet { transform: translate(46px, 60px); opacity: 0.5; transition-duration: 240ms; }
+.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-pane-engage-gold { transform: translate(60px, -62px); opacity: 0.5; transition-duration: 240ms; }
+
+/* drift: arrangement A is the base (and the reduced-motion still) */
+.o35-pane-drift { animation-duration: 14s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-play-state: paused; }
+.o35-pane-drift-blue { transform: translate(-30px, -6px) rotate(-8deg); animation-name: o35-drift-blue; }
+.o35-pane-drift-violet { transform: translate(18px, 40px) rotate(10deg); animation-name: o35-drift-violet; }
+.o35-pane-drift-gold { transform: translate(14px, -34px) rotate(-12deg); animation-name: o35-drift-gold; }
+@keyframes o35-drift-blue {
+  0%, 100% { transform: translate(-30px, -6px) rotate(-8deg); }
+  28% { transform: translate(-44px, 22px) rotate(-16deg); }
+  52% { transform: translate(-38px, 8px) rotate(-4deg); }
+  76% { transform: translate(-22px, -14px) rotate(-2deg); }
+}
+@keyframes o35-drift-violet {
+  0%, 100% { transform: translate(18px, 40px) rotate(10deg); }
+  28% { transform: translate(24px, -4px) rotate(28deg); }
+  52% { transform: translate(32px, 14px) rotate(40deg); }
+  76% { transform: translate(14px, 32px) rotate(16deg); }
+}
+@keyframes o35-drift-gold {
+  0%, 100% { transform: translate(14px, -34px) rotate(-12deg); }
+  28% { transform: translate(6px, 46px) rotate(-4deg); }
+  52% { transform: translate(-4px, -50px) rotate(8deg); }
+  76% { transform: translate(20px, -26px) rotate(-18deg); }
+}
+
+/* the light: across the portrait, then (a beat later) along the glass */
+.o35-lux-beam { mix-blend-mode: screen; }
+.o35-lux-beam-track { transform: translateX(-150px); opacity: 0; animation: o35-lux-beam 14s linear infinite paused; }
+.o35-lux-beam-track-glass { animation-delay: -13.6s; }
+@keyframes o35-lux-beam {
+  0%, 36% { transform: translateX(-150px); opacity: 0; }
+  40% { opacity: 1; }
+  58% { opacity: 1; }
+  62%, 100% { transform: translateX(150px); opacity: 0; }
+}
+.o35-pane-edge, .o35-pane-sheen { animation: o35-lux-glint 14s ease-in-out infinite paused; }
+@keyframes o35-lux-glint {
+  0%, 40% { stroke-opacity: 0.6; opacity: 0.7; }
+  49% { stroke-opacity: 1; opacity: 1; }
+  58%, 100% { stroke-opacity: 0.6; opacity: 0.7; }
+}
+.o35-lux-portrait { animation: o35-lux-breathe 14s ease-in-out infinite paused; }
+@keyframes o35-lux-breathe { 0%, 100% { transform: scale(1); } 52% { transform: scale(1.035); } }
+
+/* run only while Leaguecraft is the projection and the scene is live */
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-pane-drift,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-beam-track,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-pane-edge,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-pane-sheen,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-portrait { animation-play-state: running; }
+
+/* lite tier: the mystery stays (panes in arrangement A, engage and reveal transitions); the loop, beam and glints go */
+.o35-root[data-quality="lite"] .o35-pane-drift,
+.o35-root[data-quality="lite"] .o35-lux-beam-track,
+.o35-root[data-quality="lite"] .o35-pane-edge,
+.o35-root[data-quality="lite"] .o35-pane-sheen,
+.o35-root[data-quality="lite"] .o35-lux-portrait { animation: none; }
+.o35-root[data-quality="lite"] .o35-lux-halo { filter: none; }
 
 /* Pro Play: two sides around Summoner's Rift */
 .o35-side-plate { fill: none; stroke-width: 30; stroke-linecap: round; stroke-opacity: 0.16; }
@@ -654,3 +729,7 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
 .o35-team-bottom { transform: translateY(-16px); }
 .acore-svg[data-focus="pro-play"] .o35-team-top,
 .acore-svg[data-focus="pro-play"] .o35-team-bottom { transform: translateY(0); }
+.o35-pane-edge-dark { fill: none; stroke: #0b1030; stroke-opacity: 0.45; stroke-width: 2.6; stroke-linejoin: round; }
+.o35-pane-reed { mix-blend-mode: normal; }
+/* Leaguecraft's crystal field, deepened in V3.5 so the portrait (gold hair, pale skin) reads against it */
+.o35-root .acore-svg[data-focus="leaguecraft"] { --cr-hi: #e6c47a; --cr-mid: #7d5a20; --cr-lo: #2c1f0c; --cr-core: #fff1d2; }

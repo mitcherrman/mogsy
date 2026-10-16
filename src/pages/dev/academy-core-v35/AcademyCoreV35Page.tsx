@@ -73,7 +73,7 @@ import OrreryCore from "./OrreryCore";
 import OrreryEnvironment from "./OrreryEnvironment";
 import { OrreryEngine } from "./OrreryEngine";
 import { useCoreNavigator } from "./useCoreNavigator";
-import { MATCHUP_LINEUP, RIFT_CENTRE_ART, type MatchupMedia } from "./orrery-projections-data";
+import { MATCHUP_LINEUP, MYSTERY_CHAMPION, RIFT_CENTRE_ART, type MatchupMedia } from "./orrery-projections-data";
 import { BOOK_ORDER, CALM, DESKTOP_ORBIT, STAGE, STAGE_COMPOSED, type BookId } from "./orrery-motion";
 
 export const V35_ROUTE = "/lol/dev/academy-core-v35";
@@ -190,6 +190,8 @@ function AcademyCoreV35() {
     red: MATCHUP_LINEUP.red.map((n) => getChampionIcon(manifest, n)),
     rift: RIFT_CENTRE_ART,
   } : null), [warmed, manifest]);
+  // Leaguecraft's mystery portrait: the manifest's square Lux icon, on the same schedule
+  const mystery = useMemo(() => (warmed ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null), [warmed, manifest]);
 
   /* ---------------- the orbit engine ---------------- */
   const mode = fullLayout ? "orbit" : "composed";
@@ -539,6 +541,7 @@ function AcademyCoreV35() {
           className="o35-stage"
           data-mode={mode}
           data-focus={focus}
+          data-intent={pointerFocus !== "idle" || keyboardFocus !== "idle" ? "book" : "preview"}
           onPointerDown={onStageDown}
           onPointerMove={onStageMove}
           onPointerUp={onStageUp}
@@ -565,7 +568,7 @@ function AcademyCoreV35() {
               {CORE_DESTINATIONS.map((d) => renderBook(d))}
             </nav>
 
-            <OrreryCore focus={focus} activating={activating} ambient={ambient} media={media} matchup={matchup} ref={needleEl}>
+            <OrreryCore focus={focus} activating={activating} ambient={ambient} media={media} matchup={matchup} mystery={mystery} ref={needleEl}>
               {crystalButton}
             </OrreryCore>
 
