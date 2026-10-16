@@ -395,16 +395,17 @@ describe("7 · Ranked Admin home renders", () => {
     expect(panel.textContent).toMatch(/unrated/i);
   });
 
-  it("UGMP: one Game modes grid holds all seven new modes beside the earlier Ranked Bot playtests", async () => {
+  it("UGMP: one Game modes grid holds all eight new modes (PT4.1: Perfect Timing) beside the earlier Ranked Bot playtests", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
     const grid = await screen.findByTestId("playtest-mode-grid");
     expect(within(grid).getAllByRole("heading").map((h) => h.textContent)).toEqual([
       "Rangefinder", "Glyph Press", "Roster Lock", "Draft Memory", "Chronoscope", "Stat Drop", "Combat Estimate",
-      "Match Grid", "Reconstruct", "Order Forge",
+      "Perfect Timing", "Match Grid", "Reconstruct", "Order Forge",
     ]);
     // The retired labs are no longer separate destinations on this view.
     expect(screen.queryByTestId("admin-tool-interaction-mode-labs")).toBeNull();
     expect(screen.queryByTestId("admin-tool-numeric-lab")).toBeNull();
+    expect(screen.queryByTestId("admin-tool-perfect-timing-lab")).toBeNull();
   });
 
   it("offers the Journey launches in Ranked > Playtests, extended one last", async () => {

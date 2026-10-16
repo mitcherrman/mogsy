@@ -1,6 +1,6 @@
 /**
  * UGMP — the pieces every owner lab mode shares, so Rangefinder, Glyph Press,
- * Stat Drop and Combat Estimate read as one experience inside the real
+ * Stat Drop, Combat Estimate and Perfect Timing read as one experience inside the real
  * `CanonicalArena`: the way back to Playtests at the head of the arena's chrome
  * row, the rails, and the session's loading and failure states.
  */

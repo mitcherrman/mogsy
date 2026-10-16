@@ -6,6 +6,8 @@
  *   glyph-press      WP1.1, server-dealt, server-sounded and server-graded
  *   stat-drop        MIG1.2, historical value released after Lock, no grading
  *   combat-estimate  CE1 two-beam balance, captured value released, no grading
+ *   perfect-timing   PT4 Start/Stop, server-dealt and server-graded against the
+ *                    current base cooldown (browser-measured time; PT4.1)
  *
  * `AdminRoute` wraps this page (UX only). Every round and every answer comes
  * from the backend behind `require_admin`; this chunk carries none. Each mode's
@@ -19,6 +21,7 @@ import { PlaytestLead } from "./ownerArena";
 const RangefinderOwnerPlaytest = lazy(() => import("./RangefinderOwnerPlaytest"));
 const GlyphPressOwnerPlaytest = lazy(() => import("./GlyphPressOwnerPlaytest"));
 const NumericLabPage = lazy(() => import("@/pages/admin/numeric-lab/NumericLabPage"));
+const PerfectTimingPage = lazy(() => import("@/pages/admin/perfect-timing/PerfectTimingPage"));
 
 export default function OwnerPlaytestPage() {
   const { mode } = useParams();
@@ -36,6 +39,7 @@ export default function OwnerPlaytestPage() {
       <Suspense fallback={<div aria-hidden className="min-h-screen w-full bg-[#050b15]" />}>
         {mode === "rangefinder" ? <RangefinderOwnerPlaytest lead={lead} />
           : mode === "glyph-press" ? <GlyphPressOwnerPlaytest lead={lead} />
+          : mode === "perfect-timing" ? <PerfectTimingPage lead={lead} />
           : <NumericLabPage mode={mode} lead={lead} />}
       </Suspense>
     </div>

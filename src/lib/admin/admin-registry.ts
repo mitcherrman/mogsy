@@ -940,21 +940,21 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "ranked-playtests",
     title: "Playtests",
     description:
-      "One place to play every game mode: Ranked Bot playtests (Roster Lock, Draft Memory, Chronoscope, Match Grid, Reconstruct, Order Forge), the Rangefinder and Glyph Press prototypes, and the Stat Drop and Combat Estimate experiments.",
+      "One place to play every game mode: Ranked Bot playtests (Roster Lock, Draft Memory, Chronoscope, Match Grid, Reconstruct, Order Forge), the Rangefinder, Glyph Press and Perfect Timing prototypes, and the Stat Drop and Combat Estimate experiments.",
     area: "leaguecraft",
     section: "ranked",
     subsection: "playtests",
     kind: "panel",
     path: "/admin/leaguecraft?section=ranked&view=playtests",
-    oldLocation: "/admin/interaction-labs (Rangefinder + Glyph Press, local JSON packs) and /admin/numeric-lab (Stat Drop + Combat Estimate)",
-    legacyRoutes: ["/admin/interaction-labs", "/admin/numeric-lab"],
+    oldLocation: "/admin/interaction-labs (Rangefinder + Glyph Press, local JSON packs), /admin/numeric-lab (Stat Drop + Combat Estimate) and /admin/perfect-timing (Perfect Timing, PT4)",
+    legacyRoutes: ["/admin/interaction-labs", "/admin/numeric-lab", "/admin/perfect-timing"],
     disposition: "MERGE",
     dangerLevel: "none",
     status: "Internal",
     authorization:
-      "AdminRoute + AdminAuthGate. Every round is the backend's: Ranked Bot presets are admin-only at the queue (RANKED_PRESET_NOT_AUTHORIZED); /api/admin/interaction-lab/* and /api/admin/numeric-lab/* sit behind require_admin (numeric also behind NUMERIC_LAB_ENABLED); availability is read from /api/admin/playtests/status.",
+      "AdminRoute + AdminAuthGate. Every round is the backend's: Ranked Bot presets are admin-only at the queue (RANKED_PRESET_NOT_AUTHORIZED); /api/admin/interaction-lab/*, /api/admin/numeric-lab/* and /api/admin/perfect-timing/* sit behind require_admin (numeric also behind NUMERIC_LAB_ENABLED, Perfect Timing behind PERFECT_TIMING_LAB_ENABLED, off by default); availability is read from /api/admin/playtests/status.",
     notes:
-      "Lab modes play at /admin/playtests/:mode. Prototypes and experiments hold their historical, answer-bearing packs server-side (none ships in the bundle); Rangefinder/Glyph Press grade with their original prototype rules, Stat Drop/Combat Estimate reveal the historical value with no tolerance adopted. Nothing awards rating, points or leaderboard standing. No allowlist, cohort mechanism or restriction on normal Ranked PvP or Ranked Bot is introduced.",
+      "Lab modes play at /admin/playtests/:mode. Prototypes and experiments hold their historical, answer-bearing packs server-side (none ships in the bundle); Rangefinder/Glyph Press grade with their original prototype rules, Stat Drop/Combat Estimate reveal the historical value with no tolerance adopted. Perfect Timing deals from the backend's current champion_abilities (base cooldowns, 0 ability haste) and grades a BROWSER-measured stop — not tamper-proof, upper-bound plausibility only; its rounds live in backend process memory (15 min TTL). Nothing awards rating, points or leaderboard standing. No allowlist, cohort mechanism or restriction on normal Ranked PvP or Ranked Bot is introduced.",
   },
   {
     id: "ranked-lifecycle-worker",

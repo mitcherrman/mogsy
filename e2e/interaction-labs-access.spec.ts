@@ -65,7 +65,7 @@ async function open(browser: Browser, owner: boolean, vp = { width: 1280, height
 }
 
 test.describe("owner and non-owner (production bundle)", () => {
-  for (const p of ["/admin/playtests/glyph-press", "/admin/interaction-labs/word-puzzle", "/admin/numeric-lab?mode=combat-estimate"]) {
+  for (const p of ["/admin/playtests/glyph-press", "/admin/interaction-labs/word-puzzle", "/admin/numeric-lab?mode=combat-estimate", "/admin/playtests/perfect-timing", "/admin/perfect-timing"]) {
     test(`a non-owner at ${p} is redirected away and sees no playtest`, async ({ browser }) => {
       const page = await open(browser, false);
       await page.goto(p);
@@ -79,6 +79,7 @@ test.describe("owner and non-owner (production bundle)", () => {
     ["/admin/interaction-labs/rangefinder", "/admin/playtests/rangefinder"],
     ["/admin/interaction-labs/word-puzzle", "/admin/playtests/glyph-press"],
     ["/admin/numeric-lab?mode=combat-estimate", "/admin/playtests/combat-estimate"],
+    ["/admin/perfect-timing", "/admin/playtests/perfect-timing"],
   ]) {
     test(`the owner's bookmark ${from} lands on ${to}, with no file input and an actionable state`, async ({ browser }) => {
       const page = await open(browser, true);
@@ -87,7 +88,7 @@ test.describe("owner and non-owner (production bundle)", () => {
       await expect(page.getByTestId("owner-playtest-page")).toBeVisible({ timeout: 15_000 });
       await expect(page.locator('input[type="file"]')).toHaveCount(0);
       // The backend is unreachable in this hermetic run: the page says so instead of offering rounds.
-      await expect(page.locator('[data-testid="owner-playtest-error"], [data-testid="numeric-lab-error"]').first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('[data-testid="owner-playtest-error"], [data-testid="numeric-lab-error"], [data-testid="pt-retry-deal"]').first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("playtest-back").first()).toHaveAttribute("href", "/admin/leaguecraft?section=ranked&view=playtests");
       await page.screenshot({ path: path.join(SHOTS, `owner-bookmark-${to.split("/").pop()}-1280x720.png`) });
     });
@@ -97,7 +98,7 @@ test.describe("owner and non-owner (production bundle)", () => {
 test.describe("signed out (production bundle)", () => {
   test.beforeEach(async ({ context }) => { await hermetic(context, null); });
 
-  for (const p of ["/admin/interaction-labs", "/admin/interaction-labs/word-puzzle", "/admin/interaction-labs/rangefinder", "/admin/playtests/rangefinder", "/admin/playtests/glyph-press", "/admin/numeric-lab"]) {
+  for (const p of ["/admin/interaction-labs", "/admin/interaction-labs/word-puzzle", "/admin/interaction-labs/rangefinder", "/admin/playtests/rangefinder", "/admin/playtests/glyph-press", "/admin/numeric-lab", "/admin/playtests/perfect-timing", "/admin/perfect-timing"]) {
     test(`${p} mounts no loader and no playtest`, async ({ page }) => {
       await page.goto(p);
       // Signed out, AdminRoute either redirects home or (Supabase unreachable) shows the unavailable card.
@@ -112,13 +113,14 @@ test.describe("signed out (production bundle)", () => {
     });
   }
 
-  for (const p of ["/dev/word-puzzle", "/dev/rangefinder"]) {
+  for (const p of ["/dev/word-puzzle", "/dev/rangefinder", "/dev/perfect-timing"]) {
     test(`${p} is not a route in production`, async ({ page }) => {
       await page.goto(p);
       await page.waitForTimeout(1500);
       await expect(page.locator("[data-mig-primitive]")).toHaveCount(0);
       await expect(page.getByTestId("word-puzzle-lab")).toHaveCount(0);
       await expect(page.getByTestId("rangefinder-lab")).toHaveCount(0);
+      await expect(page.getByTestId("perfect-timing-page")).toHaveCount(0);
     });
   }
 

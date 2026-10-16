@@ -22,7 +22,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { OwnerStepUpHost } from "./components/admin/OwnerStepUpHost";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
-import { InteractionLabsRedirect, NumericLabRedirect } from "./pages/admin/playtests/legacyRedirects";
+import { InteractionLabsRedirect, NumericLabRedirect, PerfectTimingRedirect } from "./pages/admin/playtests/legacyRedirects";
 import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
 import {
@@ -285,6 +285,18 @@ const InteractionLab = isInteractionLabEnabled()
 // /dev/numeric-lab (no gate) so browser specs can stand in for the backend.
 const NumericLabPageDev = import.meta.env.DEV
   ? lazy(() => import("./pages/admin/numeric-lab/NumericLabPage"))
+  : null;
+// PT4: the owner-only Perfect Timing lab (/api/admin/perfect-timing/*, gated
+// server-side by require_admin and PERFECT_TIMING_LAB_ENABLED). PT4.1:
+// production plays it at /admin/playtests/perfect-timing (OwnerPlaytestPage);
+// /admin/perfect-timing redirects there. DEV only: the same page at
+// /dev/perfect-timing (no gate) so browser specs can stand in for the backend,
+// and PT1's fake-value presentation demo at /dev/perfect-timing/demo.
+const PerfectTimingPageDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/admin/perfect-timing/PerfectTimingPage"))
+  : null;
+const PerfectTimingDemo = import.meta.env.DEV
+  ? lazy(() => import("./components/perfect-timing/__stories__/PerfectTimingDemo"))
   : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
@@ -552,6 +564,7 @@ export const appRouter = createBrowserRouter(
                   <Route path="/admin/interaction-labs/:lab" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   <Route path="/admin/numeric-lab" element={<NumericLabRedirect />} />
+                  <Route path="/admin/perfect-timing" element={<PerfectTimingRedirect />} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />
@@ -774,6 +787,12 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
+                  ) : null}
+                  {PerfectTimingPageDev ? (
+                    <Route path="/dev/perfect-timing" element={<Suspense fallback={<RouteFallback />}><PerfectTimingPageDev exitTo="/dev/perfect-timing" /></Suspense>} />
+                  ) : null}
+                  {PerfectTimingDemo ? (
+                    <Route path="/dev/perfect-timing/demo" element={<Suspense fallback={<RouteFallback />}><PerfectTimingDemo /></Suspense>} />
                   ) : null}
                   {ProPlayAssemblyLab ? (
                     <Route path="/dev/pro-play-assembly" element={<Suspense fallback={<RouteFallback />}><ProPlayAssemblyLab /></Suspense>} />

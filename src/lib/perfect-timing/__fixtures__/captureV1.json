@@ -1,0 +1,204 @@
+{
+  "capture": "perfect_timing.capture.v1",
+  "generated_by": "perfect_timing/tests/make_capture.py",
+  "data": "TEST FIXTURE DATABASE (perfect_timing/tests/fixture_db.py): rows copied from audit/champdata_p11_cooldown_ledger.csv (2026-09-07). Not production data.",
+  "integrity": "elapsed_ms is browser-measured and not tamper-proof; plausibility is an upper-bound check only.",
+  "scoring_version": "pt-scoring-0.2",
+  "deal": {
+    "request": {
+      "count": 5
+    },
+    "response": {
+      "contract": "perfect_timing.deal.v1",
+      "data_label": {
+        "patch_label": null,
+        "patch_source": "unknown",
+        "ability_haste": 0
+      },
+      "rounds": [
+        {
+          "round_id": "pt_86719d9f31b066ce9c2b9de107a615de",
+          "champion": "Ahri",
+          "slot": "E",
+          "ability_name": "Charm",
+          "rank": null,
+          "rank_count": 5,
+          "expires_at": "2026-10-15T18:15:00.000000Z"
+        },
+        {
+          "round_id": "pt_a7113812928c1b4a654f8125e33fcca6",
+          "champion": "Lux",
+          "slot": "E",
+          "ability_name": "Lucent Singularity",
+          "rank": 4,
+          "rank_count": 5,
+          "expires_at": "2026-10-15T18:15:00.000000Z"
+        },
+        {
+          "round_id": "pt_fa7802bbca2a86a83b993d36d4a45401",
+          "champion": "Ahri",
+          "slot": "W",
+          "ability_name": "Fox-Fire",
+          "rank": 4,
+          "rank_count": 5,
+          "expires_at": "2026-10-15T18:15:00.000000Z"
+        },
+        {
+          "round_id": "pt_0ede7050e8016b4eda3eab41afc725d3",
+          "champion": "Annie",
+          "slot": "Q",
+          "ability_name": "Disintegrate",
+          "rank": null,
+          "rank_count": 5,
+          "expires_at": "2026-10-15T18:15:00.000000Z"
+        },
+        {
+          "round_id": "pt_fda43ae70fb7a0722e1280748d4129f9",
+          "champion": "Aatrox",
+          "slot": "E",
+          "ability_name": "Umbral Dash",
+          "rank": 2,
+          "rank_count": 5,
+          "expires_at": "2026-10-15T18:15:00.000000Z"
+        }
+      ]
+    }
+  },
+  "locks": [
+    {
+      "round_id": "pt_86719d9f31b066ce9c2b9de107a615de",
+      "request": {
+        "elapsed_ms": 11760
+      },
+      "response": {
+        "contract": "perfect_timing.release.v1",
+        "round_id": "pt_86719d9f31b066ce9c2b9de107a615de",
+        "elapsed_ms": 11760,
+        "target_ms": 12000,
+        "error_ms": -240,
+        "abs_error_ms": 240,
+        "relative_error": 0.02,
+        "tier": "perfect",
+        "points": 92,
+        "plausibility": {
+          "server_window_ms": 30000,
+          "verdict": "ok"
+        },
+        "authority": {
+          "cooldown_raw": "12 / 12 / 12 / 12 / 12",
+          "rank": null,
+          "revision_id": "3909373",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00"
+        }
+      }
+    },
+    {
+      "round_id": "pt_a7113812928c1b4a654f8125e33fcca6",
+      "request": {
+        "elapsed_ms": 8925
+      },
+      "response": {
+        "contract": "perfect_timing.release.v1",
+        "round_id": "pt_a7113812928c1b4a654f8125e33fcca6",
+        "elapsed_ms": 8925,
+        "target_ms": 8500,
+        "error_ms": 425,
+        "abs_error_ms": 425,
+        "relative_error": 0.05,
+        "tier": "great",
+        "points": 80,
+        "plausibility": {
+          "server_window_ms": 30000,
+          "verdict": "ok"
+        },
+        "authority": {
+          "cooldown_raw": "10 / 9.5 / 9 / 8.5 / 8",
+          "rank": 4,
+          "revision_id": "4007677",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00"
+        }
+      }
+    },
+    {
+      "round_id": "pt_fa7802bbca2a86a83b993d36d4a45401",
+      "request": {
+        "elapsed_ms": 5280
+      },
+      "response": {
+        "contract": "perfect_timing.release.v1",
+        "round_id": "pt_fa7802bbca2a86a83b993d36d4a45401",
+        "elapsed_ms": 5280,
+        "target_ms": 6000,
+        "error_ms": -720,
+        "abs_error_ms": 720,
+        "relative_error": 0.12,
+        "tier": "good",
+        "points": 52,
+        "plausibility": {
+          "server_window_ms": 30000,
+          "verdict": "ok"
+        },
+        "authority": {
+          "cooldown_raw": "9 / 8 / 7 / 6 / 5",
+          "rank": 4,
+          "revision_id": "4007399",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00"
+        }
+      }
+    },
+    {
+      "round_id": "pt_0ede7050e8016b4eda3eab41afc725d3",
+      "request": {
+        "elapsed_ms": 5600
+      },
+      "response": {
+        "contract": "perfect_timing.release.v1",
+        "round_id": "pt_0ede7050e8016b4eda3eab41afc725d3",
+        "elapsed_ms": 5600,
+        "target_ms": 4000,
+        "error_ms": 1600,
+        "abs_error_ms": 1600,
+        "relative_error": 0.4,
+        "tier": "miss",
+        "points": 0,
+        "plausibility": {
+          "server_window_ms": 30000,
+          "verdict": "ok"
+        },
+        "authority": {
+          "cooldown_raw": "4 / 4 / 4 / 4 / 4",
+          "rank": null,
+          "revision_id": "3992633",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00"
+        }
+      }
+    },
+    {
+      "round_id": "pt_fda43ae70fb7a0722e1280748d4129f9",
+      "request": {
+        "elapsed_ms": 8160
+      },
+      "response": {
+        "contract": "perfect_timing.release.v1",
+        "round_id": "pt_fda43ae70fb7a0722e1280748d4129f9",
+        "elapsed_ms": 8160,
+        "target_ms": 8000,
+        "error_ms": 160,
+        "abs_error_ms": 160,
+        "relative_error": 0.02,
+        "tier": "perfect",
+        "points": 92,
+        "plausibility": {
+          "server_window_ms": 1000,
+          "verdict": "exceeds_server_window"
+        },
+        "authority": {
+          "cooldown_raw": "9 / 8 / 7 / 6 / 5",
+          "rank": 2,
+          "revision_id": "4007771",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00"
+        }
+      }
+    }
+  ]
+}

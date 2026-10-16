@@ -3,7 +3,7 @@
  * Ranked → Playtests.
  *
  * Every mode is one `PlaytestModeCard`. Ranked Bot presets launch an unrated
- * Ranked Bot match through the ordinary queue (`PresetLaunch`); the four owner
+ * Ranked Bot match through the ordinary queue (`PresetLaunch`); the owner
  * labs open `/admin/playtests/:mode`, where the backend deals their rounds. The
  * hub reads `GET /api/admin/playtests/status` once so a lab is never offered
  * when this backend cannot serve it, and says exactly why. A preset stays
@@ -48,6 +48,16 @@ const ROUND_NOUN: Record<LabModeId, string> = {
   "glyph-press": "verified rounds",
   "stat-drop": "historical rounds",
   "combat-estimate": "captured scenarios",
+  "perfect-timing": "certified abilities, 5 per run",
+};
+
+/** Where a lab's rounds come from: the frozen captures, or (Perfect Timing) this backend's current ability data. */
+const SOURCE_NOTE: Record<LabModeId, string> = {
+  rangefinder: "historical capture",
+  "glyph-press": "historical capture",
+  "stat-drop": "historical capture",
+  "combat-estimate": "historical capture",
+  "perfect-timing": "current ability data",
 };
 
 function LabModeCard({ id, status }: { id: LabModeId; status: StatusLoad }) {
@@ -67,7 +77,7 @@ function LabModeCard({ id, status }: { id: LabModeId; status: StatusLoad }) {
       play={{ kind: "link", label: `Play ${mode.title}`, to: labModeRoute(id), testId: `${id}-launch-button` }}
       checking={status.state === "loading"}
       disabledReason={disabledReason}
-      note={lab?.available ? `${lab.rounds} ${ROUND_NOUN[id]} · historical capture` : null}
+      note={lab?.available ? `${lab.rounds} ${ROUND_NOUN[id]} · ${SOURCE_NOTE[id]}` : null}
     />
   );
 }
