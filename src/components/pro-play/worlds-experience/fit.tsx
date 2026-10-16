@@ -177,6 +177,13 @@ export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, rese
   const list = useRef<HTMLOListElement>(null);
   const parent = useContext(FitParent);
   const [measured, setMeasured] = useState<number | null>(null);
+  /**
+   * The tallest row seen for this box and list. Rows can differ in height (a
+   * line that wraps), and sizing a page by the rows it happens to show would
+   * oscillate: fewer rows → only short ones shown → more fit → a tall one is
+   * back. Only growing within one box and list makes the size converge.
+   */
+  const tallest = useRef({ key: "", h: 0 });
   const [page, setPage] = useState(0);
   const boxSize = useBoxSize(region);
   useFontEpoch();
@@ -197,7 +204,11 @@ export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, rese
     if (!r || !l) return;
     const kids = [...l.children] as HTMLElement[];
     if (!kids.length) return;
-    const rowH = Math.max(...kids.map((k) => k.offsetHeight));
+    // Width (what wraps), the list and its subject: not the height, which the pager itself changes.
+    const boxKey = `${r.clientWidth}|${items.length}|${resetKey ?? ""}`;
+    if (tallest.current.key !== boxKey) tallest.current = { key: boxKey, h: 0 };
+    tallest.current.h = Math.max(tallest.current.h, ...kids.map((k) => k.offsetHeight));
+    const rowH = tallest.current.h;
     const style = window.getComputedStyle(l);
     const gap = parseFloat(style.rowGap) || 0;
     const top = kids[0].offsetTop;

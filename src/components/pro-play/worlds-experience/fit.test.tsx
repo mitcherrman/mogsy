@@ -107,6 +107,25 @@ describe("FitPages", () => {
     expect(rows()[0]).toBe("m1");
   });
 
+  it("rows of different heights settle on one page size (no oscillation)", () => {
+    // m3 is taller (a wrapped line). Sizing by the rows on screen alone would
+    // flip forever: 2 rows (m1, m2 short) → 3 fit → m3 back → 2 fit → …
+    restore = sizes((el) => {
+      if (el.hasAttribute("data-fit-region")) return { clientHeight: 200, clientWidth: 300, scrollHeight: 200, scrollWidth: 300 };
+      if (el.parentElement?.hasAttribute("data-fit-list")) {
+        const kids = [...el.parentElement.children];
+        const i = kids.indexOf(el);
+        const h = (k: Element) => (k.textContent === "m3" ? 80 : ROW);
+        return { offsetHeight: h(el), offsetTop: kids.slice(0, i).reduce((t, k) => t + h(k), 0) };
+      }
+      return {};
+    });
+    renderList();
+    expect(rows()).toEqual(["m1", "m2"]);
+    fireEvent.click(screen.getByTestId("pager-next"));
+    expect(rows()).toEqual(["m3", "m4"]);
+  });
+
   it("a pinned page size is honoured (and every item stays reachable)", () => {
     renderList({ pageSize: 5 });
     expect(rows()).toHaveLength(5);
