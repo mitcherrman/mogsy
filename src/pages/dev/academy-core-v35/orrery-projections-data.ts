@@ -31,8 +31,6 @@ export const MYSTERY_CHAMPION = "Lux";
  * (inradius 104). ~140 x 162 px at 1366 wide: the 128 px icon drawn at ~1.25x.
  */
 export const LUX_WINDOW_RADIUS = 86;
-/** The glass is authored for a 157-unit portrait and scaled with the window. */
-export const LUX_GLASS_SCALE = (2 * LUX_WINDOW_RADIUS) / 157;
 export const MATCHUP_LINEUP = {
   blue: ["Gnar", "Lee Sin", "Azir", "Jinx", "Thresh"],
   red: ["K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"],

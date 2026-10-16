@@ -7,8 +7,8 @@ import { render } from "@testing-library/react";
 vi.mock("@/hooks/useReducedMotionPreference", () => ({ useReducedMotionPreference: () => true }));
 
 import AcademyCoreInstrument from "@/pages/academy-core/AcademyCoreInstrument";
-import { LuxMysteryProjection, MatchupProjection } from "./OrreryProjections";
-import { LUX_GLASS_SCALE, LUX_WINDOW_RADIUS, MATCHUP_LINEUP, MYSTERY_CHAMPION, RIFT_CENTRE_ART, TEAM_ARC_R, TEAM_ICON_R, teamSlot } from "./orrery-projections-data";
+import { LuxMysteryProjection, MatchupProjection, SHUTTER_POINTS } from "./OrreryProjections";
+import { LUX_WINDOW_RADIUS, MATCHUP_LINEUP, MYSTERY_CHAMPION, RIFT_CENTRE_ART, TEAM_ARC_R, TEAM_ICON_R, teamSlot } from "./orrery-projections-data";
 
 const ROLES = ["/r/top.svg", "/r/jungle.svg", "/r/mid.svg", "/r/bot.svg", "/r/support.svg"];
 const icons = (side: string) => [0, 1, 2, 3, 4].map((i) => `/icons/${side}-${i}.png`);
@@ -52,62 +52,131 @@ describe("V3 stays V3 unless a caller opts in", () => {
   });
 });
 
-describe("Leaguecraft: Arcane Mystery — Lux behind shifting Hextech glass", () => {
+describe("Leaguecraft: Arcane Mystery — Lux behind the chamber's iris of six shutters", () => {
   const LUX = "/assets/champions/Lux/icon.png";
   const LEAGUECRAFT_IRIS = 104;
+  const R = LUX_WINDOW_RADIUS;
+  const corner = (k: number) => ({ x: R * Math.cos(((-90 + 60 * k) * Math.PI) / 180), y: R * Math.sin(((-90 + 60 * k) * Math.PI) / 180) });
 
-  it("one large subject: Lux's icon in a hexagonal window, with three glass panes in front of it", () => {
+  it("one large subject: Lux's icon in the hexagonal window, behind six shutters inside the window", () => {
     const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
     const portrait = container.querySelector("[data-testid='academy-core-v35-lux-portrait']")!;
     expect(portrait.getAttribute("href")).toBe(LUX);
-    expect(Number(portrait.getAttribute("width"))).toBeCloseTo(2 * LUX_WINDOW_RADIUS, 6);
+    expect(Number(portrait.getAttribute("width"))).toBeCloseTo(2 * R, 6);
     expect(portrait.closest("[clip-path='url(#o35-lux-window)']")).not.toBeNull();
-    const panes = ["blue", "violet", "gold"].map((id) => container.querySelector(`[data-testid='academy-core-v35-pane-${id}']`));
-    expect(panes.every(Boolean)).toBe(true);
-    // the panes are drawn after (in front of) the portrait
-    const order = [...container.querySelectorAll("[data-testid='academy-core-v35-lux-portrait'], [data-testid^='academy-core-v35-pane-']")];
+    const shutters = [0, 1, 2, 3, 4, 5].map((k) => container.querySelector(`[data-testid='academy-core-v35-shutter-${k}']`)!);
+    expect(shutters.every(Boolean)).toBe(true);
+    expect(container.querySelectorAll("[data-testid^='academy-core-v35-shutter-']")).toHaveLength(6);
+    for (const s of shutters) {
+      // clipped to the window, so they swing out under the frame and never past it
+      expect(s.closest("[clip-path='url(#o35-lux-window)']")).not.toBeNull();
+    }
+    // the shutters are drawn after (in front of) the portrait, and the frame after the shutters
+    const order = [...container.querySelectorAll("[data-testid='academy-core-v35-lux-portrait'], [data-testid^='academy-core-v35-shutter-'], .o35-lux-frame")];
     expect(order[0]).toBe(portrait);
-    // through the glass the portrait is refracted: a magnified, displaced copy masked to the panes
+    expect(order[order.length - 1]).toHaveClass("o35-lux-frame");
+    // through the glass the portrait is refracted: a magnified copy masked to the shutters
     const refract = container.querySelector(".o35-lux-refract")!;
     expect(refract.getAttribute("href")).toBe(LUX);
     expect(refract.closest("[mask='url(#o35-lux-glass-mask)']")).not.toBeNull();
-    expect(container.querySelectorAll("#o35-lux-glass-mask polygon")).toHaveLength(3);
-    // the mask's silhouettes carry the same motion classes as the visible panes, so they move together
-    for (const id of ["blue", "violet", "gold"]) {
-      expect(container.querySelectorAll(`.o35-pane-drift-${id}`)).toHaveLength(2);
-      expect(container.querySelectorAll(`.o35-pane-engage-${id}`)).toHaveLength(2);
-    }
+    expect(container.querySelectorAll("#o35-lux-glass-mask polygon")).toHaveLength(6);
+    // the mask's silhouettes carry the same pivot classes as the visible shutters, so they move together
+    for (let k = 0; k < 6; k++) expect(container.querySelectorAll(`.o35-shutter-drift.o35-shutter-k${k}`)).toHaveLength(2);
+    expect(container.querySelectorAll(".o35-shutter-engage")).toHaveLength(12);
     // the light sweep: across the portrait and along the glass
     expect(container.querySelectorAll(".o35-lux-beam")).toHaveLength(2);
   });
 
-  it("nothing of the previous design remains: no reticle, role icons, scroll or quill, and no text", () => {
+  it("the shutters are one geometry, repeated about the centre and hinged at the window's six corners", () => {
     const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
-    for (const sel of [".acore-reticle", ".acore-role", "[data-testid='academy-core-v35-study-emblem']", ".o35-study-emblem", "text"]) {
+    const shutters = [0, 1, 2, 3, 4, 5].map((k) => container.querySelector(`[data-testid='academy-core-v35-shutter-${k}']`)!);
+    for (const [k, s] of shutters.entries()) {
+      expect(s.querySelector(".o35-shutter-body")!.getAttribute("points")).toBe(SHUTTER_POINTS);
+      const placement = s.closest(".o35-shutter-engage")!.parentElement!.getAttribute("transform");
+      expect(placement).toBe(`rotate(${60 * k}) translate(0 ${-R})`);
+      // alternating Hextech blue and violet glass
+      expect(s).toHaveClass(k % 2 ? "o35-shutter-violet" : "o35-shutter-blue");
+    }
+    // in its hinge's coordinates a shutter is (hinge, next corner, centre): an exact sixth of the window
+    const pts = SHUTTER_POINTS.split(" ").map((p) => p.split(",").map(Number));
+    expect(pts).toHaveLength(3);
+    const c0 = corner(0);
+    const c1 = corner(1);
+    expect(pts[0]).toEqual([0, 0]);
+    expect(pts[1][0]).toBeCloseTo(c1.x - c0.x, 1);
+    expect(pts[1][1]).toBeCloseTo(c1.y - c0.y, 1);
+    expect(pts[2][0]).toBeCloseTo(-c0.x, 1);
+    expect(pts[2][1]).toBeCloseTo(-c0.y, 1);
+    // one hinge jewel per corner, on the frame
+    expect(container.querySelectorAll(".o35-shutter-hinge")).toHaveLength(6);
+  });
+
+  it("a clean reveal mechanism: pivoting by theta opens theta/60 of the window and the shutters never overlap", () => {
+    const pts = SHUTTER_POINTS.split(" ").map((p) => p.split(",").map(Number));
+    /** Shutter k, pivoted by theta about its hinge, in the window's coordinates (the CSS rotate(-theta) about the hinge). */
+    const placed = (k: number, theta: number) => {
+      const t = (-theta * Math.PI) / 180;
+      const a = (60 * k * Math.PI) / 180;
+      return pts.map(([x, y]) => {
+        const px = x * Math.cos(t) - y * Math.sin(t);
+        const py = x * Math.sin(t) + y * Math.cos(t) - R; // then translate(0, -R)
+        return [px * Math.cos(a) - py * Math.sin(a), px * Math.sin(a) + py * Math.cos(a)];
+      });
+    };
+    const inPoly = (poly: number[][], x: number, y: number) => {
+      let c = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i];
+        const [xj, yj] = poly[j];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    const windowPoly = [0, 1, 2, 3, 4, 5].map((k) => [corner(k).x, corner(k).y]);
+    for (const theta of [0, 5, 16, 30, 46, 60]) {
+      const blades = [0, 1, 2, 3, 4, 5].map((k) => placed(k, theta));
+      let inside = 0;
+      let open = 0;
+      let overlap = 0;
+      for (let x = -R; x <= R; x += 2) {
+        for (let y = -R; y <= R; y += 2) {
+          if (!inPoly(windowPoly, x + 0.37, y + 0.21)) continue;
+          inside++;
+          const n = blades.filter((b) => inPoly(b, x + 0.37, y + 0.21)).length;
+          if (n === 0) open++;
+          if (n > 1) overlap++;
+        }
+      }
+      expect(open / inside, `theta ${theta}: open fraction`).toBeCloseTo(theta / 60, 1);
+      expect(overlap / inside, `theta ${theta}: overlap`).toBeLessThan(0.005);
+    }
+  });
+
+  it("nothing of the previous designs remains: no reticle, role icons, scroll or quill, free panes, or text", () => {
+    const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
+    for (const sel of [".acore-reticle", ".acore-role", "[data-testid='academy-core-v35-study-emblem']", ".o35-study-emblem", "[class*='o35-pane']", "text"]) {
       expect(container.querySelector(sel), sel).toBeNull();
     }
     // the only raster images are the portrait and its refraction
     expect([...container.querySelectorAll("image")].map((i) => i.getAttribute("href"))).toEqual([LUX, LUX]);
   });
 
-  it("before the art is due it draws the window and the glass, and never a guessed image", () => {
+  it("before the art is due it draws the window and the shutters, and never a guessed image", () => {
     const { container } = render(<svg><LuxMysteryProjection portrait={null} /></svg>);
     expect(container.querySelectorAll("image")).toHaveLength(0);
     expect(container.querySelector(".o35-lux-frame")).not.toBeNull();
-    expect(container.querySelector("[data-testid='academy-core-v35-pane-blue']")).not.toBeNull();
+    expect(container.querySelectorAll("[data-testid^='academy-core-v35-shutter-']")).toHaveLength(6);
   });
 
   it("geometry: the window sits inside Leaguecraft's open iris and the lens, aligned with the iris", () => {
     // pointy-top hexagon of corner radius R: its corners project to R * cos(30deg) on the iris's blade normals (0, 60, ... deg)
-    const R = LUX_WINDOW_RADIUS;
-    for (const corner of [-90, -30, 30, 90, 150, 210]) {
+    for (const c of [-90, -30, 30, 90, 150, 210]) {
       for (let k = 0; k < 6; k++) {
-        const proj = R * Math.cos(((corner - k * 60) * Math.PI) / 180);
-        expect(proj, `corner ${corner} vs blade ${k}`).toBeLessThan(LEAGUECRAFT_IRIS);
+        const proj = R * Math.cos(((c - k * 60) * Math.PI) / 180);
+        expect(proj, `corner ${c} vs blade ${k}`).toBeLessThan(LEAGUECRAFT_IRIS);
       }
     }
     expect(R).toBeLessThan(LENS_R);
-    expect(LUX_GLASS_SCALE).toBeCloseTo((2 * R) / 157, 9);
     expect(MYSTERY_CHAMPION).toBe("Lux");
   });
 });

@@ -615,68 +615,57 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
    Archives are the V3 originals, untouched.
    ========================================================================== */
 
-/* LEAGUECRAFT — Arcane Mystery: Lux, examined through shifting Hextech glass.
-   One 14 s loop: four pane arrangements (A at 0 %, B 28 %, C 52 %, D 76 %, back
-   to A), a beam of light across the portrait and the glass at 36-62 %, the pane
-   edges glinting as it passes, and a slow breath in the portrait. Everything
-   holds still (paused, not removed) unless Leaguecraft is the projection and
-   the scene is on screen, so leaving and returning never jumps. Positions are
-   in the lens's local units (an SVG px inside the instrument). */
+/* LEAGUECRAFT — Arcane Mystery: Lux, behind the chamber's iris of six glass
+   shutters, each hinged at one corner of the hexagonal window. A shutter's
+   angle theta (rotate(-theta) about its hinge) sets the reveal: the shutters
+   never overlap, and the open part of the window is theta/60.
+   One 14 s action: rest (16 deg, a small aperture over her face) -> the
+   shutters pivot open, rippling round the ring (46 deg, most of her face)
+   -> hold open while a beam of arcane light crosses her -> close almost fully
+   and hold (5 deg) -> settle back to rest. 0 % equals 100 %, so the loop has no seam.
+   Everything holds still (paused, not removed) unless Leaguecraft is the
+   projection and the scene is on screen, so leaving and returning never jumps.
+   Positions are in the lens's local units (an SVG px inside the instrument). */
 
 .o35-lux-halo { fill: none; stroke: #ffe9b8; stroke-opacity: 0.32; stroke-width: 6; filter: drop-shadow(0 0 6px rgba(255, 233, 184, 0.5)); }
 .o35-lux-backing { fill: #0b1030; }
-.o35-lux-frame { fill: none; stroke: #fff3cf; stroke-opacity: 0.9; stroke-width: 1.4; stroke-linejoin: round; }
+.o35-lux-frame { fill: none; stroke: #fff3cf; stroke-opacity: 0.9; stroke-width: 1.6; stroke-linejoin: round; }
 
-/* every moving part transforms about its own local origin, as an SVG transform attribute would */
-.o35-pane-engage, .o35-pane-drift, .o35-lux-beam-track, .o35-lux-portrait { transform-box: view-box; transform-origin: 0 0; }
+/* every moving part transforms about its own local origin (a shutter's: its hinge), as an SVG transform attribute would */
+.o35-shutter-engage, .o35-shutter-drift, .o35-lux-beam-track, .o35-lux-portrait { transform-box: view-box; transform-origin: 0 0; }
 
 /* the glass */
-.o35-pane-shadow { fill: #050816; fill-opacity: 0.3; }
-.o35-pane-sheen { opacity: 0.7; }
-.o35-pane-streak { stroke: #ffffff; stroke-opacity: 0.38; stroke-width: 0.9; stroke-linecap: round; }
-.o35-pane-edge { fill: none; stroke: #f6f9ff; stroke-opacity: 0.6; stroke-width: 1.2; stroke-linejoin: round; }
-.o35-pane-gold .o35-pane-edge { stroke: #fff3cf; }
+.o35-shutter-reed { mix-blend-mode: normal; }
+.o35-shutter-sheen { opacity: 0.75; }
+.o35-shutter-facet { stroke: #ffffff; stroke-opacity: 0.32; stroke-width: 0.8; stroke-linecap: round; }
+.o35-shutter-edge-dark { fill: none; stroke: #0b1030; stroke-opacity: 0.5; stroke-width: 2.6; stroke-linejoin: round; }
+.o35-shutter-edge { fill: none; stroke: #fff3cf; stroke-opacity: 0.7; stroke-width: 1.1; stroke-linejoin: round; }
+.o35-shutter-hinge { fill: #f3d98f; stroke: #5a3d10; stroke-width: 0.8; }
 
-/* engage: the panes wait at the rim and slide in when the room is focused */
-.o35-pane-engage { opacity: 0; transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 600ms ease; }
-.o35-pane-engage-blue { transform: translate(-84px, 10px); }
-.o35-pane-engage-violet { transform: translate(54px, 72px); }
-.o35-pane-engage-gold { transform: translate(72px, -72px); }
-.acore-svg[data-focus="leaguecraft"] .o35-pane-engage { transform: translate(0px, 0px); opacity: 1; }
-/* reaching for the Leaguecraft book (hover / keyboard): the glass parts a little */
-.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-pane-engage-blue { transform: translate(-24px, 6px); }
-.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-pane-engage-violet { transform: translate(14px, 20px); }
-.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-pane-engage-gold { transform: translate(18px, -20px); }
-/* opening the book: the glass parts fully and Lux is revealed (outranks the hover rule above) */
-.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-pane-engage-blue { transform: translate(-72px, 8px); opacity: 0.5; transition-duration: 240ms; }
-.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-pane-engage-violet { transform: translate(46px, 60px); opacity: 0.5; transition-duration: 240ms; }
-.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-pane-engage-gold { transform: translate(60px, -62px); opacity: 0.5; transition-duration: 240ms; }
+/* engage: an extra pivot about the same hinge. Away from Leaguecraft the shutters wait swung out of the window; entering, they swing in */
+.o35-shutter-engage { transform: rotate(-62deg); transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acore-svg[data-focus="leaguecraft"] .o35-shutter-engage { transform: rotate(0deg); }
+/* reaching for the Leaguecraft book (hover / keyboard): the iris opens further */
+.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-shutter-engage { transform: rotate(-16deg); transition-duration: 700ms; }
+/* opening the book: the shutters swing right out and Lux is revealed (outranks the hover rule above) */
+.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-shutter-engage { transform: rotate(-62deg); transition-duration: 240ms; }
 
-/* drift: arrangement A is the base (and the reduced-motion still) */
-.o35-pane-drift { animation-duration: 14s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-play-state: paused; }
-.o35-pane-drift-blue { transform: translate(-30px, -6px) rotate(-8deg); animation-name: o35-drift-blue; }
-.o35-pane-drift-violet { transform: translate(18px, 40px) rotate(10deg); animation-name: o35-drift-violet; }
-.o35-pane-drift-gold { transform: translate(14px, -34px) rotate(-12deg); animation-name: o35-drift-gold; }
-@keyframes o35-drift-blue {
-  0%, 100% { transform: translate(-30px, -6px) rotate(-8deg); }
-  28% { transform: translate(-44px, 22px) rotate(-16deg); }
-  52% { transform: translate(-38px, 8px) rotate(-4deg); }
-  76% { transform: translate(-22px, -14px) rotate(-2deg); }
-}
-@keyframes o35-drift-violet {
-  0%, 100% { transform: translate(18px, 40px) rotate(10deg); }
-  28% { transform: translate(24px, -4px) rotate(28deg); }
-  52% { transform: translate(32px, 14px) rotate(40deg); }
-  76% { transform: translate(14px, 32px) rotate(16deg); }
-}
-@keyframes o35-drift-gold {
-  0%, 100% { transform: translate(14px, -34px) rotate(-12deg); }
-  28% { transform: translate(6px, 46px) rotate(-4deg); }
-  52% { transform: translate(-4px, -50px) rotate(8deg); }
-  76% { transform: translate(20px, -26px) rotate(-18deg); }
+/* the reveal: rest (16 deg) is the base and the reduced-motion / lite still */
+.o35-shutter-drift { transform: rotate(-16deg); animation: o35-shutter 14s ease-in-out infinite paused; }
+/* the ripple: each shutter leads its neighbour by 0.1 s (inside the rest hold, so the still is even) */
+.o35-shutter-k1 { animation-delay: -0.1s; }
+.o35-shutter-k2 { animation-delay: -0.2s; }
+.o35-shutter-k3 { animation-delay: -0.3s; }
+.o35-shutter-k4 { animation-delay: -0.4s; }
+.o35-shutter-k5 { animation-delay: -0.5s; }
+@keyframes o35-shutter {
+  0%, 8% { transform: rotate(-16deg); }
+  34%, 60% { transform: rotate(-46deg); }
+  80%, 86% { transform: rotate(-5deg); }
+  100% { transform: rotate(-16deg); }
 }
 
-/* the light: across the portrait, then (a beat later) along the glass */
+/* the light: across her face while the iris is open, then (a beat later) along the glass */
 .o35-lux-beam { mix-blend-mode: screen; }
 .o35-lux-beam-track { transform: translateX(-150px); opacity: 0; animation: o35-lux-beam 14s linear infinite paused; }
 .o35-lux-beam-track-glass { animation-delay: -13.6s; }
@@ -686,27 +675,27 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
   58% { opacity: 1; }
   62%, 100% { transform: translateX(150px); opacity: 0; }
 }
-.o35-pane-edge, .o35-pane-sheen { animation: o35-lux-glint 14s ease-in-out infinite paused; }
+.o35-shutter-edge, .o35-shutter-sheen { animation: o35-lux-glint 14s ease-in-out infinite paused; }
 @keyframes o35-lux-glint {
-  0%, 40% { stroke-opacity: 0.6; opacity: 0.7; }
+  0%, 40% { stroke-opacity: 0.7; opacity: 0.75; }
   49% { stroke-opacity: 1; opacity: 1; }
-  58%, 100% { stroke-opacity: 0.6; opacity: 0.7; }
+  58%, 100% { stroke-opacity: 0.7; opacity: 0.75; }
 }
 .o35-lux-portrait { animation: o35-lux-breathe 14s ease-in-out infinite paused; }
-@keyframes o35-lux-breathe { 0%, 100% { transform: scale(1); } 52% { transform: scale(1.035); } }
+@keyframes o35-lux-breathe { 0%, 100% { transform: scale(1); } 47% { transform: scale(1.035); } }
 
 /* run only while Leaguecraft is the projection and the scene is live */
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-pane-drift,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-drift,
 .acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-beam-track,
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-pane-edge,
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-pane-sheen,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-edge,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-sheen,
 .acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-portrait { animation-play-state: running; }
 
-/* lite tier: the mystery stays (panes in arrangement A, engage and reveal transitions); the loop, beam and glints go */
-.o35-root[data-quality="lite"] .o35-pane-drift,
+/* lite tier: the mystery stays (the iris at rest; the engage, reach and open pivots); the loop, beam and glints go */
+.o35-root[data-quality="lite"] .o35-shutter-drift,
 .o35-root[data-quality="lite"] .o35-lux-beam-track,
-.o35-root[data-quality="lite"] .o35-pane-edge,
-.o35-root[data-quality="lite"] .o35-pane-sheen,
+.o35-root[data-quality="lite"] .o35-shutter-edge,
+.o35-root[data-quality="lite"] .o35-shutter-sheen,
 .o35-root[data-quality="lite"] .o35-lux-portrait { animation: none; }
 .o35-root[data-quality="lite"] .o35-lux-halo { filter: none; }
 
@@ -729,7 +718,5 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
 .o35-team-bottom { transform: translateY(-16px); }
 .acore-svg[data-focus="pro-play"] .o35-team-top,
 .acore-svg[data-focus="pro-play"] .o35-team-bottom { transform: translateY(0); }
-.o35-pane-edge-dark { fill: none; stroke: #0b1030; stroke-opacity: 0.45; stroke-width: 2.6; stroke-linejoin: round; }
-.o35-pane-reed { mix-blend-mode: normal; }
 /* Leaguecraft's crystal field, deepened in V3.5 so the portrait (gold hair, pale skin) reads against it */
 .o35-root .acore-svg[data-focus="leaguecraft"] { --cr-hi: #e6c47a; --cr-mid: #7d5a20; --cr-lo: #2c1f0c; --cr-core: #fff1d2; }

@@ -700,13 +700,13 @@ describe("the arrow selector", () => {
 });
 
 describe("the redesigned crystal projections, in the page", () => {
-  it("Leaguecraft shows Lux behind the glass; Pro Play shows the 5 v 5 lineup around the Rift", async () => {
+  it("Leaguecraft shows Lux behind the six-shutter iris; Pro Play shows the 5 v 5 lineup around the Rift", async () => {
     const { container } = mount();
     await act(async () => { await Promise.resolve(); }); // the (mocked) warm resolves -> the art is due
     const lc = container.querySelector(".acore-mode-leaguecraft")!;
     expect(lc).toHaveAttribute("data-projection", "override");
     expect(lc.querySelector("[data-testid='academy-core-v35-lux-portrait']")?.getAttribute("href")).toContain("assets/champions/Lux/icon.png");
-    expect(lc.querySelectorAll("[data-testid^='academy-core-v35-pane-']")).toHaveLength(3);
+    expect(lc.querySelectorAll("[data-testid^='academy-core-v35-shutter-']")).toHaveLength(6);
     expect(lc.querySelectorAll(".acore-role")).toHaveLength(0);
     expect(lc.querySelector("[data-testid='academy-core-v35-study-emblem']")).toBeNull();
     expect(lc.querySelector("image[href*='splash']")).toBeNull(); // the square icon, never the splash

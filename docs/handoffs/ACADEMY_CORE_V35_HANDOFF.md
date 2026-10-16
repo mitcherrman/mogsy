@@ -1,15 +1,168 @@
-# Academy Core V3.5 — The Living Hextech Orrery (Phase 1, Phase 2, targeted changes, crystal redesign, Leaguecraft mystery)
+# Academy Core V3.5 — The Living Hextech Orrery (Phase 1, Phase 2, targeted changes, crystal redesign, Leaguecraft mystery + iris)
 
 Branch `design/academy-core-v35-floating-orrery`, cut from `origin/main` **`6407559a`** (fetched at the start of the pass).
 Preview route: **`/lol/dev/academy-core-v35`** (development-only; see "Guarantees"). Nothing is merged, deployed, PR'd or published.
 Frontend only: no backend, Supabase or Railway change.
 
 > Status: Phase 1, Phase 2 and the Phase 2 targeted changes (arrow selector, larger crystal; §P2T, `2a543a0f`) are approved. The crystal
-> redesign (§P2C, `4b77dd9c`) was reviewed. Its Pro Play projection stands, and its Leaguecraft projection is replaced by
-> **§P2L, Leaguecraft "Arcane Mystery: Lux", built and STOPPED FOR OWNER REVIEW.** Watch
-> `docs/handoffs/academy-core-v35/orrery-lux-mystery-closeup.webm` (42 s) first.
+> redesign (§P2C, `4b77dd9c`) was reviewed. Its Pro Play projection stands, and its Leaguecraft projection was replaced by §P2L,
+> "Arcane Mystery: Lux" (`1be55f14`, reviewed). **§P2L.1, the Lux geometry correction (the free glass panes replaced by the
+> chamber's own six-shutter iris), is built and STOPPED FOR OWNER REVIEW.** Watch
+> `docs/handoffs/academy-core-v35/orrery-lux-iris-loop-closeup.webm` (14 s, one loop) first.
+
+## P2L.1. Leaguecraft — Lux geometry correction: the chamber's iris
+
+Base `1be55f14` (HEAD and remote verified). Owner feedback: the glass pieces should fit the chamber cleanly, as symmetrical pieces at
+its corners, and rotate to reveal the face underneath; the P2L panes read as odd-shaped crystals shuffling around at random. Only the
+concealment geometry and its motion changed. Lux (the manifest icon), the window, the light sweep, the gold crystal, the
+navigator-driven reactions, Pro Play, Combat, Archives, the books, orbit, selector, sizes, everything else on the page and production V3
+are untouched. No backend change. Phase 3 has not started.
+
+**On "pentagon":** the chamber around Lux is a **hexagon**. The Leaguecraft iris has six blades, and the Lux window is a pointy-top
+hexagon aligned with them; the P2C pentagon was removed in P2L. So the shutters are derived from the six corners of that chamber, the
+only geometry they can belong to. If you meant a literal five-sided chamber, say so: the shutter construction below works for any
+regular polygon, but the window would then no longer match the iris.
+
+### What changed in the geometry
+
+The three free panes (a blue slab, a violet hexagonal shard and a gold blade on their own paths) are gone. In their place is **an
+iris of six identical shutters that is part of the window itself**:
+
+- The hexagonal window is divided into six equal triangles: centre, corner *k*, corner *k + 1*. Shutter *k* is that triangle, **hinged
+  at corner *k***, with its base lying along one edge of the window.
+- The shutter is drawn once (`SHUTTER_POINTS`, in its hinge's own coordinates) and repeated by 60° rotations about the centre, so the
+  six are exactly symmetrical. They alternate Hextech blue and violet glass with pale-gold edges, a reeded texture, a sheen, and one
+  facet line from the hinge.
+- A small gold **hinge jewel** sits on the frame at each corner, the visible pivot of each shutter.
+- The shutters live inside the window's clip, under the frame: as they swing out they slide under the frame and never past it.
+- The refraction copy of the portrait (now a plain 1.14× magnification about the centre, like a lens) is masked to the six shutters,
+  so Lux's features shift at every shutter edge.
+
+**Why this geometry is clean:** pivoting every shutter outward by the same angle θ about its own hinge opens **a central hexagonal
+aperture** (inradius R·sin θ, with a narrow slot back to each hinge, as in a camera iris), and **the shutters never overlap**. The
+open share of the window is exactly θ/60: at 0° it is fully covered, and at 60° every shutter has swung out of the window. The
+aperture is centred on her face. Both properties are unit-tested on the geometry and measured in the browser.
+
+### How the animation changed
+
+All motion is now **rotation about the hinges**. One parameter, the shutter angle, tells the whole story. Nothing translates or
+drifts.
+
+| loop (14 s) | angle | what you see |
+|---|---|---|
+| 0–8 % | 16° | rest: a small central aperture over her eyes and nose, the rest of her behind glass |
+| 8–34 % | 16° → 46° | the six shutters pivot open together, rippling round the ring (each 0.1 s ahead of the next) |
+| 34–60 % | 46° | open: most of her face revealed; the light beam crosses her (36–62 %) and the shutter edges glint |
+| 60–80 % | 46° → 5° | the iris closes |
+| 80–86 % | 5° | closed: she is seen only through the glass, refracted |
+| 86–100 % | 5° → 16° | settles back to rest; 100 % equals 0 %, so the loop has no seam |
+
+The navigator reactions are extra pivots about the same hinges (CSS transitions on a parent group, so they compose with the loop):
+
+- **Entering Leaguecraft:** the shutters swing in from outside the window (62° → 0°, 900 ms).
+- **Reaching for the Leaguecraft book** (hover or keyboard): every shutter opens a further 16°.
+- **Opening the book** (the existing 240 ms activation): they swing right out (62°), so Lux is fully revealed.
+
+Reduced motion and lite show the composed rest (16°, about a quarter of the window open over her face). Off-focus, off-screen and
+hidden-tab suspension are unchanged (the loop is paused unless Leaguecraft is shown and the scene is live).
+
+### Files
+
+Changed only:
+- `src/pages/dev/academy-core-v35/OrreryProjections.tsx`: `Shutter`, `AtHinge`, `SHUTTER_POINTS` replace `Pane`/`PANES`, and the
+  hinge jewels are added. The Pro Play section is untouched.
+- `academy-core-v35.css`: the Lux block now holds the shutter, hinge, loop and state rules (the pane rules are removed).
+- `orrery-projections-data.ts`: the unused `LUX_GLASS_SCALE` is removed.
+- `OrreryProjections.test.tsx`, `AcademyCoreV35Page.test.tsx`, `e2e/academy-core-v35.spec.ts`: tests and the evidence suite.
+
+The shared `AcademyCoreInstrument.tsx` is not modified.
+
+### Tests (measured)
+
+| Suite | Result |
+|---|---|
+| vitest: V3.5 + V3 (`AcademyCorePage`, route, warm, lens) + `route-prefetch` | **154 / 154** (projections 12, was 10; the Lux tests rewritten for the iris) |
+| Playwright `e2e/academy-core-v35.spec.ts --grep-invert evidence` + `e2e/academy-core.spec.ts` (bundled Chromium) | **80 / 80** (see note) |
+| `tsc` | only the 2 pre-existing baseline errors |
+| `eslint` | 0 errors; the 1 pre-existing warning (`AcademyCoreInstrument.tsx:55`) |
+
+Note: in the full run, 79 passed and the P2T selector test "the whole orbit turns" failed once: the orbit turned 27 px against a
+40 px floor while an Edge capture was loading the machine. It is untouched by this pass and passed 3/3 when re-run on its own.
+
+What the tests check:
+
+- **Unit, on the geometry:**
+  - the six shutters share one polygon, each is placed by `rotate(60k) translate(0 -R)` with its hinge on corner *k*, and they
+    alternate blue and violet;
+  - sampling the window at θ = 0, 5, 16, 30, 46 and 60°, the open share equals θ/60 (to 0.05) and the overlap is under 0.5 %;
+  - no panes, reticle, roles, emblem or text remain, and the only images are Lux.
+- **Browser (frames seeked deterministically with the Web Animations API):**
+  - each shutter's hinge lies on its window corner on screen (within 0.5 px);
+  - the six shutters agree in every hold (within 0.5°), at 16°, 46° and 5°;
+  - the measured open share of the window follows θ/60, with no overlap;
+  - the central face region is more than 95 % open at the height of the reveal and less than 30 % open when closed;
+  - while opening the reveal only grows (by more than 40 points), and the ripple runs round the ring;
+  - the loop seam agrees within 0.05°, and the light crosses while the iris is open;
+  - book hover adds 16° (more than 20 points more of her revealed), and activation swings the shutters to 62° (more than 97 % revealed)
+    while the real click still navigates;
+  - lite and reduced motion are at rest (16°, about a quarter of the window open) with nothing running.
+
+**Pixel regression** (Edge, reduced motion, identical framing): idle, Pro Play, Combat and Archives have **0 changed pixels**
+against both the P2C and the P2L captures. Only Leaguecraft differs.
+
+### Performance (A/B against `1be55f14` served side by side, headless Edge, 1366×768, four pairs per state)
+
+| main-thread busy, mean of 4 | before | after |
+|---|---|---|
+| idle | 27.7 % | 29.5 % (one outlier pair, 28.2 → 36.4; the other three ±4) |
+| Leaguecraft pinned | 31.6 % | 31.9 % |
+| Pro Play pinned | 28.4 % | 29.2 % |
+
+These differences are within run-to-run noise. rAF holds at a 16.7 ms median and about 360 frames per 6 s in every run. The document
+has 12 more animation objects (six shutters plus their six mask twins, all paused unless Leaguecraft is live). No console or page
+errors.
+
+### Evidence (`docs/handoffs/academy-core-v35/`, real art, recorded in Edge at its real frame rate)
+
+- **`orrery-lux-iris-loop-closeup.webm`** (14 s, the lens cropped and enlarged 2×): exactly one loop, rest → pivot open → open with the
+  light → close → closed → rest.
+- `orrery-lux-mystery-closeup.webm` (40 s, close-up) and `orrery-lux-mystery.webm` (41 s, full 1366×768 frame; add ~1.5 s to these
+  times). The sequence:
+  - 0 s: the shutters swing in;
+  - ~1–15 s: one whole loop;
+  - ~16 s: book hover opens the iris further;
+  - ~21 s: the crystal goes to Pro Play;
+  - ~23–37 s: the arrow selector brings Leaguecraft back;
+  - ~37 s: the book is opened, the shutters swing out, and the room opens.
+- Actual size: `lux-1366x768-leaguecraft.png` (full desktop frame) and `lux-actual-size.png` (lens at 1×).
+- Close-up at 3×: `lux-closeup.png`.
+- The loop, frame by frame (3×): `lux-frame-1-rest.png`, `lux-frame-2-opening.png`, `lux-frame-3-open-sweep.png`,
+  `lux-frame-4-closing.png`, `lux-frame-5-closed.png`, `lux-frame-6-settling.png`.
+- Reveal states: `lux-book-intent.png` (book hovered) and `lux-activation.png` (book opening: shutters swung out).
+- `lux-reduced-motion.png` and `lux-lite.png`: the composed rest.
+- Phone 390×844: `lux-mobile-390x844.png` and `lux-mobile-390x844-crystal.png` (window 72 × 83 CSS px).
+- Pro Play unchanged: `lux-regression-actual-size-pro-play.png`.
+
+### Limitations and owner questions
+
+1. **Hexagon, not pentagon** (see above). This follows the chamber's six iris blades.
+2. **Slots to the hinges.** Rigid triangular shutters pivoting at the corners open a central hexagon plus a narrow slot back to each
+   hinge (the camera-iris look in the frames). This is what keeps the shutters from ever overlapping. Fully hiding the slots would need
+   larger, overlapping blades, and overlapping translucent glass darkens unevenly.
+3. **Brief full reveal.** It happens within the existing 240 ms activation (no extra delay is allowed). The longer reveals are the
+   loop's open hold (about 3.6 s) and book hover.
+4. The P2L notes on the 128 px icon's HiDPI softness and on headless activation timing still apply.
+
+### Next
+
+Owner review of the iris. Nothing else is started: no PR, merge, deploy, publish, audio change, other projection or Phase 3.
+
+---
 
 ## P2L. Leaguecraft — "Arcane Mystery: Lux"
+
+> Reviewed. Its three free glass panes and their drifting loop are **superseded by §P2L.1**. The subject, asset, window, light sweep,
+> gold crystal, states and isolation below still stand.
 
 Base `4b77dd9c`. Only the Leaguecraft crystal projection changed (plus its crystal tint, below). Pro Play (5 v 5 + Rift), Combat,
 Archives, the books, orbit, drag, arrow selector, crystal/dial/Orrery sizes, Patch Report, radio, Mogzy, Daily/Ranked, routing, audio,
@@ -125,17 +278,12 @@ only. No console or page errors.
 
 ### Evidence (`docs/handoffs/academy-core-v35/`, real art from the asset host, recorded in Edge at its real frame rate)
 
-- `orrery-lux-mystery-closeup.webm` (42 s, the lens cropped and enlarged 2×) and `orrery-lux-mystery.webm` (43 s, full 1366×768
-  frame). The sequence:
-  - 0 s: the panes slide in;
-  - ~1–16 s: one whole loop (four arrangements, the sweep near 6–9 s, back to A with no jump);
-  - ~17 s: hovering the Leaguecraft book parts the glass, then it closes;
-  - ~22 s: the crystal goes to Pro Play;
-  - ~25–38 s: the arrow selector brings Leaguecraft back, with the crystal following;
-  - ~39 s: the book is opened, the glass parts fully, and the room opens.
+> The P2L recordings and stills were re-captured for §P2L.1 under the same file names; the four pane-arrangement frames
+> (`lux-frame-b/c/d/sweep.png`) were removed. See §P2L.1's evidence list.
+
+- `orrery-lux-mystery-closeup.webm` and `orrery-lux-mystery.webm` (now showing the §P2L.1 iris).
 - Actual size: `lux-1366x768-leaguecraft.png` (full frame) and `lux-actual-size.png` (lens at 1×).
-- Close-up at 3× device pixels: `lux-closeup.png` (arrangement A).
-- Loop frames: `lux-frame-b.png` (28 %), `lux-frame-sweep.png` (47 %, beam crossing), `lux-frame-c.png` (52 %), `lux-frame-d.png` (76 %).
+- Close-up at 3× device pixels: `lux-closeup.png`.
 - States: `lux-book-intent.png` (book hovered), `lux-reduced-motion.png`, `lux-lite.png`.
 - Phone 390×844 at 2×: `lux-mobile-390x844.png` (full) and `lux-mobile-390x844-crystal.png`. The window measures 72 × 83 CSS px (the
   phone lens is about half the desktop one); she is still the clear subject and recognisable.

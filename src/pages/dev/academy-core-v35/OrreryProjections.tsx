@@ -9,14 +9,16 @@
  *
  * LEAGUECRAFT — "Arcane Mystery: Lux". One large subject: Lux's real champion
  * icon (the manifest's 128 px square, drawn ~1.25x at 1366 wide) in a hexagonal
- * window, examined through three translucent Hextech glass panes (blue lens,
- * violet shard, pale-gold blade). The panes conceal different parts of her
- * face and drift through four arrangements on one 14 s loop; once per loop a
- * beam of arcane light crosses the glass and the portrait, and the pane edges
- * glint as it passes. Entering the room the panes slide in from the rim; when
- * the visitor reaches for the Leaguecraft BOOK (hover / keyboard) the panes
- * part a little to reveal more, and on activation they part fully. Everything
- * is CSS transform / opacity on SVG groups (academy-core-v35.css); no script.
+ * window, behind the chamber's own iris: six identical glass shutters (blue
+ * and violet alternating, pale-gold edges), each hinged at one corner of the
+ * window. On one 14 s loop they pivot open together about their hinges,
+ * rippling round the ring, so a central aperture widens over her face; they
+ * hold open while a beam of arcane light crosses her, close almost fully, then
+ * settle back to the partly open rest. Entering the room they swing in from
+ * the corners; when the visitor reaches for the Leaguecraft BOOK (hover /
+ * keyboard) they open further, and on activation they swing right out.
+ * Everything is CSS rotation about the hinges on SVG groups
+ * (academy-core-v35.css); no script.
  *
  * PRO PLAY — 5 v 5, in the Archives' language (a central circular subject in
  * a layered crystal field, small icon plates on a row) without its patch
@@ -31,7 +33,8 @@
  * is 104; the Lux window is a pointy-top hexagon of corner radius 86 (inradius
  * ~74.5) aligned with it, so the iris frames the portrait and never covers it.
  */
-import { LUX_GLASS_SCALE, LUX_WINDOW_RADIUS, TEAM_ICON_R, TEAM_ARC_R, TEAM_STEP_DEG, teamSlot, type MatchupMedia } from "./orrery-projections-data";
+import type { ReactNode } from "react";
+import { LUX_WINDOW_RADIUS, TEAM_ICON_R, TEAM_ARC_R, TEAM_STEP_DEG, teamSlot, type MatchupMedia } from "./orrery-projections-data";
 
 const DEG = Math.PI / 180;
 
@@ -45,71 +48,77 @@ const hex = (r: number) => [-90, -30, 30, 90, 150, 210]
   .map((a) => `${(r * Math.cos(a * DEG)).toFixed(2)},${(r * Math.sin(a * DEG)).toFixed(2)}`)
   .join(" ");
 
-/** The three panes, each drawn around its own origin (their placement and motion are CSS). */
-const PANES = [
-  { id: "blue", points: "-26,-62 22,-48 16,58 -30,40", sheen: "-18,-50 10,-41 6,-6 -20,-12", streaks: [[-16, -40, 4, 40], [-6, -46, 12, 30]] },
-  { id: "violet", points: "-34,-14 -8,-34 30,-22 36,10 8,30 -28,18", sheen: "-24,-12 -6,-26 20,-18 10,-4 -16,2", streaks: [[-20, 8, 22, -14]] },
-  { id: "gold", points: "-62,-6 64,-22 60,-4 -58,8", sheen: "-50,-3 52,-17 50,-12 -48,1", streaks: [[-40, 0, 44, -12]] },
-] as const;
+/**
+ * The shutters: the chamber's own geometry. The window is divided into six
+ * identical triangles (centre, corner k, corner k+1); shutter k is hinged at
+ * corner k and pivots outward about it, under the frame. Pivoting by an angle
+ * theta opens a central aperture (a hexagon of inradius R sin theta) and the
+ * shutters never overlap: the reveal grows evenly with theta (theta/60 of the
+ * window), and at 60 deg every shutter has swung out of the window. Drawn once,
+ * in the hinge's coordinates, and repeated by 60 deg rotations about the centre.
+ */
+type Pt = { x: number; y: number };
+const HINGE: Pt = { x: 0, y: -RC }; // corner 0 (top); the other five are rotations of it
+const NEXT: Pt = { x: RC * Math.cos(30 * DEG), y: RC / 2 }; // corner 1, relative to the hinge
+const CENTRE: Pt = { x: 0, y: RC }; // the window centre, relative to the hinge
+const pt = (p: Pt) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+const mix = (a: Pt, b: Pt, ka: number, kb: number): Pt => ({ x: a.x * ka + b.x * kb, y: a.y * ka + b.y * kb });
+/** One shutter in its hinge's coordinates: the hinge, the next corner, the centre. */
+export const SHUTTER_POINTS = `0,0 ${pt(NEXT)} ${pt(CENTRE)}`;
+const SHUTTER_SHEEN = `0,0 ${pt(mix(NEXT, CENTRE, 0.55, 0))} ${pt(mix(NEXT, CENTRE, 0.12, 0.32))}`;
+const SHUTTER_FACET = mix(NEXT, CENTRE, 0.5, 0.5); // a facet line from the hinge to the far edge's midpoint
+const SHUTTERS = [0, 1, 2, 3, 4, 5] as const;
 
-function Pane({ pane }: { pane: (typeof PANES)[number] }) {
+/** Places shutter k: about the centre by 60k deg, then at its hinge (corner k). Engage and drift pivot about the hinge. */
+function AtHinge({ k, children }: { k: number; children: ReactNode }) {
   return (
-    <g className={`o35-pane-engage o35-pane-engage-${pane.id}`}>
-      <g className={`o35-pane-drift o35-pane-drift-${pane.id}`}>
-        <g className={`o35-pane o35-pane-${pane.id}`} data-testid={`academy-core-v35-pane-${pane.id}`}>
-          <polygon points={pane.points} className="o35-pane-shadow" transform="translate(4 5)" />
-          <polygon points={pane.points} fill={`url(#o35-glass-${pane.id})`} className="o35-pane-body" />
-          <polygon points={pane.points} fill="url(#o35-glass-reed)" className="o35-pane-reed" />
-          <polygon points={pane.sheen} fill="url(#o35-glass-sheen)" className="o35-pane-sheen" />
-          {pane.streaks.map(([x1, y1, x2, y2], i) => (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="o35-pane-streak" />
-          ))}
-          <polygon points={pane.points} className="o35-pane-edge-dark" />
-          <polygon points={pane.points} className="o35-pane-edge" />
-        </g>
+    <g transform={`rotate(${60 * k}) translate(${HINGE.x} ${HINGE.y})`}>
+      <g className="o35-shutter-engage">
+        <g className={`o35-shutter-drift o35-shutter-k${k}`}>{children}</g>
       </g>
     </g>
   );
 }
 
-/** The panes' silhouettes only, for the refraction mask (same motion classes, so they move together). */
-function PaneSilhouette({ pane }: { pane: (typeof PANES)[number] }) {
+function Shutter({ k }: { k: number }) {
+  const tint = k % 2 ? "violet" : "blue";
   return (
-    <g className={`o35-pane-engage o35-pane-engage-${pane.id}`}>
-      <g className={`o35-pane-drift o35-pane-drift-${pane.id}`}>
-        <polygon points={pane.points} fill="#ffffff" />
+    <AtHinge k={k}>
+      <g className={`o35-shutter o35-shutter-${tint}`} data-testid={`academy-core-v35-shutter-${k}`}>
+        <polygon points={SHUTTER_POINTS} fill={`url(#o35-glass-${tint})`} className="o35-shutter-body" />
+        <polygon points={SHUTTER_POINTS} fill="url(#o35-glass-reed)" className="o35-shutter-reed" />
+        <polygon points={SHUTTER_SHEEN} fill="url(#o35-glass-sheen)" className="o35-shutter-sheen" />
+        <line x1={0} y1={0} x2={SHUTTER_FACET.x.toFixed(2)} y2={SHUTTER_FACET.y.toFixed(2)} className="o35-shutter-facet" />
+        <polygon points={SHUTTER_POINTS} className="o35-shutter-edge-dark" />
+        <polygon points={SHUTTER_POINTS} className="o35-shutter-edge" />
       </g>
-    </g>
+    </AtHinge>
   );
 }
 
 export function LuxMysteryProjection({ portrait }: { portrait: string | null }) {
   const win = hex(RC);
-  const glass = `scale(${LUX_GLASS_SCALE.toFixed(4)})`;
   return (
     <g className="o35-lux" data-testid="academy-core-v35-lux">
       <defs>
         <clipPath id="o35-lux-window"><polygon points={win} /></clipPath>
         {/* where the glass is: the refracted copy of the portrait shows only there */}
         <mask id="o35-lux-glass-mask" maskUnits="userSpaceOnUse" x="-118" y="-118" width="236" height="236">
-          <g transform={glass}>{PANES.map((p) => <PaneSilhouette key={p.id} pane={p} />)}</g>
+          {SHUTTERS.map((k) => <AtHinge key={k} k={k}><polygon points={SHUTTER_POINTS} fill="#ffffff" /></AtHinge>)}
         </mask>
         <linearGradient id="o35-glass-blue" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#bfe0ff" stopOpacity="0.62" /><stop offset="0.5" stopColor="#4f86e8" stopOpacity="0.38" /><stop offset="1" stopColor="#9cc6ff" stopOpacity="0.58" />
+          <stop offset="0" stopColor="#d8f3ff" stopOpacity="0.72" /><stop offset="0.55" stopColor="#2f97e8" stopOpacity="0.56" /><stop offset="1" stopColor="#0e4f8e" stopOpacity="0.7" />
         </linearGradient>
-        <linearGradient id="o35-glass-violet" x1="1" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#e0d4ff" stopOpacity="0.62" /><stop offset="0.55" stopColor="#7a62e6" stopOpacity="0.42" /><stop offset="1" stopColor="#b9a6ff" stopOpacity="0.6" />
-        </linearGradient>
-        <linearGradient id="o35-glass-gold" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#fff3cf" stopOpacity="0.7" /><stop offset="0.5" stopColor="#e2c06e" stopOpacity="0.5" /><stop offset="1" stopColor="#fff8e2" stopOpacity="0.7" />
+        <linearGradient id="o35-glass-violet" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#e6dcff" stopOpacity="0.72" /><stop offset="0.55" stopColor="#6c55da" stopOpacity="0.56" /><stop offset="1" stopColor="#35237e" stopOpacity="0.7" />
         </linearGradient>
         {/* fluted (reeded) glass: fine ribs that break up what is behind without blurring it */}
         <pattern id="o35-glass-reed" width="3.2" height="3.2" patternUnits="userSpaceOnUse" patternTransform="rotate(68)">
-          <rect width="1.1" height="3.2" fill="#ffffff" fillOpacity="0.22" />
-          <rect x="1.1" width="0.5" height="3.2" fill="#0a1030" fillOpacity="0.18" />
+          <rect width="1.1" height="3.2" fill="#ffffff" fillOpacity="0.2" />
+          <rect x="1.1" width="0.5" height="3.2" fill="#0a1030" fillOpacity="0.2" />
         </pattern>
         <linearGradient id="o35-glass-sheen" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.55" /><stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.6" /><stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="o35-lux-beam" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#fff6dd" stopOpacity="0" />
@@ -125,37 +134,38 @@ export function LuxMysteryProjection({ portrait }: { portrait: string | null }) 
         </radialGradient>
       </defs>
 
-      {/* the window: a dark backing, the portrait, a soft vignette */}
       <polygon points={hex(RC + 5)} className="o35-lux-halo" />
       <g clipPath="url(#o35-lux-window)">
+        {/* the window: a dark backing, the portrait, a soft vignette */}
         <polygon points={win} className="o35-lux-backing" />
         <g className="o35-lux-portrait">
           {portrait && (
             <image href={portrait} x={-RC} y={-RC} width={2 * RC} height={2 * RC} preserveAspectRatio="xMidYMid slice" className="acore-media o35-lux-image" data-testid="academy-core-v35-lux-portrait" />
           )}
         </g>
-        {/* refraction: through the glass Lux is magnified and displaced, so the panes hide by distorting, not by blurring */}
+        {/* refraction: through the shutters Lux is magnified about the centre, so the glass hides by distorting, not by blurring */}
         {portrait && (
           <g mask="url(#o35-lux-glass-mask)">
-            <image href={portrait} x={-RC} y={-RC} width={2 * RC} height={2 * RC} preserveAspectRatio="xMidYMid slice" className="acore-media o35-lux-refract" transform="translate(7 -5) scale(1.14)" />
+            <image href={portrait} x={-RC} y={-RC} width={2 * RC} height={2 * RC} preserveAspectRatio="xMidYMid slice" className="acore-media o35-lux-refract" transform="scale(1.14)" />
           </g>
         )}
         <polygon points={win} fill="url(#o35-lux-vignette)" />
-        {/* arcane light crossing the portrait once per loop */}
+        {/* arcane light crossing the revealed face once per loop */}
         <g className="o35-lux-beam-track">
           <rect x="-38" y="-130" width="76" height="260" fill="url(#o35-lux-beam)" className="o35-lux-beam" transform="rotate(24)" />
         </g>
-      </g>
-      <polygon points={win} className="o35-lux-frame" />
-
-      {/* the glass, in front of the portrait (authored for a 157-unit portrait, scaled with the window) */}
-      <g transform={glass}>
-        {PANES.map((p) => <Pane key={p.id} pane={p} />)}
+        {/* the shutters, inside the window: they swing out under the frame, never past it */}
+        {SHUTTERS.map((k) => <Shutter key={k} k={k} />)}
         {/* the same light, catching the glass as it passes */}
         <g className="o35-lux-beam-track o35-lux-beam-track-glass">
           <rect x="-10" y="-130" width="20" height="260" fill="url(#o35-lux-beam)" className="o35-lux-beam o35-lux-beam-glass" transform="rotate(24)" />
         </g>
       </g>
+      <polygon points={win} className="o35-lux-frame" />
+      {/* the six hinges, one at each corner of the chamber */}
+      {SHUTTERS.map((k) => (
+        <polygon key={k} points="0,-4.6 3.4,0 0,4.6 -3.4,0" transform={`rotate(${60 * k}) translate(${HINGE.x} ${HINGE.y})`} className="o35-shutter-hinge" />
+      ))}
     </g>
   );
 }
