@@ -386,6 +386,27 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // ANALYTICS
   // =========================================================================
   {
+    id: "custom-offers",
+    title: "Custom one-time offers",
+    description:
+      "Mint a private link for one customer — $50 total for 12 months of Premium, paid once, no auto-renewal — and follow each link from claimed to paid, refunded or held for review.",
+    area: "users",
+    section: "accounts",
+    kind: "route",
+    path: "/admin/custom-offers",
+    oldLocation: "New in PT1.6b (no previous surface)",
+    disposition: "KEEP",
+    dangerLevel: "mutates-production",
+    warning:
+      "Each link lets one customer pay $50 for 12 months of Premium. Links are shown once and work until they expire or are revoked; send them privately.",
+    status: "Production",
+    requiredRole: "master_admin",
+    authorization:
+      "AdminRoute (OWN1 owner-only) + owner RPCs that call assert_owner: minting a link needs fresh MFA (fresh_aal2), listing and revoking a trusted owner session. Nothing here grants Premium; only a confirmed Stripe payment does.",
+    notes:
+      "Links are shown once (only a SHA-256 is stored). Live checkout stays off until CUSTOM_OFFER_LIVE_APPROVED is set after tax sign-off — see CUSTOM_OFFER_ONE_TIME_HANDOFF.md.",
+  },
+  {
     id: "product-analytics",
     title: "Audience Overview",
     description:

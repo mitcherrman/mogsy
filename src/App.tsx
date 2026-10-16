@@ -170,6 +170,8 @@ const AdminDemoAnalytics = lazy(() => import("./pages/admin/AdminDemoAnalytics")
 
 // Pro Play data coverage — the historical corpus reconciliation, read-only.
 const AdminProCoverage = lazy(() => import("./pages/admin/AdminProCoverage"));
+const AdminCustomOffers = lazy(() => import("./pages/admin/AdminCustomOffers"));
+const LolPremiumClaim = lazy(() => import("./pages/LolPremiumClaim"));
 
 // Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
 const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
@@ -521,6 +523,10 @@ export const appRouter = createBrowserRouter(
                         historical pro corpus. master_admin, as the other
                         backend-authority admin reads are. */}
                     <Route path="pro-play-coverage" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
+                    {/* PT1.6b — owner-minted private one-time Premium offers.
+                        Every call is an owner RPC (assert_owner); minting needs
+                        fresh MFA. */}
+                    <Route path="custom-offers" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminCustomOffers /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
                     <Route path="creator-replay" element={<Suspense fallback={<RouteFallback />}><CreatorReplayPage /></Suspense>} />
                     <Route path="creator-replay/:runId" element={<Suspense fallback={<RouteFallback />}><CreatorReplayRunPage legacyRedirect /></Suspense>} />
@@ -687,6 +693,9 @@ export const appRouter = createBrowserRouter(
                       old URL and the /pro shorthand redirect here, query
                       string intact, so Stripe returns still land. */}
                   <Route path="/lol/premium" element={<Suspense fallback={<RouteFallback />}><LolPremium /></Suspense>} />
+                  {/* PT1.6b — a private one-time offer link (#token). noindex;
+                      useless without a token minted by the owner. */}
+                  <Route path="/lol/premium/claim" element={<Suspense fallback={<RouteFallback />}><LolPremiumClaim /></Suspense>} />
                   {LEGACY_PREMIUM_ROUTES.map((path) => (
                     <Route key={path} path={path} element={<LegacyPremiumRedirect />} />
                   ))}
