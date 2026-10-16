@@ -38,7 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
-import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
+import { getChampionIcon, getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
@@ -73,6 +73,7 @@ import OrreryCore from "./OrreryCore";
 import OrreryEnvironment from "./OrreryEnvironment";
 import { OrreryEngine } from "./OrreryEngine";
 import { useCoreNavigator } from "./useCoreNavigator";
+import { MATCHUP_LINEUP, RIFT_CENTRE_ART, type MatchupMedia } from "./orrery-projections-data";
 import { BOOK_ORDER, CALM, DESKTOP_ORBIT, STAGE, STAGE_COMPOSED, type BookId } from "./orrery-motion";
 
 export const V35_ROUTE = "/lol/dev/academy-core-v35";
@@ -182,6 +183,13 @@ function AcademyCoreV35() {
     measureShards: warmed ? CORE_MEASURE_SHARDS : undefined,
     observeRoles: warmed ? CORE_OBSERVE_ROLES : [],
   }), [warmed, splashes, brief]);
+
+  // Pro Play's 5 v 5: manifest icons for the lineup and the Rift image, after the critical art (as the other projections)
+  const matchup = useMemo<MatchupMedia | null>(() => (warmed ? {
+    blue: MATCHUP_LINEUP.blue.map((n) => getChampionIcon(manifest, n)),
+    red: MATCHUP_LINEUP.red.map((n) => getChampionIcon(manifest, n)),
+    rift: RIFT_CENTRE_ART,
+  } : null), [warmed, manifest]);
 
   /* ---------------- the orbit engine ---------------- */
   const mode = fullLayout ? "orbit" : "composed";
@@ -557,7 +565,7 @@ function AcademyCoreV35() {
               {CORE_DESTINATIONS.map((d) => renderBook(d))}
             </nav>
 
-            <OrreryCore focus={focus} activating={activating} ambient={ambient} media={media} ref={needleEl}>
+            <OrreryCore focus={focus} activating={activating} ambient={ambient} media={media} matchup={matchup} ref={needleEl}>
               {crystalButton}
             </OrreryCore>
 

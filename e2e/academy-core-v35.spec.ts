@@ -43,6 +43,8 @@ const ROOMS: Record<Id, { title: string; href: string }> = {
 
 const ICON_PNG = readFileSync(path.resolve("public/images/library/champion-ahri.png"));
 const CHAMPS = ["Ryze", "Ahri", "Akali", "Viktor", "Jinx", "Yasuo"];
+/** The Pro Play crystal's 5 v 5 lineup (orrery-projections-data.ts), so the stub manifest can name them. */
+const LINEUP = ["Gnar", "Lee Sin", "Azir", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"];
 
 async function stubCommon(page: Page) {
   await page.route("**/api/patch-reports", (route) =>
@@ -78,7 +80,7 @@ async function stubChampions(page: Page) {
   await page.route("**/api/assets/champions", (route) =>
     route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ ok: true, champions: Object.fromEntries(CHAMPS.map((n) => [n, {
+      body: JSON.stringify({ ok: true, champions: Object.fromEntries([...CHAMPS, ...LINEUP].map((n) => [n, {
         icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
       }])) }),
     }));
@@ -994,6 +996,133 @@ test.describe("crystal: larger inside the same Core", () => {
   });
 });
 
+/* ===================================================================== */
+/* CRYSTAL REDESIGN — Leaguecraft (pentagon + scroll/quill), Pro Play 5v5  */
+/* ===================================================================== */
+
+/** Lens centre and radius (px) and the scale from lens-local units to px. */
+async function lensGeometry(page: Page) {
+  const c = (await page.locator(".acore-crystal").boundingBox())!;
+  return { cx: c.x + c.width / 2, cy: c.y + c.height / 2, r: c.width / 2, k: c.width / 2 / 118 };
+}
+const centreOf = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+
+test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
+  test("Leaguecraft: exactly five role icons on the pentagon around a centred scroll-and-quill emblem; no portrait", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await open(page, 1366, 768);
+    await page.getByTestId("academy-core-crystal").click(); // Leaguecraft
+    await expect.poll(() => page.locator(".acore-mode-leaguecraft").evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
+    await page.waitForTimeout(800);
+    const L = await lensGeometry(page);
+    const roles = page.locator(".acore-mode-leaguecraft .acore-role");
+    await expect(roles).toHaveCount(5);
+    for (let i = 0; i < 5; i++) {
+      const p = centreOf((await roles.nth(i).boundingBox())!);
+      expect(Math.hypot(p.x - L.cx, p.y - L.cy) / L.k, `role ${i} on r 76`).toBeCloseTo(76, -1);
+    }
+    const emblem = (await page.getByTestId("academy-core-v35-study-emblem").boundingBox())!;
+    const e = centreOf(emblem);
+    expect(Math.hypot(e.x - L.cx, e.y - L.cy), "emblem centred").toBeLessThan(4);
+    expect(emblem.width, "emblem large enough to read at 1366 wide").toBeGreaterThanOrEqual(56);
+    await expect(page.locator(".acore-mode-leaguecraft image[href*='splash']")).toHaveCount(0);
+    await expect(page.locator(".acore-mode-leaguecraft .acore-reticle")).toHaveCount(1);
+    expect(errors).toEqual([]);
+  });
+
+  test("Pro Play: ten champion icons, five per side, framing Summoner's Rift — all inside the lens and the open iris", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await open(page, 1366, 768);
+    const crystal = page.getByTestId("academy-core-crystal");
+    await crystal.click();
+    await crystal.click(); // Pro Play
+    await expect.poll(() => page.locator(".acore-mode-pro-play").evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
+    await page.waitForTimeout(900); // the iris spring and the sides' entry settle
+    const L = await lensGeometry(page);
+    const top = page.locator("[data-testid='academy-core-v35-team-top'] .o35-team-icon");
+    const bottom = page.locator("[data-testid='academy-core-v35-team-bottom'] .o35-team-icon");
+    await expect(top).toHaveCount(5);
+    await expect(bottom).toHaveCount(5);
+    for (const [name, loc, above] of [["top", top, true], ["bottom", bottom, false]] as const) {
+      for (let i = 0; i < 5; i++) {
+        const b = (await loc.nth(i).boundingBox())!;
+        const p = centreOf(b);
+        const d = Math.hypot(p.x - L.cx, p.y - L.cy);
+        expect(above ? p.y < L.cy : p.y > L.cy, `${name} ${i} on its side`).toBe(true);
+        // inside the iris: within the hexagon's inscribed circle (r 88), so no blade can cover it
+        expect((d + b.width / 2) / L.k, `${name} ${i} clear of the iris`).toBeLessThan(88);
+        // clear of the Rift disc (its ring is at r 47)
+        expect((d - b.width / 2) / L.k, `${name} ${i} clear of the centre`).toBeGreaterThan(50);
+        expect(b.width, `${name} ${i} readable size`).toBeGreaterThanOrEqual(18);
+      }
+    }
+    const rift = (await page.locator("[data-testid='academy-core-v35-rift'] image").boundingBox())!;
+    const rc = centreOf(rift);
+    expect(Math.hypot(rc.x - L.cx, rc.y - L.cy), "Rift centred").toBeLessThan(3);
+    expect(rift.width, "Rift large enough to read").toBeGreaterThanOrEqual(80);
+    const ok = await page.locator("[data-testid='academy-core-v35-rift'] image").evaluate((el) => el.getAttribute("href"));
+    expect(ok).toMatch(/rift-lane-turret.*\.webp/);
+    const res = await page.request.get(ok!);
+    expect(res.status()).toBe(200);
+    expect(errors).toEqual([]);
+  });
+
+  test("all four modes switch correctly; Combat and Archives keep their V3 projections", async ({ page }) => {
+    await open(page, 1366, 768);
+    const crystal = page.getByTestId("academy-core-crystal");
+    for (const [mode, override] of [["leaguecraft", true], ["pro-play", true], ["combat", false], ["archives", false]] as const) {
+      await crystal.click();
+      await expect.poll(() => page.locator(`.acore-mode-${mode}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
+      for (const other of ["leaguecraft", "pro-play", "combat", "archives"].filter((m) => m !== mode)) {
+        await expect.poll(() => page.locator(`.acore-mode-${other}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeLessThan(0.05);
+      }
+      const attr = await page.locator(`.acore-mode-${mode}`).getAttribute("data-projection");
+      expect(attr === "override").toBe(override);
+    }
+    await expect(page.locator(".acore-mode-combat .acore-jaw")).toHaveCount(2);
+    await expect(page.locator(".acore-mode-archives .acore-stratum")).toHaveCount(5);
+  });
+
+  test("the selector and the crystal stay in step with the new projections", async ({ page }) => {
+    await open(page, 1366, 768);
+    for (let k = 0; k < 4; k++) {
+      await arrow(page, "left").click();
+      await waitStill(page);
+      const f = await page.getByTestId("academy-core-stage").getAttribute("data-focus");
+      const mode = f === "combat-lab" ? "combat" : f!;
+      await expect.poll(() => page.locator(`.acore-mode-${mode}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
+      await expect(page.locator(".acore-svg")).toHaveAttribute("data-focus", f!);
+    }
+  });
+
+  test("production /lol keeps the V3 Leaguecraft and Pro Play projections", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubCommon(page);
+    await stubChampions(page);
+    await page.goto("/lol");
+    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await expect(page.locator(".acore-mode-leaguecraft .acore-magnifier")).toHaveCount(1);
+    await expect(page.locator(".acore-mode-pro-play .acore-track-mark")).toHaveCount(1);
+    await expect(page.locator("[data-projection='override']")).toHaveCount(0);
+    await expect(page.locator("[data-testid^='academy-core-v35']")).toHaveCount(0);
+  });
+
+  test("phones and reduced motion show the same two projections", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, 390, 844);
+    const crystal = page.getByTestId("academy-core-crystal");
+    await crystal.click();
+    await expect(page.getByTestId("academy-core-v35-study-emblem")).toBeVisible();
+    expect((await page.getByTestId("academy-core-v35-study-emblem").boundingBox())!.width).toBeGreaterThan(28);
+    await crystal.click();
+    await expect(page.locator(".o35-team-icon")).toHaveCount(10);
+    await expect(page.locator("[data-testid='academy-core-v35-rift'] image")).toBeVisible();
+    await noHorizontalOverflow(page);
+  });
+});
+
 const evidence = process.env.V35_EVIDENCE ? test.describe : test.describe.skip;
 
 evidence("evidence", () => {
@@ -1336,5 +1465,98 @@ evidence("evidence: selector and crystal", () => {
     expect(existsSync(file)).toBe(true);
     copyFileSync(file, path.join(OUT, "_video", "raw-sel.webm"));
     writeFileSync(path.join(OUT, "_video", "meta-sel.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
+  });
+});
+
+evidence("evidence: crystal redesign", () => {
+  test.setTimeout(300_000);
+  const MODES = ["leaguecraft", "pro-play", "combat-lab", "archives"] as const;
+
+  /** Pin `mode` with the crystal (from rest) and let the iris and the projection settle. */
+  async function pin(page: Page, mode: (typeof MODES)[number]) {
+    const crystal = page.getByTestId("academy-core-crystal");
+    while ((await page.getByTestId("academy-core-stage").getAttribute("data-focus")) !== "idle") await crystal.click();
+    for (let i = 0; i <= MODES.indexOf(mode); i++) await crystal.click();
+    await page.mouse.move(40, 300);
+    await page.waitForTimeout(1600);
+  }
+  async function lensClip(page: Page, margin: number) {
+    const c = (await page.locator(".acore-crystal").boundingBox())!;
+    const cx = c.x + c.width / 2;
+    const cy = c.y + c.height / 2;
+    const h = c.width / 2 + margin;
+    return { x: cx - h, y: cy - h, width: 2 * h, height: 2 * h };
+  }
+
+  test("evidence: crystal redesign stills (actual size, close-ups, all four modes, phones)", async ({ browser }) => {
+    // actual desktop size (1x) — full frames and the crystal at its real size
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+    const page = await ctx.newPage();
+    await open(page, 1366, 768, { real: true });
+    for (const m of MODES) {
+      await pin(page, m);
+      if (m === "leaguecraft" || m === "pro-play") await page.screenshot({ path: path.join(OUT, `crystal-redesign-1366x768-${m}.png`) });
+      await page.screenshot({ path: path.join(OUT, `crystal-redesign-actual-size-${m}.png`), clip: await lensClip(page, 60) });
+    }
+    await ctx.close();
+    // close-ups (3x device pixels, same framing) of the two redesigned projections
+    const hi = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 3 });
+    const hp = await hi.newPage();
+    await open(hp, 1366, 768, { real: true });
+    for (const m of ["leaguecraft", "pro-play"] as const) {
+      await pin(hp, m);
+      await hp.screenshot({ path: path.join(OUT, `crystal-redesign-closeup-${m}.png`), clip: await lensClip(hp, 8) });
+    }
+    await hi.close();
+    // phones
+    const mob = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    const mp = await mob.newPage();
+    await open(mp, 390, 844, { real: true });
+    for (const m of ["leaguecraft", "pro-play"] as const) {
+      await pin(mp, m);
+      const s = (await mp.getByTestId("academy-core-stage").boundingBox())!;
+      await mp.screenshot({ path: path.join(OUT, `crystal-redesign-mobile-390x844-${m}.png`), clip: { x: 0, y: Math.max(0, s.y + s.height * 0.22), width: 390, height: s.height * 0.56 } });
+    }
+    await mob.close();
+  });
+
+  test("evidence: the crystal redesign recording", async ({ browser }) => {
+    const videoDir = path.join(OUT, "_video");
+    mkdirSync(videoDir, { recursive: true });
+    const tCtx = Date.now();
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, recordVideo: { dir: videoDir, size: { width: 1366, height: 768 } } });
+    const page = await ctx.newPage();
+    await open(page, 1366, 768, { real: true });
+    const tReady = Date.now();
+    const cr = (await page.getByTestId("academy-core-crystal").boundingBox())!;
+    const cx = cr.x + cr.width / 2;
+    const cy = cr.y + cr.height * 0.2;
+    await page.mouse.move(60, 420);
+    await page.waitForTimeout(1500);
+    // crystal: Leaguecraft -> Pro Play, twice through the four rooms, holding on the two new ones
+    for (let round = 0; round < 2; round++) {
+      for (const m of MODES) {
+        await page.mouse.click(cx, cy);
+        await page.mouse.move(60, 420);
+        await page.waitForTimeout(m === "leaguecraft" || m === "pro-play" ? 2600 : 1100);
+      }
+      await page.mouse.click(cx, cy); // rest
+      await page.mouse.move(60, 420);
+      await page.waitForTimeout(900);
+    }
+    // the arrows bring Leaguecraft and Pro Play round, and the crystal follows
+    for (let k = 0; k < 2; k++) {
+      await arrow(page, "left").click();
+      await page.mouse.move(60, 420);
+      await waitStill(page);
+      await page.waitForTimeout(1800);
+    }
+    const tEnd = Date.now();
+    const video = page.video()!;
+    await ctx.close();
+    const file = await video.path();
+    expect(existsSync(file)).toBe(true);
+    copyFileSync(file, path.join(OUT, "_video", "raw-crystal.webm"));
+    writeFileSync(path.join(OUT, "_video", "meta-crystal.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000 }));
   });
 });

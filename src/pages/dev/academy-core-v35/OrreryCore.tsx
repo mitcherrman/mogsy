@@ -24,10 +24,13 @@
  * Every animation is a transform / opacity keyframe on its own element; there
  * is no JS in the loop except the needle, which the engine writes.
  */
-import { forwardRef, memo, type ReactNode } from "react";
+import { forwardRef, memo, useMemo, type ReactNode } from "react";
 
 import AcademyCoreInstrument, { type CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
 import { CORE_IDLE_READOUT, destinationById, type CoreFocus } from "@/pages/academy-core/academy-core-destinations";
+
+import { MatchupProjection, StudyProjection } from "./OrreryProjections";
+import type { MatchupMedia } from "./orrery-projections-data";
 
 /**
  * The crystal's scale on the dial in V3.5 (V3 uses 0.78). 0.96 makes the lens
@@ -42,6 +45,8 @@ export interface OrreryCoreProps {
   activating: CoreFocus | null;
   ambient: boolean;
   media: CoreMedia;
+  /** Pro Play's 5 v 5 lineup and Rift image (V3.5 projection); null until the art is due. */
+  matchup?: MatchupMedia | null;
   /** The crystal's accessible button (the page owns its behaviour). */
   children: ReactNode;
 }
@@ -88,9 +93,15 @@ function RuneRing() {
 }
 
 const OrreryCore = forwardRef<HTMLDivElement, OrreryCoreProps>(function OrreryCore(
-  { focus, activating, ambient, media, children },
+  { focus, activating, ambient, media, matchup = null, children },
   needleRef,
 ) {
+  // V3.5's own Leaguecraft and Pro Play projections (V3 keeps its originals).
+  const roles = media.observeRoles;
+  const projectionOverrides = useMemo(() => ({
+    leaguecraft: <StudyProjection roles={roles ?? []} />,
+    "pro-play": <MatchupProjection media={matchup} />,
+  }), [roles, matchup]);
   const dest = destinationById(focus);
   const readout = dest ? dest.readout : CORE_IDLE_READOUT;
   const arcId = "o35-readout-arc";
@@ -145,7 +156,7 @@ const OrreryCore = forwardRef<HTMLDivElement, OrreryCoreProps>(function OrreryCo
 
       {/* the V3 crystal assembly, unchanged */}
       <div className="o35-instrument">
-        <AcademyCoreInstrument focus={focus} activating={activating} compact ambient={ambient} media={media} lensScale={V35_LENS_SCALE} />
+        <AcademyCoreInstrument focus={focus} activating={activating} compact ambient={ambient} media={media} lensScale={V35_LENS_SCALE} projectionOverrides={projectionOverrides} />
         {children}
       </div>
     </div>

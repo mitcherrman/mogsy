@@ -24,7 +24,7 @@
  * `compact` (phones) draws the crystal assembly alone as a band between the
  * two book tiers; the chassis and cradles are not drawn there.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useMotionValueEvent, useSpring } from "framer-motion";
 
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
@@ -120,6 +120,14 @@ export interface AcademyCoreInstrumentProps {
    * local space, so projections, clips and iris blades scale together.
    */
   lensScale?: number;
+  /**
+   * Opt-in replacement artwork for individual projections, drawn in the
+   * lens's local space (origin at the crystal centre, r = 118, already
+   * clipped to the lens) inside the room's own mode group, so the mode's
+   * fade, the iris and the room colour keep working. Absent = the V3
+   * projection. Used only by the V3.5 preview; V3 passes nothing.
+   */
+  projectionOverrides?: Partial<Record<"leaguecraft" | "pro-play", ReactNode>>;
 }
 
 export default function AcademyCoreInstrument({
@@ -130,6 +138,7 @@ export default function AcademyCoreInstrument({
   media = {},
   className,
   lensScale = LENS_SCALE,
+  projectionOverrides,
 }: AcademyCoreInstrumentProps) {
   const reduced = useReducedMotionPreference();
   const dest = destinationById(focus);
@@ -399,6 +408,9 @@ export default function AcademyCoreInstrument({
               <path d="M 0,0 L 118,-22 A 118 118 0 0 1 118,22 Z" className="acore-idle-sweep" />
             </g>
             {/* INQUIRY — the specimen (Ryze) under the magnifier */}
+            {projectionOverrides?.leaguecraft ? (
+              <g className="acore-mode acore-mode-leaguecraft" data-projection="override">{projectionOverrides.leaguecraft}</g>
+            ) : (
             <g className="acore-mode acore-mode-leaguecraft">
               <path d="M 0,0 L 118,-40 A 118 118 0 0 1 118,40 Z" className="acore-probe-wedge" />
               <circle r="74" className="acore-probe-ring acore-probe-ring-2" />
@@ -411,6 +423,7 @@ export default function AcademyCoreInstrument({
                 <line x1="36" y1="36" x2="66" y2="66" className="acore-magnifier-handle" />
               </g>
             </g>
+            )}
             {/* MEASURE — calipers close on the specimen (Akali), shards, range arc */}
             <g className="acore-mode acore-mode-combat">
               <g clipPath="url(#acore-art-clip)">
@@ -454,6 +467,9 @@ export default function AcademyCoreInstrument({
               {media.strataLabel && <text y="86" textAnchor="middle" className="acore-strata-label">{media.strataLabel.toUpperCase()}</text>}
             </g>
             {/* OBSERVE — the reticle tracks the pro-scene mark (Ahri) */}
+            {projectionOverrides?.["pro-play"] ? (
+              <g className="acore-mode acore-mode-pro-play" data-projection="override">{projectionOverrides["pro-play"]}</g>
+            ) : (
             <g className="acore-mode acore-mode-pro-play">
               <g className="acore-reticle">
                 <circle r="58" /><circle r="22" />
@@ -478,6 +494,7 @@ export default function AcademyCoreInstrument({
                 <circle r="21" className="acore-mark-ring" />
               </g>
             </g>
+            )}
           </g>
 
           {/* iris */}

@@ -1,12 +1,130 @@
-# Academy Core V3.5 — The Living Hextech Orrery (Phase 1 + Phase 2)
+# Academy Core V3.5 — The Living Hextech Orrery (Phase 1, Phase 2, targeted changes, crystal redesign)
 
 Branch `design/academy-core-v35-floating-orrery`, cut from `origin/main` **`6407559a`** (fetched at the start of the pass).
 Preview route: **`/lol/dev/academy-core-v35`** (development-only; see "Guarantees"). Nothing is merged, deployed, PR'd or published.
 Frontend only: no backend, Supabase or Railway change.
 
-> Status: Phase 1 and Phase 2 accepted as the foundation. **Phase 2 targeted improvements (exactly two owner-approved changes: the
-> two-arrow orbit selector and a larger central crystal) built and STOPPED FOR OWNER REVIEW** — §P2T below. Watch
-> `docs/handoffs/academy-core-v35/orrery-selector-and-crystal.webm` (32 s) first. Phase 2 (§P2) and Phase 1 follow unchanged.
+> Status: Phase 1, Phase 2 and the Phase 2 targeted changes (arrow selector, larger crystal; §P2T, `2a543a0f`) are approved.
+> **Crystal redesign (exactly two projections: Leaguecraft and Pro Play) built and STOPPED FOR OWNER REVIEW** — §P2C below. Watch
+> `docs/handoffs/academy-core-v35/orrery-crystal-redesign.webm` (26 s) first.
+
+## P2C. Crystal redesign — Leaguecraft (pentagon + scroll/quill) and Pro Play (5 v 5)
+
+Base `2a543a0f` (branch, HEAD and remote verified; clean tree). Only the Leaguecraft and Pro Play projections changed. The books, orbit,
+drag and inertia, arrow selector and hold, lens size, Core and rings, Patch Report, radio, Mogzy, Daily/Ranked, navigation, analytics,
+Combat and Archives projections, audio and backend are untouched. Production `/lol` is untouched (verified by test).
+
+### What changed
+
+**Leaguecraft** now draws the composition Pro Play used to draw: the targeting reticle (it rotates to lock on when the room is focused),
+the five real role icons on the pentagon (r 76, 72° apart, the same `CORE_OBSERVE_ROLES` files), and the violet crystal field. Ahri's
+portrait is replaced by a **scroll-and-quill medallion**, drawn as vector art: a navy-violet disc with the gold lamp ring, a parchment
+sheet with ink lines between two brass-capped rolls, a white-violet quill with a gold nib crossing it, and a glint off the quill's tip.
+It is centred in the reticle and shown at about 60 px across at 1366 wide (drawn at r 26, displayed 1.2×). It grows into place as the room
+is focused and, under ambient motion, floats ±1.2 units with a soft pulsing glow (the existing `acore-pulse` keyframes). The Leaguecraft iris
+opening (104, wider than Pro Play's 88) was left as it is: the composition is fully visible inside it.
+
+**Pro Play** now shows **5 v 5 around Summoner's Rift**, in the Archives' language: a central circular subject (r 46, in the instrument's own
+art clip) in a layered crystal field, with five champion icon plates on an **upper arc** and five opposing plates on a **mirrored lower arc**
+(r 74, 23° steps, icons r 12 — about 22 px at 1366 wide). The sides are told apart by subtle blue and ember ring tints and a tinted plate
+plus a fine dashed trace under each arc. As the room is focused the two sides slide out from the centre into place (as the Archives' strata
+spread), and a dashed ring around the Rift turns slowly. There is no text, no patch content, no players, no results.
+
+**Fit (local lens units):** every icon's outer edge is within 86 of the centre along every iris blade normal (the open Pro Play iris is a
+hexagon of inradius 88), so no blade covers a portrait once the iris is open. Icons are 5.5 apart and 15 clear of the Rift ring. Everything is
+inside the lens (r 118). This is unit-tested exactly and checked in the browser at real scale.
+
+### Assets and provenance
+
+- **Champion icons:** the champion manifest's own `icon` files (`/api/assets/champions`, the same authority and request the book covers
+  already use), resolved with `getChampionIcon`. Lineup, top → support: blue **Gnar, Lee Sin, Azir, Jinx, Thresh**; red **K'Sante, Vi,
+  Orianna, Kai'Sa, Nautilus** (manifest keys verified against production on 2026-10-16). A representative decorative lineup, not a real
+  match. If the manifest lacks a name the plate stays empty; no image is guessed. The icons load after the critical art, like the other
+  projections.
+- **Summoner's Rift centre:** `src/assets/academy-core/rift-lane-turret.webp` (256 × 256, 13 KB), a derivative of two assets the product
+  already ships:
+  - `src/assets/ranked/lane.png`, the owner-supplied Summoner's Rift lane scene (ENVVIS1, `d0090576`, 2026-09-20; it shows the lane,
+    brush and base wall);
+  - the backend's canonical turret render, `assets/structures/turret.png` (the `quiz.structure_assets` registry art).
+
+  The turret is composited on the lane, which is the same pairing the quiz's `lane_turret` environment scene uses. I chose this over a lane
+  crop alone: at the real ~86 px size, plain lane crops read as generic grass and dirt, while the turret makes the image read as Summoner's
+  Rift at once. No external Riot URL was fetched or invented; both sources are already in use in Mogzy under its existing fan-project terms.
+
+### Isolation
+
+`AcademyCoreInstrument.tsx` (shared with V3) gained one opt-in prop, `projectionOverrides` (Leaguecraft and/or Pro Play artwork drawn in the
+lens's local space inside the room's own mode group). When it is absent, the V3 projections render exactly as before. V3.5 passes its
+designs from `OrreryProjections.tsx`. The Leaguecraft violet palette and the new styles are V3.5-scoped CSS (`.o35-root`).
+
+### Files
+
+New: `OrreryProjections.tsx` (both designs), `orrery-projections-data.ts` (lineup, Rift art, arc geometry), `OrreryProjections.test.tsx`,
+`src/assets/academy-core/rift-lane-turret.webp`. Changed: `AcademyCoreInstrument.tsx` (+`projectionOverrides`, two conditional wrappers),
+`OrreryCore.tsx` (passes the overrides), `AcademyCoreV35Page.tsx` (lineup icons from the manifest), `academy-core-v35.css` (Leaguecraft
+palette and reticle lock, emblem, 5 v 5 styles), `AcademyCoreV35Page.test.tsx`, `e2e/academy-core-v35.spec.ts` (stub manifest gained the
+lineup names; new tests; an evidence suite).
+
+### Tests
+
+| Suite | Result |
+|---|---|
+| vitest: V3.5 (motion 39, engine 7, page 41, **projections 8**) + V3 (`AcademyCorePage` 32, route 9, warm 5, lens 2) + `route-prefetch` 7 | **150 / 150** |
+| Playwright `e2e/academy-core-v35.spec.ts --grep-invert evidence` (Chromium) | **52 / 52** (46 previous + 6 new) |
+| `tsc` | only the 2 pre-existing baseline errors |
+| `eslint` | 0 errors; the 1 pre-existing warning (`AcademyCoreInstrument.tsx:55`) |
+
+The new checks cover:
+
+1. Exactly five role icons on the r 76 pentagon, the emblem centred and ≥ 56 px, and no champion portrait in Leaguecraft.
+2. Exactly ten champion icons, five per side, each on its side, inside the iris's inscribed circle, clear of the Rift ring, and ≥ 18 px.
+3. The Rift image centred, ≥ 80 px and served (200).
+4. All four modes switch, and only Leaguecraft and Pro Play carry overrides.
+5. The arrow selector and the crystal stay in step.
+6. `/lol` still has the V3 magnifier and the Ahri track mark, and no override.
+7. Phones and reduced motion show the same two projections, with no overflow.
+8. No page errors.
+
+Unit tests also check that Combat and Archives markup is byte-identical with and without the overrides. Pixel diffs at identical framing
+against the `2a543a0f` captures show **idle, Combat and Archives with 0 changed pixels**; only Leaguecraft and Pro Play differ.
+
+### Performance (A/B against `2a543a0f` served side by side, headless Edge, 1366×768, 60 Hz this session)
+
+| | before | after |
+|---|---|---|
+| idle | 29.6 / 31.2 % | 28.2 / 30.4 % |
+| Leaguecraft pinned | 33.0 / 32.9 % | 34.8 / 34.5 % |
+| Pro Play pinned | 32.1 / 32.7 % | 32.6 / 31.2 % |
+
+60 fps was held in every run. The only measurable difference is about +1.7 points while Leaguecraft is pinned (the emblem's float and glow
+animations). No console or page errors.
+
+### Evidence (`docs/handoffs/academy-core-v35/`, real art, Edge)
+
+- `orrery-crystal-redesign.webm` — 26 s: the crystal cycles Leaguecraft → Pro Play → Combat → Archives twice, holding on the two new ones;
+  then the arrows bring Pro Play round, with the crystal following.
+- Actual desktop size: `crystal-redesign-1366x768-leaguecraft.png` and `crystal-redesign-1366x768-pro-play.png` (full frames).
+- All four modes at 1×: `crystal-redesign-actual-size-{leaguecraft,pro-play,combat-lab,archives}.png`.
+- Close-ups at 3× device pixels, same framing: `crystal-redesign-closeup-leaguecraft.png`, `crystal-redesign-closeup-pro-play.png`.
+- Phones (390×844 at 2×): `crystal-redesign-mobile-390x844-leaguecraft.png`, `crystal-redesign-mobile-390x844-pro-play.png`.
+
+### Limitations and owner questions
+
+1. **Leaguecraft and Pro Play now share the violet crystal.** The brief lists the violet field as part of the composition Leaguecraft
+   inherits, and nothing asked for Pro Play's colour to change, so it stayed violet. Leaguecraft's halo, comet, needle and tether stay gold.
+   If you would rather Leaguecraft keep its gold crystal, or Pro Play move to another tint, it is one CSS rule.
+2. **On phones the ten icons are small** (about 11 CSS px, read from the 2× capture; the phone lens is about half the desktop one). They are
+   visible but not individually identifiable at a glance. The emblem stays clear (measured over 28 CSS px).
+3. The champion icons depend on the asset host. While it is slow, the plates show empty until the icons arrive (the same behaviour as the
+   book covers).
+4. The Rift image is a derivative composite, documented above. If you would prefer an untouched source image (e.g. a lane crop only, or the
+   Nexus scene), it is a one-file swap.
+
+### Next
+
+Owner review of the two projections. Nothing else is started: no PR, merge, deploy, sound or Phase 3.
+
+---
 
 ## P2T. Phase 2 targeted improvements — the arrow selector and the larger crystal
 

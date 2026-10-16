@@ -44,7 +44,9 @@ vi.mock("@/lib/daily-challenge/useDailyChallengeStatus", () => ({
 const feed: { current: BroadcastFeed } = { current: INITIAL_BROADCAST_FEED };
 vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({ usePatchBriefFeed: () => feed.current }));
 
-const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Viktor"].map((n) => [n, {
+const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Viktor",
+  // the Pro Play crystal's 5 v 5 lineup (orrery-projections-data.ts)
+  "Gnar", "Lee Sin", "Azir", "Jinx", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"].map((n) => [n, {
   icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
 }])) };
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
@@ -692,5 +694,37 @@ describe("the arrow selector", () => {
     // ... and nothing orbits afterwards
     act(() => { vi.advanceTimersByTime(3000); });
     expect(xy()).toEqual(after);
+  });
+});
+
+describe("the redesigned crystal projections, in the page", () => {
+  it("Leaguecraft shows the role pentagon with the scroll-and-quill emblem; Pro Play shows the 5 v 5 lineup around the Rift", async () => {
+    const { container } = mount();
+    await act(async () => { await Promise.resolve(); }); // the (mocked) warm resolves -> the art is due
+    const lc = container.querySelector(".acore-mode-leaguecraft")!;
+    expect(lc).toHaveAttribute("data-projection", "override");
+    expect(lc.querySelectorAll(".acore-role")).toHaveLength(5);
+    expect(lc.querySelector("[data-testid='academy-core-v35-study-emblem']")).not.toBeNull();
+    expect(lc.querySelector("image[href*='splash']")).toBeNull(); // no champion portrait any more
+    const pp = container.querySelector(".acore-mode-pro-play")!;
+    expect(pp).toHaveAttribute("data-projection", "override");
+    const hrefs = (side: string) => [...pp.querySelectorAll(`[data-testid='academy-core-v35-team-${side}'] .o35-team-icon`)].map((i) => i.getAttribute("href"));
+    const want = (names: readonly string[]) => names.map((n) => expect.stringContaining(`assets/champions/${n}/icon.png`));
+    expect(hrefs("top")).toEqual(want(["Gnar", "Lee Sin", "Azir", "Jinx", "Thresh"]));
+    expect(hrefs("bottom")).toEqual(want(["K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"]));
+    expect(pp.querySelector("[data-testid='academy-core-v35-rift'] image")?.getAttribute("href")).toMatch(/rift-lane-turret/);
+    // Combat and Archives are the V3 originals
+    expect(container.querySelector(".acore-mode-combat")).not.toHaveAttribute("data-projection");
+    expect(container.querySelector(".acore-mode-archives")).not.toHaveAttribute("data-projection");
+  });
+
+  it("the crystal and the selector still agree on the room the crystal is projecting", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "clearTimeout"] });
+    mount();
+    fireEvent.click(screen.getByTestId("academy-core-arrow-left")); // Pro Play from rest
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "pro-play");
+    expect(document.querySelector(".acore-svg")).toHaveAttribute("data-focus", "pro-play");
+    fireEvent.click(screen.getByTestId("academy-core-crystal"));
+    expect(document.querySelector(".acore-svg")).toHaveAttribute("data-focus", "combat-lab");
   });
 });

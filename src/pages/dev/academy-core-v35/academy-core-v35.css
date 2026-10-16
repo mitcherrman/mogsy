@@ -608,3 +608,49 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
 
 /* phones: the chosen book's light comes up smoothly (books do not orbit there) */
 .o35-stage[data-mode="composed"] .o35-book { transition: opacity 600ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* ==========================================================================
+   CRYSTAL REDESIGN — Leaguecraft (pentagon + scroll/quill) and Pro Play (5 v 5).
+   Both are V3.5 projection overrides (see OrreryProjections.tsx); Combat and
+   Archives are the V3 originals, untouched.
+   ========================================================================== */
+
+/* Leaguecraft takes the composition Pro Play had — including its violet crystal field */
+.o35-root .acore-svg[data-focus="leaguecraft"] { --cr-hi: #b9a6ff; --cr-mid: #7a62e6; --cr-lo: #3a2c8a; --cr-core: #f3eeff; }
+/* ... and its reticle locks on, as Pro Play's did */
+.o35-root .acore-svg[data-focus="leaguecraft"] .acore-reticle { transform: rotate(0deg); }
+
+/* the scroll-and-quill medallion */
+.o35-emblem-inner-ring { fill: none; stroke: #b9a6ff; stroke-opacity: 0.45; stroke-width: 0.8; }
+.o35-emblem-ink { stroke: #6b4f2a; stroke-opacity: 0.8; stroke-width: 1.15; stroke-linecap: round; }
+.o35-emblem-shaft { stroke: #fff3cf; stroke-width: 0.9; stroke-linecap: round; }
+.o35-emblem-barb { stroke: #7a62e6; stroke-opacity: 0.55; stroke-width: 0.6; stroke-linecap: round; }
+.o35-emblem-glint { fill: #fff6dd; filter: drop-shadow(0 0 2px #ffe9b8); }
+.o35-emblem-glow { opacity: 0.6; }
+.o35-emblem-float, .o35-emblem-glow { transform-box: fill-box; transform-origin: 50% 50%; }
+/* the medallion is drawn at r 26 and shown 20 % larger (~60 px at 1366 wide); it grows into place as the room is focused */
+.o35-study-emblem { transform-box: fill-box; transform-origin: 50% 50%; transform: scale(1); transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acore-svg[data-focus="leaguecraft"] .o35-study-emblem { transform: scale(1.2); }
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-emblem-float { animation: o35-emblem-float 4.6s ease-in-out infinite; }
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-emblem-glow { animation: acore-pulse 3.2s ease-in-out infinite; }
+@keyframes o35-emblem-float { 0%, 100% { transform: translateY(1.2px); } 50% { transform: translateY(-1.2px); } }
+
+/* Pro Play: two sides around Summoner's Rift */
+.o35-side-plate { fill: none; stroke-width: 30; stroke-linecap: round; stroke-opacity: 0.16; }
+.o35-side-trace { fill: none; stroke-width: 1; stroke-dasharray: 2 5; stroke-opacity: 0.7; }
+.o35-side-top { stroke: #7fb4ff; }
+.o35-side-bottom { stroke: #ff8473; }
+.o35-team-ring { fill: #120d33; stroke-width: 1.6; }
+.o35-team-top .o35-team-ring { stroke: #9cc6ff; }
+.o35-team-bottom .o35-team-ring { stroke: #ff9a8a; }
+.o35-team-plate { fill: #1a1434; }
+.o35-rift-ring { fill: none; stroke: #f3eeff; stroke-opacity: 0.85; stroke-width: 1.4; }
+.o35-rift-dash { fill: none; stroke: #f3dfa6; stroke-opacity: 0.55; stroke-width: 0.9; stroke-dasharray: 3 6; transform-box: fill-box; transform-origin: 50% 50%; }
+.acore-svg[data-ambient="on"][data-focus="pro-play"] .o35-rift-dash { animation: acore-spin 40s linear infinite; }
+/* the sides take the field from the centre outward, as the Archives' strata spread */
+.o35-team { transition: transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.o35-team-bottom { transition-delay: 60ms; }
+.o35-team-top { transform: translateY(16px); }
+.o35-team-bottom { transform: translateY(-16px); }
+.acore-svg[data-focus="pro-play"] .o35-team-top,
+.acore-svg[data-focus="pro-play"] .o35-team-bottom { transform: translateY(0); }
