@@ -110,8 +110,10 @@ function RegionFilter() {
     <div
       role="group"
       aria-label="Filter teams by region"
-      // A phone wraps the chips into a grid (no sideways strip); a desktop keeps one row.
-      className={cn("shrink-0 gap-1.5", x.desktop ? "flex flex-wrap" : "grid grid-cols-4")}
+      // A phone wraps the chips into a grid (no sideways strip); a desktop keeps one
+      // row; a phone on its side has the width for one row of equal chips.
+      className={cn("shrink-0 gap-1.5", x.desktop ? "flex flex-wrap" : x.landscape ? "grid" : "grid grid-cols-4")}
+      style={x.landscape ? { gridTemplateColumns: `repeat(${chips.length}, minmax(0, 1fr))` } : undefined}
       onKeyDown={rovingKeys}
       data-testid="region-filter"
     >
@@ -579,6 +581,7 @@ export function TeamFocus({ p, onClose }: { p: TournamentParticipantV2; onClose?
   const status = teamStatus(p, kit.state, kit.ctx);
   const series = teamSeries(kit.state, p);
   const compact = !x.desktop;
+  const sideways = x.landscape;
   const profile = (
     <Link
       to={proPlayProfileUrl("team", p.team_key)}
@@ -588,6 +591,50 @@ export function TeamFocus({ p, onClose }: { p: TournamentParticipantV2; onClose?
       Team profile <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
     </Link>
   );
+  if (sideways) {
+    // A phone on its side: who the team is in a column beside its views.
+    return (
+      <article className="grid min-h-0 flex-1 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]" data-testid="team-focus" data-team={p.code} data-layout="landscape" aria-labelledby="team-focus-title">
+        <header className="flex min-h-0 min-w-0 flex-col gap-2 border-r border-white/[0.07] px-4 pb-3 pt-1">
+          <div className="flex items-start justify-between gap-2">
+            <TeamCrest teamKey={p.team_key} name={name} shortCode={p.code} size="md" />
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close team"
+                data-testid="team-close"
+                className="-mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <h2 id="team-focus-title" className="!font-sans text-lg font-extrabold leading-tight tracking-tight text-foreground [text-shadow:none]">
+            {name}
+          </h2>
+          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-foreground/80" data-testid="team-identity">
+            <span className="rounded bg-white/[0.07] px-1.5 py-0.5 font-bold tracking-[0.06em] text-foreground">{p.code}</span>
+            <span className="font-semibold">{p.region}</span>
+            {p.qualification && <span className="text-muted-foreground">Qualified as {p.qualification}</span>}
+            <EntryChip p={p} long />
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {status ? <StatusPill status={status} /> : <span className="text-xs text-muted-foreground" data-testid="team-status-none">No result yet</span>}
+            {(series.won > 0 || series.lost > 0) && (
+              <span className="text-xs tabular-nums text-muted-foreground" data-testid="team-series">
+                Series {series.won}–{series.lost}
+              </span>
+            )}
+          </div>
+          <div className="mt-auto flex">{profile}</div>
+        </header>
+        <div className="flex min-h-0 min-w-0 flex-col px-4 pb-3 pt-1">
+          <TeamViews p={p} />
+        </div>
+      </article>
+    );
+  }
   return (
     <article className="flex min-h-0 flex-1 flex-col" data-testid="team-focus" data-team={p.code} aria-labelledby="team-focus-title">
       <header className={cn("relative shrink-0 overflow-clip border-b border-white/[0.07]", compact ? "px-4 pb-3 pt-1.5" : "px-6 pb-4 pt-5")}>
@@ -695,6 +742,20 @@ export function TeamsScreen() {
   const { region } = useShownTeams();
   const direct = kit.ctx.participants.filter((p) => p.entry_stage === "swiss").length;
   const playIn = kit.ctx.participants.filter((p) => p.entry_stage === "play_in").length;
+  if (x.landscape) {
+    // A phone on its side: the region chips in one row, the crests in wide rows beneath.
+    return (
+      <div className="flex h-full flex-col gap-2 px-3 py-2" data-testid="teams" data-layout="landscape">
+        <RegionFilter />
+        <section className="flex min-h-0 flex-1 flex-col" aria-label={`Teams: ${kit.ctx.participants.length} teams from ${kit.ctx.regions.length} regions`}>
+          <GridSelector cols="grid-cols-10" crest />
+        </section>
+        <BottomSheet open={Boolean(selected)} onClose={() => x.selectTeam(null)} title={selected ? displayName(selected) : "Team"} testId="team-sheet" fill>
+          {selected && <TeamFocus p={selected} onClose={() => x.selectTeam(null)} />}
+        </BottomSheet>
+      </div>
+    );
+  }
   if (!x.desktop) {
     return (
       <div className="flex h-full flex-col gap-2.5 px-3 py-3" data-testid="teams">

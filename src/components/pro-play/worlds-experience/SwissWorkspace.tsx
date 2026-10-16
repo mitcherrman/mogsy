@@ -239,7 +239,8 @@ function SeedColumn({ d }: { d: Density }) {
 
 /* ── a round's pairings ─────────────────────────────────────────────────── */
 
-function PairingButton({ match, withDay = false }: { match: TournamentMatchV2; withDay?: boolean }) {
+/** `line`: one row (a landscape phone's two-column list), the time and state at its start. */
+function PairingButton({ match, withDay = false, line = false }: { match: TournamentMatchV2; withDay?: boolean; line?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const selected = x.loc.matchId === match.match_id;
@@ -256,6 +257,33 @@ function PairingButton({ match, withDay = false }: { match: TournamentMatchV2; w
     );
   };
   const [day, time] = (localStart(match.scheduled_start) ?? " · ").split(" · ");
+  if (line) {
+    return (
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={() => x.selectMatch(match.match_id)}
+        data-testid="swiss-pairing"
+        data-match-id={match.match_id}
+        data-state={match.state}
+        className={cn(
+          "grid min-h-11 w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-xl border px-2.5 py-1 text-left text-sm outline-none transition-[border-color,box-shadow,background-color] duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]",
+          match.state === "live" ? "border-emerald-500/50" : "border-white/[0.08] hover:border-white/20",
+          selected && "border-[#c9a84c] shadow-[0_0_0_1px_#c9a84c]",
+        )}
+      >
+        <span className="flex flex-col whitespace-nowrap text-[10.5px] leading-tight tabular-nums text-muted-foreground">
+          <span>{withDay ? `${day} ` : ""}{time}</span>
+          <span className={cn("font-semibold uppercase tracking-[0.08em]", match.state === "live" && "text-emerald-300")} data-testid="pairing-state">
+            {match.state === "live" ? "Live" : match.state === "completed" ? "Final" : match.best_of ? `Bo${match.best_of}` : ""}
+          </span>
+        </span>
+        {side(0)}
+        <span className="text-xs tabular-nums text-muted-foreground">{score ?? "v"}</span>
+        <span className="flex min-w-0 justify-end">{side(1)}</span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -294,7 +322,7 @@ function roundDays(matches: readonly TournamentMatchV2[]) {
  * and page (the views layouts); otherwise they are all drawn (the box was
  * measured to hold them).
  */
-function RoundPairings({ round, paged = false, cols }: { round: SwissRound; paged?: boolean; cols: string }) {
+function RoundPairings({ round, paged = false, cols, line = false }: { round: SwissRound; paged?: boolean; cols: string; line?: boolean }) {
   const x = useExperience();
   const unpaired = round.matches.every(bothTbd);
   return (
@@ -320,9 +348,9 @@ function RoundPairings({ round, paged = false, cols }: { round: SwissRound; page
           onPage={(shown) => {
             if (x.loc.matchId && !shown.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
           }}
-          className="min-h-[60px]"
+          className={line ? "min-h-11" : "min-h-[60px]"}
           listClassName={cn("grid gap-2", cols)}
-          render={(m) => <PairingButton match={m} />}
+          render={(m) => <PairingButton match={m} line={line} />}
         />
       ) : (
         <ul className={cn("grid gap-2", cols)}>
@@ -524,11 +552,12 @@ function PhoneRecords() {
 
 function PhoneSeeding() {
   const kit = useKit();
+  const x = useExperience();
   const tiers = swissTiers(kit.ctx);
   return (
     <section className="space-y-2" aria-label="Seeding">
       <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Seeding</p>
-      <div className="grid grid-cols-2 gap-2" data-testid="swiss-seeds">
+      <div className={cn("grid gap-2", x.landscape ? "grid-cols-4" : "grid-cols-2")} data-testid="swiss-seeds">
         {tiers.map((t) => (
           <div key={t.tier} className="rounded-xl border border-white/[0.08] bg-[hsl(214_45%_9%)] px-2.5 py-2" data-testid="swiss-tier" data-tier={t.tier}>
             <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#c9a84c]">Tier {t.tier}</p>
@@ -546,11 +575,12 @@ function PhoneSeeding() {
 
 function PhoneFormat({ map, round }: { map: SwissPoolMap; round: number }) {
   const kit = useKit();
+  const x = useExperience();
   const occ = useMemo(() => swissOccupancy(kit.state), [kit.state]);
   const [part, setPart] = useState<"pools" | "outcomes">("pools");
   const r = map.rounds.find((p) => p.round === round);
   const pools = r && (
-    <div className="grid grid-cols-2 gap-2" data-testid="swiss-round-pools">
+    <div className={cn("grid gap-2", x.landscape ? "grid-cols-4" : "grid-cols-2")} data-testid="swiss-round-pools">
       {r.pools.map((p) => (
         <PoolNode key={poolId(p.wins, p.losses)} pool={p} occupants={occ.get(poolId(p.wins, p.losses)) ?? []} selected d={1} />
       ))}
@@ -636,25 +666,39 @@ type PhoneView = "fixtures" | "records" | "format";
 
 function PhoneSwiss({ rounds, selected, map }: { rounds: SwissRound[]; selected: SwissRound; map: SwissPoolMap }) {
   const kit = useKit();
+  const x = useExperience();
   const [view, setView] = useState<PhoneView>("fixtures");
   const hasRecords = kit.state.swiss.records.length > 0;
+  const tabs = (
+    <ViewTabs
+      label="Swiss views"
+      testId="swiss-phone-views"
+      value={view}
+      onChange={setView}
+      views={[
+        { key: "fixtures", label: "Fixtures" },
+        { key: "records", label: hasRecords ? "Records" : "Seeding" },
+        { key: "format", label: "Format" },
+      ]}
+    />
+  );
   return (
     <div className="flex h-full min-h-0 flex-col gap-2" data-testid="swiss-phone" data-view={view}>
-      <RoundTabs rounds={rounds} selected={selected.round} />
-      <ViewTabs
-        label="Swiss views"
-        testId="swiss-phone-views"
-        value={view}
-        onChange={setView}
-        views={[
-          { key: "fixtures", label: "Fixtures" },
-          { key: "records", label: hasRecords ? "Records" : "Seeding" },
-          { key: "format", label: "Format" },
-        ]}
-      />
+      {x.landscape ? (
+        // Sideways: rounds and views share one row; the pairings get the height.
+        <div className="grid shrink-0 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-stretch gap-2">
+          <RoundTabs rounds={rounds} selected={selected.round} />
+          {tabs}
+        </div>
+      ) : (
+        <>
+          <RoundTabs rounds={rounds} selected={selected.round} />
+          {tabs}
+        </>
+      )}
       <div role="tabpanel" className="flex min-h-0 flex-1 flex-col" aria-label={view}>
         {view === "fixtures" ? (
-          <RoundPairings round={selected} paged cols="grid-cols-1 sm:grid-cols-2" />
+          <RoundPairings round={selected} paged cols={x.landscape ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"} line={x.landscape} />
         ) : view === "records" ? (
           hasRecords ? <PhoneRecords /> : <PhoneSeeding />
         ) : (
@@ -676,7 +720,8 @@ function SwissFallback() {
   const [view, setView] = useState<"seeding" | "matches">("matches");
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-2.5", x.desktop && "p-5")} data-testid="swiss-fallback">
-      {stage && <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">{stage.format_note}</p>}
+      {/* A landscape phone has no height for it here: it is in the Format brief beside the stage. */}
+      {stage && !x.landscape && <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">{stage.format_note}</p>}
       <ViewTabs
         label="Swiss views"
         className="max-w-sm"
@@ -699,9 +744,9 @@ function SwissFallback() {
             onPage={(shown) => {
               if (x.loc.matchId && !shown.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
             }}
-            className="min-h-[60px]"
+            className={x.landscape ? "min-h-11" : "min-h-[60px]"}
             listClassName={cn("grid gap-2", x.desktop ? "grid-cols-3 2xl:grid-cols-4" : "grid-cols-1 sm:grid-cols-2")}
-            render={(m) => <PairingButton match={m} withDay />}
+            render={(m) => <PairingButton match={m} withDay line={x.landscape} />}
             empty={<p className="text-sm text-muted-foreground">No Swiss matches are on the official schedule right now.</p>}
           />
         )}

@@ -163,6 +163,12 @@ export interface FitPagesProps<T> {
   empty?: ReactNode;
   /** A pinned page size (tests); otherwise measured. */
   pageSize?: number;
+  /**
+   * The list's heading. Given, the heading and the pager share one row above
+   * the list (a short landscape phone, UX5) instead of the pager taking a row
+   * of its own beneath it.
+   */
+  head?: ReactNode;
 }
 
 /** Whole rows that fit `height`, for rows of `row` px separated by `gap` px (null: not measurable). */
@@ -171,7 +177,7 @@ export function rowsThatFit(height: number, row: number, gap: number) {
   return Math.max(0, Math.floor((height + gap + 0.5) / (row + gap)));
 }
 
-export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, resetKey, listClassName, className, testId, empty, pageSize, minRows = 1 }: FitPagesProps<T>) {
+export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, resetKey, listClassName, className, testId, empty, pageSize, minRows = 1, head }: FitPagesProps<T>) {
   const root = useRef<HTMLDivElement>(null);
   const region = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
@@ -241,8 +247,16 @@ export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, rese
   if (!items.length) return <>{empty ?? null}</>;
   const from = current * size + 1;
   const to = Math.min(items.length, from + size - 1);
+  const pager = pages > 1 && <Pager noun={noun} from={from} to={to} total={items.length} onPrev={current > 0 ? () => go(current - 1) : undefined} onNext={current < pages - 1 ? () => go(current + 1) : undefined} />;
   return (
     <div ref={root} className="flex min-h-0 flex-1 flex-col gap-2" data-testid={testId} data-page={current} data-pages={pages} data-page-size={size}>
+      {head !== undefined && (
+        // One height whether or not there are pages, so paging never changes the list's room.
+        <div className="flex min-h-9 shrink-0 items-center gap-3" data-testid="pages-head">
+          <div className="min-w-0 flex-1">{head}</div>
+          {pager}
+        </div>
+      )}
       <div ref={region} className={cn("min-h-0 flex-1 overflow-clip", className)} data-fit-region>
         <ol ref={list} className={listClassName} data-fit-list>
           {shown.map((it) => (
@@ -252,7 +266,7 @@ export function FitPages<T>({ items, keyOf, render, noun, focusKey, onPage, rese
           ))}
         </ol>
       </div>
-      {pages > 1 && <Pager noun={noun} from={from} to={to} total={items.length} onPrev={current > 0 ? () => go(current - 1) : undefined} onNext={current < pages - 1 ? () => go(current + 1) : undefined} />}
+      {head === undefined && pager}
     </div>
   );
 }

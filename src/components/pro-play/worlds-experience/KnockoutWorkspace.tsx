@@ -138,8 +138,8 @@ function Schematic({ matches, tight }: { matches: TournamentMatchV2[]; tight: bo
   );
 }
 
-/** The certified champion in one line (the round view's room goes to the round). */
-function ChampionLine() {
+/** The certified champion in one line (the round view's room goes to the round); `tight`: beside the round tabs. */
+function ChampionLine({ tight = false }: { tight?: boolean }) {
   const kit = useKit();
   const code = kit.state.knockout.bracket_authority === "standings" ? kit.state.knockout.champion_code : null;
   if (!code) return null;
@@ -147,6 +147,28 @@ function ChampionLine() {
   const p = kit.byCode.get(code);
   const team = final?.teams.find((t) => t.code === code);
   const other = final?.teams.find((t) => t.code !== code);
+  if (tight) {
+    // Two short lines beside the round tabs: the code and the final's score, then the title.
+    return (
+      <p className="flex shrink-0 items-center gap-2 rounded-xl border border-[#c9a84c]/50 bg-[#c9a84c]/[0.08] px-2.5 py-1" data-testid="champion" data-layout="tight">
+        <Trophy className="h-4 w-4 shrink-0 text-[#c9a84c]" aria-hidden="true" />
+        <TeamCrest teamKey={team?.team_key ?? p?.team_key} name={p ? displayName(p) : code} shortCode={code} size="xs" />
+        <span className="flex flex-col whitespace-nowrap leading-tight">
+          <span className="text-sm">
+            <b className="font-bold text-[#f1dc9c]">{code}</b>
+            <span className="sr-only"> ({p ? displayName(p) : code})</span>
+            {final && other && (
+              <span className="text-xs text-muted-foreground">
+                {" "}won the final <b className="font-semibold tabular-nums text-foreground">{team?.game_wins}–{other.game_wins}</b>
+                {other.code ? ` v ${other.code}` : ""}
+              </span>
+            )}
+          </span>
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-[#c9a84c]">{kit.ctx.short_name} champion</span>
+        </span>
+      </p>
+    );
+  }
   return (
     <p className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-[#c9a84c]/50 bg-[#c9a84c]/[0.08] px-3 py-1.5 text-sm" data-testid="champion" data-layout="line">
       <Trophy className="h-4 w-4 text-[#c9a84c]" aria-hidden="true" />
@@ -186,24 +208,41 @@ function RoundFocus({ matches, preDraw }: { matches: TournamentMatchV2[]; preDra
     if (x.loc.matchId && roundOf(x.loc.matchId) !== i) x.selectMatch(null);
   };
   if (!round) return null;
+  const tabs = (
+    <ViewTabs
+      label="Knockout rounds"
+      testId="knockout-rounds"
+      tabTestId="knockout-round-tab"
+      className={cn(x.desktop && "max-w-lg", x.landscape && "min-w-0 flex-1")}
+      value={round.cell}
+      onChange={pick}
+      views={rounds.map((r) => ({ key: r.cell, label: r.cell }))}
+    />
+  );
+  const heading = (
+    <p className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 text-[11px] text-muted-foreground" data-testid="schematic-round" data-cell={round.cell}>
+      <span className="font-semibold uppercase tracking-[0.12em] text-foreground/85">{round.cell}</span>
+      <span className="tabular-nums">{compactDays(round.matches.map((m) => m.scheduled_start))} · {round.matches.length} {round.matches.length === 1 ? "match" : "matches"}</span>
+    </p>
+  );
+  const note = preDraw && !x.desktop ? <p className="shrink-0 px-0.5 text-[11px] text-muted-foreground">Pairings come from the official quarterfinal draw after Swiss.</p> : null;
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-2.5", x.desktop && "p-4")} data-testid={preDraw ? "knockout-schematic" : "knockout-bracket"} data-view="rounds" data-round={round.cell}>
       {preDraw && x.desktop && <DrawLine rounds={rounds} />}
-      {!preDraw && <ChampionLine />}
-      <ViewTabs
-        label="Knockout rounds"
-        testId="knockout-rounds"
-        tabTestId="knockout-round-tab"
-        className={cn(x.desktop && "max-w-lg")}
-        value={round.cell}
-        onChange={pick}
-        views={rounds.map((r) => ({ key: r.cell, label: r.cell }))}
-      />
-      <p className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 text-[11px] text-muted-foreground" data-testid="schematic-round" data-cell={round.cell}>
-        <span className="font-semibold uppercase tracking-[0.12em] text-foreground/85">{round.cell}</span>
-        <span className="tabular-nums">{compactDays(round.matches.map((m) => m.scheduled_start))} · {round.matches.length} {round.matches.length === 1 ? "match" : "matches"}</span>
-      </p>
-      {preDraw && !x.desktop && <p className="shrink-0 px-0.5 text-[11px] text-muted-foreground">Pairings come from the official quarterfinal draw after Swiss.</p>}
+      {!preDraw && !x.landscape && <ChampionLine />}
+      {x.landscape ? (
+        // A landscape phone: the champion beside the round tabs; the round's heading shares the pager's row.
+        <div className="flex shrink-0 items-stretch gap-2">
+          {!preDraw && <ChampionLine tight />}
+          {tabs}
+        </div>
+      ) : (
+        <>
+          {tabs}
+          {heading}
+          {note}
+        </>
+      )}
       <div className={cn("flex min-h-0 flex-1 gap-3", last && x.desktop ? "flex-row" : "flex-col")}>
         <FitPages
           items={round.matches}
@@ -215,6 +254,14 @@ function RoundFocus({ matches, preDraw }: { matches: TournamentMatchV2[]; preDra
             if (x.loc.matchId && !shown.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
           }}
           className="min-h-[72px]"
+          head={
+            x.landscape ? (
+              <>
+                {heading}
+                {note}
+              </>
+            ) : undefined
+          }
           // Bracket cards name their match in one line: a phone gives each the full width.
           listClassName={cn("grid gap-2", x.desktop ? "grid-cols-2 2xl:grid-cols-4" : preDraw ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}
           render={(m) =>
@@ -236,7 +283,7 @@ export function KnockoutWorkspace() {
   const x = useExperience();
   const stage = stageOf(kit.ctx, "knockout");
   const matches = stageMatches(kit.state, "knockout", kit.state.knockout);
-  const selection = useMemo(() => ({ selectedId: x.loc.matchId, onSelect: x.selectMatch, dense: true }), [x.loc.matchId, x.selectMatch]);
+  const selection = useMemo(() => ({ selectedId: x.loc.matchId, onSelect: x.selectMatch, dense: true, abreast: x.landscape }), [x.loc.matchId, x.selectMatch, x.landscape]);
   if (!stage || !matches.length) {
     return <p className="p-6 text-sm text-muted-foreground" data-testid="stage-empty">No Knockout matches are on the official schedule right now.</p>;
   }

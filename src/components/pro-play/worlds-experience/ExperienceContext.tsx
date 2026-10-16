@@ -52,6 +52,13 @@ import {
 
 /** Desktop = the side-panel workspace; below it, the stacked phone layout. */
 export const DESKTOP_QUERY = "(min-width: 1024px)";
+/**
+ * UX5 — a phone turned sideways (844 × 390, 740 × 360): wide and short. The
+ * portrait compositions stack controls above content and run out of height
+ * there, so below the desktop width a landscape screen this short lays its
+ * screens out side by side instead (controls beside content, one-row bar).
+ */
+export const LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 560px)";
 
 export function useMediaQuery(query: string) {
   const get = () => (typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(query).matches : false);
@@ -86,6 +93,8 @@ export interface Experience {
   stageKeys: string[];
   move: { level: "screen" | "stage" | "none"; dir: Direction };
   desktop: boolean;
+  /** A short landscape phone (never true with `desktop`): side-by-side compositions. */
+  landscape: boolean;
   reduced: boolean;
   /** The Schedule's stage filter as a stage key (null: all stages). */
   filterKey: string | null;
@@ -116,7 +125,7 @@ export function useExperience(): Experience {
   return x;
 }
 
-export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDesktop, simulated = false, children }: {
+export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDesktop, landscape: forcedLandscape, simulated = false, children }: {
   base: string;
   ctx: Pick<TournamentContextV2, "stages" | "participants">;
   state: Pick<TournamentStateV2, "phase" | "phase_detail"> & { matches: readonly TournamentMatchV2[] };
@@ -124,6 +133,8 @@ export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDeskt
   now: number;
   /** Tests pin the layout; the page reads the viewport. */
   desktop?: boolean;
+  /** Tests pin the landscape-phone layout; the page reads the viewport. */
+  landscape?: boolean;
   simulated?: boolean;
   children: ReactNode;
 }) {
@@ -131,6 +142,8 @@ export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDeskt
   const navigate = useNavigate();
   const measured = useMediaQuery(DESKTOP_QUERY);
   const desktop = forcedDesktop ?? measured;
+  const measuredLandscape = useMediaQuery(LANDSCAPE_QUERY);
+  const landscape = !desktop && (forcedLandscape ?? measuredLandscape);
   const reduced = useReducedMotion() === true;
   const stageKeys = useMemo(() => ctx.stages.map((s) => s.key), [ctx.stages]);
 
@@ -302,6 +315,7 @@ export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDeskt
       stageKeys,
       move,
       desktop,
+      landscape,
       reduced,
       filterKey,
       simulated,
@@ -316,7 +330,7 @@ export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDeskt
       setFilter,
       setRegion,
     }),
-    [base, loc, stageKey, stageKeys, move, desktop, reduced, filterKey, simulated, hrefFor, hereHref, go, selectMatch, selectTeam, selectRound, selectStep, setDay, setFilter, setRegion],
+    [base, loc, stageKey, stageKeys, move, desktop, landscape, reduced, filterKey, simulated, hrefFor, hereHref, go, selectMatch, selectTeam, selectRound, selectStep, setDay, setFilter, setRegion],
   );
   return <ExperienceCtx.Provider value={value}>{children}</ExperienceCtx.Provider>;
 }

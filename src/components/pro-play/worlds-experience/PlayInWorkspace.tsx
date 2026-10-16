@@ -248,6 +248,14 @@ function RoundSteps({ layout }: { layout: Layout }) {
     x.selectStep(key);
   };
   const last = at === steps.length - 1;
+  const heading = (
+    <p className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid="round-heading">
+      <span className="text-foreground/85">{step.label}</span>
+      <span className="normal-case tracking-normal">
+        {daySpan(step.col.matches)} · {step.col.matches.length} {step.col.matches.length === 1 ? "match" : "matches"}
+      </span>
+    </p>
+  );
   return (
     <div className="flex h-full min-h-0 flex-col gap-2" data-testid="playin-rounds" data-step={step.key}>
       <ViewTabs
@@ -259,12 +267,8 @@ function RoundSteps({ layout }: { layout: Layout }) {
         views={steps.map((s) => ({ key: s.key, label: s.short, name: s.label }))}
       />
       <AuthorityNotice summary={summary} />
-      <p className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid="round-heading">
-        <span className="text-foreground/85">{step.label}</span>
-        <span className="normal-case tracking-normal">
-          {daySpan(step.col.matches)} · {step.col.matches.length} {step.col.matches.length === 1 ? "match" : "matches"}
-        </span>
-      </p>
+      {/* A landscape phone's heading shares the pager's row. */}
+      {!x.landscape && heading}
       <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="round-cards">
         <FitPages
           items={step.col.matches}
@@ -277,6 +281,7 @@ function RoundSteps({ layout }: { layout: Layout }) {
           }}
           className="min-h-[96px]"
           listClassName="grid gap-2 sm:grid-cols-2"
+          head={x.landscape ? heading : undefined}
           render={(m) => <BracketMatchCard match={m} summary={summary} stageName="Play-In" winnerTag="Play-In winner" />}
         />
         {last && <SwissEndCap compact />}
@@ -290,7 +295,7 @@ export function PlayInWorkspace() {
   const x = useExperience();
   const matches = stageMatches(kit.state, "play_in", kit.state.play_in);
   const layout = useMemo(() => doubleElimLayout(matches), [matches]);
-  const selection = useMemo(() => ({ selectedId: x.loc.matchId, onSelect: x.selectMatch, dense: true }), [x.loc.matchId, x.selectMatch]);
+  const selection = useMemo(() => ({ selectedId: x.loc.matchId, onSelect: x.selectMatch, dense: true, abreast: x.landscape }), [x.loc.matchId, x.selectMatch, x.landscape]);
   if (!matches.length) return <EmptyStage text="No Play-In matches are on the official schedule right now." />;
   const watch = matches.map((m) => `${m.match_id}:${m.state}:${m.teams.map((t) => t.code ?? "").join("/")}`).join("|");
   return (

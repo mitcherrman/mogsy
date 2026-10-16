@@ -153,13 +153,16 @@ export function BottomSheet({ open, onClose, title, testId, fill = false, childr
             dragElastic={{ top: 0, bottom: 0.6 }}
             onDragEnd={onDragEnd}
             // UX4: the sheet never outgrows the screen and never scrolls
-            // inside; what it holds is composed to fit (views, pages).
+            // inside; what it holds is composed to fit (views, pages). UX5: a
+            // phone on its side has height to spare only at the top, so the
+            // sheet rises almost to it and takes the width instead.
             className={cn(
-              "mx-auto flex max-h-[min(88dvh,46rem)] w-full max-w-lg flex-col overflow-clip rounded-t-3xl border border-b-0 border-white/10 bg-[hsl(214_50%_8%)] pb-[env(safe-area-inset-bottom)] text-foreground shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.9)]",
-              fill && "h-[min(88dvh,46rem)]",
+              "mx-auto flex w-full flex-col overflow-clip rounded-t-3xl border border-b-0 border-white/10 bg-[hsl(214_50%_8%)] pb-[env(safe-area-inset-bottom)] text-foreground shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.9)]",
+              x.landscape ? "max-h-[calc(100dvh-0.5rem)] max-w-3xl" : "max-h-[min(88dvh,46rem)] max-w-lg",
+              fill && (x.landscape ? "h-[calc(100dvh-0.5rem)]" : "h-[min(88dvh,46rem)]"),
             )}
           >
-            <div className="flex shrink-0 justify-center pb-1 pt-2.5" aria-hidden="true">
+            <div className={cn("flex shrink-0 justify-center pb-1", x.landscape ? "pt-1.5" : "pt-2.5")} aria-hidden="true">
               <span className="h-1 w-10 rounded-full bg-white/20" />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>

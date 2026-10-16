@@ -243,8 +243,12 @@ function MatchHero({ match, live, others, d }: { match: TournamentMatchV2; live:
   );
 }
 
-/** The tightest match hero (a short phone): the same facts in three lines and one row of actions. */
-function CompactMatchHero({ match, live, others }: { match: TournamentMatchV2; live: boolean; others: TournamentMatchV2[] }) {
+/**
+ * The tightest match hero (a short phone): the same facts in three lines and
+ * one row of actions. `wide` (a landscape phone, UX5): the same pieces in two
+ * columns — who plays on the left, when and the actions on the right.
+ */
+function CompactMatchHero({ match, live, others, wide = false }: { match: TournamentMatchV2; live: boolean; others: TournamentMatchV2[]; wide?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const stage = stageOf(kit.ctx, match.stage);
@@ -265,31 +269,48 @@ function CompactMatchHero({ match, live, others }: { match: TournamentMatchV2; l
       </div>
     );
   };
+  const eyebrow = (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      {live ? (
+        <span className="inline-flex items-center gap-2">
+          <MatchStateBadge state="live" size="sm" />
+          <Eyebrow>On now</Eyebrow>
+        </span>
+      ) : (
+        <Eyebrow>Next match</Eyebrow>
+      )}
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-foreground/75" data-testid="hero-caption">
+        {matchCaption(match, kit)}
+      </p>
+    </div>
+  );
+  const teams = (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      {side(match.teams[0], false)}
+      {score ? (
+        <p className="text-2xl font-extrabold tabular-nums leading-none text-foreground" data-testid="hero-score">{score}</p>
+      ) : (
+        <span className="font-['Cinzel',serif] text-sm font-bold text-[#c9a84c]/80">vs</span>
+      )}
+      {side(match.teams[1], true)}
+    </div>
+  );
   return (
-    <div className={cn("relative flex flex-col", PAD[3])} data-density="3">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        {live ? (
-          <span className="inline-flex items-center gap-2">
-            <MatchStateBadge state="live" size="sm" />
-            <Eyebrow>On now</Eyebrow>
-          </span>
-        ) : (
-          <Eyebrow>Next match</Eyebrow>
-        )}
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-foreground/75" data-testid="hero-caption">
-          {matchCaption(match, kit)}
-        </p>
-      </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-        {side(match.teams[0], false)}
-        {score ? (
-          <p className="text-2xl font-extrabold tabular-nums leading-none text-foreground" data-testid="hero-score">{score}</p>
-        ) : (
-          <span className="font-['Cinzel',serif] text-sm font-bold text-[#c9a84c]/80">vs</span>
-        )}
-        {side(match.teams[1], true)}
-      </div>
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-white/[0.07] pt-2.5 text-xs text-foreground/85">
+    <div className={cn("relative", wide ? "grid h-full grid-cols-2 items-center gap-x-5" : "flex flex-col", PAD[3])} data-density={wide ? "wide" : "3"}>
+      {wide ? (
+        <div className="flex min-w-0 flex-col gap-2.5">
+          {eyebrow}
+          {teams}
+        </div>
+      ) : (
+        <>
+          {eyebrow}
+          {teams}
+        </>
+      )}
+      {/* Portrait: these lines are the hero's own rows (`contents`); wide: the right column. */}
+      <div className={wide ? "flex min-w-0 flex-col gap-2.5 border-l border-white/[0.07] pl-5" : "contents"}>
+      <p className={cn("flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-foreground/85", !wide && "border-t border-white/[0.07] pt-2.5")}>
         <span className="font-semibold tabular-nums" data-testid="hero-start">{localStart(match.scheduled_start)}</span>
         {until && (
           <span className="tabular-nums text-cyan-300" data-testid="countdown" aria-label={`Starts in ${until}`}>
@@ -327,11 +348,22 @@ function CompactMatchHero({ match, live, others }: { match: TournamentMatchV2; l
           Also live: {others.map((m) => m.teams.map((t) => t.code ?? "TBD").join(" v ")).join(" · ")}
         </p>
       )}
+      </div>
     </div>
   );
 }
 
-function TransitionHero({ d }: { d: Density }) {
+/** A landscape phone's hero (UX5): the statement on the left, when and where to go on the right. */
+function WideHero({ testId, left, right }: { testId: string; left: ReactNode; right: ReactNode }) {
+  return (
+    <div className={cn("relative grid h-full grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-center gap-x-5", PAD[3])} data-testid={testId} data-density="wide">
+      <div className="flex min-w-0 flex-col gap-1.5">{left}</div>
+      <div className="flex min-w-0 flex-col items-start gap-2 border-l border-white/[0.07] pl-5">{right}</div>
+    </div>
+  );
+}
+
+function TransitionHero({ d, wide = false }: { d: Density; wide?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const { ctx, state } = kit;
@@ -360,6 +392,41 @@ function TransitionHero({ d }: { d: Density }) {
   if (detail.completed_stage === "swiss") {
     const adv = state.swiss.records.filter((r) => r.status === "advanced").map((r) => r.code);
     if (adv.length) facts.push(<span key="a">Advanced: <b className="font-semibold text-foreground">{adv.join(", ")}</b></span>);
+  }
+  if (wide) {
+    return (
+      <WideHero
+        testId="hero-transition"
+        left={
+          <>
+            <Eyebrow>Between stages</Eyebrow>
+            <h2 className="text-xl leading-tight">{done ? stageLabel(done) : "Stage"} complete</h2>
+            {next && (
+              <p className="text-sm text-foreground/85">
+                {stageLabel(next)} begins <b className="font-semibold">{calendarDay(next.starts)}</b> in {next.venue}
+              </p>
+            )}
+            {facts.length > 0 && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" data-testid="transition-facts">{facts}</div>}
+          </>
+        }
+        right={
+          <>
+            {first && (
+              <div>
+                <Eyebrow tone="muted">First {next ? stageLabel(next) : ""} match</Eyebrow>
+                <p className="mt-1 text-sm font-semibold tabular-nums">{localStart(first.scheduled_start)}</p>
+                <div className="mt-1"><Countdown iso={first.scheduled_start} d={2} /></div>
+              </div>
+            )}
+            {next && (
+              <Link to={x.hrefFor({ screen: "stages", stageKey: next.key })} className={PRIMARY}>
+                Explore {stageLabel(next)} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            )}
+          </>
+        }
+      />
+    );
   }
   return (
     <div className={cn("relative flex h-full flex-col", PAD[d])} data-testid="hero-transition">
@@ -396,15 +463,52 @@ function TransitionHero({ d }: { d: Density }) {
   );
 }
 
-function ChampionHero({ d }: { d: Density }) {
+function ChampionHero({ d, wide = false }: { d: Density; wide?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const code = kit.state.knockout.bracket_authority === "standings" ? kit.state.knockout.champion_code : null;
   const final = championMatch(kit.state);
-  if (!code) return <QuietHero d={d} title="Event complete" body="The final has been played. The champion is named here once the official standings confirm it." />;
+  if (!code) return <QuietHero d={d} wide={wide} title="Event complete" body="The final has been played. The champion is named here once the official standings confirm it." />;
   const p = kit.byCode.get(code);
   const team = final?.teams.find((t) => t.code === code);
   const other = final?.teams.find((t) => t.code !== code);
+  const relive = (
+    <Link to={x.hrefFor({ screen: "stages", stageKey: "knockout" })} className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-[#e3c66f] hover:underline">
+      Relive the Knockouts <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+  if (wide) {
+    return (
+      <WideHero
+        testId="hero-champion"
+        left={
+          <>
+            <Eyebrow>
+              <span className="inline-flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" aria-hidden="true" /> {kit.ctx.short_name} {kit.ctx.starts.slice(0, 4)} champion</span>
+            </Eyebrow>
+            <div className="flex items-center gap-3">
+              <TeamCrest teamKey={p?.team_key ?? team?.team_key} name={p ? displayName(p) : code} shortCode={code} size="md" />
+              <div className="min-w-0">
+                <p className={cn("text-2xl font-extrabold leading-none tracking-tight", GOLD_TEXT)}>{code}</p>
+                <p className="mt-1 text-sm font-medium text-foreground/90">{p ? displayName(p) : code}</p>
+              </div>
+            </div>
+          </>
+        }
+        right={
+          <>
+            {final && other && (
+              <p className="text-sm text-muted-foreground">
+                Won the final <b className="font-semibold tabular-nums text-foreground">{team?.game_wins}–{other.game_wins}</b>
+                {other.code ? ` against ${other.code}` : ""}
+              </p>
+            )}
+            {relive}
+          </>
+        }
+      />
+    );
+  }
   return (
     <div className={cn("relative flex h-full flex-col", PAD[d])} data-testid="hero-champion">
       <Eyebrow>
@@ -432,33 +536,35 @@ function ChampionHero({ d }: { d: Density }) {
   );
 }
 
-function QuietHero({ title, body, action, d }: { title: string; body: string; action?: ReactNode; d: Density }) {
+function QuietHero({ title, body, action, d, wide = false }: { title: string; body: string; action?: ReactNode; d: Density; wide?: boolean }) {
   return (
-    <div className={cn("relative flex h-full flex-col justify-center", PAD[d])} data-testid="hero-quiet">
-      <h2 className={d === 2 ? "text-2xl" : "text-3xl"}>{title}</h2>
+    <div className={cn("relative flex h-full flex-col justify-center", PAD[wide ? 3 : d])} data-testid="hero-quiet">
+      <h2 className={wide ? "text-xl" : d === 2 ? "text-2xl" : "text-3xl"}>{title}</h2>
       <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">{body}</p>
       {action}
     </div>
   );
 }
 
-function HeroBody({ d }: { d: Density }) {
+/** `wide`: a landscape phone's full-width hero (UX5), two columns in a short box. */
+function HeroBody({ d, wide = false }: { d: Density; wide?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const focus = overviewFocus(kit.state);
   switch (focus.kind) {
     case "live":
-      return d === 3 ? <CompactMatchHero match={focus.matches[0]} live others={focus.matches.slice(1)} /> : <MatchHero match={focus.matches[0]} live others={focus.matches.slice(1)} d={d} />;
+      return d === 3 || wide ? <CompactMatchHero match={focus.matches[0]} live others={focus.matches.slice(1)} wide={wide} /> : <MatchHero match={focus.matches[0]} live others={focus.matches.slice(1)} d={d} />;
     case "next":
-      return d === 3 ? <CompactMatchHero match={focus.match} live={false} others={[]} /> : <MatchHero match={focus.match} live={false} others={[]} d={d} />;
+      return d === 3 || wide ? <CompactMatchHero match={focus.match} live={false} others={[]} wide={wide} /> : <MatchHero match={focus.match} live={false} others={[]} d={d} />;
     case "transition":
-      return <TransitionHero d={d} />;
+      return <TransitionHero d={d} wide={wide} />;
     case "champion":
-      return <ChampionHero d={d} />;
+      return <ChampionHero d={d} wide={wide} />;
     case "unavailable":
       return (
         <QuietHero
           d={d}
+          wide={wide}
           title="Schedule unavailable"
           body="The official schedule couldn't be read, so there is no live or next match to show. The field and the Swiss seeding are still here."
           action={
@@ -469,12 +575,12 @@ function HeroBody({ d }: { d: Density }) {
         />
       );
     default:
-      return <QuietHero d={d} title="No match scheduled" body="There is no upcoming match on the official schedule right now." />;
+      return <QuietHero d={d} wide={wide} title="No match scheduled" body="There is no upcoming match on the official schedule right now." />;
   }
 }
 
-/** The hero at the first density that fits its cell (`from` skips the roomier ones). */
-function Hero({ from = 0, to = 2, fill = true }: { from?: Density; to?: Density; fill?: boolean }) {
+/** The hero at the first density that fits its cell (`from` skips the roomier ones; `wide`: a landscape phone's full-width hero). */
+function Hero({ from = 0, to = 2, fill = true, wide = false }: { from?: Density; to?: Density; fill?: boolean; wide?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const focus = overviewFocus(kit.state);
@@ -485,7 +591,7 @@ function Hero({ from = 0, to = 2, fill = true }: { from?: Density; to?: Density;
       {x.desktop && <HeroBackdrop word={word} />}
       {fill ? (
         <FitCascade levels={levels} watch={`${focus.kind}|${kit.state.matches.length}`} className="h-full">
-          {(level) => <HeroBody d={(level + from) as Density} />}
+          {(level) => <HeroBody d={(level + from) as Density} wide={wide} />}
         </FitCascade>
       ) : (
         <HeroBody d={from} />
@@ -510,12 +616,16 @@ function stakesLine(stage: TournamentStageV2, s: ReturnType<typeof stageStakes>)
   return parts.join(" · ");
 }
 
-function RoadStages({ d }: { d: Density }) {
+/** `row`: the stages side by side (a landscape phone), left to right in their order. */
+function RoadStages({ d, row = false }: { d: Density; row?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const { ctx, state } = kit;
   return (
-    <ol className={cn("relative flex flex-col", d === 0 ? "gap-1" : "gap-0.5")}>
+    <ol
+      className={cn("relative", row ? "grid gap-1.5" : cn("flex flex-col", d === 0 ? "gap-1" : "gap-0.5"))}
+      style={row ? { gridTemplateColumns: `repeat(${ctx.stages.length}, minmax(0, 1fr))` } : undefined}
+    >
       {ctx.stages.map((s, i) => {
         const progress = stageProgress(s, state, ctx);
         const stakes = stageStakes(s, state, ctx);
@@ -524,13 +634,14 @@ function RoadStages({ d }: { d: Density }) {
         const chip = progress ? PROGRESS[progress] : null;
         return (
           <li key={s.key} className="relative" data-testid="road-stage" data-stage={s.key} data-progress={progress ?? "none"}>
-            {i < ctx.stages.length - 1 && (
+            {!row && i < ctx.stages.length - 1 && (
               <span aria-hidden="true" className={cn("absolute bottom-[-4px] w-px bg-gradient-to-b from-[#c9a84c]/45 to-white/[0.06]", d >= 2 ? "left-[21px] top-[34px]" : "left-[25px] top-[42px]")} />
             )}
             <Link
               to={x.hrefFor({ screen: "stages", stageKey: s.key })}
               className={cn(
-                "group relative grid gap-3 rounded-xl outline-none transition-colors hover:bg-white/[0.035] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70",
+                "group relative grid rounded-xl outline-none transition-colors hover:bg-white/[0.035] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70",
+                row ? "h-full gap-2 border border-white/[0.06]" : "gap-3",
                 d >= 2 ? cn("grid-cols-[20px_minmax(0,1fr)]", d === 3 ? "p-2" : "p-2.5") : "grid-cols-[28px_minmax(0,1fr)] p-3",
                 progress === "current" && "bg-[#c9a84c]/[0.05]",
               )}
@@ -594,7 +705,8 @@ function ExplorerButton() {
   );
 }
 
-function StageRoad({ d, framed = true }: { d: Density; framed?: boolean }) {
+/** `row`: the landscape phone's road (stages side by side); `explorer={false}` where the stages' own links must do. */
+function StageRoad({ d, framed = true, row = false, explorer = true }: { d: Density; framed?: boolean; row?: boolean; explorer?: boolean }) {
   const kit = useKit();
   return (
     <div className={cn("flex h-full min-h-0 flex-col", framed && (d === 3 ? "p-3.5" : d >= 2 ? "p-4" : "p-5"))}>
@@ -602,13 +714,15 @@ function StageRoad({ d, framed = true }: { d: Density; framed?: boolean }) {
         <h2 id="road-title" className="text-lg leading-none">Road to the Final</h2>
         <span className="text-[11px] tabular-nums text-muted-foreground">{kit.state.counts.matches} matches</span>
       </div>
-      <div className="mt-2.5">
-        <RoadStages d={d} />
+      <div className={row ? "mt-2" : "mt-2.5"}>
+        <RoadStages d={d} row={row} />
       </div>
       <FieldSummary d={d} />
-      <div className={cn("flex flex-col", d === 3 ? "mt-2" : d >= 2 ? "mt-2.5" : "mt-3")}>
-        <ExplorerButton />
-      </div>
+      {explorer && (
+        <div className={cn("flex flex-col", d === 3 ? "mt-2" : d >= 2 ? "mt-2.5" : "mt-3")}>
+          <ExplorerButton />
+        </div>
+      )}
     </div>
   );
 }
@@ -658,7 +772,8 @@ function FieldSummary({ d }: { d: Density }) {
 
 /* ── at stake ───────────────────────────────────────────────────────────── */
 
-function StakesBody({ d, framed = true }: { d: Density; framed?: boolean }) {
+/** `wide`: a landscape phone's panel: the entrants in four columns. */
+function StakesBody({ d, framed = true, wide = false }: { d: Density; framed?: boolean; wide?: boolean }) {
   const kit = useKit();
   const { ctx, state } = kit;
   const key = defaultStageKey(state, ctx);
@@ -693,7 +808,7 @@ function StakesBody({ d, framed = true }: { d: Density; framed?: boolean }) {
       {!swiss && entrants.length > 0 && (
         <div className={cn("mt-auto", d === 0 ? "pt-4" : "pt-2.5")}>
           <Eyebrow tone="muted">In the {stageLabel(stage)}</Eyebrow>
-          <ul className={cn("grid grid-cols-2", d === 0 ? "mt-2.5 gap-x-3 gap-y-2" : "mt-1.5 gap-x-3 gap-y-1")} aria-label={`${stageLabel(stage)} teams`}>
+          <ul className={cn("grid", wide ? "grid-cols-4" : "grid-cols-2", d === 0 ? "mt-2.5 gap-x-3 gap-y-2" : "mt-1.5 gap-x-3 gap-y-1")} aria-label={`${stageLabel(stage)} teams`}>
             {entrants.map((p) => {
               const out = authority && state.play_in.eliminated.includes(p.code);
               const won = authority && state.play_in.winner_code === p.code;
@@ -910,10 +1025,116 @@ function PanelTabs({ panel, setPanel, withNow }: { panel: PhonePanel; setPanel: 
   );
 }
 
+type LandscapePanel = "now" | "upcoming" | "results" | "stakes" | "road";
+
+/**
+ * A phone on its side (UX5): the hero beside one panel, the panels chosen by
+ * one row of views (fixtures and results are views of their own, so the list
+ * keeps the panel's height). Where even that cannot hold two fixtures, the
+ * hero becomes a view too and the panel spans the width.
+ */
+function LandscapeOverview() {
+  const kit = useKit();
+  const x = useExperience();
+  const watch = `${kit.state.phase}|${kit.state.matches.map((m) => m.state[0]).join("")}`;
+  const focus = overviewFocus(kit.state);
+  const exclude = focus.kind === "next" ? [focus.match.match_id] : [];
+  const results = recentResults(kit.state, Number.POSITIVE_INFINITY);
+  const next = upcoming(kit.state, Number.POSITIVE_INFINITY, exclude);
+  const [chosen, setPanel] = useState<LandscapePanel | null>(null);
+  const opening: LandscapePanel = next.length || !results.length ? "upcoming" : "results";
+  const views = (withNow: boolean) => [
+    ...(withNow ? [{ key: "now" as LandscapePanel, label: "Now" }] : []),
+    { key: "upcoming" as LandscapePanel, label: "Coming up" },
+    ...(results.length ? [{ key: "results" as LandscapePanel, label: "Results" }] : []),
+    { key: "stakes" as LandscapePanel, label: "At stake" },
+    { key: "road" as LandscapePanel, label: "Road" },
+  ];
+  const body = (panel: LandscapePanel, wide: boolean) => {
+    if (panel === "now") return <Hero from={3} to={3} wide />;
+    const label = panel === "upcoming" ? "Coming up" : panel === "results" ? "Results" : panel === "stakes" ? "At stake" : "Road to the Final";
+    return (
+      <section className={cn(SURFACE, "flex h-full min-h-0 flex-col overflow-clip p-3")} role="tabpanel" aria-label={label} data-panel={panel} data-testid={panel === "road" ? "stage-road" : panel === "upcoming" || panel === "results" ? "coming-up" : undefined} data-view={panel === "upcoming" || panel === "results" ? panel : undefined}>
+        {panel === "upcoming" || panel === "results" ? (
+          <FitPages
+            items={panel === "results" ? results : next}
+            keyOf={(m) => m.match_id}
+            render={(m) => <FixtureRow match={m} showScore={panel === "results"} />}
+            noun={panel === "results" ? "Results" : "Fixtures"}
+            resetKey={`${panel}|${wide}`}
+            testId="coming-up-pages"
+            minRows={wide ? 1 : 2}
+            listClassName={cn("grid gap-x-3", wide && "grid-cols-2")}
+            empty={<p className="px-2 text-sm text-muted-foreground">{panel === "results" ? "No results yet." : "No fixtures on the official schedule."}</p>}
+          />
+        ) : (
+          <FitCascade levels={3} watch={`${watch}|${panel}|${wide}`} className="h-full">
+            {(level) =>
+              panel === "stakes" ? (
+                <StakesBody d={Math.min(2, level + 1) as Density} framed={false} wide={wide} />
+              ) : (
+                <StageRoad d={level === 0 ? 2 : 3} framed={false} row explorer={level < 2} />
+              )
+            }
+          </FitCascade>
+        )}
+      </section>
+    );
+  };
+  const schedule = (
+    <Link
+      to={x.hrefFor({ screen: "schedule" })}
+      data-testid="overview-open-schedule"
+      aria-label="Full schedule"
+      title="Full schedule"
+      className="inline-flex w-11 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] text-[#e3c66f] outline-none hover:border-white/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
+    >
+      <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+  const tabs = (withNow: boolean, panel: LandscapePanel) => (
+    <div className="flex shrink-0 items-stretch gap-2">
+      <ViewTabs className="min-w-0 flex-1" label="Overview panels" testId="overview-panels" value={panel} onChange={setPanel} views={views(withNow)} />
+      {schedule}
+    </div>
+  );
+  return (
+    <div className="h-full px-3 py-2" data-testid="overview" data-layout="landscape">
+      <FitCascade levels={2} watch={`${watch}|${chosen ?? ""}`} className="h-full" testId="overview-fit">
+        {(level) => {
+          if (level === 0) {
+            const panel = !chosen || chosen === "now" ? opening : chosen;
+            return (
+              <div className="grid h-full grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] gap-2.5">
+                <div className="min-h-0">
+                  <Hero from={1} to={3} />
+                </div>
+                <div className="flex min-h-0 flex-col gap-2">
+                  {tabs(false, panel)}
+                  <div className="min-h-0 flex-1">{body(panel, false)}</div>
+                </div>
+              </div>
+            );
+          }
+          const panel = chosen ?? "now";
+          return (
+            <div className="flex h-full min-h-0 flex-col gap-2">
+              {tabs(true, panel)}
+              <div className="min-h-0 flex-1">{body(panel, true)}</div>
+            </div>
+          );
+        }}
+      </FitCascade>
+    </div>
+  );
+}
+
 function PhoneOverview() {
   const kit = useKit();
+  const x = useExperience();
   const wide = useMediaQuery("(min-width: 640px)");
   const watch = `${kit.state.phase}|${kit.state.matches.map((m) => m.state[0]).join("")}`;
+  if (x.landscape) return <LandscapeOverview />;
   const views = (heroD: Density, d: Density) => (
     <div className="flex h-full flex-col gap-2.5">
       <div className="shrink-0">

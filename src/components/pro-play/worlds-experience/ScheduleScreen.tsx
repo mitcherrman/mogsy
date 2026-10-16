@@ -64,9 +64,10 @@ function StageFilter() {
     <div
       role="group"
       aria-label="Filter the schedule by stage"
-      // Every option on screen at once: one row on a desktop, a grid on a phone.
+      // Every option on screen at once: one row on a desktop, a grid on a phone
+      // (two columns in a landscape phone's rail).
       className={cn("shrink-0 gap-1.5", x.desktop ? "flex" : "grid")}
-      style={x.desktop ? undefined : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      style={x.desktop ? undefined : { gridTemplateColumns: `repeat(${x.landscape ? 2 : options.length}, minmax(0, 1fr))` }}
       onKeyDown={rovingKeys}
       data-testid="schedule-filter"
     >
@@ -133,7 +134,8 @@ function DayCell({ d, selected, today, onPick }: { d: ScheduleDay; selected: boo
         {today ? "Today" : date.toLocaleDateString(undefined, { weekday: "short" })}
       </span>
       <span className={cn("font-bold tabular-nums leading-tight", x.desktop ? "text-xl" : "text-lg", selected ? "text-[#f6e7b3]" : "text-foreground")}>{date.getDate()}</span>
-      <span className="text-[10px] leading-tight text-muted-foreground">{date.toLocaleDateString(undefined, { month: "short" })}</span>
+      {/* A landscape phone's bar is short: its month is in the day header beside it (and in the label). */}
+      {!x.landscape && <span className="text-[10px] leading-tight text-muted-foreground">{date.toLocaleDateString(undefined, { month: "short" })}</span>}
       <span className={cn("mt-1 flex items-center", x.desktop ? "gap-[3px]" : "gap-[2px]")} aria-hidden="true">
         {d.matches.slice(0, 8).map((m) => (
           <span key={m.match_id} className={cn("h-1 w-1 rounded-full", m.state === "live" ? "bg-emerald-400" : m.state === "completed" ? "bg-white/45" : STAGE_TICK[m.stage ?? ""] ?? "bg-white/30")} />
@@ -275,7 +277,8 @@ function DayPicker({ days, selected, today, hidden }: { days: ScheduleDay[]; sel
         <CalendarDays className="h-4 w-4" aria-hidden="true" />
         <span className={cn(!x.desktop && "sr-only")}>All dates</span>
       </PopoverTrigger>
-      <PopoverContent align="end" collisionPadding={12} className="w-[min(21rem,calc(100vw-1.5rem))] space-y-2 border-white/10 bg-[hsl(214_50%_8%)] p-3" data-testid="day-picker-body">
+      {/* A landscape phone is wide and short: the same days in two rows of ten. */}
+      <PopoverContent align="end" collisionPadding={12} className={cn("space-y-2 border-white/10 bg-[hsl(214_50%_8%)] p-3", x.landscape ? "w-[min(30rem,calc(100vw-1.5rem))]" : "w-[min(21rem,calc(100vw-1.5rem))]")} data-testid="day-picker-body">
         <p className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {days.length} match days
           <span className="flex items-center gap-2.5 font-semibold normal-case tracking-normal" aria-hidden="true">
@@ -290,7 +293,7 @@ function DayPicker({ days, selected, today, hidden }: { days: ScheduleDay[]; sel
             })}
           </span>
         </p>
-        <div className="grid grid-cols-7 gap-1" role="group" aria-label="Match days" onKeyDown={rovingKeys}>
+        <div className={cn("grid gap-1", x.landscape ? "grid-cols-10" : "grid-cols-7")} role="group" aria-label="Match days" onKeyDown={rovingKeys}>
           {days.map((d) => {
             const date = dayDate(d.day);
             const on = d.day === selected;
@@ -377,6 +380,54 @@ function FixtureRow({ m, withStage }: { m: TournamentMatchV2; withStage: boolean
   const pending = bothTbd(m);
   const drawn = awaitingDraw(m) && m.teams.some((t) => t.slot?.kind === "draw");
   const score = m.state !== "upcoming" ? [m.teams[0].game_wins, m.teams[1].game_wins] : null;
+  const pendingText =
+    drawn || m.stage === "swiss"
+      ? "Pairing published by the official draw"
+      : slotLabel(m.teams[0].slot, kit.byId, kit.names) && slotLabel(m.teams[1].slot, kit.byId, kit.names)
+        ? `${slotLabel(m.teams[0].slot, kit.byId, kit.names)} v ${slotLabel(m.teams[1].slot, kit.byId, kit.names)}`
+        : "Teams to be decided";
+  if (x.landscape) {
+    // A phone on its side: one line per fixture, two fixtures abreast.
+    return (
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={() => x.selectMatch(m.match_id)}
+        data-testid="fixture-row"
+        data-match-id={m.match_id}
+        data-state={m.state}
+        className={cn(
+          "relative grid min-h-11 w-full grid-cols-[60px_minmax(0,1fr)] items-center gap-x-2 rounded-xl border px-2.5 py-1 text-left outline-none transition-[border-color,background-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]",
+          selected
+            ? "border-[#c9a84c] bg-[#c9a84c]/[0.07] shadow-[0_0_0_1px_#c9a84c]"
+            : m.state === "live"
+              ? "border-emerald-500/50 bg-emerald-500/[0.04] hover:border-emerald-400/70"
+              : "border-white/[0.06] bg-white/[0.012] hover:border-white/15 hover:bg-white/[0.03]",
+        )}
+      >
+        <span className="flex flex-col leading-tight">
+          <span className="whitespace-nowrap text-[12.5px] font-semibold tabular-nums text-foreground">{time}</span>
+          {m.state !== "upcoming" && (
+            <span data-testid="row-state" className={cn("text-[9.5px] font-bold uppercase tracking-[0.12em]", m.state === "live" ? "text-emerald-300" : "text-muted-foreground")}>
+              {m.state === "live" ? "Live" : "Final"}
+            </span>
+          )}
+        </span>
+        {pending ? (
+          <span className="min-w-0 text-[12px] leading-snug text-muted-foreground" data-testid="row-pending">
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.12em]">{rowCaption(m, kit.names, stage ? stageLabel(stage) : "Match")}</span>
+            {pendingText}
+          </span>
+        ) : (
+          <span className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            <Side team={m.teams[0]} match={m} align="left" />
+            <span className="text-center text-sm font-bold tabular-nums text-foreground/80" data-testid="row-score">{score ? `${score[0]}–${score[1]}` : "v"}</span>
+            <Side team={m.teams[1]} match={m} align="right" />
+          </span>
+        )}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -421,9 +472,7 @@ function FixtureRow({ m, withStage }: { m: TournamentMatchV2; withStage: boolean
       {pending ? (
         <span className={cn("min-w-0 text-sm leading-snug text-muted-foreground", x.desktop ? "col-span-3 text-center" : "")} data-testid="row-pending">
           {!x.desktop && <span className="mb-0.5 block text-[10.5px] font-semibold uppercase tracking-[0.12em]">{rowCaption(m, kit.names, stage ? stageLabel(stage) : "Match")}</span>}
-          {drawn || m.stage === "swiss" ? "Pairing published by the official draw" : (slotLabel(m.teams[0].slot, kit.byId, kit.names) && slotLabel(m.teams[1].slot, kit.byId, kit.names)
-            ? `${slotLabel(m.teams[0].slot, kit.byId, kit.names)} v ${slotLabel(m.teams[1].slot, kit.byId, kit.names)}`
-            : "Teams to be decided")}
+          {pendingText}
         </span>
       ) : x.desktop ? (
         <>
@@ -450,7 +499,8 @@ function FixtureRow({ m, withStage }: { m: TournamentMatchV2; withStage: boolean
   );
 }
 
-function DayBoard({ day }: { day: ScheduleDay }) {
+/** The day: its date, stages, rounds and venue, and how many matches (`rail`: a landscape phone's narrow column). */
+function DayHeader({ day, rail = false }: { day: ScheduleDay; rail?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const date = dayDate(day.day);
@@ -458,24 +508,32 @@ function DayBoard({ day }: { day: ScheduleDay }) {
   const rounds = [...new Set(day.matches.map((m) => m.swiss_round).filter((r): r is number => typeof r === "number"))];
   const title = date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
   return (
-    <section aria-labelledby="day-title" data-testid="day-board" data-day={day.day} className="flex h-full min-h-0 flex-col gap-2.5">
-      <header className="flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-0.5">
-        <div className="min-w-0">
-          <h2 id="day-title" className={cn("!font-sans font-bold leading-tight text-foreground [text-shadow:none]", x.desktop ? "text-[22px]" : "text-lg")}>
-            {title}
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {stages.map((s) => stageLabel(s)).join(" · ")}
-            {rounds.length ? ` · Round ${rounds.join(", ")}` : ""}
-            {stages[0] ? ` · ${stages[0].venue}` : ""}
-          </p>
-        </div>
-        <p className="flex items-center gap-3 text-xs tabular-nums text-muted-foreground" data-testid="day-counts">
-          <span>{day.matches.length} {day.matches.length === 1 ? "match" : "matches"}</span>
-          {day.live > 0 && <span className="inline-flex items-center gap-1 text-emerald-300"><CircleDot className="h-3 w-3" aria-hidden="true" /> {day.live} live</span>}
-          {day.completed > 0 && <span>{day.completed} played</span>}
+    <header className={cn("flex shrink-0 flex-wrap justify-between gap-x-4 gap-y-0.5", rail ? "flex-col" : "items-end")} data-testid="day-header" data-day={day.day}>
+      <div className="min-w-0">
+        <h2 id="day-title" className={cn("!font-sans font-bold leading-tight text-foreground [text-shadow:none]", x.desktop ? "text-[22px]" : rail ? "text-base" : "text-lg")}>
+          {title}
+        </h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {stages.map((s) => stageLabel(s)).join(" · ")}
+          {rounds.length ? ` · Round ${rounds.join(", ")}` : ""}
+          {stages[0] ? ` · ${stages[0].venue}` : ""}
         </p>
-      </header>
+      </div>
+      <p className={cn("flex items-center text-xs tabular-nums text-muted-foreground", rail ? "mt-1 flex-wrap gap-x-3" : "gap-3")} data-testid="day-counts">
+        <span>{day.matches.length} {day.matches.length === 1 ? "match" : "matches"}</span>
+        {day.live > 0 && <span className="inline-flex items-center gap-1 text-emerald-300"><CircleDot className="h-3 w-3" aria-hidden="true" /> {day.live} live</span>}
+        {day.completed > 0 && <span>{day.completed} played</span>}
+      </p>
+    </header>
+  );
+}
+
+function DayBoard({ day }: { day: ScheduleDay }) {
+  const x = useExperience();
+  return (
+    <section aria-labelledby="day-title" data-testid="day-board" data-day={day.day} className="flex h-full min-h-0 flex-col gap-2.5">
+      {/* A landscape phone's day header is in the rail beside the board. */}
+      {!x.landscape && <DayHeader day={day} />}
       <FitPages
         items={day.matches}
         keyOf={(m) => m.match_id}
@@ -487,8 +545,8 @@ function DayBoard({ day }: { day: ScheduleDay }) {
           if (x.loc.matchId && !shown.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
         }}
         testId="day-fixtures"
-        className="min-h-[64px]"
-        listClassName="grid gap-1.5"
+        className={x.landscape ? "min-h-11" : "min-h-[64px]"}
+        listClassName={cn("grid gap-1.5", x.landscape && "grid-cols-2")}
         render={(m) => <FixtureRow m={m} withStage={day.stages.length > 1} />}
       />
     </section>
@@ -580,6 +638,31 @@ export function ScheduleScreen() {
     empty
   );
 
+  if (x.landscape) {
+    // A phone on its side: the filter and the day in a column beside the date
+    // bar and the board, which keep the screen's height.
+    return (
+      <div className="flex h-full gap-2.5 px-3 py-2" data-testid="schedule" data-layout="landscape">
+        <div className="flex w-[164px] shrink-0 flex-col" data-testid="schedule-rail">
+          <FitCascade levels={2} watch={`${selectedDay ?? ""}|${x.filterKey ?? ""}`} className="flex h-full flex-col gap-2.5">
+            {(level) => (
+              <>
+                <StageFilter />
+                {day && <DayHeader day={day} rail />}
+                {/* Where the rail is short the status strip, which says the same, carries it alone. */}
+                {level === 0 && partial}
+              </>
+            )}
+          </FitCascade>
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          {days.length > 0 && selectedDay && <DateNav days={days} selected={selectedDay} />}
+          <div className="relative min-h-0 flex-1 overflow-clip">{board}</div>
+        </div>
+        <MatchSheet />
+      </div>
+    );
+  }
   if (!x.desktop) {
     return (
       <div className="flex h-full flex-col gap-2 px-3 py-3" data-testid="schedule">

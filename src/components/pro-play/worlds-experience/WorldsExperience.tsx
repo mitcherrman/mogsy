@@ -58,7 +58,7 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
 function PrimaryNav({ compact }: { compact: boolean }) {
   const x = useExperience();
   return (
-    <nav aria-label="Worlds 2026" className={cn(compact ? "w-full" : "h-full")}>
+    <nav aria-label="Worlds 2026" className={cn(compact ? "w-full min-w-0" : "h-full")}>
       <ul
         className={cn("flex", compact ? "grid grid-cols-5" : "h-full items-stretch gap-1")}
         onKeyDown={rovingKeys}
@@ -288,6 +288,7 @@ function StatusStrip({ data, onRetry, retrying, refreshFailed }: {
   refreshFailed?: boolean;
 }) {
   const { state } = useKit();
+  const x = useExperience();
   const lines = notices(data, state, refreshFailed);
   const [index, setIndex] = useState(0);
   if (!lines.length) return null;
@@ -305,7 +306,7 @@ function StatusStrip({ data, onRetry, retrying, refreshFailed }: {
     </button>
   );
   return (
-    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-amber-500/20 bg-amber-500/[0.06] px-3 text-amber-100/90 lg:px-6" role="status" data-testid="status-strip" data-count={lines.length}>
+    <div className={cn("flex shrink-0 items-center gap-2 border-b border-amber-500/20 bg-amber-500/[0.06] px-3 text-amber-100/90 lg:px-6", x.landscape ? "h-9" : "h-10")} role="status" data-testid="status-strip" data-count={lines.length}>
       <FitCascade levels={2} watch={`${at}|${lines.map((l) => l.key).join(",")}`} className="flex h-full flex-1 items-center">
         {(level) =>
           lines.map((l, k) => (
@@ -377,6 +378,28 @@ function Identity({ compact }: { compact: boolean }) {
 
 function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentResponseV2; refreshFailed?: boolean; badge?: ReactNode; tools?: ReactNode }) {
   const x = useExperience();
+  if (x.landscape) {
+    // A phone on its side: one row (identity · the five destinations · phase),
+    // so the workspace keeps the height the second row would take.
+    return (
+      <header
+        className="relative z-30 flex h-11 shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[hsl(215_55%_6%/0.92)] px-3 backdrop-blur-md"
+        data-testid="command-bar"
+        data-layout="compact"
+        data-landscape="true"
+      >
+        <Link to={PRO_PLAY_ROUTE} aria-label="Back to Pro Play" className="-ml-1 inline-flex h-11 w-9 shrink-0 items-center justify-center text-muted-foreground">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        </Link>
+        <Identity compact />
+        <div className="min-w-0 flex-1">
+          <PrimaryNav compact />
+        </div>
+        {badge}
+        <PhaseChip compact />
+      </header>
+    );
+  }
   if (!x.desktop) {
     return (
       <header
@@ -526,7 +549,7 @@ function EscapeToClose() {
   return null;
 }
 
-export default function WorldsExperience({ data, now, base, onRetry, retrying, refreshFailed, badge, tools, desktop, simulated = false }: {
+export default function WorldsExperience({ data, now, base, onRetry, retrying, refreshFailed, badge, tools, desktop, landscape, simulated = false }: {
   data: TournamentResponseV2;
   now: number;
   /** Where the experience is mounted ("/lol/dev/worlds-experience"). */
@@ -540,12 +563,14 @@ export default function WorldsExperience({ data, now, base, onRetry, retrying, r
   tools?: ReactNode;
   /** Pins the layout (tests); otherwise read from the viewport. */
   desktop?: boolean;
+  /** Pins the landscape-phone layout (tests); otherwise read from the viewport. */
+  landscape?: boolean;
   /** The data is simulated: results are marked as such wherever they show. */
   simulated?: boolean;
 }) {
   return (
     <TournamentKitProvider ctx={data.context} state={data.state} now={now}>
-      <ExperienceProvider base={base} ctx={data.context} state={data.state} now={now} desktop={desktop} simulated={simulated}>
+      <ExperienceProvider base={base} ctx={data.context} state={data.state} now={now} desktop={desktop} landscape={landscape} simulated={simulated}>
         <Frame data={data} onRetry={onRetry} retrying={retrying} refreshFailed={refreshFailed} badge={badge} tools={tools} />
       </ExperienceProvider>
     </TournamentKitProvider>
@@ -567,6 +592,7 @@ function Frame({ data, onRetry, retrying, refreshFailed, badge, tools }: {
       data-testid="worlds-experience"
       data-phase={data.state.phase}
       data-layout={x.desktop ? "wide" : "compact"}
+      data-landscape={x.landscape ? "true" : undefined}
       data-viewport="fixed"
       className={cn(
         // An opaque ground of its own: the site's ambience runes stay outside the instrument.
