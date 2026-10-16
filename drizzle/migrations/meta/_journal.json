@@ -15,6 +15,13 @@
       "when": 1791604561055,
       "tag": "0001_own11_routine_owner_rpcs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792141236280,
+      "tag": "0002_pt1_6_custom_offer_one_time",
+      "breakpoints": true
     }
   ]
 }
