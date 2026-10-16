@@ -31,7 +31,10 @@ export function MatchStage({ snapshot, fresh, onNewRun, busy }: {
   onNewRun: () => void;
   busy: boolean;
 }) {
-  const view = useMemo(() => matchView(snapshot.match!), [snapshot.match]);
+  const view = useMemo(
+    () => matchView(snapshot.match!, [...snapshot.relic_offer, ...(snapshot.relic ? [snapshot.relic] : [])]),
+    [snapshot.match, snapshot.relic_offer, snapshot.relic],
+  );
   const motion = useMotionAllowed();
   const animate = fresh && motion;
   const [step, setStep] = useState(animate ? 0 : LAST_STEP);

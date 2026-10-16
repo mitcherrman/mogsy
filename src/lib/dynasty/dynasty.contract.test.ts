@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DynastyContractError, readDynastySnapshot, type DynastySnapshot } from "./contracts";
 import { DynastyApiError, httpDynastyTransport, readErrorBody } from "./client";
 import { DYNASTY_SCENARIOS, createFixtureTransport } from "./fixtureTransport";
-import { groupTeamComponents, matchView, rollWindow } from "./model";
+import { groupTeamComponents, matchView, readableRelicRefs, relicLabel, rollWindow } from "./model";
 import errors from "./fixtures/errors.json";
 
 vi.mock("@/lib/admin-auth/adminCredentials", () => ({
@@ -81,6 +81,33 @@ describe("model: explanations agree with the backend's own decisions", () => {
       expect(v.outcome === "won").toBe(v.points.you >= 4);
       expect(v.lanes.map((l) => l.role)).toEqual(["top", "jng", "mid", "bot", "sup"]);
     }
+  });
+
+  it("labels the opponent's relic (sent as a bare id) without printing snake_case", () => {
+    // Live smoke (2026-10-15): the completed snapshot has an empty relic_offer,
+    // so the opponent's relic is usually unnamed by the backend.
+    const ids = completed.map((s) => s.match!.opponent.relics.map((r) => r.relic_id)).flat();
+    expect(ids.length).toBeGreaterThan(0);
+    for (const s of completed) {
+      for (const label of matchView(s.match!).opponentRelics) expect(label).not.toMatch(/_/);
+    }
+    expect(relicLabel({ relic_id: "team_spirit", target_role: null })).toBe("Team Spirit");
+    expect(relicLabel({ relic_id: "lane_specialist", target_role: "bot" }, [{ relic_id: "lane_specialist", name: "Lane Specialist" }]))
+      .toBe("Lane Specialist (Bot)");
+    expect(relicLabel({ relic_id: "all_in", target_role: null }, [{ relic_id: "all_in", name: "All-In" }])).toBe("All-In");
+  });
+
+  it("names relics cited as relic:<id> in component labels and re-roll sources; sources stay raw for grouping", () => {
+    expect(readableRelicRefs("synergy x2 from relic:team_spirit")).toBe("synergy x2 from Team Spirit");
+    for (const s of completed) {
+      const v = matchView(s.match!);
+      const labels = [...v.lanes.flatMap((l) => [...l.you.components, ...l.them.components]), ...v.team.you.components, ...v.team.them.components]
+        .map((c) => c.label);
+      for (const l of labels) expect(l).not.toMatch(/relic:/);
+      for (const l of v.lanes) for (const h of l.history) if (h.source) expect(h.source).not.toMatch(/relic:/);
+    }
+    const stomp = matchView(completed.find((s) => s.match!.opponent.relics.some((r) => r.relic_id === "all_in"))!.match!);
+    expect(stomp.lanes.some((l) => l.them.components.some((c) => c.source === "relic:all_in" && c.label === "All In"))).toBe(true);
   });
 
   it("strength components sum to the backend's power totals", () => {

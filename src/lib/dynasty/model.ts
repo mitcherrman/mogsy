@@ -36,6 +36,31 @@ export function championName(key: string | undefined, catalog: readonly Champion
   return catalog?.find((c) => c.key === key)?.name ?? key;
 }
 
+type KnownRelics = readonly { relic_id: string; name: string }[];
+
+/**
+ * The opponent's relics arrive as bare ids (`{relic_id, target_role}`); the
+ * backend sends names only for the owner's offer and equipped relic. Use a
+ * backend name when the run has shown one, otherwise title-case the id
+ * (`team_spirit` → `Team Spirit`) instead of printing snake_case.
+ */
+export function relicLabel(
+  relic: { relic_id: string; target_role: DynastyRole | null },
+  known: KnownRelics = [],
+): string {
+  const name = known.find((k) => k.relic_id === relic.relic_id)?.name
+    ?? relic.relic_id.split("_").filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+  return relic.target_role ? `${name} (${ROLE_LABEL[relic.target_role]})` : name;
+}
+
+/** Backend labels and re-roll sources cite relics as `relic:<id>`; show the relic's name instead. */
+export function readableRelicRefs(text: string, known: KnownRelics = []): string {
+  return text.replace(/relic:([a-z0-9_]+)/g, (_, id: string) => relicLabel({ relic_id: id, target_role: null }, known));
+}
+
+const readableComponents = (cs: readonly PowerComponent[], known: KnownRelics): PowerComponent[] =>
+  cs.map((c) => ({ ...c, label: readableRelicRefs(c.label, known) }));
+
 /** Remember champion names across phases: the backend sends the catalog only in the lineup phase. */
 export function mergeChampionCatalog(known: readonly ChampionEntry[], snap: DynastySnapshot | null): ChampionEntry[] {
   if (!snap?.champion_catalog?.length) return [...known];
@@ -134,13 +159,13 @@ export interface MatchView {
   ruleset: string;
 }
 
-function laneView(l: LaneBattle): LaneView {
+function laneView(l: LaneBattle, known: KnownRelics): LaneView {
   const p = l.probability;
   const youWon = l.winner === USER_SIDE;
   return {
     role: l.role,
-    you: { player: l.player_a, champion: l.champion_a, power: p.power_a, components: l.power_a.components },
-    them: { player: l.player_b, champion: l.champion_b, power: p.power_b, components: l.power_b.components },
+    you: { player: l.player_a, champion: l.champion_a, power: p.power_a, components: readableComponents(l.power_a.components, known) },
+    them: { player: l.player_b, champion: l.champion_b, power: p.power_b, components: readableComponents(l.power_b.components, known) },
     youChance: p.probability_a,
     clamped: p.clamped,
     rawYouChance: p.raw_probability_a,
@@ -148,17 +173,17 @@ function laneView(l: LaneBattle): LaneView {
     scale: p.scale,
     youWon,
     upset: (youWon && p.probability_a < 0.5) || (!youWon && p.probability_a > 0.5),
-    history: l.history.map((h) => ({ ...h, window: rollWindow(h) })),
+    history: l.history.map((h) => ({ ...h, source: h.source == null ? h.source : readableRelicRefs(h.source, known), window: rollWindow(h) })),
     rerolled: l.history.length > 1,
   };
 }
 
-function teamView(t: TeamBattle): TeamView {
+function teamView(t: TeamBattle, known: KnownRelics): TeamView {
   const p = t.probability;
   const youWon = t.winner === USER_SIDE;
   return {
-    you: { power: p.power_a, components: t.power_a.components },
-    them: { power: p.power_b, components: t.power_b.components },
+    you: { power: p.power_a, components: readableComponents(t.power_a.components, known) },
+    them: { power: p.power_b, components: readableComponents(t.power_b.components, known) },
     youChance: p.probability_a,
     clamped: p.clamped,
     rawYouChance: p.raw_probability_a,
@@ -171,17 +196,17 @@ function teamView(t: TeamBattle): TeamView {
   };
 }
 
-export function matchView(m: DynastyMatch): MatchView {
+export function matchView(m: DynastyMatch, knownRelics: KnownRelics = []): MatchView {
   const order = (r: DynastyRole) => DYNASTY_ROLES.indexOf(r);
   return {
     outcome: m.outcome,
     points: { you: m.points.user, them: m.points.opponent, total: m.result.total_points },
-    lanes: [...m.result.lanes].sort((a, b) => order(a.role) - order(b.role)).map(laneView),
-    team: teamView(m.result.team_battle),
+    lanes: [...m.result.lanes].sort((a, b) => order(a.role) - order(b.role)).map((l) => laneView(l, knownRelics)),
+    team: teamView(m.result.team_battle, knownRelics),
     opponentName: m.opponent.name,
     opponentLabel: m.opponent.label,
-    opponentRelics: m.opponent.relics.map((r) => r.relic_id),
-    rerollClaims: m.result.reroll_claims,
+    opponentRelics: m.opponent.relics.map((r) => relicLabel(r, knownRelics)),
+    rerollClaims: m.result.reroll_claims.map((c) => ({ ...c, source: readableRelicRefs(c.source, knownRelics) })),
     ruleset: m.result.ruleset_version,
   };
 }

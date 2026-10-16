@@ -114,8 +114,48 @@ Playwright (Chromium 1248) on the DEV preview at 1440×900 and 390×844, 12 scre
   - The global Mogzy HUD floats over the top of the page on scroll, as on other full-screen admin pages.
 
 ## Remaining work
-1. **Live smoke test against a local backend with a real owner session.** The contract is pinned by recorded real responses, but the page has not been driven against a running `uvicorn` with Supabase owner auth and CORS from the vite origin. Recipe: run the backend from the ROG1-C1 branch with `DYNASTY_ENABLED=1`, set `VITE_COMBAT_API_URL`, sign in as the owner and open `/admin/dynasty`.
+1. ~~**Live smoke test against a local backend.**~~ Done 2026-10-15; see [Live smoke test](#live-smoke-test-2026-10-15) below. Still open: a smoke test with a real Supabase owner session (MFA/trusted device) against a deployed preview of PR #36.
 2. Mirror the authoritative handoff into `mogsy`, or add the pointer to this note in the backend handoff.
 3. Card Duel `GameCard`/`FlippableCard` extraction (ROG0 §5.2) if the owner wants one card system.
 4. Dedicated `dynasty.*` SFX cues, and a team-crest VS intro once real orgs exist.
 5. Later milestones, all out of scope here: encounters (ROG1-C2), series (BO3/BO5), Fearless, the 8-team bracket and the real catalog (ROG1-B).
+
+## Live smoke test (2026-10-15)
+Driven in a browser against a locally running backend, not recorded fixtures.
+
+**Setup**
+- Backend: ROG1-C1 branch @ `b2f41603`, the real `api_server:app` under uvicorn on `127.0.0.1:8765`, with `DYNASTY_ENABLED=1` and a scratch SQLite DB (not `lol_calc.db`).
+- Auth: a locally generated `SUPABASE_JWT_SECRET` with `SUPABASE_ALLOW_HS256=1`. The real `_decode_token` verified every bearer.
+- The only stub was `routes._auth._owner_state`, the Supabase `owner_auth_state` RPC: it answers owner for one minted user id and non-owner for any other.
+- Frontend: vite on `localhost:8142` with `VITE_COMBAT_API_URL=http://127.0.0.1:8765` and `VITE_E2E_AUTH=1`. The persona was in `mogsy_e2e_identity` with `admin:true`, which `useOwnerAuth` accepts in DEV (the old `AdminAuthProvider` loop no longer occurs).
+- Real Supabase sign-in and MFA were **not** exercised.
+
+| Check | Result |
+|---|---|
+| CORS from the vite origin | Pass. Preflight `OPTIONS` returned 200 with `access-control-allow-origin: *` and allowed `authorization, content-type`. Every POST/GET from the page succeeded cross-origin. |
+| Full run | Pass. Steps: Begin run, 7 draft picks, Lane Specialist targeted at Bot (`target_role` sent), 4 pool champions plus 1 off-pool pick, a Support swap, Start match. Every request returned 200. The animated reveal ended at a 1–6 defeat, and the "Why?" breakdown matched the backend snapshot. |
+| Reload mid-run | Pass. After a reload during the draft it resumed at Pick 4 of 7. After a reload in the lineup, the swap and all 5 locks were intact. A completed run reloaded straight to the result with no reveal. |
+| Two tabs, `STALE_SEQ` | Pass. Tab B drafted, then tab A's stale pick got 409. Tab A re-read the run and showed "Run changed elsewhere" at the new pick. |
+| Backend stopped mid-action | Pass. There were 3 attempts (1 plus 2 automatic retries, each `ERR_CONNECTION_REFUSED`), and about 10 s later the Retry panel appeared. After a backend restart, Retry applied the same pick and the run moved to the relic phase. |
+| Backend down on load | Pass. The page showed the "Backend unreachable" lobby. After a restart, "Resume run" resumed the run. |
+| Non-owner bearer | Pass. The backend returned 403, and the page showed "Owner session required" and kept the saved `start_key`. |
+| `DYNASTY_ENABLED=0` | Pass. The backend returned 404 `DYNASTY_DISABLED`, and the page showed the "switched off" panel. |
+| New run | Pass. The run got a new `start_key` and a different server offer. |
+
+**Fixed (this branch):** relic references printed as raw ids.
+- The opponent's relics arrive as bare `{relic_id, target_role}`, and the completed snapshot's `relic_offer` is empty. The header read "relic: team_spirit".
+- Backend component labels and re-roll sources cite relics as `relic:<id>`, for example "relic:lane_specialist" and "synergy x2 from relic:team_spirit".
+- `model.ts` gained `relicLabel` and `readableRelicRefs`, and `matchView` now takes the backend-named relics known to the run (offer and equipped). A relic the run has named shows the backend's name. Otherwise the id is title-cased (`Team Spirit`).
+- Component `source` stays raw, so grouping and tooltips are unchanged. 2 contract tests were added (33 pass). Verified live: "relic: Team Spirit", "Lane Specialist +5.0", "synergy x2 from Team Spirit".
+
+**Backend follow-ups (not done here, PR #36):**
+- Send `name`, `rarity` and `description` for opponent relics.
+- Give relic power components a human label.
+
+Until then, a title-cased id can differ from the real name: `all_in` shows as "All In", not "All-In".
+
+**Unrelated noise seen:**
+- `GET /api/stat-check/invites` returned 503 from the global HUD, because the scratch DB has no tables for it.
+- Supabase REST calls returned 401 for the minted token.
+
+Neither affects Dynasty.
