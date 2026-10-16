@@ -4,7 +4,9 @@ The same file is kept in both repos:
 * `mitcherrman/mogsy`: `docs/handoffs/public-game-modes.md`
 * `mitcherrman/League_Combat_Simulator`: `docs/handoffs/public-game-modes.md`
 
-**Status (2026-10-16):** Phase 1 is implemented and tested on two branches. They are pushed. They are **not merged** and **not deployed**.
+**Status (2026-10-16):** Phase 1 is **merged**.
+* Backend `master` = `d7623549`. It is **live on Railway** (deploy `6f1c9853` SUCCESS). `GET https://web-production-83e53.up.railway.app/api/game-modes` returns 200 with `public_game_modes.catalog.v1`, 13 modes, and `Access-Control-Allow-Origin: *`.
+* Frontend `main` = `3bb7100d`. It is **not yet on mogzy.lol**: the owner publishes it in Lovable.
 
 ## 1. Product decision (approved, not reopened)
 
@@ -217,6 +219,17 @@ Launch kinds: `daily_stage` (live), `ranked_match` and `session` (reserved).
 * `/quiz` itself could not render, because the scratch server has no quiz API. The hub section is covered by the real-composition unit test instead.
 
 ## 8. Delivery and deployment
+
+**Merged 2026-10-16, on the owner's go-ahead.**
+* Backend: `--no-ff` merge `d7623549` into `master`, pushed first. On the merge result: 208 passed, 5 skipped. Railway deploy `6f1c9853` SUCCESS. The live route was verified before the frontend was pushed.
+* Frontend: `--no-ff` merge `3bb7100d` into `main`. On the merge result: 32 files and 451 tests passed, `vite build` OK (`MoreChallengesPage` lazy chunk, 11 kB).
+* **Remaining:** the owner's Lovable publish, then a smoke test on mogzy.lol:
+  * `/quiz/more-challenges` shows 13 cards;
+  * the Daily main result's "Play More Challenges" lands there;
+  * Leaguecraft's "Browse More Challenges" lands there.
+* Lovable has lagged GitHub before: check for a new entry-bundle hash.
+
+The pre-merge notes follow.
 
 * No `gh` CLI on this machine, so no PR objects. Branches are pushed; open PRs in the GitHub UI, or merge with `--no-ff` as UGMP did.
 * **Deploy order matters: backend first.**
