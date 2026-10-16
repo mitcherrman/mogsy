@@ -1,0 +1,1113 @@
+[
+  {
+    "vp": "1440x900",
+    "path": "/lol/pro-play/tournament/worlds-2026",
+    "name": "1440x900_overview",
+    "doc": {
+      "sh": 1250,
+      "ch": 900,
+      "sw": 1440,
+      "cw": 1440,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 900,
+      "h": 844,
+      "w": 1440
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1250 > 900",
+      "scroll container div.mt-3.min-h-0.flex-1.space-y-3 411x304 in 411x247"
+    ],
+    "offscreen": [
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @514,861 407x55",
+      "span.mt-0.5.block.truncate.text-[11px] @598,891 289x17",
+      "below-frame li bottom 916 > 900",
+      "below-frame a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 bottom 916 > 900",
+      "below-frame span.min-w-0 bottom 908 > 900",
+      "below-frame span.mt-0.5.block.truncate.text-[11px] bottom 908 > 900"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,350",
+      "HTML[] 0,350"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1250 > 900",
+      "scroll container div.mt-3.min-h-0.flex-1.space-y-3 411x304 in 411x247"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1440x900",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/play-in",
+    "name": "1440x900_stages-play-in",
+    "doc": {
+      "sh": 1250,
+      "ch": 900,
+      "sw": 1440,
+      "cw": 1440,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 900,
+      "h": 844,
+      "w": 1440
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x672 in 46x672"
+    ],
+    "offscreen": [],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,350",
+      "HTML[] 0,350"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x672 in 46x672"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1440x900",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/swiss",
+    "name": "1440x900_stages-swiss",
+    "doc": {
+      "sh": 1250,
+      "ch": 900,
+      "sw": 1440,
+      "cw": 1440,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 900,
+      "h": 844,
+      "w": 1440
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x672 in 46x672"
+    ],
+    "offscreen": [],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,350",
+      "HTML[] 0,350"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x672 in 46x672"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1440x900",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/knockouts",
+    "name": "1440x900_stages-knockouts",
+    "doc": {
+      "sh": 1250,
+      "ch": 900,
+      "sw": 1440,
+      "cw": 1440,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 900,
+      "h": 844,
+      "w": 1440
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x672 in 46x672"
+    ],
+    "offscreen": [],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,350",
+      "HTML[] 0,350"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x672 in 46x672"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1440x900",
+    "path": "/lol/pro-play/tournament/worlds-2026/teams",
+    "name": "1440x900_teams",
+    "doc": {
+      "sh": 1250,
+      "ch": 900,
+      "sw": 1440,
+      "cw": 1440,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 900,
+      "h": 844,
+      "w": 1440
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1250 > 900",
+      "spills button[team-tile].group.relative.flex.w-full 118 > 116 \"TLAWT1Team Liquid Alienware\""
+    ],
+    "offscreen": [],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,350",
+      "HTML[] 0,350"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1250 > 900",
+      "spills button[team-tile].group.relative.flex.w-full 118 > 116 \"TLAWT1Team Liquid Alienware\""
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1440x900",
+    "path": "/lol/pro-play/tournament/worlds-2026/schedule",
+    "name": "1440x900_schedule",
+    "doc": {
+      "sh": 1250,
+      "ch": 900,
+      "sw": 1440,
+      "cw": 1440,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 900,
+      "h": 844,
+      "w": 1440
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x584 in 46x584"
+    ],
+    "offscreen": [],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,350",
+      "HTML[] 0,350"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1250 > 900",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x584 in 46x584"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1280x600",
+    "path": "/lol/pro-play/tournament/worlds-2026",
+    "name": "1280x600_overview",
+    "doc": {
+      "sh": 1026,
+      "ch": 600,
+      "sw": 1280,
+      "cw": 1280,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 676,
+      "h": 620,
+      "w": 1280
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div[overview].h-full.overflow-y-auto.overscroll-contain 1280x603 in 1280x564",
+      "scroll container div.mt-3.min-h-0.flex-1.space-y-3 358x304 in 358x161"
+    ],
+    "offscreen": [
+      "span.text-[13px].font-bold.text-foreground @877,600 25x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @908,602 7x17",
+      "span.text-[13px].font-bold.text-foreground @1000,600 25x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @1031,602 7x17",
+      "span.text-[13px].font-bold.text-foreground @1124,600 43x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @1172,602 7x17",
+      "a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center @877,640 358x44",
+      "p[stakes-format].mt-4.text-xs.leading-relaxed.text-muted-foreground @45,564 358x39",
+      "p.text-[10.5px].font-semibold.uppercase.leading-none @45,619 358x11",
+      "span.flex.items-center.gap-1.5.text-sm @85,639 21x18",
+      "span.block.truncate.text-[11px].text-muted-foreground @85,657 21x17",
+      "span.flex.items-center.gap-1.5.text-sm @270,639 21x18",
+      "span.block.truncate.text-[11px].text-muted-foreground @270,657 21x17",
+      "span.flex.items-center.gap-1.5.text-sm @85,681 33x18",
+      "span.block.truncate.text-[11px].text-muted-foreground @85,699 33x17",
+      "span.flex.items-center.gap-1.5.text-sm @270,681 88x18",
+      "span.block.truncate.text-[11px].text-muted-foreground @270,699 88x17",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @461,585 354x59",
+      "span.block.text-[10.5px].font-normal.text-muted-foreground @469,598 64x16",
+      "span.shrink-0.text-xs.tabular-nums.text-muted-foreground @603,597 22x16",
+      "span.mt-0.5.block.truncate.text-[11px] @545,619 236x17",
+      "p.text-[10.5px].font-semibold.uppercase.leading-none @461,655 354x11",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @461,672 354x59",
+      "span.whitespace-nowrap.text-xs.font-medium.tabular-nums @469,693 64x16",
+      "span.shrink-0.text-xs.tabular-nums.text-muted-foreground @602,684 7x16",
+      "span.mt-0.5.block.truncate.text-[11px] @545,706 236x17",
+      "p.text-[10.5px].font-semibold.uppercase.leading-none @461,742 354x11",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @461,759 354x55",
+      "span.whitespace-nowrap.text-xs.font-medium.tabular-nums @469,778 64x16",
+      "span.block.truncate.text-sm.font-semibold @545,767 236x20",
+      "span.mt-0.5.block.truncate.text-[11px] @545,789 236x17",
+      "below-frame a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center bottom 684 > 676",
+      "below-frame li[stakes-team].flex.min-w-0.items-center.gap-2 bottom 715 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 714 > 676",
+      "below-frame span bottom 703 > 676",
+      "below-frame span.min-w-0 bottom 715 > 676",
+      "below-frame span.flex.items-center.gap-1.5.text-sm bottom 699 > 676",
+      "below-frame span.block.truncate.text-[11px].text-muted-foreground bottom 715 > 676",
+      "below-frame li[stakes-team].flex.min-w-0.items-center.gap-2 bottom 715 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 714 > 676",
+      "below-frame span bottom 703 > 676",
+      "below-frame span.min-w-0 bottom 715 > 676",
+      "below-frame span.flex.items-center.gap-1.5.text-sm bottom 699 > 676",
+      "below-frame span.block.truncate.text-[11px].text-muted-foreground bottom 715 > 676",
+      "below-frame li bottom 730 > 676",
+      "below-frame a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 bottom 730 > 676",
+      "below-frame span.whitespace-nowrap.text-xs.font-medium.tabular-nums bottom 709 > 676",
+      "below-frame span.min-w-0 bottom 722 > 676",
+      "below-frame span.flex.min-w-0.items-center.gap-2 bottom 704 > 676",
+      "below-frame span.inline-flex.min-w-0.items-center.gap-1.5 bottom 704 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 704 > 676",
+      "below-frame span.shrink-0.text-xs.tabular-nums.text-muted-foreground bottom 700 > 676",
+      "below-frame span.inline-flex.min-w-0.items-center.gap-1.5 bottom 704 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 704 > 676",
+      "below-frame span bottom 696 > 676",
+      "below-frame span.mt-0.5.block.truncate.text-[11px] bottom 722 > 676",
+      "below-frame p.text-[10.5px].font-semibold.uppercase.leading-none bottom 753 > 676",
+      "below-frame li bottom 813 > 676",
+      "below-frame a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 bottom 813 > 676",
+      "below-frame span.whitespace-nowrap.text-xs.font-medium.tabular-nums bottom 794 > 676",
+      "below-frame span.min-w-0 bottom 805 > 676",
+      "below-frame span.block.truncate.text-sm.font-semibold bottom 787 > 676",
+      "below-frame span.mt-0.5.block.truncate.text-[11px] bottom 805 > 676"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,426",
+      "HTML[] 0,426"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div[overview].h-full.overflow-y-auto.overscroll-contain 1280x603 in 1280x564",
+      "scroll container div.mt-3.min-h-0.flex-1.space-y-3 358x304 in 358x161"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1280x600",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/play-in",
+    "name": "1280x600_stages-play-in",
+    "doc": {
+      "sh": 1026,
+      "ch": 600,
+      "sw": 1280,
+      "cw": 1280,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 676,
+      "h": 620,
+      "w": 1280
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div[stage-scroll].h-full.overflow-auto.overscroll-contain 1166x594 in 1166x448",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x448 in 46x448"
+    ],
+    "offscreen": [
+      "p.flex.rotate-180.items-center.justify-center @52,594 14x178",
+      "span.font-medium.normal-case.tracking-normal.text-muted-foreground @157,598 62x14",
+      "button.block.w-full.text-left.outline-none @79,634 334x106",
+      "span.text-muted-foreground @203,643 36x13",
+      "span[card-time].ml-auto.shrink-0.text-[10.5px].tabular-nums @351,642 49x16",
+      "span.flex.items-center.gap-1.5.text-sm @125,676 19x18",
+      "span.flex.items-center.gap-1.5.text-sm @125,713 28x18",
+      "span.text-foreground/75 @91,747 107x13",
+      "span.font-medium.normal-case.tracking-normal.text-muted-foreground @493,595 65x14",
+      "button.block.w-full.text-left.outline-none @447,623 334x120",
+      "span.text-muted-foreground @541,632 36x13",
+      "span[card-time].ml-auto.shrink-0.text-[10.5px].tabular-nums @718,631 50x16",
+      "span.block.text-sm.font-semibold.leading-tight @493,662 98x18",
+      "span[slot-source].block.truncate.text-[11px].leading-tight @493,679 98x14",
+      "span.block.text-sm.font-semibold.leading-tight @493,706 103x18",
+      "span[slot-source].block.truncate.text-[11px].leading-tight @493,724 103x14",
+      "span.text-foreground/75 @459,750 111x13",
+      "span.block.text-muted-foreground @881,595 166x17",
+      "button[brief-toggle].flex.h-full.w-12.flex-col @1209,207 48x448",
+      "below-frame p.flex.rotate-180.items-center.justify-center bottom 772 > 676",
+      "below-frame button.block.w-full.text-left.outline-none bottom 740 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 697 > 676",
+      "below-frame span.flex.min-w-0.items-center.gap-2 bottom 697 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 697 > 676",
+      "below-frame span.min-w-0 bottom 694 > 676",
+      "below-frame span.flex.items-center.gap-1.5.text-sm bottom 694 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 734 > 676",
+      "below-frame span.flex.min-w-0.items-center.gap-2 bottom 734 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 734 > 676",
+      "below-frame span bottom 726 > 676",
+      "below-frame span.min-w-0 bottom 731 > 676",
+      "below-frame span.flex.items-center.gap-1.5.text-sm bottom 731 > 676",
+      "below-frame p[bracket-routes].border-t.border-border/40.px-3.py-1.5 bottom 767 > 676",
+      "below-frame span bottom 760 > 676",
+      "below-frame span.text-foreground/75 bottom 760 > 676",
+      "below-frame button.block.w-full.text-left.outline-none bottom 743 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 693 > 676",
+      "below-frame span[team-tbd].flex.min-w-0.items-center.gap-2 bottom 693 > 676",
+      "below-frame span.inline-flex.shrink-0.items-center.justify-center bottom 690 > 676",
+      "below-frame span.min-w-0 bottom 693 > 676",
+      "below-frame span.block.text-sm.font-semibold.leading-tight bottom 679 > 676",
+      "below-frame span[slot-source].block.truncate.text-[11px].leading-tight bottom 693 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 737 > 676",
+      "below-frame span[team-tbd].flex.min-w-0.items-center.gap-2 bottom 737 > 676",
+      "below-frame span.inline-flex.shrink-0.items-center.justify-center bottom 734 > 676",
+      "below-frame span.min-w-0 bottom 737 > 676",
+      "below-frame span.block.text-sm.font-semibold.leading-tight bottom 724 > 676",
+      "below-frame span[slot-source].block.truncate.text-[11px].leading-tight bottom 737 > 676",
+      "below-frame p[bracket-routes].border-t.border-border/40.px-3.py-1.5 bottom 771 > 676",
+      "below-frame span bottom 763 > 676",
+      "below-frame span.text-foreground/75 bottom 763 > 676"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,426",
+      "HTML[] 0,426"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div[stage-scroll].h-full.overflow-auto.overscroll-contain 1166x594 in 1166x448",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x448 in 46x448"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1280x600",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/swiss",
+    "name": "1280x600_stages-swiss",
+    "doc": {
+      "sh": 1026,
+      "ch": 600,
+      "sw": 1280,
+      "cw": 1280,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 676,
+      "h": 620,
+      "w": 1280
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div[stage-scroll].h-full.overflow-auto.overscroll-contain 1166x535 in 1166x448",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x448 in 46x448"
+    ],
+    "offscreen": [
+      "h3.text-sm.font-semibold.text-foreground @45,613 51x20",
+      "span.text-xs.text-muted-foreground @108,616 158x16",
+      "span.tabular-nums.text-foreground/85 @372,656 126x15",
+      "b.font-semibold.text-foreground/75 @45,706 35x14",
+      "b.font-semibold.text-foreground/75 @220,706 33x14",
+      "span @491,705 132x17",
+      "button[brief-toggle].flex.h-full.w-12.flex-col @1209,207 48x448",
+      "below-frame p[swiss-round-unpaired].rounded-xl.border.border-dashed.border-white/10 bottom 685 > 676",
+      "below-frame p[swiss-legend].flex.flex-wrap.items-center.gap-x-4 bottom 721 > 676",
+      "below-frame span bottom 721 > 676",
+      "below-frame span bottom 721 > 676",
+      "below-frame span bottom 721 > 676"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,426",
+      "HTML[] 0,426"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div[stage-scroll].h-full.overflow-auto.overscroll-contain 1166x535 in 1166x448",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x448 in 46x448"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1280x600",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/knockouts",
+    "name": "1280x600_stages-knockouts",
+    "doc": {
+      "sh": 1026,
+      "ch": 600,
+      "sw": 1280,
+      "cw": 1280,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 676,
+      "h": 620,
+      "w": 1280
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1026 > 600",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x448 in 46x448"
+    ],
+    "offscreen": [
+      "button[schematic-node].relative.z-[1].w-full.rounded-xl @49,555 244x75",
+      "button[brief-toggle].flex.h-full.w-12.flex-col @1209,207 48x448"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,426",
+      "HTML[] 0,426"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1026 > 600",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x448 in 46x448"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1280x600",
+    "path": "/lol/pro-play/tournament/worlds-2026/teams",
+    "name": "1280x600_teams",
+    "doc": {
+      "sh": 1026,
+      "ch": 600,
+      "sw": 1280,
+      "cw": 1280,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 676,
+      "h": 620,
+      "w": 1280
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container section.rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 398x642 in 398x478",
+      "spills button[team-tile].group.relative.flex.w-full 118 > 116 \"TLAWT1Team Liquid Alienware\"",
+      "clipped section[team-workspace].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 814x584 in 814x478"
+    ],
+    "offscreen": [
+      "button[team-tile].group.relative.flex.w-full @41,583 118x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @94,600 38x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @138,599 22x18",
+      "button[team-tile].group.relative.flex.w-full @165,583 118x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @218,600 35x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @259,599 24x18",
+      "button[team-tile].group.relative.flex.w-full @289,583 118x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @342,600 18x16",
+      "span[entry-chip].rounded.border.border-cyan-400/50.px-1 @366,599 20x18",
+      "span.font-semibold.tracking-[0.1em].text-muted-foreground @399,646 8x16",
+      "button[team-tile].group.relative.flex.w-full @41,668 118x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @94,685 31x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @131,684 24x18",
+      "button[team-tile].group.relative.flex.w-full @165,668 118x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @218,685 27x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @251,684 24x18",
+      "button[team-tile].group.relative.flex.w-full @289,668 118x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @342,685 31x16",
+      "span[entry-chip].rounded.border.border-cyan-400/50.px-1 @379,684 20x18",
+      "span.font-semibold.tracking-[0.1em].text-muted-foreground @399,731 8x16",
+      "button[team-tile].group.relative.flex.w-full @41,753 118x50",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @94,769 26x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @126,768 24x18",
+      "button[team-tile].group.relative.flex.w-full @165,753 118x50",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @218,769 26x16",
+      "span[entry-chip].rounded.border.border-cyan-400/50.px-1 @250,768 20x18",
+      "button[field-team].group.flex.w-[84px].flex-col @550,534 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @580,592 23x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @582,614 21x15",
+      "button[field-team].group.flex.w-[84px].flex-col @634,534 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @669,592 13x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @665,614 22x15",
+      "button[field-team].group.flex.w-[84px].flex-col @718,534 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @744,592 32x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @749,614 22x15",
+      "button[field-team].group.flex.w-[84px].flex-col @802,534 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @828,592 32x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @833,614 22x15",
+      "span.w-14.shrink-0.text-xs.font-semibold @482,685 56x16",
+      "button[field-team].group.flex.w-[84px].flex-col @550,641 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @586,699 12x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @582,721 21x15",
+      "button[field-team].group.flex.w-[84px].flex-col @634,641 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @667,699 17x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @665,721 22x15",
+      "button[field-team].group.flex.w-[84px].flex-col @718,641 84x103",
+      "span.text-xs.font-bold.text-foreground/90 @747,699 25x16",
+      "span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground @749,721 22x15",
+      "p.mt-3.text-xs.leading-relaxed.text-muted-foreground @972,558 242x59",
+      "below-frame button[team-tile].group.relative.flex.w-full bottom 719 > 676",
+      "below-frame span.shrink-0 bottom 709 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 709 > 676",
+      "below-frame span bottom 698 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 702 > 676",
+      "below-frame span.flex.items-center.gap-1.5 bottom 702 > 676",
+      "below-frame span.text-[13px].font-bold.leading-tight.text-foreground bottom 701 > 676",
+      "below-frame span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 bottom 702 > 676",
+      "below-frame button[team-tile].group.relative.flex.w-full bottom 719 > 676",
+      "below-frame span.shrink-0 bottom 710 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 709 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 702 > 676",
+      "below-frame span.flex.items-center.gap-1.5 bottom 702 > 676",
+      "below-frame span.text-[13px].font-bold.leading-tight.text-foreground bottom 701 > 676",
+      "below-frame span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 bottom 702 > 676",
+      "below-frame button[team-tile].group.relative.flex.w-full bottom 719 > 676",
+      "below-frame span.shrink-0 bottom 709 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 709 > 676",
+      "below-frame span bottom 698 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 702 > 676",
+      "below-frame span.flex.items-center.gap-1.5 bottom 702 > 676",
+      "below-frame span.text-[13px].font-bold.leading-tight.text-foreground bottom 701 > 676",
+      "below-frame span[entry-chip].rounded.border.border-cyan-400/50.px-1 bottom 702 > 676",
+      "below-frame p.mb-1.5.flex.items-baseline.justify-between bottom 747 > 676",
+      "below-frame span.font-semibold.tracking-[0.1em].text-muted-foreground bottom 747 > 676",
+      "below-frame button[team-tile].group.relative.flex.w-full bottom 803 > 676",
+      "below-frame span.shrink-0 bottom 794 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 794 > 676",
+      "below-frame span bottom 782 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 787 > 676",
+      "below-frame span.flex.items-center.gap-1.5 bottom 787 > 676",
+      "below-frame span.text-[13px].font-bold.leading-tight.text-foreground bottom 786 > 676",
+      "below-frame span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 bottom 787 > 676",
+      "below-frame button[team-tile].group.relative.flex.w-full bottom 803 > 676",
+      "below-frame span.shrink-0 bottom 794 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 794 > 676",
+      "below-frame span bottom 782 > 676",
+      "below-frame span.min-w-0.flex-1 bottom 787 > 676",
+      "below-frame span.flex.items-center.gap-1.5 bottom 787 > 676",
+      "below-frame span.text-[13px].font-bold.leading-tight.text-foreground bottom 786 > 676",
+      "below-frame span[entry-chip].rounded.border.border-cyan-400/50.px-1 bottom 787 > 676",
+      "below-frame span.w-14.shrink-0.text-xs.font-semibold bottom 701 > 676",
+      "below-frame button[field-team].group.flex.w-[84px].flex-col bottom 744 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 693 > 676",
+      "below-frame span.text-xs.font-bold.text-foreground/90 bottom 715 > 676",
+      "below-frame span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground bottom 736 > 676",
+      "below-frame button[field-team].group.flex.w-[84px].flex-col bottom 744 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 693 > 676",
+      "below-frame span.text-xs.font-bold.text-foreground/90 bottom 715 > 676",
+      "below-frame span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground bottom 736 > 676",
+      "below-frame button[field-team].group.flex.w-[84px].flex-col bottom 744 > 676",
+      "below-frame span[team-crest].relative.inline-flex.shrink-0.items-center bottom 693 > 676",
+      "below-frame span.text-xs.font-bold.text-foreground/90 bottom 715 > 676",
+      "below-frame span.text-[10px].uppercase.tracking-[0.1em].text-muted-foreground bottom 736 > 676"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,426",
+      "HTML[] 0,426"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container section.rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 398x642 in 398x478",
+      "spills button[team-tile].group.relative.flex.w-full 118 > 116 \"TLAWT1Team Liquid Alienware\"",
+      "clipped section[team-workspace].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 814x584 in 814x478"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "1280x600",
+    "path": "/lol/pro-play/tournament/worlds-2026/schedule",
+    "name": "1280x600_schedule",
+    "doc": {
+      "sh": 1026,
+      "ch": 600,
+      "sw": 1280,
+      "cw": 1280,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 56,
+      "bottom": 676,
+      "h": 620,
+      "w": 1280
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div.min-w-0.flex-1.overflow-x-auto.pb-1 1289x106 in 1144x106",
+      "overlap button[day-cell].relative.flex.shrink-0.flex-col × button[day-next].inline-flex.w-9.shrink-0.items-center 36x84",
+      "clipped div[workspace].relative.min-h-0.flex-1.overflow-hidden 1286x564 in 1280x564",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x360 in 46x360"
+    ],
+    "offscreen": [
+      "button[day-cell].relative.flex.shrink-0.flex-col @1299,194 58x84",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @1317,203 24x15",
+      "span.font-bold.tabular-nums.text-xl.text-foreground @1315,218 26x28",
+      "span.text-[10px].text-muted-foreground @1319,246 19x15",
+      "button[brief-toggle].flex.h-full.w-12.flex-col @1209,295 48x360"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,426",
+      "HTML[] 0,426"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1026 > 600",
+      "scroll container div.min-w-0.flex-1.overflow-x-auto.pb-1 1289x106 in 1144x106",
+      "overlap button[day-cell].relative.flex.shrink-0.flex-col × button[day-next].inline-flex.w-9.shrink-0.items-center 36x84",
+      "clipped div[workspace].relative.min-h-0.flex-1.overflow-hidden 1286x564 in 1280x564",
+      "clipped aside[context-panel].rounded-2xl.border.border-white/[0.07].bg-[linear-gradient(180deg,hsl(213_48%_10%/0.92),hsl(214_52%_7%/0.92))] 320x360 in 46x360"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "390x844",
+    "path": "/lol/pro-play/tournament/worlds-2026",
+    "name": "390x844_overview",
+    "doc": {
+      "sh": 2438,
+      "ch": 844,
+      "sw": 390,
+      "cw": 390,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 48,
+      "bottom": 1862.75,
+      "h": 1814.75,
+      "w": 390
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 2438 > 844"
+    ],
+    "offscreen": [
+      "h2.text-lg.leading-none @29,832 191x18",
+      "a[overview-open-schedule].inline-flex.min-h-8.items-center.gap-1 @267,826 94x32",
+      "p.text-[10.5px].font-semibold.uppercase.leading-none @29,870 328x11",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @29,886 328x59",
+      "span.block.text-[10.5px].font-normal.text-muted-foreground @37,900 64x16",
+      "span.shrink-0.text-xs.tabular-nums.text-muted-foreground @184,898 22x16",
+      "span.mt-0.5.block.truncate.text-[11px] @113,920 210x17",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @29,945 328x59",
+      "span.block.text-[10.5px].font-normal.text-muted-foreground @37,958 64x16",
+      "span.shrink-0.text-xs.tabular-nums.text-muted-foreground @171,957 22x16",
+      "span.mt-0.5.block.truncate.text-[11px] @113,979 210x17",
+      "p.text-[10.5px].font-semibold.uppercase.leading-none @29,1015 328x11",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @29,1032 328x59",
+      "span.whitespace-nowrap.text-xs.font-medium.tabular-nums @37,1053 64x16",
+      "span.shrink-0.text-xs.tabular-nums.text-muted-foreground @170,1044 7x16",
+      "span.mt-0.5.block.truncate.text-[11px] @113,1066 210x17",
+      "p.text-[10.5px].font-semibold.uppercase.leading-none @29,1102 328x11",
+      "a[fixture].grid.grid-cols-[64px_minmax(0,1fr)_auto].items-center.gap-3 @29,1119 328x55",
+      "span.whitespace-nowrap.text-xs.font-medium.tabular-nums @37,1138 64x16",
+      "span.block.truncate.text-sm.font-semibold @113,1127 210x20",
+      "span.mt-0.5.block.truncate.text-[11px] @113,1149 210x17",
+      "h2.text-lg.leading-none @29,1219 183x18",
+      "span.text-[11px].tabular-nums.text-muted-foreground @299,1221 62x17",
+      "a.group.relative.grid.h-full @29,1250 332x124",
+      "span.text-[15px].font-semibold.text-foreground @81,1262 51x23",
+      "span.rounded.px-1.5.py-[3px].text-[9.5px] @140,1265 40x16",
+      "span.mt-1.block.text-xs.tabular-nums @81,1288 268x16",
+      "span[road-stakes].mt-1.block.text-xs.text-foreground/80 @81,1308 268x16",
+      "span.block.h-full.rounded-full.bg-[#c9a84c]/80 @81,1352 81x4",
+      "span.text-[10.5px].tabular-nums.text-muted-foreground @332,1346 17x16",
+      "a.group.relative.grid.h-full @29,1378 332x101",
+      "span.text-[15px].font-semibold.text-foreground @81,1390 43x23",
+      "span.mt-1.block.text-xs.tabular-nums @81,1417 268x16",
+      "span[road-stakes].mt-1.block.text-xs.text-foreground/80 @81,1437 268x16",
+      "a.group.relative.grid.h-full @29,1483 332x101",
+      "span.text-[15px].font-semibold.text-foreground @81,1495 78x23",
+      "span.mt-1.block.text-xs.tabular-nums @81,1521 268x16",
+      "span[road-stakes].mt-1.block.text-xs.text-foreground/80 @81,1541 268x16",
+      "a[overview-open-teams].group.inline-flex.items-center.gap-1 @29,1601 88x16",
+      "span.text-[11px].text-muted-foreground @174,1600 187x17",
+      "span.text-[13px].font-bold.text-foreground @29,1629 23x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @58,1631 7x17",
+      "span.text-[13px].font-bold.text-foreground @144,1629 26x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @176,1631 7x17",
+      "span.text-[13px].font-bold.text-foreground @258,1629 25x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @289,1631 7x17",
+      "span.text-[13px].font-bold.text-foreground @29,1666 25x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @60,1668 7x17",
+      "span.text-[13px].font-bold.text-foreground @144,1666 25x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @175,1668 7x17",
+      "span.text-[13px].font-bold.text-foreground @258,1666 43x20",
+      "span.text-[11px].tabular-nums.text-muted-foreground @307,1668 7x17",
+      "a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center @29,1706 332x44"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,1594",
+      "HTML[] 0,1594"
+    ],
+    "afterProblems": [
+      "document scrollHeight 2438 > 844",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center 49x32",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center 78x32",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center 78x32",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × a[open-stage-explorer].mt-3.inline-flex.min-h-11.items-center 78x32"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "390x844",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/play-in",
+    "name": "390x844_stages-play-in",
+    "doc": {
+      "sh": 1419,
+      "ch": 844,
+      "sw": 390,
+      "cw": 390,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 48,
+      "bottom": 844,
+      "h": 796,
+      "w": 390
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1419 > 844",
+      "scroll container div.-mx-3.overflow-x-auto.px-3.pb-1 600x48 in 390x48"
+    ],
+    "offscreen": [
+      "button[round-step].min-h-11.whitespace-nowrap.rounded-full.border @271,300 123x44",
+      "button[round-step].min-h-11.whitespace-nowrap.rounded-full.border @414,300 96x44",
+      "button[round-step].min-h-11.whitespace-nowrap.rounded-full.border @530,300 58x44"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,575",
+      "HTML[] 0,575"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1419 > 844",
+      "scroll container div.-mx-3.overflow-x-auto.px-3.pb-1 600x48 in 390x48"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "390x844",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/swiss",
+    "name": "390x844_stages-swiss",
+    "doc": {
+      "sh": 1436,
+      "ch": 844,
+      "sw": 390,
+      "cw": 390,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 48,
+      "bottom": 861,
+      "h": 813,
+      "w": 390
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1436 > 844"
+    ],
+    "offscreen": [],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,592",
+      "HTML[] 0,592"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1436 > 844",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[swiss-format-toggle].flex.min-h-12.w-full.items-center 65x20",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[swiss-format-toggle].flex.min-h-12.w-full.items-center 78x20",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[swiss-format-toggle].flex.min-h-12.w-full.items-center 78x20",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[swiss-format-toggle].flex.min-h-12.w-full.items-center 78x20"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "390x844",
+    "path": "/lol/pro-play/tournament/worlds-2026/stages/knockouts",
+    "name": "390x844_stages-knockouts",
+    "doc": {
+      "sh": 1588,
+      "ch": 844,
+      "sw": 390,
+      "cw": 390,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 48,
+      "bottom": 1012.75,
+      "h": 964.75,
+      "w": 390
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1588 > 844"
+    ],
+    "offscreen": [
+      "p.mt-2.font-['Cinzel',serif].text-base.text-[#e3c66f] @29,856 332x24",
+      "p.mt-1.text-xs.text-muted-foreground @29,884 332x16"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,744",
+      "HTML[] 0,744"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1588 > 844"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "390x844",
+    "path": "/lol/pro-play/tournament/worlds-2026/teams",
+    "name": "390x844_teams",
+    "doc": {
+      "sh": 1724,
+      "ch": 844,
+      "sw": 390,
+      "cw": 390,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 48,
+      "bottom": 1149,
+      "h": 1101,
+      "w": 390
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1724 > 844",
+      "scroll container div.-mx-3.overflow-x-auto.px-3.pb-1 542x48 in 390x48"
+    ],
+    "offscreen": [
+      "button[region-chip].inline-flex.min-h-11.items-center.gap-1.5 @375,210 67x44",
+      "span.tabular-nums.text-muted-foreground @419,224 8x16",
+      "button[region-chip].inline-flex.min-h-11.items-center.gap-1.5 @447,210 83x44",
+      "span.tabular-nums.text-muted-foreground @508,224 8x16",
+      "span.font-semibold.tracking-[0.1em].text-muted-foreground @370,841 8x16",
+      "button[team-tile].group.relative.flex.w-full @12,862 180x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @65,873 31x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @102,872 24x18",
+      "span.block.truncate.text-[11px].leading-tight @65,890 116x14",
+      "button[team-tile].group.relative.flex.w-full @198,862 180x51",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @251,873 27x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @284,872 24x18",
+      "span.block.truncate.text-[11px].leading-tight @251,890 116x14",
+      "button[team-tile].group.relative.flex.w-full @12,919 180x50",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @65,929 31x16",
+      "span[entry-chip].rounded.border.border-cyan-400/50.px-1 @102,928 20x18",
+      "span.block.truncate.text-[11px].leading-tight @65,947 116x14",
+      "span.font-semibold.tracking-[0.1em].text-muted-foreground @370,981 8x16",
+      "button[team-tile].group.relative.flex.w-full @12,1003 180x50",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @65,1013 26x16",
+      "span[entry-chip].rounded.border.border-[#c9a84c]/45.px-1 @97,1012 24x18",
+      "span.block.truncate.text-[11px].leading-tight @65,1030 116x14",
+      "button[team-tile].group.relative.flex.w-full @198,1003 180x50",
+      "span.text-[13px].font-bold.leading-tight.text-foreground @251,1013 26x16",
+      "span[entry-chip].rounded.border.border-cyan-400/50.px-1 @283,1012 20x18",
+      "span.block.truncate.text-[11px].leading-tight @251,1030 116x14"
+    ],
+    "truncated": [
+      "span.block.truncate.text-[11px].leading-tight \"Shanghai Invictus Gaming Meituan\"",
+      "span.block.truncate.text-[11px].leading-tight \"Team Liquid Alienware\""
+    ],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,880",
+      "HTML[] 0,880"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1724 > 844",
+      "scroll container div.-mx-3.overflow-x-auto.px-3.pb-1 542x48 in 390x48",
+      "overlap a.-ml-1.inline-flex.h-11.w-9 × button[team-tile].group.relative.flex.w-full 28x39",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[team-tile].group.relative.flex.w-full 66x21",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[team-tile].group.relative.flex.w-full 78x21",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[team-tile].group.relative.flex.w-full 36x21",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[team-tile].group.relative.flex.w-full 36x21",
+      "overlap a[nav-screen].relative.flex.items-center.outline-none × button[team-tile].group.relative.flex.w-full 78x21"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "390x844",
+    "path": "/lol/pro-play/tournament/worlds-2026/schedule",
+    "name": "390x844_schedule",
+    "doc": {
+      "sh": 1419,
+      "ch": 844,
+      "sw": 390,
+      "cw": 390,
+      "sy": 0,
+      "sx": 0
+    },
+    "frame": {
+      "top": 48,
+      "bottom": 844,
+      "h": 796,
+      "w": 390
+    },
+    "footer": true,
+    "locked": false,
+    "problems": [
+      "document scrollHeight 1419 > 844",
+      "scroll container div.-mx-3.overflow-x-auto.px-3.pb-1 420x48 in 390x48",
+      "scroll container div.min-w-0.flex-1.overflow-x-auto.pb-1 1325x102 in 366x102",
+      "clipped div[workspace].relative.overflow-x-clip 1264x500 in 390x500"
+    ],
+    "offscreen": [
+      "button[schedule-filter-chip].inline-flex.min-h-11.items-center.gap-1.5 @290,157 118x44",
+      "span.tabular-nums.text-muted-foreground @386,171 8x16",
+      "button[day-cell].relative.flex.shrink-0.flex-col @356,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @374,242 24x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @374,257 23x28",
+      "span.text-[10px].text-muted-foreground @378,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @420,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @437,242 26x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @438,257 23x28",
+      "span.text-[10px].text-muted-foreground @442,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @484,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @500,242 29x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @502,257 23x28",
+      "span.text-[10px].text-muted-foreground @506,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @572,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @588,242 28x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @590,257 23x28",
+      "span.text-[10px].text-muted-foreground @594,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @636,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @653,242 26x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @654,257 23x28",
+      "span.text-[10px].text-muted-foreground @658,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @700,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @720,242 19x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @718,257 23x28",
+      "span.text-[10px].text-muted-foreground @722,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @764,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @782,242 24x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @782,257 23x28",
+      "span.text-[10px].text-muted-foreground @786,285 17x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @852,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @870,242 24x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @876,257 12x28",
+      "span.text-[10px].text-muted-foreground @873,285 19x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @933,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @950,242 28x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @958,257 12x28",
+      "span.text-[10px].text-muted-foreground @954,285 19x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @997,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @1015,242 26x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @1022,257 12x28",
+      "span.text-[10px].text-muted-foreground @1018,285 19x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @1061,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @1082,242 19x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @1086,257 12x28",
+      "span.text-[10px].text-muted-foreground @1082,285 19x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @1125,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @1144,242 24x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @1150,257 12x28",
+      "span.text-[10px].text-muted-foreground @1146,285 19x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @1189,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @1207,242 26x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @1214,257 12x28",
+      "span.text-[10px].text-muted-foreground @1210,285 19x15",
+      "button[day-cell].relative.flex.shrink-0.flex-col @1277,235 60x80",
+      "span.text-[10px].font-semibold.uppercase.tracking-[0.14em] @1296,242 24x15",
+      "span.font-bold.tabular-nums.text-lg.text-foreground @1296,257 23x28",
+      "span.text-[10px].text-muted-foreground @1298,285 19x15"
+    ],
+    "truncated": [],
+    "levels": [],
+    "pages": [],
+    "moved": [
+      "window 0,575",
+      "HTML[] 0,575"
+    ],
+    "afterProblems": [
+      "document scrollHeight 1419 > 844",
+      "scroll container div.-mx-3.overflow-x-auto.px-3.pb-1 420x48 in 390x48",
+      "scroll container div.min-w-0.flex-1.overflow-x-auto.pb-1 1325x102 in 366x102",
+      "clipped div[workspace].relative.overflow-x-clip 1264x500 in 390x500"
+    ],
+    "errors": []
+  }
+]

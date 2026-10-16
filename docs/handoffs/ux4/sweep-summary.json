@@ -1,0 +1,10 @@
+{
+  "pass": 572,
+  "fail": 4,
+  "failures": [
+    "FAIL partial_1024x768_teams [worlds-experience] doc 768/768 1024/1024 levels[div.min-h-0.min-w-0.overflow-clip.flex=0 div.min-h-0.min-w-0.overflow-clip.h-full=1 div.min-h-0.min-w-0.overflow-clip.h-full=2] pages[team-pages:1/1x27]",
+    "FAIL no-standings_1024x768_teams [worlds-experience] doc 768/768 1024/1024 levels[div.min-h-0.min-w-0.overflow-clip.flex=0 div.min-h-0.min-w-0.overflow-clip.h-full=1 div.min-h-0.min-w-0.overflow-clip.h-full=2] pages[team-pages:1/1x27]",
+    "FAIL stale_1024x768_teams [worlds-experience] doc 768/768 1024/1024 levels[div.min-h-0.min-w-0.overflow-clip.flex=0 div.min-h-0.min-w-0.overflow-clip.h-full=1 div.min-h-0.min-w-0.overflow-clip.h-full=2] pages[team-pages:1/1x27]",
+    "FAIL unknown_1024x768_teams [worlds-experience] doc 768/768 1024/1024 levels[div.min-h-0.min-w-0.overflow-clip.flex=1 div.min-h-0.min-w-0.overflow-clip.h-full=1 div.min-h-0.min-w-0.overflow-clip.h-full=2] pages[team-pages:1/1x27]"
+  ]
+}
