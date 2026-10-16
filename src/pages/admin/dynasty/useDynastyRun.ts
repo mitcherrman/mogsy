@@ -128,6 +128,19 @@ export function useDynastyRun({ transport, storageKey = DYNASTY_START_KEY_STORAG
     if (e.code === "DYNASTY_DISABLED") { setFatal({ kind: "disabled" }); return; }
     if (e.status === 401 || e.status === 403) { setFatal({ kind: "forbidden" }); return; }
     if (e.code === "DYNASTY_RUN_NOT_FOUND") { writeStoredKey(storageKey, null); setHasStoredRun(false); setFatal({ kind: "not_found" }); return; }
+    // The owner-auth RPC can be temporarily unreachable (503). This is not
+    // a corrupt run: preserve the saved start key and the exact pending action.
+    if (e.status === 503) {
+      if (context === "load") setLoad("idle");
+      setNotice({
+        tone: "warning", title: "Owner verification temporarily unavailable",
+        message: context === "act"
+          ? "The owner check could not complete. Retry sends the same choice again without risking a duplicate action."
+          : "The owner check could not complete. Your saved run is preserved; try Resume again.",
+        retryable: context === "act",
+      });
+      return;
+    }
     if (e.code === "DYNASTY_RUN_INTEGRITY" || (e.status ?? 0) >= 500) {
       setFatal({ kind: "integrity", message: e.message }); return;
     }
@@ -206,7 +219,9 @@ export function useDynastyRun({ transport, storageKey = DYNASTY_START_KEY_STORAG
             }
             return;
           }
-          if (!network) pending.current = null;
+          // A 503 owner-verification outage is transient, like a network error.
+          // Keep the identical action_id available for a deliberate retry.
+          if (!network && !(e instanceof DynastyApiError && e.status === 503)) pending.current = null;
           classify(e, "act");
           return;
         }

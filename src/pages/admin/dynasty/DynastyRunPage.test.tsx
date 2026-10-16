@@ -155,6 +155,53 @@ describe("Worlds Dynasty owner page", () => {
     expect(new Set(bodies.map((b) => b.expected_seq))).toEqual(new Set([0]));
   });
 
+  it("preserves the saved run on a temporary owner-verification 503 and can resume", async () => {
+    const t = createFixtureTransport();
+    const original = t.start.bind(t);
+    const stored = "wd-start-existing0001";
+    window.localStorage.setItem(KEY, stored);
+    let calls = 0;
+    vi.spyOn(t, "start").mockImplementation(async (...args) => {
+      if (++calls === 1) throw new DynastyApiError("backend", 503, null, "Owner authorization temporarily unavailable");
+      return original(...args);
+    });
+    mount(t); // automatic resume from the saved key encounters the 503
+    const notice = await screen.findByTestId("dynasty-notice");
+    expect(notice).toHaveTextContent("Owner verification temporarily unavailable");
+    expect(screen.queryByTestId("dynasty-fatal")).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBe(stored);
+    fireEvent.click(await screen.findByTestId("dynasty-begin"));
+    await waitFor(() => expect(phase()).toBe("draft"));
+    expect(vi.mocked(t.start).mock.calls.map((c) => c[0])).toEqual([stored, stored]);
+  });
+
+  it("retries a 503 owner-verification outage with the SAME id and sequence", async () => {
+    const t = createFixtureTransport();
+    mount(t);
+    await begin();
+    const original = t.act.bind(t);
+    let unavailable = true;
+    vi.spyOn(t, "act").mockImplementation(async (...args) => {
+      if (unavailable) {
+        unavailable = false;
+        throw new DynastyApiError("backend", 503, null, "Owner authorization temporarily unavailable");
+      }
+      return original(...args);
+    });
+    fireEvent.click(screen.getByTestId("offer-syn-top-09"));
+    fireEvent.click(screen.getByTestId("draft-confirm"));
+    expect(await screen.findByTestId("dynasty-notice")).toHaveTextContent("Owner verification temporarily unavailable");
+    expect(screen.queryByTestId("dynasty-fatal")).toBeNull();
+    expect(screen.getByTestId("dynasty-retry")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("dynasty-retry"));
+    await waitFor(() => expect(screen.getByText("Pick 2 of 7")).toBeInTheDocument());
+    const bodies = vi.mocked(t.act).mock.calls.map((c) => c[1]);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].action_id).toBe(bodies[1].action_id);
+    expect(bodies[0].expected_seq).toBe(bodies[1].expected_seq);
+    expect(window.localStorage.getItem(KEY)).toMatch(/^wd-start-/);
+  });
+
   it("reloads the run and asks again on a stale sequence", async () => {
     const t = createFixtureTransport();
     mount(t);
