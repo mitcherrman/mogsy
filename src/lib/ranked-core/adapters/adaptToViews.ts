@@ -296,6 +296,11 @@ export function questionViewFromPublicQuestion(
     prompt: question.prompt,
     options,
     category: question.category,
+    // This is backend-frozen provenance, not a runtime "current patch" guess.
+    ...(typeof question.presentation?.source_patch === "string" &&
+       /^\d{2}\.\d{1,2}$/.test(question.presentation.source_patch)
+       ? { sourcePatch: question.presentation.source_patch }
+       : {}),
     ...(question.topic?.roles?.length ? { roles: question.topic.roles } : {}),
     // QF1: the backend-resolved motif, carried beside (never instead of) the
     // category and roles.
