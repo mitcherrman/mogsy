@@ -194,3 +194,92 @@ test("a refused owner session shows the reason, not rounds", async ({ page }) =>
   await expect(page.getByTestId("pt-champion")).toHaveCount(0);
   await page.screenshot({ path: path.join(SHOTS, "1440x900-refused.png") });
 });
+
+// ── PT4.3: Space/Enter without focus on the seal ──────────────────────────
+async function blurAll(page: Page) {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+}
+
+test.describe("PT4.3 keyboard without seal focus", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("Space and Enter start and stop every round with focus on <body>; Next never starts a round", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto("/dev/perfect-timing");
+    const seal = page.getByTestId("pt-press-surface");
+    const rounds: Json[] = CAPTURE.deal.response.rounds;
+    for (let i = 0; i < rounds.length; i++) {
+      await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+      // Advancing (by Enter on Next for i > 0) must not have started the round.
+      await page.waitForTimeout(300);
+      await expect(seal).toHaveAttribute("data-phase", "armed");
+      await blurAll(page);
+      const key = i % 2 === 0 ? "Space" : "Enter";
+      const scrollY = await page.evaluate(() => window.scrollY);
+      await page.keyboard.press(key);
+      await expect(seal).toHaveAttribute("data-phase", "running");
+      expect(await page.evaluate(() => window.scrollY), "Space must not scroll").toBe(scrollY);
+      await blurAll(page);
+      await page.waitForTimeout(1100);
+      await page.keyboard.press(key);
+      await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+      // Keys on the reveal do nothing to the timer and submit nothing.
+      await blurAll(page);
+      await page.keyboard.press("Space");
+      await page.keyboard.press("Enter");
+      const next = page.getByRole("button", { name: i === rounds.length - 1 ? /see results/i : /next round/i });
+      await next.focus();
+      await page.keyboard.press("Enter");
+    }
+    await expect(page.getByTestId("pt-results")).toBeVisible();
+    expect(be.locks.map((l) => l.id), "exactly one lock per round").toEqual(rounds.map((r) => r.round_id));
+    // After the run no listener is left driving anything: keys on results are inert.
+    await blurAll(page);
+    await page.keyboard.press("Space");
+    expect(be.locks).toHaveLength(rounds.length);
+  });
+
+  test("mixed controls: mouse start + Space stop, Enter start + mouse stop", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto("/dev/perfect-timing");
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await seal.click();
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    await blurAll(page);
+    await page.waitForTimeout(1100);
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: /next round/i }).click();
+    await expect(seal).toHaveAttribute("data-phase", "armed");
+    await blurAll(page);
+    await page.keyboard.press("Enter");
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    await page.waitForTimeout(1100);
+    await seal.click();
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    expect(be.locks).toHaveLength(2);
+    expect(new Set(be.locks.map((l) => l.id)).size).toBe(2);
+  });
+
+  test("a held key and a pointer+key on one press submit once", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto("/dev/perfect-timing");
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await blurAll(page);
+    await page.keyboard.down("Space");
+    await page.waitForTimeout(600);
+    await page.keyboard.down("Space"); // a second down while held is delivered with repeat=true
+    await page.waitForTimeout(600);
+    await page.keyboard.up("Space");
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(300);
+    expect(be.locks).toHaveLength(1);
+  });
+});
