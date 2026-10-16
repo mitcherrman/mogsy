@@ -32,6 +32,7 @@ import {
   toPositionalAssemblyReveal,
 } from "./assemblyAdapter";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
+import { assemblyBoardReport } from "./boardReports";
 
 export { ASSEMBLY_MODULE_ID };
 export const ASSEMBLY_MODULE_VERSION = 1;
@@ -176,6 +177,8 @@ export const assemblyModule: ModuleRenderer = {
     (r) => r.challengeIndex === CHALLENGE_INDEX && !!r.assembly),
   Viewport: AssemblyViewport,
   projectQuestion: (_pub: PublicRoundView): QuestionView | null => null,
+  // PGM2 — the board a player reports (answer only after the reveal).
+  reportBoard: assemblyBoardReport,
   summaryLabel: (pub) => {
     const state = pub.segmentState;
     if (!state) return null;
