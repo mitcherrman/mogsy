@@ -3,44 +3,44 @@
   "scenario": "journey",
   "viewport": "1366x768",
   "cpu": 4,
-  "arrivedAtMs": 3207,
-  "landingToHomeWallMs": 3033,
+  "arrivedAtMs": 3205,
+  "landingToHomeWallMs": 3030,
   "marks": {
-    "cls": 0.0195,
-    "mogzy": 1361,
-    "rootPainted": 3834,
-    "primaryCta": 3834,
-    "fourRooms": 3834,
-    "bookPainting": 3834,
-    "coversDecoded": 4551,
-    "upperCoversDecoded": 4551,
-    "domContentLoaded": 830,
-    "fcp": 1256
+    "cls": 0.0196,
+    "mogzy": 1279,
+    "rootPainted": 3778,
+    "primaryCta": 3778,
+    "fourRooms": 3778,
+    "bookPainting": 3778,
+    "coversDecoded": 4445,
+    "upperCoversDecoded": 4445,
+    "domContentLoaded": 789,
+    "fcp": 1196
   },
   "net": {
     "all": {
       "count": 271,
-      "total": 3623384,
-      "images": 2275455,
+      "total": 3623892,
+      "images": 2275500,
       "imageCount": 32,
-      "local": 2387099,
-      "external": 1236285
+      "local": 2387731,
+      "external": 1236161
     },
     "pre": {
       "count": 173,
-      "total": 2071641,
+      "total": 2072137,
       "images": 961022,
       "imageCount": 5,
-      "local": 1934599,
-      "external": 137042
+      "local": 1935173,
+      "external": 136964
     },
     "post": {
       "count": 98,
-      "total": 1551743,
-      "images": 1314433,
+      "total": 1551755,
+      "images": 1314478,
       "imageCount": 27,
-      "local": 452500,
-      "external": 1099243
+      "local": 452558,
+      "external": 1099197
     },
     "dupes": [
       {
@@ -53,7 +53,7 @@
       }
     ],
     "hallOnly": [
-      "/assets/LolHub-CGbJ05_a.js",
+      "/assets/LolHub-DJxZPPZa.js",
       "/assets/academy-library-desktop-D8EmW-OF.webp"
     ],
     "imageUrls": [
@@ -62,22 +62,22 @@
       "/assets/academy-library-desktop-D8EmW-OF.webp",
       "/assets/academy-book-frame-CaQzX1_R.webp",
       "/images/lol-hub/academy-broadcast-book.webp",
-      "/mascot/mogzy-hat-transparent-128.webp",
-      "/mascot/mogzy-mascot-base-v1-240.webp",
       "/mascot/mogzy-explaining-transparent-192.webp",
       "https://web-production-83e53.up.railway.app/assets/champions/Ryze/splash/0_default.jpg",
       "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
       "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
       "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
+      "/mascot/mogzy-hat-transparent-128.webp",
+      "/mascot/mogzy-mascot-base-v1-240.webp",
       "/assets/academy-commons-desktop-BAzx5neB.webp",
       "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
-      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
@@ -92,8 +92,8 @@
     ]
   },
   "interaction": {
-    "hoverToStateMs": 170,
+    "hoverToStateMs": 151,
     "longTasksMs": [],
-    "clickToArchivesContentMs": 347
+    "clickToArchivesContentMs": 245
   }
 }

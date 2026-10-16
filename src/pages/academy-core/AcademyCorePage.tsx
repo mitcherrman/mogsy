@@ -85,6 +85,8 @@ import "./academy-core.css";
 /** Same grace the Mogzy guide uses before a leave clears a hover message. */
 const FOCUS_RELEASE_MS = 140;
 const IDLE_LINE = "Pick a book and I'll take a reading.";
+/** How long after navigating the activation state may stay on while the Core is still mounted. */
+const ACTIVATION_SETTLE_MS = 1500;
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(() =>
@@ -205,7 +207,26 @@ function AcademyCoreHome() {
   /* ---------------- activation → navigation ---------------- */
   const [activating, setActivating] = useState<CoreFocus | null>(null);
   const activationTimer = useRef<number | null>(null);
-  useEffect(() => () => { if (activationTimer.current !== null) window.clearTimeout(activationTimer.current); }, []);
+  // The Core is only replaced once the destination has rendered. If that is
+  // slow, or the visitor comes straight back (Back, bfcache), the Core is still
+  // mounted: the activation state must not stay latched on.
+  const settleTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (activationTimer.current !== null) window.clearTimeout(activationTimer.current);
+    if (settleTimer.current !== null) window.clearTimeout(settleTimer.current);
+  }, []);
+  useEffect(() => {
+    const release = () => {
+      if (settleTimer.current !== null) { window.clearTimeout(settleTimer.current); settleTimer.current = null; }
+      setActivating(null);
+    };
+    window.addEventListener("popstate", release);
+    window.addEventListener("pageshow", release);
+    return () => {
+      window.removeEventListener("popstate", release);
+      window.removeEventListener("pageshow", release);
+    };
+  }, []);
   const onBookClick = useCallback((d: CoreDestination, e: React.MouseEvent<HTMLAnchorElement>) => {
     if (d.to === "/quiz") trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_book" });
     if (isModifiedClick(e)) return; // the browser's own behaviour, untouched
@@ -218,6 +239,10 @@ function AcademyCoreHome() {
     activationTimer.current = window.setTimeout(() => {
       activationTimer.current = null;
       navigate(d.to);
+      settleTimer.current = window.setTimeout(() => {
+        settleTimer.current = null;
+        setActivating(null);
+      }, ACTIVATION_SETTLE_MS);
     }, BOOK_ACTIVATION_MS);
   }, [navigate, playSfx, reduced]);
 

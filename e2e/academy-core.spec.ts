@@ -181,13 +181,27 @@ test.describe("desktop", () => {
   test("one click: a ≤ 350 ms activation, then navigation (measured)", async ({ page }) => {
     await open(page, 1366, 768);
     const link = bookLink(page, "combat-lab");
-    const t0 = Date.now();
+    // Record the activation window inside the page: polling for a 240 ms
+    // attribute from the test process is racy on a loaded machine.
+    await page.evaluate(() => {
+      const stage = document.querySelector('[data-testid="academy-core-stage"]')!;
+      const rec = { on: null as number | null, nav: null as number | null };
+      (window as unknown as { __act: typeof rec }).__act = rec;
+      new MutationObserver(() => {
+        if (rec.on === null && stage.getAttribute("data-activating") === "combat-lab") rec.on = performance.now();
+      }).observe(stage, { attributes: true, attributeFilter: ["data-activating"] });
+      const push = history.pushState.bind(history);
+      history.pushState = (...a: Parameters<History["pushState"]>) => { rec.nav = performance.now(); return push(...a); };
+    });
     await link.click();
-    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "combat-lab");
-    await page.screenshot({ path: path.join(OUT, "desktop-1366x768-activation-combat.png") });
+    await page.screenshot({ path: path.join(OUT, "desktop-1366x768-activation-combat.png") }).catch(() => {});
     await page.waitForURL(/\/combat-lab$/);
-    const elapsed = Date.now() - t0;
-    expect(elapsed, "click → route change").toBeLessThanOrEqual(350 + 600); // activation + the screenshot + overhead
+    const act = await page.evaluate(() => (window as unknown as { __act: { on: number | null; nav: number | null } }).__act);
+    expect(act.on, "the stage entered its activating state").not.toBeNull();
+    expect(act.nav, "navigation happened").not.toBeNull();
+    const activation = act.nav! - act.on!;
+    expect(activation, "activation beat before navigating (ms)").toBeGreaterThanOrEqual(200);
+    expect(activation, "activation beat before navigating (ms)").toBeLessThanOrEqual(350);
     await page.goBack();
     await expect(page.getByTestId("academy-core")).toBeVisible();
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "");
@@ -261,13 +275,18 @@ test.describe("desktop", () => {
     await expect(page).toHaveURL(/\/lol\/patch-reports\?patch=26\.20$/);
   });
 
-  test("the preview URLs redirect to the home", async ({ page }) => {
-    await stubRemote(page);
-    await page.goto("/dev/academy-core");
-    await expect(page).toHaveURL(/\/lol$/);
-    await page.goto("/lol/dev/academy-core");
-    await expect(page).toHaveURL(/\/lol$/);
-    await expect(page.getByTestId("academy-core")).toBeVisible();
+  test("the preview URLs redirect to the home", async ({ context }) => {
+    // One fresh page per URL: Firefox against the Vite dev server reports a
+    // goto issued from a page whose app then redirects as NS_BINDING_ABORTED.
+    // (The production build does not: verified separately in Firefox.)
+    for (const from of ["/dev/academy-core", "/lol/dev/academy-core"]) {
+      const page = await context.newPage();
+      await stubRemote(page);
+      await page.goto(from, { waitUntil: "commit" });
+      await expect(page).toHaveURL(/\/lol$/);
+      await expect(page.getByTestId("academy-core")).toBeVisible();
+      await page.close();
+    }
   });
 
   test("legacy /lol#academy-commons is forwarded to the Hall's Commons", async ({ page }) => {
@@ -365,6 +384,43 @@ test.describe("desktop", () => {
     expect(anonReads, "no session: no guaranteed-401 read").toEqual([]);
     await expect(anonPage.getByTestId("academy-core-daily")).toHaveAccessibleName("Play Daily Challenge");
     await anon.close();
+  });
+
+  test("audio: no sound before a gesture, and none at all when muted", async ({ page, browser }) => {
+    // Count every sound the Web Audio graph is asked to start.
+    const COUNT = `(() => {
+      window.__starts = 0;
+      for (const name of ["OscillatorNode", "AudioBufferSourceNode"]) {
+        const proto = window[name] && window[name].prototype;
+        if (!proto || !proto.start) continue;
+        const orig = proto.start;
+        proto.start = function (...a) { window.__starts += 1; return orig.apply(this, a); };
+      }
+    })();`;
+    const starts = (p: Page) => p.evaluate(() => (window as unknown as { __starts: number }).__starts);
+
+    // 1. unmuted, nobody has touched the page: arrival must be silent.
+    await page.addInitScript(COUNT);
+    await open(page, 1366, 768);
+    await page.waitForTimeout(2500);
+    expect(await starts(page), "no playback before a user gesture").toBe(0);
+
+    // 2. muted (the app's own mute key), then every interaction: still silent.
+    const muted = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+    const mp = await muted.newPage();
+    await mp.addInitScript(COUNT);
+    await mp.addInitScript(() => { localStorage.setItem("mogsy-sounds-muted", "1"); });
+    await open(mp, 1366, 768);
+    await mp.getByTestId("academy-core-crystal").click();
+    await bookLink(mp, "pro-play").hover();
+    await mp.waitForTimeout(400);
+    await bookLink(mp, "combat-lab").hover();
+    await mp.waitForTimeout(400);
+    expect(await starts(mp), "muted: hover, crystal and focus cues make no sound").toBe(0);
+    await bookLink(mp, "archives").click();
+    await mp.waitForURL(/\/lol\/docs$/);
+    expect(await starts(mp), "muted: the book-open cue makes no sound").toBe(0);
+    await muted.close();
   });
 
   test("loads one frame, four splashes, no Hall-only art, no manifest icons", async ({ page }) => {

@@ -3,44 +3,44 @@
   "scenario": "journey",
   "viewport": "1366x768",
   "cpu": 1,
-  "arrivedAtMs": 3068,
-  "landingToHomeWallMs": 2927,
+  "arrivedAtMs": 2758,
+  "landingToHomeWallMs": 2755,
   "marks": {
     "cls": 0.0197,
-    "mogzy": 1156,
-    "rootPainted": 3428,
-    "primaryCta": 3428,
-    "fourRooms": 3428,
-    "bookPainting": 3428,
-    "coversDecoded": 3428,
-    "upperCoversDecoded": 3428,
-    "domContentLoaded": 710,
-    "fcp": 1108
+    "mogzy": 1112,
+    "rootPainted": 2990,
+    "primaryCta": 2990,
+    "fourRooms": 2990,
+    "bookPainting": 2990,
+    "coversDecoded": 2990,
+    "upperCoversDecoded": 2990,
+    "domContentLoaded": 662,
+    "fcp": 868
   },
   "net": {
     "all": {
       "count": 275,
-      "total": 3334780,
-      "images": 1943471,
+      "total": 3335282,
+      "images": 1943527,
       "imageCount": 40,
-      "local": 2051289,
-      "external": 1283491
+      "local": 2051808,
+      "external": 1283474
     },
     "pre": {
       "count": 176,
-      "total": 2509040,
-      "images": 1403427,
+      "total": 2509627,
+      "images": 1403452,
       "imageCount": 8,
-      "local": 1768408,
-      "external": 740632
+      "local": 1768925,
+      "external": 740702
     },
     "post": {
       "count": 99,
-      "total": 825740,
-      "images": 540044,
+      "total": 825655,
+      "images": 540075,
       "imageCount": 32,
-      "local": 282881,
-      "external": 542859
+      "local": 282883,
+      "external": 542772
     },
     "dupes": [
       {
@@ -58,6 +58,8 @@
       "https://web-production-83e53.up.railway.app/assets/champions/Ahri/splash/0_default.jpg",
       "https://web-production-83e53.up.railway.app/assets/champions/Akali/splash/0_default.jpg",
       "https://web-production-83e53.up.railway.app/assets/champions/Viktor/splash/0_default.jpg",
+      "/mascot/mogzy-hat-transparent-128.webp",
+      "/mascot/mogzy-mascot-base-v1-240.webp",
       "/mascot/mogzy-holding-book-transparent-192.webp",
       "/mascot/mogzy-raising-hand-transparent-192.webp",
       "/mascot/mogzy-explaining-transparent-192.webp",
@@ -69,16 +71,14 @@
       "/assets/ranked/mogzy-role-icons/mid.svg",
       "/assets/ranked/mogzy-role-icons/bot.svg",
       "/assets/ranked/mogzy-role-icons/support.svg",
-      "/mascot/mogzy-hat-transparent-128.webp",
-      "/mascot/mogzy-mascot-base-v1-240.webp",
       "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
-      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
@@ -93,8 +93,8 @@
     ]
   },
   "interaction": {
-    "hoverToStateMs": 220,
+    "hoverToStateMs": 95,
     "longTasksMs": [],
-    "clickToArchivesContentMs": 444
+    "clickToArchivesContentMs": 304
   }
 }

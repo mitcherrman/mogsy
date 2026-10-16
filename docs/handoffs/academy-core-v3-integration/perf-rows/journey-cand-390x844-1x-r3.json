@@ -3,44 +3,44 @@
   "scenario": "journey",
   "viewport": "390x844",
   "cpu": 1,
-  "arrivedAtMs": 2931,
-  "landingToHomeWallMs": 2923,
+  "arrivedAtMs": 2705,
+  "landingToHomeWallMs": 2703,
   "marks": {
     "cls": 0.0026,
-    "mogzy": 1211,
-    "rootPainted": 3187,
-    "primaryCta": 3187,
-    "fourRooms": 3187,
-    "coversDecoded": 3187,
-    "upperCoversDecoded": 3187,
-    "bookPainting": 4660,
-    "domContentLoaded": 758,
-    "fcp": 1116
+    "mogzy": 1091,
+    "rootPainted": 2915,
+    "primaryCta": 2915,
+    "fourRooms": 2915,
+    "coversDecoded": 2915,
+    "upperCoversDecoded": 2915,
+    "bookPainting": 4474,
+    "domContentLoaded": 673,
+    "fcp": 832
   },
   "net": {
     "all": {
       "count": 275,
-      "total": 3334770,
-      "images": 1943479,
+      "total": 3335264,
+      "images": 1943505,
       "imageCount": 40,
-      "local": 2051289,
-      "external": 1283481
+      "local": 2051808,
+      "external": 1283456
     },
     "pre": {
       "count": 175,
-      "total": 2179805,
-      "images": 1074178,
+      "total": 2180291,
+      "images": 1074122,
       "imageCount": 7,
-      "local": 1439158,
-      "external": 740647
+      "local": 1439675,
+      "external": 740616
     },
     "post": {
       "count": 100,
-      "total": 1154965,
-      "images": 869301,
+      "total": 1154973,
+      "images": 869383,
       "imageCount": 33,
-      "local": 612131,
-      "external": 542834
+      "local": 612133,
+      "external": 542840
     },
     "dupes": [
       {
@@ -72,13 +72,13 @@
       "/mascot/mogzy-hat-transparent-128.webp",
       "/mascot/mogzy-mascot-base-v1-240.webp",
       "https://web-production-83e53.up.railway.app/assets/champions/Diana/icon.png",
-      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Neeko/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Ambessa/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Ashe/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Cassiopeia/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Kennen/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Kindred/icon.png",
+      "https://web-production-83e53.up.railway.app/assets/champions/KSante/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Lillia/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Lucian/icon.png",
       "https://web-production-83e53.up.railway.app/assets/champions/Mordekaiser/icon.png",
@@ -93,8 +93,8 @@
     ]
   },
   "interaction": {
-    "hoverToStateMs": 152,
+    "hoverToStateMs": 80,
     "longTasksMs": [],
-    "clickToArchivesContentMs": 344
+    "clickToArchivesContentMs": 306
   }
 }

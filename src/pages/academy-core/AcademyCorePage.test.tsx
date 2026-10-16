@@ -418,6 +418,50 @@ describe("the Patch Report book and the second screen", () => {
   });
 });
 
+describe("activation does not latch", () => {
+  function mountPersistent() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/lol"]}>
+          <Routes>
+            {/* a destination that keeps the Core mounted (slow chunk, redirect back, Back) */}
+            <Route path="*" element={<AcademyCorePage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("clears the activating state after the navigation window if the Core is still mounted", () => {
+    vi.useFakeTimers();
+    try {
+      mountPersistent();
+      fireEvent.click(within(screen.getByTestId("academy-core-slot-archives")).getByRole("link"));
+      expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "archives");
+      act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 10); });
+      act(() => { vi.advanceTimersByTime(1600); });
+      expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears it at once on a popstate (Back)", () => {
+    vi.useFakeTimers();
+    try {
+      mountPersistent();
+      fireEvent.click(within(screen.getByTestId("academy-core-slot-archives")).getByRole("link"));
+      act(() => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 10); });
+      expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "archives");
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+      expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("the home surface contract", () => {
   it("emits the funnel's hub_entered surface event and the Hall's arrival cue", () => {
     mount();
