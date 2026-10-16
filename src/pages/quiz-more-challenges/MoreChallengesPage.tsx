@@ -18,9 +18,9 @@
  * itself decides who may play.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen } from "lucide-react";
+import { BookOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import SEOHead from "@/components/SEOHead";
@@ -29,8 +29,12 @@ import { track } from "@/lib/analytics/track";
 import { httpDailyRunTransport } from "@/lib/daily-challenge/run/client";
 import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import { usePublicModeCatalog } from "@/lib/public-modes/client";
-import type { PublicModeEntry } from "@/lib/public-modes/contracts";
 import {
+  isPublicModeId, PUBLIC_MODE_TITLES, type PublicModeEntry, type PublicModeId,
+} from "@/lib/public-modes/contracts";
+import { RankedApiError, startBonusGame } from "@/lib/ranked-public/client";
+import {
+  BONUS_GAME_ORIGIN_ID,
   MORE_CHALLENGES_ROUTE,
   readMoreChallengesSource,
   resolveModeAction,
@@ -44,6 +48,30 @@ import {
 } from "@/lib/public-modes/report";
 import { buildModeRules } from "@/lib/public-modes/rules";
 import { cn } from "@/lib/utils";
+
+type StartNotice =
+  | { kind: "active_match"; title: string }
+  /** A bonus game of ANOTHER mode is still live: name it, offer the way back. */
+  | { kind: "other_game"; title: string; liveTitle: string; matchId: string }
+  | { kind: "paused"; title: string }
+  | { kind: "unavailable"; title: string }
+  | { kind: "rate_limited"; title: string }
+  | { kind: "failed"; title: string };
+
+const NOTICE_COPY: Record<Exclude<StartNotice["kind"], "other_game">, string> = {
+  active_match: "You already have a match in progress. Finish it first.",
+  paused: "New bonus games are paused for now. Please check back soon.",
+  unavailable: "This game can't be started right now. Try another one.",
+  rate_limited: "Too many starts in a row. Wait a moment and try again.",
+  failed: "That game could not be started. Please try again.",
+};
+
+/** One key per press: a retried request names the same match, never a second. */
+function newStartKey(): string {
+  const c = globalThis.crypto as Crypto | undefined;
+  if (c?.randomUUID) return c.randomUUID();
+  return `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`.padEnd(20, "0");
+}
 
 /** The player's Daily, read once per visit. A GET: no identity is minted. */
 function useTodaysDaily(): DailyContext {
@@ -66,6 +94,10 @@ export default function MoreChallengesPage() {
   const catalog = usePublicModeCatalog();
   const daily = useTodaysDaily();
   const [rulesFor, setRulesFor] = useState<PublicModeEntry | null>(null);
+  const [startingId, setStartingId] = useState<PublicModeId | null>(null);
+  const [notice, setNotice] = useState<StartNotice | null>(null);
+  const startingRef = useRef(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const viewed = useRef(false);
   useEffect(() => {
@@ -81,10 +113,72 @@ export default function MoreChallengesPage() {
   );
   const open = modes.filter((m) => m.launch !== null).length;
 
-  const play = (entry: PublicModeEntry, action: Extract<ModeAction, { kind: "play" }>) => {
-    track(MORE_CHALLENGES_MODE_SELECTED, { metadata: modeSelectedMetadata(entry.id, "play", source) });
-    navigate(action.to, { state: action.state });
+  const start = async (entry: PublicModeEntry) => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStartingId(entry.id);
+    setNotice(null);
+    try {
+      const out = await startBonusGame(entry.id, newStartKey());
+      // The server handed back a bonus game of another mode that is still
+      // live: say which, and let the player return to it on purpose.
+      if (out.result === "resumed" && out.modeId && out.modeId !== entry.id && out.status.matchId) {
+        setNotice({ kind: "other_game", title: entry.title, matchId: out.status.matchId,
+          liveTitle: isPublicModeId(out.modeId) ? PUBLIC_MODE_TITLES[out.modeId] : "bonus" });
+        return;
+      }
+      if (out.status.status === "matched" && out.status.matchId) {
+        navigate("/quiz/ranked", { state: { matchId: out.status.matchId, origin: BONUS_GAME_ORIGIN_ID } });
+        return;
+      }
+      setNotice({ kind: "failed", title: entry.title });
+    } catch (e) {
+      const code = e instanceof RankedApiError ? e.code : null;
+      const status = e instanceof RankedApiError ? e.status : 0;
+      if (code === "RANKED_ACTIVE_MATCH_EXISTS" || code === "RANKED_ALREADY_QUEUED") {
+        setNotice({ kind: "active_match", title: entry.title });
+      } else if (code === "BONUS_GAMES_PAUSED") {
+        setNotice({ kind: "paused", title: entry.title });
+        void catalog.refetch();
+      } else if (code === "RANKED_RATE_LIMITED" || status === 429) {
+        setNotice({ kind: "rate_limited", title: entry.title });
+      } else if (code === "BONUS_NOT_LAUNCHABLE" || code === "FEATURE_DISABLED" || status === 503) {
+        setNotice({ kind: "unavailable", title: entry.title });
+        void catalog.refetch();
+      } else {
+        setNotice({ kind: "failed", title: entry.title });
+      }
+    } finally {
+      startingRef.current = false;
+      setStartingId(null);
+    }
   };
+
+  const play = (entry: PublicModeEntry, action: PlayAction) => {
+    track(MORE_CHALLENGES_MODE_SELECTED, { metadata: modeSelectedMetadata(entry.id, "play", source) });
+    if (action.kind === "start") void start(entry);
+    else navigate(action.to, { state: action.state });
+  };
+
+  // PGM2 — "Play Again" on a bonus game's result comes back here with
+  // `?play=<mode>`: start that mode once the catalog says it can be started,
+  // then drop the parameter so Back or a reload never starts another.
+  const playParam = searchParams.get("play");
+  const playHandled = useRef(false);
+  useEffect(() => {
+    if (playHandled.current || !playParam || !catalog.data) return;
+    playHandled.current = true;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("play");
+      return next;
+    }, { replace: true, state: location.state });
+    if (!isPublicModeId(playParam)) return;
+    const entry = modes.find((m) => m.id === playParam);
+    const action = entry ? actions.get(entry.id) : undefined;
+    if (entry && action?.kind === "start") play(entry, action);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playParam, catalog.data]);
   const showRules = (entry: PublicModeEntry) => {
     track(MORE_CHALLENGES_MODE_SELECTED, { metadata: modeSelectedMetadata(entry.id, "rules", source) });
     setRulesFor(entry);
@@ -118,6 +212,33 @@ export default function MoreChallengesPage() {
           </p>
         </header>
 
+        <div aria-live="polite">
+          {notice && (
+            <section className="ranked-subpanel flex items-start justify-between gap-3 p-3 text-sm"
+              data-testid={`more-challenges-notice-${notice.kind}`} role="status">
+              <p>
+                <span className="font-semibold">{notice.title}: </span>
+                {notice.kind === "other_game"
+                  ? <>Your {notice.liveTitle} game is still in progress. Finish it first.{" "}
+                    <button type="button" className="underline underline-offset-2" data-testid="more-challenges-notice-return"
+                      onClick={() => navigate("/quiz/ranked", {
+                        state: { matchId: notice.matchId, origin: BONUS_GAME_ORIGIN_ID } })}>
+                      Return to it
+                    </button></>
+                  : NOTICE_COPY[notice.kind]}
+                {notice.kind === "active_match" && (
+                  <> <Link to="/quiz/ranked" className="underline underline-offset-2"
+                    data-testid="more-challenges-notice-resume">Return to it</Link></>
+                )}
+              </p>
+              <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss"
+                className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </section>
+          )}
+        </div>
+
         {catalog.isPending ? (
           <CatalogSkeleton />
         ) : catalog.isError ? (
@@ -141,6 +262,8 @@ export default function MoreChallengesPage() {
                     entry={m}
                     action={actions.get(m.id) ?? { kind: "coming_soon" }}
                     onPlay={play}
+                    starting={startingId === m.id}
+                    busy={startingId !== null}
                     onRules={() => showRules(m)}
                   />
                 </li>
@@ -163,7 +286,8 @@ export default function MoreChallengesPage() {
 
 function statusChip(action: ModeAction): { label: string; tone: "open" | "done" | "muted" } {
   switch (action.kind) {
-    case "play": return { label: "Open", tone: "open" };
+    case "play":
+    case "start": return { label: "Open", tone: "open" };
     case "done": return { label: action.label, tone: "done" };
     case "checking": return { label: "Checking…", tone: "muted" };
     case "blocked": return { label: "Not now", tone: "muted" };
@@ -171,11 +295,15 @@ function statusChip(action: ModeAction): { label: string; tone: "open" | "done" 
   }
 }
 
-function ModeCard({ entry, action, onPlay, onRules }: {
+type PlayAction = Extract<ModeAction, { kind: "play" | "start" }>;
+
+function ModeCard({ entry, action, onPlay, onRules, starting = false, busy = false }: {
   entry: PublicModeEntry;
   action: ModeAction;
-  onPlay: (entry: PublicModeEntry, action: Extract<ModeAction, { kind: "play" }>) => void;
+  onPlay: (entry: PublicModeEntry, action: PlayAction) => void;
   onRules: () => void;
+  starting?: boolean;
+  busy?: boolean;
 }) {
   const chip = statusChip(action);
   const dimmed = action.kind === "coming_soon" || action.kind === "blocked";
@@ -208,7 +336,7 @@ function ModeCard({ entry, action, onPlay, onRules }: {
       </p>
 
       <div className="mt-auto flex flex-col gap-2">
-        <ModeCardAction entry={entry} action={action} onPlay={onPlay} />
+        <ModeCardAction entry={entry} action={action} onPlay={onPlay} starting={starting} busy={busy} />
         <button
           type="button"
           onClick={onRules}
@@ -226,18 +354,22 @@ function ModeCard({ entry, action, onPlay, onRules }: {
   );
 }
 
-function ModeCardAction({ entry, action, onPlay }: {
+function ModeCardAction({ entry, action, onPlay, starting, busy }: {
   entry: PublicModeEntry;
   action: ModeAction;
-  onPlay: (entry: PublicModeEntry, action: Extract<ModeAction, { kind: "play" }>) => void;
+  onPlay: (entry: PublicModeEntry, action: PlayAction) => void;
+  starting: boolean;
+  busy: boolean;
 }) {
   const box = "rounded-md border border-dashed border-[rgba(169,179,193,0.35)] px-3 py-2 text-center text-xs text-[color:var(--ranked-muted)]";
   switch (action.kind) {
     case "play":
+    case "start":
       return (
         <>
-          <Button className="min-h-[44px] w-full" onClick={() => onPlay(entry, action)} data-testid="mode-card-play">
-            {action.label}
+          <Button className="min-h-[44px] w-full" onClick={() => onPlay(entry, action)} data-testid="mode-card-play"
+            disabled={busy}>
+            {starting ? "Starting…" : action.label}
           </Button>
           {action.note && (
             <p className="text-center text-[11px] text-[color:var(--ranked-muted)]" data-testid="mode-card-note">

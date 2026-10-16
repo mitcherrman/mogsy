@@ -27,7 +27,7 @@ export interface PerfectTimingResultsProps {
   onPlayAgain: () => void;
   /** An optional quiet exit ("Back to the lab"). */
   onExit?: (() => void) | null;
-  /** PT5: the quiet exit's label (the mode picker says "Change mode"). */
+  /** The quiet exit's label: PT5's mode picker says "Change mode"; a PGM2 public host says "Back to More Challenges". */
   exitLabel?: string;
 }
 

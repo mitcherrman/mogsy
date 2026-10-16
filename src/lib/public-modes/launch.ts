@@ -23,10 +23,20 @@ import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, hasMainDaily, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
 import { DAILY_CONTINUE_STATE, DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
-import type { PublicModeEntry } from "./contracts";
+import type { PublicModeEntry, PublicModeId } from "./contracts";
 
 export const MORE_CHALLENGES_ROUTE = "/quiz/more-challenges";
 export const DAILY_CHALLENGE_ROUTE = "/quiz/daily-challenge";
+
+/** PGM2 — the public page of a specialized-session mode. */
+export const sessionModeRoute = (id: PublicModeId) => `${MORE_CHALLENGES_ROUTE}/${id}`;
+
+/**
+ * PGM2 — router state the catalog's Play puts beside a bonus game's match id
+ * when it hands the match to `/quiz/ranked` (the Journey Library pattern).
+ * The persisted host (`bonus_game`) decides once the match reports it.
+ */
+export const BONUS_GAME_ORIGIN_ID = "bonus_game";
 
 /** Where the catalog was opened from (telemetry only; changes nothing shown). */
 export type MoreChallengesSource = "daily" | "leaguecraft" | "direct";
@@ -50,6 +60,8 @@ export type DailyContext =
 
 export type ModeAction =
   | { kind: "play"; label: string; to: string; state: unknown; note: string | null }
+  /** PGM2 — start (or get back) a Ranked-backed bonus game; the page POSTs. */
+  | { kind: "start"; label: string; modeId: PublicModeId; note: string | null }
   /** Still reading the player's Daily; draw a placeholder, not a button. */
   | { kind: "checking" }
   /** Already played today. */
@@ -65,11 +77,15 @@ export function resolveModeAction(entry: PublicModeEntry, daily: DailyContext): 
   const { availability, launch } = entry;
   if (!launch) {
     if (availability.status === "coming_soon") return { kind: "coming_soon" };
+    if (availability.status === "paused") return { kind: "blocked", label: "Paused", note: availability.message };
     return { kind: "blocked", label: "Unavailable right now", note: availability.message };
   }
-  // A launch kind this client cannot carry out is never drawn as Play.
+  // PGM2 — a bonus game: repeatable, unrated, open to guests. Play starts it
+  // (or hands back a game already running).
   if (launch.kind !== "daily_stage") {
-    return { kind: "blocked", label: "Unavailable right now", note: null };
+    return launch.kind === "ranked_match"
+      ? { kind: "start", label: "Play", modeId: entry.id, note: null }
+      : { kind: "play", label: "Play", to: sessionModeRoute(entry.id), state: null, note: null };
   }
   if (daily.state === "loading") return { kind: "checking" };
   const run = daily.state === "ready" ? daily.run : null;

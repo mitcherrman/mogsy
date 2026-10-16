@@ -28,9 +28,14 @@ const h = vi.hoisted(() => ({
   readToday: vi.fn(),
   track: vi.fn(),
   fetch: vi.fn(),
+  startBonusGame: vi.fn(),
 }));
 
 vi.mock("@/lib/analytics/track", () => ({ track: h.track }));
+vi.mock("@/lib/ranked-public/client", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/ranked-public/client")>();
+  return { ...actual, startBonusGame: h.startBonusGame };
+});
 vi.mock("@/lib/daily-challenge/run/client", async (importActual) => {
   const actual = await importActual<typeof import("@/lib/daily-challenge/run/client")>();
   return { ...actual, httpDailyRunTransport: { ...actual.httpDailyRunTransport, readToday: h.readToday } };
@@ -40,6 +45,7 @@ import MoreChallengesPage from "./MoreChallengesPage";
 import { MogzyDockProvider } from "@/components/mogzy-dock/MogzyDock";
 import { V5_ELIGIBLE_DAY, fixtureV5Run, wireResult } from "@/lib/daily-challenge/run/fixtures";
 import { moreChallengesState } from "@/lib/public-modes/launch";
+import { RankedApiError } from "@/lib/ranked-public/client";
 
 beforeAll(() => { globalThis.Request = RouterTestRequest as unknown as typeof Request; });
 afterAll(() => { globalThis.Request = NativeRequest; });
@@ -66,12 +72,18 @@ function DailyProbe() {
   return <pre data-testid="daily-route">{JSON.stringify(location.state)}</pre>;
 }
 
-function renderPage(state: unknown = null) {
+function RankedProbe() {
+  const location = useLocation();
+  return <pre data-testid="ranked-route">{JSON.stringify(location.state)}</pre>;
+}
+
+function renderPage(state: unknown = null, search = "") {
   const router = createMemoryRouter([
     { path: "/quiz/more-challenges", element: <MoreChallengesPage /> },
     { path: "/quiz/daily-challenge", element: <DailyProbe /> },
+    { path: "/quiz/ranked", element: <RankedProbe /> },
     { path: "/quiz", element: <h1>Leaguecraft</h1> },
-  ], { initialEntries: [{ pathname: "/quiz/more-challenges", state }] });
+  ], { initialEntries: [{ pathname: "/quiz/more-challenges", search, state }] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -81,6 +93,8 @@ function renderPage(state: unknown = null) {
 }
 
 const cards = () => screen.getAllByTestId("mode-card");
+/** The modes the captured backend catalog has opened. */
+const OPEN = wire.modes.filter((m) => m.launch).map((m) => m.id);
 const card = (id: string) => cards().find((c) => c.getAttribute("data-mode-id") === id)!;
 
 describe("PGM1 — More Challenges", () => {
@@ -88,7 +102,8 @@ describe("PGM1 — More Challenges", () => {
     renderPage();
     await waitFor(() => expect(cards()).toHaveLength(13));
     expect(cards().map((c) => c.getAttribute("data-mode-id"))).toEqual(wire.modes.map((m) => m.id));
-    expect(screen.getByTestId("more-challenges-count")).toHaveTextContent("13 bonus modes · 2 open now");
+    expect(screen.getByTestId("more-challenges-count"))
+      .toHaveTextContent(`13 bonus modes · ${OPEN.length} open now`);
     for (const c of cards()) {
       expect(within(c).getByTestId("mode-card-title")).toBeInTheDocument();
       expect(within(c).getByTestId("mode-card-theme")).toBeInTheDocument();
@@ -105,13 +120,14 @@ describe("PGM1 — More Challenges", () => {
     renderPage();
     await waitFor(() => expect(cards()).toHaveLength(13));
     const comingSoon = cards().filter((c) => c.getAttribute("data-action") === "coming_soon");
-    expect(comingSoon.map((c) => c.getAttribute("data-mode-id"))).toEqual(wire.modes.slice(2).map((m) => m.id));
+    expect(comingSoon.map((c) => c.getAttribute("data-mode-id")))
+      .toEqual(wire.modes.filter((m) => !m.launch).map((m) => m.id));
     for (const c of comingSoon) {
       expect(within(c).queryByTestId("mode-card-play")).toBeNull();
       expect(within(c).getByTestId("mode-card-coming-soon")).toHaveTextContent("Coming soon");
       expect(within(c).getByTestId("mode-card-status")).toHaveTextContent("Coming soon");
     }
-    expect(screen.getAllByTestId("mode-card-play")).toHaveLength(2);
+    expect(screen.getAllByTestId("mode-card-play")).toHaveLength(OPEN.length);
   });
 
   it("with no Daily today, the bonus stages offer to start it and say why", async () => {
@@ -144,9 +160,10 @@ describe("PGM1 — More Challenges", () => {
     renderPage();
     await waitFor(() => expect(cards()).toHaveLength(13));
     expect(within(card("time_trial")).getByTestId("mode-card-checking")).toBeInTheDocument();
-    expect(screen.queryAllByTestId("mode-card-play")).toHaveLength(0);
+    // Only the Daily stages wait on the Daily; a bonus game is playable at once.
+    expect(screen.queryAllByTestId("mode-card-play")).toHaveLength(OPEN.length - 2);
     await act(async () => { resolve(null); });
-    await waitFor(() => expect(screen.getAllByTestId("mode-card-play")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByTestId("mode-card-play")).toHaveLength(OPEN.length));
   });
 
   it("opens a mode's Rules in Mogzy's scroll, from the server's copy", async () => {
@@ -155,7 +172,8 @@ describe("PGM1 — More Challenges", () => {
     fireEvent.click(within(card("match_grid")).getByTestId("mode-card-rules"));
     const rules = await screen.findByTestId("mode-rules-content-match_grid");
     expect(rules).toHaveTextContent("Seat each rune under the rune tree it belongs to.");
-    expect(rules).toHaveTextContent("Scoring is published when this mode opens to everyone.");
+    expect(rules).toHaveTextContent("Three boards against a bot");
+    expect(rules).toHaveTextContent("Each board scores 2 points only when every rune is under its own tree");
     expect(rules).toHaveTextContent("Never changes your Daily score.");
     expect(h.track).toHaveBeenCalledWith("more_challenges_mode_selected",
       { metadata: { game_mode_id: "match_grid", action: "rules", source: "direct" } });
@@ -178,5 +196,76 @@ describe("PGM1 — More Challenges", () => {
       .toMatch(/grid-cols-1.*sm:grid-cols-2.*lg:grid-cols-3/);
     for (const b of screen.getAllByTestId("mode-card-play")) expect(b.className).toMatch(/min-h-\[44px\]/);
     expect(screen.getByTestId("more-challenges-back")).toHaveAttribute("href", "/quiz");
+  });
+
+  // ── PGM2: Ranked-backed bonus games ───────────────────────────────────────
+
+  const matched = (matchId: string) => ({
+    status: { status: "matched", matchId } as never, modeId: "match_grid", result: "created" as const,
+  });
+
+  it("PGM2: Play on Match Grid starts the bonus game and hands it to the arena", async () => {
+    h.startBonusGame.mockResolvedValue(matched("rbg_abc"));
+    const router = renderPage();
+    await waitFor(() => expect(within(card("match_grid")).getByTestId("mode-card-play")).toHaveTextContent("Play"));
+    fireEvent.click(within(card("match_grid")).getByTestId("mode-card-play"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/ranked"));
+    expect(JSON.parse(screen.getByTestId("ranked-route").textContent!))
+      .toEqual({ matchId: "rbg_abc", origin: "bonus_game" });
+    const [modeId, key] = h.startBonusGame.mock.calls[0];
+    expect(modeId).toBe("match_grid");
+    expect(key).toMatch(/^[A-Za-z0-9_-]{16,128}$/);
+    expect(h.track).toHaveBeenCalledWith("more_challenges_mode_selected",
+      { metadata: { game_mode_id: "match_grid", action: "play", source: "direct" } });
+  });
+
+  it("PGM2: another live match is named, with the way back to it", async () => {
+    h.startBonusGame.mockRejectedValue(
+      new RankedApiError("backend", 409, "finish it", "RANKED_ACTIVE_MATCH_EXISTS"));
+    renderPage();
+    await waitFor(() => expect(within(card("match_grid")).getByTestId("mode-card-play")).toBeInTheDocument());
+    fireEvent.click(within(card("match_grid")).getByTestId("mode-card-play"));
+    expect(await screen.findByTestId("more-challenges-notice-active_match")).toHaveTextContent("Match Grid");
+    expect(screen.getByTestId("more-challenges-notice-resume")).toHaveAttribute("href", "/quiz/ranked");
+  });
+
+  it("PGM2: a paused Bonus Games switch says so and starts nothing", async () => {
+    h.startBonusGame.mockRejectedValue(
+      new RankedApiError("backend", 503, "paused", "BONUS_GAMES_PAUSED"));
+    const router = renderPage();
+    await waitFor(() => expect(within(card("match_grid")).getByTestId("mode-card-play")).toBeInTheDocument());
+    fireEvent.click(within(card("match_grid")).getByTestId("mode-card-play"));
+    expect(await screen.findByTestId("more-challenges-notice-paused")).toHaveTextContent("paused");
+    expect(router.state.location.pathname).toBe("/quiz/more-challenges");
+  });
+
+  it("PGM2: Play Again (?play=match_grid) starts that mode once and drops the parameter", async () => {
+    h.startBonusGame.mockResolvedValue(matched("rbg_again"));
+    const router = renderPage(null, "?play=match_grid");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/ranked"));
+    expect(h.startBonusGame).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(screen.getByTestId("ranked-route").textContent!).matchId).toBe("rbg_again");
+  });
+
+  it("PGM2: ?play= for a mode that cannot start starts nothing", async () => {
+    const router = renderPage(null, "?play=rangefinder");
+    await waitFor(() => expect(cards()).toHaveLength(13));
+    await waitFor(() => expect(router.state.location.search).toBe(""));
+    expect(h.startBonusGame).not.toHaveBeenCalled();
+  });
+
+  it("PGM2: a live bonus game of another mode is named, not silently opened", async () => {
+    h.startBonusGame.mockResolvedValue({
+      status: { status: "matched", matchId: "rbg_live" } as never, modeId: "reconstruct", result: "resumed",
+    });
+    const router = renderPage();
+    await waitFor(() => expect(within(card("match_grid")).getByTestId("mode-card-play")).toBeInTheDocument());
+    fireEvent.click(within(card("match_grid")).getByTestId("mode-card-play"));
+    const notice = await screen.findByTestId("more-challenges-notice-other_game");
+    expect(notice).toHaveTextContent("Your Reconstruct game is still in progress");
+    expect(router.state.location.pathname).toBe("/quiz/more-challenges");
+    fireEvent.click(screen.getByTestId("more-challenges-notice-return"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/ranked"));
+    expect(JSON.parse(screen.getByTestId("ranked-route").textContent!)).toEqual({ matchId: "rbg_live", origin: "bonus_game" });
   });
 });

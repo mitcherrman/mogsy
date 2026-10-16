@@ -25,7 +25,7 @@ export const PHONE_ROOM_FLOOR_PX = 380;
  * be handed its own collapsed height. There the room is what the viewport
  * leaves under the stage's top edge, never less than a usable floor.
  */
-export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | undefined {
+export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>, phoneReservePx = 0): number | undefined {
   const measured = useStageRoom(ref);
   const [phoneRoom, setPhoneRoom] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -36,7 +36,9 @@ export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | 
       if (desktop.matches || !stage) { setPhoneRoom(undefined); return; }
       const cs = getComputedStyle(stage);
       const top = stage.getBoundingClientRect().top + window.scrollY;
-      const room = Math.floor(window.innerHeight - top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 12);
+      // PGM2: a host whose dock tabs float at the foot of a phone (Report,
+      // Rules) reserves that band, so the instrument's own controls stay clear.
+      const room = Math.floor(window.innerHeight - top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 12 - phoneReservePx);
       setPhoneRoom(Math.max(PHONE_ROOM_FLOOR_PX, room));
     };
     read();
@@ -46,7 +48,7 @@ export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | 
       window.removeEventListener("resize", read);
       desktop.removeEventListener?.("change", read);
     };
-  }, [ref]);
+  }, [ref, phoneReservePx]);
   return phoneRoom ?? measured;
 }
 
