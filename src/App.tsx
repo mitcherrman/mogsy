@@ -266,6 +266,12 @@ const ProPlayArenaDev = import.meta.env.DEV
 const WorldsExperienceDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/worlds-experience/WorldsExperienceDev"))
   : null;
+// ACADEMY CORE V3.5: the Living Hextech Orrery prototype (orbiting books around
+// an enlarged Core). Same DEVELOPMENT-ONLY rule: the production `/lol` stays the
+// V3 Core; this path 404s in a production build. Under /lol/ for the LoL theme.
+const AcademyCoreV35Dev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/academy-core-v35/AcademyCoreV35Page"))
+  : null;
 // GM-M1: the Match Grid visual-diagnosis lab. DEVELOPMENT-ONLY; the path
 // 404s in production. The production path is the `match` Ranked module.
 const MatchGridLab = import.meta.env.DEV
@@ -755,6 +761,12 @@ export const appRouter = createBrowserRouter(
                     <>
                       <Route path="/lol/dev/worlds-experience/*" element={<Suspense fallback={<RouteFallback />}><WorldsExperienceDev /></Suspense>} />
                       <Route path="/dev/worlds-experience" element={<Navigate to="/lol/dev/worlds-experience" replace />} />
+                    </>
+                  ) : null}
+                  {AcademyCoreV35Dev ? (
+                    <>
+                      <Route path="/lol/dev/academy-core-v35" element={<Suspense fallback={<AcademyCoreFallback />}><AcademyCoreV35Dev /></Suspense>} />
+                      <Route path="/dev/academy-core-v35" element={<Navigate to="/lol/dev/academy-core-v35" replace />} />
                     </>
                   ) : null}
                   {MatchGridLab ? (
