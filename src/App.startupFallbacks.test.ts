@@ -46,12 +46,19 @@ describe("startup fallbacks are plain surfaces, not skeletons", () => {
     expect(root!).not.toContain("RouteLoader");
   });
 
-  it("leaves the hub on the invisible in-shell fallback", () => {
+  it("leaves the home on the invisible in-shell fallback", () => {
     // Layout is already mounted and already painting the League colour here, so
-    // the hub needs its height held and nothing drawn. Rendering the hub's own
-    // geometry made the visitor watch the page assemble.
-    expect(routeLine("/lol")).toContain("fallback={<RouteFallback />}");
+    // the home needs its height held and nothing drawn. Rendering the hub's own
+    // geometry made the visitor watch the page assemble. The Academy Core holds
+    // the hero's own height (so the shell does not shift when the chunk mounts);
+    // the Hall at /lol/hall keeps the generic in-shell fallback.
+    expect(routeLine("/lol")).toContain("fallback={<AcademyCoreFallback />}");
     expect(routeLine("/lol")).not.toContain("RouteLoader");
+    expect(routeLine("/lol/hall")).toContain("fallback={<RouteFallback />}");
+    expect(routeLine("/lol/hall")).not.toContain("RouteLoader");
+    const fallback = appSource.slice(appSource.indexOf("const AcademyCoreFallback"));
+    expect(fallback.slice(0, 220)).toContain("aria-hidden");
+    expect(fallback.slice(0, 220)).toContain("var(--app-header-h)");
   });
 
   it("no longer ships any destination-shaped skeleton component", () => {

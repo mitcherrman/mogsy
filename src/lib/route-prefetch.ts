@@ -55,6 +55,9 @@ export const Routes = {
   Quiz: lazyWithRetry(() => import("@/pages/Quiz")),
   QuizDiagnostics: lazyWithRetry(() => import("@/pages/QuizDiagnostics")),
   QuizAdmin: lazyWithRetry(() => import("@/pages/QuizAdmin")),
+  // The home (`/lol`): Academy Core. The previous Home Hub is `LolHub`, now
+  // served at `/lol/hall` — keep them separate so warming one never pulls the other.
+  AcademyCore: lazyWithRetry(() => import("@/pages/academy-core/AcademyCorePage")),
   LolHub: lazyWithRetry(() => import("@/pages/LolHub")),
   LolTierList: lazyWithRetry(() => import("@/pages/LolTierList")),
   LolDevChangelog: lazyWithRetry(() => import("@/pages/LolDevChangelog")),
@@ -110,7 +113,8 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/quiz/admin", keys: ["QuizAdmin"] },
   { test: (p) => p.startsWith("/admin/quiz-content"), keys: ["AdminQuizWorkspace", "AdminQuizReview"] },
   { test: (p) => p === "/admin/quiz-builder" || p === "/admin/quiz-review", keys: ["AdminQuizWorkspace"] },
-  { test: (p) => p === "/lol", keys: ["LolHub", "CombatLab", "Quiz"] },
+  { test: (p) => p === "/lol", keys: ["AcademyCore", "CombatLab", "Quiz"] },
+  { test: (p) => p === "/lol/hall", keys: ["LolHub"] },
   { test: (p) => p === "/lol/tier-list", keys: ["LolTierList"] },
   { test: (p) => p.startsWith("/items/"), keys: ["ItemDetail"] },
   { test: (p) => p === "/lol/docs/items", keys: ["LeagueDocsItemIndex", "ItemDetail"] },

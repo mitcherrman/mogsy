@@ -1,9 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { SITE_URL } from "@/lib/site-config";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
 import MobileAcademyBookStack from "@/components/lol/MobileAcademyBookStack";
@@ -28,7 +27,6 @@ import {
 } from "@/components/lol/hub-guide";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
-import { useSurfaceEvent } from "@/lib/analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useSfx } from "@/lib/audio/useSfx";
 import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
@@ -442,6 +440,23 @@ export default function LolHub() {
     markHubVisited();
   }, []);
 
+  // ACADEMY CORE V2 — `#academy-commons` deep link (`/lol/hall#academy-commons`;
+  // a legacy `/lol#academy-commons` is forwarded here by the Core). The Commons section
+  // has carried `id="academy-commons"` since HUB-NEXT1, but the browser's own
+  // fragment scroll fires before this lazily loaded page has mounted, so the
+  // link always landed on the Hall. Honour the fragment ONCE on mount through
+  // the same fold navigation the "Explore the Academy" control uses (reduced
+  // motion jumps, phones use the authored pager). Nothing in production emits
+  // this hash today, so every other visit is byte-identical in behaviour.
+  const { hash: locationHash } = useLocation();
+  useEffect(() => {
+    if (locationHash !== "#academy-commons") return;
+    const frame = window.requestAnimationFrame(() => navigateHubFold("commons"));
+    return () => window.cancelAnimationFrame(frame);
+    // Mount only: a later in-page scroll must not re-snap to the Commons.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // PERF1 — the Hub's own art first, then its covers and the four destination
   // chunks. Usually already done by the Landing; this makes a direct /lol
   // visit get the same ordering. Idempotent, never awaited.
@@ -652,16 +667,11 @@ export default function LolHub() {
     };
   }, []);
 
-  // FUNNEL1B2: this is the HUB, and it now says so. The event that used to
-  // fire here was `lol_landing_viewed`, which has been a misnomer since the
-  // root entrance shipped — /lol has not been the landing page for a long
-  // time, and reporting it as one made the real landing (/) invisible while
-  // overstating the top of the funnel. `landing_viewed` now comes from
-  // MogzyEntryV2; this is `hub_entered`, and the two are separate steps.
-  //
-  // Once per session rather than once per mount: a visitor bouncing Hub →
-  // Leaguecraft → Hub is one hub entry, not three.
-  useSurfaceEvent("hub_entered");
+  // FUNNEL1B2 / ACADEMY CORE: the canonical `hub_entered` surface event belongs
+  // to the home, which is now the Academy Core at `/lol` (one emitter per
+  // canonical event, pinned by src/test/funnel/canonicalSurfaces.test.tsx). This
+  // page is the same home's second view at `/lol/hall`, so a visit here that
+  // came through the Core is already counted and a direct visit adds nothing.
 
   useEffect(() => {
     // This semantic has no built-in voice, preserving the legacy path's
@@ -964,21 +974,11 @@ export default function LolHub() {
       <SEOHead
         title="Mogzy LoL Quiz | League of Legends Trivia and Training"
         description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."
-        path="/lol"
+        path="/lol/hall"
         keywords="league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, league learning game, league of legends training tool, combat lab, lol tier list"
-        jsonLd={[
-          {
-            "@context": "https://schema.org",
-            "@type": "WebApplication",
-            name: "Mogzy LoL Quiz",
-            url: `${SITE_URL}/lol`,
-            applicationCategory: "GameApplication",
-            operatingSystem: "Web",
-            description:
-              "League of Legends quiz and training tool: champion, item, ability, build and esports trivia, plus a damage simulator.",
-            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-          },
-        ]}
+        // The Hall is an alternate, non-indexed view of the home since the
+        // Academy Core took `/lol`: one indexed home, no duplicate structured data.
+        noindex
       />
 
       {/* ================= Academy Library — above-the-fold hub ================= */}

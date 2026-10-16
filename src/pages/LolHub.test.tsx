@@ -549,13 +549,12 @@ describe("LolHub — navigation structure", () => {
     expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
   });
 
-  it("fires the canonical HUB event — not a landing event — and keeps the ad slot mounted", () => {
+  it("emits no landing event and no second hub_entered — the Core at /lol owns it — and keeps the ad slot mounted", () => {
     renderHub();
-    // FUNNEL1B2. This used to assert `lol_landing_viewed`, which is what /lol
-    // had been emitting since long after it stopped being the landing page.
-    // `landing_viewed` now belongs to MogzyEntryV2 at `/`, and this route
-    // reports what it actually is.
-    expect(mocks.trackSurface).toHaveBeenCalledWith("hub_entered");
+    // FUNNEL1B2 + ACADEMY CORE. `hub_entered` is emitted once, by the home
+    // (the Academy Core at /lol); this is the same home's second view at
+    // /lol/hall. `landing_viewed` belongs to MogzyEntryV2 at `/`.
+    expect(mocks.trackSurface).not.toHaveBeenCalledWith("hub_entered");
     expect(mocks.trackSurface).not.toHaveBeenCalledWith("landing_viewed");
     expect(mocks.trackFunnelEvent).not.toHaveBeenCalledWith("lol_landing_viewed");
     expect(screen.getByTestId("ad-lol_hub_mid")).toBeTruthy();

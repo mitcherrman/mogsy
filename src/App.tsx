@@ -77,6 +77,7 @@ const CombatLabDiagnostics = R.CombatLabDiagnostics.Component;
 const Quiz = R.Quiz.Component;
 const QuizDiagnostics = R.QuizDiagnostics.Component;
 const QuizAdmin = R.QuizAdmin.Component;
+const AcademyCore = R.AcademyCore.Component;
 const LolHub = R.LolHub.Component;
 const LolTierList = R.LolTierList.Component;
 const LolDevChangelog = R.LolDevChangelog.Component;
@@ -386,6 +387,15 @@ import { StartupSurface } from "@/components/startup/StartupShells";
 const RouteFallback = () => <div aria-hidden className="min-h-[50vh]" />;
 
 /**
+ * The Academy Core's fallback holds the hero's own height (not the generic
+ * 50vh), so the sitewide shell does not paint high and then get pushed down
+ * when the chunk mounts (measured 0.07–0.09 CLS on the preview).
+ */
+const AcademyCoreFallback = () => (
+  <div aria-hidden style={{ minHeight: "calc(100dvh - var(--app-header-h))" }} />
+);
+
+/**
  * SIM2 Phase 5A: the ONE element both team-sim paths render.
  *
  * Declared once and used by both <Route>s, so the promoted route and the
@@ -624,7 +634,15 @@ export const appRouter = createBrowserRouter(
                       League base colour, so the hub needs nothing but its height
                       held. Drawing the hub's geometry here made the visitor
                       watch the page assemble; a plain surface just resolves. */}
-                  <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
+                  {/* ACADEMY CORE V3 — `/lol` is the Four-Book Hextech Core. The
+                      previous Home Hub (with Academy Commons as its second
+                      screen) is kept whole at `/lol/hall`; the preview URLs
+                      redirect to the home. `/lol#academy-commons` is
+                      forwarded to the Hall by the Core itself. */}
+                  <Route path="/lol" element={<Suspense fallback={<AcademyCoreFallback />}><AcademyCore /></Suspense>} />
+                  <Route path="/lol/hall" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
+                  <Route path="/lol/dev/academy-core" element={<Navigate to="/lol" replace />} />
+                  <Route path="/dev/academy-core" element={<Navigate to="/lol" replace />} />
                   {/* LS-RETIRE1 — standalone League Swipe (the old standalone
                       "Meta Reflex") is retired; Meta Reflex lives on inside
                       Ranked and Daily. These are legacy-bookmark redirects
