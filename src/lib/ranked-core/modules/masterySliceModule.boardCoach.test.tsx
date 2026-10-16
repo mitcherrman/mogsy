@@ -96,6 +96,8 @@ describe("the trigger: the first SAVED fact — any fact", () => {
       .filter((l) => load(EXT).some((x) => x.label === l)));
     const c = coach()!;
     expect(c).toHaveTextContent(BOARD_COACH_COPY.fine);
+    // JUX1-F1 — the owner's exact words: nothing added, no capital, no punctuation.
+    expect(c.querySelector(".journey-coach__text")!.textContent).toBe("check board to see more");
     expect(c).toHaveAttribute("role", "status");
     expect(c.querySelector('img[data-mogzy-art-category="mascot"]')).not.toBeNull();   // Mogzy's face
     expect(c.contains(document.activeElement)).toBe(false);                           // no focus taken
@@ -177,11 +179,12 @@ describe("frequency, copy, dismissal", () => {
     play(DAILY, ordered(DAILY)[0].label, "finished", (s) => expect(coach(), s.label).toBeNull());
   });
 
-  it("a coarse pointer gets the tap copy; nothing about hovering", () => {
+  it("a coarse pointer gets the same exact words; nothing about hovering", () => {
     mockCoarse(true);
     play(EXT, "child0-live", "child1-reveal");
     expect(coach()).toHaveTextContent(BOARD_COACH_COPY.coarse);
     expect(coach()!.textContent).not.toMatch(/hover/i);
+    expect(coach()!.querySelector(".journey-coach__text")!.textContent).toBe("check board to see more");
   });
 
   it("dismissed by a tap on it", () => {

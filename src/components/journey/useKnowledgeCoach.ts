@@ -1,10 +1,9 @@
 /**
- * JATTN1 — THE BOARD COACH: teach the board once, the first time it SAVES a
- * fact (any fact — an ability's cooldown or raw damage, a champion's stat —
- * not only a portrait stat, which is all JP4/JP5's portrait coach waited for).
+ * JATTN1 → JUX1-F1 — THE BOARD COACH: teach the board once, the first time
+ * something new arrives on it to inspect — a fact a reveal saved (its `!`) or
+ * an item the viewer watched being bought — with the owner's exact words:
  *
- *   "The board saves facts as you go. Hover or click highlighted parts for context."
- *   (coarse pointer: "… Tap highlighted parts for context.")
+ *   "check board to see more"   (the same words for every pointer)
  *
  * It is a Mogzy Guide message (`useMogzyGuide`: the guide's priority, its
  * once-per-browser storage under a new Journey key, its TTL-as-dismissal), drawn
@@ -29,19 +28,22 @@ import {
   createGuideStorage, guideStorageKey, useMogzyGuide, type GuideMessage, type GuideStorage, type MogzyGuideController,
 } from "@/components/mogzy-guide";
 
-/** The Mogzy Guide surface + message id: storage key `mogzy-guide:v1:journey-board:board-saves-v1`. */
+/**
+ * The Mogzy Guide surface + message id: storage key
+ * `mogzy-guide:v1:journey-board:board-check-more-v1`. A new id (JATTN1's was
+ * `board-saves-v1`), so a viewer who saw the old words sees these once.
+ */
 export const BOARD_COACH_SURFACE = "journey-board";
-export const BOARD_COACH_ID = "board-saves-v1";
+export const BOARD_COACH_ID = "board-check-more-v1";
 export const BOARD_COACH_KEY = guideStorageKey(BOARD_COACH_SURFACE, BOARD_COACH_ID);
 /** How long the coach stays up by itself, at most. */
 export const BOARD_COACH_TTL_MS = 7000;
 /** The least clock-free time worth starting it in; less defers it to the next window. */
 export const BOARD_COACH_MIN_MS = 2000;
 
-export const BOARD_COACH_COPY = {
-  fine: "The board saves facts as you go. Hover or click highlighted parts for context.",
-  coarse: "The board saves facts as you go. Tap highlighted parts for context.",
-} as const;
+/** The owner's exact words: no capital, no punctuation, nothing added. */
+export const BOARD_COACH_TEXT = "check board to see more";
+export const BOARD_COACH_COPY = { fine: BOARD_COACH_TEXT, coarse: BOARD_COACH_TEXT } as const;
 
 /**
  * One storage for every board in this page load (the guide's own convention:

@@ -297,8 +297,9 @@ describe("reduced motion", () => {
   it("every Journey beat animation is gated behind `prefers-reduced-motion: no-preference`", () => {
     const ungated = motion.slice(0, motion.indexOf("@media (prefers-reduced-motion: no-preference)"));
     expect(ungated).not.toMatch(/animation\s*:/);
-    for (const k of ["journey-changed-pulse", "journey-level-roll", "journey-pip-fill", "journey-unlock-art",
-      "journey-unlock-lock", "journey-item-in", "journey-gain-in"]) {
+    // JUX1-F1 removed the green changed pulse and the new item's pop (the arrival double flash speaks).
+    for (const k of ["journey-level-roll", "journey-pip-fill", "journey-unlock-art",
+      "journey-unlock-lock", "journey-gain-in"]) {
       expect(gated).toMatch(new RegExp(`animation: ${k} `));
     }
     // The unlock ghost is hidden unless it is animating.
