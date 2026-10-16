@@ -425,11 +425,16 @@ export function JourneyStateBoard({
   const boardRef = useRef<HTMLDivElement>(null);
   // JATTN1 — the first fact the board saves (any fact) teaches the board once.
   const coarse = useCoarsePointer();
-  const coach = useBoardCoach({ savedNow: saved.objects.size > 0, clockFreeUntil, coarse, boardRef });
+  // New server state or newly revealed knowledge is an inspectable board update.
+  // Flash only for that event, never for ordinary question renders.
+  const boardUpdated = (beatActive && (state.transition?.events.length ?? 0) > 0) ||
+    saved.objects.size > 0;
+  const coach = useBoardCoach({ savedNow: boardUpdated, clockFreeUntil, coarse, boardRef });
   return (
     <div ref={boardRef} data-testid="journey-board" data-journey-key={state.journeyKey}
       data-step={state.step.index} data-node={state.step.nodeId}
       data-beat={beatActive ? "active" : "idle"}
+      data-update-flash={boardUpdated ? "true" : undefined}
       data-shards={shardColumn ? "true" : undefined}
       data-coach={coach.visible ? "true" : undefined}
       className="journey-vars journey-board">
