@@ -7,11 +7,134 @@ Mastery Journey UX (JUX1). The investigation is `JOURNEY_JUX1_INVESTIGATION.md` 
 | Pass | Scope | State |
 |---|---|---|
 | **JUX-F2** | Calculation presentation (phone reveal) | Visual trial on branch `jux1/f2-calc-presentation` (9f0f20af); awaiting command-center review. Not in this branch. |
-| **JUX-BOARD** | Compact (top-and-bottom) board polish | **Built on branch `jux1/compact-board-polish`; awaiting owner review** (see the next section). Not merged, not published. |
-| JUX-F1 | Flash newly inspectable objects (white/yellow); show exactly `check board to see more` once | Queued (owner-approved, not started) |
+| **JUX-BOARD** | Compact (top-and-bottom) board polish | **Owner-approved.** Branch `jux1/compact-board-polish` (72abc6ea), merged into the JUX-F1 branch (merge commit b095063e). Not on `main`. |
+| **JUX-F1** | Board attention: gold relevance ring, `!` kept, double-flash arrival, one-time `check board to see more` | **Built on branch `jux1/f1-board-attention`; awaiting owner review** (see the next section). Not merged, not published. |
 | JUX-B1 | Backend-authoritative choices; no typed Journey answers | Queued (owner-approved, not started) |
 
-Draft PR #46 is rejected and was not used. JUX-BOARD and JUX-F2 are independent branches from `main`. They touch different rules: the board's compact query here, and the phone reveal there. Both append a final section to `src/index.css`, so integrating them needs a trivial merge of those two appended blocks.
+Draft PR #46 is rejected and was not used. JUX-F2 is untouched and still on its own branch. JUX-F2 and this branch each append a final section to `src/index.css`, so integrating them needs a trivial merge of those appended blocks.
+
+## JUX-F1: board attention
+
+- **Branch:** `jux1/f1-board-attention`.
+  - Based on frontend `main` f5f90c72, the latest at the time. It has no Journey change since 6407559a.
+  - The owner-approved `jux1/compact-board-polish` is merged in (b095063e, clean, no conflicts), then JUX-F1 is committed on top.
+- **Worktree:** `C:\Users\mlmit\mogzy-wt\jux1-f1`.
+- **"Before" for every comparison:** b095063e (the approved board without F1).
+
+### The approved language, as built
+
+| Cue | Meaning | Source | Look |
+|---|---|---|---|
+| **Gold ring** | Relevant to the current question | the server's `focus` (unchanged `boardAttention`) | a continuous ring (`--jattn-ring: 255 208 88`) drawn as an inset line in the object's outset box (2px compact, 3px wide) plus a soft glow. It sits just outside the object, never over its art, caption or `!`. No animation, no blinking. Abilities, portraits, the level chip and items, on both board densities. The State sheet's question outline (`.journey-focus`) uses the same gold. |
+| **Gold `!`** | Acquired knowledge | K2 knowledge (unchanged) | unchanged; stays for the rest of the Journey and still opens its card. A relevant object with knowledge shows both. Items and level changes never get one. |
+| **Double flash** | New information arriving | a fact a reveal saved (`useSavedNow`, live only) or a purchase watched live (new `useItemArrivals`) | the object itself (ability tile, portrait or item slot, never the board) flashes white into gold, `380ms × 2` iterations, then stops. Reduced motion: a still white-gold edge for the 1.6s arrival window. |
+| **Guide** | Once per browser | existing Mogzy Guide coach (`useBoardCoach`) | text exactly `check board to see more`, for every pointer. New storage id `board-check-more-v1`. Armed by the first arrival of either kind. The existing safeguards are unchanged: never on the clock, at least 2s of clock-free time, dismissed by tap, Escape or TTL, waits for an open popover to close. |
+
+**Arrival lifecycle (why it is tied to real new information).**
+- **Knowledge:**
+  - `useSavedNow` marks a fact only when it arrives in K2 while its own child's reveal is on screen.
+  - The first render seeds silently, so a reload or resume mid-reveal replays nothing.
+- **Purchases:** `useItemArrivals` keys each purchase by its transition (`fromNode>toNode@beat.until`) and slot.
+  - The first render seeds silently.
+  - A poll re-delivering the same state, a rerender, stepping back and forward, or a later question flashes nothing.
+- **Mounting:** the board is keyed per Journey (`journeyKey`), not per question, so live arrivals are never swallowed by a remount.
+- **Timing:** the server's transition timing is untouched. Saved facts arrive in the reveal hold; purchases at the start of the beat.
+
+### Legacy decorations: audit and decisions
+
+| Decoration | Decision | Why |
+|---|---|---|
+| Ice relevance rails (`.journey-reticle` ::before/::after, draw-in animation) | **Replaced** by the gold ring (same element, same `focus` source) | approved |
+| Green CHANGED inner rim (`.journey-changed::after`) on ability tiles and item slots | **Removed** (the class and `data-new` stay on the object) | approved; the values still say what changed |
+| Green beat pulse on changed objects and on the level chip (`journey-changed-pulse`) | **Removed** | a green flash; it competed with the double flash |
+| Green tint on the board's level chip (`journey-chip--delta`) | **Neutralised on the board** (the State sheet / popup stat chips keep theirs) | a green changed rim; the struck-through old level ("LV ~~3~~ 4") still shows the change |
+| Transient gold "SAVED" tag (1.6s) | **Removed** | the double flash marks the same object at the same moment from the same source. The permanent `!` and the existing polite "Saved to the board: …" screen-reader line keep the information. **No meaningful information loss.** |
+| `!` pop-in (`journey-know-pop`) and the coach's 3 `!` pulses (`journey-know-coach`) | **Removed** | competing animations; "exactly two flashes" |
+| New item's scale-pop (`journey-item-in`) | **Removed** | competing arrival animation for the same object |
+| Green NEW rank digit / green new pips | **Kept** | it is the rank value itself and says which rank just went up. Removing it would lose information. |
+| Struck-through previous level | **Kept** | a state value |
+| Item "+stat" gain tag and the purchase narration line | **Kept** | purchase notifications (required to be preserved) |
+| Unlock lock-lift (`journey-unlock-*`) | **Kept** | the state change of an unlocked ability; not a highlight and not green |
+
+### Files
+
+- `src/components/journey/useItemArrivals.ts`: **new**, live purchase arrivals.
+- `src/components/journey/JourneyStateBoard.tsx`:
+  - `data-arrival` on the ability and portrait hosts (new test ids `journey-ability-host-*` and `journey-portrait-host-*`) and, via `arrivedSlots`, on the item slots;
+  - the `SavedTag` component removed;
+  - the coach armed by any arrival.
+- `src/components/journey/JourneyPrimitives.tsx`: the `arrivedSlots` prop → `data-arrival` on the slot; doc comments.
+- `src/components/journey/useKnowledgeCoach.ts`: exact copy `BOARD_COACH_TEXT`, new id `board-check-more-v1`.
+- `src/components/journey/useSavedNow.ts`: doc comment only.
+- `src/index.css`:
+  - the JATTN1 attention block rewritten (ring, no rim, no rails, no Saved tag);
+  - the beat pulse, item pop, `!` pop and coach pulse removed;
+  - the compact caption moved 1px down to clear the ring;
+  - new final section "JUX1-F1 — ARRIVING: THE DOUBLE FLASH".
+- Tests, updated deliberately to the new contract: `masterySliceModule.jattn1.test.tsx`, `.jattn1DeployCompat.test.tsx`, `.boardCoach.test.tsx` (exact text), `.motion.test.tsx`. Two new item-arrival tests are added to `jattn1`.
+- `docs/handoffs/jux1-f1/`: the evidence (below).
+
+### Verification (real JATTN1 captures, headless Edge, harness controls hidden)
+
+**Before/after sheets** (`docs/handoffs/jux1-f1/<viewport>__attention-before-after.jpg`): 7 states each at 360×640, 360×740, 390×844 (stacked board), 509×709 and 1280×800 (side-by-side board).
+
+Every combination appears in them:
+
+| Combination | Where |
+|---|---|
+| Relevant only | Zed–Ahri Step 1: Zed E; Pantheon–Leona open: Pantheon E |
+| Learned only | Pantheon–Leona transition: Leona portrait `!` |
+| Relevant and learned | Zed–Ahri Step 2: Zed E; Pantheon–Leona: Leona portrait; Ashe–Jinx: Ashe W, Jinx portrait |
+| Newly purchased item | Pantheon–Leona transition (Leona's item, no green rim) + the flash strip |
+| Newly acquired ability knowledge | Zed–Ahri first reveal (Zed E) + the flash strip |
+| No highlight | every other object (for example 9 of 11 objects in Ashe–Jinx) |
+| Two-flash arrival | the flash traces and frame strips |
+
+**Arrival double flash** (`flash-probe.cjs`). Each case plays one step forward live and samples the object's brightness on every animation frame (~16ms):
+
+| Case | Flashes | Flash starts | Replay on back/forward | Replay on reload |
+|---|---|---|---|---|
+| Zed E knowledge, 360×640 | **2** | 157 / 532ms | none | none |
+| Ahri portrait knowledge, 360×640 | **2** | 163 / 541ms | none | none |
+| Leona item purchase, 360×640 | **2** | 139 / 523ms | none | none |
+| Zed E knowledge, 509×709 (side-by-side) | **2** | 273 / 648ms | none | none |
+| Leona item purchase, 1280×800 | **2** | 159 / 560ms | none | none |
+
+- Only the arriving object flashes. The ring, the `!` and the board do not.
+- Peak brightness is 1.55; after the second flash the object is steady.
+- **Reduced motion:** no animation; a still white-gold edge, gone after the window.
+- **Traces and frames:** `ability-knowledge-360x640__flash-trace.png` and `item-purchase-360x640__flash-trace.png` (two peaks, then flat), and `*__flash-frames.jpg` (board frames about every 110ms).
+
+**Guide.**
+- It appeared with exactly `check board to see more` on the first knowledge arrival in a fresh browser.
+- For a purchase-only first arrival, the beat leaves less than the 2s safeguard. The coach then waits, latched, for the next clock-free window: the existing behaviour, unchanged.
+
+**Geometry.**
+- Board and page heights are identical to the before tree in all 35 scene/viewport pairs.
+- **Side-by-side board:** no element moved. The only differences are portrait-host boxes reported under their new test ids at identical positions.
+- **Stacked board:** the rows shift 0.5px once, from the caption's 1px move to clear the ring. Positions are still identical across open, beat and reveal.
+
+**Interaction and accessibility (360×640).**
+- A ringed `!` ability, an item and a ringed portrait open their popovers. The ring has `pointer-events: none`.
+- Accessible names still end "relevant to this question".
+- The flash and ring are decorative. The polite "Saved to the board: …" line is unchanged.
+
+### Tests
+
+- **Journey unit set (51 files).**
+  - F1: 761 passed, 2 failed. Before (b095063e): 759 passed, 2 failed. The 2 are the same pre-existing JSPACE1-related stylesheet tests on both.
+  - Updated to the new contract: 17 assertions across 4 files (Saved tag → arrival, ice → gold, green rim → none, reduced-motion rules, exact coach text).
+  - New: 2 item-arrival tests (live once; nothing on a mount, a re-delivered poll or later questions).
+  - The reduced-motion convention tests (animations only under `prefers-reduced-motion: no-preference`) pass: the flash is declared only there.
+- **Browser geometry e2e (`e2e/journey-mobile-space.spec.ts`):** 26/26 on F1, 26/26 on the before tree.
+- **`tsc -p tsconfig.app.json`:** the same 2 errors as main (`OnboardingProfile.tsx`, `identity/connections.ts`).
+- **eslint on the changed files:** 0 errors; the same 1 pre-existing warning in `JourneyPrimitives.tsx`.
+
+### Open points for the owner
+
+1. The ring's gold (`255 208 88`) is deliberately brighter and yellower than the `!` badge (`232 201 122`), so "relevant" and "learned" never read as one cue.
+2. A purchase-only first arrival defers the one-time guide to the next clock-free window, which is the existing 2s safeguard. Say if it should instead show during short beats.
+3. The State sheet's question outline now uses the same gold as the board's ring. It was ice; changed for one language. Easy to revert if the sheet should differ.
 
 ## JUX-BOARD: compact board polish
 
