@@ -99,3 +99,19 @@ describe("presentation — the run", () => {
     expect(ladderScaleMs({ ...DEMO_SUMMARY, rounds: [DEMO_SUMMARY.rounds[0]] })).toBe(250);
   });
 });
+
+describe("PT5 slice formatting", () => {
+  it("prints a slice duration at the precision it was graded, never float-rounded", async () => {
+    const { formatSliceSeconds, deltaSecondsText, formatSecondsExact, hasteText } = await import("./presentation");
+    expect(formatSliceSeconds(5500)).toBe("5.50 s");
+    expect(formatSliceSeconds(5000)).toBe("5.00 s");
+    expect(formatSliceSeconds(4545)).toBe("4.545 s"); // (4.545).toFixed(2) would say 4.54
+    expect(formatSliceSeconds(10005)).toBe("10.005 s");
+    expect(deltaSecondsText(5500, 5000)).toBe("−0.50 s");
+    expect(deltaSecondsText(5000, 4545)).toBe("−0.455 s");
+    expect(deltaSecondsText(4000, 4100)).toBe("+0.10 s");
+    expect(formatSecondsExact(4545.4545)).toBe("4.545 s");
+    expect(hasteText(10)).toBe("+10 Ability Haste");
+    expect(hasteText(10, true)).toBe("+10 AH");
+  });
+});

@@ -46,6 +46,8 @@ export interface PtRoundView {
   iconUrl: string | null;
   /** PT4.4: the champion's splash art from Mogzy's asset manifest; null/absent draws the ability icon alone. */
   splashUrl?: string | null;
+  /** PT5: present only in a Mastery Slice — the stage, and what changed since the last one. */
+  slice?: PtSliceStageView | null;
   /** 1-based position in the run. */
   index: number;
   total: number;
@@ -66,6 +68,8 @@ export interface PtRevealView {
   /** The authority's own progression text, e.g. "7 / 7 / 7 / 7 / 7". */
   cooldownRaw: string;
   rank: number | null;
+  /** PT5: present only in a Mastery Slice — the comparison and the haste arithmetic. */
+  slice?: PtSliceRevealView | null;
 }
 
 /**
@@ -127,4 +131,50 @@ export interface PtStageModel {
   onNext: (source?: "key") => void;
   /** Flank and round-rail content; absent flanks draw the quiet defaults. */
   hud?: PtRunHud | null;
+}
+
+// ---------------------------------------------------------------------------
+// §3 — PT5 Mastery Slice extras (additive; absent in a Random Run).
+// ---------------------------------------------------------------------------
+
+export type PtSliceKind = "foundation" | "rank_up" | "equipped";
+
+/** The equipment stage's item, as the deal names it (canonical name, id, haste). */
+export interface PtSliceItemView {
+  itemId: number;
+  name: string;
+  abilityHaste: number;
+  /** Mogzy's item art (`assets/items/{id}.png`); null draws the name alone. */
+  iconUrl: string | null;
+}
+
+/** What the stage plate says about the slice before the stop. No duration. */
+export interface PtSliceStageView {
+  kind: PtSliceKind;
+  /** 1-based. */
+  stage: number;
+  total: number;
+  abilityHaste: number;
+  item: PtSliceItemView | null;
+  /** The previous stage's public inputs (rank, item), so the change can be named. Null on the first stage. */
+  previous: { kind: PtSliceKind; rank: number; item: PtSliceItemView | null } | null;
+}
+
+/** What a slice reveal adds: the server's arithmetic and the change from the last stage. */
+export interface PtSliceRevealView {
+  kind: PtSliceKind;
+  stage: number;
+  /** The rank's base cooldown (ms), from the release. */
+  baseCooldownMs: number;
+  abilityHaste: number;
+  /** The exact reduced value, as the server prints it ("4545.4545"). */
+  exactMs: string;
+  item: PtSliceItemView | null;
+  /**
+   * The previous stage's TRUE cooldown — only when that stage was legitimately
+   * revealed (locked). A voided previous stage leaves this null.
+   */
+  previous: { kind: PtSliceKind; rank: number; targetMs: number } | null;
+  /** The scenario the slice states, e.g. "no_cooldown_refunds". */
+  assumption: string;
 }
