@@ -1,7 +1,7 @@
 # Academy Core V3.5 — The Living Hextech Orrery (Phase 1 – Phase 3 production integration)
 
 Design branch `design/academy-core-v35-floating-orrery` (cut from `origin/main` `6407559a`; approved at **`abd50e5a`**, preserved).
-Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633` and `f6e5f6ca`), PR → `main`.
+Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633`, `f6e5f6ca` and `c5521d3e`), PR → `main`.
 The Orrery is the `/lol` home on that branch. Nothing is merged, deployed or published. Frontend only: no backend, Supabase, Railway,
 database, env, flag or audio change.
 
@@ -74,7 +74,17 @@ any route; I left them in place (removing them is optional cleanup, not release 
    - the Core, funnel and routing unit suites plus JUX1's changed tests: 359 passed, the 3 baseline `App.*` failures;
    - `npm run build`: exit 0, with the Orrery chunk unchanged (60.6 kB JS);
    - the Core specs in Chromium: 78 / 78.
-6. The tip: this record. Its SHA is in the PR and the release report.
+6. `e172a3e6` — the handoff records that merge.
+7. **`17f8b66f`** — merge of `origin/main` `c5521d3e`. `main` moved again: PGM2, all thirteen bonus games public.
+   - `src/App.tsx` is the one file both sides touch. It auto-merged cleanly, and against `main` this PR's entire `App.tsx` change is
+     still the comment and the two V3.5 redirects.
+   - Re-verified on this merge:
+     - `tsc`: the 2 baseline errors only;
+     - the Core, funnel, routing and More Challenges unit suites plus PGM2's 12 changed test files: 504 passed, the 3 baseline `App.*`
+       failures;
+     - `npm run build`: exit 0 (Orrery chunk 60.6 kB JS);
+     - the Core specs in Chromium: 78 / 78.
+8. The tip: this record. Its SHA is in the PR and the release report.
 
 ### Verification
 
@@ -179,12 +189,14 @@ Frontend only: no backend, Supabase, Railway, database, env, flag or audio step.
 connected to this GitHub repository: Lovable builds whatever is on `main`, and nothing reaches `mogzy.lol` until someone presses
 **Publish** in Lovable (the same procedure as V3's release, `ACADEMY_CORE_V3_INTEGRATION_HANDOFF.md` §7–§8).
 
-1. **Re-check `main`.** `git fetch origin`. If `origin/main` moved past `f6e5f6ca`, merge it into
+1. **Re-check `main`.** `git fetch origin`. If `origin/main` moved past `c5521d3e`, merge it into
    `academy-core/v35-production-integration` (merge, do not rebase). Then re-run `tsc`, the Core unit tests and
    `npx playwright test -c playwright.academy-core.config.ts e2e/academy-core.spec.ts e2e/academy-core-v35.spec.ts --grep-invert evidence --project=chromium`
    (headless Firefox is too slow for this scene's motion assertions; see "Unresolved" 2).
 2. **Merge the PR** into `main` with a **merge commit**, not squash or rebase, so rollback is a single revert.
-3. **Lovable Publish** from `main`. Note the previous published version in Lovable's history first: it is the fastest rollback.
+3. **Lovable Publish** from `main`. **Publish ships all of `main`, not just this PR.** At `c5521d3e` that includes PGM2's frontend
+   (`93de0546`, which its own handoff lists as "awaiting Lovable"), and whatever else on `main` is unpublished. Decide whether those
+   go out together, or publish `main` before merging this PR so the two releases stay separate. Note the previous published version in Lovable's history first: it is the fastest rollback.
 4. **Verify on `https://mogzy.lol`**, in a private window, then signed in:
    - `/` → automatic hand-off → `/lol` shows the Orrery: the four books orbit the Core, the Patch Report and radio float on the left,
      Daily and Ranked are present, and Mogzy is at the edge.
@@ -252,7 +264,12 @@ Frontend only, with no data to undo.
      Windows `cmd` cannot run. I started those servers by hand.
 6. **Now-unused V3 code.** The instrument's non-compact (V3 chassis) path and V3-only rules in `academy-core.css` are no longer used by
    any route. Removing them is optional cleanup, deliberately left out of this release.
-7. **Known since earlier passes.** The 128 px Lux icon is soft on HiDPI. The admin registry still labels `/lol` "LoL Hub" (cosmetic).
+7. **`main` moves fast.** It moved three times during this pass (`f5f90c72` → `10534633` → `f6e5f6ca` → `c5521d3e`), each merged and
+   re-verified here, none touching the Core. Release step 1 (re-merge `main` and re-run the checks) matters for that reason; the PR
+   page also shows whether it still merges cleanly.
+8. **Unpublished work on `main` ships with this.** Lovable publishes all of `main`, including PGM2's frontend (`93de0546`); see release
+   step 3.
+9. **Known since earlier passes.** The 128 px Lux icon is soft on HiDPI. The admin registry still labels `/lol` "LoL Hub" (cosmetic).
    Click latency includes the approved 240 ms activation, as V3 did.
 
 ### Evidence (production build, real data, Edge)
