@@ -5,7 +5,9 @@ The same file is kept in both repos:
 * `mitcherrman/League_Combat_Simulator`: `docs/handoffs/public-game-modes.md`
 
 **Status (2026-10-16):**
-* **Phase 2 (PGM2): all 13 modes publicly playable, on branches, NOT merged.** See §12. Backend `pgm2/bonus-games-be`, frontend `pgm2/bonus-games-fe`.
+* **Phase 2 (PGM2): all 13 modes publicly playable, MERGED.** See §12.
+  * Backend `master` = `cc25fe62` (merge of `pgm2/bonus-games-be` @ `5daa56dc`). **Live on Railway** (deploy `7bac82bb` SUCCESS): the production catalog lists 13 modes, all `available`, each with a launch and Rules; the start and session routes answer 401 without auth; `Access-Control-Allow-Origin: *`.
+  * Frontend `main` = `93de0546` (merge of `pgm2/bonus-games-fe` @ `3e4c3958`). **Not yet on mogzy.lol**: the owner publishes it in Lovable.
 * Phase 1 is **merged**:
 * Backend `master` = `d7623549`. It is **live on Railway** (deploy `6f1c9853` SUCCESS). `GET https://web-production-83e53.up.railway.app/api/game-modes` returns 200 with `public_game_modes.catalog.v1`, 13 modes, and `Access-Control-Allow-Origin: *`.
 * Frontend `main` = `3bb7100d`. It is **not yet on mogzy.lol**: the owner publishes it in Lovable.
@@ -435,7 +437,13 @@ Each mode's sections are written from its own format and grader:
 * The scratch DB and the ignored DBs the launcher created were deleted afterwards.
 
 ### 12.8 Delivery
-* Branches are pushed. They are **not merged** and need the owner's go-ahead.
+* **Merged 2026-10-16** (both `--no-ff`).
+  * Backend `master` `cc25fe62` = PT5 master `d4bf7b84` + `pgm2/bonus-games-be`. No file overlap. On the merge: public modes, owner labs, PT5 slices, queue controls, Role Challenge launch: 300 + 174 passed; `test_match_grid_module.py`'s two HTTP tests 503 identically on base (no canonical bank in a worktree). Railway deploy `7bac82bb` SUCCESS.
+  * Frontend `main` `93de0546` = JUX1/PT5 main `f6e5f6ca` + `pgm2/bonus-games-fe`. Two conflicts, both with PT5:
+    * `PerfectTimingPage.tsx`: PT5 added a mode pick (Random Run / Mastery Slice). A `publicHost` skips it and plays the Random Run directly; `publicHost` and the report hook now live in `RandomRun`.
+    * `PerfectTimingResults.tsx`: PT5's `exitLabel` and "New slice" kept; the public host passes "Back to More Challenges".
+    * PT5 widened `PerfectTimingApi` with `dealSlice`/`lockSlice`; `bonusTimingApi` implements them as local refusals (`PT_SLICE_UNAVAILABLE`), never a route. Test added.
+    * On the merge: 164 focused files, 2303 passed; the 5 failures (`masterySliceModule.jp5`, `.visualLanguage`, `orderForgeModule` stylesheet checks) fail identically on clean `main`. `tsc` clean apart from the two pre-existing files; `vite build` OK.
 * **Deploy order: backend first.**
   * The frontend's Play calls `/api/game-modes/{mode}/start` and `/sessions`.
   * Against PGM1's backend the catalog would publish no `ranked_match` or `session` launch, so nothing breaks; the cards simply stay "Coming soon".
@@ -451,7 +459,7 @@ Each mode's sections are written from its own format and grader:
 * Bonus matches are not in Ranked history, so a bonus match's review is the in-place Match details only. There is no long-term bonus history yet.
 
 ### 12.10 Next exact task
-**Live-traffic follow-ups** after the owner merges and deploys:
+**Owner:** publish frontend `main` `93de0546` in Lovable. Then the live-traffic follow-ups:
 * watch the `bonus_game` analytics bucket and the `more_challenges_mode_selected` events per mode;
 * decide whether specialized sessions need durable storage (today they are memory-only);
 * consider a per-mode "bonus history" surface, since bonus games are deliberately absent from Ranked history.
