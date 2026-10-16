@@ -72,6 +72,37 @@ export interface UseTimingEngineOptions {
    */
   onStopped?: (elapsedMs: number, roundId: string) => void;
   onDiagnostic?: (diagnostic: TimingDiagnostic) => void;
+  /**
+   * PT4.3: also accept Space/Enter from the document while a round is armed
+   * or running, so the seal need not hold focus. Off by default (PT2 tests).
+   * See {@link documentKeyIsForTimer} for the keys it leaves alone.
+   */
+  documentKeys?: boolean;
+}
+
+/** Elements that own Space/Enter themselves: typing, or a separate control. */
+const OWNS_KEYS_SELECTOR = [
+  "input", "textarea", "select", "button", "a[href]", "summary", "label",
+  "[contenteditable]:not([contenteditable='false'])",
+  "[role='button']", "[role='link']", "[role='checkbox']", "[role='switch']", "[role='menuitem']",
+  "[role='option']", "[role='tab']", "[role='radio']", "[role='combobox']", "[role='textbox']", "[role='slider']",
+].join(",");
+
+/**
+ * True when a document-level keydown should drive the timer: Space/Enter, no
+ * modifier chord, not already handled (the seal's own handler prevents
+ * default), and not aimed at an editable element or another actionable control.
+ */
+export function documentKeyIsForTimer(e: KeyboardEvent): boolean {
+  if (!(e.key === " " || e.key === "Spacebar" || e.key === "Enter")) return false;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
+  if (e.defaultPrevented || e.isComposing) return false;
+  const target = e.target;
+  if (target instanceof Element) {
+    if ((target as HTMLElement).isContentEditable) return false;
+    if (target.closest(OWNS_KEYS_SELECTOR)) return false;
+  }
+  return true;
 }
 
 export interface UseTimingEngine {
@@ -192,6 +223,24 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
       window.removeEventListener("blur", onBlur);
     };
   }, [dispatch]);
+
+  // PT4.3: document-level Space/Enter, subscribed only while a press can
+  // count (armed/running), so nothing listens on reveal, results, recovery
+  // or after unmount. Bubble phase: a key the seal (or any control) already
+  // handled arrives defaultPrevented and is skipped.
+  const documentKeys = options.documentKeys === true;
+  const keyPhase = state.phase;
+  useEffect(() => {
+    if (!documentKeys || !acceptsPress(keyPhase)) return;
+    const onDocumentKeyDown = (e: KeyboardEvent) => {
+      if (!documentKeyIsForTimer(e)) return;
+      e.preventDefault(); // Space would scroll; Enter would submit a form
+      if (e.repeat) return;
+      handlePress(timestampOf(e), "key");
+    };
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => document.removeEventListener("keydown", onDocumentKeyDown);
+  }, [documentKeys, keyPhase, handlePress]);
 
   const arm = useCallback((roundId: string) => void dispatch({ type: "ARM", roundId }), [dispatch]);
   const reset = useCallback(() => void dispatch({ type: "RESET" }), [dispatch]);

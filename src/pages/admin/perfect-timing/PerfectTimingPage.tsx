@@ -138,7 +138,9 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     void submit(roundId, elapsedMs);
   }, [submit]);
 
-  const engine = useTimingEngine({ onStopped });
+  // PT4.3: Space/Enter work anywhere on the page while a round is in play,
+  // not only with focus on the seal (owner report from production).
+  const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play" });
   const { arm, reset } = engine;
 
   // ---------------------------------------------------------------- rounds
