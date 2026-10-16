@@ -234,7 +234,12 @@ Launch kinds: `daily_stage` (live), `ranked_match` and `session` (reserved).
 
 ## 10. Commits
 
-Filled in after commit; see the final docs commit on each branch.
+* Backend: `pgm1/public-catalog-be`
+  * `ee909c71`: the catalog, route and tests, on base `c39638b9`.
+  * The next commit records these SHAs.
+* Frontend: `pgm1/more-challenges-fe`
+  * `41fc080f`: the catalog page, Daily round trip, hub section, and the Rules/Report/telemetry contracts, on base `fc4c5ed5`.
+  * The next commit records these SHAs.
 
 ## 11. Next exact task
 
