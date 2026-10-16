@@ -16873,6 +16873,52 @@ html.hub-commons-in-view .hextech-ambience-layer {
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
+/* Short-lived, noninteractive purchase narration above the board's seam.
+   Absolutely overlaid: no extra board height and no answer/timeline movement. */
+.journey-beat__purchases {
+  position: absolute;
+  z-index: 8;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.journey-beat__purchase {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 3px 7px;
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid rgb(143 208 160 / 0.8);
+  border-radius: 6px;
+  background: rgb(7 22 24 / 0.95);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.8);
+  color: #f3fff3;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1rem;
+  text-align: center;
+}
+.journey-beat__purchase-headline { overflow-wrap: anywhere; }
+.journey-beat__purchase-gains {
+  flex-shrink: 0;
+  color: #a9ebba;
+  font-variant-numeric: tabular-nums;
+}
+@container (min-width: 26rem) {
+  .journey-beat__purchase { font-size: 0.8125rem; line-height: 1.125rem; padding: 5px 10px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-beat__purchase { animation: journey-gain-in 180ms ease-out both; }
+}
 .journey-beat__stamp {
   display: inline-block;
   max-width: 100%;
