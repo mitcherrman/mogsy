@@ -2,9 +2,10 @@
  * Academy Core V3.5 — the destination / navigation behaviour, separated from
  * the orbital presentation.
  *
- * This is the V3 contract carried over unchanged (it is the same logic as
- * `AcademyCoreHome` in `src/pages/academy-core/AcademyCorePage.tsx`, lifted
- * into a hook so the new scene can render it any way it likes):
+ * This is the V3 home's contract carried over unchanged (the same logic as the
+ * V3 Core's `AcademyCoreHome`, which this home replaced; see git history of
+ * `src/pages/academy-core/AcademyCorePage.tsx`), lifted into a hook so the
+ * orrery can render it any way it likes:
  *
  *   · hover / keyboard focus engages a room (a 140 ms grace before a leave
  *     clears it); the crystal's pinned preview is the fallback focus;
@@ -18,9 +19,6 @@
  * pointer's book is emphasised where it is (a book must not move out from
  * under the cursor that is on it); a keyboard-focused or pinned book has no
  * pointer to lose, so the scene may bring it toward the viewer.
- *
- * Phase 2 should replace the V3 page's inline copy with this hook (the V3
- * page is deliberately untouched by this branch).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";

@@ -4,8 +4,9 @@
  *   npx playwright test -c playwright.frontend.config.ts e2e/academy-core-v35.spec.ts
  *   V35_EVIDENCE=1 npx playwright test -c playwright.frontend.config.ts e2e/academy-core-v35.spec.ts -g evidence
  *
- * The route is DEVELOPMENT-ONLY (`/lol/dev/academy-core-v35`), so this runs
- * against the Vite dev server the config starts.
+ * The Orrery is the production `/lol` home (it replaced the V3 Core); the old
+ * preview URL `/lol/dev/academy-core-v35` redirects there. This runs against
+ * the Vite dev server the config starts.
  *
  * MOCKS (disclosed): in the behaviour suite the remote reads (Patch Reports,
  * champion manifest and images, Daily status, Supabase) are intercepted with
@@ -22,7 +23,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, copyFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const ROUTE = "/lol/dev/academy-core-v35";
+const ROUTE = "/lol";
 const OUT = path.resolve("docs/handoffs/academy-core-v35");
 mkdirSync(OUT, { recursive: true });
 
@@ -495,15 +496,19 @@ test.describe("mobile: a composed floating arrangement", () => {
   });
 });
 
-test.describe("production /lol is untouched", () => {
-  test("/lol is still the V3 Core and carries none of the V3.5 scene", async ({ page }) => {
+test.describe("the Orrery is the /lol home", () => {
+  test("/lol is the Orrery (no V3 chassis), and the V3.5 preview URLs redirect to it", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await stubCommon(page);
     await stubChampions(page);
     await page.goto("/lol");
-    await expect(page.getByTestId("academy-core")).toBeVisible();
-    await expect(page.locator("[class*='o35-']")).toHaveCount(0);
-    await expect(page.locator(".acore-chassis")).toHaveCount(1);
+    await expect(page.getByTestId("academy-core-v35")).toBeVisible();
+    await expect(page.locator(".acore-chassis")).toHaveCount(0);
+    for (const from of ["/lol/dev/academy-core-v35", "/dev/academy-core-v35"]) {
+      await page.goto(from);
+      await expect(page).toHaveURL(/\/lol$/);
+      await expect(page.getByTestId("academy-core-v35")).toBeVisible();
+    }
   });
 });
 
@@ -987,16 +992,6 @@ test.describe("crystal: larger inside the same Core", () => {
     await page.getByTestId("academy-core-crystal").click();
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "idle");
   });
-
-  test("production /lol keeps the V3 crystal size", async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 768 });
-    await stubCommon(page);
-    await stubChampions(page);
-    await page.goto("/lol");
-    await expect(page.getByTestId("academy-core")).toBeVisible();
-    const ratio = await page.evaluate(() => document.querySelector(".acore-crystal")!.getBoundingClientRect().width / document.querySelector(".acore-svg")!.getBoundingClientRect().width);
-    expect(ratio).toBeCloseTo((2 * 118 * 0.78) / 960, 2); // V3 full layout: 0.78 lens on the 960-wide chassis
-  });
 });
 
 /* ===================================================================== */
@@ -1075,18 +1070,6 @@ test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
       await expect.poll(() => page.locator(`.acore-mode-${mode}`).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
       await expect(page.locator(".acore-svg")).toHaveAttribute("data-focus", f!);
     }
-  });
-
-  test("production /lol keeps the V3 Leaguecraft and Pro Play projections", async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 768 });
-    await stubCommon(page);
-    await stubChampions(page);
-    await page.goto("/lol");
-    await expect(page.getByTestId("academy-core")).toBeVisible();
-    await expect(page.locator(".acore-mode-leaguecraft .acore-magnifier")).toHaveCount(1);
-    await expect(page.locator(".acore-mode-pro-play .acore-track-mark")).toHaveCount(1);
-    await expect(page.locator("[data-projection='override']")).toHaveCount(0);
-    await expect(page.locator("[data-testid^='academy-core-v35']")).toHaveCount(0);
   });
 
   test("phones and reduced motion show the same two projections", async ({ page }) => {

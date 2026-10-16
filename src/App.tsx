@@ -266,12 +266,6 @@ const ProPlayArenaDev = import.meta.env.DEV
 const WorldsExperienceDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/worlds-experience/WorldsExperienceDev"))
   : null;
-// ACADEMY CORE V3.5: the Living Hextech Orrery prototype (orbiting books around
-// an enlarged Core). Same DEVELOPMENT-ONLY rule: the production `/lol` stays the
-// V3 Core; this path 404s in a production build. Under /lol/ for the LoL theme.
-const AcademyCoreV35Dev = import.meta.env.DEV
-  ? lazy(() => import("./pages/dev/academy-core-v35/AcademyCoreV35Page"))
-  : null;
 // GM-M1: the Match Grid visual-diagnosis lab. DEVELOPMENT-ONLY; the path
 // 404s in production. The production path is the `match` Ranked module.
 const MatchGridLab = import.meta.env.DEV
@@ -649,15 +643,18 @@ export const appRouter = createBrowserRouter(
                       League base colour, so the hub needs nothing but its height
                       held. Drawing the hub's geometry here made the visitor
                       watch the page assemble; a plain surface just resolves. */}
-                  {/* ACADEMY CORE V3 — `/lol` is the Four-Book Hextech Core. The
+                  {/* ACADEMY CORE V3.5 — `/lol` is the Living Hextech Orrery
+                      (AcademyCorePage; it replaced the V3 Four-Book Core). The
                       previous Home Hub (with Academy Commons as its second
-                      screen) is kept whole at `/lol/hall`; the preview URLs
-                      redirect to the home. `/lol#academy-commons` is
-                      forwarded to the Hall by the Core itself. */}
+                      screen) is kept whole at `/lol/hall`; the V3 and V3.5
+                      preview URLs redirect to the home. `/lol#academy-commons`
+                      is forwarded to the Hall by the Core itself. */}
                   <Route path="/lol" element={<Suspense fallback={<AcademyCoreFallback />}><AcademyCore /></Suspense>} />
                   <Route path="/lol/hall" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                   <Route path="/lol/dev/academy-core" element={<Navigate to="/lol" replace />} />
                   <Route path="/dev/academy-core" element={<Navigate to="/lol" replace />} />
+                  <Route path="/lol/dev/academy-core-v35" element={<Navigate to="/lol" replace />} />
+                  <Route path="/dev/academy-core-v35" element={<Navigate to="/lol" replace />} />
                   {/* LS-RETIRE1 — standalone League Swipe (the old standalone
                       "Meta Reflex") is retired; Meta Reflex lives on inside
                       Ranked and Daily. These are legacy-bookmark redirects
@@ -779,12 +776,6 @@ export const appRouter = createBrowserRouter(
                     <>
                       <Route path="/lol/dev/worlds-experience/*" element={<Suspense fallback={<RouteFallback />}><WorldsExperienceDev /></Suspense>} />
                       <Route path="/dev/worlds-experience" element={<Navigate to="/lol/dev/worlds-experience" replace />} />
-                    </>
-                  ) : null}
-                  {AcademyCoreV35Dev ? (
-                    <>
-                      <Route path="/lol/dev/academy-core-v35" element={<Suspense fallback={<AcademyCoreFallback />}><AcademyCoreV35Dev /></Suspense>} />
-                      <Route path="/dev/academy-core-v35" element={<Navigate to="/lol/dev/academy-core-v35" replace />} />
                     </>
                   ) : null}
                   {MatchGridLab ? (
