@@ -19,6 +19,12 @@
  * `PERFECT_TIMING_LAB_ENABLED`. The page never holds a target before the
  * server releases it: the deal reader refuses a payload that carries one.
  *
+ * PT5: the page is now a two-mode shell. It opens on a mode pick (or the
+ * `?run=random|slice` it was linked with): RANDOM RUN is the PT4.4 five-round
+ * game below, unchanged; MASTERY SLICE (`MasterySliceRun`) times one ability
+ * through three connected stages. Results offer Play again (same mode) and
+ * Change mode.
+ *
  * WHAT IT CLAIMS. Elapsed time is measured in this browser and is NOT
  * tamper-proof; the server grades it and reports an upper-bound plausibility
  * verdict only. Scoring constants are playtest starting values. Nothing is
@@ -26,25 +32,23 @@
  * screen (PT4.4): the mode is a fixed, non-scrolling frame with no disclaimers.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PerfectTimingArena } from "@/components/perfect-timing/PerfectTimingArena";
 import { PerfectTimingResults } from "@/components/perfect-timing/PerfectTimingResults";
+import { PerfectTimingModeSelect, type PtMode } from "@/components/perfect-timing/PerfectTimingModeSelect";
 import { PerfectTimingBar, PerfectTimingScreen } from "@/components/perfect-timing/PerfectTimingScreen";
 import { PerfectTimingApiError, perfectTimingApi, type PerfectTimingApi } from "@/lib/perfect-timing/api";
 import { toRevealView, type PtDeal, type PtDealRound } from "@/lib/perfect-timing/contract";
 import { useSplashManifest } from "@/lib/perfect-timing/useSplashManifest";
 import { useTimingEngine } from "@/lib/perfect-timing/useTimingEngine";
-import type { InterruptReason } from "@/lib/perfect-timing/timingEngine";
 import type { PtPhase, PtRevealView, PtRunHud, PtRunSummary, PtStageModel, PtTier } from "@/lib/perfect-timing/viewModel";
+import { MasterySliceRun } from "./MasterySliceRun";
 import { toRoundView } from "./roundView";
+import { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS, VOID_TEXT, dealErrorText } from "./runShared";
 
 export const ROUNDS_PER_RUN = 5;
 
-/** PT4.4: after a KEY advances the reveal, Space/Enter are ignored this long, so a double-tap cannot also start the round it armed. */
-export const ADVANCE_KEY_GUARD_MS = 250;
-
-/** How long the stop reads "Locked" before it reads "checking the archive". */
-export const SUBMITTING_DELAY_MS = 250;
+export { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS };
 
 interface Slot {
   wire: PtDealRound;
@@ -67,30 +71,51 @@ type Stage =
   | { kind: "lock-error"; roundId: string; elapsedMs: number; message: string; retryable: boolean }
   | { kind: "complete" };
 
-const VOID_TEXT: Record<InterruptReason, string> = {
-  hidden: "Run interrupted — round voided. The tab was hidden while timing.",
-  pagehide: "Run interrupted — round voided. The page was left while timing.",
-  clock: "Run interrupted — round voided. The browser clock jumped.",
-  timeout: "Run interrupted — round voided. Over ten minutes passed.",
-};
-
 const EXPIRED_TEXT = "Round expired — dealing a fresh one.";
-
-function dealErrorText(status: number | null, message: string): string {
-  if (status === 404) return "The Perfect Timing lab is not enabled on this backend (PERFECT_TIMING_LAB_ENABLED).";
-  if (status === 401 || status === 403) return "This backend did not accept an owner session for the Perfect Timing lab.";
-  return message;
-}
 
 const isExpired = (r: PtDealRound) => Date.parse(r.expires_at) <= Date.now();
 
-export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead }: {
+const RUN_PARAM = "run";
+const isMode = (v: string | null): v is PtMode => v === "random" || v === "slice";
+
+export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, initialMode }: {
   api?: PerfectTimingApi;
   exitTo?: string;
   /** PT4.1: launched from Ranked → Playtests; heads the top bar and replaces "Exit". */
   lead?: ReactNode;
+  /** PT5: skip the mode pick (tests, links). `?run=random|slice` does the same. */
+  initialMode?: PtMode;
 } = {}) {
   const api = useMemo(() => injected ?? perfectTimingApi(), [injected]);
+  const [params, setParams] = useSearchParams();
+  const linked = params.get(RUN_PARAM);
+  const [mode, setMode] = useState<PtMode | null>(initialMode ?? (isMode(linked) ? linked : null));
+  const pick = useCallback((m: PtMode | null) => {
+    setMode(m);
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      if (m) next.set(RUN_PARAM, m); else next.delete(RUN_PARAM);
+      return next;
+    }, { replace: true });
+  }, [setParams]);
+  const changeMode = useCallback(() => pick(null), [pick]);
+  const leadNode = lead ?? <Link to={exitTo} className="pt-back">Exit</Link>;
+
+  if (mode === "random") return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} />;
+  if (mode === "slice") return <MasterySliceRun api={api} lead={leadNode} onChangeMode={changeMode} />;
+  return (
+    <PerfectTimingScreen bar={<div className="pt-bar" data-testid="pt-chrome">{leadNode}</div>} stage="mode">
+      <PerfectTimingModeSelect onPick={pick} />
+    </PerfectTimingScreen>
+  );
+}
+
+/** The PT4.4 Random Run: five distinct abilities, base cooldowns, one at a time. Unchanged by PT5. */
+function RandomRun({ api, lead, onChangeMode }: {
+  api: PerfectTimingApi;
+  lead: ReactNode;
+  onChangeMode: () => void;
+}) {
   const manifest = useSplashManifest();
   const [run, setRun] = useState<Run | null>(null);
   const [index, setIndex] = useState(0);
@@ -326,7 +351,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   const pointsSoFar = slots.reduce((n, s) => n + (s.reveal?.points ?? 0), 0);
   const bar = (
     <PerfectTimingBar
-      lead={lead ?? <Link to={exitTo} className="pt-back">Exit</Link>}
+      lead={lead}
       index={stage.kind === "complete" ? total : slot ? index + 1 : 0}
       total={total}
       outcomes={hud?.outcomes}
@@ -344,7 +369,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   return (
     <PerfectTimingScreen bar={bar} art={art} stage={stage.kind}>
       {summary ? (
-        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()} onExit={null} />
+        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()} onExit={onChangeMode} exitLabel="Change mode" />
       ) : (
         <PerfectTimingArena model={model} actions={actions} />
       )}

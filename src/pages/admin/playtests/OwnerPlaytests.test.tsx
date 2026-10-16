@@ -262,6 +262,8 @@ describe("/admin/playtests/:mode and the retired lab URLs", () => {
     expect(screen.queryByTestId("playtest-mode-title")).toBeNull();
     expect(screen.getByTestId("playtest-back").getAttribute("href")).toBe("/admin/leaguecraft?section=ranked&view=playtests");
     expect(screen.queryByRole("link", { name: "Exit" })).toBeNull();
+    // PT5: the mode pick comes first; Random Run then deals.
+    fireEvent.click(screen.getByTestId("pt-mode-random"));
     expect(await screen.findByText(/PERFECT_TIMING_LAB_ENABLED/)).toBeInTheDocument();
   });
 

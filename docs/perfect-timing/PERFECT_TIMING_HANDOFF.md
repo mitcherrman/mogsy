@@ -1,5 +1,7 @@
 # Perfect Timing — Implementation Handoff
 
+> **PT5 (2026-10-16):** Cooldown Mastery Slices — a second mode (one ability, rank 1 → rank 3 → rank 3 + Sheen) with new `perfect_timing.slice_*.v1` contracts; v1 below is unchanged. See [PT5_HANDOFF.md](PT5_HANDOFF.md).
+>
 > **Status 2026-10-15:** PT1–PT4 are complete and integrated on `perfect-timing/pt4-integration`; see **§11** for the state, evidence, open defects and the owner-only release steps (G5).
 
 **Read first:** [PT0_ARCHITECTURE_AUDIT.md](PT0_ARCHITECTURE_AUDIT.md). It holds the evidence (file:line references) behind every decision here. Do not repeat the audit. If the code you find disagrees with it, trust the code and note the drift in your PR.
