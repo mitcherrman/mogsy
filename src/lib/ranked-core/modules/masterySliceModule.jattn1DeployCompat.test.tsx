@@ -51,7 +51,8 @@ function view(s: CaptureSnapshot) {
     </QueryClientProvider>
   );
 }
-const savedTags = () => [...document.querySelectorAll<HTMLElement>(".journey-saved-tag")].map((t) => t.dataset.testid).sort();
+// JUX1-F1: the Saved moment is the object's arrival (`data-arrival`), no longer a tag.
+const savedTags = () => [...document.querySelectorAll<HTMLElement>('[data-arrival="true"]')].map((t) => t.dataset.testid).sort();
 const reticles = () => [...document.querySelectorAll<HTMLElement>(".journey-reticle")].map((t) => t.dataset.testid).sort();
 
 /** Every snapshot in server-instant order, polled as a client does; what the board shows at each. */

@@ -16818,10 +16818,6 @@ html.hub-commons-in-view .hextech-ambience-layer {
    the changed faces (green rims, the struck-through old level, green pips,
    the item's stat tag) still say what changed, for the same server beat.
    ────────────────────────────────────────────────────────────────────────── */
-@keyframes journey-changed-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(143 208 160 / 0); filter: none; }
-  45% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
-}
 @keyframes journey-level-roll {
   from { transform: translateY(85%); opacity: 0; }
   to { transform: none; opacity: 1; }
@@ -16839,11 +16835,6 @@ html.hub-commons-in-view .hextech-ambience-layer {
 @keyframes journey-unlock-lock {
   from { opacity: 0.85; transform: none; }
   to { opacity: 0; transform: translateY(-35%) scale(1.35); }
-}
-@keyframes journey-item-in {
-  0% { transform: scale(0.45); opacity: 0; }
-  65% { transform: scale(1.12); opacity: 1; }
-  100% { transform: none; opacity: 1; }
 }
 @keyframes journey-gain-in {
   from { transform: translateY(3px); opacity: 0; }
@@ -16934,10 +16925,6 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-beat__stamp { font-size: 0.5625rem; line-height: 0.8125rem; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .journey-board[data-beat="active"] .journey-changed,
-  .journey-board[data-beat="active"] .journey-chip--delta {
-    animation: journey-changed-pulse 0.8s ease-in-out 1;
-  }
   .journey-board[data-beat="active"] .journey-level[data-changed="true"] .journey-level__to {
     animation: journey-level-roll 360ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
   }
@@ -16951,9 +16938,6 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-board[data-beat="active"] .journey-unlock-lock {
     display: block;
     animation: journey-unlock-lock 450ms 80ms ease-in both;
-  }
-  .journey-board[data-beat="active"] [data-new="true"][role="listitem"] > * {
-    animation: journey-item-in 420ms 100ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
   }
   .journey-board[data-beat="active"] .journey-item-gain {
     animation: journey-gain-in 220ms 220ms ease-out both;
@@ -17842,17 +17826,11 @@ html.reduce-motion .mogzy-guide-bubble { transition: none !important; transform:
   from { transform: translateY(45%) scale(0.7); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
-@keyframes journey-know-pop {
-  0% { transform: scale(0.3); opacity: 0; }
-  60% { transform: scale(1.35); opacity: 1; }
-  100% { transform: none; opacity: 1; }
-}
 @media (prefers-reduced-motion: no-preference) {
   .journey-chip[data-just-learned="true"] { animation: journey-learned-glow 1.2s ease-out 1; }
   .journey-chip[data-just-learned="true"] .journey-learned-value {
     animation: journey-learned-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
   }
-  .journey-know[data-just-learned="true"] { animation: journey-know-pop 520ms 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both; }
 }
 
 /* ── 4. THE JOURNEY PATH (JP4 name; JP3 "micro-chain"): where am I in the
@@ -18354,10 +18332,6 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes journey-know-coach {
-  0%, 100% { box-shadow: 0 1px 3px rgb(0 0 0 / 0.6); transform: none; }
-  50% { box-shadow: 0 0 0 3px rgb(243 220 160 / 0.55), 0 0 14px rgb(243 220 160 / 0.8); transform: scale(1.25); }
-}
 /* JPX — portalled (JourneyStateBoard `CoachPill`): `right` / `bottom` are set
    from the board's own rect, so it rests on the board's top edge, above the
    STATE control, and never sits on the board's contents. */
@@ -18395,9 +18369,6 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
 }
 @media (prefers-reduced-motion: no-preference) {
   .journey-coach { animation: journey-coach-in 260ms ease-out both; }
-  .journey-board[data-coach="true"] .journey-know[data-just-learned="true"] {
-    animation: journey-know-coach 900ms ease-in-out 3;
-  }
 }
 @media (max-width: 25.99rem) {
   .journey-coach { font-size: 0.6875rem; padding: 4px 10px 4px 5px; }
@@ -19202,77 +19173,56 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
   .journey-role-slot::before { content: "Attacker"; }
 }
 
-/* ── JATTN1. THE BOARD'S ATTENTION GRAMMAR ──────────────────────────────────
-   Three different things, three different looks (`lib/journey/attention.ts`):
+/* ── JATTN1 → JUX1-F1. THE BOARD'S ATTENTION LANGUAGE ──────────────────────
+   Three cues, one meaning each (owner-approved, JUX1-F1):
 
-     CHANGED       green  — the beat's motion (unchanged), then ONE resting
-                            face: a thin green INNER rim on every changed
-                            object for the child after the transition.
-     SAVED         gold   — the persistent `!`, and a brief anchored "Saved"
-                            tag during the reveal hold (~1.6s). Never "correct".
-     RELEVANT NOW  ice    — two opposing notched RAILS, just above and just
-                            below what the question is about (never corners,
-                            never a rim), drawn in once as the child opens.
+     RELEVANT      a continuous GOLD RING around every object the current
+                   question is about — read only from the server's `focus`.
+                   Steady: it never blinks.
+     ACQUIRED      the gold `!`: information the Journey has established,
+                   kept for the rest of the Journey, inspectable.
+     ARRIVING      the object that has just become inspectable (a saved fact,
+                   a bought item) flashes white / gold exactly twice.
 
-   None of them lays anything out: rims are ::after overlays, the ticks and the
-   tag are absolutely positioned. Reduced motion (OS or the app's
-   `html.reduce-motion`, including the portalled coach) shows every state with
-   no movement. ──────────────────────────────────────────────────────────── */
+   JATTN1's green CHANGED rim and beat pulse, its ice RELEVANT rails and its
+   transient "Saved" tag are gone from the board. What changed is still
+   said by the values themselves: the struck-through old level, the green
+   new rank digit, a new item's stat tag and the purchase line.
+   None of the cues lays anything out (the ring is an absolutely positioned
+   box around its object; the flash is the object's own shadow). Reduced
+   motion (OS or the app's `html.reduce-motion`) draws the flash as a still
+   white-gold edge for the arrival window. ─────────────────────────────── */
 .journey-vars {
-  --jattn-ice: 226 239 247;
-  --jattn-green: 143 208 160;
   --jattn-gold: 232 201 122;
+  /* The relevance ring: a brighter, yellower gold than the `!` badge. */
+  --jattn-ring: 255 208 88;
+  /* The arrival flash: white into yellow. */
+  --jattn-flash: 255 247 214;
 }
 @container (min-width: 34rem) and (min-height: 17rem) {
   .journey-vars { --jb-item-gap: 4px; }
 }
 
-/* CHANGED — the standard resting face. An ability tile used to lose it after
-   the beat (only its rank digit stayed green); an item slot wore an outer
-   ring. Both now wear the same inner rim, for the whole child. */
-.journey-changed::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1.5px rgb(var(--jattn-green) / 0.9);
-  pointer-events: none;
-}
+/* CHANGED draws no rim (JUX1-F1): the values say what changed. The class
+   stays on the object, so the beat and the tests can still find it. */
 
-/* RELEVANT NOW — two opposing RAILS: a short ice bar just above the object and
-   one just below it, each with a small notch pointing AT the object, like a
-   sight's crosshair seen edge-on. Object-local (it hugs the one object), not a
-   rim (no sides, no corners — so never the stage motif's corner marks, never
-   Changed's green inner rim) and not a badge (never Saved's gold `!`). The
-   box is the object's, outset; the bars are its ::before / ::after. */
+/* RELEVANT NOW — a continuous gold ring: the object's own box, outset by
+   `--jattn-out`, drawn as an INSET line in that gap, so the ring sits just
+   outside the object and never over its art, its caption or its `!` (which
+   stays above it). A soft glow outside it; no animation, no blinking. */
 .journey-reticle {
-  --jattn-rail: 62%;
-  --jattn-line: 2px;
-  --jattn-notch: 3px;
   --jattn-out: 2px;
-  --c: rgb(var(--jattn-ice) / 0.96);
+  --jattn-line: 2px;
   position: absolute;
   z-index: 1;
   pointer-events: none;
-  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.9)) drop-shadow(0 0 3px rgb(var(--jattn-ice) / 0.45));
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 var(--jattn-line) rgb(var(--jattn-ring) / 0.95),
+    0 0 7px 1px rgb(var(--jattn-ring) / 0.5);
 }
-.journey-reticle::before,
-.journey-reticle::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  width: var(--jattn-rail);
-  height: calc(var(--jattn-line) + var(--jattn-notch));
-  background: var(--c);
-  /* A bar with a centred notch hanging toward the object. */
-  clip-path: polygon(0 0, 100% 0, 100% var(--jattn-line), calc(50% + var(--jattn-notch)) var(--jattn-line),
-    50% 100%, calc(50% - var(--jattn-notch)) var(--jattn-line), 0 var(--jattn-line));
-}
-.journey-reticle::before { top: 0; transform: translateX(-50%); }
-.journey-reticle::after { bottom: 0; transform: translateX(-50%) scaleY(-1); }
 @container (min-width: 26rem) {
-  .journey-reticle { --jattn-line: 2px; --jattn-notch: 3.5px; --jattn-out: 3px; }
+  .journey-reticle { --jattn-out: 3px; --jattn-line: 2.5px; border-radius: 9px; }
 }
 /* The ability's TILE (the column's first box), not its pips. */
 .journey-ability > .journey-reticle {
@@ -19283,44 +19233,19 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
 }
 .journey-portrait-btn > .journey-reticle,
 .journey-level-host > .journey-reticle { inset: calc(0px - var(--jattn-out)); }
+.journey-portrait-btn > .journey-reticle { border-radius: 9999px; }
 .journey-level-host { position: relative; display: inline-flex; flex-shrink: 0; }
 .journey-reticle--item {
   top: calc(0px - var(--jattn-out));
   width: calc(var(--jb-slot) + 2 * var(--jattn-out));
   height: calc(var(--jb-slot) + 2 * var(--jattn-out));
 }
-/* The State sheet's own question outline speaks the same ice, never gold. */
+/* The State sheet's own question outline speaks the same gold ring. */
 .journey-focus {
-  box-shadow: 0 0 0 1.5px rgb(var(--jattn-ice, 226 239 247) / 0.95), 0 0 8px rgb(var(--jattn-ice, 226 239 247) / 0.35);
+  box-shadow: 0 0 0 2px rgb(var(--jattn-ring, 255 208 88) / 0.95), 0 0 7px 1px rgb(var(--jattn-ring, 255 208 88) / 0.5);
 }
-
-/* SAVED — the brief tag, in the gain-tag language (`.journey-item-gain`), in
-   gold. Anchored to its object: just above an ability tile, on a portrait's
-   lower edge; it may float over the row above on a phone for its 1.6s. */
-.journey-saved-tag {
-  position: absolute;
-  z-index: 4;
-  left: 50%;
-  bottom: calc(100% + 1px);
-  transform: translateX(-50%);
-  white-space: nowrap;
-  pointer-events: none;
-  border: 1px solid rgb(var(--jattn-gold) / 0.85);
-  border-radius: 3px;
-  background: rgb(36 26 6 / 0.94);
-  padding: 0 3px;
-  color: #f3dca0;
-  font-size: 0.5rem;
-  font-weight: 800;
-  line-height: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.8);
-}
-.journey-know-host--portrait > .journey-saved-tag { bottom: auto; top: calc(100% - 0.5rem); }
-@container (min-width: 26rem) {
-  .journey-saved-tag { font-size: 0.5625rem; line-height: 0.875rem; }
-}
+/* The level chip keeps its struck-through old level, without a green tint. */
+.journey-side .journey-chip--delta { border-color: rgb(212 179 90 / 0.35); background: rgb(0 0 0 / 0.55); }
 
 /* The persistent `!`: on a phone a little larger, and every `!` keeps a tap
    target of at least 24 × 24px (its invisible ::before; the ability's is the
@@ -19405,23 +19330,8 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
   to { opacity: 1; }
 }
 
-@keyframes journey-reticle-in {
-  from { opacity: 0; transform: scaleY(1.7); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes journey-saved-in {
-  0% { opacity: 0; transform: translateX(-50%) translateY(3px); }
-  15%, 80% { opacity: 1; transform: translateX(-50%); }
-  100% { opacity: 0; transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .journey-reticle { animation: journey-reticle-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both; }
-  .journey-saved-tag { animation: journey-saved-in 1600ms ease-out both; }
-}
 /* App Reduce Motion: the board's own rule covers its descendants; the coach
    is portalled to <body>, so it is named here too. */
-html.reduce-motion .journey-reticle,
-html.reduce-motion .journey-saved-tag,
 html.reduce-motion .journey-coach,
 html.reduce-motion .journey-coach * { animation: none !important; transition: none !important; }
 
@@ -19678,7 +19588,7 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     --jbc-pad: 8px;
     --jbc-col: 6px;
     --jbc-kit-gap: 5px;
-    --jbc-cap: 14px;
+    --jbc-cap: 15px;
     --jb-portrait: 2.125rem;
     --jb-ability: clamp(1.25rem,
       calc((100cqw - 2 * var(--jbc-pad) - var(--jb-portrait) - 2 * var(--jbc-col) - 3 * var(--jbc-kit-gap) - 15px) / 8.8),
@@ -19698,7 +19608,7 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
   .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) { padding-bottom: var(--jbc-cap); }
   .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) .journey-ability__slot,
   .journey-side .journey-ability:not(:has(> [data-testid^="journey-pips-"])) .journey-rank-digit {
-    top: calc(100% + 3px);
+    top: calc(100% + 4px);
     bottom: auto;
     height: 11px;
     padding: 0 3px;
@@ -19734,4 +19644,45 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     --jb-portrait: 2.375rem;
   }
   .journey-side__champion { font-size: 0.8125rem; line-height: 1rem; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JUX1-F1 — ARRIVING: THE DOUBLE FLASH.
+   The object that has just become inspectable carries `data-arrival` (a fact
+   a reveal saved — `useSavedNow`; an item the viewer watched being bought —
+   `useItemArrivals`; never on a mount, a reload or a re-delivered poll). The
+   OBJECT itself flashes white into gold exactly twice (two iterations, then
+   it stops), by its own shadow and brightness — never the whole board, never
+   green. Its `!` and, when relevant, its gold ring stay. Reduced motion: one
+   still white-gold edge for the arrival window instead.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes journey-arrival-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--jattn-flash) / 0); filter: none; }
+  45% {
+    box-shadow: 0 0 0 2px rgb(var(--jattn-flash) / 0.95), 0 0 12px 4px rgb(var(--jattn-ring) / 0.85);
+    filter: brightness(1.55);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-know-host--ability[data-arrival="true"] .journey-ability__tile,
+  .journey-know-host--portrait[data-arrival="true"] .journey-portrait-btn > :is([data-testid="journey-portrait-subject"], [data-testid="journey-portrait-opponent"]),
+  .journey-items > [data-arrival="true"] {
+    animation: journey-arrival-flash 380ms ease-in-out 2;
+  }
+}
+/* Without motion (OS setting, or the app's Reduce Motion, whose board-wide
+   rule already stops every animation): one still white-gold edge for the
+   arrival window instead of the two flashes. */
+@media (prefers-reduced-motion: reduce) {
+  .journey-know-host--ability[data-arrival="true"] .journey-ability__tile,
+  .journey-know-host--portrait[data-arrival="true"] .journey-portrait-btn > :is([data-testid="journey-portrait-subject"], [data-testid="journey-portrait-opponent"]),
+  .journey-items > [data-arrival="true"] {
+    box-shadow: 0 0 0 2px rgb(var(--jattn-flash) / 0.95), 0 0 8px 2px rgb(var(--jattn-ring) / 0.6);
+  }
+}
+html.reduce-motion .journey-know-host--ability[data-arrival="true"] .journey-ability__tile,
+html.reduce-motion .journey-know-host--portrait[data-arrival="true"] .journey-portrait-btn > :is([data-testid="journey-portrait-subject"], [data-testid="journey-portrait-opponent"]),
+html.reduce-motion .journey-items > [data-arrival="true"] {
+  box-shadow: 0 0 0 2px rgb(var(--jattn-flash) / 0.95), 0 0 8px 2px rgb(var(--jattn-ring) / 0.6);
 }

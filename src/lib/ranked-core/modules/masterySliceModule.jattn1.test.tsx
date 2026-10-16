@@ -3,14 +3,18 @@
  * JATTN1 backend (`__fixtures__/jattn1/`), through the production module
  * (`masterySliceModule`) exactly as every host draws it:
  *
- *   CHANGED  a thin green inner rim on every changed object for the child
- *            (ability tiles included), the beat's motion unchanged;
- *   SAVED    the persistent gold `!` + a ~1.6s anchored "Saved" tag during the
- *            reveal hold, on the exact object — live only, never on a reload;
- *            one polite "Saved to the board: …" line in the reveal region;
- *   RELEVANT ice corner brackets on what the question is about (the server's
- *            focus; both sides of a comparison), "relevant to this question"
- *            in their accessible names; never gold; no popover ever opens.
+ * JUX1-F1 (owner-approved language) replaced three of JATTN1's looks:
+ *
+ *   CHANGED  the state stays on the object (`journey-changed`, `data-new`,
+ *            the struck level) but draws no green rim and no green pulse;
+ *   SAVED    the persistent gold `!`; the moment it is saved the OBJECT
+ *            ARRIVES (`data-arrival`: the double flash) for ~1.6s — live
+ *            only, never on a reload; one polite "Saved to the board: …"
+ *            line in the reveal region. A purchase watched live arrives the
+ *            same way on its slot, once;
+ *   RELEVANT a continuous gold ring on what the question is about (the
+ *            server's focus; both sides of a comparison), "relevant to this
+ *            question" in their accessible names; no popover ever opens.
  */
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -22,6 +26,7 @@ import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type { CaptureSnapshot } from "@/lib/journey/realFixtures";
 import { resetKnowledgeCoach } from "@/components/journey/useKnowledgeCoach";
 import { SAVED_NOW_MS } from "@/components/journey/useSavedNow";
+import { ITEM_ARRIVAL_MS } from "@/components/journey/useItemArrivals";
 import { masterySliceModule } from "./masterySliceModule";
 
 const FIX = resolve(process.cwd(), "src/lib/journey/__fixtures__");
@@ -75,7 +80,8 @@ function play(n: string, from: string, to: string, visit: (s: CaptureSnapshot) =
   return r;
 }
 const q = (id: string) => screen.queryByTestId(id);
-const savedTags = () => [...document.querySelectorAll<HTMLElement>(".journey-saved-tag")].map((t) => t.dataset.testid).sort();
+/** JUX1-F1 — the objects arriving right now (the double flash), by test id. */
+const arrivals = () => [...document.querySelectorAll<HTMLElement>('[data-arrival="true"]')].map((t) => t.dataset.testid).sort();
 const reticles = () => [...document.querySelectorAll<HTMLElement>(".journey-reticle")].map((t) => t.dataset.testid).sort();
 const CSS = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8").replace(/\r\n/g, "\n");
 
@@ -87,30 +93,33 @@ vi.setConfig({ testTimeout: 25_000 });
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); resetKnowledgeCoach(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); resetKnowledgeCoach(); document.documentElement.classList.remove("reduce-motion"); });
 
-describe("SAVED — the `!` stays, the tag is a moment", () => {
-  it("Step 1's reveal saves Ashe W: a 'Saved' tag on THAT tile for ~1.6s, then only the `!`", () => {
+// JUX1-F1: the transient "Saved" tag became the ARRIVAL moment — the object
+// itself carries `data-arrival` (the stylesheet's double flash) for the same
+// window, on the same object, from the same source (`useSavedNow`).
+describe("SAVED — the `!` stays, the arrival is a moment", () => {
+  it("Step 1's reveal saves Ashe W: THAT tile arrives for ~1.6s, then only the `!`", () => {
     play(EXT, "child0-live", "child0-reveal");
-    expect(savedTags()).toEqual(["journey-saved-tag-subject-W"]);
-    expect(q("journey-saved-tag-subject-W")).toHaveTextContent(/^Saved$/);
+    expect(arrivals()).toEqual(["journey-ability-host-subject-W"]);
+    expect(document.querySelector(".journey-saved-tag")).toBeNull();     // no transient tag any more
     expect(q("journey-know-subject-W")).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(SAVED_NOW_MS + 10); });
-    expect(savedTags()).toEqual([]);
+    expect(arrivals()).toEqual([]);
     expect(q("journey-know-subject-W")).toBeInTheDocument();
   });
 
   it("a wrong answer saves the same fact, with the same cue — and never says correct", () => {
     play(EXT_WRONG, "child0-live", "child0-reveal");
     expect(q("journey-reveal-verdict")).toHaveAttribute("data-correct", "false");
-    expect(savedTags()).toEqual(["journey-saved-tag-subject-W"]);
+    expect(arrivals()).toEqual(["journey-ability-host-subject-W"]);
     const line = q("journey-saved-line")!;
     expect(line.textContent).toMatch(/Saved to the board: Ashe W cooldown, \d+ seconds$/);
     expect(line.textContent).not.toMatch(/correct|learned/i);
     expect(q("journey-reveal")!.contains(line)).toBe(true);           // the existing polite region
   });
 
-  it("a champion stat: the tag sits on the portrait, whose `!` now means SAVED", () => {
+  it("a champion stat: the portrait arrives, and its `!` means SAVED", () => {
     play(EXT, "child2-live", "child2-reveal");
-    expect(savedTags()).toEqual(["journey-saved-tag-opponent-portrait"]);
+    expect(arrivals()).toEqual(["journey-portrait-host-opponent"]);
     expect(q("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
     expect(q("journey-portrait-popup-opponent")).toHaveAccessibleName(/saved facts to review/);
   });
@@ -118,7 +127,7 @@ describe("SAVED — the `!` stays, the tag is a moment", () => {
   it("a reload in the middle of a reveal replays nothing: the `!` is simply there", () => {
     show(snap(EXT, "child0-reveal"));
     expect(q("journey-know-subject-W")).toBeInTheDocument();
-    expect(savedTags()).toEqual([]);
+    expect(arrivals()).toEqual([]);
   });
 
   it("a stated premise stat is inspectable but wears no `!` (Zed's bonus AD at Step 2)", () => {
@@ -128,18 +137,19 @@ describe("SAVED — the `!` stays, the tag is a moment", () => {
   });
 });
 
-describe("ONE Saved rule in the DOM: a Saved tag always sits on an object wearing its `!`", () => {
+describe("ONE Saved rule in the DOM: a knowledge arrival always lands on an object wearing its `!`", () => {
   it.each([[EXT], [EXT_WRONG], [REF], ["jattn1/zed_ahri.reference.timeout"], ["jattn1/voli.standard"], ["jattn1/voli.survival"]])(
     "%s, played end to end", (n) => {
       const all = load(n).filter((s) => seg(s) !== null);
       let tags = 0;
       play(n, all[0].label, all[all.length - 1].label, (s) => {
+        const knowledge = arrivals().filter((id) => !id!.startsWith("journey-item-"));
         // The moment lives inside the reveal hold only.
-        if (savedTags().length) expect(q("journey-reveal"), `${n} ${s.label}`).not.toBeNull();
-        for (const id of savedTags()) {
+        if (knowledge.length) expect(q("journey-reveal"), `${n} ${s.label}`).not.toBeNull();
+        for (const id of knowledge) {
           tags++;
-          const portrait = /^journey-saved-tag-(subject|opponent)-portrait$/.exec(id!);
-          const ability = /^journey-saved-tag-(subject|opponent)-([QWER])$/.exec(id!);
+          const portrait = /^journey-portrait-host-(subject|opponent)$/.exec(id!);
+          const ability = /^journey-ability-host-(subject|opponent)-([QWER])$/.exec(id!);
           const mark = portrait ? q(`journey-portrait-popup-${portrait[1]}-mark`) : q(`journey-know-${ability![1]}-${ability![2]}`);
           expect(mark, `${n} ${s.label} ${id}`).not.toBeNull();
           // …and the reveal's polite line says it, in the same region.
@@ -153,13 +163,13 @@ describe("ONE Saved rule in the DOM: a Saved tag always sits on an object wearin
     play(EXT, "child3-live", "child3-reveal-late", (s) => {
       if (!s.label.startsWith("child3-reveal")) return;
       expect(q("journey-reveal"), s.label).not.toBeNull();             // its own reveal still runs
-      expect(savedTags(), s.label).toEqual([]);
+      expect(arrivals(), s.label).toEqual([]);
       expect(q("journey-saved-line"), s.label).toBeNull();
     });
   });
 });
 
-describe("RELEVANT NOW — ice brackets from the server's focus", () => {
+describe("RELEVANT NOW — a gold ring from the server's focus", () => {
   it("a Combat child after armor: the attacker's ability AND the target's portrait (`target_stat: armor`)", () => {
     show(snap(EXT, "child3-live"));
     expect(reticles()).toEqual(["journey-portrait-popup-opponent-relevant", "journey-relevant-subject-W"]);
@@ -189,16 +199,16 @@ describe("RELEVANT NOW — ice brackets from the server's focus", () => {
     expect(jinxR.closest(".journey-know-host")!.querySelector("button")).toBeNull();
   });
 
-  it("the brackets are drawn per child (keyed on the step) and are never gold", () => {
+  it("the ring is drawn per child (keyed on the step): one continuous gold ring, steady, no rails", () => {
     show(snap(EXT, "child3-live"));
     expect(screen.getByTestId("journey-relevant-subject-W")).toHaveAttribute("data-step", "3");
     const rule = /\.journey-reticle \{[\s\S]*?\n\}/.exec(CSS)![0];
-    expect(rule).toMatch(/--c: rgb\(var\(--jattn-ice\)/);
-    expect(rule).not.toMatch(/232 201 122|#e8c97a|#d4b35a|#f3dca0/i);
-    // Its shape is two opposing notched rails (top / bottom) — no corner ticks.
-    expect(rule).not.toMatch(/left top|right bottom/);
-    expect(CSS).toMatch(/\.journey-reticle::before \{ top: 0; transform: translateX\(-50%\); \}/);
-    expect(CSS).toMatch(/\.journey-reticle::after \{ bottom: 0; transform: translateX\(-50%\) scaleY\(-1\); \}/);
+    // A continuous ring: an inset line in the object's outset box, in the ring's gold.
+    expect(rule).toMatch(/inset 0 0 0 var\(--jattn-line\) rgb\(var\(--jattn-ring\)/);
+    expect(CSS).toMatch(/--jattn-ring: 255 208 88;/);
+    // Not the `!` badge's gold, never ice, never animated (no blinking), and no rails.
+    expect(rule).not.toMatch(/232 201 122|#e8c97a|animation/i);
+    expect(CSS).not.toMatch(/jattn-ice|\.journey-reticle::(before|after)|journey-reticle-in/);
     expect(CSS).not.toMatch(/\.journey-portrait-btn\[data-focus="true"\]/);
   });
 
@@ -210,8 +220,8 @@ describe("RELEVANT NOW — ice brackets from the server's focus", () => {
   });
 });
 
-describe("CHANGED — one resting face", () => {
-  it("the Pickaxe slot and the ranked-up W tile keep a green inner rim for their child, then lose it", () => {
+describe("CHANGED — the state, without a rim (JUX1-F1)", () => {
+  it("the Pickaxe slot and the ranked-up W tile keep the changed state for their child, but draw no green rim", () => {
     show(snap(EXT, "child4-live"));
     const pickaxe = document.querySelector<HTMLElement>('[data-testid^="journey-item-subject-"][data-item-id="1037"]')!;
     expect(pickaxe.className).toContain("journey-changed");
@@ -224,7 +234,33 @@ describe("CHANGED — one resting face", () => {
     cleanup();
     show(snap(EXT, "child7-live"));
     expect(screen.getByTestId("journey-ability-subject-W").firstElementChild!.className).not.toContain("journey-changed");
-    expect(/\.journey-changed::after \{[\s\S]*?inset 0 0 0 1\.5px rgb\(var\(--jattn-green\)/.test(CSS)).toBe(true);
+    // No green rim and no green beat pulse: the values (struck level, new rank digit, gain tag) say it.
+    expect(CSS).not.toMatch(/\.journey-changed::after|jattn-green|journey-changed-pulse/);
+  });
+
+  it("a bought item arrives live on its slot — once; a mount mid-beat replays nothing", () => {
+    play(EXT, "child3-reveal-end", "child4-beat-start");
+    const pickaxe = document.querySelector<HTMLElement>('[data-testid^="journey-item-subject-"][data-item-id="1037"]')!;
+    expect(arrivals()).toEqual([pickaxe.dataset.testid]);
+    act(() => { vi.advanceTimersByTime(ITEM_ARRIVAL_MS + 10); });
+    expect(arrivals()).toEqual([]);
+    cleanup();
+    show(snap(EXT, "child4-beat-start"));                               // a reload in the beat
+    expect(arrivals()).toEqual([]);
+    expect(document.querySelector<HTMLElement>('[data-item-id="1037"]')).toHaveAttribute("data-new", "true");
+  });
+
+  it("the same purchase re-delivered by later polls, and the next questions, flash nothing more", () => {
+    // Count arrivals STARTING (the attribute newly appearing): the one window
+    // that opens at the beat may still be open at the next poll; it never reopens.
+    let starts = 0;
+    let prev = new Set<string>();
+    play(EXT, "child3-reveal-end", "child5-live", () => {
+      const now = new Set(arrivals().filter((id) => id!.startsWith("journey-item-")) as string[]);
+      for (const id of now) if (!prev.has(id)) starts++;
+      prev = now;
+    });
+    expect(starts).toBe(1);
   });
 
   it("the Pickaxe's own stat line joins its slot by item id during the beat", () => {
@@ -258,16 +294,25 @@ describe("mobile, keyboard and reduced motion (stylesheet)", () => {
     expect(CSS).toMatch(/--jattn-grow: max\(0px, calc\(\(24px - var\(--jb-ability\)\) \/ 2\)\)/);
   });
 
-  it("reticle, tag and the portalled coach obey both reduced-motion switches", () => {
-    const motion = /@media \(prefers-reduced-motion: no-preference\) \{\n {2}\.journey-reticle \{ animation:[^\n]*\n {2}\.journey-saved-tag \{ animation:[^\n]*\n\}/;
-    expect(CSS).toMatch(motion);
-    expect(CSS).toMatch(/html\.reduce-motion \.journey-reticle,\nhtml\.reduce-motion \.journey-saved-tag,\nhtml\.reduce-motion \.journey-coach,\nhtml\.reduce-motion \.journey-coach \* \{ animation: none !important; transition: none !important; \}/);
+  it("the double flash and the portalled coach obey both reduced-motion switches", () => {
+    const flash = CSS.slice(CSS.indexOf("JUX1-F1 — ARRIVING: THE DOUBLE FLASH."));
+    // Exactly two flashes, declared only where motion is welcome.
+    expect(flash).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\n[^@]*animation: journey-arrival-flash 380ms ease-in-out 2;/);
+    expect(flash.match(/animation: journey-arrival-flash/g)).toHaveLength(1);
+    // Without motion: a still white-gold edge (the OS switch, and the app's).
+    expect(flash).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n[^@]*box-shadow: 0 0 0 2px rgb\(var\(--jattn-flash\)/);
+    expect(flash).toMatch(/html\.reduce-motion \.journey-items > \[data-arrival="true"\] \{\n {2}box-shadow:/);
+    expect(CSS).toMatch(/html\.reduce-motion \.journey-board \* \{ animation: none !important; \}/);
+    expect(CSS).toMatch(/html\.reduce-motion \.journey-coach,\nhtml\.reduce-motion \.journey-coach \* \{ animation: none !important; transition: none !important; \}/);
+    // Never green, never the whole board.
+    expect(/@keyframes journey-arrival-flash \{[\s\S]*?\n\}/.exec(CSS)![0]).not.toMatch(/143 208 160|jattn-green/);
+    expect(flash).not.toMatch(/\.journey-board\[data-arrival|\.journey-board \{/);
   });
 
   it("under the app's Reduce Motion the states still appear (no movement, same DOM)", () => {
     document.documentElement.classList.add("reduce-motion");
     play(EXT, "child0-live", "child0-reveal");
-    expect(savedTags()).toEqual(["journey-saved-tag-subject-W"]);
+    expect(arrivals()).toEqual(["journey-ability-host-subject-W"]);
     expect(reticles()).toEqual(["journey-relevant-subject-W"]);
   });
 });
