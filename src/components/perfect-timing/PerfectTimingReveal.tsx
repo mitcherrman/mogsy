@@ -22,14 +22,21 @@
  * Space/Enter anywhere advance too (only once, never on a repeat, never while a
  * control or a text field has the key) — so the keyboard player who stopped with
  * Space continues with Space, and a double-tap during the reveal can never skip it.
+ *
+ * PT5 MASTERY SLICE. A slice reveal adds ONE line under the plates — what
+ * changed since the previous stage and what it did to the cooldown: the rank
+ * step with the previous TRUE cooldown (only if that stage was revealed, never
+ * from a voided one), or the haste arithmetic the server released
+ * (`base × 100 ÷ (100 + haste) = exact`). Every figure is still the server's.
  */
 import { useEffect, useRef, type CSSProperties } from "react";
 import { useCountUp } from "@/components/game-results/useCountUp";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { documentKeyIsForTimer } from "@/lib/perfect-timing/useTimingEngine";
-import type { PtRevealView } from "@/lib/perfect-timing/viewModel";
+import type { PtRevealView, PtSliceRevealView } from "@/lib/perfect-timing/viewModel";
 import {
-  TIER_WORD, errorDirection, formatMs, formatSeconds, railGeometry, revealRankText,
+  SLICE_STAGE_WORD, TIER_WORD, assumptionText, deltaSecondsText, errorDirection, formatMs, formatSeconds,
+  formatSecondsExact, formatSliceSeconds, hasteText, railGeometry, revealRankText,
 } from "./presentation";
 import "./perfectTiming.css";
 
@@ -77,6 +84,44 @@ function ErrorFigure({ absErrorMs, animate }: { absErrorMs: number; animate: boo
   );
 }
 
+/** What changed since the last stage, and what it did to the cooldown. */
+function SliceDelta({ slice, targetMs, rank }: { slice: PtSliceRevealView; targetMs: number; rank: number | null }) {
+  const prev = slice.previous;
+  if (slice.kind === "equipped" && slice.item) {
+    const exact = Number(slice.exactMs);
+    return (
+      <p className="pt-delta" data-testid="pt-slice-delta" data-kind={slice.kind}>
+        <span className="pt-delta-tag">
+          {slice.item.iconUrl ? <img className="pt-delta-item" src={slice.item.iconUrl} alt="" draggable={false} aria-hidden /> : null}
+          {slice.item.name} {hasteText(slice.abilityHaste, true)}
+        </span>
+        <span className="pt-delta-math" data-testid="pt-slice-math">
+          {formatSecondsExact(slice.baseCooldownMs)} × 100 ÷ (100 + {slice.abilityHaste}) = <b>{formatSecondsExact(Number.isFinite(exact) ? exact : targetMs)}</b>
+        </span>
+        <span className="pt-delta-change" data-testid="pt-slice-change">{deltaSecondsText(slice.baseCooldownMs, targetMs)}</span>
+      </p>
+    );
+  }
+  if (slice.kind === "rank_up") {
+    return (
+      <p className="pt-delta" data-testid="pt-slice-delta" data-kind={slice.kind}>
+        <span className="pt-delta-tag">Rank {prev?.rank ?? 1} → {rank ?? "?"}</span>
+        <span className="pt-delta-math" data-testid="pt-slice-math">
+          {prev ? <>{formatSliceSeconds(prev.targetMs)} → <b>{formatSliceSeconds(targetMs)}</b></>
+            : <>{SLICE_STAGE_WORD.foundation} voided → <b>{formatSliceSeconds(targetMs)}</b></>}
+        </span>
+        {prev ? <span className="pt-delta-change" data-testid="pt-slice-change">{deltaSecondsText(prev.targetMs, targetMs)}</span> : null}
+      </p>
+    );
+  }
+  return (
+    <p className="pt-delta" data-testid="pt-slice-delta" data-kind={slice.kind}>
+      <span className="pt-delta-tag">{SLICE_STAGE_WORD.foundation}</span>
+      <span className="pt-delta-math" data-testid="pt-slice-math">Rank {rank ?? "?"} · no ability haste · <b>{formatSliceSeconds(targetMs)}</b></span>
+    </p>
+  );
+}
+
 export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", autoFocusNext = true }: PerfectTimingRevealProps) {
   const reducedMotion = useReducedMotionPreference();
   const animate = !reducedMotion;
@@ -120,7 +165,9 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
     };
   }, [autoFocusNext, animate]);
 
-  const sentence = `You stopped at ${formatSeconds(reveal.elapsedMs)}; the true cooldown is ${formatSeconds(reveal.targetMs)}. `
+  // A slice prints at the precision it was graded (4545 → "4.545 s"); a Random Run keeps PT4.4's two places.
+  const secs = reveal.slice ? formatSliceSeconds : formatSeconds;
+  const sentence = `You stopped at ${secs(reveal.elapsedMs)}; the true cooldown is ${secs(reveal.targetMs)}. `
     + (direction === "exact" ? "Exact." : `${formatMs(reveal.errorMs)} ${direction}.`);
 
   const railStyle = {
@@ -138,6 +185,7 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
       data-direction={direction}
       data-animate={animate ? "true" : "false"}
       data-plausible={reveal.plausible ? "true" : "false"}
+      data-slice={reveal.slice ? reveal.slice.kind : undefined}
       aria-label="Timing result"
     >
       <p className="pt-verdict" data-testid="pt-verdict">
@@ -160,12 +208,18 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
 
       <div className="pt-plates" data-testid="pt-plates">
         <p className="pt-plate pt-enter" data-kind="you" style={delay(REVEAL_BEATS.youMark)}>
-          <span>You</span><b data-testid="pt-you-time">{formatSeconds(reveal.elapsedMs)}</b>
+          <span>You</span><b data-testid="pt-you-time">{secs(reveal.elapsedMs)}</b>
         </p>
         <p className="pt-plate pt-enter" data-kind="true" style={delay(REVEAL_BEATS.trueMark)}>
-          <span>True cooldown</span><b data-testid="pt-true-time">{formatSeconds(reveal.targetMs)}</b>
+          <span>True cooldown</span><b data-testid="pt-true-time">{secs(reveal.targetMs)}</b>
         </p>
       </div>
+
+      {reveal.slice ? (
+        <div className="pt-enter" style={delay(REVEAL_BEATS.provenance - 100)}>
+          <SliceDelta slice={reveal.slice} targetMs={reveal.targetMs} rank={reveal.rank} />
+        </div>
+      ) : null}
 
       <div className="pt-rail" data-testid="pt-rail" role="img" aria-label={sentence} style={railStyle}>
         <span className="pt-rail-end" data-end="start" data-hidden={startLabelHidden ? "true" : "false"} aria-hidden>0</span>
@@ -193,7 +247,10 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
       </div>
 
       <p className="pt-evidence pt-enter" style={delay(REVEAL_BEATS.provenance)} data-testid="pt-provenance">
-        <span data-testid="pt-evidence">Cooldown {reveal.cooldownRaw} s · {revealRankText(reveal.rank)}</span>
+        <span data-testid="pt-evidence">
+          {reveal.slice?.abilityHaste ? "Base cooldown" : "Cooldown"} {reveal.cooldownRaw} s · {revealRankText(reveal.rank)}
+          {reveal.slice ? ` · ${assumptionText(reveal.slice.assumption)}` : ""}
+        </span>
         {!reveal.plausible && (
           <span className="pt-chip pt-chip--warn" data-testid="pt-unverified"
             title="This stop ran longer than the server's own window for the round. Shown for honesty; the grade stands.">

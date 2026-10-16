@@ -37,10 +37,12 @@ function usePerfectTimingSfx(model: PtStageModel) {
   }, [model.phase, model.round?.roundId, model.reveal, sfx]);
 }
 
-export function PerfectTimingArena({ model, actions }: {
+export function PerfectTimingArena({ model, actions, nextLabel }: {
   model: PtStageModel;
   /** Recovery buttons for a voided or failed round, drawn under the status line. */
   actions?: ReactNode;
+  /** The reveal's way-on label; default "Next round", or "See results" on the last round. */
+  nextLabel?: string;
 }) {
   usePerfectTimingSfx(model);
   // The phase drawn last: a round armed straight after a reveal (or a voided
@@ -58,7 +60,7 @@ export function PerfectTimingArena({ model, actions }: {
         <PerfectTimingHero round={model.round} compact />
         <div className="pt-column">
           <PerfectTimingReveal key={model.round?.roundId ?? "reveal"} reveal={model.reveal} onNext={model.onNext}
-            nextLabel={lastRound ? "See results" : "Next round"} />
+            nextLabel={nextLabel ?? (lastRound ? "See results" : "Next round")} />
         </div>
       </div>
     );

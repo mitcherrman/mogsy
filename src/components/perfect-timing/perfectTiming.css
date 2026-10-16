@@ -1135,3 +1135,307 @@
 @media (max-width: 559px), (max-width: 759px) and (orientation: portrait) {
   .pt-ladder-wrap { max-height: none; }
 }
+
+/* ===========================================================================
+   PT5 — MODE PICK and MASTERY SLICE.
+   Same material, same fixed screen. The mode pick is two plates; a slice adds
+   a three-stage track over the hero art, an item chip, one comparison line in
+   the reveal, and stage rows in the results. Nothing here moves on a period;
+   the "what changed" mark animates once, only while ARMED.
+   =========================================================================== */
+
+/* ---- the mode pick ---------------------------------------------------- */
+.pt-modes {
+  --pt-text: #efe8d6;
+  --pt-muted: #a9b3c1;
+  --pt-brass: #b9934c;
+  --pt-brass-bright: #d5b66f;
+  --pt-brass-dark: #7a6236;
+  --pt-gold: #f0d78c;
+  --pt-cyan: #7fd6ef;
+  --pt-cyan-deep: #2f8fca;
+  --pt-line: rgba(213, 182, 111, 0.3);
+  --pt-display: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  --pt-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 3dvh, 28px);
+  width: 100%;
+  max-width: 880px;
+  height: 100%;
+  min-height: 0;
+  margin-inline: auto;
+  padding: clamp(8px, 2dvh, 24px) clamp(14px, 3vw, 36px) clamp(12px, 3dvh, 32px);
+  color: var(--pt-text);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+.pt-modes-eyebrow {
+  margin: 0;
+  font-family: var(--pt-display);
+  font-size: clamp(18px, 4dvh, 30px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pt-gold);
+  text-shadow: 0 0 26px rgba(240, 215, 140, 0.28);
+}
+.pt-modes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 2.4vw, 22px);
+  width: 100%;
+  min-height: 0;
+}
+.pt-mode {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(4px, 1dvh, 10px);
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(14px, 3dvh, 28px) clamp(14px, 2.4vw, 26px);
+  border-radius: 16px;
+  border: 1px solid var(--pt-line);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(47, 143, 202, 0.14), transparent 60%),
+    linear-gradient(160deg, rgba(15, 28, 51, 0.92), rgba(7, 17, 31, 0.92));
+  box-shadow: 0 24px 50px -32px #000, inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 200ms var(--pt-ease), transform 120ms var(--pt-ease), box-shadow 200ms var(--pt-ease);
+}
+.pt-mode[data-mode="slice"] {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(201, 168, 76, 0.16), transparent 60%),
+    linear-gradient(160deg, rgba(15, 28, 51, 0.92), rgba(7, 17, 31, 0.92));
+}
+.pt-mode:hover { border-color: var(--pt-brass-bright); }
+.pt-mode:active { transform: translateY(1px); }
+.pt-mode:focus-visible { border-color: var(--pt-brass-bright); box-shadow: 0 0 0 3px rgba(247, 239, 217, 0.9), 0 0 0 6px var(--pt-cyan-deep); }
+.pt-mode-glyph { display: flex; align-items: flex-end; gap: 6px; height: clamp(18px, 4dvh, 30px); }
+.pt-mode-glyph i {
+  display: block;
+  width: clamp(10px, 2.2dvh, 16px);
+  height: clamp(10px, 2.2dvh, 16px);
+  border-radius: 50%;
+  border: 1px solid var(--pt-brass);
+  background: rgba(213, 182, 111, 0.18);
+}
+.pt-mode[data-mode="slice"] .pt-mode-glyph i { border-radius: 4px; }
+.pt-mode[data-mode="slice"] .pt-mode-glyph i[data-step="0"] { height: clamp(8px, 1.6dvh, 12px); }
+.pt-mode[data-mode="slice"] .pt-mode-glyph i[data-step="1"] { height: clamp(14px, 3dvh, 22px); }
+.pt-mode[data-mode="slice"] .pt-mode-glyph i[data-step="2"] { height: clamp(14px, 3dvh, 22px); background: var(--pt-gold); border-color: var(--pt-gold); }
+.pt-mode-title {
+  font-family: var(--pt-display);
+  font-size: clamp(17px, 3.6dvh, 28px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  color: var(--pt-text);
+}
+.pt-mode-line { font-size: clamp(12px, 2dvh, 14px); line-height: 1.35; color: var(--pt-muted); }
+.pt-mode-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pt-brass-bright);
+}
+.pt-mode-steps em { font-style: normal; margin-right: 6px; opacity: 0.6; }
+@media (max-width: 559px), (max-width: 759px) and (orientation: portrait) {
+  .pt-modes-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- slice: the three-stage track over the hero art -------------------- */
+.pt-slice-track {
+  position: absolute;
+  top: clamp(8px, 1.6dvh, 14px);
+  left: clamp(8px, 1.6dvh, 14px);
+  right: clamp(8px, 1.6dvh, 14px);
+  z-index: 1;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pt-slice-track li {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 111, 0.28);
+  background: rgba(5, 11, 21, 0.72);
+  font-size: clamp(8.5px, 1.4dvh, 10px);
+  line-height: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(169, 179, 193, 0.75);
+}
+.pt-slice-track li[data-state="done"] { color: var(--pt-brass-bright); border-color: rgba(213, 182, 111, 0.45); }
+.pt-slice-track li[data-state="current"] {
+  color: #2a2110;
+  border-color: var(--pt-gold);
+  background: linear-gradient(170deg, var(--pt-gold), var(--pt-brass-bright));
+  box-shadow: 0 0 16px -4px rgba(240, 215, 140, 0.6);
+}
+
+/* ---- slice: the rank line, the "what changed" mark, the item chip ------- */
+.pt-rank--slice { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.pt-rank-value { display: inline-flex; align-items: center; }
+.pt-rank-value[data-changed="true"] { color: var(--pt-gold); text-shadow: 0 0 12px rgba(240, 215, 140, 0.45); }
+.pt-rank-value[data-changed="true"]::before { content: "\25B2"; margin-right: 5px; font-size: 0.8em; }
+.pt-rank-from { font-weight: 600; letter-spacing: 0.12em; color: var(--pt-muted); }
+.pt-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 9px 2px 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 111, 0.5);
+  background: rgba(5, 11, 21, 0.78);
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--pt-text);
+  white-space: nowrap;
+}
+.pt-item-chip[data-changed="true"] { border-color: var(--pt-gold); box-shadow: 0 0 18px -4px rgba(240, 215, 140, 0.55); }
+.pt-item-icon {
+  display: block;
+  flex: none;
+  width: clamp(18px, 3dvh, 24px);
+  height: clamp(18px, 3dvh, 24px);
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--pt-brass-bright);
+  background: #0b1727;
+}
+.pt-item-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pt-item-name { font-weight: 800; color: var(--pt-text); }
+.pt-item-haste { font-weight: 800; letter-spacing: 0.08em; color: var(--pt-gold); text-transform: uppercase; }
+/* The mark's one entrance, ARMED only (a running stage drops it at rest). */
+.pt-stage[data-phase="armed"] .pt-rank-value[data-changed="true"],
+.pt-stage[data-phase="armed"] .pt-item-chip[data-changed="true"] {
+  animation: pt-changed 900ms var(--pt-ease) both;
+}
+@keyframes pt-changed {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.96); }
+  60%  { opacity: 1; transform: none; }
+  100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pt-stage[data-phase="armed"] .pt-rank-value[data-changed="true"],
+  .pt-stage[data-phase="armed"] .pt-item-chip[data-changed="true"] { animation: none; }
+}
+@media (max-width: 559px), (max-width: 759px) and (orientation: portrait) {
+  .pt-hero[data-compact="true"] .pt-slice-track { display: none; }
+  .pt-rank--slice { gap: 2px 6px; }
+  /* The compact banner carries the item chip's taller line: a little more room, a slimmer chip. */
+  .pt-hero[data-compact="true"][data-slice] { height: clamp(84px, 17dvh, 136px); }
+  .pt-hero[data-compact="true"] .pt-item-chip { padding: 1px 7px 1px 1px; gap: 4px; }
+  .pt-hero[data-compact="true"] .pt-item-icon { width: 16px; height: 16px; }
+  .pt-hero[data-compact="true"] .pt-champion { font-size: clamp(18px, 3dvh, 26px); }
+  /* The comparison line: tag and change first, the arithmetic on its own line. */
+  .pt-delta-change { order: 1; }
+  .pt-delta-math { order: 2; }
+}
+
+/* ---- slice: the reveal's comparison line --------------------------------- */
+.pt-reveal[data-slice] { --pt-rail-h: clamp(46px, 9dvh, 78px); }
+.pt-delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 0;
+  padding: clamp(4px, 0.9dvh, 8px) 10px;
+  border-radius: 10px;
+  border: 1px solid var(--pt-line);
+  background: var(--pt-panel);
+  font-size: clamp(11px, 1.8dvh, 13px);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.pt-delta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 111, 0.55);
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pt-brass-bright);
+  white-space: nowrap;
+}
+.pt-delta-item { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--pt-brass-bright); }
+.pt-delta-math { font-family: var(--pt-mono); color: var(--pt-text); white-space: nowrap; }
+.pt-delta-math b { color: var(--pt-gold); font-weight: 700; }
+.pt-delta-change { font-family: var(--pt-mono); font-weight: 700; color: var(--pt-cyan); white-space: nowrap; }
+@media (max-width: 380px) {
+  .pt-delta-math { font-size: 10.5px; }
+}
+
+/* ---- slice: results ------------------------------------------------------ */
+.pt-slice-subject {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: clamp(13px, 2.2dvh, 16px);
+  line-height: 1.2;
+  color: var(--pt-text);
+}
+.pt-slice-subject b { font-family: var(--pt-display); font-weight: 800; letter-spacing: 0.03em; }
+.pt-slice-subject i { font-style: normal; font-weight: 900; color: var(--pt-gold); margin: 0 2px; }
+.pt-slice-subject-icon {
+  position: relative;
+  display: block;
+  flex: none;
+  width: clamp(28px, 5dvh, 40px);
+  height: clamp(28px, 5dvh, 40px);
+  border-radius: 12%;
+  overflow: hidden;
+  border: 1px solid var(--pt-brass-bright);
+}
+.pt-slice-subject-icon > span { border-radius: inherit; }
+.pt-slice-story {
+  font-family: var(--pt-mono);
+  font-size: clamp(11px, 1.8dvh, 13px);
+  line-height: 1.4;
+  color: var(--pt-gold);
+  font-variant-numeric: tabular-nums;
+}
+.pt-ladder-item {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  border: 1px solid var(--pt-brass-bright);
+  background: #0b1727;
+  object-fit: cover;
+}
+.pt-ladder-delta { color: var(--pt-cyan); }
