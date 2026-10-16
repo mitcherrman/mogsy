@@ -36,10 +36,11 @@ vi.mock("@/lib/funnel-analytics", () => ({
 
 const dailyStatus: { current: DailyStatusView } = { current: UNKNOWN_DAILY_STATUS };
 const dailyEnabled = vi.fn();
+const dailyIdentity = vi.fn();
 const auth: { user: { id: string } | null } = { user: { id: "test-user" } };
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: auth.user }) }));
 vi.mock("@/lib/daily-challenge/useDailyChallengeStatus", () => ({
-  useDailyChallengeStatus: (opts?: { enabled?: boolean }) => { dailyEnabled(opts?.enabled); return dailyStatus.current; },
+  useDailyChallengeStatus: (opts?: { enabled?: boolean; identity?: string | null }) => { dailyEnabled(opts?.enabled); dailyIdentity(opts?.identity); return dailyStatus.current; },
 }));
 
 const feed: { current: BroadcastFeed } = { current: INITIAL_BROADCAST_FEED };
@@ -118,6 +119,7 @@ beforeEach(() => {
   track.mockReset();
   surfaceEvent.mockReset();
   dailyEnabled.mockReset();
+  dailyIdentity.mockReset();
   auth.user = { id: "test-user" };
   playSfx.mockReset();
   sfxPlay.mockReset();
@@ -472,10 +474,13 @@ describe("the home surface contract", () => {
   it("reads the authenticated Daily status only when there is a session", () => {
     mount();
     expect(dailyEnabled).toHaveBeenLastCalledWith(true);
+    expect(dailyIdentity).toHaveBeenLastCalledWith("test-user");
     dailyEnabled.mockReset();
+    dailyIdentity.mockReset();
     auth.user = null;
     mount();
     expect(dailyEnabled).toHaveBeenLastCalledWith(false);
+    expect(dailyIdentity).toHaveBeenLastCalledWith(null);
     expect(screen.getAllByTestId("academy-core-daily").at(-1)).toHaveAccessibleName("Play Daily Challenge");
   });
 

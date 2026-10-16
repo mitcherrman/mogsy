@@ -295,7 +295,7 @@ function AcademyCoreHome() {
   // earn a 401 (a request and a console error) for an answer that is
   // "unknown" anyway, which renders the same "Play Daily Challenge" label.
   const { user } = useAuth();
-  const daily = useDailyChallengeStatus({ enabled: !!user });
+  const daily = useDailyChallengeStatus({ enabled: !!user, identity: user?.id ?? null });
   const dailyResume = daily.known && daily.resumable && !daily.completed;
   const broadcastFeed = usePatchBriefFeed();
   const brief = broadcastFeed.status === "ready" ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null : null;

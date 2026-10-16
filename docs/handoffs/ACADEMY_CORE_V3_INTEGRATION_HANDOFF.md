@@ -146,3 +146,14 @@ npx playwright test -c playwright.academy-core.config.ts e2e/academy-core.spec.t
 npx playwright test -c playwright.academy-core.config.ts e2e/academy-core.spec.ts --project=firefox   # needs: npx playwright install firefox
 # baseline vitest: detached `git worktree add --detach <dir> origin/main`, same vitest command, diff the failing set
 ```
+
+## Addendum — Daily status identity fix (owner review of `63de0137`)
+
+`useDailyChallengeStatus` kept its last status when `enabled` went false and could not tell one signed-in user from another, so sign-out or an account switch without unmounting the Core could keep a stale "Resume Daily Challenge".
+
+- The held status is now stored with the key it was read for and **derived at render**: it is returned only if the current key matches, otherwise `UNKNOWN_DAILY_STATUS`. A stale value is therefore never shown, not even for the frame before the effect runs.
+- New option `identity` (the Core passes `user?.id ?? null`). A different identity starts a new read; the previous identity's late answer is discarded. `enabled: false` drops the held status immediately and makes no request.
+- Default for `/quiz` callers is unchanged (`enabled = true`, one identity for the mount, one read on mount); asserted by a test.
+- Regression tests (`src/lib/daily-challenge/useDailyChallengeStatus.test.tsx`): default read, guest (unknown, no request), guest → signed in, signed in → guest (dropped synchronously, re-read on return), account A → B without remount (never A's status, new read, B shown), late answer for A discarded. `AcademyCorePage.test.tsx` also asserts the Core passes `enabled` and `identity`.
+- Checks: hook + Core + Quiz suites pass apart from the 3 `Quiz.hub` / `Quiz.rankedRole` failures that fail identically on `origin/main`; `tsc` shows only the 2 pre-existing errors; Chromium and Firefox smoke (account-vs-guest Daily read, one-click, composition, Landing → Core) 4 / 4 each.
+- No change to V3 visuals, the 240 ms activation, audio, route preloading or anything else. Still **not** verified: a real signed-in Daily label against the live backend.
