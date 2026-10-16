@@ -196,6 +196,9 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
       </ul>
     </section>
   );
+  // Why there is no Match Centre button (when there isn't one): part of the
+  // detail's content, so it compacts and divides with it.
+  const note = <MatchCentreNote link={centre} />;
   const hasStakes = Boolean((onward && (onward.winner || onward.loser)) || swiss);
   const stakes = (compact: boolean) => (
     <>
@@ -253,7 +256,8 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
         )}
       </header>
       {/* UX4: all at once where it fits, then tighter, then two views. */}
-      <FitCascade levels={hasStakes ? 3 : 2} watch={`${match.match_id}|${match.state}`} className="flex min-h-0 flex-1 flex-col" testId="detail-body">
+      {/* UX4: all at once where it fits, then tighter, then two views, then three. */}
+      <FitCascade levels={hasStakes ? 4 : 3} watch={`${match.match_id}|${match.state}|${centre.state}`} className="flex min-h-0 flex-1 flex-col" testId="detail-body">
         {(level) =>
           level < 2 ? (
             <div className={cn("px-5", level === 0 ? "space-y-5 py-4" : "space-y-3 py-3")}>
@@ -261,17 +265,22 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
               {drawNote}
               {whenWhere(level === 1)}
               {stakes(level === 1)}
+              {note}
             </div>
+          ) : level === 2 && hasStakes ? (
+            <DetailViews
+              views={[
+                { key: "match", label: "Match", body: <>{sides(true)}{drawNote}{whenWhere(true)}{note}</> },
+                { key: "stakes", label: "What it decides", body: stakes(true) },
+              ]}
+            />
           ) : (
             <DetailViews
-              match={sides(true)}
-              matchExtra={
-                <>
-                  {drawNote}
-                  {whenWhere(true)}
-                </>
-              }
-              stakes={stakes(true)}
+              views={[
+                { key: "teams", label: "Teams", body: <>{sides(true)}{drawNote}</> },
+                { key: "when", label: "When", name: "When and where", body: <>{whenWhere(true)}{note}</> },
+                ...(hasStakes ? [{ key: "stakes", label: "Decides", name: "What the result decides", body: stakes(true) }] : []),
+              ]}
             />
           )
         }
@@ -302,35 +311,20 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /> Show in Schedule
           </button>
         )}
-        <MatchCentreNote link={centre} />
       </footer>
     </article>
   );
 }
 
-/** The detail in two views (the teams and when; what the result decides) when it cannot be one. */
-function DetailViews({ match, matchExtra, stakes }: { match: ReactNode; matchExtra: ReactNode; stakes: ReactNode }) {
-  const [view, setView] = useState<"match" | "stakes">("match");
+/** The detail as views (two, then three on the shortest columns) when it cannot be one. */
+function DetailViews({ views }: { views: { key: string; label: string; name?: string; body: ReactNode }[] }) {
+  const [chosen, setView] = useState(views[0].key);
+  const view = views.find((v) => v.key === chosen) ?? views[0];
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-5 py-3" data-testid="detail-views">
-      <ViewTabs
-        label="Match detail views"
-        value={view}
-        onChange={setView}
-        views={[
-          { key: "match", label: "Match" },
-          { key: "stakes", label: "What it decides" },
-        ]}
-      />
-      <div role="tabpanel" aria-label={view === "match" ? "Match" : "What it decides"} className="space-y-3" data-view={view}>
-        {view === "match" ? (
-          <>
-            {match}
-            {matchExtra}
-          </>
-        ) : (
-          stakes
-        )}
+    <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-5 py-3" data-testid="detail-views" data-views={views.length}>
+      <ViewTabs label="Match detail views" value={view.key} onChange={setView} views={views.map((v) => ({ key: v.key, label: v.label, name: v.name }))} />
+      <div role="tabpanel" aria-label={view.name ?? view.label} className="space-y-3" data-view={view.key}>
+        {view.body}
       </div>
     </div>
   );
