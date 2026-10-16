@@ -18,6 +18,7 @@
 
 import type { SurfaceReveal } from "@/lib/question-surface/contract";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
+import { rendererForSegment } from "./modules/registry";
 import type { QuestionView } from "./viewTypes";
 import type {
   ReportableQuestionSnapshot,
@@ -30,6 +31,8 @@ export interface ArenaReportIdentity {
   mode: string;
   /** Product area the report is filed under. */
   category: FeedbackCategory;
+  /** PGM2 — the public bonus mode id (`match_grid`, …), when there is one. */
+  gameModeId?: string | null;
 }
 
 /**
@@ -57,11 +60,32 @@ export function arenaReportSnapshot(args: {
 }): ReportableQuestionSnapshot | null {
   const { identity, publicRound, selection, reveal } = args;
   const question = publicRound.question;
+  // PGM2 — a BOARD module (one whose renderer declares `reportBoard`) has no
+  // multiple-choice question, at most a stub: the renderer describes the board.
+  const board = rendererForSegment(publicRound.segment)?.reportBoard?.(publicRound) ?? null;
+  if (board) {
+    return {
+      category: identity.category,
+      mode: identity.mode,
+      gameModeId: identity.gameModeId ?? null,
+      runtimeQuestionId: question?.questionId ?? null,
+      prompt: board.prompt,
+      choices: board.choices ?? null,
+      selectedAnswer: board.selected ?? null,
+      // The module returns these only from a reveal the server already sent.
+      canonicalAnswer: board.canonical ?? null,
+      answerEvidence: board.evidence ?? null,
+      moduleType: `${publicRound.segment.moduleId}.v${publicRound.segment.moduleVersion}`,
+      matchId: publicRound.matchId,
+      roundNumber: publicRound.activeRound?.roundNumber ?? null,
+    };
+  }
   if (!question) return null;
 
   return {
     category: identity.category,
     mode: identity.mode,
+    gameModeId: identity.gameModeId ?? null,
 
     // No `questionKey`: the Ranked transport deliberately does not publish
     // one. Keys like `item_exact_stat:armor:highest` name the answer, and

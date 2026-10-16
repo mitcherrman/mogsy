@@ -75,16 +75,32 @@ const EXPIRED_TEXT = "Round expired — dealing a fresh one.";
 
 const isExpired = (r: PtDealRound) => Date.parse(r.expires_at) <= Date.now();
 
+/**
+ * PGM2 — the public bonus game host (More Challenges). Absent on the owner
+ * lab, which keeps every word and action it had. A public host plays the
+ * Random Run directly: no mode pick, no slice runs.
+ */
+export interface PerfectTimingPublicHost {
+  /** Player-facing copy for a failed deal (never a flag or an owner session). */
+  dealErrorText: (status: number | null, message: string) => string;
+  /** The results' way out, e.g. back to More Challenges. */
+  exitLabel: string;
+  onExit: () => void;
+  /** The round on screen and its reveal (null until locked), for reports. */
+  onRound?: (round: PtDealRound | null, reveal: PtRevealView | null, index: number) => void;
+}
+
 const RUN_PARAM = "run";
 const isMode = (v: string | null): v is PtMode => v === "random" || v === "slice";
 
-export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, initialMode }: {
+export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, initialMode, publicHost }: {
   api?: PerfectTimingApi;
   exitTo?: string;
   /** PT4.1: launched from Ranked → Playtests; heads the top bar and replaces "Exit". */
   lead?: ReactNode;
   /** PT5: skip the mode pick (tests, links). `?run=random|slice` does the same. */
   initialMode?: PtMode;
+  publicHost?: PerfectTimingPublicHost;
 } = {}) {
   const api = useMemo(() => injected ?? perfectTimingApi(), [injected]);
   const [params, setParams] = useSearchParams();
@@ -101,6 +117,8 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   const changeMode = useCallback(() => pick(null), [pick]);
   const leadNode = lead ?? <Link to={exitTo} className="pt-back">Exit</Link>;
 
+  if (publicHost) return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} publicHost={publicHost} />;
+
   if (mode === "random") return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} />;
   if (mode === "slice") return <MasterySliceRun api={api} lead={leadNode} onChangeMode={changeMode} />;
   return (
@@ -111,11 +129,14 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
 }
 
 /** The PT4.4 Random Run: five distinct abilities, base cooldowns, one at a time. Unchanged by PT5. */
-function RandomRun({ api, lead, onChangeMode }: {
+function RandomRun({ api, lead, onChangeMode, publicHost }: {
   api: PerfectTimingApi;
   lead: ReactNode;
   onChangeMode: () => void;
+  publicHost?: PerfectTimingPublicHost;
 }) {
+  const publicHostRef = useRef(publicHost);
+  publicHostRef.current = publicHost;
   const manifest = useSplashManifest();
   const [run, setRun] = useState<Run | null>(null);
   const [index, setIndex] = useState(0);
@@ -207,7 +228,7 @@ function RandomRun({ api, lead, onChangeMode }: {
     } catch (err) {
       if (!alive.current || token !== runToken.current) return;
       const e = err instanceof PerfectTimingApiError ? err : null;
-      setStage({ kind: "deal-error", message: dealErrorText(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
+      setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
     }
   }, [api, index, reset, commitRun, beginRound]);
   const replaceRef = useRef(replace);
@@ -230,7 +251,7 @@ function RandomRun({ api, lead, onChangeMode }: {
     } catch (err) {
       if (!alive.current || token !== runToken.current) return;
       const e = err instanceof PerfectTimingApiError ? err : null;
-      setStage({ kind: "deal-error", message: dealErrorText(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
+      setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
     }
   }, [api, reset, commitRun, beginRound]);
 
@@ -320,6 +341,14 @@ function RandomRun({ api, lead, onChangeMode }: {
     hud,
   };
 
+  // PGM2 — tell a public host which round is on screen (and its reveal), so
+  // the round can be reported. Keyed by value, not identity.
+  const reportKey = `${slot?.wire.round_id ?? ""}:${slot?.reveal ? "r" : "o"}:${index}`;
+  useEffect(() => {
+    publicHostRef.current?.onRound?.(slot?.wire ?? null, slot?.reveal ?? null, index);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportKey]);
+
   const summary: PtRunSummary | null = run && stage.kind === "complete" ? {
     rounds: slots.map((s, i) => ({ round: toRoundView(s.wire, i, slots.length, manifest), reveal: s.reveal })),
     totalPoints: slots.reduce((n, s) => n + (s.reveal?.points ?? 0), 0),
@@ -369,7 +398,8 @@ function RandomRun({ api, lead, onChangeMode }: {
   return (
     <PerfectTimingScreen bar={bar} art={art} stage={stage.kind}>
       {summary ? (
-        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()} onExit={onChangeMode} exitLabel="Change mode" />
+        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()}
+          onExit={publicHost ? publicHost.onExit : onChangeMode} exitLabel={publicHost ? publicHost.exitLabel : "Change mode"} />
       ) : (
         <PerfectTimingArena model={model} actions={actions} />
       )}

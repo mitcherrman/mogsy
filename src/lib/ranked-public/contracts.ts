@@ -1280,6 +1280,11 @@ export interface PublicRoundView {
    * match. Only a reported value may overrule a router-state hint.
    */
   host?: RankedMatchHost | null;
+  /**
+   * PGM2 — a bonus game's PUBLIC mode id (`match_grid`, …), or null for every
+   * other match. `undefined` when the backend did not report it.
+   */
+  gameModeId?: string | null;
 }
 
 /** The governing ruleset's identity. See `PublicRoundView.ruleset`. */
@@ -1582,6 +1587,10 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     // older deployment, the private projection) stays distinguishable from
     // a reported ordinary match (`null`). See `PublicRoundView.host`.
     ...("host" in payload ? { host: readMatchHost(payload.host) } : {}),
+    ...("game_mode_id" in payload
+      ? { gameModeId: typeof payload.game_mode_id === "string" && payload.game_mode_id !== ""
+        ? payload.game_mode_id : null }
+      : {}),
   };
 }
 

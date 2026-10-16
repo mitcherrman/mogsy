@@ -29,6 +29,7 @@ import {
   type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
+import { orderForgeBoardReport } from "./boardReports";
 
 export { ORDER_FORGE_MODULE_ID };
 export const ORDER_FORGE_MODULE_VERSION = 1;
@@ -201,6 +202,8 @@ export const orderForgeModule: ModuleRenderer = {
     (r) => r.challengeIndex === CHALLENGE_INDEX && !!r.orderForge),
   Viewport: OrderForgeViewport,
   projectQuestion: (_pub: PublicRoundView): QuestionView | null => null,
+  // PGM2 — the board a player reports (answer only after the reveal).
+  reportBoard: orderForgeBoardReport,
   summaryLabel: (pub) => {
     const state = pub.segmentState;
     if (!state) return null;

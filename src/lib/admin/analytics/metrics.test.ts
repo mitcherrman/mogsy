@@ -471,6 +471,8 @@ describe("USERS2.3C-Daily — canonical Ranked by host", () => {
     expect(bucket.legacy_unknown.started).toBe(3);
     expect(bucket.legacy_unknown.bucket.label).toBe("Legacy / unknown host");
     expect(rankedHostBucket({ metadata: null })).toBe("legacy_unknown");
+    // PGM2 — a public bonus game is its own bucket, never "unknown".
+    expect(rankedHostBucket({ metadata: { host: "bonus_game", opponent_type: "bot" } })).toBe("bonus_game");
   });
 
   it("counts only Railway rows, and the buckets sum to the canonical total", () => {

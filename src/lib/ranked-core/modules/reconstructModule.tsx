@@ -33,6 +33,7 @@ import {
   type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
+import { reconstructBoardReport } from "./boardReports";
 
 export { RECONSTRUCT_MODULE_ID };
 export const RECONSTRUCT_MODULE_VERSION = 1;
@@ -238,6 +239,8 @@ export const reconstructModule: ModuleRenderer = {
     (r) => r.challengeIndex === CHALLENGE_INDEX && !!r.reconstruct),
   Viewport: ReconstructViewport,
   projectQuestion: (_pub: PublicRoundView): QuestionView | null => null,
+  // PGM2 — the board a player reports (answer only after the reveal).
+  reportBoard: reconstructBoardReport,
   summaryLabel: (pub) => {
     const state = pub.segmentState;
     if (!state) return null;

@@ -30,6 +30,8 @@ import {
 import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
 import { msUntilAnswerable } from "@/lib/ranked-core/timerMath";
 import { RankedRulesScroll } from "@/components/ranked-rules/RankedRulesScroll";
+import { BonusModeRules } from "@/components/public-modes/BonusModeRules";
+import { isPublicModeId, PUBLIC_MODE_TITLES } from "@/lib/public-modes/contracts";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
@@ -260,6 +262,9 @@ export interface QuizRankedMatchProps {
   /** JLIB-HOST — the resolved origin, whenever it changes, so the route's
    *  own chrome (its back link) agrees with the arena. */
   onOriginChange?: (origin: RankedMatchOrigin | null) => void;
+  /** PGM2 — the match's public bonus mode id once reported (internal: the
+   *  route's rules mount follows it). */
+  onGameModeChange?: (gameModeId: string | null) => void;
 }
 
 /**
@@ -295,12 +300,17 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
     setOrigin(next);
     onOriginChange?.(next);
   }, [onOriginChange]);
+  // PGM2 — a bonus game explains ITS mode, from the server catalog, never
+  // Ranked's scoring.
+  const [gameModeId, setGameModeId] = useState<string | null>(null);
+  const bonus = origin?.id === MATCH_HOST.bonusGame;
   return (
     <>
-      <RankedMatchArena {...props} onOriginChange={handleOriginChange} />
+      <RankedMatchArena {...props} onOriginChange={handleOriginChange} onGameModeChange={setGameModeId} />
       {/* A hosted match's rules are its host's to explain. */}
-      {!props.host && (
-        <RankedRulesScroll variant={origin?.id === MATCH_HOST.roleChallenge ? "role_challenge" : "ranked"} />
+      {!props.host && (bonus
+        ? (gameModeId ? <BonusModeRules gameModeId={gameModeId} /> : null)
+        : <RankedRulesScroll variant={origin?.id === MATCH_HOST.roleChallenge ? "role_challenge" : "ranked"} />
       )}
     </>
   );
@@ -310,7 +320,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                             entry = "recovered",
                             paused = false, onSessionComplete,
                             onProgress, onPhaseChange, host, origin: originHint = null,
-                            onOriginChange,
+                            onOriginChange, onGameModeChange,
                             onTerminalNavigate = (destination) => window.location.assign(destination),
                           }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, {
@@ -339,6 +349,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   useEffect(() => {
     onOriginChange?.(origin);
   }, [origin, onOriginChange]);
+  // PGM2 — a bonus game's public mode id, latched like the host: written once
+  // at creation, so the first reported value stands for this match.
+  const [reportedMode, setReportedMode] = useState<{ matchId: string; id: string | null } | null>(null);
+  const liveMode = m.publicRound?.gameModeId;
+  if (liveMode !== undefined && (reportedMode?.matchId !== matchId || reportedMode.id !== liveMode)) {
+    setReportedMode({ matchId, id: liveMode });
+  }
+  const gameModeId = reportedMode?.matchId === matchId ? reportedMode.id : null;
+  useEffect(() => {
+    onGameModeChange?.(gameModeId);
+  }, [gameModeId, onGameModeChange]);
+  const bonusGame = origin?.id === MATCH_HOST.bonusGame;
+  /** The mode's own title on a bonus game, e.g. "Match Grid"; null otherwise. */
+  const bonusTitle = bonusGame && isPublicModeId(gameModeId) ? PUBLIC_MODE_TITLES[gameModeId] : null;
+  const originLabel = bonusTitle ?? origin?.label;
   /** RMOB2 — what the viewer is called everywhere in the match. */
   const viewerLabel = viewerDisplayName?.trim() || "You";
   // RB3 — the reporting seam. An effect rather than a render-time call so a
@@ -1066,7 +1091,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     return (
       <CanonicalArena view={null} chrome={chrome}
         recovering={entry === "fresh" || entryPreparing
-          ? { eyebrow: host?.eyebrow ?? origin?.label ?? "Ranked Duel", message: "Entering the arena…",
+          ? { eyebrow: host?.eyebrow ?? originLabel ?? "Ranked Duel", message: "Entering the arena…",
               phase: m.publicRound ? "preparing" : "match-unresolved",
               // RFX1 2B2 — the duel card, for a FRESH entry only. A recovery
               // keeps its own honest sentence: a player rejoining a match in
@@ -1107,7 +1132,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                   matchLength={plannedRoundTotal(m.publicRound)}
                   reducedMotion={reducedMotion} />
               ) : undefined }
-          : { eyebrow: host?.eyebrow ?? origin?.label ?? "Ranked Duel", message: "Recovering match…",
+          : { eyebrow: host?.eyebrow ?? originLabel ?? "Ranked Duel", message: "Recovering match…",
               phase: "match-unresolved" }} />
     );
   }
@@ -1214,7 +1239,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
      * because `ResultActions` is what states the product's three-weight
      * ordering and every mode now gets the same one.
      */
-    results.actions = {
+    if (bonusTitle) results.mode = bonusTitle;
+    results.actions = bonusGame && origin ? {
+      // PGM2 — a bonus game is repeatable: Play Again starts the SAME mode
+      // through More Challenges (which mints the next start). It is not in
+      // Ranked history, so its review is this screen's own Match details.
+      primary: {
+        label: "Play Again",
+        onClick: () => {
+          onTerminalNavigate(gameModeId
+            ? `${origin.href}?play=${encodeURIComponent(gameModeId)}` : origin.href);
+        },
+      },
+      secondary: { label: "Review Match", onClick: () => { openResultDetails(); } },
+      tertiary: { label: origin.returnLabel, onClick: () => { onTerminalNavigate(origin.href); } },
+    } : {
       primary: onSessionComplete
         ? { label: "Continue", onClick: onSessionComplete }
         // JLIB-FE — a Journey Library match returns to the Library; "Play
@@ -1315,7 +1354,8 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
             showScores={finalScores === null} />
         ) : undefined,
       /** RB2 — the one thing the end screen says differently about a bot. */
-      eyebrow: isBotMatch ? "Match Complete · Unrated" : undefined,
+      // PGM2 — a bonus game names its mode where a match names its stakes.
+      eyebrow: bonusTitle ? `${bonusTitle} · Unrated` : isBotMatch ? "Match Complete · Unrated" : undefined,
       subheading: results.subheading ?? undefined,
       progressionEnabled,
       /**
@@ -1529,13 +1569,16 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const view: ArenaViewModel = {
     // FB1-4. See dailyArenaView for the same two words: the arena does the
     // publishing, the mode only says who it is.
-    report: { mode: "Ranked", category: "Ranked" },
+    // PGM2 — a bonus game files under its own mode, with its public id.
+    report: bonusTitle
+      ? { mode: bonusTitle, category: "Leaguecraft", gameModeId }
+      : { mode: "Ranked", category: "Ranked" },
     header: {
       // LINE 1 of the left block. The opponent moved to its own line below, so
       // the mode's name is no longer carrying a second fact on its back.
       // DCMOD — a HOSTED match is one step of its host's flow, not a Ranked
       // duel: it names no mode here (empty = the line is not drawn).
-      eyebrow: host ? "" : origin?.label ?? "Ranked Duel",
+      eyebrow: host ? "" : originLabel ?? "Ranked Duel",
       // RP1 — a points match names its MODULE and its length, both read off
       // the backend's scoring block; an hp match keeps "Round N", because it
       // has no length and a "/ 10" here would be this client inventing one.

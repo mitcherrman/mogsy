@@ -1,10 +1,14 @@
-# Public Game Modes — Phase 1 (PGM1) handoff
+# Public Game Modes — PGM1 + PGM2 handoff
 
 The same file is kept in both repos:
 * `mitcherrman/mogsy`: `docs/handoffs/public-game-modes.md`
 * `mitcherrman/League_Combat_Simulator`: `docs/handoffs/public-game-modes.md`
 
-**Status (2026-10-16):** Phase 1 is **merged**.
+**Status (2026-10-16):**
+* **Phase 2 (PGM2): all 13 modes publicly playable, MERGED.** See §12.
+  * Backend `master` = `cc25fe62` (merge of `pgm2/bonus-games-be` @ `5daa56dc`). **Live on Railway** (deploy `7bac82bb` SUCCESS): the production catalog lists 13 modes, all `available`, each with a launch and Rules; the start and session routes answer 401 without auth; `Access-Control-Allow-Origin: *`.
+  * Frontend `main` = `93de0546` (merge of `pgm2/bonus-games-fe` @ `3e4c3958`). **Not yet on mogzy.lol**: the owner publishes it in Lovable.
+* Phase 1 is **merged**:
 * Backend `master` = `d7623549`. It is **live on Railway** (deploy `6f1c9853` SUCCESS). `GET https://web-production-83e53.up.railway.app/api/game-modes` returns 200 with `public_game_modes.catalog.v1`, 13 modes, and `Access-Control-Allow-Origin: *`.
 * Frontend `main` = `3bb7100d`. It is **not yet on mogzy.lol**: the owner publishes it in Lovable.
 
@@ -128,7 +132,7 @@ An unmerged Daily V6 branch exists: `dv6/daily-v6-final-recipe` @ `45331bd7`. It
 Status vocabulary: `available` | `paused` | `unavailable` | `coming_soon`.
 Launch kinds: `daily_stage` (live), `ranked_match` and `session` (reserved).
 
-## 5. Phase 2: launches that remain
+## 5. Phase 2: launches that remained (all built in PGM2, §12)
 
 | Mode | Engine | Played today on | Needs |
 |---|---|---|---|
@@ -254,7 +258,7 @@ The pre-merge notes follow.
   * `41fc080f`: the catalog page, Daily round trip, hub section, and the Rules/Report/telemetry contracts, on base `fc4c5ed5`.
   * The next commit records these SHAs.
 
-## 11. Next exact task
+## 11. Next exact task (PGM1's; superseded by §12.10)
 
 **PGM2-A: the public `ranked_match` launch for one mode, Match Grid**, once the owner answers §5 Q1 and Q2:
 
@@ -268,3 +272,194 @@ The pre-merge notes follow.
    * Publish `publicModeReportSnapshot` from the Match Grid board.
    * Mount `ModeRulesPanel` beside the arena.
 3. Then repeat for the other five Ranked-backed modes, and design the public `session` route for the labs.
+
+---
+
+## 12. Phase 2 (PGM2): all thirteen modes publicly playable
+
+### 12.1 Owner decisions applied (2026-10-16)
+
+1. **Access.** Every bonus mode is open to Free and Premium accounts and to verified anonymous guests. The Premium Ranked Bot entitlement is never asked.
+2. **Pause.** A dedicated Bonus Games switch, `app_settings.queue_bonus_games_enabled`, independent of Daily and Ranked.
+   * It stops NEW starts only.
+   * A retried press and a live game are still handed back.
+3. **Stat Drop and Combat Estimate** launch ungraded: the authoritative value is revealed, with the player's error, and no pass mark.
+4. **Perfect Timing** is public practice with browser-measured time. It makes no integrity claim.
+
+All bonus modes are repeatable, unrated, and independent of the Daily score.
+
+### 12.2 Ranked-backed modes (Match Grid, Roster Lock, Draft Memory, Chronoscope, Reconstruct, Order Forge)
+
+**Backend**
+* `POST /api/game-modes/{mode_id}/start` (`routes/public_game_modes.py`, `public_game_modes/launch.py`).
+* It creates a canonical Ranked **bot** match on the mode's frozen unrated test format: `create_bot_match(format_override=preset_format(internal preset))`.
+* The match gets host `bonus_game` and `session_preset` `bonus.<mode>`.
+* No preset is passed, so `ADMIN_ONLY_PRESETS`, `_authorize_preset`, `_authorize_ranked_bot` and `require_admin` are never consulted. A test asserts this from the AST.
+* Identity is `require_player`: any verified session except the legacy shared guest id.
+* A start is idempotent per `start_key`: the match id is derived from `(user, start_key)`.
+* If the player has a live bonus game of any mode, that game is handed back (`result: "resumed"`). Any other live match (Ranked, Daily, Journey, Role Challenge) refuses with `RANKED_ACTIVE_MATCH_EXISTS`.
+* Expired matches are settled first. Rate limit `bonus_start` (user and IP rules).
+* `require_match_identity` admits a guest when the **server-frozen** `ranked_matches.host` is `bonus_game`. Membership is still checked on every call. A guest on any other non-Daily match still gets `ACCOUNT_REQUIRED`, which is tested.
+* Bonus games are excluded from:
+  * Ranked history (`persistence.load_history_rows`);
+  * the discovery library (`NON_COLLECTING_HOSTS`);
+  * Daily Weak Areas evidence (`NON_EVIDENCE_HOSTS`).
+* Ratings are already skipped three ways: the format is not rating-eligible, it is a bot match, and the creation source is `bot_playtest`.
+* Module stats count bonus matches as **product** play: their session preset is never `admin.`.
+* Match payloads carry `game_mode_id` and mask the internal `playtest.session_preset`. A test asserts `admin.` never appears in the payload.
+
+**Frontend**
+* More Challenges Play starts the game with one start key per press. A POST mints a guest identity when there is none. The match is handed to `/quiz/ranked` with `origin: "bonus_game"`.
+* The `bonus_game` host implies the origin, so a reload keeps "Back to More Challenges".
+* `/quiz/ranked` lets a verified guest in **only** for a bonus hand-off (`isBonusHandoff`). Every other entry keeps the account gate, which now links back to More Challenges.
+* In the arena:
+  * the mode's own Rules (`BonusModeRules`, from the server catalog) replace Ranked's scroll;
+  * the eyebrow and the result name the mode ("Match Grid · Unrated");
+  * the result offers **Play Again** (the same mode, via `/quiz/more-challenges?play=<mode>`, started once and then the parameter is dropped), **Review Match** (in place, since bonus games are not in Ranked history) and **Back to More Challenges**.
+* **Board reporting.** `ModuleRenderer.reportBoard` is implemented for Match Grid, Reconstruct, Order Forge, Chronoscope and Assembly.
+  * It reports the prompt, the entries, and the player's locked board.
+  * The correct board and its evidence (recipe totals, ranked values, the XP proof, the historical series) are taken **only** from the viewer's own reveal row.
+  * The arena's one publisher files it with `game_mode_id`.
+* If the server hands back a live bonus game of **another** mode, the catalog names it and offers "Return to it" instead of silently opening a different game.
+
+### 12.3 Specialized modes as player-scoped sessions (Rangefinder, Glyph Press, Perfect Timing, Stat Drop, Combat Estimate)
+
+**Backend** (`public_game_modes/sessions.py`; routes under `/api/game-modes/{mode}/sessions…`)
+* The same service functions as the owner labs, but on a **separate public store** keyed `player:<user_id>`.
+  * A foreign session or round reads as unknown.
+  * At most 3 live sessions per player and mode.
+  * The global ceiling is separate, so public traffic can never evict the owner's lab sessions.
+* **Stat Drop and Combat Estimate** become dealt sessions (6 rounds each).
+  * Each round locks once. The authority's value is released only by that lock.
+  * The reveal comes with `feedback {guess, canonical, error, abs_error, relative_error, graded:false}`.
+  * Build identity (`backend_commit`, capture branch) is stripped.
+  * The labs' stateless "lock anything any number of times" route is not reachable publicly.
+* **Perfect Timing** rounds are owned by their run.
+  * At most 10 are dealt per run (5, plus replacements), so re-dealing cannot be used to shop for easier abilities.
+  * The scoring is PT's own.
+* **Glyph Press** clues are served from `/api/game-modes/glyph_press/sessions/{sid}/rounds/{i}/clue` with `private, no-store`.
+* Rate limits: `bonus_session` and `bonus_action`.
+* The Bonus Games pause stops new sessions only.
+* The owner labs, their stores, flags (`NUMERIC_LAB_ENABLED`, `PERFECT_TIMING_LAB_ENABLED`) and `require_admin` are untouched. The 178 lab tests still pass.
+
+**Frontend** (`/quiz/more-challenges/:mode` → `BonusSessionPage`)
+* The page mounts a game only for a mode the catalog opens as a session, with the mode's Rules beside it.
+* `src/pages/quiz-more-challenges/games/*` reuse the **same primitives**: Rangefinder, GlyphPress, MIG1 StatDrop, CE1 balance, and the PT4.4 page.
+  * They run inside the real `CanonicalArena`, with player chrome: the way back, a round bar, rails, a results screen (Play again / Back to More Challenges), and player-facing errors.
+  * There is no owner, prototype, flag or commit copy, and tests assert that.
+* Combat Estimate draws no fake opponent and no clock.
+* Perfect Timing is the owner page with an optional `publicHost` prop. The owner path is unchanged.
+* Every game publishes its round to the report control with `game_mode_id`. The answer and evidence are included only after the server's reveal.
+* Client: `src/lib/public-modes/sessionsApi.ts`. `bonusTimingApi` keeps the owner client's shape **and its error class**, so the page's expiry handling works.
+
+### 12.4 Owner controls
+* **Admin → Platform policies → "Queue · Bonus Games"** writes `queue_bonus_games_enabled`.
+  * An absent row means open.
+  * The backend checks it within 60 s.
+  * An unreadable setting fails closed (paused).
+* Admin analytics has a `bonus_game` host bucket.
+
+### 12.5 Accurate Rules (server-owned, `catalog.rules` + `scoring_summary`)
+
+Each mode's sections are written from its own format and grader:
+* **Ranked-backed modes:** "Each board scores 2 points only when … ; a partly right board scores nothing. A correct board locked strictly before the bot's earns 1 more."
+  * The timers come from each format: Match Grid and the Assembly modes 45 s; Reconstruct, Order Forge and Chronoscope 30 s.
+* **Rangefinder:** exact stops only.
+* **Glyph Press:** per letter.
+* **Perfect Timing:** tiers at 3%, 7% and 15%, and "not a verified score".
+* **Stat Drop / Combat Estimate:** "Not graded".
+
+### 12.6 Files
+* **Backend:**
+  * `public_game_modes/{catalog,launch,sessions}.py` and tests (`test_catalog`, `test_bonus_start`, `test_bonus_sessions`)
+  * `routes/public_game_modes.py`
+  * `services/platform_policy.py`
+  * `ranked_public/{host,projections,persistence,discovery,ratelimit}.py`
+  * `routes/ranked_public.py` (`require_match_identity`, `_frozen_host`)
+  * `content_sets/learning.py`
+  * updated pins in `test_ops_queue_controls.py` and `test_rc3_role_challenge_launch.py`
+* **Frontend:**
+  * `src/lib/public-modes/{contracts,launch,rules,sessionsApi}.ts` (and the regenerated catalog fixture)
+  * `src/lib/ranked-public/{client,contracts,matchHost}.ts`
+  * `src/pages/quiz-ranked/{matchOrigin.ts,QuizRankedMatch.tsx,QuizRankedPage.tsx}`
+  * `src/lib/ranked-core/{reportSnapshot.ts,modules/types.ts,modules/boardReports.ts,modules/*Module.tsx}`
+  * `src/components/public-modes/BonusModeRules.tsx`
+  * `src/pages/quiz-more-challenges/{MoreChallengesPage,BonusSessionPage}.tsx` and `games/*`
+  * `src/pages/admin/perfect-timing/PerfectTimingPage.tsx` (`publicHost`)
+  * `src/components/perfect-timing/PerfectTimingResults.tsx` (`exitLabel`)
+  * `src/pages/admin/playtests/ownerArena.tsx` (optional phone reserve)
+  * `src/lib/platform-policy/policy.ts`, `src/pages/admin/AdminPlatformPolicies.tsx`
+  * `src/lib/admin/analytics/metrics.ts`
+  * `src/App.tsx`
+
+### 12.7 Tests and verification
+**Backend** (`python -m pytest`, run in the pgm2-be worktree):
+* `public_game_modes`: 66 passed (catalog, bonus start, bonus sessions).
+* Owner labs (`interaction_lab`, `perfect_timing`, `numeric_lab`): 178 passed.
+* **Broad regression**, against clean `master` `016ab72d` in its own worktree with the same command: 147 test files (ranked*, rc*, dcmod*, dv2*, jlib*, journey*, match_grid*, reconstruct*, scrub*, order_forge*, assembly*, ops*, daily* and others) plus the lab and public-mode packages.
+  * Branch: 405 failed, 3755 passed, 706 skipped, 7 errors.
+  * Base: 666 failed, 3803 passed, 345 skipped, 7 errors.
+  * Every failure on the branch also fails on base, except one: `test_jlib_api_journey_routes.py::test_the_list_needs_no_session`. It passes in isolation on both sides, so it is a load flake.
+  * Base fails more because of environment: tests that need the canonical `lol_calc.db`, and 2 stale test files that do not import (`AUTH_METHOD_SUPABASE`).
+  * `test_rc3_role_challenge_launch.py::test_exclusion_hosts_name_the_role_challenge_host` was updated on purpose to pin `bonus_game`.
+
+**Frontend** (vitest 3.2.7):
+* Focused suites, all green:
+  * public modes, More Challenges, games, session page, client: 77
+  * board reports: 31 + 7
+  * Ranked page: 64
+  * end screen: 26
+  * owner labs: 124
+  * policy and analytics
+* **Full `src` suite**, branch vs clean `main` `f5f90c72`: no branch-caused failure.
+  * Every test failing only on the branch passes in isolation: RFX1 2B3, R3B reduced-motion hold, lobby-preview rooms, patch-report scroll.
+  * The one that still failed, `AdminPlatformPolicies` "no file outside the policy module…", fails identically on `main`: Windows `relative()` returns backslashes.
+  * The same 11 pre-existing files fail as in PGM1.
+* `tsc --noEmit -p tsconfig.app.json`: only the two pre-existing files (`OnboardingProfile.tsx`, `identity/connections.ts`).
+* eslint: 0 errors.
+
+**Live local end-to-end** (real `pgm2-be` `api_server` on a scratch copy of the 2026-09-26 canonical DB, HS256 personas, real browser):
+* All 13 modes report `available`.
+* **API smoke**, every mode as a fresh player, guests and accounts alternating:
+  * Each Ranked-backed start runs on the right module (`match`, `reconstruct`, `order_forge`, `scrub`, `assembly`), host `bonus_game`, correct `game_mode_id`, with no `admin.` leak.
+  * Rangefinder deals 10 rounds and locks.
+  * Glyph Press deals 9 rounds and returns its clue as `image/png`.
+  * Stat Drop deals 6 and returns feedback (graded false).
+  * Combat Estimate deals 6 and returns feedback.
+  * Perfect Timing deals 5 and grades a round as `perfect` (100 points).
+* **Browser, as a guest:**
+  * Catalog → Match Grid Play → live arena ("MATCH GRID · VS BOT"), with the Match Grid Rules scroll and the report panel open over a board.
+  * The full match ends on "Match Grid · Unrated", with Play Again / Review Match / Back to More Challenges.
+  * Play Again starts a new match id.
+  * Rangefinder: a real lock graded "Short" by the server.
+  * Glyph Press, Stat Drop, Combat Estimate and Perfect Timing deal from the real backend.
+  * At 375 px: no horizontal overflow, and two fixes landed from this run (the chrome row kept Next on screen, and the dock band was reserved).
+* The scratch DB and the ignored DBs the launcher created were deleted afterwards.
+
+### 12.8 Delivery
+* **Merged 2026-10-16** (both `--no-ff`).
+  * Backend `master` `cc25fe62` = PT5 master `d4bf7b84` + `pgm2/bonus-games-be`. No file overlap. On the merge: public modes, owner labs, PT5 slices, queue controls, Role Challenge launch: 300 + 174 passed; `test_match_grid_module.py`'s two HTTP tests 503 identically on base (no canonical bank in a worktree). Railway deploy `7bac82bb` SUCCESS.
+  * Frontend `main` `93de0546` = JUX1/PT5 main `f6e5f6ca` + `pgm2/bonus-games-fe`. Two conflicts, both with PT5:
+    * `PerfectTimingPage.tsx`: PT5 added a mode pick (Random Run / Mastery Slice). A `publicHost` skips it and plays the Random Run directly; `publicHost` and the report hook now live in `RandomRun`.
+    * `PerfectTimingResults.tsx`: PT5's `exitLabel` and "New slice" kept; the public host passes "Back to More Challenges".
+    * PT5 widened `PerfectTimingApi` with `dealSlice`/`lockSlice`; `bonusTimingApi` implements them as local refusals (`PT_SLICE_UNAVAILABLE`), never a route. Test added.
+    * On the merge: 164 focused files, 2303 passed; the 5 failures (`masterySliceModule.jp5`, `.visualLanguage`, `orderForgeModule` stylesheet checks) fail identically on clean `main`. `tsc` clean apart from the two pre-existing files; `vite build` OK.
+* **Deploy order: backend first.**
+  * The frontend's Play calls `/api/game-modes/{mode}/start` and `/sessions`.
+  * Against PGM1's backend the catalog would publish no `ranked_match` or `session` launch, so nothing breaks; the cards simply stay "Coming soon".
+* After the backend deploys:
+  * Seed nothing: an absent `queue_bonus_games_enabled` row means open.
+  * To start paused, the owner flips "Queue · Bonus Games" off first.
+
+### 12.9 Known limits
+* Specialized sessions live in **process memory**, as the owner labs do. A Railway restart expires them; the page says "This game expired. Start a new one."
+* `/api/ranked/active-match` stays account-only.
+  * A guest who loses the tab returns through More Challenges: Play hands back their live bonus game.
+  * Browser history state keeps a reloaded tab working.
+* Bonus matches are not in Ranked history, so a bonus match's review is the in-place Match details only. There is no long-term bonus history yet.
+
+### 12.10 Next exact task
+**Owner:** publish frontend `main` `93de0546` in Lovable. Then the live-traffic follow-ups:
+* watch the `bonus_game` analytics bucket and the `more_challenges_mode_selected` events per mode;
+* decide whether specialized sessions need durable storage (today they are memory-only);
+* consider a per-mode "bonus history" surface, since bonus games are deliberately absent from Ranked history.
