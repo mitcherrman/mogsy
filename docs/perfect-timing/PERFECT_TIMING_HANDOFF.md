@@ -151,7 +151,9 @@ Idempotency and errors:
 | good | 0.15 |
 | miss | otherwise |
 
-`points = round(100 * max(0, 1 - rel / 0.25))`. The result is an int in 0..100, which matches the Ranked `MAX_SEGMENT_POINTS` for Phase 2 compatibility.
+`points = round(100 * max(0, 1 - rel / 0.25))`, except **points = 0 when tier = miss** (PT4.2-SCORE, owner-approved 2026-10-15, `SCORING_VERSION = "pt-scoring-0.2"`). The result is an int in 0..100, which matches the Ranked `MAX_SEGMENT_POINTS` for Phase 2 compatibility.
+
+The miss rule makes points fall off a cliff at the good/miss boundary: rel = 0.15 still scores 40, and anything above it scores 0 (10 000 ms target: 1 500 ms off → 40, 1 501 ms off → 0). The 0.25 term now only shapes the curve inside `good`. Before the change, a miss could show 1..40 points beside an incorrect cue and a round not counted as landed.
 
 These are starting values for playtesting, not a researched tolerance. The release must not claim otherwise.
 
@@ -664,7 +666,7 @@ tests), a live owner sign-in, and the device check (11.5 item 1).
 
 1. **Device check not done (G4).** iOS Safari and Android Chrome were not available here. `event.timeStamp` granularity on devices is still unknown (audit unknown 7). Chromium desktop and emulated touch were verified.
 2. **One unreproduced e2e failure.** The first desktop keyboard run after merging `main` saw a Space press on an armed, focused seal not start the timer (`data-phase` stayed `armed`). 15 reruns passed. No reload was logged. Suspected cause: a cold-load remount took focus from the seal. Effect if real: one ignored press. Nothing can be submitted without a stop, so it cannot mis-grade.
-3. **Scoring reads oddly at the margin (owner, G0).** §2.3 gives points up to 25 % error but labels anything over 15 % `miss`, so a reveal can say "MISS +12 pts", and the results say "1 of 5 won" next to non-zero miss points. PT4 shows the server's numbers unchanged. To fix it, tune `scoring.py` (e.g. points floor at the miss threshold).
+3. ~~**Scoring reads oddly at the margin (owner, G0).**~~ Fixed in PT4.2-SCORE: points = 0 when tier = miss (§2.3, `pt-scoring-0.2`). Backend-only runtime change; the FE shows the server's numbers unchanged.
 4. ~~**Playtests hub (UGMP) not integrated.**~~ Done in PT4.1 (11.4.1).
 5. **Recovery buttons live in the arena's chrome row** (top of the page), not on the stage. Keyboard users get focus moved there; mouse/touch users must look up. A stage-level "Next" for voided/error rounds would need a PT1 component change.
 6. ~~**Page frame.**~~ Resolved by PT4.1: the page now plays at `/admin/playtests/perfect-timing`, inside Layout's existing full-bleed prefix. Was: `/admin/perfect-timing` is not in `Layout.tsx`'s `isFullBleed` list (which UGMP extended for `/admin/playtests/*`), so it renders inside the standard `max-w-7xl` frame with the site footer below. It looks correct; widen only if the owner wants the Ranked frame (one line in `Layout.tsx`, outside PT4's ownership).

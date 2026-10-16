@@ -5,9 +5,9 @@
  * behind AdminRoute, without the owner sign-in a browser spec cannot mint —
  * against an in-page stand-in for `/api/admin/perfect-timing/*`. The stand-in
  * deals the REAL backend capture (`src/lib/perfect-timing/__fixtures__/
- * captureV1.json`, PT3 1b81c460) and, because a real press cannot be stamped to
- * the captured millisecond, grades each lock against the captured `target_ms`
- * with the frozen v1 scoring (handoff §2.3). Test-only; never bundled.
+ * captureV1.json`, PT4.2-SCORE 4e9a6758) and, because a real press cannot be
+ * stamped to the captured millisecond, grades each lock against the captured
+ * `target_ms` with the v1 scoring (handoff §2.3). Test-only; never bundled.
  *
  * Proves at desktop and phone sizes: no answer and no number in the DOM before
  * the lock; nothing animating on a loop while timing; keyboard (desktop) and
@@ -29,7 +29,7 @@ type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-ex
 const CAPTURE: Json = JSON.parse(readFileSync(path.resolve("src/lib/perfect-timing/__fixtures__/captureV1.json"), "utf8"));
 const RELEASES: Record<string, Json> = Object.fromEntries(CAPTURE.locks.map((l: Json) => [l.round_id, l.response]));
 
-/** The frozen v1 scoring (handoff §2.3), for the stand-in only. */
+/** The v1 scoring (handoff §2.3, pt-scoring-0.2: 0 points on a miss), for the stand-in only. */
 function grade(round_id: string, elapsed_ms: number): Json {
   const cap = RELEASES[round_id];
   const target_ms: number = cap.target_ms;
@@ -38,7 +38,8 @@ function grade(round_id: string, elapsed_ms: number): Json {
   const tier = rel <= 0.03 ? "perfect" : rel <= 0.07 ? "great" : rel <= 0.15 ? "good" : "miss";
   return {
     contract: "perfect_timing.release.v1", round_id, elapsed_ms, target_ms, error_ms, abs_error_ms: Math.abs(error_ms),
-    relative_error: Math.round(rel * 10_000) / 10_000, tier, points: Math.round(100 * Math.max(0, 1 - rel / 0.25)),
+    relative_error: Math.round(rel * 10_000) / 10_000, tier,
+    points: tier === "miss" ? 0 : Math.round(100 * Math.max(0, 1 - rel / 0.25)),
     plausibility: { server_window_ms: elapsed_ms + 500, verdict: "ok" },
     authority: cap.authority,
   };

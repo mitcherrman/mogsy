@@ -1,9 +1,13 @@
 # `captureV1.json` — provenance
 
 Copied **verbatim** (byte-identical) from backend `mitcherrman/League_Combat_Simulator`
-branch `perfect-timing/pt3-cooldown-authority` at commit `1b81c460`,
+branch `perfect-timing/pt42-score` at commit `4e9a6758` (PT4.2-SCORE),
 file `perfect_timing/fixtures/capture_v1.json`, written by
-`perfect_timing/tests/make_capture.py`.
+`perfect_timing/tests/make_capture.py`. Blob `sha256 75ed8e85…`.
+
+PT4.2-SCORE changed only `scoring_version` (`pt-scoring-0.1` → `pt-scoring-0.2`)
+from the previous copy (PT3 `1b81c460`, `sha256 335c1f02…`); its one miss
+already scored 0.
 
 - One `perfect_timing.deal.v1` response (5 rounds) and the
   `perfect_timing.release.v1` response for each round.

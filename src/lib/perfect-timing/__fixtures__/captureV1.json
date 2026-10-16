@@ -3,7 +3,7 @@
   "generated_by": "perfect_timing/tests/make_capture.py",
   "data": "TEST FIXTURE DATABASE (perfect_timing/tests/fixture_db.py): rows copied from audit/champdata_p11_cooldown_ledger.csv (2026-09-07). Not production data.",
   "integrity": "elapsed_ms is browser-measured and not tamper-proof; plausibility is an upper-bound check only.",
-  "scoring_version": "pt-scoring-0.1",
+  "scoring_version": "pt-scoring-0.2",
   "deal": {
     "request": {
       "count": 5
