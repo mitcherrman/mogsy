@@ -547,7 +547,7 @@ function RoadStages({ d }: { d: Density }) {
                 {progress === "complete" ? <Check className="h-3 w-3" /> : i + 1}
               </span>
               <span className="min-w-0">
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className={cn("font-semibold text-foreground", d >= 2 ? "text-sm" : "text-[15px]")}>{stageLabel(s)}</span>
                   {chip && <span className={cn("rounded px-1.5 py-[3px] text-[9.5px] font-bold uppercase leading-none tracking-[0.12em]", chip.cls)}>{chip.label}</span>}
                   {done > 0 && all.length > 0 && d > 0 && <span className="text-[10.5px] tabular-nums text-muted-foreground" data-testid="road-progress">{done}/{all.length} played</span>}
@@ -771,7 +771,7 @@ function FixtureRow({ match, showScore }: { match: TournamentMatchV2; showScore?
             {side(match.teams[1])}
           </span>
         ) : (
-          <span className="block truncate text-sm font-semibold text-foreground/90">{matchCaption(match, kit)}</span>
+          <span className="block text-sm font-semibold leading-tight text-foreground/90">{matchCaption(match, kit)}</span>
         )}
         {/* The sides' origins wrap rather than cut (rows are measured, so a taller row just pages sooner). */}
         <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">
