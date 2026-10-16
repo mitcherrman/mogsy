@@ -31,16 +31,16 @@ import {
 
 /** The Mogzy Guide surface + message id: storage key `mogzy-guide:v1:journey-board:board-saves-v1`. */
 export const BOARD_COACH_SURFACE = "journey-board";
-export const BOARD_COACH_ID = "board-saves-v1";
+export const BOARD_COACH_ID = "board-update-check-v2";
 export const BOARD_COACH_KEY = guideStorageKey(BOARD_COACH_SURFACE, BOARD_COACH_ID);
 /** How long the coach stays up by itself, at most. */
 export const BOARD_COACH_TTL_MS = 7000;
 /** The least clock-free time worth starting it in; less defers it to the next window. */
-export const BOARD_COACH_MIN_MS = 2000;
+export const BOARD_COACH_MIN_MS = 700;
 
 export const BOARD_COACH_COPY = {
-  fine: "The board saves facts as you go. Hover or click highlighted parts for context.",
-  coarse: "The board saves facts as you go. Tap highlighted parts for context.",
+  fine: "Check board to see more. Click highlighted parts to inspect new information.",
+  coarse: "Check board to see more. Tap highlighted parts to inspect new information.",
 } as const;
 
 /**
@@ -78,7 +78,7 @@ export function useBoardCoach({ savedNow, clockFreeUntil, coarse, boardRef }: {
   boardRef: RefObject<HTMLElement>;
 }): BoardCoach {
   const text = coarse ? BOARD_COACH_COPY.coarse : BOARD_COACH_COPY.fine;
-  // The latch: armed by the first live save, kept until the coach has shown.
+  // Latch on a server-timed transition or first learned fact, until displayed.
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (savedNow && !storage.has(BOARD_COACH_KEY)) setArmed(true);
