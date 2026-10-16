@@ -25,6 +25,16 @@ vi.mock("@/lib/audio/useSfx", () => ({
   useSfx: () => ({ play, stop: () => {}, preload: () => {} }),
 }));
 
+vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/hooks/useChampionAssets")>();
+  const manifest = {
+    champions: {
+      Ahri: { icon: "assets/champions/Ahri/icon.png", splash: "assets/champions/Ahri/splash/0_default.jpg", loading: "", cutout: "" },
+    },
+  };
+  return { ...real, championAssetsQuery: { ...real.championAssetsQuery, queryFn: async () => manifest } };
+});
+
 import PerfectTimingPage from "./PerfectTimingPage";
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -117,7 +127,7 @@ describe("PerfectTimingPage — the integrated owner run", () => {
       time(LOCKS[i].request.elapsed_ms);
       await waitFor(() => expect(screen.getByTestId("pt-reveal-stage")).toBeInTheDocument());
       expect(document.body.textContent).toContain(raw);
-      fireEvent.click(screen.getByRole("button", { name: i === LOCKS.length - 1 ? /see results/i : /next round/i }));
+      fireEvent.click(screen.getByRole("button", { name: i === LOCKS.length - 1 ? /see results/i : /next round/i }), { detail: 1 });
     }
     const results = await screen.findByTestId("pt-results");
     expect(results).toHaveAttribute("data-total-points", String(LOCKS.reduce((n, l) => n + l.response.points, 0)));
@@ -179,7 +189,7 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     fireEvent.click(next);
     await armed();
     expect(currentChampionText()).toContain("Lucent Singularity");
-    expect(screen.getByTestId("pt-flank-run")).toHaveTextContent("Voided");
+    expect(screen.getByTestId("pt-pips").querySelector('[data-tier="voided"]')).not.toBeNull();
     expect(be.locks()).toHaveLength(0);
   });
 
@@ -208,7 +218,7 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     mount(be);
     await armed();
     time(LOCKS[0].request.elapsed_ms);
-    fireEvent.click(await screen.findByRole("button", { name: /next round/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /next round/i }), { detail: 1 });
     await armed();
     expect(be.deals().map((d) => d.body)).toEqual([{ count: 5 }, { count: 1 }]);
     expect(screen.getByTestId("pt-pips")).toHaveAttribute("aria-label", "Round 2 of 5");
@@ -244,7 +254,7 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     expect(go).toHaveFocus();
     fireEvent.click(go);
     await armed();
-    expect(screen.getByTestId("pt-flank-run")).toHaveTextContent("Voided");
+    expect(screen.getByTestId("pt-pips").querySelector('[data-tier="voided"]')).not.toBeNull();
   });
 
   it("after retries are exhausted, keeps the stop and lets the owner resubmit the same time", async () => {
@@ -284,18 +294,88 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     expect(document.body.textContent).not.toContain("12000");
   });
 
-  it("PT4.1: hosted from the Playtests hub, the chrome row leads with the way back instead of Exit lab", async () => {
+  it("PT4.1: hosted from the Playtests hub, the top bar leads with the way back instead of Exit", async () => {
     const be = standIn();
     const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
     render(<MemoryRouter><PerfectTimingPage api={api} lead={<a data-testid="hub-lead" href="/hub">Playtests</a>} /></MemoryRouter>);
     await armed();
     const chrome = screen.getByTestId("pt-chrome");
     expect(chrome.firstElementChild).toBe(screen.getByTestId("hub-lead"));
-    expect(screen.queryByRole("link", { name: "Exit lab" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Exit" })).toBeNull();
     cleanup();
     mount(standIn());
     await armed();
-    expect(screen.getByRole("link", { name: "Exit lab" })).toHaveAttribute("href", "/admin");
+    expect(screen.getByRole("link", { name: "Exit" })).toHaveAttribute("href", "/admin");
+  });
+
+  it("PT4.4: no prototype badge, banner, flank or disclaimer anywhere on the screen", async () => {
+    mount(standIn());
+    await armed();
+    expect(screen.queryByTestId("pt-banner")).toBeNull();
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.queryByTestId("pt-flank-run")).toBeNull();
+    expect(screen.queryByTestId("pt-flank-archive")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/prototype|owner lab|owner-only|tamper|not part of|playtest/i);
+  });
+
+  it("PT4.4: the page is a fixed, non-scrolling screen that gives the viewport back on leaving", async () => {
+    document.body.style.overflow = "auto";
+    const { unmount } = mount(standIn());
+    await armed();
+    expect(screen.getByTestId("perfect-timing-page")).toHaveClass("pt-screen");
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(document.body.style.overflow).toBe("hidden");
+    unmount();
+    expect(document.documentElement.style.overflow).toBe("");
+    expect(document.body.style.overflow).toBe("auto");
+    document.body.style.overflow = "";
+  });
+
+  it("PT4.4: Space never scrolls the page in any stage, and still plays the round", async () => {
+    const be = standIn();
+    mount(be);
+    await armed();
+    const prevented = (target: Element | Document, init: KeyboardEventInit, t: number) => {
+      const e = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+      Object.defineProperty(e, "timeStamp", { value: t });
+      fireEvent(target, e);
+      return e.defaultPrevented;
+    };
+    // armed and running: the document drives the timer with focus on <body>
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(prevented(document.body, { key: " " }, (clock += 5_000))).toBe(true);
+    expect(seal()).toHaveAttribute("data-phase", "running");
+    expect(prevented(document.body, { key: "Enter" }, clock + LOCKS[0].request.elapsed_ms)).toBe(true);
+    await screen.findByTestId("pt-reveal-stage");
+    // revealed: Space aimed at the page is swallowed by the screen, not scrolled
+    expect(prevented(document.body, { key: " " }, clock + 99_000)).toBe(true);
+    expect(be.locks()).toHaveLength(1);
+  });
+
+  it("PT4.4: a key that advances the reveal cannot also start the round it armed", async () => {
+    const be = standIn();
+    mount(be);
+    await armed();
+    time(LOCKS[0].request.elapsed_ms);
+    const next = await screen.findByRole("button", { name: /next round/i });
+    fireEvent.click(next); // detail 0: a keyboard-initiated click
+    await armed();
+    // the double-tap's second Space lands on the freshly armed seal / document
+    (document.activeElement as HTMLElement | null)?.blur();
+    key(document.body, (clock += 5_000));
+    key(seal(), (clock += 40), { key: "Enter" });
+    expect(seal()).toHaveAttribute("data-phase", "armed");
+    expect(be.locks()).toHaveLength(1);
+  });
+
+  it("PT4.4: puts the champion's splash behind the stage and in the hero, with the ability icon", async () => {
+    mount(standIn());
+    await armed();
+    const hero = screen.getByTestId("pt-round-plate");
+    expect(hero.querySelector(".pt-hero-art img")?.getAttribute("src")).toMatch(/assets\/champions\/Ahri\/splash\/0_default\.jpg$/);
+    expect(screen.getByTestId("pt-backdrop").querySelector("img")?.getAttribute("src")).toMatch(/Ahri\/splash\/0_default\.jpg$/);
+    expect(screen.getByTestId("pt-hero-icon").querySelector("img")?.getAttribute("src")).toMatch(/assets\/champions\/Ahri\/E_AhriE\.png$/);
+    expect(screen.getByLabelText("E ability")).toBeInTheDocument();
   });
 
   it("resolves ability icons through the approved asset helpers", async () => {

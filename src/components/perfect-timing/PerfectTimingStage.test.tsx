@@ -42,14 +42,25 @@ describe("PerfectTimingStage — the invisible clock", () => {
     expect(screen.getByTestId("pt-press-surface")).toHaveAttribute("data-animate", "true");
   });
 
-  it("shows progress as pips, not digits, and names the round for a screen reader", () => {
-    render(<PerfectTimingStage round={ROUND} phase="armed" press={demoPress("Cast")} />);
-    const pips = screen.getByTestId("pt-pips");
-    expect(pips).toHaveAttribute("aria-label", "Round 2 of 5");
-    expect(pips.querySelectorAll(".pt-pip")).toHaveLength(5);
-    expect(pips.querySelectorAll('[data-state="current"]')).toHaveLength(1);
-    expect(pips.querySelectorAll('[data-state="done"]')).toHaveLength(1);
-    expect(pips.textContent).toBe("");
+  it("puts the champion's art, the ability icon, the spell letter and the names on the main screen", () => {
+    const round = { ...ROUND, iconUrl: "https://assets.test/champions/x/R_x.png", splashUrl: "https://assets.test/champions/x/splash/0_default.jpg" };
+    render(<PerfectTimingStage round={round} phase="armed" press={demoPress("Cast")} />);
+    const plate = screen.getByTestId("pt-round-plate");
+    expect(plate.querySelector(".pt-hero-art img")).toHaveAttribute("src", round.splashUrl);
+    expect(screen.getByTestId("pt-hero-icon").querySelector("img")).toHaveAttribute("src", round.iconUrl);
+    expect(screen.getByTestId("pt-champion")).toHaveTextContent("Archivist (demo)");
+    expect(screen.getByTestId("pt-ability")).toHaveTextContent("Sealed Verdict of the Twelfth Hall");
+    expect(within(plate).getByLabelText("R ability")).toHaveTextContent("R");
+    expect(screen.getByTestId("pt-rank")).toHaveTextContent("Rank 2 / 3");
+  });
+
+  it("draws the hero without art when there is no splash, and drops a splash that fails to load", () => {
+    const { rerender } = render(<PerfectTimingStage round={{ ...ROUND, splashUrl: null }} phase="armed" press={demoPress("Cast")} />);
+    expect(screen.getByTestId("pt-round-plate").querySelector(".pt-hero-art")).toHaveAttribute("data-art", "none");
+    rerender(<PerfectTimingStage round={{ ...ROUND, splashUrl: "https://assets.test/broken.jpg" }} phase="armed" press={demoPress("Cast")} />);
+    const img = screen.getByTestId("pt-round-plate").querySelector(".pt-hero-art img") as HTMLImageElement;
+    fireEvent.error(img);
+    expect(screen.getByTestId("pt-round-plate").querySelector(".pt-hero-art img")).toBeNull();
   });
 });
 
@@ -137,10 +148,5 @@ describe("PerfectTimingStage — faces and copy", () => {
     document.documentElement.classList.add(APP_REDUCE_MOTION_CLASS);
     render(<PerfectTimingStage round={ROUND} phase="running" press={demoPress("seal")} />);
     expect(screen.getByTestId("pt-press-surface")).toHaveAttribute("data-animate", "false");
-  });
-
-  it("caps its height to the room the host measured", () => {
-    render(<PerfectTimingStage round={ROUND} phase="armed" press={demoPress("Cast")} stageHeight={480} />);
-    expect(screen.getByTestId("pt-stage")).toHaveStyle({ maxHeight: "480px" });
   });
 });
