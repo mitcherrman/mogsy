@@ -9,6 +9,10 @@ project_id = "kewgjwrzpzpeltwidvuc"
     verify_jwt = false
   [functions.create-checkout]
     verify_jwt = false
+  # PT1.6b — the custom one-time offer. Same model as create-checkout: the
+  # function authenticates the caller itself (and refuses guest sessions).
+  [functions.custom-offer-checkout]
+    verify_jwt = false
   [functions.customer-portal]
     verify_jwt = false
   # The provider OAuth redirect (Discord/Riot -> GET) carries no Supabase JWT,
