@@ -1,0 +1,442 @@
+{
+ "merge": "64667265",
+ "main": "c5521d3e",
+ "feature": "5ee2af7d",
+ "sweep": {
+  "1024x768": {
+   "ok": 72,
+   "fail": 0
+  },
+  "1280x600": {
+   "ok": 72,
+   "fail": 0
+  },
+  "1280x800": {
+   "ok": 72,
+   "fail": 0
+  },
+  "1440x900": {
+   "ok": 72,
+   "fail": 0
+  },
+  "1920x1080": {
+   "ok": 72,
+   "fail": 0
+  },
+  "360x640": {
+   "ok": 72,
+   "fail": 0
+  },
+  "390x844": {
+   "ok": 72,
+   "fail": 0
+  },
+  "740x360": {
+   "ok": 72,
+   "fail": 0
+  },
+  "768x1024": {
+   "ok": 72,
+   "fail": 0
+  },
+  "844x390": {
+   "ok": 72,
+   "fail": 0
+  }
+ },
+ "interactions": {
+  "844x390": {
+   "ok": 27,
+   "fail": 0
+  },
+  "1440x900": {
+   "ok": 23,
+   "fail": 0
+  },
+  "360x640": {
+   "ok": 26,
+   "fail": 0
+  },
+  "740x360": {
+   "ok": 27,
+   "fail": 0
+  },
+  "1280x600": {
+   "ok": 25,
+   "fail": 0
+  },
+  "390x844": {
+   "ok": 26,
+   "fail": 0
+  },
+  "1920x1080": {
+   "ok": 23,
+   "fail": 0
+  },
+  "1280x800": {
+   "ok": 24,
+   "fail": 0
+  },
+  "768x1024": {
+   "ok": 26,
+   "fail": 0
+  },
+  "1024x768": {
+   "ok": 24,
+   "fail": 0
+  }
+ },
+ "reducedMotion": {
+  "1440x900": {
+   "ok": 24,
+   "fail": 0
+  },
+  "390x844": {
+   "ok": 27,
+   "fail": 0
+  },
+  "844x390": {
+   "ok": 28,
+   "fail": 0
+  }
+ },
+ "regress": [
+  {
+   "name": "1440x900 off: published TournamentV2 at the Worlds URL, Footer, scrolls, no lock",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"Worlds \u00e2\u20ac\u201d League of Legends World Championship 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/worlds-2026\"}"
+  },
+  {
+   "name": "1440x900 off: /stages/play-in redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "1440x900 off: /stages/swiss redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "1440x900 off: /stages/knockouts redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "1440x900 off: /teams redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "1440x900 off: /schedule?match=115660540726095019 redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "1440x900 off: /discover stays a 404",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026/discover"
+  },
+  {
+   "name": "1440x900 on: DCGI page unchanged (published page, Footer, scrolls)",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"DCGI \u00e2\u20ac\u201d Demacia Cup Global Invitational 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/dcgi-2026\"}"
+  },
+  {
+   "name": "1440x900 off: DCGI page unchanged (published page, Footer, scrolls)",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"DCGI \u00e2\u20ac\u201d Demacia Cup Global Invitational 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/dcgi-2026\"}"
+  },
+  {
+   "name": "1440x900 on: hub scrolls, Footer, no lock",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"Pro Play | Mogzy\",\"path\":\"/lol/pro-play\"}"
+  },
+  {
+   "name": "1440x900 on: hub links the featured Worlds pill",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "name": "1440x900 on: pill opens the fixed experience (locked, no Footer, no scroll)",
+   "ok": true,
+   "note": "{\"locked\":true,\"tall\":false,\"y\":0,\"footer\":false,\"title\":\"Worlds \u00e2\u20ac\u201d League of Legends World Championship 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/worlds-2026\"}"
+  },
+  {
+   "name": "1440x900 on: Back to the hub restores scrolling and the Footer",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"Pro Play | Mogzy\",\"path\":\"/lol/pro-play\"}"
+  },
+  {
+   "name": "1440x900 on: HUB-NEXT1 ?next= link renders the hub",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "name": "390x844 off: published TournamentV2 at the Worlds URL, Footer, scrolls, no lock",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"Worlds \u00e2\u20ac\u201d League of Legends World Championship 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/worlds-2026\"}"
+  },
+  {
+   "name": "390x844 off: /stages/play-in redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "390x844 off: /stages/swiss redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "390x844 off: /stages/knockouts redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "390x844 off: /teams redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "390x844 off: /schedule?match=115660540726095019 redirects to the canonical page (UX3C)",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026"
+  },
+  {
+   "name": "390x844 off: /discover stays a 404",
+   "ok": true,
+   "note": "/lol/pro-play/tournament/worlds-2026/discover"
+  },
+  {
+   "name": "390x844 on: DCGI page unchanged (published page, Footer, scrolls)",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"DCGI \u00e2\u20ac\u201d Demacia Cup Global Invitational 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/dcgi-2026\"}"
+  },
+  {
+   "name": "390x844 off: DCGI page unchanged (published page, Footer, scrolls)",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"DCGI \u00e2\u20ac\u201d Demacia Cup Global Invitational 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/dcgi-2026\"}"
+  },
+  {
+   "name": "390x844 on: hub scrolls, Footer, no lock",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"Pro Play | Mogzy\",\"path\":\"/lol/pro-play\"}"
+  },
+  {
+   "name": "390x844 on: hub links the featured Worlds pill",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "name": "390x844 on: pill opens the fixed experience (locked, no Footer, no scroll)",
+   "ok": true,
+   "note": "{\"locked\":true,\"tall\":false,\"y\":0,\"footer\":false,\"title\":\"Worlds \u00e2\u20ac\u201d League of Legends World Championship 2026 | Mogzy\",\"path\":\"/lol/pro-play/tournament/worlds-2026\"}"
+  },
+  {
+   "name": "390x844 on: Back to the hub restores scrolling and the Footer",
+   "ok": true,
+   "note": "{\"locked\":false,\"tall\":true,\"y\":300,\"footer\":true,\"title\":\"Pro Play | Mogzy\",\"path\":\"/lol/pro-play\"}"
+  },
+  {
+   "name": "390x844 on: HUB-NEXT1 ?next= link renders the hub",
+   "ok": true,
+   "note": ""
+  }
+ ],
+ "others": [
+  {
+   "name": "1440x900 /lol: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "1440x900 /lol/pro-play: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1632,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1632,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "1440x900 /quiz/more-challenges: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/more-challenges\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1547,\"ch\":900,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/quiz/more-challenges\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1547,\"ch\":900,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "1440x900 /quiz/journeys: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/journeys\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1683,\"ch\":900,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/quiz/journeys\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1683,\"ch\":900,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "1440x900 /lol/pro-play/tournament/dcgi-2026: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/pro-play/tournament/dcgi-2026\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":6032,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/pro-play/tournament/dcgi-2026\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":6032,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "1440x900 /lol/patch-reports: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/patch-reports\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":21097,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/patch-reports\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":21097,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "1440x900 /quiz/ranked: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/ranked\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/quiz/ranked\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "1440x900 /quiz/daily-challenge: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/daily-challenge\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/quiz/daily-challenge\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "1440x900 Worlds: locked, no Footer, no scroll",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play/tournament/worlds-2026\",\"locked\":true,\"htmlOverflow\":\"hidden\",\"bodyOverflow\":\"hidden\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "1440x900 HUD link away from Worlds: lock released, Footer, scrolls",
+   "ok": false,
+   "note": "{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "1440x900 Back to Worlds: locked again, at 0",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play/tournament/worlds-2026\",\"locked\":true,\"htmlOverflow\":\"hidden\",\"bodyOverflow\":\"hidden\",\"sh\":900,\"ch\":900,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "1440x900 Back again (hub): released, scrolls, Footer",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1632,\"ch\":900,\"footer\":true,\"main\":true,\"y\":400}"
+  },
+  {
+   "name": "1440x900 no page errors",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "name": "390x844 /lol: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1284,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1284,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "390x844 /lol/pro-play: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3208,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3208,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "390x844 /quiz/more-challenges: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/more-challenges\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3458,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/quiz/more-challenges\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3458,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "390x844 /quiz/journeys: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/journeys\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3958,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/quiz/journeys\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3958,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "390x844 /lol/pro-play/tournament/dcgi-2026: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/pro-play/tournament/dcgi-2026\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":9368,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/pro-play/tournament/dcgi-2026\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":9368,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "390x844 /lol/patch-reports: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/patch-reports\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":30281,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/patch-reports\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":30281,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "390x844 /quiz/ranked: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/ranked\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":853,\"ch\":844,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/quiz/ranked\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":853,\"ch\":844,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "390x844 /quiz/daily-challenge: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/daily-challenge\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":853,\"ch\":844,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/quiz/daily-challenge\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":853,\"ch\":844,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "390x844 Worlds: locked, no Footer, no scroll",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play/tournament/worlds-2026\",\"locked\":true,\"htmlOverflow\":\"hidden\",\"bodyOverflow\":\"hidden\",\"sh\":844,\"ch\":844,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "390x844 HUD link away from Worlds: lock released, Footer, scrolls",
+   "ok": false,
+   "note": "{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1284,\"ch\":844,\"footer\":false,\"main\":true,\"y\":400}"
+  },
+  {
+   "name": "390x844 Back to Worlds: locked again, at 0",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play/tournament/worlds-2026\",\"locked\":true,\"htmlOverflow\":\"hidden\",\"bodyOverflow\":\"hidden\",\"sh\":844,\"ch\":844,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "390x844 Back again (hub): released, scrolls, Footer",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":3208,\"ch\":844,\"footer\":true,\"main\":true,\"y\":400}"
+  },
+  {
+   "name": "390x844 no page errors",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "name": "844x390 /lol: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1732,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1732,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "844x390 /lol/pro-play: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2178,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2178,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "844x390 /quiz/more-challenges: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/more-challenges\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2021,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/quiz/more-challenges\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2021,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "844x390 /quiz/journeys: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/journeys\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2178,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/quiz/journeys\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2178,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "844x390 /lol/pro-play/tournament/dcgi-2026: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/pro-play/tournament/dcgi-2026\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":6974,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/pro-play/tournament/dcgi-2026\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":6974,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "844x390 /lol/patch-reports: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/lol/patch-reports\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":22676,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400},\"merged\":{\"path\":\"/lol/patch-reports\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":22676,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400}}"
+  },
+  {
+   "name": "844x390 /quiz/ranked: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/ranked\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":390,\"ch\":390,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/quiz/ranked\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":390,\"ch\":390,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "844x390 /quiz/daily-challenge: same shell, overflow, Footer and scroll as main",
+   "ok": true,
+   "note": "{\"main\":{\"path\":\"/quiz/daily-challenge\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":390,\"ch\":390,\"footer\":false,\"main\":true,\"y\":0},\"merged\":{\"path\":\"/quiz/daily-challenge\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":390,\"ch\":390,\"footer\":false,\"main\":true,\"y\":0}}"
+  },
+  {
+   "name": "844x390 Worlds: locked, no Footer, no scroll",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play/tournament/worlds-2026\",\"locked\":true,\"htmlOverflow\":\"hidden\",\"bodyOverflow\":\"hidden\",\"sh\":390,\"ch\":390,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "844x390 HUD link away from Worlds: lock released, Footer, scrolls",
+   "ok": false,
+   "note": "{\"path\":\"/lol\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":1732,\"ch\":390,\"footer\":false,\"main\":true,\"y\":400}"
+  },
+  {
+   "name": "844x390 Back to Worlds: locked again, at 0",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play/tournament/worlds-2026\",\"locked\":true,\"htmlOverflow\":\"hidden\",\"bodyOverflow\":\"hidden\",\"sh\":390,\"ch\":390,\"footer\":false,\"main\":true,\"y\":0}"
+  },
+  {
+   "name": "844x390 Back again (hub): released, scrolls, Footer",
+   "ok": true,
+   "note": "{\"path\":\"/lol/pro-play\",\"locked\":false,\"htmlOverflow\":\"visible\",\"bodyOverflow\":\"auto\",\"sh\":2178,\"ch\":390,\"footer\":true,\"main\":true,\"y\":400}"
+  },
+  {
+   "name": "844x390 no page errors",
+   "ok": true,
+   "note": ""
+  }
+ ]
+}

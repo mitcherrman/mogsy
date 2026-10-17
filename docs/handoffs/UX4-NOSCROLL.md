@@ -231,3 +231,47 @@ Same workarounds as UX3A/UX3B: esbuild-JSX scratch configs and the rollup wasm h
 - Bracket card match names still truncate in the narrow two-column cards ("Quarterfinal 1 · B…", §7); the full name is in the detail.
 - The global HUD band (56 px) is unchanged; reclaiming it on landscape phones (as Ranked does) would be a shell decision outside the experience.
 - Not checked on a physical device (headless Edge, `isMobile` emulation); safe-area insets as in §7.
+
+## 10. UX6 — integration with current main and release verification
+
+| | |
+|---|---|
+| Main | `origin/main` `c5521d3e` (PGM2 handoff; includes PT4.4/PT5 Perfect Timing, JUX1-F1 board attention, PGM1/PGM2 More Challenges, Daily and Ranked changes). Merge base was `a874b272`: 25 main commits, 138 files |
+| Merge | `64667265` — `origin/main` merged into `ux5/worlds-landscape-phones` (normal `--no-ff` merge, no rebase, no force). PR #52 stays the release PR |
+| Conflicts | **None.** The only file both sides touch is `src/index.css`, in different regions (main removed Journey JATTN1 keyframes / rules; UX4 + UX5 add 11 lines for `html.worlds-viewport-locked`). Checked: the merged stylesheet's delta from main is exactly the branch's original delta. Main changes no shell file (`Layout`, `GlobalHud`, Footer, viewport variables); its Perfect Timing `useFixedViewport` (inline `overflow` on `html`/`body` + hidden `#root`) is per-route and independent of the Worlds lock class |
+| Fixes needed | None. No source change after the merge |
+
+### 10.1 Evidence (all on the merged code `64667265`; production builds, headless Edge, §6.1 audit unchanged)
+
+- **Zero-scroll sweep: 720 / 720** — 10 viewports (844 × 390, 740 × 360, 1920 × 1080, 1440 × 900, 1280 × 800, 1280 × 600, 1024 × 768, 768 × 1024, 390 × 844, 360 × 640) × 12 data states (live 16 Oct + Play-In live/complete, Swiss R3/R5, Knockouts drawn/live, complete, partial, standings unavailable, stale, schedule unavailable) × 6 screens. Landscape phones as `isMobile` + touch with touch scroll gestures. 718 / 720 pages reach **exactly the same fit levels and page sizes** as UX5's run; the two that differ are live-data Overviews (the live schedule moved on since UX5's capture). Ellipsis truncations: the identical list to UX5 (§7, §9.4).
+- **Interactions: 251 / 251** at the same 10 viewports — schedule deep link to the last fixture of the busiest day opens on its page with its detail, survives refresh, closes (Escape / Close); Previous/Next paging to the end; "All dates" picker; the last team (FUR) through the pages, its detail and its three views; Play-In / Swiss / Knockout final and QF1 details incl. "What it decides"; Back/Forward across Stages → Teams → Schedule; keyboard; wheel/keys/touch move nothing; leaving via "Back to Pro Play" releases the lock (hub scrolls, Footer back). Every intermediate state audited.
+- **Reduced motion: 79 / 79** (1440 × 900, 390 × 844, 844 × 390; workspace `data-motion="reduced"`).
+- **Flag on / off and HUB-NEXT1: 28 / 28** (1440 × 900, 390 × 844) — flag off: published `TournamentV2` at the Worlds URL with Footer, no lock, scrolling; `/stages/*`, `/teams`, `/schedule?match=` → canonical URL (UX3C rollback links); `/discover` 404. DCGI unchanged with the flag on and off. Hub scrolls with Footer; the featured Worlds pill opens the locked experience without Footer; Back restores the hub's scrolling and Footer; HUB-NEXT1 `?next=` renders the hub. Both builds inline the flag as expected; no prototype / scenario strings in either bundle.
+- **Other Mogzy pages vs main** (new check, main `c5521d3e` build vs merged build, both flag on; 1440 × 900, 390 × 844, 844 × 390): `/lol`, `/lol/pro-play`, `/quiz/more-challenges`, `/quiz/journeys`, DCGI, `/lol/patch-reports`, `/quiz/ranked`, `/quiz/daily-challenge` — **24 / 24** same document height, `html`/`body` overflow, Footer and scrolling as main, never locked; first-screen screenshots pixel-identical except animation frames (the levitating mascot on `/lol`, HUD shimmer at 844 × 390). In-app navigation away from Worlds through a HUD link: lock released and the page scrolls; Back returns to a locked Worlds at 0; Back again restores the scrolling hub with its Footer. 36 / 39 checks; the 3 "misses" were the harness expecting a Footer on `/lol`, which has none on main either (state otherwise identical to main) — not a regression. No page errors.
+- **Unit tests** (esbuild-JSX scratch config, chunked; main `c5521d3e` detached checkout vs merged):
+
+| Chunk | main `c5521d3e` | merged `64667265` |
+|---|---|---|
+| Pro-play pages / components / lib, Worlds dev prototype, Layout, Footer, `App.*` routes, LolHub, HUD — tracked `.env` (flag on) | 2136 / 32 failed | **2185 / 32 failed — identical list** (29 flag-off suites the tracked `.env` turns on + 3 historical `App.routeGuards` / `App.routing-contract`) |
+| Same, `VITE_WORLDS_EXPERIENCE_ENABLED=false` | 2165 / 3 failed | **2214 / 3 failed — identical** (the 3 historical) |
+| Worlds experience suites (flag on and off) | — | **139 / 139** both |
+| Main's new areas: Perfect Timing, More Challenges, public modes, Daily run, Ranked, admin PT/playtests, LeaguecraftHub | 1695 / 0 | 1694 / 1 → **15 / 15 on 3 reruns** (`QuizRankedMatch.rm1Feedback` "timed-out module", timing-sensitive under the concurrent browser sweep; the branch touches nothing it imports) |
+| Every test that reads `src/index.css` (47 files) | 1244 / 19 failed | **1244 / 19 failed — identical list** (CRLF working-copy stylesheet regexes, see the CRLF note in the machine notes) |
+
+- `tsc --noEmit -p tsconfig.app.json`: the same 2 pre-existing errors on main and merged. ESLint on the 23 branch-touched TS files: 0 errors, 8 warnings (`react-refresh/only-export-components`, as before).
+- `vite build` flag on and off: both succeed (~50 s each with the wasm rollup hook). Experience chunk 200 KB (unchanged from UX5), lazy, never requested with the flag off.
+- **PR #52 CI** on `5ee2af7d`: `phone-playwright`, `measure`, `mobile-fit` — all **success** (path-triggered workflows; none Worlds-specific). The merge push triggers fresh runs; see the PR.
+- Screenshots (`docs/handoffs/ux6/`, merged build): live Overview 1440 × 900 and 844 × 390, live Teams 390 × 844; Swiss R3 Schedule 740 × 360; Knockouts live 1280 × 600; stale Schedule 360 × 640; the deep-link sheet at 844 × 390, team FUR Matches at 740 × 360, "All dates" picker at 1280 × 600; flag-off published page 1440 × 900. `ux6-summary.json` has per-viewport counts and every regression / other-page result.
+
+### 10.2 Known issues and release concerns (unchanged from §7 / §9.4)
+
+- Owner decisions still open from §7: no Footer / Riot disclaimer on the experience's screens; floating Community button hidden there.
+- Not checked on a physical device (headless Edge emulation); safe-area insets by code review only.
+- Bracket card names truncate in narrow two-column cards (full name in the detail); 740 × 360 with a status notice shows 4 fixtures per page.
+- Local test environment: the tracked `.env` enables the flag, so 29 flag-off tests fail with the default env on main and on this branch alike.
+
+### 10.3 Release readiness
+
+The flag is **already on**: main enabled it on 15 Oct (`b5595041`, tracked `.env`), and the published mogzy.lol bundle inlines `VITE_WORLDS_EXPERIENCE_ENABLED:"true"` (checked 16 Oct). Publishing after this merge therefore **replaces the live UX3A scrolling experience with the zero-scroll one at once**. Rollback: revert the merge on main and publish (back to UX3A), or set the flag off and publish (published page + UX3C redirects, verified above).
+
+**GO** for merging PR #52 into main and publishing, conditional on: (1) PR #52's CI on the merge push being green, (2) the owner's acceptance of the §7 decisions (no Footer/disclaimer and no Community button on the experience), and (3) a short post-publish smoke check on the live site (Overview, Schedule deep link, Teams, one landscape phone, leaving restores scrolling), since Play-In and Swiss are live.
