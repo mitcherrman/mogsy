@@ -50,6 +50,7 @@ import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
 import { dailySection, dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyMainResult, optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
+import { DAILY_DISCOVERY_HOLD_MS, DailyDiscoveries } from "./DailyDiscoveries";
 import type { StageResultPlacement } from "./DailyStageResult";
 import { StageTag } from "./StageTag";
 
@@ -78,7 +79,7 @@ function delayStyle(ms: number): CSSProperties {
 }
 
 export function DailyMainResult({
-  run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges,
+  run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges, onReviewDiscoveries,
 }: {
   run: DailyRun;
   /** The MAIN stage (Standard). */
@@ -98,6 +99,12 @@ export function DailyMainResult({
    * run's next stage. Review and the recap still proceed in place.
    */
   onMoreChallenges?: () => void;
+  /**
+   * MISC-W2C — into REVIEW → OWNED from the newly-earned-cards panel. The
+   * panel (and its read) exists only where the host supplies this, exactly as
+   * "Done for now" is the host's to give.
+   */
+  onReviewDiscoveries?: () => void;
 }) {
   const settled = isMainDailyComplete(run) && stage.status === "completed";
   const model = buildDailyMainResult(run, stage);
@@ -148,6 +155,11 @@ export function DailyMainResult({
           <span aria-hidden data-testid="daily-main-result-scoring" />
         )}
       </div>
+
+      {onReviewDiscoveries && (
+        <DailyDiscoveries stage={stage} settled={settled}
+          holdMs={DAILY_DISCOVERY_HOLD_MS.mainResult} onReview={onReviewDiscoveries} />
+      )}
 
       {optional.length > 0 && (
         <section aria-label="Optional" data-testid="daily-main-optional"

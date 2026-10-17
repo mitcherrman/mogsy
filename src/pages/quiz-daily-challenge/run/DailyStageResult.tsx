@@ -86,6 +86,7 @@ import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, hasMainDaily } from "@/lib/daily-challenge/run/contracts";
 import { dailySection } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyStageResult } from "@/lib/daily-challenge/run/stageResultModel";
+import { DAILY_DISCOVERY_HOLD_MS, DailyDiscoveries } from "./DailyDiscoveries";
 import { DailyLadder, StageTag } from "./StageTag";
 
 /** What a placement is told. Facts only — nothing it could advance the day with. */
@@ -103,7 +104,7 @@ export interface StageResultPlacementContext {
 export type StageResultPlacement = (ctx: StageResultPlacementContext) => ReactNode;
 
 export function DailyStageResult({
-  run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges,
+  run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges, onReviewDiscoveries,
 }: {
   run: DailyRun;
   stage: DailyStage;
@@ -120,6 +121,8 @@ export function DailyStageResult({
    * bonus stage's result, so a player who picked the mode there returns there.
    */
   onMoreChallenges?: () => void;
+  /** MISC-W2C — into REVIEW → OWNED from the newly-earned-cards panel (host-supplied). */
+  onReviewDiscoveries?: () => void;
 }) {
   const model = buildDailyStageResult(run, stage);
   const settled = stage.result !== null;
@@ -157,6 +160,11 @@ export function DailyStageResult({
           </p>
         )}
       </div>
+
+      {onReviewDiscoveries && (
+        <DailyDiscoveries stage={stage} settled={settled}
+          holdMs={DAILY_DISCOVERY_HOLD_MS.stageResult} onReview={onReviewDiscoveries} />
+      )}
 
       <div data-testid="daily-stage-result-next-slot" className={NEXT_ROW_FLOOR}>
         {settled && (next ? (

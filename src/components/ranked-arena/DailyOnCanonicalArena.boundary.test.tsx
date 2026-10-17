@@ -204,6 +204,9 @@ describe("the Daily owns no game surface of its own", () => {
       .map((f) => f.split("/").pop());
     expect(components).toEqual([
       "DailyCompletion.tsx",       // DCMOD-E: the parent run's one close
+      // MISC-W2C (F04): the newly-earned-cards panel on a result — the shared
+      // DiscoveryReveal, mounted between stages; never a game surface.
+      "DailyDiscoveries.tsx",
       // DV2-P2A: a v5 day's MAIN result (Standard settled), in the same shared
       // result components as DailyStageResult — between stages, never a game surface.
       "DailyMainResult.tsx",

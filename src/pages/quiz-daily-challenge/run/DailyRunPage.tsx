@@ -136,6 +136,10 @@ export function DailyRunPage({
   // DV2-P2A — "Done for now": leave for the hub. Presentation only; the run
   // stays open on the server and resumes from the hub.
   const doneForNow = () => navigate("/quiz");
+  // MISC-W2C — a newly-earned-cards panel's way into REVIEW → OWNED, the same
+  // destination Ranked's terminal frame uses. Plain navigation: the run stays
+  // open on the server, and the leave guard decides whether to ask.
+  const reviewDiscoveries = () => navigate("/quiz#review");
   // PGM1 — the public More Challenges catalog, where the bonus modes live.
   const toMoreChallenges = () => navigate(MORE_CHALLENGES_ROUTE, { state: moreChallengesState("daily") });
   // B7 — the stage's last server-reported strike count (see `strikesSeen`).
@@ -228,12 +232,13 @@ export function DailyRunPage({
         main ? (
           <DailyMainResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={doneForNow} placement={stageResultPlacement}
-            onMoreChallenges={flow.phase === "stage-result" ? toMoreChallenges : undefined} />
+            onMoreChallenges={flow.phase === "stage-result" ? toMoreChallenges : undefined}
+            onReviewDiscoveries={reviewDiscoveries} />
         ) : (
           <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={hasMainDaily(run) ? doneForNow : undefined}
             onMoreChallenges={hasMainDaily(run) && flow.phase === "stage-result" ? toMoreChallenges : undefined}
-            placement={stageResultPlacement} />
+            placement={stageResultPlacement} onReviewDiscoveries={reviewDiscoveries} />
         ),
         <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} strikesFloor={strikesFloor} />);
       // DC-SURV-UX — the player is out but the child is still settling: keep
