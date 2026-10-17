@@ -75,10 +75,10 @@ src/index.css                                pulse + reduced motion + timeout st
 
   Each is wired into the existing `observeRankedSfx` baseline semantics, or `observeServerTimeout` for the bank.
 
-## Decisions (owner may revisit)
+## Decisions (1 and 2 confirmed by the owner on 2026-10-17)
 
-1. **The timeout word stays "TIMED OUT".** The arena has one timeout word (`centralStage.VERDICT_WORD`, `pointsFeedback`, `QuestionResultOverlay`, the rails). F12 is met with a distinct amber stamp and the cue. Switching to a literal "TIME'S UP" is a one-word change in those places together.
-2. **The Stat Check card clock gets visual escalation only.** A 6 s reflex card would knock through almost its whole life, so the block's header clock carries the sound.
+1. **The timeout word stays "TIMED OUT"** *(owner-confirmed)*. The arena has one timeout word (`centralStage.VERDICT_WORD`, `pointsFeedback`, `QuestionResultOverlay`, the rails). F12 is met with a distinct amber stamp and the cue. Switching to a literal "TIME'S UP" is a one-word change in those places together.
+2. **The Stat Check card clock gets visual escalation only** *(owner-confirmed)*. A 6 s reflex card would knock through almost its whole life, so the block's header clock carries the sound.
 3. **No knocks after the viewer has answered.** The digits keep counting for the shared round; the sound is a call to act.
 4. **The voices are built in and on by default.** There is no per-browser legacy toggle; global mute and Audio Studio govern them. `broadcast.countdown.tick` stays voiceless as specified. The engine's existing rule still applies: no built-in sounds while Audio Studio config is unknown (`configReady`).
 5. **The dev probe has a `?timeout=1` switch** (`RankedShellProbe`, with `?sfx=1`) that settles the viewer as server-timed-out. It is dev-only and is how the browser evidence shows a real settlement path.
@@ -141,5 +141,5 @@ Files: `after-desktop.webm`, `after-390x844.webm`, `before-desktop.webm`, `befor
 
 1. **There is no real Survival *timeout* capture.** The Survival per-child timeout cue shares its code path with the pooled and reference captures, which are proven. Capture one with the backend before release.
 2. **The Daily bank cue needs the chrome to see the server's `remaining_ms = 0` reading** before the stage result replaces it. If the stage ends in the same poll, the cue is skipped and the result page's server "Time's up" headline (Wave 2C) is the only signal. Verify on a live Time Trial run.
-3. **Owner calls:** decision 1 (the literal word) and decision 2 (Stat Check card sound).
+3. **Owner calls:** none open. The owner confirmed decisions 1 and 2 as built on 2026-10-17.
 4. **Reproduce:** start a worktree dev server (scratch vite config + rollup-wasm hook), then run `node docs/handoffs/misc-w2d/logs/cap.cjs <out> desktop http://localhost:<port> 1` with the worktree as cwd.
