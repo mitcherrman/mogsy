@@ -115,3 +115,24 @@ describe("PT5 slice formatting", () => {
     expect(hasteText(10, true)).toBe("+10 AH");
   });
 });
+
+describe("PT5.1 transition copy", () => {
+  it("names the two transitions", async () => {
+    const { TRANSITION_TITLE, ADJUST_TIMING_TEXT, rankStepText } = await import("./presentation");
+    expect(TRANSITION_TITLE.rank_up).toBe("Rank up");
+    expect(TRANSITION_TITLE.equipped).toBe("Item equipped");
+    expect(ADJUST_TIMING_TEXT).toBe("Adjust your timing");
+    expect(rankStepText(1, 3)).toBe("Rank 1 → Rank 3");
+  });
+
+  it("says 'reduced' only when the item's positive ability haste guarantees it, otherwise 'changed'", async () => {
+    const { cooldownChangeText } = await import("./presentation");
+    expect(cooldownChangeText("equipped", 10)).toBe("Cooldown reduced");
+    expect(cooldownChangeText("equipped", 0.5)).toBe("Cooldown reduced");
+    expect(cooldownChangeText("equipped", 0)).toBe("Cooldown changed");
+    // A rank step has no guaranteed direction in the certified progression.
+    expect(cooldownChangeText("rank_up", 0)).toBe("Cooldown changed");
+    expect(cooldownChangeText("rank_up", 10)).toBe("Cooldown changed");
+    expect(cooldownChangeText("foundation", 0)).toBe("Cooldown changed");
+  });
+});

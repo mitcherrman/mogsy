@@ -37,12 +37,14 @@ function usePerfectTimingSfx(model: PtStageModel) {
   }, [model.phase, model.round?.roundId, model.reveal, sfx]);
 }
 
-export function PerfectTimingArena({ model, actions, nextLabel }: {
+export function PerfectTimingArena({ model, actions, nextLabel, autoFocusSeal }: {
   model: PtStageModel;
   /** Recovery buttons for a voided or failed round, drawn under the status line. */
   actions?: ReactNode;
   /** The reveal's way-on label; default "Next round", or "See results" on the last round. */
   nextLabel?: string;
+  /** Force the seal to take focus when the stage mounts (a Mastery Slice transition's Continue just unmounted under the keyboard). */
+  autoFocusSeal?: boolean;
 }) {
   usePerfectTimingSfx(model);
   // The phase drawn last: a round armed straight after a reveal (or a voided
@@ -51,7 +53,7 @@ export function PerfectTimingArena({ model, actions, nextLabel }: {
   const cameFrom = prevPhase.current;
   useEffect(() => { prevPhase.current = model.phase; });
 
-  const focusSeal = model.phase === "armed" && (cameFrom === "revealed" || cameFrom === "interrupted" || cameFrom === "error");
+  const focusSeal = autoFocusSeal ?? (model.phase === "armed" && (cameFrom === "revealed" || cameFrom === "interrupted" || cameFrom === "error"));
   const lastRound = model.round !== null && model.round.index >= model.round.total;
 
   if (model.phase === "revealed" && model.reveal) {

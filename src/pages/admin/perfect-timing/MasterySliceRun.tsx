@@ -11,6 +11,14 @@
  * holds one before its stage is locked, and a stage's reveal compares with the
  * previous stage only if THAT stage was revealed.
  *
+ * PT5.1 — BETWEEN STAGES. Leaving a revealed stage goes to a `transition` state
+ * of its own (Rank up, Item equipped) instead of straight into the next
+ * playable stage. Nothing is armed and no clock runs in it; Continue (button,
+ * or Space/Enter once it has settled) arms the next stage, and the key that
+ * continued is guarded for 250 ms so it cannot also cast. Every move out of a
+ * revealed / voided / failed stage goes through `stageRef`, so a double press
+ * or a stale callback moves the run at most one state.
+ *
  * RECOVERY (handoff PT5 §5).
  *  - Interrupted (hidden / pagehide / clock / timeout): the stage is voided and
  *    never sent; Next goes on to the next stage of the SAME ability. The server
@@ -28,6 +36,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { PerfectTimingArena } from "@/components/perfect-timing/PerfectTimingArena";
 import { PerfectTimingResults } from "@/components/perfect-timing/PerfectTimingResults";
 import { PerfectTimingBar, PerfectTimingScreen } from "@/components/perfect-timing/PerfectTimingScreen";
+import { hasTransition } from "@/components/perfect-timing/presentation";
+import { SliceTransition } from "@/components/perfect-timing/SliceTransition";
 import { PerfectTimingApiError, type PerfectTimingApi } from "@/lib/perfect-timing/api";
 import { SLICE_STAGES, type PtSliceDeal, type PtSliceRelease } from "@/lib/perfect-timing/sliceContract";
 import { useSplashManifest } from "@/lib/perfect-timing/useSplashManifest";
@@ -56,6 +66,8 @@ type Stage =
   | { kind: "play" }
   | { kind: "submitting"; roundId: string; elapsedMs: number }
   | { kind: "revealed" }
+  /** PT5.1: between two stages — `to` is the 0-based stage about to be played. Nothing is armed. */
+  | { kind: "transition"; to: number }
   | { kind: "voided"; message: string }
   | { kind: "lock-error"; roundId: string; elapsedMs: number; message: string; retryable: boolean }
   | { kind: "complete" };
@@ -73,7 +85,13 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
   const manifest = useSplashManifest();
   const [run, setRun] = useState<SliceRun | null>(null);
   const [index, setIndex] = useState(0);
-  const [stage, setStage] = useState<Stage>({ kind: "dealing", message: null });
+  const [stage, setStageState] = useState<Stage>({ kind: "dealing", message: null });
+  // The stage the run is in RIGHT NOW (state lags a render behind a fast second event).
+  const stageRef = useRef<Stage>({ kind: "dealing", message: null });
+  const setStage = useCallback((next: Stage) => { stageRef.current = next; setStageState(next); }, []);
+  // True from the moment a transition's Continue arms the next stage until that stage is locked:
+  // the keyboard player's focus goes to the seal, as it does after a reveal.
+  const cameFromTransition = useRef(false);
   const [showSubmitting, setShowSubmitting] = useState(false);
 
   // The same async guards as the Random Run: mounted, same run, same round.
@@ -98,6 +116,9 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
 
   const keyGuardUntil = useRef(0);
   const keyGuard = useCallback(() => performance.now() < keyGuardUntil.current, []);
+  // A tap that continued out of a transition is guarded too (its button sits where the seal will be).
+  const pointerGuardUntil = useRef(0);
+  const pointerGuard = useCallback(() => performance.now() < pointerGuardUntil.current, []);
   const resumeRef = useRef<(i: number) => void>(() => {});
 
   // ---------------------------------------------------------------- lock
@@ -106,6 +127,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     const r0 = runRef.current;
     if (!r0) return;
     const i = r0.deal.stages.findIndex((s) => s.round_id === roundId);
+    cameFromTransition.current = false;
     setStage({ kind: "submitting", roundId, elapsedMs });
     setShowSubmitting(false);
     try {
@@ -131,7 +153,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
         : `${e?.message ?? "The stage could not be recorded."} The stage is voided.`;
       setStage({ kind: "lock-error", roundId, elapsedMs, message, retryable: Boolean(e?.transient) });
     }
-  }, [api, commitRun]);
+  }, [api, commitRun, setStage]);
 
   const onStopped = useCallback((elapsedMs: number, roundId: string) => {
     if (roundId !== currentRoundId.current || submitted.current.has(roundId)) return;
@@ -139,7 +161,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     void submit(roundId, elapsedMs);
   }, [submit]);
 
-  const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play", keyGuard });
+  const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play", keyGuard, pointerGuard });
   const { arm, reset } = engine;
 
   // ---------------------------------------------------------------- stages
@@ -154,7 +176,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     currentRoundId.current = roundId;
     setStage({ kind: "play" });
     arm(roundId);
-  }, [arm]);
+  }, [arm, setStage]);
 
   /** Re-deal the SAME ability from stage `i` (0-based); earlier results stay. */
   const resume = useCallback(async (i: number) => {
@@ -191,13 +213,14 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
         fresh: changed,
       });
     }
-  }, [api, reset, commitRun, beginStage]);
+  }, [api, reset, commitRun, beginStage, setStage]);
   useEffect(() => { resumeRef.current = (i: number) => { void resume(i); }; });
 
   const startSlice = useCallback(async () => {
     const token = ++runToken.current;
     currentRoundId.current = null;
     submitted.current = new Set();
+    cameFromTransition.current = false;
     reset();
     commitRun(null);
     setIndex(0);
@@ -223,7 +246,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
         fresh: true,
       });
     }
-  }, [api, reset, commitRun, beginStage]);
+  }, [api, reset, commitRun, beginStage, setStage]);
 
   useEffect(() => { void startSlice(); }, [startSlice]);
 
@@ -233,7 +256,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     if (stage.kind !== "play" || enginePhase !== "interrupted") return;
     setSlot(index, { outcome: "voided" });
     setStage({ kind: "voided", message: VOID_TEXT[interruptReason ?? "hidden"] });
-  }, [stage.kind, enginePhase, interruptReason, index, setSlot]);
+  }, [stage.kind, enginePhase, interruptReason, index, setSlot, setStage]);
 
   useEffect(() => {
     if (stage.kind !== "submitting") return;
@@ -244,9 +267,34 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
   const advance = useCallback(() => {
     const r = runRef.current;
     if (!r) return;
-    if (index + 1 < SLICE_STAGES) beginStage(index + 1, r);
-    else { currentRoundId.current = null; setStage({ kind: "complete" }); }
-  }, [index, beginStage]);
+    // Only a settled stage can be left, and only once: a double press, a late
+    // click on a button that has just unmounted, or a stale callback finds the
+    // run already somewhere else and does nothing.
+    const at = stageRef.current.kind;
+    if (at !== "revealed" && at !== "voided" && at !== "lock-error") return;
+    if (index + 1 >= SLICE_STAGES) { currentRoundId.current = null; setStage({ kind: "complete" }); return; }
+    const next = index + 1;
+    if (hasTransition(r.deal.stages[next]?.kind)) {
+      // Rank up / Item equipped: announce the changed condition before it can be timed.
+      currentRoundId.current = null;
+      setStage({ kind: "transition", to: next });
+    } else {
+      beginStage(next, r);
+    }
+  }, [index, beginStage, setStage]);
+
+  /** Continue out of a transition: arm the stage it announced. Once only. */
+  const continueFromTransition = useCallback(() => {
+    const at = stageRef.current;
+    const r = runRef.current;
+    if (at.kind !== "transition" || !r) return;
+    // Whatever continued, neither a key nor a tap may cast the stage it armed within the guard window.
+    const until = performance.now() + ADVANCE_KEY_GUARD_MS;
+    keyGuardUntil.current = until;
+    pointerGuardUntil.current = until;
+    cameFromTransition.current = true;
+    beginStage(at.to, r);
+  }, [beginStage]);
 
   const onReveal = useCallback((source?: "key") => {
     if (source === "key") keyGuardUntil.current = performance.now() + ADVANCE_KEY_GUARD_MS;
@@ -267,10 +315,12 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
   const total = SLICE_STAGES;
   const roundView = useMemo(() => (run ? toSliceRoundView(run.deal, index, manifest) : null), [run, index, manifest]);
   const slot = slots[index] ?? null;
+  // The stage a transition announces (its own round view, so the hero shows what is coming).
+  const transitionRound = run && stage.kind === "transition" ? toSliceRoundView(run.deal, stage.to, manifest) : null;
 
   const phase: PtPhase = (() => {
     switch (stage.kind) {
-      case "dealing": return "loading";
+      case "dealing": case "transition": return "loading";
       case "deal-error": case "lock-error": return "error";
       case "submitting": return showSubmitting ? "submitting" : "stopped";
       case "revealed": return "revealed";
@@ -340,7 +390,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
   const bar = (
     <PerfectTimingBar
       lead={lead}
-      index={stage.kind === "complete" ? total : run ? index + 1 : 0}
+      index={stage.kind === "complete" ? total : stage.kind === "transition" ? stage.to + 1 : run ? index + 1 : 0}
       total={total}
       outcomes={hud?.outcomes}
       points={anyRevealed ? pointsSoFar : null}
@@ -351,8 +401,11 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     <PerfectTimingScreen bar={bar} art={roundView?.splashUrl ?? null} stage={stage.kind}>
       {summary ? (
         <PerfectTimingResults summary={summary} onPlayAgain={() => void startSlice()} onExit={onChangeMode} exitLabel="Change mode" />
+      ) : transitionRound ? (
+        <SliceTransition key={transitionRound.roundId} round={transitionRound} onContinue={continueFromTransition} />
       ) : (
-        <PerfectTimingArena model={model} actions={actions} nextLabel={lastStage ? "See results" : "Next stage"} />
+        <PerfectTimingArena model={model} actions={actions} nextLabel={lastStage ? "See results" : "Next stage"}
+          autoFocusSeal={cameFromTransition.current && stage.kind === "play" ? true : undefined} />
       )}
     </PerfectTimingScreen>
   );

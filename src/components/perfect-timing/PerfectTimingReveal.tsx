@@ -29,10 +29,10 @@
  * from a voided one), or the haste arithmetic the server released
  * (`base × 100 ÷ (100 + haste) = exact`). Every figure is still the server's.
  */
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 import { useCountUp } from "@/components/game-results/useCountUp";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import { documentKeyIsForTimer } from "@/lib/perfect-timing/useTimingEngine";
+import { useSettledAdvance } from "@/lib/perfect-timing/useSettledAdvance";
 import type { PtRevealView, PtSliceRevealView } from "@/lib/perfect-timing/viewModel";
 import {
   SLICE_STAGE_WORD, TIER_WORD, assumptionText, deltaSecondsText, errorDirection, formatMs, formatSeconds,
@@ -96,7 +96,7 @@ function SliceDelta({ slice, targetMs, rank }: { slice: PtSliceRevealView; targe
           {slice.item.name} {hasteText(slice.abilityHaste, true)}
         </span>
         <span className="pt-delta-math" data-testid="pt-slice-math">
-          {formatSecondsExact(slice.baseCooldownMs)} × 100 ÷ (100 + {slice.abilityHaste}) = <b>{formatSecondsExact(Number.isFinite(exact) ? exact : targetMs)}</b>
+          <span className="pt-nw">{formatSecondsExact(slice.baseCooldownMs)} × 100 ÷ (100 + {slice.abilityHaste})</span> = <b className="pt-nw">{formatSecondsExact(Number.isFinite(exact) ? exact : targetMs)}</b>
         </span>
         <span className="pt-delta-change" data-testid="pt-slice-change">{deltaSecondsText(slice.baseCooldownMs, targetMs)}</span>
       </p>
@@ -107,8 +107,8 @@ function SliceDelta({ slice, targetMs, rank }: { slice: PtSliceRevealView; targe
       <p className="pt-delta" data-testid="pt-slice-delta" data-kind={slice.kind}>
         <span className="pt-delta-tag">Rank {prev?.rank ?? 1} → {rank ?? "?"}</span>
         <span className="pt-delta-math" data-testid="pt-slice-math">
-          {prev ? <>{formatSliceSeconds(prev.targetMs)} → <b>{formatSliceSeconds(targetMs)}</b></>
-            : <>{SLICE_STAGE_WORD.foundation} voided → <b>{formatSliceSeconds(targetMs)}</b></>}
+          {prev ? <><span className="pt-nw">{formatSliceSeconds(prev.targetMs)}</span> → <b className="pt-nw">{formatSliceSeconds(targetMs)}</b></>
+            : <>{SLICE_STAGE_WORD.foundation} voided → <b className="pt-nw">{formatSliceSeconds(targetMs)}</b></>}
         </span>
         {prev ? <span className="pt-delta-change" data-testid="pt-slice-change">{deltaSecondsText(prev.targetMs, targetMs)}</span> : null}
       </p>
@@ -128,9 +128,6 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
   const direction = errorDirection(reveal.errorMs);
   const rail = railGeometry(reveal);
   const nextRef = useRef<HTMLButtonElement>(null);
-  const advanced = useRef(false);
-  const onNextRef = useRef(onNext);
-  useEffect(() => { onNextRef.current = onNext; });
 
   // The band between the truth and the stop, as rail percentages.
   const bandLeft = Math.min(rail.truePct, rail.youPct);
@@ -144,26 +141,14 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
   // (The rail always ends at least 12% past the longer duration, so the flag never stands past ~89%.)
   const endLabelHidden = rail.truePct > 85;
 
-  useEffect(() => {
-    if (!autoFocusNext) return;
-    let onKey: ((e: KeyboardEvent) => void) | null = null;
-    const t = window.setTimeout(() => {
-      nextRef.current?.focus({ preventScroll: true });
-      // Space/Enter with focus anywhere else: advance once. A press aimed at the
-      // button itself (or any control) is the control's own and is left alone.
-      onKey = (e: KeyboardEvent) => {
-        if (e.repeat || advanced.current || !documentKeyIsForTimer(e)) return;
-        e.preventDefault();
-        advanced.current = true;
-        onNextRef.current("key");
-      };
-      document.addEventListener("keydown", onKey);
-    }, animate ? REVEAL_BEATS.focus : REDUCED_FOCUS_MS);
-    return () => {
-      window.clearTimeout(t);
-      if (onKey) document.removeEventListener("keydown", onKey);
-    };
-  }, [autoFocusNext, animate]);
+  // Once settled, focus moves to the way on and Space/Enter anywhere advance once.
+  // A press aimed at the button itself (or any control) is the control's own.
+  useSettledAdvance({
+    buttonRef: nextRef,
+    settleMs: animate ? REVEAL_BEATS.focus : REDUCED_FOCUS_MS,
+    onAdvance: onNext,
+    enabled: autoFocusNext,
+  });
 
   // A slice prints at the precision it was graded (4545 → "4.545 s"); a Random Run keeps PT4.4's two places.
   const secs = reveal.slice ? formatSliceSeconds : formatSeconds;

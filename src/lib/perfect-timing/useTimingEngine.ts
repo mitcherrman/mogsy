@@ -85,6 +85,13 @@ export interface UseTimingEngineOptions {
    * guarded. Off by default (PT2 tests).
    */
   keyGuard?: () => boolean;
+  /**
+   * PT5.1: the same idea for POINTER presses, used only where a tap just left a
+   * screen whose button sits under the next round's seal (the Mastery Slice
+   * transition's Continue): a double-tap must not also cast the round it armed.
+   * Off by default; the Random Run never sets it.
+   */
+  pointerGuard?: () => boolean;
 }
 
 /** Elements that own Space/Enter themselves: typing, or a separate control. */
@@ -169,7 +176,7 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
 
   const handlePress = useCallback(
     (t: number, source: "pointer" | "key") => {
-      if (source === "key" && optionsRef.current.keyGuard?.()) return;
+      if (source === "key" ? optionsRef.current.keyGuard?.() : optionsRef.current.pointerGuard?.()) return;
       const last = lastAcceptedRef.current;
       if (last !== null && Math.abs(t - last) <= PRESS_DEDUPE_MS) {
         optionsRef.current.onDiagnostic?.({ kind: "dedupe", source, t, sincePreviousMs: t - last });

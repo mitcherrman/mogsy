@@ -51,7 +51,7 @@ export interface PerfectTimingStageProps {
 }
 
 /** The champion's splash, cropped to the hero; a failure leaves the dark card. */
-function HeroArt({ src }: { src: string | null | undefined }) {
+export function HeroArt({ src }: { src: string | null | undefined }) {
   const [failed, setFailed] = useState<string | null>(null);
   if (!src || failed === src) return <span className="pt-hero-art" aria-hidden data-art="none" />;
   return (
@@ -84,8 +84,10 @@ export function SliceItemChip({ item, changed = false, short = false }: { item: 
       <span className="pt-item-icon" aria-hidden>
         {item.iconUrl && !failed ? <img src={item.iconUrl} alt="" draggable={false} onError={() => setFailed(true)} data-testid="pt-item-icon" /> : null}
       </span>
-      <span className="pt-item-name" data-testid="pt-item-name">{item.name}</span>
-      <span className="pt-item-haste" data-testid="pt-item-haste">{hasteText(item.abilityHaste, short)}</span>
+      <span className="pt-item-text">
+        <span className="pt-item-name" data-testid="pt-item-name">{item.name}</span>
+        <span className="pt-item-haste" data-testid="pt-item-haste">{hasteText(item.abilityHaste, short)}</span>
+      </span>
     </span>
   );
 }
@@ -133,6 +135,7 @@ export function PerfectTimingHero({ round, compact = false }: { round: PtRoundVi
           </h2>
           {slice ? (
             <p className="pt-rank pt-rank--slice" data-testid="pt-rank">
+              {rankChanged ? <span className="pt-stage-badge" data-testid="pt-stage-badge">Rank up</span> : null}
               <span className="pt-rank-value" data-changed={rankChanged ? "true" : undefined} data-testid="pt-rank-value">
                 {rankText(round.rank, round.rankCount)}
               </span>

@@ -8,14 +8,15 @@
  * Every figure is the server's reveal; the ladder only places it.
  *
  * PT5: a Mastery Slice's rows are the three stages of ONE ability, so a row
- * names its stage and inputs (rank, item) instead of the champion, and its
- * line carries the change from the previous stage's true cooldown.
+ * names its stage and inputs (rank, item) instead of the champion. PT5.1: its
+ * line is only the player's own error (the summary above tells how the cooldown
+ * changed), so nothing in a row has to be truncated.
  */
 import type { CSSProperties } from "react";
 import { SubjectArt } from "@/components/interaction-grammar/shared";
 import type { PtRunSummary } from "@/lib/perfect-timing/viewModel";
 import {
-  SLICE_STAGE_WORD, TIER_WORD, deltaSecondsText, errorDirection, formatMs, formatSeconds, formatSliceSeconds, hasteText, ladderScaleMs, rankText,
+  SLICE_STAGE_WORD, TIER_WORD, errorDirection, formatMs, formatSeconds, hasteText, ladderScaleMs, rankText,
   signedErrorText,
 } from "./presentation";
 import "./perfectTiming.css";
@@ -25,15 +26,13 @@ export function RunLadder({ summary }: { summary: PtRunSummary }) {
   return (
     <section aria-label="Run ladder" data-testid="pt-ladder" className="pt-ladder-wrap">
       <ol className="pt-ladder" style={{ "--pt-rows": summary.rounds.length } as CSSProperties}>
-        {summary.rounds.map(({ round, reveal }, i) => {
+        {summary.rounds.map(({ round, reveal }) => {
           const direction = reveal ? errorDirection(reveal.errorMs) : null;
           const slice = round.slice ?? null;
-          // The previous stage's truth, only if it was revealed (a voided stage stays unknown).
-          const prevTrue = slice && i > 0 ? summary.rounds[i - 1].reveal?.targetMs ?? null : null;
           const width = reveal ? `${Math.min(50, (reveal.absErrorMs / scale) * 50)}%` : "0%";
           return (
             <li key={round.roundId} className="pt-ladder-row" data-testid={`pt-ladder-row-${round.index}`}
-              data-tier={reveal?.tier ?? "voided"}>
+              data-tier={reveal?.tier ?? "voided"} data-slice={slice ? "true" : undefined}>
               <span className="pt-ladder-icon" aria-hidden>
                 <SubjectArt media={round.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={round.slot} className="h-full w-full" />
                 {slice?.item?.iconUrl
@@ -44,7 +43,7 @@ export function RunLadder({ summary }: { summary: PtRunSummary }) {
                 {slice ? (
                   <p className="pt-ladder-title" data-testid={`pt-ladder-stage-${slice.kind}`}>
                     <b>{SLICE_STAGE_WORD[slice.kind]}</b>{" "}
-                    <span>{slice.item ? `${slice.item.name} ${hasteText(slice.item.abilityHaste, true)}` : `Rank ${round.rank}`}</span>
+                    <span className="pt-nw">{slice.item ? `${slice.item.name} ${hasteText(slice.item.abilityHaste, true)}` : `Rank ${round.rank}`}</span>
                   </p>
                 ) : (
                   <p className="pt-ladder-title">
@@ -54,13 +53,12 @@ export function RunLadder({ summary }: { summary: PtRunSummary }) {
                 <p className="pt-ladder-sub">
                   {reveal ? (
                     <>
-                      <span className="pt-ladder-times">{slice
-                        ? `${formatSliceSeconds(reveal.elapsedMs)} vs ${formatSliceSeconds(reveal.targetMs)} · `
-                        : `${formatSeconds(reveal.elapsedMs)} vs ${formatSeconds(reveal.targetMs)} · `}</span>
-                      <span>{signedErrorText(reveal.errorMs)}</span>
-                      {slice && prevTrue !== null ? (
-                        <span className="pt-ladder-delta" data-testid={`pt-ladder-delta-${slice.kind}`}>{` · true ${deltaSecondsText(prevTrue, reveal.targetMs)}`}</span>
-                      ) : null}
+                      {/* A slice row is about the player's own stop: stage, input, error, tier, points.
+                          How the cooldown changed is the summary's story and each stage's reveal, not repeated here. */}
+                      {slice ? null : (
+                        <span className="pt-ladder-times">{`${formatSeconds(reveal.elapsedMs)} vs ${formatSeconds(reveal.targetMs)} · `}</span>
+                      )}
+                      <span className="pt-nw">{signedErrorText(reveal.errorMs)}</span>
                     </>
                   ) : `${rankText(round.rank, round.rankCount)} · voided`}
                 </p>
