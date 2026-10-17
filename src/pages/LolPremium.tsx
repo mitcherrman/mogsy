@@ -132,6 +132,8 @@ export default function LolPremium() {
   // while unresolved, which renders neither action.
   const [provenance, setProvenance] = useState<ProEntitlement | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
+  // PT1.6b: the custom one-time offer is a paid grant, not a comp.
+  const oneTimePurchase = provenance?.grantKind === "purchase";
   const [checkingOut, setCheckingOut] = useState(false);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
   // PT1.5: /lol/premium sells the same approved offers as the Shop. The price
@@ -307,14 +309,29 @@ export default function LolPremium() {
               </>
             )}
 
+            {/* PT1.6b: a one-time purchase is PAID Premium with a fixed end date,
+                not a comp — and, like a comp, there is no subscription to manage. */}
             {provenance && !provenance.stripePro && provenance.grantKind && (
-              <p className="text-xs text-[#c8d4e6]/80" data-testid="premium-grant-line">
-                Complimentary Premium ({provenance.grantKind}
-                {formatGrantExpiry(provenance.grantExpiresAt)
-                  ? `, ${formatGrantExpiry(provenance.grantExpiresAt)}`
-                  : ", no expiry"}
-                ). There is no subscription or payment method on this account, so
-                there is nothing to manage — and nothing to cancel.
+              <p
+                className="text-xs text-[#c8d4e6]/80"
+                data-testid={oneTimePurchase ? "premium-one-time-line" : "premium-grant-line"}
+              >
+                {oneTimePurchase
+                  ? <>
+                      Premium paid once
+                      {formatGrantExpiry(provenance.grantExpiresAt)
+                        ? `, active until ${formatGrantExpiry(provenance.grantExpiresAt)}`
+                        : ""}
+                      . It does not renew and nothing will be charged again.
+                    </>
+                  : <>
+                      Complimentary Premium ({provenance.grantKind}
+                      {formatGrantExpiry(provenance.grantExpiresAt)
+                        ? `, ${formatGrantExpiry(provenance.grantExpiresAt)}`
+                        : ", no expiry"}
+                      ). There is no subscription or payment method on this account, so
+                      there is nothing to manage — and nothing to cancel.
+                    </>}
               </p>
             )}
           </div>

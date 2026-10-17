@@ -30,7 +30,12 @@ import { POLICY_KEYS, DEFAULT_PLATFORM_POLICY } from "@/lib/platform-policy/poli
  * pretending. `stripePro` and `grantKind` keep reporting the REAL sources, so a
  * surface can still say honestly *why* someone has access.
  */
-export type ProGrantKind = "manual" | "playtest" | "promo" | "gift";
+/**
+ * `purchase` (PT1.6b) is the custom one-time offer: PAID, not complimentary,
+ * with a real expiry and no renewal. Written only by the payment webhook via
+ * `custom_offer_activate_purchase`; admins cannot set it.
+ */
+export type ProGrantKind = "manual" | "playtest" | "promo" | "gift" | "purchase";
 
 export interface ProEntitlement {
   /**
@@ -231,6 +236,7 @@ export const PRO_GRANT_KINDS: readonly ProGrantKind[] = [
   "playtest",
   "promo",
   "gift",
+  "purchase",
 ] as const;
 
 /**
@@ -246,7 +252,8 @@ export type PremiumSource =
   | "manual-grant"
   | "playtest-grant"
   | "promo-grant"
-  | "gift-grant";
+  | "gift-grant"
+  | "purchase-grant";
 
 export const PREMIUM_SOURCE_LABELS: Record<PremiumSource, string> = {
   free: "Free",
@@ -256,6 +263,7 @@ export const PREMIUM_SOURCE_LABELS: Record<PremiumSource, string> = {
   "playtest-grant": "Playtest grant",
   "promo-grant": "Promo grant",
   "gift-grant": "Gift grant",
+  "purchase-grant": "One-time purchase",
 };
 
 /** The grant columns as they sit on a profiles row, plus attribution. */
