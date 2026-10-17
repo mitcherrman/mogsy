@@ -89,6 +89,83 @@ describe("frame-rate monitor", () => {
     raf.frames(600, 16.7);
     expect(onDegrade).not.toHaveBeenCalled();
   });
+
+  /** An engine with a monitor, started; `frames` drives its loop. */
+  function monitored() {
+    const raf = manualRaf();
+    const onDegrade = vi.fn();
+    const e = new OrreryEngine(els(), { mode: "orbit", animate: true, onDegrade });
+    e.resize(960, 700);
+    e.start();
+    return { e, onDegrade, frames: raf.frames };
+  }
+
+  it("a steady 60 fps loop never degrades (a minute, and with a slow frame in every three)", () => {
+    const { onDegrade, frames } = monitored();
+    frames(3600, 16.7);
+    // 45 fps: one frame in three misses vsync
+    for (let i = 0; i < 600; i++) { frames(1, 33.3); frames(2, 16.7); }
+    expect(onDegrade).not.toHaveBeenCalled();
+  });
+
+  it("a steady 33 fps loop degrades once, within a few seconds", () => {
+    const { onDegrade, frames } = monitored();
+    frames(90 + 66, 30.3); // warm-up, then two seconds: the window has only just filled
+    expect(onDegrade).not.toHaveBeenCalled();
+    frames(44, 30.3); // ~6 s from the start
+    expect(onDegrade).toHaveBeenCalledTimes(1);
+    frames(600, 30.3);
+    expect(onDegrade).toHaveBeenCalledTimes(1);
+  });
+
+  it("alternating 33 ms and 17 ms frames (Firefox at full quality) degrade", () => {
+    const { onDegrade, frames } = monitored();
+    for (let i = 0; i < 150; i++) { frames(1, 33.3); frames(1, 16.7); } // 7.5 s
+    expect(onDegrade).toHaveBeenCalledTimes(1);
+  });
+
+  it("brief stalls in a 60 fps loop do not degrade", () => {
+    const { onDegrade, frames } = monitored();
+    const steady = () => frames(240, 16.7); // 4 s
+    steady();
+    frames(20, 80); // 1.6 s of 12 fps
+    steady();
+    frames(20, 50); // a second of 20 fps
+    steady();
+    frames(30, 40); // 1.2 s of 25 fps
+    steady();
+    frames(1, 1000); // one long pause (GC, a debugger)
+    steady();
+    frames(1, 5000);
+    steady();
+    for (let i = 0; i < 10; i++) { frames(1, 300); frames(120, 16.7); } // a 300 ms hitch every two seconds
+    expect(onDegrade).not.toHaveBeenCalled();
+  });
+
+  it("a slow start (loading, first compile) and a tab switch do not degrade", () => {
+    const { e, onDegrade, frames } = monitored();
+    frames(90 + 20, 50); // the first 5.5 s at 20 fps: warm-up, then one more second
+    frames(600, 16.7);
+    e.setVisible(false); // the tab is hidden: the loop stops
+    frames(1, 30_000); // no frame is delivered; the clock moves on
+    e.setVisible(true);
+    frames(1, 16.7); // the first frame back follows a 30 s gap on the clock
+    frames(600, 16.7);
+    expect(onDegrade).not.toHaveBeenCalled();
+  });
+
+  it("judges only while the loop runs, and starts afresh after a pause", () => {
+    const { e, onDegrade, frames } = monitored();
+    frames(90 + 80, 30.3); // warm-up, then 2.4 s slow
+    e.stop();
+    frames(400, 30.3); // no frames are delivered while stopped
+    expect(onDegrade).not.toHaveBeenCalled();
+    e.start();
+    frames(90 + 40, 30.3); // a fresh warm-up and 1.2 s: not yet a full window
+    expect(onDegrade).not.toHaveBeenCalled();
+    frames(100, 30.3);
+    expect(onDegrade).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("tempo", () => {

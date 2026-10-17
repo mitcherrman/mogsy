@@ -80,7 +80,7 @@ export type EngineMode = "orbit" | "composed";
 export interface EngineOptions {
   mode: EngineMode;
   animate: boolean;
-  /** Called once if the loop cannot hold ~40 fps for a sustained stretch. */
+  /** Called once if the loop's median frame stays slower than 25 ms (40 fps) for a sustained stretch. */
   onDegrade?: () => void;
 }
 
@@ -97,10 +97,20 @@ interface BookState {
 const TAU_FRONT = 0.34;
 const TAU_EMPHASIS = 0.2;
 const TAU_TEMPO = 0.5;
-/** Frames to ignore after the loop starts, frames over budget before degrading, and the budget (s/frame). */
+/**
+ * The frame-rate monitor: frames to ignore after the loop starts; the rolling
+ * window (s); the budget (s/frame) the window's median frame must stay under;
+ * how long (s) it may stay over before the scene degrades; and the most one
+ * frame adds to the window's length (s), so one long pause (GC, a debugger)
+ * cannot stand in for seconds of frames.
+ */
 const WARMUP_FRAMES = 90;
-const SLOW_FRAMES = 150;
-const SLOW_FRAME_S = 0.03;
+const WINDOW_S = 2;
+const SLOW_FRAME_S = 0.025;
+const SLOW_HOLD_S = 1;
+const FRAME_CAP_S = 0.1;
+/** Ring capacity: a 2 s window at 240 Hz, with room to spare. */
+const WINDOW_FRAMES = 512;
 const TAU_NEEDLE = 0.22;
 const TETHER_START_R = 168;
 const TETHER_START_R_COMPOSED = 124;
@@ -115,8 +125,15 @@ export class OrreryEngine {
   private tempo = 1;
   private tempoTarget = 1;
   private tempoApplied = 1;
-  private slow = 0;
   private warm = 0;
+  /** Rolling window of recent frame times (s, capped): its length and how many are over budget. */
+  private win = new Float64Array(WINDOW_FRAMES);
+  private winHead = 0;
+  private winLen = 0;
+  private winTotal = 0;
+  private winSlow = 0;
+  /** How long (s) the window's median has stayed over budget. */
+  private slowFor = 0;
   private degraded = false;
   private onDegrade?: () => void;
   private targets: EngineTargets = { emphasis: null, front: null, calm: CALM.free, activating: null };
@@ -265,7 +282,11 @@ export class OrreryEngine {
     this.running = true;
     this.last = 0;
     this.warm = 0;
-    this.slow = 0;
+    this.winHead = 0;
+    this.winLen = 0;
+    this.winTotal = 0;
+    this.winSlow = 0;
+    this.slowFor = 0;
     this.raf = requestAnimationFrame(this.tick);
   }
 
@@ -280,13 +301,11 @@ export class OrreryEngine {
     const raw = this.last ? (now - this.last) / 1000 : 1 / 60;
     const dt = Math.min(MAX_DT, raw);
     this.last = now;
-    // Sustained slow frames (after warm-up) mean this device cannot afford the full
-    // scene: tell the page once, which drops to the lite tier.
+    // A sustained slow median frame (after warm-up) means this device cannot afford
+    // the full scene: tell the page once, which drops to the lite tier.
     if (!this.degraded && this.onDegrade) {
       if (this.warm < WARMUP_FRAMES) this.warm++;
-      else if (raw > SLOW_FRAME_S) this.slow++;
-      else this.slow = Math.max(0, this.slow - 2);
-      if (this.slow >= SLOW_FRAMES) {
+      else if (this.sample(Math.min(raw, FRAME_CAP_S))) {
         this.degraded = true;
         this.onDegrade();
       }
@@ -295,6 +314,39 @@ export class OrreryEngine {
     this.renderFrame(dt);
     this.raf = requestAnimationFrame(this.tick);
   };
+
+  /**
+   * Add one frame to the rolling window; true once the window's median frame
+   * has stayed over budget for SLOW_HOLD_S.
+   *
+   * The median is over budget when at least half the window's frames are, so
+   * a count is enough: no sort. A median shrugs off a few long frames. A tie
+   * counts as slow, give or take the one frame at the window's edge: a browser
+   * that alternates 33 ms and 17 ms frames (Firefox at full quality) holds a
+   * median of 25 ms that would otherwise flip with the window's parity every
+   * frame. One missed vsync in three (45 fps) stays well under.
+   */
+  private sample(s: number): boolean {
+    if (this.winLen === WINDOW_FRAMES) this.dropOldest();
+    this.win[(this.winHead + this.winLen) % WINDOW_FRAMES] = s;
+    this.winLen++;
+    this.winTotal += s;
+    if (s > SLOW_FRAME_S) this.winSlow++;
+    // Keep just over WINDOW_S of frames.
+    while (this.winLen > 1 && this.winTotal - this.win[this.winHead] >= WINDOW_S) this.dropOldest();
+    if (this.winTotal < WINDOW_S) return false;
+    if (this.winSlow * 2 >= this.winLen - 1) this.slowFor += s;
+    else this.slowFor = 0;
+    return this.slowFor >= SLOW_HOLD_S;
+  }
+
+  private dropOldest(): void {
+    const s = this.win[this.winHead];
+    this.winHead = (this.winHead + 1) % WINDOW_FRAMES;
+    this.winLen--;
+    this.winTotal -= s;
+    if (s > SLOW_FRAME_S) this.winSlow--;
+  }
 
   /** Snap every eased value to its target (reduced motion / composed). */
   private settle(): void {

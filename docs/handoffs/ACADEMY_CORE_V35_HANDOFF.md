@@ -232,21 +232,47 @@ Frontend only, with no data to undo.
 
 ### Unresolved / for the owner
 
-1. **Firefox frame rate in the full tier (owner decision; I don't consider it release-blocking).** On this machine, with Playwright's Firefox
-   build headed, `/lol` runs at **60.3 fps on V3 (`main`)** and **33–35 fps on the V3.5 full tier** (median frame 33.3 ms, p95 50.1 ms,
-   three rounds). The **lite tier runs at 57.8 fps**. Edge and Chromium hold 60 fps on the full tier.
-   - Behaviour in Firefox is correct (12/12 functional probe), and the orbit moves at full speed: motion is time-based, so it is only
-     less smooth.
-   - The automatic step-down to lite does not trigger, because Firefox alternates ~33 ms and ~17 ms frames and the counter (frames over
-     30 ms, minus two per fast frame) never reaches 150.
-   - Not verified in a stock Firefox with hardware WebRender: Playwright's build may render without GPU acceleration.
-   - Options:
-     - (a) ship as is;
-     - (b) a small follow-up: judge the step-down on a rolling median frame time (for example > 25 ms over 2 s) instead of a run of
-       slow frames, so a sustained ~30 fps scene drops to lite on its own;
-     - (c) start Firefox in lite.
+1. **Firefox frame rate in the full tier: resolved with option (b), the owner's choice (2026-10-16).** On this machine, with Playwright's
+   Firefox build headed, `/lol` ran at **60.3 fps on V3 (`main`)** and **33–35 fps on the V3.5 full tier** (median frame 33.3 ms, p95
+   50.1 ms), and the old automatic step-down never fired: Firefox alternates ~33 ms and ~17 ms frames, and the old counter (frames over
+   30 ms, minus two per fast frame) never reached 150.
+   - **The change** (`OrreryEngine.ts` only; no visual, tier, CSS, audio or backend change): the frame-rate monitor now judges a
+     **rolling median frame time over a 2 s window**. It steps down once when the median has stayed over **25 ms (40 fps) for 1 s**.
+     - The median counts as over budget when at least half the window's frames are slow, give or take the one frame at the window's
+       edge. Without that tolerance, a strict 33/17 alternation sits on a 25 ms tie that flips with the window's parity every frame.
+     - Each frame adds at most 100 ms to the window's length, so one long pause cannot stand in for seconds of frames.
+     - Kept unchanged: the 90-frame warm-up; it fires once, with no promotion back to full; never with `?quality=full`, where the page
+       passes no `onDegrade`; and only while the loop runs. Hiding the page or the tab halts the loop, and showing it again restarts the
+       warm-up and the window.
+     - No browser detection: the tier follows measured performance only.
+   - **Unit tests** (`OrreryEngine.test.ts`, 13/13; the old rule fails 3 of the new ones):
+     - a steady 60 fps loop for a minute, and 45 fps (one missed vsync in three), never degrade;
+     - a steady 33 fps loop degrades once, within about 6 s of start;
+     - alternating 33.3 / 16.7 ms frames degrade;
+     - brief stalls in a 60 fps loop do not: 1.6 s at 12 fps, 1 s at 20 fps, 1.2 s at 25 fps, single 1 s and 5 s frames, and a
+       300 ms hitch every 2 s;
+     - neither do a slow start (5.5 s at 20 fps, through and past the warm-up) nor a tab switch (hidden, a 30 s gap, shown);
+     - nothing is judged while the loop is stopped, and judging starts afresh after a restart.
+   - **Measured on a production build** (`npm run build`, `vite preview` of `dist/`, real reads, headed, 1366×768 fixed-viewport
+     contexts, 20–30 s per round). "Before" skips the first 3 s (loading); "after" skips the first 1 s after the switch.
 
-   (b) and (c) change what some visitors see (lite drops decorative extras), so I have not made either.
+     | Browser | Run | Tier | Step-down after navigation | fps before → after | Median frame before → after |
+     |---|---|---|---|---|---|
+     | Firefox (Playwright build) | default, 3 rounds | full → **lite** | **10.1 s** (cold first launch), **7.1 s**, **6.8 s** | 21.9 / 33.6 / 36.0 → **58.9 / 57.7 / 57.1** | 33.4 → 16.7 ms |
+     | Firefox | `?quality=full` (forced) | full, never overridden | — | 34.5 | 33.4 ms (p95 50.1) |
+     | Firefox | `?quality=lite` (forced) | lite | — | 55.1 | 16.7 ms |
+     | Edge | default, 3 × 30 s | **full held** | never | 59.9 / 59.9 / 59.9 | 16.7 ms (p95 16.8) |
+     | Chromium (Playwright build) | default, 2 × 30 s | **full held** | never | 59.9 / 59.9 | 16.7 ms (p95 16.8) |
+
+     Lite improves Firefox from about 34 fps to about 58 fps, matching the earlier lite baseline (57.8). A tab switch could not be
+     exercised in the browser: Playwright's headed tabs all stay `visible`. It is covered by the unit test and by the halt / wake path.
+   - **Regression:** the Chromium Core specs (`e2e/academy-core.spec.ts` and `e2e/academy-core-v35.spec.ts --grep-invert evidence`)
+     pass **78/78**. These include "a device that cannot hold its frame rate steps down to lite by itself" (12.1 s) and "a forced
+     `?quality=full` is never overridden". The Core and funnel unit suites pass 143/143 (before the slow-start / tab-switch test was
+     added) and eslint is clean on both files. `tsc -p tsconfig.app.json` reports 2 errors, both in files this change doesn't touch
+     (`OnboardingProfile.tsx`, `identity/connections.ts`).
+   - Still not verified: a stock Firefox with hardware WebRender, where full may hold 60 fps and stay full, which is the intended
+     outcome.
 2. **Headless Firefox cannot certify this scene.** It renders at about 2 fps here (7 frames in 3 s), so 18 of the 78 browser tests fail
    on motion and timing magnitudes, not behaviour. Run headed, 7 of those 18 pass. The rest hit a harness problem:
    `page.setViewportSize` hangs in headed Firefox on Windows (8 tests), plus waits that expire under an occluded headed window. The
@@ -853,7 +879,7 @@ Scope was handoff §7 items 2, 3 and 5 (items 1 and 6 had nothing to fix / need 
 | **Drag-to-spin** | Grab the orbit from **empty space** (never from a book, link or the crystal, so every click contract is untouched). The orbit follows the pointer; a fast release **flings** (inertia, capped at ~1.7 rad/s); the books then **settle onto the nearest symmetric composition** (the four corners: none behind the dial), **pause 1.8 s**, and the slow orbit resumes. A slow release is a nudge (no inertia, no snap). A hovered book damps the coast quickly and cancels the snap, so a book never slides out from under a resting cursor. `cursor: grab / grabbing`; `touch-action: pan-y` so vertical touch still scrolls. Off under reduced motion and in the phone layout. State machine = `SpinModel` in `orrery-motion.ts` (pure, tested); the engine owns the pointer API (`grab` / `dragBy` / `release`). |
 | **Richer focus** | (a) The focused cover **swings open on its spine** (3D, −24°) and **light spills from its pages** (accent-coloured `pagelight`). (b) The Core's rings and comets change **tempo per room** (Measure ×2.5 races, Observe ×1.3, Inquiry ×1.6, Strata ×0.65 slow), eased through `Animation.playbackRate`, no restart. (c) The attended **comet takes the room's colour**. (d) The lit tether is a **beam** (double glow). (e) **Activation camera push**: the scene scales 4 % toward the Core for the 240 ms. |
 | **Keyboard** | **Arrow keys** step focus through the books (wrapping), on top of Tab; modified arrows and other controls are untouched. Fixed a bug found while capturing: moving keyboard focus between books left the *previous* book emphasised behind the new one (blur's release was cancelled by the next focus in the same tick); now each focus clears the other channel. A unit test fails without the fix. |
-| **Performance** | (a) **Quality tiers**: `?quality=lite|full` (forced, never overridden), else Save-Data / ≤2 cores / ≤2 GB → lite, else full; and a **frame-rate monitor** drops a full scene to lite once if ≥150 frames after warm-up exceed 30 ms. Lite keeps the orbit, books, dial, first comet/gyro/ring set, tethers, Patch Report; it drops fragments, twinkle, extra comets/gyro rings/rune ring, sparks, one aurora, two shafts and the glow filters. (b) Every CSS animation in the Core, environment and Patch Report is **paused when the stage is off screen / the tab is hidden** (`data-ambient=off`). |
+| **Performance** | (a) **Quality tiers**: `?quality=lite|full` (forced, never overridden), else Save-Data / ≤2 cores / ≤2 GB → lite, else full; and a **frame-rate monitor** drops a full scene to lite once if ≥150 frames after warm-up exceed 30 ms (replaced in §P3 by a rolling-median rule; see §P3 "Unresolved" 1). Lite keeps the orbit, books, dial, first comet/gyro/ring set, tethers, Patch Report; it drops fragments, twinkle, extra comets/gyro rings/rune ring, sparks, one aurora, two shafts and the glow filters. (b) Every CSS animation in the Core, environment and Patch Report is **paused when the stage is off screen / the tab is hidden** (`data-ambient=off`). |
 | **Sound** | **Deferred, deliberately.** The only way to add orbit / focus cues is to extend the shared audio registry and renderers (`sfx-registry.ts`, `sfx-renderers.ts`), which are used by the whole app and have per-cue user settings. That is a cross-cutting change that needs your go-ahead, not a preview-only one. V3's `hub.destination.focus` and `bookRuffle` cues are reused as before. |
 
 ### Phase 2 verification
