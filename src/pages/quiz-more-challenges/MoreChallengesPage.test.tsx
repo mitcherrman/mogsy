@@ -481,7 +481,7 @@ describe("PGM1 — More Challenges", () => {
     renderPage();
     await ready();
     expect(await screen.findByTestId("more-challenges-stats")).toHaveAttribute("data-state", "empty");
-    expect(screen.getByTestId("more-challenges-stats")).toHaveTextContent("Your record starts with your first game.");
+    expect(screen.getByTestId("more-challenges-stats")).toHaveTextContent("No games on your record yet.");
     expect(h.fetch.mock.calls.some(([u]) => String(u).endsWith("/me/summary"))).toBe(false);
     expect(h.ensure).not.toHaveBeenCalled();
     expect(within(card("match_grid")).getByTestId("mode-card-history")).toHaveTextContent("No games yet");
@@ -500,17 +500,26 @@ describe("PGM1 — More Challenges", () => {
     expect(within(card("match_grid")).getByTestId("mode-card-history")).toHaveTextContent("Played 2 · Best 3/3 boards");
     expect(within(card("roster_lock")).getByTestId("mode-card-history")).toHaveTextContent("No games yet");
     expect(within(card("time_trial")).getByTestId("mode-card-history")).toHaveTextContent("Played 3 · Best 17 correct");
-    expect(within(card("perfect_timing")).getByTestId("mode-card-history")).toHaveTextContent("1 run · Closest 0.18s off");
+    expect(within(card("perfect_timing")).getByTestId("mode-card-history")).toHaveTextContent("1 session · Closest 0.18s off");
     expect(h.ensure).not.toHaveBeenCalled();
   });
 
   it("MC-UX2: a first-time player with a session reads the same honest empty record", async () => {
     h.token.mockResolvedValue("tok");
-    summary = () => ok(emptySummaryWire);
+    // Session tracking began two days ago (relative to the test's own clock).
+    const body = JSON.parse(JSON.stringify(emptySummaryWire));
+    const since = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    for (const m of Object.values(body.modes) as { tracked_since?: string }[]) {
+      if ("tracked_since" in m) m.tracked_since = since;
+    }
+    summary = () => ok(body);
     renderPage();
     await ready();
     await waitFor(() => expect(screen.getByTestId("more-challenges-stats")).toHaveAttribute("data-state", "empty"));
-    expect(within(card("rangefinder")).getByTestId("mode-card-history")).toHaveTextContent("No games yet");
+    // Session games were never recorded before MC-UX2: they say tracking starts now.
+    expect(within(card("rangefinder")).getByTestId("mode-card-history")).toHaveTextContent("History tracking starts now");
+    // Board games and Daily stages were always recorded: none yet is the truth.
+    expect(within(card("match_grid")).getByTestId("mode-card-history")).toHaveTextContent("No games yet");
   });
 
   it("MC-UX2: stats that fail to load never block play; cards drop the history line", async () => {
@@ -532,5 +541,99 @@ describe("PGM1 — More Challenges", () => {
     const art = within(card("reconstruct")).getByTestId("mode-card-art");
     const srcs = [...art.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
     for (const id of [3161, 1037, 1028, 2021]) expect(srcs.some((s) => s.endsWith(`/assets/items/${id}.png`))).toBe(true);
+  });
+});
+
+// ── MC-UX2 corrections: fresh stats when the player comes back ──────────────
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((r) => { resolve = r; });
+  return { promise, resolve };
+}
+const withGames = (n: number) => {
+  const body = JSON.parse(JSON.stringify(summaryWire));
+  body.overall.games_played = n;
+  return body;
+};
+const summaryCalls = () => h.fetch.mock.calls.filter(([u]) => String(u).endsWith("/me/summary")).length;
+
+describe("MC-UX2 corrections — the summary refreshes on return", () => {
+  it("a game finished inside the 15 s stale window shows on return, old numbers held until the new land", async () => {
+    h.token.mockResolvedValue("tok");
+    summary = () => ok(withGames(15));
+    h.startBonusGame.mockResolvedValue({ status: { status: "matched", matchId: "rbg_1" } as never,
+      modeId: "match_grid", result: "created" as const });
+    const router = renderPage();
+    await ready();
+    await waitFor(() => expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("15"));
+    fireEvent.click(within(card("match_grid")).getByTestId("mode-card-play"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/ranked"));
+    // The game ends; the player is back within seconds.
+    const next = deferred<Response>();
+    summary = () => next.promise;
+    await act(async () => { await router.navigate("/quiz/more-challenges"); });
+    await ready();
+    // The player's own numbers stay up while the fresh ones load.
+    await waitFor(() => expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("15"));
+    expect(screen.getByTestId("more-challenges-stats")).toHaveAttribute("data-state", "ready");
+    await waitFor(() => expect(summaryCalls()).toBe(2));
+    await act(async () => { next.resolve(new Response(JSON.stringify(withGames(16)), { status: 200 })); });
+    await waitFor(() => expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("16"));
+    expect(summaryCalls()).toBe(2);
+  });
+
+  it("browser Back and Play Again both refresh once, with no loop", async () => {
+    h.token.mockResolvedValue("tok");
+    const router = renderPage();
+    await ready();
+    await waitFor(() => expect(summaryCalls()).toBe(1));
+    fireEvent.click(within(card("rangefinder")).getByTestId("mode-card-play"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/more-challenges/rangefinder"));
+    await act(async () => { await router.navigate(-1); });
+    await ready();
+    await waitFor(() => expect(summaryCalls()).toBe(2));
+    h.startBonusGame.mockReturnValue(new Promise(() => {}));
+    await act(async () => { await router.navigate("/quiz/ranked"); });
+    await act(async () => { await router.navigate("/quiz/more-challenges?play=match_grid"); });
+    await ready();
+    await waitFor(() => expect(summaryCalls()).toBe(3));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(summaryCalls()).toBe(3);
+  });
+
+  it("a failed refresh keeps the numbers already shown", async () => {
+    h.token.mockResolvedValue("tok");
+    summary = () => ok(withGames(15));
+    const router = renderPage();
+    await ready();
+    await waitFor(() => expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("15"));
+    summary = () => ok({}, 500);
+    await act(async () => { await router.navigate("/quiz"); });
+    await act(async () => { await router.navigate("/quiz/more-challenges"); });
+    await ready();
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(screen.getByTestId("more-challenges-stats")).toHaveAttribute("data-state", "ready");
+    expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("15");
+  });
+
+  it("another identity never sees the previous player's cached numbers", async () => {
+    const jwt = (sub: string) => `x.${btoa(JSON.stringify({ sub })).replace(/=+$/, "")}.y`;
+    h.token.mockResolvedValue(jwt("player-a"));
+    summary = () => ok(withGames(15));
+    const router = renderPage();
+    await ready();
+    await waitFor(() => expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("15"));
+    await act(async () => { await router.navigate("/quiz"); });
+    h.token.mockResolvedValue(jwt("player-b"));
+    const b = deferred<Response>();
+    summary = () => b.promise;
+    await act(async () => { await router.navigate("/quiz/more-challenges"); });
+    await ready();
+    await waitFor(() => expect(screen.getByTestId("more-challenges-stats")).toHaveAttribute("data-state", "loading"));
+    expect(screen.queryByTestId("mc-stat-played")).toBeNull();
+    await act(async () => { b.resolve(new Response(JSON.stringify(withGames(2)), { status: 200 })); });
+    await waitFor(() => expect(screen.getByTestId("mc-stat-played")).toHaveTextContent("2"));
+    expect(h.ensure).not.toHaveBeenCalled();
   });
 });

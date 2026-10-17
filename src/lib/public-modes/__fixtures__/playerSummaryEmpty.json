@@ -9,127 +9,144 @@
   "active_days_this_week": 0,
   "streak_days": 0
  },
+ "session_tracking_started_at": "2026-10-17T05:16:47+00:00",
  "modes": {
   "time_trial": {
    "mode_id": "time_trial",
    "played": 0,
    "last_played_at": null,
-   "kind": "daily_stage",
    "best": null,
-   "last": null
+   "last": null,
+   "kind": "daily_stage"
   },
   "survival": {
    "mode_id": "survival",
    "played": 0,
    "last_played_at": null,
-   "kind": "daily_stage",
    "best": null,
-   "last": null
+   "last": null,
+   "kind": "daily_stage"
   },
   "roster_lock": {
    "mode_id": "roster_lock",
    "played": 0,
    "last_played_at": null,
+   "best": null,
+   "last": null,
    "kind": "boards",
    "wins": 0,
-   "best": null,
-   "last": null
+   "best_window": null
   },
   "draft_memory": {
    "mode_id": "draft_memory",
    "played": 0,
    "last_played_at": null,
+   "best": null,
+   "last": null,
    "kind": "boards",
    "wins": 0,
-   "best": null,
-   "last": null
+   "best_window": null
   },
   "chronoscope": {
    "mode_id": "chronoscope",
    "played": 0,
    "last_played_at": null,
+   "best": null,
+   "last": null,
    "kind": "boards",
    "wins": 0,
-   "best": null,
-   "last": null
+   "best_window": null
   },
   "match_grid": {
    "mode_id": "match_grid",
    "played": 0,
    "last_played_at": null,
+   "best": null,
+   "last": null,
    "kind": "boards",
    "wins": 0,
-   "best": null,
-   "last": null
+   "best_window": null
   },
   "reconstruct": {
    "mode_id": "reconstruct",
    "played": 0,
    "last_played_at": null,
+   "best": null,
+   "last": null,
    "kind": "boards",
    "wins": 0,
-   "best": null,
-   "last": null
+   "best_window": null
   },
   "order_forge": {
    "mode_id": "order_forge",
    "played": 0,
    "last_played_at": null,
+   "best": null,
+   "last": null,
    "kind": "boards",
    "wins": 0,
-   "best": null,
-   "last": null
+   "best_window": null
   },
   "rangefinder": {
    "mode_id": "rangefinder",
    "played": 0,
    "last_played_at": null,
-   "kind": "exact",
-   "rounds_locked": 0,
    "best": null,
    "last": null,
+   "kind": "exact",
+   "rounds_locked": 0,
+   "sessions_completed": 0,
+   "tracked_since": "2026-10-17T05:16:47+00:00",
    "total_hits": 0
   },
   "glyph_press": {
    "mode_id": "glyph_press",
    "played": 0,
    "last_played_at": null,
-   "kind": "solved",
-   "rounds_locked": 0,
    "best": null,
    "last": null,
+   "kind": "solved",
+   "rounds_locked": 0,
+   "sessions_completed": 0,
+   "tracked_since": "2026-10-17T05:16:47+00:00",
    "total_hits": 0
   },
   "perfect_timing": {
    "mode_id": "perfect_timing",
    "played": 0,
    "last_played_at": null,
-   "kind": "timing",
-   "rounds_locked": 0,
    "best": null,
    "last": null,
+   "kind": "timing",
+   "rounds_locked": 0,
+   "sessions_completed": 0,
+   "tracked_since": "2026-10-17T05:16:47+00:00",
    "closest": null
   },
   "stat_drop": {
    "mode_id": "stat_drop",
    "played": 0,
    "last_played_at": null,
-   "kind": "estimate",
-   "rounds_locked": 0,
-   "unit": "relative",
    "best": null,
    "last": null,
+   "kind": "estimate",
+   "rounds_locked": 0,
+   "sessions_completed": 0,
+   "tracked_since": "2026-10-17T05:16:47+00:00",
+   "unit": "relative",
    "mean": null
   },
   "combat_estimate": {
    "mode_id": "combat_estimate",
    "played": 0,
    "last_played_at": null,
-   "kind": "estimate",
-   "rounds_locked": 0,
-   "unit": "damage",
    "best": null,
    "last": null,
+   "kind": "estimate",
+   "rounds_locked": 0,
+   "sessions_completed": 0,
+   "tracked_since": "2026-10-17T05:16:47+00:00",
+   "unit": "damage",
    "mean": null
   }
  }

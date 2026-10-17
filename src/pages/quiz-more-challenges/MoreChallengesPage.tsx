@@ -62,7 +62,7 @@ import {
   cardStatus, collectionCellClass, collectionOfMode, countReady, groupModes, initialCollection, pickRandomPlayable,
   sharePause, stepCollection, type GalleryGroup,
 } from "@/lib/public-modes/gallery";
-import { modeHistoryParts, usePlayerSummary } from "@/lib/public-modes/summary";
+import { modeHistoryEmptyText, modeHistoryParts, usePlayerSummary } from "@/lib/public-modes/summary";
 import {
   MORE_CHALLENGES_MODE_SELECTED,
   MORE_CHALLENGES_VIEWED,
@@ -157,13 +157,16 @@ export default function MoreChallengesPage() {
 
   // MC-UX2 — the player's own record.
   const summaryQuery = usePlayerSummary();
-  const summary: SummaryState = summaryQuery.isPending ? { state: "loading" }
-    : summaryQuery.isError ? { state: "error" } : { state: "ready", summary: summaryQuery.data ?? null };
+  // A refresh that fails keeps the numbers already on screen.
+  const summary: SummaryState = summaryQuery.data !== undefined
+    ? { state: "ready", summary: summaryQuery.data }
+    : summaryQuery.isError ? { state: "error" } : { state: "loading" };
   const historyOf = (id: PublicModeId): CardHistory | undefined => {
     if (summary.state === "loading") return { state: "loading" };
     if (summary.state === "error") return undefined;
-    const parts = modeHistoryParts(summary.summary?.modes[id]);
-    return parts.length ? { state: "ready", parts } : { state: "none" };
+    const mine = summary.summary?.modes[id];
+    const parts = modeHistoryParts(mine);
+    return parts.length ? { state: "ready", parts } : { state: "none", text: modeHistoryEmptyText(mine) };
   };
 
   const start = async (entry: PublicModeEntry) => {

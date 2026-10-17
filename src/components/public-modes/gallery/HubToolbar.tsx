@@ -68,7 +68,7 @@ export function PlayerStats({ summary, now = new Date() }: { summary: SummarySta
     return (
       <p className="mc-stats-empty" data-testid="more-challenges-stats" data-state="empty">
         <BarChart3 className="h-4 w-4 flex-none" aria-hidden="true" />
-        Your record starts with your first game. Every bonus game you finish shows up here.
+        No games on your record yet. Every bonus game you play from now on shows up here.
       </p>
     );
   }
@@ -76,7 +76,7 @@ export function PlayerStats({ summary, now = new Date() }: { summary: SummarySta
   return (
     <div className="mc-stats" data-testid="more-challenges-stats" data-state="ready" aria-label="Your bonus game stats">
       <Tile testId="mc-stat-played" icon={<BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />}
-        label="Games played" value={s.gamesPlayed} />
+        label="Games played" value={s.gamesPlayed} sub="Matches, Daily stages, sessions" />
       <Tile testId="mc-stat-favorite" icon={<Heart className="h-3.5 w-3.5" aria-hidden="true" />}
         label="Most played" value={s.favoriteModeId ? PUBLIC_MODE_TITLES[s.favoriteModeId] : "—"}
         sub={fav ? `${fav.played} ${fav.played === 1 ? "game" : "games"}` : undefined} />

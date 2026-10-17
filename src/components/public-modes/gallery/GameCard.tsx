@@ -24,7 +24,11 @@ export type PlayAction = Extract<ModeAction, { kind: "play" | "start" }>;
  * `modeHistoryParts`): `loading` holds the line's height, `none` says there is
  * no game yet.
  */
-export type CardHistory = { state: "loading" } | { state: "none" } | { state: "ready"; parts: string[] };
+export type CardHistory =
+  | { state: "loading" }
+  /** No record: `text` says so honestly (see `modeHistoryEmptyText`). */
+  | { state: "none"; text?: string }
+  | { state: "ready"; parts: string[] };
 
 export function GameCard({ entry, action, status, onPlay, onRules, starting = false, busy = false, feature = false,
   history }: {
@@ -115,7 +119,7 @@ function HistoryLine({ history }: { history: CardHistory }) {
             <span key={p}>{i > 0 && <span className="mc-history-dot" aria-hidden="true"> · </span>}{p}</span>
           ))}
         </span>
-      ) : <span>No games yet</span>}
+      ) : <span>{history.state === "none" && history.text ? history.text : "No games yet"}</span>}
     </p>
   );
 }

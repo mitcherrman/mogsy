@@ -11,7 +11,8 @@
  * A READ, so no identity is ever minted for it (USERS1): a browser with no
  * session simply has no record yet, which is what the page says.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getExistingBackendAuthToken } from "@/lib/backend-auth";
 import { RANKED_API_BASE } from "@/lib/ranked-public/client";
 import { isPublicModeId, PUBLIC_MODE_IDS, type PublicModeId } from "./contracts";
@@ -25,11 +26,16 @@ const KINDS: readonly ModeHistoryKind[] = ["boards", "daily_stage", "exact", "so
 export interface ModeHistory {
   modeId: PublicModeId;
   kind: ModeHistoryKind;
-  /** Finished games: matches, Daily stages, or session runs with a lock. */
+  /**
+   * Games: finished matches, completed Daily stages, or SESSIONS (a dealt run
+   * with at least one locked round, finished or not — see `sessionsCompleted`).
+   */
   played: number;
   lastPlayedAt: string | null;
   /** Board games: boards right in the best / last match. */
   bestBoards: { correct: number; total: number } | null;
+  /** Board games: the best was read from only this many latest games (null: all). */
+  bestWindow: number | null;
   lastOutcome: "win" | "loss" | "draw" | null;
   wins: number | null;
   /** Daily stages: correct answers in the best / last stage. */
@@ -40,8 +46,11 @@ export interface ModeHistory {
   /** Perfect Timing: the best run's points, and the closest single stop. */
   bestPoints: { points: number; of: number } | null;
   closestMs: number | null;
-  /** Session games: rounds locked overall. */
+  /** Session games: rounds locked overall, and sessions played to the end. */
   roundsLocked: number | null;
+  sessionsCompleted: number | null;
+  /** Session games: when their history began (MC-UX2); null for the rest. */
+  trackedSince: string | null;
   /** Estimates (ungraded): the closest and the average error, in `unit`. */
   estimateUnit: "damage" | "relative" | null;
   bestError: number | null;
@@ -55,6 +64,8 @@ export interface PlayerSummary {
   gamesThisWeek: number;
   activeDaysThisWeek: number;
   streakDays: number;
+  /** When session-game history began; earlier session play was never stored. */
+  sessionTrackingStartedAt: string | null;
   modes: Partial<Record<PublicModeId, ModeHistory>>;
 }
 
@@ -101,6 +112,7 @@ function readMode(id: PublicModeId, value: unknown): ModeHistory {
     played: count(raw.played, `modes.${id}.played`),
     lastPlayedAt: str(raw.last_played_at),
     bestBoards: k === "boards" ? boards(best) : null,
+    bestWindow: k === "boards" ? num(raw.best_window) : null,
     lastOutcome: k === "boards" && (outcome === "win" || outcome === "loss" || outcome === "draw") ? outcome : null,
     wins: k === "boards" ? num(raw.wins) : null,
     bestCorrect: k === "daily_stage" ? num(best?.correct) : null,
@@ -110,6 +122,8 @@ function readMode(id: PublicModeId, value: unknown): ModeHistory {
       ? { points: num(best?.points)!, of: num(best?.of)! } : null,
     closestMs: k === "timing" ? num(optObj(raw.closest)?.abs_error_ms) : null,
     roundsLocked: num(raw.rounds_locked),
+    sessionsCompleted: num(raw.sessions_completed),
+    trackedSince: str(raw.tracked_since),
     estimateUnit: k === "estimate" ? unit : null,
     bestError: k === "estimate" ? num(best?.[errField]) : null,
     meanError: k === "estimate" ? num(optObj(raw.mean)?.[errField]) : null,
@@ -135,6 +149,7 @@ export function readPlayerSummary(json: unknown): PlayerSummary {
     gamesThisWeek: count(overall.games_this_week, "overall.games_this_week"),
     activeDaysThisWeek: count(overall.active_days_this_week, "overall.active_days_this_week"),
     streakDays: count(overall.streak_days, "overall.streak_days"),
+    sessionTrackingStartedAt: str(raw.session_tracking_started_at),
     modes,
   };
 }
@@ -167,11 +182,58 @@ export async function fetchPlayerSummary(signal?: AbortSignal): Promise<PlayerSu
 
 export const PLAYER_SUMMARY_QUERY_KEY = ["public-game-modes", "me", "summary"] as const;
 
+/**
+ * Which identity a cached summary belongs to: the session token's `sub`, or
+ * (for a token that is not a JWT) a short hash of it, or "none" with no
+ * session. Read without minting anything; never the token itself.
+ */
+export function summaryOwner(token: string | null): string {
+  if (!token) return "none";
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (typeof payload?.sub === "string" && payload.sub) return `sub:${payload.sub}`;
+  } catch { /* not a JWT */ }
+  let h = 0;
+  for (let i = 0; i < token.length; i++) h = (Math.imul(31, h) + token.charCodeAt(i)) | 0;
+  return `tok:${(h >>> 0).toString(36)}`;
+}
+
+/**
+ * The player's summary, cached PER IDENTITY. Fetched again every time the page
+ * mounts — so a player back from a game sees it at once, even inside the stale
+ * window — while that player's cached numbers stay on screen until the new
+ * ones land. Focus refetches only once the 15 s window has passed; nothing polls.
+ *
+ * The identity is resolved first (a read: nothing is minted), so another
+ * player's cached numbers are never shown, not even for a frame. Resolving it
+ * switches the query's key, which React Query does not treat as a mount — so
+ * the refresh on return is asked for here, once, and only when that player's
+ * cached data is sitting idle (with no cache, the query fetches by itself).
+ */
 export function usePlayerSummary() {
+  const qc = useQueryClient();
+  const [owner, setOwner] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    getExistingBackendAuthToken()
+      .then((t) => { if (live) setOwner(summaryOwner(t)); })
+      .catch(() => { if (live) setOwner("none"); });
+    return () => { live = false; };
+  }, []);
+  useEffect(() => {
+    if (owner === undefined || owner === "none") return;
+    const key = [...PLAYER_SUMMARY_QUERY_KEY, owner];
+    const state = qc.getQueryState(key);
+    if (state?.data !== undefined && state.fetchStatus === "idle") {
+      void qc.invalidateQueries({ queryKey: key, exact: true });
+    }
+  }, [owner, qc]);
   return useQuery<PlayerSummary | null>({
-    queryKey: PLAYER_SUMMARY_QUERY_KEY,
-    queryFn: ({ signal }) => fetchPlayerSummary(signal),
+    queryKey: [...PLAYER_SUMMARY_QUERY_KEY, owner ?? "pending"],
+    queryFn: ({ signal }) => (owner === "none" ? Promise.resolve(null) : fetchPlayerSummary(signal)),
+    enabled: owner !== undefined,
     staleTime: 15_000,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
     retry: 1,
   });
@@ -205,22 +267,26 @@ export function modeHistoryParts(h: ModeHistory | undefined, now: Date = new Dat
   switch (h.kind) {
     case "boards":
       parts.push(`Played ${h.played}`);
-      if (h.bestBoards) parts.push(`Best ${h.bestBoards.correct}/${h.bestBoards.total} boards`);
+      if (h.bestBoards) {
+        // A best read from only the latest games says so.
+        parts.push(`Best ${h.bestBoards.correct}/${h.bestBoards.total} boards`
+          + (h.bestWindow ? ` (last ${h.bestWindow})` : ""));
+      }
       break;
     case "daily_stage":
       parts.push(`Played ${h.played}`);
       if (h.bestCorrect !== null) parts.push(`Best ${h.bestCorrect} correct`);
       break;
     case "exact":
-      parts.push(plural(h.played, "run"));
+      parts.push(plural(h.played, "session"));
       if (h.bestHits) parts.push(`Best ${h.bestHits.hits}/${h.bestHits.of} exact`);
       break;
     case "solved":
-      parts.push(plural(h.played, "run"));
+      parts.push(plural(h.played, "session"));
       if (h.bestHits) parts.push(`Best ${h.bestHits.hits}/${h.bestHits.of} solved`);
       break;
     case "timing":
-      parts.push(plural(h.played, "run"));
+      parts.push(plural(h.played, "session"));
       if (h.closestMs !== null) parts.push(`Closest ${(h.closestMs / 1000).toFixed(2)}s off`);
       else if (h.bestPoints) parts.push(`Best ${h.bestPoints.points}/${h.bestPoints.of} pts`);
       break;
@@ -237,4 +303,22 @@ export function modeHistoryParts(h: ModeHistory | undefined, now: Date = new Dat
   const when = relativeDay(h.lastPlayedAt, now);
   if (when) parts.push(`Last ${when}`);
   return parts;
+}
+
+/** How long after tracking began a session game still says it is new. */
+export const TRACKING_NEWS_DAYS = 14;
+
+/**
+ * What a card says when this player has no record for the mode. Board games
+ * and Daily stages were always recorded, so "No games yet" is the truth. A
+ * session game's history only began with MC-UX2, so for its first weeks it
+ * says tracking starts now (earlier practice existed but was never stored),
+ * and afterwards "No games tracked yet".
+ */
+export function modeHistoryEmptyText(h: ModeHistory | undefined, now: Date = new Date()): string {
+  if (!h || !h.trackedSince) return "No games yet";
+  const since = new Date(h.trackedSince);
+  if (Number.isNaN(since.getTime())) return "No games tracked yet";
+  return now.getTime() - since.getTime() <= TRACKING_NEWS_DAYS * 86_400_000
+    ? "History tracking starts now" : "No games tracked yet";
 }
