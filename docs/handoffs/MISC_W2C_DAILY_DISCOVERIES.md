@@ -66,7 +66,7 @@ Wider chunks run as separate processes (the full suite OOMs here):
 Test coverage (`DailyDiscoveries.test.tsx`, 25): read is gated on settle and names the settled stage's match, once across polls/re-renders (StrictMode only adds dev double-invoke); Review never asks; exact server cards, order and growth arithmetic; no answer text; sits between snapshot and Optional; mounts closed then opens; cue once under `ranked:<id>:discovery`; CTA → `onReview`; reduced motion; stage result + legacy Daily; nothing-found; **10 failure modes** (401, 403 ACCOUNT_REQUIRED, 403 not-participant, 404, 409, 500, transport, malformed body, contract failure, answer-leaking payload) each with no panel, no alert, Continue enabled and working; slow read never blocks Continue; no host CTA → no request; stage switch. `dailyF04.discoveries.test.tsx` (3) drives the real `DailyRunPage` + in-memory B: Standard → cards → CTA `/quiz#review`; Continue into a bonus stage reads `child-1` and never replays Standard's; a reload lands on `optional-entry` with no read and no ceremony.
 
 ### Browser (Microsoft Edge via Playwright, real `/quiz/daily-challenge`, real `QuizRankedMatch` hosted child, backend reads intercepted)
-Run: `node <vite-node>/vite-node.mjs e2e/f04/daily-discoveries.check.ts` against `vite --mode e2e` (the Playwright test runner cannot load the JSON fixtures under Node 24 — the existing DRS1 e2e fails the same way — so this is a plain `playwright` script). **24/24 scenarios pass** at 1280×800, 390×844, 360×640, 320×568; every animation frame sampled.
+Run: `node <vite-node>/vite-node.mjs e2e/f04/daily-discoveries.check.ts` against `vite --mode e2e` (the Playwright test runner cannot load the JSON fixtures under Node 24 — the existing DRS1 e2e fails the same way — so this is a plain `playwright` script). **24/24 scenarios pass** at 1280×800, 390×844, 360×640, 320×568; every animation frame sampled. (Review follow-up in §7 adds overlap, focus and reduced-motion scenarios: 34 in total.)
 
 | Viewport | Earned | none / 401 / 403 / 404 / network |
 | --- | --- | --- |
@@ -83,8 +83,34 @@ Also asserted: panel mounts closed at ~0 px and never gains >50 % of its height 
 - **Panel wait is ≈1.2 s after the score** on the main result, by design (so cards never overlap the count-up/cue). Players who tap Continue first simply leave; Continue is enabled at the settle.
 - **No duplicate read.** The hosted Daily child mounts `QuizRankedMatch`, which has its own `useMatchDiscoveries` call gated on `match_over`; the browser run counted exactly **one** discoveries request per Standard stage (asserted), so the hosted child hands back before it ever reads.
 - **StrictMode (dev only)** double-invokes the loader effect (2–3 identical reads in dev); production makes one (asserted in the non-strict test).
-- **Floating Friends button** overlaps the panel CTA when scrolled to the very bottom on phones (existing global overlay, not changed here).
+- **Floating Friends (Community) trigger** can sit over the CTA's left edge at some mid-scroll offsets on phones — measured and documented in §7; no source change.
 - **Fixture provenance** is the real projection code, not a production capture (see §5).
 - Pre-existing red tests listed above were not touched; `DailyOnCanonicalArena.boundary` "ONLY Daily runtime" list is stale on `main` and would be a trivial separate fix.
 - **Not done (out of scope per #60):** F05 compact-layout redesign; any `src/index.css` / timer / SFX runtime change (Wave 2D); backend changes (none needed); merge/deploy.
 - Worktree: `C:\Users\mlmit\mogzy-wt\misc-w2c-daily-discoveries` (node_modules is a junction to the primary checkout's). Dev server entry `f04-daily-discoveries` (port 5311) lives in the git-excluded primary `.claude/launch.json`.
+
+## 7. Review follow-up — floating Community (Friends) trigger vs. "Review New Discoveries" (PR #62 review, 2026-10-17)
+
+The review asked whether the fixed Community trigger (`FloatingFriendsButton`: `fixed left-6 bottom-6 z-40`, 44×44 → occupies x 24–68, the bottom 24–68 px of the viewport) can obstruct the CTA on phones. Reproduced in Edge with a mobile context (touch) on the real Daily page, panel open, by sweeping every 40 px scroll offset plus the maximum and sampling `elementFromPoint` on a 4 px grid over the CTA's visible rect; plus real `touchscreen.tap`s. `e2e/f04/daily-discoveries.check.ts` (`overlap`, `focus`, `reduced-motion` scenarios) keeps it as a regression check.
+
+| Viewport | Trigger rect | CTA fully on screen / fully **clear** (of N offsets) | Partly covered offsets (worst reachable area) | CTA centre ever covered | At max scroll | Continue |
+| --- | --- | --- | --- | --- | --- | --- |
+| 390×844 | 24,785→68,829 | 10 / **8** of 17 | 3 (89 %) | **never** | CTA 100 % reachable | centre never covered; 99 % reachable at max, never fully clear |
+| 360×640 | 24,580→68,624 | 9 / **7** of 22 | 3 (88 %) | **never** | 100 % | centre never covered; 98 % at max |
+| 320×568 | 24,508→68,552 | 11 / **9** of 26 | 2 (91 %) | **never** | 100 % | centre never covered; 98 % at max |
+
+Real taps:
+- **390×844 and 360×640:** the "covered" offsets only graze the trigger's bottom edge (the deepest covered point is 20 / 18 px from the trigger's centre); a real tap on that point still lands on the CTA (`pointerdown/touchstart/click` all on `discovery-cta`) and reaches `/quiz#history`.
+- **320×568:** a genuine overlap exists at one offset class (scroll ≈ 600, CTA inside the viewport's bottom 68 px): a real tap on the CTA's left strip (4 px from the trigger centre) opens the Community drawer instead. Tapping the CTA's centre — or anywhere right of x≈68 — at the same or any clear offset reaches the hub.
+- Focus (`cta.focus()`, which is what Tab does) centres the CTA: 254–335 px of space below it, 100 % reachable, at all three sizes.
+
+**Conclusion: the CTA is never blocked, so no source change was made.** Its centre is never covered at any scroll offset, it is fully clear at 7–9 offsets including the maximum scroll (where the natural rest position puts it well above the trigger, with the Optional box and Continue below it), and keyboard focus lands it clear. The residual left-edge overlap (≤ 12 % of the CTA's area, transient, 320 px only for a deliberate tap) is the pre-existing behaviour of a fixed, page-wide overlay passing over any full-width control — Continue itself is never fully clear of it at max scroll (98–99 % reachable, centre never covered), on every Daily result, before this PR. Removing it from the Daily result alone would mean narrowing or re-aligning the CTA/panel, which changes layout the review asked to leave alone, and moving or hiding the trigger is a global Friends change (out of scope). A follow-up, if wanted, belongs to the Community trigger (e.g. dock-aware lift like its existing `lifted` state).
+
+Other checks re-run on this head (no source changes in this pass):
+- **Continue:** enabled and clickable in every scenario; centre never covered; `earned` still asserts it reachable after scrolling.
+- **Overflow:** no horizontal overflow in any sampled frame at 1280/390/360/320 (≤ 12 px pre-existing glow bleed on phones, constant).
+- **Motion:** default — cards 1.22–1.24 s after the settle, eased over 18 frames; reduced motion (`reducedMotion: "reduce"` on the context) — cards 250–267 ms after the settle (just the read round trip), open within 0 frames, all 3 cards, Continue enabled, no overflow.
+- **Empty / failure states:** `none`, 401, 403, 404, network at all four viewports: no panel, no alert, **0.00 px** drift of hero/snapshot/optional/Continue over ~260 settled frames, page height constant.
+- Browser matrix: **34/34** (24 original + 3 overlap + 3 focus + 4 reduced-motion).
+- Vitest (focused): `quiz-daily-challenge`, `useMatchDiscoveries`, `QuizRankedMatch.discovery`, `DiscoveryReveal*`, `DailyOnCanonicalArena.boundary` → 281 passed, 2 failed (the same two pre-existing `boundary` failures).
+- CI on `7f416915` (rechecked 2026-10-17): `measure` (Journey Mobile Space Experiment) ✓ and `role-challenge` ✓ — both completed successfully. These two workflows are the only ones that ran for the PR; neither runs the Daily/discovery suites, so they do not substitute for the vitest/browser evidence above.

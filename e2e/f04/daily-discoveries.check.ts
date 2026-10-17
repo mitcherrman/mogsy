@@ -290,21 +290,168 @@ async function silent(page: Page, mode: Mode) {
   return `${settled.length} settled frames, max drift ${worst.toFixed(2)}px, ${reads} read(s)`;
 }
 
+
+/**
+ * PR #62 review — the floating Community (Friends) trigger is `fixed left-6
+ * bottom-6`, 44px, z-40. Is the panel's "Review New Discoveries" CTA actually
+ * tappable wherever the page can be scrolled? Samples `elementFromPoint` over a
+ * grid inside a control's visible rect at every scroll step (and the max),
+ * performs REAL touch taps (CTA centre at a clear scroll position, then the
+ * CTA's left strip at a covered one), and does the same sweep for Continue.
+ * `/quiz#review` is a legacy hash the hub canonicalises to `#history`.
+ */
+const PROBE = (id: string) => {
+  const cta = document.querySelector(`[data-testid="${id}"]`) as HTMLElement;
+  const fr = document.querySelector('[data-testid="friends-drawer-trigger"]') as HTMLElement | null;
+  const r = cta.getBoundingClientRect();
+  const f = fr?.getBoundingClientRect() ?? null;
+  const vis = { l: Math.max(r.left, 0), t: Math.max(r.top, 0), r: Math.min(r.right, innerWidth), b: Math.min(r.bottom, innerHeight) };
+  const total = Math.max(0, vis.r - vis.l) * Math.max(0, vis.b - vis.t);
+  let hit = 0, n = 0;
+  const blockedBy = new Set<string>();
+  let coveredPoint: number[] | null = null;
+  for (let x = vis.l + 2; x < vis.r - 1; x += 4) for (let y = vis.t + 2; y < vis.b - 1; y += 4) {
+    n += 1;
+    const el = document.elementFromPoint(x, y);
+    if (el && (el === cta || cta.contains(el))) hit += 1;
+    else {
+      blockedBy.add(el ? (el.getAttribute("data-testid") || el.tagName) : "none");
+      // the covered point nearest the trigger's centre: a deliberate tap, not a corner graze
+      if (f && el?.closest('[data-testid="friends-drawer-trigger"]')) {
+        const d = Math.hypot(x - (f.left + f.right) / 2, y - (f.top + f.bottom) / 2);
+        if (!coveredPoint || d < coveredPoint[2]) coveredPoint = [x, y, d];
+      }
+    }
+  }
+  const cx = (vis.l + vis.r) / 2, cy = (vis.t + vis.b) / 2;
+  const ce = document.elementFromPoint(cx, cy);
+  const de = document.documentElement;
+  return {
+    scrollY: Math.round(scrollY), maxY: Math.round(de.scrollHeight - innerHeight),
+    cta: [r.left, r.top, r.right, r.bottom].map((v) => +v.toFixed(1)), friends: f && [f.left, f.top, f.right, f.bottom].map((v) => +v.toFixed(1)),
+    visibleFrac: total / (r.width * r.height), reachableFrac: n ? hit / n : 0,
+    centreOk: !!ce && (ce === cta || cta.contains(ce)), centre: [Math.round(cx), Math.round(cy)],
+    blockedBy: [...blockedBy], coveredPoint,
+  };
+};
+
+async function sweep(page: Page, id: string) {
+  const probe = () => page.evaluate(PROBE, id);
+  const maxY = (await probe()).maxY;
+  const rows: Awaited<ReturnType<typeof probe>>[] = [];
+  for (let y = 0; y <= maxY; y += 40) { await page.evaluate((v) => window.scrollTo({ top: v, behavior: "instant" }), y); await page.waitForTimeout(50); rows.push(await probe()); }
+  await page.evaluate((v) => window.scrollTo({ top: v, behavior: "instant" }), maxY); await page.waitForTimeout(80);
+  rows.push(await probe());
+  return { rows, probe, maxY };
+}
+
+async function overlap(page: Page, vp: (typeof VIEWPORTS)[number]) {
+  await playStandard(page, "earned", null);
+  const cta = await sweep(page, "discovery-cta");
+  const cont = await sweep(page, "daily-main-continue");
+  const summarize = (name: string, sw: typeof cta) => {
+    const onScreen = sw.rows.filter((r) => r.visibleFrac > 0.99);
+    const clear = onScreen.filter((r) => r.reachableFrac > 0.995);
+    const covered = sw.rows.filter((r) => r.visibleFrac > 0.5 && r.reachableFrac < 0.995);
+    const centreBad = sw.rows.filter((r) => r.visibleFrac > 0.5 && !r.centreOk);
+    const atMax = sw.rows.at(-1)!;
+    return { line: `${name}: fully on screen at ${onScreen.length}/${sw.rows.length} scroll steps, fully CLEAR at ${clear.length}; partly covered at ${covered.length}` +
+      (covered.length ? ` (worst ${(Math.min(...covered.map((r) => r.reachableFrac)) * 100).toFixed(0)}% reachable, by ${[...new Set(covered.flatMap((r) => r.blockedBy))].filter((x) => /friends|button/i.test(x)).join(",") || "friends-drawer-trigger"})` : "") +
+      `; centre blocked at ${centreBad.length}; at max scroll reachable ${(atMax.reachableFrac * 100).toFixed(0)}%`, clear, covered, centreBad, atMax };
+  };
+  const c = summarize("CTA", cta), k = summarize("Continue", cont);
+  console.log(`   ${vp.w}x${vp.h} friends=${JSON.stringify(c.atMax.friends)}\n     ${c.line}\n     ${k.line}`);
+  ok(c.clear.length > 0, "the CTA is fully clear and on screen at some scroll position");
+  ok(c.centreBad.length === 0, `the CTA's centre must never be covered (${c.centreBad.length} steps)`);
+  ok(k.centreBad.length === 0, `Continue's centre must never be covered (${k.centreBad.length} steps)`);
+  ok(k.atMax.reachableFrac > 0.8, `Continue is mostly reachable at max scroll (${k.atMax.reachableFrac})`);
+  // Real tap, centre of the CTA at a clear position.
+  const best = c.clear[Math.floor(c.clear.length / 2)];
+  await page.evaluate((v) => window.scrollTo({ top: v, behavior: "instant" }), best.scrollY); await page.waitForTimeout(100);
+  const fresh = await page.evaluate(PROBE, "discovery-cta");
+  ok(fresh.centreOk, `CTA centre hits the CTA at scroll ${fresh.scrollY}`);
+  // Real tap on the CTA where the trigger covers it most deeply: records what a thumb gets there.
+  let stripNote = "no covered position";
+  let navigated = false;
+  if (c.covered.length) {
+    const cv = c.covered[0];
+    await page.evaluate((v) => window.scrollTo({ top: v, behavior: "instant" }), cv.scrollY);
+    await page.waitForTimeout(150);
+    const pt = (await page.evaluate(PROBE, "discovery-cta")).coveredPoint;
+    if (pt) {
+      await page.touchscreen.tap(pt[0], pt[1]); await page.waitForTimeout(500);
+      const left = !/daily-challenge/.test(page.url());
+      const drawer = await page.getByRole("dialog").count();
+      navigated = left;
+      stripNote = `deepest covered point ${Math.round(pt[2])}px from the trigger centre at scroll ${cv.scrollY}: ` +
+        (left ? "the real tap still lands on the CTA (a graze of the trigger's edge)" : drawer ? "the real tap opens the Community drawer (genuine overlap, pre-existing overlay)" : "the real tap did nothing");
+      if (drawer) { await page.keyboard.press("Escape"); await page.waitForTimeout(300); }
+    }
+  }
+  if (!navigated) {
+    await page.evaluate((v) => window.scrollTo({ top: v, behavior: "instant" }), best.scrollY); await page.waitForTimeout(150);
+    const again = await page.evaluate(PROBE, "discovery-cta");
+    ok(again.centreOk, "CTA centre is clear before the tap");
+    await page.touchscreen.tap(again.centre[0], again.centre[1]);
+  }
+  await page.waitForURL(/\/quiz#(review|history)$/, { timeout: 5000 }).catch(() => {});
+  ok(/\/quiz#(review|history)$/.test(page.url()), `a real tap on the CTA must reach the hub's review/history, got ${page.url()}`);
+  return `CTA clear at ${c.clear.length} steps, partly covered at ${c.covered.length}, centre never blocked; ${stripNote}; real tap -> ${new URL(page.url()).pathname + new URL(page.url()).hash}`;
+}
+
+/**
+ * Keyboard / assistive focus: Tab (or any focus()) scrolls the CTA into view.
+ * Where it lands must clear the fixed trigger (`bottom-6`, 44px => top edge 68px
+ * above the viewport bottom). Starts from the top of the page each time.
+ */
+async function focusLands(page: Page, vp: (typeof VIEWPORTS)[number]) {
+  await playStandard(page, "earned", null);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.waitForTimeout(100);
+  await page.evaluate(() => (document.querySelector('[data-testid="discovery-cta"]') as HTMLElement).focus());
+  await page.waitForTimeout(150);
+  const r = await page.evaluate(PROBE, "discovery-cta");
+  const gap = vp.h - r.cta[3];
+  ok(r.visibleFrac > 0.99, `the focused CTA must be fully on screen (${r.visibleFrac})`);
+  ok(r.reachableFrac > 0.995, `the focused CTA must be fully clear of the Community trigger: ${(r.reachableFrac * 100).toFixed(1)}% reachable, bottom edge ${gap.toFixed(0)}px above the viewport bottom`);
+  return `focus lands with ${gap.toFixed(0)}px below the CTA, ${(r.reachableFrac * 100).toFixed(0)}% reachable`;
+}
+
+/** Reduced motion (the OS media query, emulated on the context): no hold, no ease, same content. */
+async function reducedMotion(page: Page, vp: (typeof VIEWPORTS)[number]) {
+  const { frames, reads } = await playStandard(page, "earned", null);
+  ok(reads === 1, `one read, got ${reads}`);
+  const settled = frames.filter((f) => f.settled === true);
+  const withPanel = settled.filter((f) => f.regions.panel);
+  ok(withPanel.length > 10, "the cards never appeared");
+  const wait = withPanel[0].t - settled[0].t;
+  ok(wait < 800, `no 1.2 s hold under reduced motion; waited ${wait.toFixed(0)} ms (read round trip ~250 ms)`);
+  ok(withPanel[0].panelExpanded === "true" || withPanel[1].panelExpanded === "true", "the panel opens at once, not by easing");
+  ok(withPanel.slice(0, 3).some((f) => h(f.regions.panel) > 120), "full height within three frames");
+  for (const f of frames.filter((x) => x.settled !== null)) ok(f.scrollX <= (vp.phone ? 12 : 0), `horizontal overflow ${f.scrollX}`);
+  ok(await page.getByTestId("daily-main-continue").isEnabled(), "Continue is enabled");
+  ok((await page.getByTestId("discovery-entry").count()) === 3, "all three cards are shown");
+  return `cards ${wait.toFixed(0)} ms after settle, open within ${withPanel.findIndex((f) => h(f.regions.panel) > 120)} frames`;
+}
+
 async function main() {
   const browser = await chromium.launch({ channel: "msedge", headless: true });
   const results: string[] = [];
   let failed = 0;
-  const scenarios: [string, (page: Page) => Promise<string>, (typeof VIEWPORTS)[number]][] = [];
+  const scenarios: [string, (page: Page) => Promise<string>, (typeof VIEWPORTS)[number], boolean?][] = [];
   for (const vp of VIEWPORTS) {
     scenarios.push([`${vp.w}x${vp.h} earned`, (p) => earned(p, vp), vp]);
+    if (vp.phone) scenarios.push([`${vp.w}x${vp.h} overlap`, (p) => overlap(p, vp), vp]);
+    if (vp.phone) scenarios.push([`${vp.w}x${vp.h} focus`, (p) => focusLands(p, vp), vp]);
+    scenarios.push([`${vp.w}x${vp.h} reduced-motion`, (p) => reducedMotion(p, vp), vp, true]);
     for (const mode of ["none", "guest401", "anon403", "missing404", "network"] as const) {
       scenarios.push([`${vp.w}x${vp.h} ${mode}`, (p) => silent(p, mode), vp]);
     }
   }
-  for (const [name, run, vp] of scenarios) {
+  for (const [name, run, vp, reduced] of scenarios) {
     if (ONLY && !name.includes(ONLY)) continue;
     const ctx = await browser.newContext({
-      baseURL: BASE, viewport: { width: vp.w, height: vp.h },
+      baseURL: BASE, viewport: { width: vp.w, height: vp.h }, ...(reduced ? { reducedMotion: "reduce" as const } : {}),
       ...(vp.phone ? { isMobile: true, hasTouch: true } : {}),
     });
     const page = await ctx.newPage();
