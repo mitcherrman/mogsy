@@ -65,7 +65,7 @@ src/index.css                                pulse + reduced motion + timeout st
 - **Dedupe works in three layers:**
   - Event ids: `quiz-countdown:<clock>:<second>` and `quiz-timeout:<settled>`. Ranked timeouts reuse the observer's existing `ranked:<match>:round:N:result` and `…:child:i:result` ids, so the engine's 512-id `eventId` set renders each id once per page session.
   - The observer: the first sample is a baseline, so mount, reconnect, History and resume are silent. Only the current second sounds, so a long task or a backgrounded tab gives one knock and never a burst.
-  - A cross-clock gap of 350 ms, so a Time Trial question clock and its bank knock once, not as a chord.
+  - **One clock owns the beat** (review edge C): the first clock to knock in its final window holds a 1.1 s lease, renewed by each of its own knocks. Another clock (the Time Trial bank beside a question clock) knocks only after the owner goes quiet. This replaced a 350 ms gap that let staggered clocks knock twice a second.
 - **TIME'S UP sources** are all server fields:
   - the round's `timed_out`;
   - Stat Check card `outcome:"timeout"`;
@@ -137,9 +137,25 @@ The same flow was also driven live in the Claude Browser pane against the nested
 
 Files: `after-desktop.webm`, `after-390x844.webm`, `before-desktop.webm`, `before-390x844.webm`; `after/*.jpg` (003 = "3 strong", 001 = "1 final", 000 = local zero, `timeout` = settled); `before/*.jpg`.
 
+## Review amendment (command-center review of `36a52cef`)
+
+Each edge was reproduced with a failing-before regression, then fixed in the smallest place. Wording ("TIMED OUT", amber) and the silent Stat Check card clock are unchanged. No deadline, settlement or scoring rule changed. PR #62's Daily result components (`DailyRunPage`, `DailyMainResult`, `DailyStageResult`) and `src/index.css` were not touched.
+
+| Edge | Evidence (before) | Fix | Regression |
+|---|---|---|---|
+| **A: final-round timeout** | All three real one-lock server captures (Reconstruct, Order Forge, Assembly Roster Lock): `resolved_timeout.match_over = true`, `completion_reason: "segments_complete"`, and `resume_final.public` is terminal. **The server exposes no non-terminal settlement for the final round.** `observeRankedSfx` gated the settlement cue on `!terminal`, so the timeout was silent. **5 failing before.** | `useRankedMatchSfx.ts`: a terminal-only branch sounds `quiz.answer.timeout` under the same `round:N:result` id, only when `previous.sawLive` (a watched match). Correct/incorrect at terminal is unchanged; the match sting stays at the outro beat. | `useRankedMatchSfx.timeout.test.ts` "review edge A": the 3 captures replayed live → terminal (once, and no repeat on re-poll); completion snapshot before the settlement fetch; reconnect / History onto the finished match is silent; a quiz `timed_out` final round plus the outro sting; correct/incorrect at terminal still silent. |
+| **B: bank → stage result** | Fixture transport + `DailyRunPage` flow: a live Time Trial bank at 7 s goes straight to `ended_by: "time_bank_exhausted"`, and no `quiz.answer.timeout` plays. **1 failing before.** | `useDailyRun.adopt()` (not in #62), in the existing "stage this mount watched finish" branch: when `result.endedBy === "time_bank_exhausted"`, play `quiz.answer.timeout` with id `quiz-timeout:daily-bank:<stageId>`, the bank readout's own id, so a prior bank-zero cue is not doubled. | `dailyBankTimeout.test.tsx`: direct transition gives one cue with the bank id (plus the stage sting once); a content-ended stage stays silent; re-entering an already-ended stage stays silent. |
+| **C: staggered clocks** | Two `useCountdownNow` clocks (question and bank) with boundaries 500 ms apart: **10 knocks in 5 s** (both clocks). **2 failing before.** | `useCountdownFeedback.ts`: a single beat owner with a 1.1 s lease replaces the 350 ms gap. | `useCountdownFeedback.test.tsx` "review edge C": exactly r1's 5 knocks; when the bank outlives the question clock, it owns its later 3, 2, 1 after the owner goes quiet. |
+
+Amendment test results (local, esbuild scratch config, chunked):
+- Edge suites before the fixes: **A 5 failed / 19 passed; B 1 failed / 2 passed; C 2 failed / 9 passed.** After: all pass.
+- Affected chunks on the amended head: audio 178/178, quiz-timer 35/35, ranked-core 1156/1162, ranked-arena 626/635, quiz-ranked **789/789**, quiz-daily-challenge **207/207**, shell probe 4/4. The failures are **exactly the 15 base failures** (CRLF regex tests), none new and none fixed.
+- `tsc`: the same 2 base errors. ESLint on the changed files: 0.
+- New tests in this amendment: **15** (A 10, B 3, C 2), on top of the original 68. Edge A before the fix was 5 failed of the 10 new tests: the other 5 are the "no replay" and "unchanged verdict" guards, which already held.
+
 ## Known gaps / next actions
 
 1. **There is no real Survival *timeout* capture.** The Survival per-child timeout cue shares its code path with the pooled and reference captures, which are proven. Capture one with the backend before release.
-2. **The Daily bank cue needs the chrome to see the server's `remaining_ms = 0` reading** before the stage result replaces it. If the stage ends in the same poll, the cue is skipped and the result page's server "Time's up" headline (Wave 2C) is the only signal. Verify on a live Time Trial run.
+2. ~~The Daily bank cue needs the chrome to see the server's 0 reading.~~ **Resolved (review edge B):** `useDailyRun.adopt()` now sounds the same cue when a stage this mount watched completes with `ended_by: "time_bank_exhausted"`.
 3. **Owner calls:** none open. The owner confirmed decisions 1 and 2 as built on 2026-10-17.
 4. **Reproduce:** start a worktree dev server (scratch vite config + rollup-wasm hook), then run `node docs/handoffs/misc-w2d/logs/cap.cjs <out> desktop http://localhost:<port> 1` with the worktree as cwd.
