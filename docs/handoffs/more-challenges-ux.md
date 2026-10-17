@@ -1,6 +1,6 @@
 # MC-UX1 — More Challenges public game gallery
 
-**Status (2026-10-16):** implemented on `mc-ux1/public-game-gallery`. **Awaiting owner visual acceptance.** Not merged, not published.
+**Status (2026-10-16):** owner-approved and **merged** into `main` at `af170999` (`--no-ff`, onto main `4f73badf`). **Awaiting the owner's Lovable publish.** No backend change, so there is no backend deploy.
 
 * Repository: `mitcherrman/mogsy` (frontend only; no backend change).
 * Verified starting commit: `main` @ `c5521d3e` (PGM2 merged; PGM1/PGM2 handoff: `docs/handoffs/public-game-modes.md`).
@@ -197,7 +197,9 @@ Art images:
   > Screenshots of the running branch: `docs/handoffs/more-challenges-ux/`. Handoff: `docs/handoffs/more-challenges-ux.md`.
   >
   > **Do not merge before owner visual acceptance.**
-* **Not merged, not published**, by instruction: the owner reviews the screenshots first.
+* **Merged 2026-10-16** after owner visual acceptance, directly (no PR): `main` `af170999` = `4f73badf` (Worlds UX4/UX5) + `mc-ux1/public-game-gallery` @ `53c2bc97`. No file overlap.
+  * Checks on the merge: `tsc` clean apart from the two pre-existing files; `vite build` OK.
+  * public modes, More Challenges, Daily and Ranked suites: 124 files, 1465 tests passed.
 
 ## 9. Remaining issues
 
@@ -207,6 +209,4 @@ Art images:
 
 ## 10. Next action
 
-The owner reviews the screenshots and the PR.
-* **On acceptance:** merge `mc-ux1/public-game-gallery` into `main` (`--no-ff`), then publish via Lovable. There is no backend deploy.
-* **On requested changes:** adjust on the same branch and re-capture with the same recipe.
+The owner publishes `main` in Lovable. After the publish, check `/quiz/more-challenges` on mogzy.lol at phone and desktop sizes.
