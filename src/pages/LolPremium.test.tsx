@@ -180,6 +180,23 @@ describe("LolPremium — manage-billing entry point", () => {
     expect(screen.queryByTestId("premium-manage-billing")).toBeNull();
   });
 
+  it("PT1.6b: a one-time purchase reads as PAID, with its end date, never as complimentary", async () => {
+    premiumFromBackend();
+    entitlementRpc.mockResolvedValue({
+      data: [{
+        effective_pro: true, stripe_pro: false, grant_kind: "purchase",
+        grant_expires_at: "2027-10-16T00:00:00Z",
+      }],
+      error: null,
+    });
+    renderPage();
+    const line = await screen.findByTestId("premium-one-time-line");
+    expect(line.textContent).toContain("Premium paid once");
+    expect(line.textContent).toContain("does not renew");
+    expect(screen.queryByTestId("premium-grant-line")).toBeNull();
+    expect(screen.queryByTestId("premium-manage-billing")).toBeNull();
+  });
+
   it("shows a member who has both that they are billed, and names the grant", async () => {
     premiumFromBackend();
     entitlementRpc.mockResolvedValue({

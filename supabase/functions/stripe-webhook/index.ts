@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { isCustomOfferSession } from "../_shared/custom-offer.ts";
+import { handleCustomOfferEvent, type WebhookDeps } from "../_shared/custom-offer-webhook.ts";
 
 // Stripe webhook — keeps profiles.is_pro in sync without relying on the
 // user revisiting the Shop page (check-subscription remains as a backstop).
@@ -18,6 +20,12 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 //
 // Events handled: checkout.session.completed, customer.subscription.created,
 // customer.subscription.updated, customer.subscription.deleted.
+//
+// PT1.6b adds the custom one-time offer (../_shared/custom-offer-webhook.ts):
+// its completed sessions are routed there BEFORE the subscription/gift logic
+// below, and it alone consumes checkout.session.async_payment_succeeded /
+// async_payment_failed / expired, charge.refunded and charge.dispute.closed.
+// Subscription and gift handling is unchanged.
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
@@ -163,11 +171,24 @@ serve(async (req) => {
   }
 
   const supabase = adminClient();
+  const customOfferDeps: WebhookDeps = {
+    rpc: (fn, args) => supabase.rpc(fn, args),
+    log: (message, detail) => console.warn(message, detail ?? {}),
+    stripe: {
+      retrievePaymentIntent: (id) => stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] }),
+    },
+  };
 
   try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        // PT1.6b: the custom one-time offer activates on confirmed payment.
+        if (isCustomOfferSession(session)) {
+          const r = await handleCustomOfferEvent(event, customOfferDeps);
+          console.log("custom offer", { event: event.id, outcome: r.outcome });
+          break;
+        }
         // Gift purchases grant Pro at redemption (redeem-gift), not at purchase.
         if (session.metadata?.gift_id) break;
         if (session.mode !== "subscription") break;
@@ -205,6 +226,17 @@ serve(async (req) => {
         // renewal, upgrade, downgrade, cancellation. The acquisition offer is
         // write-once in SQL, so none of these can rewrite commercial history.
         await recordCommercialState(supabase, userId, subscription);
+        break;
+      }
+      // PT1.6b: only the custom one-time offer consumes these. Anything that is
+      // not one of its sessions/payments is reported unhandled and ignored.
+      case "checkout.session.async_payment_succeeded":
+      case "checkout.session.async_payment_failed":
+      case "checkout.session.expired":
+      case "charge.refunded":
+      case "charge.dispute.closed": {
+        const r = await handleCustomOfferEvent(event, customOfferDeps);
+        console.log("custom offer", { event: event.id, type: event.type, handled: r.handled, outcome: r.outcome });
         break;
       }
       default:
