@@ -1,5 +1,14 @@
 /**
- * Academy Core V3 — browser inspection of the production home, /lol.
+ * The production home, /lol — browser inspection of its contracts.
+ *
+ * `/lol` is Academy Core V3.5, the Living Hextech Orrery (it replaced the V3
+ * Four-Book Core). This spec keeps the home's contracts from V3 — routes,
+ * one-click activation, modified clicks, rapid clicks, reduced motion, the
+ * crystal readout, Daily / Ranked / Patch links, the preview redirects, the
+ * Hall and its Commons, the Landing hand-off, the account-only Daily read,
+ * silence before a gesture and when muted, what art loads — against the new
+ * presentation. The Orrery's own scene (orbit, drag, selector, projections,
+ * quality tiers) is measured in e2e/academy-core-v35.spec.ts.
  *
  * Runs against the frontend-only config (playwright.frontend.config.ts):
  *   npx playwright test -c playwright.frontend.config.ts e2e/academy-core.spec.ts
@@ -8,26 +17,21 @@
  * detail, the champion manifest, the Daily status, Supabase app settings —
  * are intercepted with deterministic bodies so captures are stable and no
  * production service is touched. Every manifest splash / icon is served as
- * one real 128 px champion icon from the repo, so the covers draw a real
- * picture; in production the covers are the champions' actual splashes.
- * Everything else (shell, HUD, theme, the real book and radio components,
- * the real AcademyHubBook covers) is the real app.
+ * one real 128 px champion icon from the repo. Everything else is the real app.
  *
- * Captures the evidence set under docs/handoffs/academy-core-v3/ and asserts
- * the acceptance geometry and behaviour: no horizontal overflow; four real
- * covers with the Hall's identity; the upper pair larger and higher; the real
- * Patch Report book beside the Core (desktop) / below the lower pair (phone);
- * one-click activation ≤ 350 ms then navigation; modified clicks left to the
- * browser; rapid clicks route once; reduced motion routes at once; the crystal
- * cycles previews without navigating; keyboard focus; touch; no Hall-only
- * art requested; ≥ 44 px targets on phones; 200 % text zoom.
+ * The books orbit, so they are aimed by their current position: a pointer
+ * resting on a book holds the orbit (by design), then the press lands on it.
+ * (A locator click would wait for an orbiting book to stop moving.)
  */
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const ROUTE = "/lol";
-const OUT = path.resolve("docs/handoffs/academy-core-v3-integration");
+/** The home's root: the Living Hextech Orrery (Academy Core V3.5). */
+const HOME = "academy-core-v35";
+// Run captures go to the (untracked) test output, never over committed evidence.
+const OUT = path.resolve("test-results/academy-core-home");
 mkdirSync(OUT, { recursive: true });
 
 const DESKTOP = [
@@ -43,6 +47,8 @@ const MOBILE = [
 /** A real 128px champion icon from the repo stands in for every manifest image. */
 const ICON_PNG = readFileSync(path.resolve("public/images/library/champion-ahri.png"));
 const CHAMPS = ["Ryze", "Ahri", "Akali", "Viktor", "Jinx", "Yasuo"];
+/** The crystal projections' manifest icons: Leaguecraft's Lux and the Pro Play 5 v 5 lineup. */
+const PROJECTION_CHAMPS = ["Lux", "Gnar", "Lee Sin", "Azir", "Jinx", "Thresh", "K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"];
 
 export async function stubRemote(page: Page) {
   await page.route("**/api/patch-reports", (route) =>
@@ -71,7 +77,7 @@ export async function stubRemote(page: Page) {
   await page.route("**/api/assets/champions", (route) =>
     route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ ok: true, champions: Object.fromEntries(CHAMPS.map((n) => [n, {
+      body: JSON.stringify({ ok: true, champions: Object.fromEntries([...new Set([...CHAMPS, ...PROJECTION_CHAMPS])].map((n) => [n, {
         icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
       }])) }),
     }));
@@ -87,7 +93,7 @@ async function open(page: Page, width: number, height: number) {
   await page.setViewportSize({ width, height });
   await stubRemote(page);
   await page.goto(ROUTE);
-  await expect(page.getByTestId("academy-core")).toBeVisible();
+  await expect(page.getByTestId(HOME)).toBeVisible();
   await expect(page.getByTestId("academy-core-daily")).toBeVisible();
   // Fonts, the covers and the first spring settle.
   await page.waitForTimeout(1400);
@@ -100,6 +106,27 @@ async function noHorizontalOverflow(page: Page) {
 }
 
 const bookLink = (page: Page, id: string) => page.getByTestId(`academy-core-slot-${id}`).getByRole("link");
+
+/** Rest the pointer on a book where it is now; the resting pointer holds the orbit and focuses the book. */
+async function aimBook(page: Page, id: string) {
+  const b = (await page.getByTestId(`academy-core-slot-${id}`).boundingBox())!;
+  const x = b.x + b.width / 2;
+  const y = b.y + b.height * 0.4;
+  await page.mouse.move(x, y, { steps: 6 });
+  await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", id);
+  // aim again where it settled (it may have drifted a little while the pointer travelled)
+  const c = (await page.getByTestId(`academy-core-slot-${id}`).boundingBox())!;
+  const at = { x: c.x + c.width / 2, y: c.y + c.height * 0.4 };
+  await page.mouse.move(at.x, at.y);
+  return at;
+}
+/** One plain press on a book (a real pointer click where the book is). */
+async function pressBook(page: Page, id: string) {
+  const at = await aimBook(page, id);
+  await page.mouse.down();
+  await page.mouse.up();
+  return at;
+}
 
 const ROOMS = [
   { id: "leaguecraft", title: "Leaguecraft", href: "/quiz", champ: "Ryze", lines: ["LEAGUECRAFT", "STUDIES"] },
@@ -134,11 +161,6 @@ test.describe("desktop", () => {
         expect(box.x, `${id} not clipped left`).toBeGreaterThanOrEqual(-1);
         expect(box.x + box.width, `${id} not clipped right`).toBeLessThanOrEqual(vp.width + 1);
       }
-      const up = (await page.getByTestId("academy-core-slot-leaguecraft").boundingBox())!;
-      const lo = (await page.getByTestId("academy-core-slot-combat-lab").boundingBox())!;
-      expect(lo.width / up.width).toBeGreaterThanOrEqual(0.8);
-      expect(lo.width / up.width).toBeLessThanOrEqual(0.9);
-      expect(up.y).toBeLessThan(lo.y);
       const stage = (await page.getByTestId("academy-core-stage").boundingBox())!;
       const book = (await page.getByTestId("academy-core-book").boundingBox())!;
       expect(book.width).toBeGreaterThanOrEqual(272);
@@ -159,15 +181,14 @@ test.describe("desktop", () => {
     await page.screenshot({ path: path.join(OUT, "desktop-1280x660-short.png"), fullPage: true });
   });
 
-  test("hover lifts a book, lights its cradle and channel, projects its room and moves Mogzy", async ({ page }) => {
+  test("hover focuses a book, projects its room in the crystal and moves Mogzy", async ({ page }) => {
     await open(page, 1366, 768);
     const stage = page.getByTestId("academy-core-stage");
     const mogzy = page.getByTestId("academy-core-mogzy");
     await expect(stage).toHaveAttribute("data-focus", "idle");
-    await expect(page.locator(".acore-mode-leaguecraft image")).toHaveCount(1, { timeout: 8000 });
+    await expect(page.getByTestId("academy-core-v35-lux-portrait")).toHaveCount(1, { timeout: 8000 });
     for (const [id, pose] of [["leaguecraft", "holdingBook"], ["pro-play", "peeking"], ["combat-lab", "raisingHand"], ["archives", "explaining"]] as const) {
-      await bookLink(page, id).hover();
-      await expect(stage).toHaveAttribute("data-focus", id);
+      await aimBook(page, id);
       await expect(mogzy).toHaveAttribute("data-pose", pose);
       await expect(page.getByTestId("academy-core-preview")).toHaveText(/Previewing/);
       await page.waitForTimeout(800);
@@ -180,7 +201,7 @@ test.describe("desktop", () => {
 
   test("one click: a ≤ 350 ms activation, then navigation (measured)", async ({ page }) => {
     await open(page, 1366, 768);
-    const link = bookLink(page, "combat-lab");
+    await aimBook(page, "combat-lab");
     // Record the activation window inside the page: polling for a 240 ms
     // attribute from the test process is racy on a loaded machine.
     await page.evaluate(() => {
@@ -193,7 +214,8 @@ test.describe("desktop", () => {
       const push = history.pushState.bind(history);
       history.pushState = (...a: Parameters<History["pushState"]>) => { rec.nav = performance.now(); return push(...a); };
     });
-    await link.click();
+    await page.mouse.down();
+    await page.mouse.up();
     await page.screenshot({ path: path.join(OUT, "desktop-1366x768-activation-combat.png") }).catch(() => {});
     await page.waitForURL(/\/combat-lab$/);
     const act = await page.evaluate(() => (window as unknown as { __act: { on: number | null; nav: number | null } }).__act);
@@ -203,24 +225,31 @@ test.describe("desktop", () => {
     expect(activation, "activation beat before navigating (ms)").toBeGreaterThanOrEqual(200);
     expect(activation, "activation beat before navigating (ms)").toBeLessThanOrEqual(350);
     await page.goBack();
-    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await expect(page.getByTestId(HOME)).toBeVisible();
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-activating", "");
   });
 
   test("rapid clicks route once; a modified click is the browser's; Enter routes", async ({ page }) => {
     await open(page, 1366, 768);
-    const link = bookLink(page, "archives");
-    await link.click();
-    await link.click({ timeout: 2000 }).catch(() => {});
+    // rapid: a second press during the activation changes nothing
+    await pressBook(page, "archives");
+    await page.mouse.down();
+    await page.mouse.up();
     await page.waitForURL(/\/lol\/docs$/);
+    expect(await page.evaluate(() => history.length), "one navigation for two presses").toBeLessThanOrEqual(3);
     await page.goBack();
-    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await expect(page.getByTestId(HOME)).toBeVisible();
+    await page.mouse.move(10, 400);
     const popup = page.context().waitForEvent("page", { timeout: 5000 }).catch(() => null);
-    await bookLink(page, "pro-play").click({ modifiers: ["Control"] });
+    const at = await aimBook(page, "pro-play");
+    await page.keyboard.down("Control");
+    await page.mouse.click(at.x, at.y);
+    await page.keyboard.up("Control");
     const newPage = await popup;
     expect(newPage, "ctrl-click opened a new page").not.toBeNull();
     await expect(page).toHaveURL(/\/lol$/);
     await newPage?.close();
+    await page.mouse.move(10, 400);
     await bookLink(page, "leaguecraft").focus();
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "leaguecraft");
     await page.screenshot({ path: path.join(OUT, "desktop-1366x768-keyboard-focus.png") });
@@ -284,7 +313,7 @@ test.describe("desktop", () => {
       await stubRemote(page);
       await page.goto(from, { waitUntil: "commit" });
       await expect(page).toHaveURL(/\/lol$/);
-      await expect(page.getByTestId("academy-core")).toBeVisible();
+      await expect(page.getByTestId(HOME)).toBeVisible();
       await page.close();
     }
   });
@@ -294,7 +323,7 @@ test.describe("desktop", () => {
     await stubRemote(page);
     await page.goto("/lol#academy-commons");
     await expect(page).toHaveURL(/\/lol\/hall#academy-commons$/);
-    await expect(page.getByTestId("academy-core")).toHaveCount(0);
+    await expect(page.getByTestId(HOME)).toHaveCount(0);
     await expect.poll(async () => page.evaluate(() => {
       const el = document.getElementById("academy-commons");
       return el ? Math.round(el.getBoundingClientRect().top) : 9999;
@@ -309,7 +338,7 @@ test.describe("desktop", () => {
     await expect(page).toHaveURL(/\/lol\/hall$/);
     await expect(page.getByTestId("academy-hall")).toBeVisible();
     await page.goBack();
-    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await expect(page.getByTestId(HOME)).toBeVisible();
     await page.getByTestId("academy-core-commons-link").click();
     await expect(page).toHaveURL(/\/lol\/hall#academy-commons$/);
     await expect.poll(async () => page.evaluate(() => {
@@ -330,7 +359,7 @@ test.describe("desktop", () => {
     await page.waitForTimeout(1500);
     await page.screenshot({ path: path.join(OUT, "desktop-1366x768-hall-preserved.png") });
     await page.goto("/lol");
-    await expect(page.getByTestId("academy-core")).toBeVisible();
+    await expect(page.getByTestId(HOME)).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/lol$/);
     await expect(page).toHaveTitle(/Mogzy LoL Quiz/);
@@ -412,18 +441,18 @@ test.describe("desktop", () => {
     await mp.addInitScript(() => { localStorage.setItem("mogsy-sounds-muted", "1"); });
     await open(mp, 1366, 768);
     await mp.getByTestId("academy-core-crystal").click();
-    await bookLink(mp, "pro-play").hover();
+    await aimBook(mp, "pro-play");
     await mp.waitForTimeout(400);
-    await bookLink(mp, "combat-lab").hover();
+    await aimBook(mp, "combat-lab");
     await mp.waitForTimeout(400);
     expect(await starts(mp), "muted: hover, crystal and focus cues make no sound").toBe(0);
-    await bookLink(mp, "archives").click();
+    await pressBook(mp, "archives");
     await mp.waitForURL(/\/lol\/docs$/);
     expect(await starts(mp), "muted: the book-open cue makes no sound").toBe(0);
     await muted.close();
   });
 
-  test("loads one frame, four splashes, no Hall-only art, no manifest icons", async ({ page }) => {
+  test("loads one frame, four splashes, no Hall-only art, and only the expected manifest icons", async ({ page }) => {
     const requested: string[] = [];
     page.on("request", (r) => requested.push(r.url()));
     await open(page, 1366, 768);
@@ -432,10 +461,13 @@ test.describe("desktop", () => {
     expect(real.filter((u) => /academy-library-(desktop|mobile)|book-spine|academy-commons-desktop/.test(u))).toEqual([]);
     expect(real.filter((u) => /academy-book-frame.*\.webp/.test(u))).toHaveLength(1);
     expect(real.filter((u) => /\/splash\//.test(u)).length).toBe(4);
-    // The only champion icons are the live Patch Brief's own (the Patch Report island and the
-    // strata projection reuse them); the destination books use cover art, never manifest icons.
-    const icons = new Set(real.filter((u) => /\/champions\/[^/]+\/icon\.png/.test(u)));
-    expect(icons.size).toBeLessThanOrEqual(CHAMPS.length);
+    // Champion icons come only from the live Patch Brief (the Patch Report island and the
+    // Archives projection reuse them) and the two crystal projections (Leaguecraft's Lux,
+    // the Pro Play lineup); the destination books use cover art, never manifest icons.
+    const allowed = new Set([...CHAMPS, ...PROJECTION_CHAMPS].map((n) => `/champions/${n}/icon.png`));
+    const icons = [...new Set(real.filter((u) => /\/champions\/[^/]+\/icon\.png/.test(u)).map((u) => decodeURIComponent(new URL(u).pathname).replace(/^.*(\/champions\/)/, "$1")))];
+    for (const icon of icons) expect(allowed.has(icon), icon).toBe(true);
+    expect(icons.some((u) => u.includes("/Lux/")), "the Lux projection's icon").toBe(true);
     expect(real.some((u) => u.includes("academy-broadcast-book.webp"))).toBe(true);
   });
 });
@@ -449,14 +481,15 @@ test.describe("mobile", () => {
       const daily = (await page.getByTestId("academy-core-daily").boundingBox())!;
       const up = (await page.getByTestId("academy-core-slot-leaguecraft").boundingBox())!;
       const up2 = (await page.getByTestId("academy-core-slot-pro-play").boundingBox())!;
-      const stage = (await page.getByTestId("academy-core-stage").boundingBox())!;
+      // the phone arrangement: an upper tier, the Core, a lower tier (the stage holds all three)
+      const core = (await page.locator(".acore-crystal").boundingBox())!;
       const lo = (await page.getByTestId("academy-core-slot-combat-lab").boundingBox())!;
       const book = (await page.getByTestId("academy-core-book-mobile").boundingBox())!;
       expect(daily.y + daily.height).toBeLessThanOrEqual(vp.height);
       expect(up.y, "upper pair visible promptly").toBeLessThan(vp.height);
-      expect(Math.abs(up.y - up2.y)).toBeLessThan(4);
-      expect(stage.y).toBeGreaterThan(up.y);
-      expect(lo.y).toBeGreaterThan(stage.y);
+      expect(up2.y, "upper tier visible promptly").toBeLessThan(vp.height);
+      expect(core.y, "the Core below the upper tier").toBeGreaterThan(up.y);
+      expect(lo.y, "the lower tier below the Core").toBeGreaterThan(core.y);
       expect(book.y, "the mobile book follows the lower pair").toBeGreaterThan(lo.y);
       expect(lo.width / up.width).toBeGreaterThanOrEqual(0.8);
       await expect(page.getByTestId("academy-core-book-mobile").getByTestId("academy-broadcast-surface-mobile")).toBeAttached();
@@ -472,17 +505,25 @@ test.describe("mobile", () => {
     });
   }
 
-  test("a tap activates, then routes; the crystal cycles by tap", async ({ page }) => {
+  test("a tap focuses, then routes; the crystal cycles by tap", async ({ page }) => {
     await open(page, 390, 844);
-    const crystal = page.getByTestId("academy-core-crystal");
-    await crystal.scrollIntoViewIfNeeded();
-    await crystal.click();
+    // the phone scene levitates gently, so scroll and tap by position (actionability waits for stillness)
+    const tap = async (sel: string) => {
+      await page.locator(sel).first().evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await page.waitForTimeout(250);
+      const b = (await page.locator(sel).first().boundingBox())!;
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    };
+    await tap('[data-testid="academy-core-crystal"]');
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "leaguecraft");
     const link = bookLink(page, "combat-lab");
-    await link.scrollIntoViewIfNeeded();
+    await link.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await page.waitForTimeout(250);
     await link.dispatchEvent("pointerdown", { pointerType: "touch" });
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "combat-lab");
-    await link.click();
+    // the phone books levitate a little: tap where the book is
+    const b = (await link.boundingBox())!;
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height * 0.4);
     await expect(page).toHaveURL(/\/combat-lab$/);
   });
 

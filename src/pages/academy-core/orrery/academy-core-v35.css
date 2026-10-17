@@ -1,0 +1,722 @@
+/* ==========================================================================
+   Academy Core V3.5 — The Living Hextech Orrery. Scoped under `.o35-`.
+   Loaded AFTER the V3 stylesheet (which supplies the Core's crystal, bezel,
+   projections, Mogzy and CTA styles); nothing here leaks into /lol.
+
+   UNITS. The orrery is authored in "stage units" (960 x 700 on desktop,
+   360 x 640 on phones). `.o35-stage` is a size container; `.o35-scene`
+   derives one length, --u (px per unit), from it, and every size inside is
+   `calc(var(--u) * N)`. No ancestor scales, so text and art stay crisp.
+
+   MOTION. Every continuous effect below is a `transform` / `opacity` /
+   `translate` / `rotate` keyframe on its own element (compositor-friendly).
+   The only per-frame JS is the orbit engine's transform writes.
+   ========================================================================== */
+
+@property --o35-accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7fb4ff;
+}
+
+.o35-root {
+  background: #050a14;
+  overflow-x: clip;
+  /* full-bleed: the app shell caps <main> at 1280 px, but open space should not */
+  width: 100vw; margin-inline: calc(50% - 50vw);
+}
+html:has(.o35-root) { overflow-x: clip; }
+
+/* ----------------------------------------------------------------- layout */
+
+.o35-hero {
+  --o35-col: clamp(300px, 27vw, 430px);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--o35-col) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: clamp(0.5rem, 1.4vw, 1.5rem);
+  min-height: max(560px, calc(100dvh - var(--app-header-h)));
+  padding: clamp(0.5rem, 1.6vh, 1.25rem) clamp(1rem, 2.4vw, 2.5rem) clamp(0.75rem, 2.2vh, 1.5rem);
+  box-sizing: border-box;
+  isolation: isolate;
+  overflow: clip;
+}
+.o35-hero > *:not(.o35-env) { position: relative; z-index: 1; }
+
+.o35-root[data-layout="stacked"] .o35-hero {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem 2rem;
+}
+
+/* ---------------------------------------------------------- environment */
+
+.o35-env { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.o35-sky {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(46% 62% at 62% 46%, rgba(64, 88, 214, 0.34), rgba(40, 52, 150, 0.12) 52%, transparent 78%),
+    radial-gradient(36% 46% at 10% 18%, rgba(112, 64, 190, 0.2), transparent 72%),
+    radial-gradient(44% 38% at 92% 104%, rgba(16, 112, 176, 0.24), transparent 72%),
+    radial-gradient(30% 30% at 74% 6%, rgba(201, 162, 76, 0.1), transparent 74%),
+    linear-gradient(180deg, #050a18 0%, #071230 46%, #050b1d 100%);
+}
+.o35-parallax { position: absolute; inset: -4%; will-change: transform; }
+
+.o35-aurora { position: absolute; border-radius: 50%; will-change: transform; }
+.o35-aurora-violet {
+  left: 4%; top: -14%; width: 56%; height: 64%;
+  background: radial-gradient(closest-side, rgba(128, 84, 255, 0.3), rgba(128, 84, 255, 0.1) 55%, transparent 100%);
+  animation: o35-haze-a 46s ease-in-out infinite alternate;
+}
+.o35-aurora-blue {
+  right: -6%; top: 22%; width: 64%; height: 70%;
+  background: radial-gradient(closest-side, rgba(52, 132, 255, 0.28), rgba(52, 132, 255, 0.09) 56%, transparent 100%);
+  animation: o35-haze-b 58s ease-in-out infinite alternate;
+}
+.o35-aurora-gold {
+  left: 34%; bottom: -26%; width: 42%; height: 48%;
+  background: radial-gradient(closest-side, rgba(255, 196, 108, 0.16), rgba(255, 196, 108, 0.05) 56%, transparent 100%);
+  animation: o35-haze-a 64s ease-in-out infinite alternate-reverse;
+}
+
+.o35-shafts { position: absolute; inset: 0; mix-blend-mode: screen; }
+.o35-shaft {
+  position: absolute; top: -12%; height: 124%; transform-origin: 50% 0;
+  background: linear-gradient(180deg, rgba(160, 196, 255, 0.2) 0%, rgba(160, 196, 255, 0.07) 46%, transparent 92%);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 38%, #000 62%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 38%, #000 62%, transparent);
+  opacity: 0.55; will-change: opacity;
+}
+.o35-shaft-1 { left: 20%; width: 15%; transform: rotate(17deg); animation: o35-shaft 11s ease-in-out infinite alternate; }
+.o35-shaft-2 { left: 47%; width: 9%; transform: rotate(23deg); animation: o35-shaft 15s ease-in-out -6s infinite alternate; }
+.o35-shaft-3 { left: 68%; width: 18%; transform: rotate(12deg); animation: o35-shaft 13s ease-in-out -3s infinite alternate; opacity: 0.4; }
+
+.o35-stars { position: absolute; inset: 0; width: 100%; height: 100%; display: block; will-change: opacity; }
+.o35-twinkle-0 { animation: o35-twinkle 5.5s ease-in-out infinite; }
+.o35-twinkle-1 { animation: o35-twinkle 7.5s ease-in-out -2s infinite; }
+.o35-twinkle-2 { animation: o35-twinkle 9.5s ease-in-out -5s infinite; }
+
+.o35-frag { position: absolute; will-change: transform; animation: o35-drift var(--dur, 20s) ease-in-out var(--delay, 0s) infinite alternate; }
+.o35-frag-svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 0 6px rgba(120, 160, 255, 0.5)); }
+
+.o35-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(110% 96% at 56% 46%, transparent 52%, rgba(2, 5, 14, 0.62) 100%);
+}
+
+/* ------------------------------------------------------------ the island */
+
+.o35-island {
+  display: flex; flex-direction: column; gap: 0.7rem; min-width: 0;
+  container-type: inline-size;
+  padding-top: clamp(0.25rem, 1vh, 0.75rem);
+}
+.o35-root[data-layout="stacked"] .o35-island { gap: 0.6rem; }
+.o35-brand { display: flex; flex-direction: column; gap: 0.25rem; }
+.o35-root .acore-eyebrow { color: #dcc47e; opacity: 0.9; text-shadow: 0 0 14px rgba(201, 162, 76, 0.35); }
+.o35-title {
+  margin: 0; white-space: nowrap; line-height: 1.04; letter-spacing: 0.03em;
+  font-family: Cinzel, Georgia, serif; font-weight: 700;
+  font-size: min(clamp(1.6rem, 2.7vw, 2.7rem), 12.5cqw);
+  background: linear-gradient(180deg, #fff8dd 0%, #f2d98f 46%, #b98c3a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(201, 162, 76, 0.38)) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5));
+}
+.o35-root .acore-cta-primary {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.25), 0 0 34px -4px rgba(243, 223, 166, 0.5), 0 10px 30px -10px rgba(201, 162, 76, 0.6);
+}
+.o35-root .acore-cta-secondary {
+  background: rgba(10, 20, 44, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 24px -8px rgba(127, 180, 255, 0.55);
+}
+.o35-second-screen { margin-top: auto; }
+.o35-root[data-layout="stacked"] .o35-second-screen { margin-top: 0; }
+
+/* ------------------------------------------ the floating Patch Report */
+
+.o35-patch {
+  position: relative; container-type: inline-size;
+  width: clamp(272px, 100%, 400px); margin-block: auto;
+}
+.o35-patch-float {
+  position: relative; z-index: 2; will-change: transform;
+  transform-origin: 50% 90%;
+  animation: o35-patch-lev 7.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 22px rgba(112, 148, 255, 0.28));
+}
+.o35-patch-halo {
+  position: absolute; z-index: 0; left: -14%; right: -14%; top: -22%; bottom: -4%;
+  border-radius: 50%; will-change: transform, opacity;
+  background:
+    radial-gradient(closest-side, rgba(110, 140, 255, 0.34), rgba(130, 96, 255, 0.14) 50%, transparent 80%),
+    radial-gradient(40% 30% at 50% 84%, rgba(255, 210, 120, 0.2), transparent 80%);
+  animation: o35-breathe 8s ease-in-out infinite;
+}
+.o35-patch-shadow {
+  position: absolute; z-index: 1; left: 12%; right: 12%; bottom: -30px; height: 24px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(96, 140, 255, 0.46), rgba(96, 140, 255, 0.14) 62%, transparent);
+  animation: o35-patch-shadow 7.5s ease-in-out infinite alternate;
+}
+.o35-patch-rune {
+  position: absolute; z-index: 1; left: 2cqw; width: 96cqw; aspect-ratio: 1; bottom: calc(-48cqw + 12px);
+  perspective: 520px; pointer-events: none;
+}
+.o35-patch-rune::before, .o35-patch-rune::after {
+  content: ""; position: absolute; border-radius: 50%; will-change: transform;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.4px));
+}
+.o35-patch-rune::before {
+  inset: 0;
+  background: repeating-conic-gradient(from 0deg, rgba(243, 223, 166, 0.85) 0 5deg, transparent 5deg 14deg);
+  transform: rotateX(74deg) rotateZ(0deg);
+  animation: o35-rune-spin 46s linear infinite;
+}
+.o35-patch-rune::after {
+  inset: 12%;
+  background: repeating-conic-gradient(from 0deg, rgba(150, 190, 255, 0.8) 0 3deg, transparent 3deg 9deg);
+  transform: rotateX(74deg) rotateZ(0deg);
+  animation: o35-rune-spin 30s linear infinite reverse;
+}
+.o35-spark {
+  position: absolute; z-index: 3; width: 3px; height: 3px; border-radius: 50%; pointer-events: none;
+  background: #d6e5ff; box-shadow: 0 0 7px #8fb4ff, 0 0 2px #fff; opacity: 0;
+  animation: o35-rise 6s ease-in infinite;
+}
+.o35-spark-1 { left: 8%; bottom: 16%; }
+.o35-spark-2 { left: 90%; bottom: 30%; animation-delay: -2.2s; animation-duration: 7s; }
+.o35-spark-3 { left: 34%; bottom: 4%; animation-delay: -4s; }
+.o35-spark-4 { left: 72%; bottom: 8%; animation-delay: -1s; animation-duration: 5.2s; }
+/* decoration never takes a click: the halo reaches over the Daily / Ranked buttons */
+.o35-patch-halo, .o35-patch-shadow, .o35-patch-rune, .o35-spark, .o35-underglow { pointer-events: none; }
+.o35-patch-mobile { width: 100%; margin-block: 1.4rem 0.8rem; }
+.o35-patch-mobile .o35-patch-float { animation-duration: 9s; }
+
+.o35-island-mobile { display: flex; flex-direction: column; gap: 0.5rem; padding-bottom: 1rem; }
+
+/* ----------------------------------------------------------------- stage */
+
+.o35-stage {
+  position: relative; min-width: 0; min-height: 0;
+  container-type: size;
+  --core-d: 640; --core-x: 480; --core-y: 296; --inst-w: 470;
+  --book-w: 190;
+}
+.o35-stage[data-mode="composed"] {
+  --core-d: 330; --core-x: 180; --core-y: 322; --inst-w: 232; --book-w: 150;
+  width: min(100%, 520px); aspect-ratio: 360 / 640; margin: 0 auto;
+}
+.o35-scene {
+  --u: min(calc(100cqw / var(--w)), calc(100cqh / var(--h)));
+  position: absolute; isolation: isolate;
+  width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--h));
+  left: calc(50% - var(--u) * var(--w) / 2); top: calc(50% - var(--u) * var(--h) / 2);
+}
+
+/* the orbital plane, suggested not drawn */
+.o35-orbit-plane {
+  position: absolute; z-index: 5; pointer-events: none;
+  left: calc(var(--u) * 60); top: calc(var(--u) * 166); width: calc(var(--u) * 840); height: calc(var(--u) * 380);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(120, 150, 255, 0.11), rgba(120, 150, 255, 0.05) 58%, transparent 82%);
+}
+.o35-orbit-path { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.o35-orbit-path path { fill: none; stroke: rgba(226, 196, 120, 0.34); stroke-width: 1.3; stroke-dasharray: 1.5 9; stroke-linecap: round; }
+.o35-orbit-path-back { z-index: 6; }
+.o35-orbit-path-back path { stroke: rgba(150, 180, 255, 0.24); }
+.o35-orbit-path-front { z-index: 24; }
+
+/* energy tethers: the Core holds each book on a thread of light */
+.o35-tethers { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 8; overflow: visible; pointer-events: none; }
+.o35-tether {
+  --t: #8fb4ff;
+  fill: none; stroke: var(--t); stroke-width: 1.4; stroke-linecap: round; opacity: 0.2;
+  transition: opacity 360ms ease, stroke-width 360ms ease;
+}
+.o35-tether[data-bay="leaguecraft"] { --t: #ffd98a; }
+.o35-tether[data-bay="pro-play"] { --t: #b9a6ff; }
+.o35-tether[data-bay="combat-lab"] { --t: #8ff1ff; }
+.o35-tether[data-bay="archives"] { --t: #ffc98c; }
+.o35-tether[data-on="true"] {
+  opacity: 0.95; stroke-width: 2.4; stroke-dasharray: 5 7;
+  filter: drop-shadow(0 0 4px var(--t));
+  animation: o35-flow 0.8s linear infinite;
+}
+.o35-stage:not([data-activating=""]) .o35-tether[data-on="true"] { stroke-width: 3.6; animation-duration: 0.3s; }
+
+/* ------------------------------------------------------------ the books */
+
+.o35-books { position: absolute; inset: 0; } /* no stacking context: books interleave with the Core */
+.o35-book {
+  position: absolute; left: 0; top: 0; width: calc(var(--u) * var(--book-w));
+  opacity: 0; transition: opacity 600ms ease; will-change: transform; transform-origin: 50% 50%;
+  --accent: #8fb4ff; --accent-glow: rgba(143, 180, 255, 0.55); --accent-soft: rgba(143, 180, 255, 0.2);
+}
+.o35-stage[data-ready="true"] .o35-book { opacity: 1; }
+.o35-book[data-bay="leaguecraft"] { --accent: #ffd98a; --accent-glow: rgba(255, 217, 138, 0.62); --accent-soft: rgba(255, 217, 138, 0.2); }
+.o35-book[data-bay="pro-play"] { --accent: #b9a6ff; --accent-glow: rgba(160, 130, 255, 0.62); --accent-soft: rgba(160, 130, 255, 0.22); }
+.o35-book[data-bay="combat-lab"] { --accent: #8ff1ff; --accent-glow: rgba(79, 216, 255, 0.58); --accent-soft: rgba(79, 216, 255, 0.2); }
+.o35-book[data-bay="archives"] { --accent: #ffc98c; --accent-glow: rgba(255, 170, 90, 0.58); --accent-soft: rgba(255, 170, 90, 0.2); }
+
+/* levitation: independent of the orbit, per book, out of step */
+.o35-lev {
+  position: relative;
+  animation:
+    o35-bob var(--lev-dur, 6s) ease-in-out var(--lev-delay, 0s) infinite alternate,
+    o35-sway var(--sway-dur, 9s) ease-in-out var(--lev-delay, 0s) infinite alternate;
+}
+.o35-underglow {
+  position: absolute; left: 2%; right: 2%; bottom: -9%; height: 20%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, var(--accent-glow), transparent 78%);
+  opacity: 0.5; transition: opacity 360ms ease;
+}
+.o35-slot { position: relative; z-index: 1; transition: opacity 360ms ease, filter 360ms ease; }
+.o35-lev[data-active="true"] .o35-underglow { opacity: 1; }
+.o35-slot[data-support="true"] { opacity: 0.66; }
+.o35-stage:not([data-activating=""]) .o35-slot[data-activating="false"] { opacity: 0.22; }
+
+/* the cover is the control; lift and glow are the V3 book body, re-lit for open space */
+.o35-root .academy-hub-book-body {
+  filter: drop-shadow(0 14px 22px rgba(2, 6, 20, 0.55)) drop-shadow(0 0 12px var(--accent-soft));
+}
+.o35-root .o35-slot[data-active="true"] .academy-hub-book-body {
+  transform-origin: 9% 50%;
+  transform: translateY(-1.2%) perspective(900px) rotateY(-24deg);
+  filter: drop-shadow(0 20px 28px rgba(2, 6, 20, 0.6)) drop-shadow(0 0 24px var(--accent-glow));
+}
+.o35-root .o35-slot[data-activating="true"] .academy-hub-book-body {
+  transform: translateY(0.6%) scale(0.99);
+  filter: drop-shadow(0 8px 14px rgba(2, 6, 20, 0.6)) drop-shadow(0 0 34px rgba(255, 233, 184, 0.95)) brightness(1.12);
+  transition-duration: 160ms;
+}
+/* the engine already grows a focused book: neutralise the Hall's own hover scale */
+.o35-root.acore-root .academy-hub-book:hover .academy-hub-book-body,
+.o35-root.acore-root .academy-hub-book:focus-visible .academy-hub-book-body { transform: translateY(-1.2%) perspective(900px) rotateY(-24deg); }
+.o35-root.acore-root .o35-slot[data-activating="true"] .academy-hub-book:hover .academy-hub-book-body { transform: translateY(0.6%) scale(0.99); }
+
+/* ------------------------------------------------------------- the Core */
+
+.o35-core {
+  position: absolute; z-index: 20; pointer-events: none;
+  left: calc(var(--u) * (var(--core-x) - var(--core-d) / 2));
+  top: calc(var(--u) * (var(--core-y) - var(--core-d) / 2));
+  width: calc(var(--u) * var(--core-d)); height: calc(var(--u) * var(--core-d));
+  transform-style: preserve-3d; perspective: calc(var(--u) * 1700);
+  --o35-accent: #7fb4ff;
+  transition: --o35-accent 520ms ease;
+}
+.o35-core[data-focus="leaguecraft"] { --o35-accent: #ffd98a; }
+.o35-core[data-focus="pro-play"] { --o35-accent: #b9a6ff; }
+.o35-core[data-focus="combat-lab"] { --o35-accent: #8ff1ff; }
+.o35-core[data-focus="archives"] { --o35-accent: #ffc98c; }
+
+.o35-core-halo {
+  position: absolute; inset: -38%; border-radius: 50%; will-change: transform, opacity;
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--o35-accent) 42%, transparent),
+    color-mix(in srgb, var(--o35-accent) 16%, transparent) 42%,
+    transparent 74%);
+  animation: o35-breathe 7s ease-in-out infinite;
+}
+.o35-core-halo-inner { inset: 10%; opacity: 0.8; animation-duration: 4.6s; animation-delay: -1.5s; }
+.o35-core[data-activating]:not([data-activating=""]) .o35-core-halo { opacity: 1; filter: brightness(1.5); }
+
+.o35-pulse {
+  position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%;
+  border-radius: 50%; opacity: 0; will-change: transform, opacity;
+  border: calc(var(--u) * 2) solid var(--o35-accent);
+  box-shadow: 0 0 calc(var(--u) * 18) var(--o35-accent), inset 0 0 calc(var(--u) * 18) var(--o35-accent);
+  animation: o35-pulse 1.7s cubic-bezier(0.18, 0.7, 0.3, 1) both;
+}
+.o35-pulse-idle { animation: o35-pulse-idle 8s linear 1s infinite; }
+
+.o35-ring { position: absolute; will-change: transform; }
+.o35-ring-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.o35-ring-scale { inset: 4%; animation: o35-rotate 150s linear infinite; }
+.o35-ring-rune { inset: 14%; animation: o35-rotate 100s linear infinite reverse; }
+.o35-tick { stroke: #c9a24c; stroke-opacity: 0.5; stroke-width: 1; }
+.o35-tick-major { stroke: #f3dfa6; stroke-opacity: 0.95; stroke-width: 1.8; }
+.o35-ring-hair { fill: none; stroke: rgba(243, 223, 166, 0.5); stroke-width: 1; }
+.o35-ring-hair-dim { stroke: rgba(143, 180, 255, 0.34); }
+.o35-ring-hex { fill: #0e2147; stroke: #f3dfa6; stroke-width: 1.3; filter: drop-shadow(0 0 4px rgba(127, 180, 255, 0.8)); }
+.o35-rune-dash { fill: none; stroke: rgba(143, 180, 255, 0.6); stroke-width: 1.6; stroke-dasharray: 16 8 3 8; }
+.o35-rune-dash-b { stroke: rgba(226, 196, 120, 0.55); stroke-width: 1.2; stroke-dasharray: 2 7; }
+.o35-rune-glyph { fill: none; stroke: #f3dfa6; stroke-opacity: 0.85; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+
+/* flowing energy: a bright head with a fading tail, one rotating element per arc */
+.o35-comet { position: absolute; border-radius: 50%; will-change: transform; filter: drop-shadow(0 0 calc(var(--u) * 5) var(--c)); animation: o35-rotate var(--s) linear infinite; }
+.o35-comet::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 58%, color-mix(in srgb, var(--c) 30%, transparent) 84%, var(--c) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--cw)), #000 calc(100% - var(--cw) + 0.8px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--cw)), #000 calc(100% - var(--cw) + 0.8px));
+}
+.o35-comet-a { --c: #78d6ff; --s: 9s; --cw: calc(var(--u) * 3.2); inset: 11.5%; }
+.o35-comet-b { --c: #b9a6ff; --s: 13s; --cw: calc(var(--u) * 2.6); inset: 16.5%; animation-direction: reverse; }
+.o35-comet-c { --c: #ffd98a; --s: 22s; --cw: calc(var(--u) * 2); inset: 6%; }
+
+/* gyroscopic rings, real 3D: they cross in front of and behind the crystal */
+.o35-gyro { position: absolute; inset: 0; transform-style: preserve-3d; }
+.o35-gyro-ring {
+  position: absolute; border-radius: 50%; will-change: transform;
+  filter: drop-shadow(0 0 calc(var(--u) * 4) rgba(140, 180, 255, 0.42));
+}
+.o35-gyro-ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 20deg, #f1dc9c, #a77d32 13%, #e8cf86 26%, #5d4519 41%, #cdb26c 57%, #f1dc9c 70%, #6f5220 86%, #f1dc9c);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--rw)), #000 calc(100% - var(--rw) + 0.8px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--rw)), #000 calc(100% - var(--rw) + 0.8px));
+}
+.o35-gyro-a { inset: 7.5%; --rw: calc(var(--u) * 3.6); animation: o35-gyro-y 34s linear infinite; }
+.o35-gyro-b { inset: 13%; --rw: calc(var(--u) * 3); animation: o35-gyro-x 42s linear infinite reverse; }
+.o35-gyro-c { inset: 18.5%; --rw: calc(var(--u) * 2.6); animation: o35-gyro-t 27s linear infinite; }
+
+/* the bearing needle: where the Core is looking */
+.o35-needle { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(-90deg); }
+.o35-needle-tip {
+  position: absolute; left: calc(var(--u) * 162); top: calc(var(--u) * -9); width: calc(var(--u) * 40); height: calc(var(--u) * 18);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  background: linear-gradient(90deg, #6f5220, #f6e3a8 70%, #fff6dd);
+  filter: drop-shadow(0 0 4px rgba(243, 223, 166, 0.8));
+}
+.o35-needle-lamp {
+  position: absolute; left: calc(var(--u) * 150); top: calc(var(--u) * -3.5); width: calc(var(--u) * 7); height: calc(var(--u) * 7);
+  border-radius: 50%; background: var(--o35-accent);
+  box-shadow: 0 0 calc(var(--u) * 12) var(--o35-accent), 0 0 calc(var(--u) * 3) #fff;
+}
+
+.o35-readout-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.o35-readout-text {
+  font-family: "Space Mono", ui-monospace, monospace; font-size: 11.5px; letter-spacing: 0.34em;
+  fill: var(--o35-accent); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--o35-accent) 70%, transparent));
+}
+
+/* the V3 crystal assembly: centred, its fixed-angle bezel cursor retired */
+.o35-instrument {
+  position: absolute; left: 50%; top: 50%; pointer-events: none;
+  width: calc(var(--u) * var(--inst-w)); aspect-ratio: 460 / 340;
+  margin-left: calc(var(--u) * var(--inst-w) / -2); margin-top: calc(var(--u) * var(--inst-w) * 340 / 460 / -2);
+}
+.o35-root .acore-cursor, .o35-root .acore-compact-band { display: none; }
+.o35-root .acore-svg { filter: drop-shadow(0 0 calc(var(--u) * 14) color-mix(in srgb, var(--o35-accent) 42%, transparent)); }
+.o35-crystal-hit { pointer-events: auto; }
+.o35-dial-block {
+  position: absolute; left: 50%; top: 50%; pointer-events: auto; border-radius: 50%;
+  width: calc(var(--u) * var(--inst-w) * 0.66); height: calc(var(--u) * var(--inst-w) * 0.66);
+  margin: calc(var(--u) * var(--inst-w) * -0.33) 0 0 calc(var(--u) * var(--inst-w) * -0.33);
+}
+
+/* --------------------------------------------------------------- Mogzy */
+
+.o35-mogzy {
+  position: absolute; z-index: 70; pointer-events: none;
+  left: calc(var(--u) * 836); top: calc(var(--u) * 488); width: calc(var(--u) * 118); height: calc(var(--u) * 190);
+}
+.o35-stage[data-mode="composed"] .o35-mogzy { left: calc(var(--u) * 258); top: calc(var(--u) * 262); width: calc(var(--u) * 98); height: calc(var(--u) * 140); }
+/* specificity: V3's stacked rules (`.acore-root[data-layout] .acore-operator`) place Mogzy against the old stage */
+.o35-root.acore-root .o35-mogzy .acore-operator { right: 0; left: 0; bottom: 0; top: auto; width: 100%; }
+.o35-mogzy .acore-operator-shadow { display: none; }
+.o35-mogzy .acore-operator-plate { filter: drop-shadow(0 0 14px rgba(120, 160, 255, 0.45)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.4)); }
+.o35-root[data-layout="stacked"] .o35-operator-hide,
+.o35-root[data-layout="stacked"] .o35-stage[data-focus="idle"] .acore-operator-bubble { opacity: 0; }
+.o35-root.acore-root .o35-stage[data-mode="composed"] .acore-operator-bubble { font-size: 10.5px; max-width: 175%; }
+.o35-stage .acore-operator-bubble { font-size: clamp(11px, calc(var(--u) * 12.5), 14px); }
+
+/* ------------------------------------------------------------ keyframes */
+
+@keyframes o35-haze-a { from { transform: translate3d(-3%, -2%, 0) scale(1); } to { transform: translate3d(5%, 4%, 0) scale(1.12); } }
+@keyframes o35-haze-b { from { transform: translate3d(4%, 3%, 0) scale(1.08); } to { transform: translate3d(-5%, -3%, 0) scale(0.96); } }
+@keyframes o35-shaft { from { opacity: 0.22; } to { opacity: 0.62; } }
+@keyframes o35-twinkle { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes o35-drift {
+  from { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+  to { transform: translate3d(14px, -30px, 0) rotate(calc(var(--rot, 0deg) + 38deg)); }
+}
+@keyframes o35-breathe { 0%, 100% { opacity: 0.62; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes o35-bob {
+  from { translate: 0 calc(var(--u) * var(--lev-amp, 7) * -0.5); }
+  to { translate: calc(var(--u) * 2.5) calc(var(--u) * var(--lev-amp, 7) * 0.5); }
+}
+@keyframes o35-sway { from { rotate: calc(var(--sway, 1deg) * -1); } to { rotate: var(--sway, 1deg); } }
+@keyframes o35-patch-lev {
+  from { transform: perspective(1500px) rotateY(6deg) rotateZ(-0.5deg) translateY(0); }
+  to { transform: perspective(1500px) rotateY(3deg) rotateZ(0.5deg) translateY(-12px); }
+}
+@keyframes o35-patch-shadow { from { transform: scaleX(1); opacity: 0.8; } to { transform: scaleX(0.86); opacity: 0.5; } }
+@keyframes o35-rune-spin { to { transform: rotateX(74deg) rotateZ(360deg); } }
+@keyframes o35-rise {
+  0% { transform: translateY(0); opacity: 0; } 14% { opacity: 0.95; } 100% { transform: translateY(-120px); opacity: 0; }
+}
+@keyframes o35-flow { to { stroke-dashoffset: -24; } }
+@keyframes o35-rotate { to { transform: rotate(360deg); } }
+@keyframes o35-pulse { from { transform: scale(0.74); opacity: 0.85; } to { transform: scale(2.35); opacity: 0; } }
+@keyframes o35-pulse-idle {
+  0% { transform: scale(0.74); opacity: 0; } 4% { opacity: 0.5; } 22% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes o35-gyro-y { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+@keyframes o35-gyro-x { from { transform: rotateX(0deg); } to { transform: rotateX(360deg); } }
+@keyframes o35-gyro-t { from { transform: rotateZ(38deg) rotateY(0deg); } to { transform: rotateZ(38deg) rotateY(360deg); } }
+
+/* ------------------------------------------------------- reduced motion */
+
+/* The V3 sheet already zeroes every transition / animation under .acore-root.
+   Static stand-ins: rings frozen at a pleasant tilt, nothing blank. */
+.o35-root[data-reduced="true"] .o35-gyro-a { transform: rotateY(62deg); }
+.o35-root[data-reduced="true"] .o35-gyro-b { transform: rotateX(58deg); }
+.o35-root[data-reduced="true"] .o35-gyro-c { transform: rotateZ(38deg) rotateY(70deg); }
+.o35-root[data-reduced="true"] .o35-pulse { display: none; }
+.o35-root[data-reduced="true"] .o35-patch-rune::before,
+.o35-root[data-reduced="true"] .o35-patch-rune::after { transform: rotateX(74deg); }
+.o35-root[data-reduced="true"] .o35-spark { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .o35-gyro-a { transform: rotateY(62deg); }
+  .o35-gyro-b { transform: rotateX(58deg); }
+  .o35-gyro-c { transform: rotateZ(38deg) rotateY(70deg); }
+  .o35-pulse, .o35-spark { display: none; }
+  .o35-patch-rune::before, .o35-patch-rune::after { transform: rotateX(74deg); }
+  .o35-book { opacity: 1; }
+}
+
+/* ==========================================================================
+   PHASE 2 — direct manipulation, focus choreography, quality tiers
+   ========================================================================== */
+
+/* drag the orbit from empty space; vertical touch drags still scroll the page */
+.o35-stage[data-mode="orbit"] { cursor: grab; touch-action: pan-y; }
+.o35-stage[data-mode="orbit"][data-dragging="true"] { cursor: grabbing; }
+.o35-stage[data-mode="orbit"] .o35-slot, .o35-stage[data-mode="orbit"] .o35-crystal-hit { cursor: pointer; }
+.o35-stage[data-dragging="true"] .o35-slot { pointer-events: none; }
+
+/* the focused book opens a crack: the cover swings on its spine and light spills from the pages */
+.o35-pagelight {
+  position: absolute; z-index: 0; left: 14%; top: 6%; width: 86%; height: 86%; border-radius: 3% 6% 6% 3%;
+  pointer-events: none; opacity: 0; transition: opacity 320ms ease;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 246, 214, 0.95) 70%, #fff 100%),
+    radial-gradient(closest-side, var(--accent-glow), transparent);
+  box-shadow: 0 0 calc(var(--u) * 22) calc(var(--u) * 4) var(--accent-glow);
+}
+.o35-lev[data-active="true"] .o35-pagelight { opacity: 0.9; }
+
+/* the Core's comet takes the colour of the room it is attending to */
+@property --c { syntax: "<color>"; inherits: true; initial-value: #78d6ff; }
+.o35-comet-a { transition: --c 500ms ease; }
+.o35-core[data-focus="leaguecraft"] .o35-comet-a { --c: #ffd98a; }
+.o35-core[data-focus="pro-play"] .o35-comet-a { --c: #b9a6ff; }
+.o35-core[data-focus="combat-lab"] .o35-comet-a { --c: #8ff1ff; }
+.o35-core[data-focus="archives"] .o35-comet-a { --c: #ffc98c; }
+
+/* the lit tether becomes a beam */
+.o35-tether[data-on="true"] { filter: drop-shadow(0 0 5px var(--t)) drop-shadow(0 0 14px var(--t)); }
+
+/* activation: a short camera push toward the Core while the chosen book pushes home */
+.o35-scene { transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: 50% 42%; }
+.o35-stage:not([data-activating=""]) .o35-scene { transform: scale(1.04); transition-duration: 240ms; }
+
+/* nothing animates while the stage is off screen or the tab is hidden */
+.o35-root[data-ambient="off"] .o35-env *,
+.o35-root[data-ambient="off"] .o35-core *,
+.o35-root[data-ambient="off"] .o35-core *::before,
+.o35-root[data-ambient="off"] .o35-patch *,
+.o35-root[data-ambient="off"] .o35-patch *::before,
+.o35-root[data-ambient="off"] .o35-patch *::after { animation-play-state: paused; }
+
+/* LITE tier: the orbit, the books and the Core's dial stay; the extras go */
+.o35-root[data-quality="lite"] .o35-frag,
+.o35-root[data-quality="lite"] .o35-twinkle,
+.o35-root[data-quality="lite"] .o35-aurora-gold,
+.o35-root[data-quality="lite"] .o35-shaft-2,
+.o35-root[data-quality="lite"] .o35-shaft-3,
+.o35-root[data-quality="lite"] .o35-comet-b,
+.o35-root[data-quality="lite"] .o35-comet-c,
+.o35-root[data-quality="lite"] .o35-gyro-b,
+.o35-root[data-quality="lite"] .o35-gyro-c,
+.o35-root[data-quality="lite"] .o35-ring-rune,
+.o35-root[data-quality="lite"] .o35-core-halo-inner,
+.o35-root[data-quality="lite"] .o35-spark,
+.o35-root[data-quality="lite"] .o35-patch-rune { display: none; }
+.o35-root[data-quality="lite"] .o35-aurora,
+.o35-root[data-quality="lite"] .o35-shaft { animation: none; }
+.o35-root[data-quality="lite"] .o35-gyro-ring,
+.o35-root[data-quality="lite"] .o35-comet,
+.o35-root[data-quality="lite"] .o35-frag-svg,
+.o35-root[data-quality="lite"] .o35-patch-float { filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .o35-scene { transition: none; transform: none !important; }
+  .o35-pagelight { transition: none; }
+}
+html.reduce-motion .o35-scene { transition: none; transform: none !important; }
+
+/* ==========================================================================
+   PHASE 2 TARGETED — the arrow selector and the larger crystal
+   ========================================================================== */
+
+/* the crystal's hit area follows the larger lens (V3's compact width is 40 %
+   for a 0.78 lens; 40 % x 0.96 / 0.78 = 49.2 %), and the energy inside burns brighter */
+.o35-root .o35-crystal-hit { width: 49.2%; }
+.o35-root .acore-crystal-glow { opacity: 0.75; }
+.o35-root .acore-crystal-core { filter: drop-shadow(0 0 calc(var(--u) * 10) color-mix(in srgb, var(--o35-accent) 70%, transparent)); }
+
+/* two Hextech arrows beneath the Core; no text */
+.o35-selector { display: flex; justify-content: center; gap: 0; pointer-events: none; }
+.o35-arrow {
+  pointer-events: auto; position: relative; display: grid; place-items: center; padding: 0; cursor: pointer;
+  width: 48px; height: 48px; border-radius: 50%;
+  color: #f3dfa6; border: 0;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(127, 180, 255, 0.22), transparent 62%),
+    radial-gradient(circle, #10203d 0 58%, #0a1530 72%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(226, 196, 120, 0.85),
+    inset 0 0 0 4px rgba(10, 21, 48, 0.9),
+    inset 0 0 0 5px rgba(143, 180, 255, 0.35),
+    0 0 18px -2px rgba(127, 180, 255, 0.45),
+    0 6px 14px -6px rgba(0, 0, 0, 0.7);
+  transition: transform 160ms ease, box-shadow 220ms ease, color 220ms ease;
+}
+.o35-arrow svg { width: 46%; height: 46%; overflow: visible; }
+.o35-arrow path { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(243, 223, 166, 0.55)); }
+.o35-arrow:hover {
+  color: #fff6dd;
+  box-shadow:
+    inset 0 0 0 1.5px #f3dfa6, inset 0 0 0 4px rgba(10, 21, 48, 0.9), inset 0 0 0 5px rgba(143, 241, 255, 0.6),
+    0 0 26px 0 rgba(127, 200, 255, 0.7), 0 6px 14px -6px rgba(0, 0, 0, 0.7);
+}
+.o35-arrow:active { transform: scale(0.9); }
+.o35-arrow:focus-visible { outline: 2px solid #f3dfa6; outline-offset: 4px; }
+
+/* desktop: in the scene, flanking the front of the orbit beneath the Core */
+.o35-scene > .o35-selector {
+  position: absolute; z-index: 65; left: calc(var(--u) * 480); top: calc(var(--u) * 648);
+  width: 0; height: 0;
+}
+.o35-scene > .o35-selector .o35-arrow {
+  position: absolute; width: max(44px, calc(var(--u) * 46)); height: max(44px, calc(var(--u) * 46));
+  top: 0; transform: translate(-50%, -50%);
+}
+.o35-scene > .o35-selector .o35-arrow:first-child { left: calc(var(--u) * -150); }
+.o35-scene > .o35-selector .o35-arrow:last-child { left: calc(var(--u) * 150); }
+.o35-scene > .o35-selector .o35-arrow:active { transform: translate(-50%, -50%) scale(0.9); }
+
+/* phones: a centred pair under the composed books */
+.o35-hero > .o35-selector { gap: 72px; margin: -0.25rem auto 0.25rem; }
+
+/* phones: the chosen book's light comes up smoothly (books do not orbit there) */
+.o35-stage[data-mode="composed"] .o35-book { transition: opacity 600ms ease, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* ==========================================================================
+   CRYSTAL REDESIGN — Leaguecraft (pentagon + scroll/quill) and Pro Play (5 v 5).
+   Both are V3.5 projection overrides (see OrreryProjections.tsx); Combat and
+   Archives are the V3 originals, untouched.
+   ========================================================================== */
+
+/* LEAGUECRAFT — Arcane Mystery: Lux, behind the chamber's iris of six glass
+   shutters, each hinged at one corner of the hexagonal window. A shutter's
+   angle theta (rotate(-theta) about its hinge) sets the reveal: the shutters
+   never overlap, and the open part of the window is theta/60.
+   One 14 s action: rest (16 deg, a small aperture over her face) -> the
+   shutters pivot open, rippling round the ring (46 deg, most of her face)
+   -> hold open while a beam of arcane light crosses her -> close almost fully
+   and hold (5 deg) -> settle back to rest. 0 % equals 100 %, so the loop has no seam.
+   Everything holds still (paused, not removed) unless Leaguecraft is the
+   projection and the scene is on screen, so leaving and returning never jumps.
+   Positions are in the lens's local units (an SVG px inside the instrument). */
+
+.o35-lux-halo { fill: none; stroke: #ffe9b8; stroke-opacity: 0.32; stroke-width: 6; filter: drop-shadow(0 0 6px rgba(255, 233, 184, 0.5)); }
+.o35-lux-backing { fill: #0b1030; }
+.o35-lux-frame { fill: none; stroke: #fff3cf; stroke-opacity: 0.9; stroke-width: 1.6; stroke-linejoin: round; }
+
+/* every moving part transforms about its own local origin (a shutter's: its hinge), as an SVG transform attribute would */
+.o35-shutter-engage, .o35-shutter-drift, .o35-lux-beam-track, .o35-lux-portrait { transform-box: view-box; transform-origin: 0 0; }
+
+/* the glass */
+.o35-shutter-reed { mix-blend-mode: normal; }
+.o35-shutter-sheen { opacity: 0.75; }
+.o35-shutter-facet { stroke: #ffffff; stroke-opacity: 0.32; stroke-width: 0.8; stroke-linecap: round; }
+.o35-shutter-edge-dark { fill: none; stroke: #0b1030; stroke-opacity: 0.5; stroke-width: 2.6; stroke-linejoin: round; }
+.o35-shutter-edge { fill: none; stroke: #fff3cf; stroke-opacity: 0.7; stroke-width: 1.1; stroke-linejoin: round; }
+.o35-shutter-hinge { fill: #f3d98f; stroke: #5a3d10; stroke-width: 0.8; }
+
+/* engage: an extra pivot about the same hinge. Away from Leaguecraft the shutters wait swung out of the window; entering, they swing in */
+.o35-shutter-engage { transform: rotate(-62deg); transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acore-svg[data-focus="leaguecraft"] .o35-shutter-engage { transform: rotate(0deg); }
+/* reaching for the Leaguecraft book (hover / keyboard): the iris opens further */
+.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-shutter-engage { transform: rotate(-16deg); transition-duration: 700ms; }
+/* opening the book: the shutters swing right out and Lux is revealed (outranks the hover rule above) */
+.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-shutter-engage { transform: rotate(-62deg); transition-duration: 240ms; }
+
+/* the reveal: rest (16 deg) is the base and the reduced-motion / lite still */
+.o35-shutter-drift { transform: rotate(-16deg); animation: o35-shutter 14s ease-in-out infinite paused; }
+/* the ripple: each shutter leads its neighbour by 0.1 s (inside the rest hold, so the still is even) */
+.o35-shutter-k1 { animation-delay: -0.1s; }
+.o35-shutter-k2 { animation-delay: -0.2s; }
+.o35-shutter-k3 { animation-delay: -0.3s; }
+.o35-shutter-k4 { animation-delay: -0.4s; }
+.o35-shutter-k5 { animation-delay: -0.5s; }
+@keyframes o35-shutter {
+  0%, 8% { transform: rotate(-16deg); }
+  34%, 60% { transform: rotate(-46deg); }
+  80%, 86% { transform: rotate(-5deg); }
+  100% { transform: rotate(-16deg); }
+}
+
+/* the light: across her face while the iris is open, then (a beat later) along the glass */
+.o35-lux-beam { mix-blend-mode: screen; }
+.o35-lux-beam-track { transform: translateX(-150px); opacity: 0; animation: o35-lux-beam 14s linear infinite paused; }
+.o35-lux-beam-track-glass { animation-delay: -13.6s; }
+@keyframes o35-lux-beam {
+  0%, 36% { transform: translateX(-150px); opacity: 0; }
+  40% { opacity: 1; }
+  58% { opacity: 1; }
+  62%, 100% { transform: translateX(150px); opacity: 0; }
+}
+.o35-shutter-edge, .o35-shutter-sheen { animation: o35-lux-glint 14s ease-in-out infinite paused; }
+@keyframes o35-lux-glint {
+  0%, 40% { stroke-opacity: 0.7; opacity: 0.75; }
+  49% { stroke-opacity: 1; opacity: 1; }
+  58%, 100% { stroke-opacity: 0.7; opacity: 0.75; }
+}
+.o35-lux-portrait { animation: o35-lux-breathe 14s ease-in-out infinite paused; }
+@keyframes o35-lux-breathe { 0%, 100% { transform: scale(1); } 47% { transform: scale(1.035); } }
+
+/* run only while Leaguecraft is the projection and the scene is live */
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-drift,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-beam-track,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-edge,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-sheen,
+.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-portrait { animation-play-state: running; }
+
+/* lite tier: the mystery stays (the iris at rest; the engage, reach and open pivots); the loop, beam and glints go */
+.o35-root[data-quality="lite"] .o35-shutter-drift,
+.o35-root[data-quality="lite"] .o35-lux-beam-track,
+.o35-root[data-quality="lite"] .o35-shutter-edge,
+.o35-root[data-quality="lite"] .o35-shutter-sheen,
+.o35-root[data-quality="lite"] .o35-lux-portrait { animation: none; }
+.o35-root[data-quality="lite"] .o35-lux-halo { filter: none; }
+
+/* Pro Play: two sides around Summoner's Rift */
+.o35-side-plate { fill: none; stroke-width: 30; stroke-linecap: round; stroke-opacity: 0.16; }
+.o35-side-trace { fill: none; stroke-width: 1; stroke-dasharray: 2 5; stroke-opacity: 0.7; }
+.o35-side-top { stroke: #7fb4ff; }
+.o35-side-bottom { stroke: #ff8473; }
+.o35-team-ring { fill: #120d33; stroke-width: 1.6; }
+.o35-team-top .o35-team-ring { stroke: #9cc6ff; }
+.o35-team-bottom .o35-team-ring { stroke: #ff9a8a; }
+.o35-team-plate { fill: #1a1434; }
+.o35-rift-ring { fill: none; stroke: #f3eeff; stroke-opacity: 0.85; stroke-width: 1.4; }
+.o35-rift-dash { fill: none; stroke: #f3dfa6; stroke-opacity: 0.55; stroke-width: 0.9; stroke-dasharray: 3 6; transform-box: fill-box; transform-origin: 50% 50%; }
+.acore-svg[data-ambient="on"][data-focus="pro-play"] .o35-rift-dash { animation: acore-spin 40s linear infinite; }
+/* the sides take the field from the centre outward, as the Archives' strata spread */
+.o35-team { transition: transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.o35-team-bottom { transition-delay: 60ms; }
+.o35-team-top { transform: translateY(16px); }
+.o35-team-bottom { transform: translateY(-16px); }
+.acore-svg[data-focus="pro-play"] .o35-team-top,
+.acore-svg[data-focus="pro-play"] .o35-team-bottom { transform: translateY(0); }
+/* Leaguecraft's crystal field, deepened in V3.5 so the portrait (gold hair, pale skin) reads against it */
+.o35-root .acore-svg[data-focus="leaguecraft"] { --cr-hi: #e6c47a; --cr-mid: #7d5a20; --cr-lo: #2c1f0c; --cr-core: #fff1d2; }

@@ -1,49 +1,57 @@
 /**
- * Academy Core V3 — the production `/lol` home. (The previous Home Hub is
- * kept whole at `/lol/hall`; `/lol/dev/academy-core` and `/dev/academy-core`
- * redirect here.)
+ * Academy Core V3.5 — The Living Hextech Orrery: the production `/lol` home.
+ * (The previous Home Hub is kept whole at `/lol/hall`; the preview URLs
+ * `/lol/dev/academy-core`, `/dev/academy-core`, `/lol/dev/academy-core-v35` and
+ * `/dev/academy-core-v35` redirect here.) It replaces the V3 Four-Book Core,
+ * whose navigation, data, loading and analytics contracts it keeps.
  *
- * The Four-Book Hextech Navigator: the four actual closed Academy books
- * (`AcademyHubBook` — the Hall's own component, with the Hall's cover
- * champions, crops and titles) mounted INSIDE an enlarged Hextech Core, the
- * real Patch Report book with its radio on its own lectern island beside it,
- * Mogzy operating the device, and a compact Daily shortcut.
+ * A large Hextech Core floats in open magical space; the four real Academy
+ * books (`AcademyHubBook`, the Hall's own component, with the cover champions,
+ * crops and titles of V3) float free of any chassis and orbit it. The real
+ * Patch Report book and Academy Radio float beside it. Mogzy hovers at the
+ * edge of the scene.
  *
- * NAVIGATION CONTRACTS (see academy-core-destinations.ts):
- *   · Books   → <Link> to /quiz, /lol/pro-play, /combat-lab, /lol/docs.
- *     One click: a short activation (BOOK_ACTIVATION_MS, ≤ 350 ms) and the
- *     page navigates itself. Modified clicks (Ctrl/Cmd/Shift/Alt, middle)
- *     are left to the browser untouched; reduced motion navigates at once;
- *     a second press during activation is ignored (single timer).
- *   · Crystal → an accessible button that cycles the four previews WITHOUT
- *     navigating; a visible readout names the current preview.
- *   · Daily   → <Link to="/quiz/daily-challenge" state={DAILY_START_STATE}>,
- *     immediate. Ranked shortcut → <Link to="/quiz?play=1">, immediate,
- *     labelled for what it does (opens mode selection).
- *   · Patch book links, radio, Commons and Hall links: ordinary, immediate
- *     client-side <Link>s (`/lol/hall`, `/lol/hall#academy-commons`). A legacy
+ * NAVIGATION CONTRACTS (as V3; see academy-core-destinations.ts):
+ *   · Books   → <Link> to /quiz, /lol/pro-play, /combat-lab, /lol/docs. One
+ *     click: the 240 ms activation, then the page navigates itself. Modified
+ *     clicks are the browser's; reduced motion navigates at once; a second
+ *     press during activation is ignored (useCoreNavigator).
+ *   · Crystal → an accessible button that cycles the four previews without
+ *     navigating; the two arrows beneath the Core turn the orbit (never navigate).
+ *   · Daily / Ranked shortcuts, Patch book links, radio, Commons and Hall
+ *     links: ordinary, immediate client-side <Link>s. A legacy
  *     `/lol#academy-commons` deep link is forwarded to the Hall's Commons.
  *
- * DATA. Read-only, existing authorities only: the champion manifest through
- * the app's one query (the warm fetches it, `useChampionAssets()` reads the
- * cache), the Patch Brief feed the Hall's book uses (shared keys; the
- * Archives projection reuses its icons), and the Daily status (one request,
- * the same the lobby makes). Nothing is invented.
+ * DATA. Read-only, existing authorities only: the champion manifest (one
+ * query, warmed by `warmAcademyCore`), the Patch Brief feed, the Daily status.
  *
- * LOADING (PERF1 convention, page-scoped): `warmAcademyCore` — frame, Mogzy,
- * book painting at high priority; the four cover splashes as soon as the
- * manifest answers; poses and route chunks after. The Hall's warm is NOT
- * called. Every late asset has reserved geometry (the books' boxes are their
- * frame's canvas; the painting declares its intrinsic size).
+ * ANALYTICS. As the home surface it emits the canonical `hub_entered` (once per
+ * session — the Landing → Hub funnel step), as V3 did. The diagnostic
+ * `leaguecraft_cta_clicked` marks the doors into /quiz (`academy_core_book`,
+ * `academy_core_ranked`); the canonical open event fires on /quiz itself.
  *
- * ANALYTICS. As the home surface it emits the canonical `hub_entered`
- * (once per session, same hook the Hall uses — the Landing → Hub funnel
- * step). The diagnostic `leaguecraft_cta_clicked` is reused for the doors
- * into /quiz with distinct `cta` values; the canonical open event fires on
- * /quiz itself.
+ * WHAT IS REUSED UNCHANGED
+ *   · destinations, routes, copy:  academy-core-destinations (V3)
+ *   · the crystal and its four projections:  AcademyCoreInstrument (V3, compact)
+ *   · the books:  AcademyHubBook;  the Patch Report:  AcademyBroadcastCenterpiece
+ *   · Mogzy:  MogzyOperator;  art warm-up:  warmAcademyCore;  data hooks as V3
+ *
+ * WHAT IS NEW (./orrery/)
+ *   · useCoreNavigator   the V3 focus / 240 ms activation / crystal-cycle logic,
+ *                        lifted out of the page (no behaviour change)
+ *   · orrery-motion      pure orbit mathematics (unit-tested)
+ *   · OrreryEngine       the one rAF loop; writes transforms, never React state
+ *   · OrreryCore / OrreryProjections / OrreryEnvironment / academy-core-v35.css
+ *                        the presentation
+ *
+ * LAYOUTS
+ *   full (>= 1024 px)  orbiting books; Patch Report and brand in the left column
+ *   stacked (< 1024)   no orbit: a composed floating arrangement (two tiers
+ *                      around the Core), limited levitation, tap to focus
+ *   reduced motion     the full layout, placed once at its rest phase, no loop
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import SEOHead from "@/components/SEOHead";
@@ -53,7 +61,7 @@ import { SITE_URL } from "@/lib/site-config";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
-import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
+import { getChampionIcon, getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
@@ -61,32 +69,73 @@ import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useSfx } from "@/lib/audio/useSfx";
-import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 
-import AcademyCoreInstrument, { BOOK_SLOTS, CORE_VIEWBOX, type CoreMedia } from "./AcademyCoreInstrument";
-import MogzyOperator from "./MogzyOperator";
-import { CORE_FULL_LAYOUT_MEDIA, CORE_MEASURE_SHARDS, CORE_OBSERVE_ROLES, warmAcademyCore } from "./academy-core-warm";
+import type { CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
+import MogzyOperator from "@/pages/academy-core/MogzyOperator";
+import {
+  CORE_FULL_LAYOUT_MEDIA,
+  CORE_MEASURE_SHARDS,
+  CORE_OBSERVE_ROLES,
+  warmAcademyCore,
+} from "@/pages/academy-core/academy-core-warm";
 import {
   ACADEMY_COMMONS_FRAGMENT,
   ACADEMY_COMMONS_HREF,
   ACADEMY_HALL_ROUTE,
-  BOOK_ACTIVATION_MS,
-  CORE_CYCLE_ORDER,
   CORE_DESTINATIONS,
   DAILY_ROUTE,
   RANKED_ROUTE,
   coreBayDescriptionId,
   destinationById,
   type CoreDestination,
-  type CoreFocus,
-} from "./academy-core-destinations";
-import "./academy-core.css";
+} from "@/pages/academy-core/academy-core-destinations";
+import "@/pages/academy-core/academy-core.css";
+import "./orrery/academy-core-v35.css";
 
-/** Same grace the Mogzy guide uses before a leave clears a hover message. */
-const FOCUS_RELEASE_MS = 140;
+import OrreryCore from "./orrery/OrreryCore";
+import OrreryEnvironment from "./orrery/OrreryEnvironment";
+import { OrreryEngine } from "./orrery/OrreryEngine";
+import { useCoreNavigator } from "./orrery/useCoreNavigator";
+import { MATCHUP_LINEUP, MYSTERY_CHAMPION, RIFT_CENTRE_ART, type MatchupMedia } from "./orrery/orrery-projections-data";
+import { BOOK_ORDER, CALM, DESKTOP_ORBIT, STAGE, STAGE_COMPOSED, type BookId } from "./orrery/orrery-motion";
+
+/** The Hall's own SEO block, carried verbatim from V3: `/lol` is still the indexed home. */
+const HOME_TITLE = "Mogzy LoL Quiz | League of Legends Trivia and Training";
+const HOME_DESCRIPTION =
+  "Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account.";
+const HOME_KEYWORDS =
+  "league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, league learning game, league of legends training tool, combat lab, lol tier list";
+
+/**
+ * Quality tiers. `full` is the whole scene; `lite` keeps the orbit, the books
+ * and the Core's crystal / first ring set but drops the decorative extras
+ * (fragments, aurora drift, extra comets and gyro rings, sparks, twinkle).
+ * Chosen by `?quality=lite|full` (a forced choice is never overridden), else
+ * by cheap device hints (Save-Data, <= 2 cores or <= 2 GB), else `full`; and a
+ * `full` scene that cannot hold its frame rate steps down to `lite` once.
+ */
+export type SceneQuality = "full" | "lite";
+function readQualityChoice(): "full" | "lite" | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search).get("quality");
+  return q === "lite" || q === "full" ? q : null;
+}
+function initialQuality(): SceneQuality {
+  const forced = readQualityChoice();
+  if (forced) return forced;
+  if (typeof navigator === "undefined") return "full";
+  const n = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if (n.connection?.saveData) return "lite";
+  if ((n.hardwareConcurrency ?? 8) <= 2 || (n.deviceMemory ?? 8) <= 2) return "lite";
+  return "full";
+}
+
+/** How fast the Core's rings and comets turn for each room (1 = rest). */
+/** The phone composition's books in clockwise order (the right arrow steps this way). */
+const COMPOSED_RING: BookId[] = ["leaguecraft", "pro-play", "archives", "combat-lab"];
+
+const TEMPO: Record<string, number> = { idle: 1, leaguecraft: 1.6, "pro-play": 1.3, "combat-lab": 2.5, archives: 0.65 };
 const IDLE_LINE = "Pick a book and I'll take a reading.";
-/** How long after navigating the activation state may stay on while the Core is still mounted. */
-const ACTIVATION_SETTLE_MS = 1500;
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(() =>
@@ -103,55 +152,34 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-/** Percent box for a book cradle, from the instrument's own geometry. */
-function slotStyle(id: string): React.CSSProperties {
-  const s = BOOK_SLOTS[id];
-  return {
-    left: `${(s.x / CORE_VIEWBOX.width) * 100}%`,
-    top: `${(s.y / CORE_VIEWBOX.height) * 100}%`,
-    width: `${(s.w / CORE_VIEWBOX.width) * 100}%`,
-  };
-}
+/** Slow, out-of-step levitation per book (seconds, delay, amplitude in stage units, sway degrees). */
+const LEVITATION: Record<BookId, { dur: number; delay: number; amp: number; sway: number; swayDur: number }> = {
+  leaguecraft: { dur: 6.4, delay: -1.2, amp: 8, sway: 0.9, swayDur: 9.3 },
+  "pro-play": { dur: 7.3, delay: -4.6, amp: 7, sway: 0.8, swayDur: 10.7 },
+  "combat-lab": { dur: 5.8, delay: -2.9, amp: 9, sway: 1.0, swayDur: 8.4 },
+  archives: { dur: 6.9, delay: -5.8, amp: 7.5, sway: 0.85, swayDur: 11.6 },
+};
 
-/** A click the browser should keep (new tab, download, context): never delayed. */
-function isModifiedClick(e: React.MouseEvent): boolean {
-  return e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
-}
-
-/** The Hall's own SEO block, carried verbatim: `/lol` is still the indexed home. */
-const HOME_TITLE = "Mogzy LoL Quiz | League of Legends Trivia and Training";
-const HOME_DESCRIPTION =
-  "Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account.";
-const HOME_KEYWORDS =
-  "league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, league learning game, league of legends training tool, combat lab, lol tier list";
-
-/**
- * `/lol#academy-commons` is a legacy deep link: before the Core the Commons
- * was the second screen of `/lol`. The Commons now lives on the Hall, so the
- * fragment is forwarded there (replace, so Back does not bounce).
- */
+/** A legacy `#academy-commons` deep link goes to the Hall's Commons, as on the V3 home. */
 export default function AcademyCorePage() {
   const { hash } = useLocation();
-  if (hash === ACADEMY_COMMONS_FRAGMENT) {
-    return <Navigate to={ACADEMY_COMMONS_HREF} replace />;
-  }
-  return <AcademyCoreHome />;
+  if (hash === ACADEMY_COMMONS_FRAGMENT) return <Navigate to={ACADEMY_COMMONS_HREF} replace />;
+  return <AcademyCoreOrrery />;
 }
 
-function AcademyCoreHome() {
+function AcademyCoreOrrery() {
   const fullLayout = useMediaQuery(CORE_FULL_LAYOUT_MEDIA);
   const reduced = useReducedMotionPreference();
   const sfx = useSfx();
-  const playSfx = usePlaySfx();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const nav = useCoreNavigator(reduced);
+  const [quality, setQuality] = useState<SceneQuality>(initialQuality);
+  const { focus, pointerFocus, keyboardFocus, pinned, pinSource, activating } = nav;
 
-  // Same session flag the Hall sets on arrival: the Quiz lobby's onboarding
-  // gate bounces a first-time session that has not seen the hub back to /lol.
+  // The same session flag the Hall and the V3 Core set on arrival.
   useEffect(() => { markHubVisited(); }, []);
-
   // The home surface: the funnel's `hub_entered` (once per session — the same
-  // boundary the Hall uses) and the Hall's own arrival cue.
+  // boundary the Hall uses) and the Hall's own arrival cue, as on the V3 home.
   useSurfaceEvent("hub_entered");
   useEffect(() => { sfx.play("hub.application.enter"); }, [sfx]);
 
@@ -162,7 +190,6 @@ function AcademyCoreHome() {
     warmAcademyCore(queryClient).then(() => { if (active) setWarmed(true); });
     return () => { active = false; };
   }, [queryClient]);
-  // The covers read the same cache entry the warm fills — one request in all.
   const { data: manifest } = useChampionAssets();
   const splashes = useMemo(() => {
     const out: Partial<Record<CoreDestination["id"], string | null>> = {};
@@ -170,130 +197,7 @@ function AcademyCoreHome() {
     return out;
   }, [manifest]);
 
-  /* ---------------- focus: hover / keyboard, and the crystal's pinned preview ---------------- */
-  const [hoverFocus, setHoverFocus] = useState<CoreFocus>("idle");
-  const [pinned, setPinned] = useState<CoreFocus>("idle");
-  const focus: CoreFocus = hoverFocus !== "idle" ? hoverFocus : pinned;
-  const releaseTimer = useRef<number | null>(null);
-  const cancelRelease = () => {
-    if (releaseTimer.current !== null) { window.clearTimeout(releaseTimer.current); releaseTimer.current = null; }
-  };
-  const engage = useCallback((id: CoreFocus) => { cancelRelease(); setHoverFocus(id); }, []);
-  const release = useCallback(() => {
-    cancelRelease();
-    releaseTimer.current = window.setTimeout(() => { releaseTimer.current = null; setHoverFocus("idle"); }, FOCUS_RELEASE_MS);
-  }, []);
-  useEffect(() => () => cancelRelease(), []);
-
-  // The focus cue sounds only for authored interactions (fine pointer / Tab).
-  const lastTabAt = useRef(Number.NEGATIVE_INFINITY);
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Tab") lastTabAt.current = Date.now(); };
-    const onPointerDown = () => { lastTabAt.current = Number.NEGATIVE_INFINITY; };
-    window.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("pointerdown", onPointerDown, true);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("pointerdown", onPointerDown, true);
-    };
-  }, []);
-  const cue = useCallback((input: "pointer" | "keyboard") => {
-    if (input === "pointer") {
-      if (window.matchMedia?.("(hover: hover) and (pointer: fine)").matches !== true) return;
-    } else if (Date.now() - lastTabAt.current > 1000) return;
-    sfx.play("hub.destination.focus");
-  }, [sfx]);
-
-  /* ---------------- activation → navigation ---------------- */
-  const [activating, setActivating] = useState<CoreFocus | null>(null);
-  const activationTimer = useRef<number | null>(null);
-  // The Core is only replaced once the destination has rendered. If that is
-  // slow, or the visitor comes straight back (Back, bfcache), the Core is still
-  // mounted: the activation state must not stay latched on.
-  const settleTimer = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (activationTimer.current !== null) window.clearTimeout(activationTimer.current);
-    if (settleTimer.current !== null) window.clearTimeout(settleTimer.current);
-  }, []);
-  useEffect(() => {
-    const release = () => {
-      if (settleTimer.current !== null) { window.clearTimeout(settleTimer.current); settleTimer.current = null; }
-      setActivating(null);
-    };
-    window.addEventListener("popstate", release);
-    window.addEventListener("pageshow", release);
-    return () => {
-      window.removeEventListener("popstate", release);
-      window.removeEventListener("pageshow", release);
-    };
-  }, []);
-  const onBookClick = useCallback((d: CoreDestination, e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (d.to === "/quiz") trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_book" });
-    if (isModifiedClick(e)) return; // the browser's own behaviour, untouched
-    playSfx.play("bookRuffle"); // the Hall's own book-open cue, gated by the same per-cue setting
-    if (reduced) return; // the Link navigates at once
-    e.preventDefault();
-    if (activationTimer.current !== null) return; // a second press changes nothing
-    setActivating(d.id);
-    setHoverFocus(d.id);
-    activationTimer.current = window.setTimeout(() => {
-      activationTimer.current = null;
-      navigate(d.to);
-      settleTimer.current = window.setTimeout(() => {
-        settleTimer.current = null;
-        setActivating(null);
-      }, ACTIVATION_SETTLE_MS);
-    }, BOOK_ACTIVATION_MS);
-  }, [navigate, playSfx, reduced]);
-
-  /* ---------------- crystal: cycle previews, never navigate ---------------- */
-  const cycle = useCallback(() => {
-    setPinned((prev) => {
-      const i = CORE_CYCLE_ORDER.indexOf(prev as (typeof CORE_CYCLE_ORDER)[number]);
-      return i < 0 ? CORE_CYCLE_ORDER[0] : i === CORE_CYCLE_ORDER.length - 1 ? "idle" : CORE_CYCLE_ORDER[i + 1];
-    });
-    cancelRelease();
-    setHoverFocus("idle");
-  }, []);
-
-  /* ---------------- ambient, only while on screen ---------------- */
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [onScreen, setOnScreen] = useState(true);
-  useEffect(() => {
-    const el = stageRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { threshold: 0.05 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  const ambient = onScreen && !reduced;
-
-  /* ---------------- the floor: bench edge from the chassis feet ----------------
-     Capped: the island's bottom padding derives from this value, so an uncapped
-     measurement feeds back into the hero's height on short desktops. */
-  const FLOOR_MAX = 140;
-  const heroRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const stage = stageRef.current;
-    const hero = heroRef.current;
-    if (!stage || !hero || typeof ResizeObserver === "undefined") return;
-    const measure = () => {
-      const s = stage.getBoundingClientRect();
-      const h = hero.getBoundingClientRect();
-      const feetY = s.top + s.height * (814 / CORE_VIEWBOX.height);
-      hero.style.setProperty("--acore-floor", `${Math.min(FLOOR_MAX, Math.max(0, Math.round(h.bottom - feetY)))}px`);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(stage);
-    ro.observe(hero);
-    return () => ro.disconnect();
-  }, [fullLayout]);
-
-  /* ---------------- real data, read-only ---------------- */
-  // The Daily read is authenticated: a visitor with no session would only
-  // earn a 401 (a request and a console error) for an answer that is
-  // "unknown" anyway, which renders the same "Play Daily Challenge" label.
+  /* ---------------- real data, read-only (as V3) ---------------- */
   const { user } = useAuth();
   const daily = useDailyChallengeStatus({ enabled: !!user, identity: user?.id ?? null });
   const dailyResume = daily.known && daily.resumable && !daily.completed;
@@ -301,7 +205,6 @@ function AcademyCoreHome() {
   const brief = broadcastFeed.status === "ready" ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null : null;
 
   const media = useMemo<CoreMedia>(() => ({
-    // the projections reuse the cover art already in cache — no extra fetch
     art: warmed ? splashes : {},
     strataIcons: brief ? brief.sections.flatMap((s) => s.entries).slice(0, 4).map((e) => e.iconUrl) : [],
     strataLabel: brief ? brief.patchLabel : null,
@@ -309,48 +212,251 @@ function AcademyCoreHome() {
     observeRoles: warmed ? CORE_OBSERVE_ROLES : [],
   }), [warmed, splashes, brief]);
 
+  // Pro Play's 5 v 5: manifest icons for the lineup and the Rift image, after the critical art (as the other projections)
+  const matchup = useMemo<MatchupMedia | null>(() => (warmed ? {
+    blue: MATCHUP_LINEUP.blue.map((n) => getChampionIcon(manifest, n)),
+    red: MATCHUP_LINEUP.red.map((n) => getChampionIcon(manifest, n)),
+    rift: RIFT_CENTRE_ART,
+  } : null), [warmed, manifest]);
+  // Leaguecraft's mystery portrait: the manifest's square Lux icon, on the same schedule
+  const mystery = useMemo(() => (warmed ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null), [warmed, manifest]);
+
+  /* ---------------- the orbit engine ---------------- */
+  const mode = fullLayout ? "orbit" : "composed";
+  const heroRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const bookEls = useRef<Record<BookId, HTMLElement | null>>({ leaguecraft: null, "pro-play": null, "combat-lab": null, archives: null });
+  const tetherEls = useRef<Record<BookId, SVGPathElement | null>>({ leaguecraft: null, "pro-play": null, "combat-lab": null, archives: null });
+  const needleEl = useRef<HTMLDivElement | null>(null);
+  const engineRef = useRef<OrreryEngine | null>(null);
+
+  // Only the crystal's preview brings a book out of the orbit to rest beside the lens;
+  // the arrow selector's book is brought forward BY the orbit and stays in it.
+  const front: BookId | null = keyboardFocus !== "idle"
+    ? keyboardFocus
+    : pointerFocus === "idle" && pinned !== "idle" && pinSource === "crystal" ? pinned : null;
+  const targets = useMemo(() => ({
+    emphasis: focus === "idle" ? null : focus,
+    front,
+    calm: pointerFocus !== "idle" ? CALM.pointer : keyboardFocus !== "idle" ? CALM.keyboard : pinned !== "idle" ? CALM.pinned : CALM.free,
+    activating: activating && activating !== "idle" ? activating : null,
+  }), [focus, front, pointerFocus, keyboardFocus, pinned, activating]);
+  const targetsRef = useRef(targets);
+  targetsRef.current = targets;
+
+  const [onScreen, setOnScreen] = useState(true);
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const hero = heroRef.current;
+    if (!stage || !hero) return;
+    const animate = !reduced && mode === "orbit";
+    const engine = new OrreryEngine(
+      {
+        books: bookEls.current,
+        tethers: tetherEls.current,
+        needle: needleEl.current,
+        host: stage,
+        parallax: animate ? Array.from(hero.querySelectorAll<HTMLElement>("[data-parallax]")) : [],
+        tempo: animate ? Array.from(hero.querySelectorAll<HTMLElement>(".o35-comet, .o35-gyro-ring, .o35-ring")) : [],
+      },
+      {
+        mode,
+        animate,
+        onDegrade: readQualityChoice() === "full" ? undefined : () => setQuality("lite"),
+      },
+    );
+    engineRef.current = engine;
+    const r = stage.getBoundingClientRect();
+    engine.resize(r.width, r.height);
+    engine.setTargets(targetsRef.current);
+    engine.start();
+    stage.dataset.ready = "true";
+
+    const ro = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(([entry]) => engine.resize(entry.contentRect.width, entry.contentRect.height))
+      : null;
+    ro?.observe(stage);
+    const io = typeof IntersectionObserver !== "undefined"
+      ? new IntersectionObserver(([entry]) => {
+        setOnScreen(entry.isIntersecting);
+        engine.setVisible(entry.isIntersecting && !document.hidden);
+      }, { threshold: 0.02 })
+      : null;
+    io?.observe(stage);
+    const onVisibility = () => engine.setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    const finePointer = window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
+    const onMove = (e: PointerEvent) =>
+      engine.setPointer((e.clientX / window.innerWidth - 0.5) * 2, (e.clientY / window.innerHeight - 0.5) * 2);
+    if (animate && finePointer) window.addEventListener("pointermove", onMove, { passive: true });
+
+    return () => {
+      engine.stop();
+      engineRef.current = null;
+      ro?.disconnect();
+      io?.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pointermove", onMove);
+      delete stage.dataset.ready;
+    };
+  }, [mode, reduced]);
+
+  useEffect(() => { engineRef.current?.setTargets(targets); }, [targets]);
+  // each room sets the Core's tempo: Measure races, Strata is slow and deliberate
+  useEffect(() => { engineRef.current?.setTempo(TEMPO[focus] ?? 1); }, [focus, mode, reduced]);
+
+  /* ---------------- direct manipulation: drag the orbit ---------------- */
+  // Only from empty space (never from a book, link or the crystal), so every
+  // click contract is untouched; the orbit follows the pointer, a fling keeps
+  // its momentum, and the books settle on the nearest symmetric composition.
+  const drag = useRef<{ id: number; x: number; t: number } | null>(null);
+  const onStageDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (mode !== "orbit" || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if ((e.target as Element).closest("a,button,.o35-slot")) return;
+    // an intentional press on open space lets go of the arrow selector's hold
+    engineRef.current?.releaseSelection();
+    nav.clearSelection();
+    if (reduced) return;
+    drag.current = { id: e.pointerId, x: e.clientX, t: e.timeStamp };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.currentTarget.dataset.dragging = "true";
+    nav.cancelRelease();
+    engineRef.current?.grab();
+  };
+  const onStageMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    const dt = Math.max(0.001, (e.timeStamp - d.t) / 1000);
+    engineRef.current?.dragBy(e.clientX - d.x, dt);
+    d.x = e.clientX;
+    d.t = e.timeStamp;
+  };
+  const onStageUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    drag.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    delete e.currentTarget.dataset.dragging;
+    engineRef.current?.release();
+  };
+  // Arrow keys step through the books (a roving aid on top of Tab; never on other controls).
+  const onBooksKey = (e: ReactKeyboardEvent<HTMLElement>) => {
+    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!dir || e.altKey || e.ctrlKey || e.metaKey) return;
+    const links = Array.from(e.currentTarget.querySelectorAll<HTMLAnchorElement>("a"));
+    const i = links.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    e.preventDefault();
+    links[(i + dir + links.length) % links.length].focus();
+  };
+
+  const ambient = onScreen && !reduced;
+
+  /* ---------------- presentation ---------------- */
   const focused = destinationById(focus);
   const mogzyLine = focused ? focused.preview : IDLE_LINE;
   const previewLabel = focused ? `Previewing ${focused.title}` : "No room previewed";
+  const stageSize = fullLayout ? STAGE : STAGE_COMPOSED;
+  const anyFocus = focus !== "idle";
 
-  /* ---------------- a mounted book ---------------- */
-  const renderBook = (d: CoreDestination, variant: "mounted" | "tier") => (
-    <div
-      key={d.id}
-      className={`acore-slot acore-slot-${variant} acore-slot-${d.tier}`}
-      data-bay={d.id}
-      data-active={focus === d.id ? "true" : "false"}
-      data-activating={activating === d.id ? "true" : "false"}
-      data-testid={`academy-core-slot-${d.id}`}
-      style={variant === "mounted" ? slotStyle(d.id) : undefined}
-      onPointerEnter={(e) => {
-        prefetchRoute(d.to, { intent: true });
-        if (e.pointerType === "touch") return;
-        engage(d.id);
-        cue("pointer");
-      }}
-      onPointerLeave={() => release()}
-      onPointerDown={() => { prefetchRoute(d.to, { intent: true }); engage(d.id); }}
-      onFocus={() => { prefetchRoute(d.to, { intent: true }); engage(d.id); cue("keyboard"); }}
-      onBlur={() => release()}
-    >
-      <AcademyHubBook
-        to={d.to}
-        title={d.title}
-        coverTitle={d.coverTitle}
-        splashUrl={splashes[d.id] ?? null}
-        splashPosition={d.splashPosition}
-        describedBy={coreBayDescriptionId(d.id)}
-        onClick={(e) => onBookClick(d, e)}
-      />
+  /* ---------------- the arrow selector ---------------- */
+  // Desktop: each press turns the whole orbit one book (the engine plans the turn
+  // and holds the book at the front). Phones do not orbit: the arrows step the
+  // preview around the composed ring (right = clockwise) and the chosen book is lit.
+  const onArrow = (dir: 1 | -1) => {
+    let id: BookId | null = null;
+    if (mode === "orbit") {
+      id = engineRef.current?.steer(dir) ?? null;
+    } else {
+      const i = COMPOSED_RING.indexOf(pinned as BookId);
+      id = i < 0 ? (dir > 0 ? COMPOSED_RING[0] : COMPOSED_RING[COMPOSED_RING.length - 1]) : COMPOSED_RING[(i + dir + COMPOSED_RING.length) % COMPOSED_RING.length];
+    }
+    if (!id) return;
+    nav.select(id);
+    const d = destinationById(id);
+    if (d) prefetchRoute(d.to, { intent: true });
+  };
+  // The crystal keeps its own preview cycle; using it lets go of an arrow hold first.
+  const onCrystal = () => {
+    engineRef.current?.releaseSelection();
+    nav.cycle();
+  };
+
+  const selector = (
+    <div className="o35-selector" role="group" aria-label="Turn the orbit" data-testid="academy-core-selector">
+      <button type="button" className="o35-arrow" aria-label="Previous book" data-testid="academy-core-arrow-left" onClick={() => onArrow(-1)}>
+        <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
+      </button>
+      <button type="button" className="o35-arrow" aria-label="Next book" data-testid="academy-core-arrow-right" onClick={() => onArrow(1)}>
+        <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+      </button>
     </div>
   );
 
-  const upper = CORE_DESTINATIONS.filter((d) => d.tier === "upper");
-  const lower = CORE_DESTINATIONS.filter((d) => d.tier === "lower");
+  const crystalButton = (
+    <div className="acore-crystal-hit acore-crystal-hit-compact o35-crystal-hit">
+      <button
+        type="button"
+        className="acore-crystal-button"
+        data-testid="academy-core-crystal"
+        aria-label="Cycle the room preview in the crystal"
+        aria-describedby="acore-preview-readout"
+        onClick={onCrystal}
+        onPointerEnter={nav.cancelRelease}
+      >
+        <span className="sr-only">{previewLabel}</span>
+      </button>
+    </div>
+  );
+
+  const renderBook = (d: CoreDestination) => {
+    const lev = LEVITATION[d.id];
+    return (
+      <div
+        key={d.id}
+        className="o35-book"
+        data-bay={d.id}
+        ref={(el) => { bookEls.current[d.id] = el; }}
+      >
+        <div
+          className="o35-lev"
+          data-active={focus === d.id ? "true" : "false"}
+          style={{
+            ["--lev-dur" as string]: `${lev.dur}s`,
+            ["--lev-delay" as string]: `${lev.delay}s`,
+            ["--lev-amp" as string]: String(lev.amp),
+            ["--sway" as string]: `${lev.sway}deg`,
+            ["--sway-dur" as string]: `${lev.swayDur}s`,
+          }}
+        >
+          <div className="o35-underglow" aria-hidden />
+          <div className="o35-pagelight" aria-hidden />
+          <div
+            className="o35-slot"
+            data-bay={d.id}
+            data-active={focus === d.id ? "true" : "false"}
+            data-activating={activating === d.id ? "true" : "false"}
+            data-support={anyFocus && focus !== d.id ? "true" : "false"}
+            data-testid={`academy-core-slot-${d.id}`}
+            {...nav.bookHandlers(d)}
+          >
+            <AcademyHubBook
+              to={d.to}
+              title={d.title}
+              coverTitle={d.coverTitle}
+              splashUrl={splashes[d.id] ?? null}
+              splashPosition={d.splashPosition}
+              describedBy={coreBayDescriptionId(d.id)}
+              onClick={(e) => nav.onBookClick(d, e)}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const shortcuts = (
-    <div className="acore-shortcuts" data-testid="academy-core-shortcuts">
+    <div className="acore-shortcuts o35-shortcuts" data-testid="academy-core-shortcuts">
       <Link
         to={DAILY_ROUTE}
         state={DAILY_START_STATE}
@@ -377,7 +483,7 @@ function AcademyCoreHome() {
   );
 
   const secondScreen = (
-    <nav className="acore-second-screen" aria-label="Academy rooms beyond the Core">
+    <nav className="acore-second-screen o35-second-screen" aria-label="Academy rooms beyond the Core">
       <Link
         to={ACADEMY_COMMONS_HREF}
         className="acore-minor-link"
@@ -399,52 +505,28 @@ function AcademyCoreHome() {
     </nav>
   );
 
-  const crystalButton = (
-    <button
-      type="button"
-      className="acore-crystal-button"
-      data-testid="academy-core-crystal"
-      aria-label="Cycle the room preview in the crystal"
-      aria-describedby="acore-preview-readout"
-      onClick={cycle}
-      onPointerEnter={() => cancelRelease()}
-    >
-      <span className="sr-only">{previewLabel}</span>
-    </button>
-  );
-
-  const stage = (
-    <div className="acore-stagewrap">
-      <div ref={stageRef} className="acore-stage" data-focus={focus} data-activating={activating ?? ""} data-testid="academy-core-stage">
-        <AcademyCoreInstrument focus={focus} activating={activating} compact={!fullLayout} ambient={ambient} media={media} />
-        {fullLayout && (
-          <nav className="acore-books-mounted" aria-label="Academy rooms">
-            {CORE_DESTINATIONS.map((d) => renderBook(d, "mounted"))}
-          </nav>
-        )}
-        <div
-          className={`acore-crystal-hit${fullLayout ? "" : " acore-crystal-hit-compact"}`}
-          style={fullLayout ? { left: "50%", top: `${(520 / CORE_VIEWBOX.height) * 100}%` } : undefined}
-        >
-          {crystalButton}
-        </div>
-        <p id="acore-preview-readout" className="acore-preview-readout" data-testid="academy-core-preview" aria-live="polite">
-          {previewLabel}
-        </p>
-        <MogzyOperator
-          focus={focus}
-          line={mogzyLine}
-          ambient={ambient}
-          reduced={reduced}
-          facing={fullLayout ? "left" : "right"}
-          reactionsReady={warmed}
-        />
-      </div>
-    </div>
-  );
+  const orbit = DESKTOP_ORBIT;
+  const orbitPaths = fullLayout ? (
+    <>
+      <svg className="o35-orbit-path o35-orbit-path-back" viewBox={`0 0 ${STAGE.width} ${STAGE.height}`} aria-hidden focusable="false">
+        <path d={`M ${orbit.cx - orbit.rx},${orbit.cy} A ${orbit.rx} ${orbit.ry} 0 0 1 ${orbit.cx + orbit.rx},${orbit.cy}`} />
+      </svg>
+      <svg className="o35-orbit-path o35-orbit-path-front" viewBox={`0 0 ${STAGE.width} ${STAGE.height}`} aria-hidden focusable="false">
+        <path d={`M ${orbit.cx - orbit.rx},${orbit.cy} A ${orbit.rx} ${orbit.ry} 0 0 0 ${orbit.cx + orbit.rx},${orbit.cy}`} />
+      </svg>
+      <div className="o35-orbit-plane" aria-hidden />
+    </>
+  ) : null;
 
   return (
-    <div className="acore-root" data-layout={fullLayout ? "full" : "stacked"} data-ambient={ambient ? "on" : "off"} data-testid="academy-core">
+    <div
+      className="acore-root o35-root"
+      data-layout={fullLayout ? "full" : "stacked"}
+      data-ambient={ambient ? "on" : "off"}
+      data-reduced={reduced ? "true" : "false"}
+      data-quality={quality}
+      data-testid="academy-core-v35"
+    >
       <SEOHead
         title={HOME_TITLE}
         description={HOME_DESCRIPTION}
@@ -469,48 +551,100 @@ function AcademyCoreHome() {
         {CORE_DESTINATIONS.map((d) => <span key={d.id} id={coreBayDescriptionId(d.id)}>{d.preview}</span>)}
       </div>
 
-      <section ref={heroRef} className="acore-hero" aria-labelledby="acore-title">
-        <div className="acore-room" aria-hidden>
-          <div className="acore-room-wall" />
-          <div className="acore-room-pilaster acore-room-pilaster-l" />
-          <div className="acore-room-pilaster acore-room-pilaster-r" />
-          <div className="acore-room-lamp" />
-          <div className="acore-room-hex" />
-          <div className="acore-room-bench" />
-          <div className="acore-room-bench-edge" />
-        </div>
+      <section ref={heroRef} className="o35-hero" aria-labelledby="acore-title">
+        <OrreryEnvironment composed={!fullLayout} />
 
-        {/* ---------------- the lectern island: brand, Daily, the real Patch Report book ---------------- */}
-        <div className="acore-island">
-          <header className="acore-brand">
+        {/* ---------------- brand, Daily, the floating Patch Report ---------------- */}
+        <div className="o35-island">
+          <header className="o35-brand">
             <p className="acore-eyebrow">Mogzy&rsquo;s Hextech Workshop</p>
-            <h1 id="acore-title" className="acore-title">Mogzy Academy</h1>
+            <h1 id="acore-title" className="o35-title">Mogzy Academy</h1>
           </header>
           {shortcuts}
           {fullLayout && (
-            <div className="acore-book" data-testid="academy-core-book">
-              <AcademyBroadcastCenterpiece feed={broadcastFeed} className="acore-book-centerpiece" />
+            <div className="o35-patch" data-testid="academy-core-book">
+              <div className="o35-patch-halo" aria-hidden />
+              <div className="o35-patch-rune" aria-hidden />
+              <div className="o35-patch-shadow" aria-hidden />
+              <div className="o35-patch-float">
+                <AcademyBroadcastCenterpiece feed={broadcastFeed} className="o35-patch-centerpiece" />
+              </div>
+              <span className="o35-spark o35-spark-1" aria-hidden /><span className="o35-spark o35-spark-2" aria-hidden />
+              <span className="o35-spark o35-spark-3" aria-hidden /><span className="o35-spark o35-spark-4" aria-hidden />
             </div>
           )}
           {fullLayout && secondScreen}
         </div>
 
-        {/* ---------------- the Navigator ---------------- */}
-        {fullLayout ? (
-          stage
-        ) : (
-          <>
-            {/* phones: the upper pair, the crystal band between the tiers, then the lower pair */}
-            <nav className="acore-books-tiers" aria-label="Academy rooms">
-              <div className="acore-tier acore-tier-upper">{upper.map((d) => renderBook(d, "tier"))}</div>
-              {stage}
-              <div className="acore-tier acore-tier-lower">{lower.map((d) => renderBook(d, "tier"))}</div>
+        {/* ---------------- the orrery ---------------- */}
+        <div
+          ref={stageRef}
+          className="o35-stage"
+          data-mode={mode}
+          data-focus={focus}
+          data-intent={pointerFocus !== "idle" || keyboardFocus !== "idle" ? "book" : "preview"}
+          onPointerDown={onStageDown}
+          onPointerMove={onStageMove}
+          onPointerUp={onStageUp}
+          onPointerCancel={onStageUp}
+          data-activating={activating ?? ""}
+          data-testid="academy-core-stage"
+        >
+          <div className="o35-scene" style={{ ["--w" as string]: stageSize.width, ["--h" as string]: stageSize.height }}>
+            {orbitPaths}
+            <svg className="o35-tethers" viewBox={`0 0 ${stageSize.width} ${stageSize.height}`} aria-hidden focusable="false">
+              {BOOK_ORDER.map((id) => (
+                <path
+                  key={id}
+                  ref={(el) => { tetherEls.current[id] = el; }}
+                  className="o35-tether"
+                  data-bay={id}
+                  data-on={focus === id ? "true" : "false"}
+                  pathLength={100}
+                />
+              ))}
+            </svg>
+
+            <nav className="o35-books" aria-label="Academy rooms" onKeyDown={onBooksKey}>
+              {CORE_DESTINATIONS.map((d) => renderBook(d))}
             </nav>
-            <div className="acore-book acore-book-mobile" data-testid="academy-core-book-mobile">
-              <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
+
+            <OrreryCore focus={focus} activating={activating} ambient={ambient} media={media} matchup={matchup} mystery={mystery} ref={needleEl}>
+              {crystalButton}
+            </OrreryCore>
+
+            <p id="acore-preview-readout" className="sr-only" data-testid="academy-core-preview" aria-live="polite">
+              {previewLabel}
+            </p>
+
+            {fullLayout && selector}
+
+            <div className="o35-mogzy">
+              <MogzyOperator
+                focus={focus}
+                line={mogzyLine}
+                ambient={ambient}
+                reduced={reduced}
+                facing="left"
+                reactionsReady={warmed}
+              />
+            </div>
+          </div>
+        </div>
+
+        {!fullLayout && selector}
+
+        {!fullLayout && (
+          <div className="o35-island-mobile">
+            <div className="o35-patch o35-patch-mobile" data-testid="academy-core-book-mobile">
+              <div className="o35-patch-halo" aria-hidden />
+              <div className="o35-patch-shadow" aria-hidden />
+              <div className="o35-patch-float">
+                <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
+              </div>
             </div>
             {secondScreen}
-          </>
+          </div>
         )}
       </section>
     </div>

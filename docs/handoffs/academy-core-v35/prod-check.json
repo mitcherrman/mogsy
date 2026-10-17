@@ -1,0 +1,267 @@
+{
+ "base": "http://localhost:8150",
+ "total": 52,
+ "failed": 0,
+ "results": [
+  {
+   "name": "direct /lol: HTTP 200 (SPA fallback)",
+   "pass": true,
+   "detail": "status 200"
+  },
+  {
+   "name": "direct /lol renders the Orrery",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "no V3 chassis",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "four floating books",
+   "pass": true,
+   "detail": "4"
+  },
+  {
+   "name": "present: academy-core-daily",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-ranked",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-book",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-mogzy",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-crystal",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-selector",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-hall-link",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "present: academy-core-commons-link",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "SEO: production title",
+   "pass": true,
+   "detail": "Mogzy LoL Quiz | League of Legends Trivia and Training"
+  },
+  {
+   "name": "SEO: canonical /lol",
+   "pass": true,
+   "detail": "https://mogzy.lol/lol"
+  },
+  {
+   "name": "SEO: indexable (no robots meta)",
+   "pass": true,
+   "detail": "null"
+  },
+  {
+   "name": "orbit moves (Leaguecraft book travelled)",
+   "pass": true,
+   "detail": "58.9 px in 1.5 s"
+  },
+  {
+   "name": "reload /lol renders the Orrery",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "no Hall chunk (LolHub) requested on /lol",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Leaguecraft: Lux icon from the manifest",
+   "pass": true,
+   "detail": "https://web-production-83e53.up.railway.app/assets/champions/Lux/icon.png"
+  },
+  {
+   "name": "Leaguecraft: six shutters",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Pro Play: ten lineup icons",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "selector arrow turns and holds the orbit",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Combat book routes to /combat-lab (pointer)",
+   "pass": true,
+   "detail": "http://localhost:8150/combat-lab"
+  },
+  {
+   "name": "Back returns to the Orrery",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "book leaguecraft → /quiz",
+   "pass": true,
+   "detail": "/quiz"
+  },
+  {
+   "name": "book pro-play → /lol/pro-play",
+   "pass": true,
+   "detail": "/lol/pro-play"
+  },
+  {
+   "name": "book combat-lab → /combat-lab",
+   "pass": true,
+   "detail": "/combat-lab"
+  },
+  {
+   "name": "book archives → /lol/docs",
+   "pass": true,
+   "detail": "/lol/docs"
+  },
+  {
+   "name": "keyboard Enter on Archives routes to /lol/docs",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "direct /lol/hall renders the Hall",
+   "pass": true,
+   "detail": "status 200"
+  },
+  {
+   "name": "/lol/hall is noindex",
+   "pass": true,
+   "detail": "noindex, nofollow"
+  },
+  {
+   "name": "reload /lol/hall renders the Hall",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "/lol/dev/academy-core-v35 → /lol",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "/dev/academy-core-v35 → /lol",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "/lol/dev/academy-core → /lol",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "/lol#academy-commons → /lol/hall#academy-commons",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Landing / hands off to /lol",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Landing → /lol shows the Orrery",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Landing → /lol: no Hall-only art or Hall chunk",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "Landing → /lol: no daily-run read without a session",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "main's /quiz/more-challenges still renders",
+   "pass": true,
+   "detail": "Back to Leaguecraft LEAGUECRAFT · BONUS MODES More Challenges Bonus modes to pla"
+  },
+  {
+   "name": "desktop: no page errors",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "phone: Orrery stacked layout",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "phone: no horizontal overflow",
+   "pass": true,
+   "detail": "0px"
+  },
+  {
+   "name": "phone: reload /lol",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "phone: no page errors",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "reduced motion: data-reduced",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "reduced motion: no running CSS loops in the Orrery",
+   "pass": true,
+   "detail": "0"
+  },
+  {
+   "name": "reduced motion: books still",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "lite tier honoured",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "hidden tab: the orbit engine stops (its transforms freeze), and it was running before",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "visible again: the orbit resumes",
+   "pass": true,
+   "detail": ""
+  }
+ ]
+}
