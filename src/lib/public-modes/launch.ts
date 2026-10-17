@@ -58,16 +58,33 @@ export type DailyContext =
   /** The read failed (or the visitor has no session): treated as no run. */
   | { state: "error" };
 
+/**
+ * MC-UX1 — WHY an action is what it is, decided here beside the action so a
+ * card never reads it back out of a label. Presentation only: the action's
+ * kind, label and destination are unchanged by it.
+ *
+ *   play     ready        Play plays this mode now.
+ *            daily_first  Play goes to today's Daily first (it unlocks after).
+ *   blocked  waiting      An earlier bonus stage of today's Daily is up first.
+ *            paused       The owner paused new starts.
+ *            unavailable  Not available right now (or not in today's Daily).
+ *   done     played       Played today.
+ *            closed       Closed for today without a result.
+ */
+export type PlayGate = "ready" | "daily_first";
+export type BlockedGate = "waiting" | "paused" | "unavailable";
+export type DoneGate = "played" | "closed";
+
 export type ModeAction =
-  | { kind: "play"; label: string; to: string; state: unknown; note: string | null }
+  | { kind: "play"; label: string; to: string; state: unknown; note: string | null; gate: PlayGate }
   /** PGM2 — start (or get back) a Ranked-backed bonus game; the page POSTs. */
   | { kind: "start"; label: string; modeId: PublicModeId; note: string | null }
   /** Still reading the player's Daily; draw a placeholder, not a button. */
   | { kind: "checking" }
   /** Already played today. */
-  | { kind: "done"; label: string; note: string | null }
+  | { kind: "done"; label: string; note: string | null; gate: DoneGate }
   /** Cannot be started right now, and the reason is stated. */
-  | { kind: "blocked"; label: string; note: string | null }
+  | { kind: "blocked"; label: string; note: string | null; gate: BlockedGate }
   /** Approved, with no public launch yet. */
   | { kind: "coming_soon" };
 
@@ -77,50 +94,52 @@ export function resolveModeAction(entry: PublicModeEntry, daily: DailyContext): 
   const { availability, launch } = entry;
   if (!launch) {
     if (availability.status === "coming_soon") return { kind: "coming_soon" };
-    if (availability.status === "paused") return { kind: "blocked", label: "Paused", note: availability.message };
-    return { kind: "blocked", label: "Unavailable right now", note: availability.message };
+    if (availability.status === "paused") {
+      return { kind: "blocked", label: "Paused", note: availability.message, gate: "paused" };
+    }
+    return { kind: "blocked", label: "Unavailable right now", note: availability.message, gate: "unavailable" };
   }
   // PGM2 — a bonus game: repeatable, unrated, open to guests. Play starts it
   // (or hands back a game already running).
   if (launch.kind !== "daily_stage") {
     return launch.kind === "ranked_match"
       ? { kind: "start", label: "Play", modeId: entry.id, note: null }
-      : { kind: "play", label: "Play", to: sessionModeRoute(entry.id), state: null, note: null };
+      : { kind: "play", label: "Play", to: sessionModeRoute(entry.id), state: null, note: null, gate: "ready" };
   }
   if (daily.state === "loading") return { kind: "checking" };
   const run = daily.state === "ready" ? daily.run : null;
 
   if (!run) {
     if (availability.status === "paused") {
-      return { kind: "blocked", label: "Paused", note: availability.message };
+      return { kind: "blocked", label: "Paused", note: availability.message, gate: "paused" };
     }
     return { kind: "play", label: "Start Today's Daily", to: DAILY_CHALLENGE_ROUTE,
-      state: DAILY_START_STATE, note: UNLOCKS_AFTER_DAILY };
+      state: DAILY_START_STATE, note: UNLOCKS_AFTER_DAILY, gate: "daily_first" };
   }
   // A legacy (v1–v4) run is one linear challenge with no "after the Daily".
   if (!hasMainDaily(run) || (run.planVersion ?? 0) < launch.minPlanVersion) {
-    return { kind: "blocked", label: "Not in today's Daily", note: null };
+    return { kind: "blocked", label: "Not in today's Daily", note: null, gate: "unavailable" };
   }
   const stage = run.stages.find((s) => s.kind === launch.stageKind);
-  if (!stage) return { kind: "blocked", label: "Not in today's Daily", note: null };
+  if (!stage) return { kind: "blocked", label: "Not in today's Daily", note: null, gate: "unavailable" };
   if (stage.status === "completed") {
     return { kind: "done", label: "Played today",
-      note: stage.result ? `${stage.result.correct} correct` : null };
+      note: stage.result ? `${stage.result.correct} correct` : null, gate: "played" };
   }
-  if (stage.status === "skipped") return { kind: "done", label: "Closed for today", note: null };
+  if (stage.status === "skipped") return { kind: "done", label: "Closed for today", note: null, gate: "closed" };
   if (!isMainDailyComplete(run)) {
     return { kind: "play", label: "Continue Today's Daily", to: DAILY_CHALLENGE_ROUTE,
-      state: DAILY_START_STATE, note: UNLOCKS_AFTER_DAILY };
+      state: DAILY_START_STATE, note: UNLOCKS_AFTER_DAILY, gate: "daily_first" };
   }
   const current = currentStage(run);
   if (current?.id === stage.id) {
     const resuming = stage.status === "in_progress" || stage.childMatchId !== null;
     return { kind: "play", label: resuming ? "Resume" : "Play", to: DAILY_CHALLENGE_ROUTE,
-      state: DAILY_CONTINUE_STATE, note: null };
+      state: DAILY_CONTINUE_STATE, note: null, gate: "ready" };
   }
   if (current) {
     return { kind: "blocked", label: `Up after ${stageIdentity(current).label}`,
-      note: "Today's bonus stages play in order." };
+      note: "Today's bonus stages play in order.", gate: "waiting" };
   }
-  return { kind: "done", label: "Closed for today", note: null };
+  return { kind: "done", label: "Closed for today", note: null, gate: "closed" };
 }

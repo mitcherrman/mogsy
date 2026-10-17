@@ -1,0 +1,374 @@
+/*
+ * MC-UX1 — the More Challenges gallery. Every rule is scoped to `.mc-gallery`
+ * (the page root) so nothing here reaches Ranked, the Daily or Leaguecraft.
+ * The page still sits in `.ranked-academy` (the chamber backdrop and tokens).
+ */
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.mc-gallery .mc-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(201, 168, 76, 0.38);
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(201, 168, 76, 0.16) 0%, transparent 55%),
+    radial-gradient(90% 120% at 0% 100%, rgba(80, 170, 220, 0.12) 0%, transparent 60%),
+    linear-gradient(160deg, rgba(13, 22, 40, 0.94) 0%, rgba(5, 12, 24, 0.95) 100%);
+  box-shadow: inset 0 0 0 1px rgba(201, 168, 76, 0.1), 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+}
+.mc-gallery .mc-hero::before {
+  content: "";
+  position: absolute;
+  inset-inline: 8%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240, 215, 140, 0.85), transparent);
+}
+.mc-gallery .mc-hero-medallions {
+  /* display comes from the markup (hidden below md) */
+  grid-template-columns: repeat(3, 76px);
+  gap: 10px;
+}
+.mc-gallery .mc-hero-medallions .mc-art {
+  height: 76px;
+  border-radius: 14px;
+}
+
+/* The three collections, as jump links. */
+/* Phones: three equal tiles in one row. sm+: pills. */
+.mc-gallery .mc-jump {
+  display: flex;
+  min-height: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(7, 17, 31, 0.6);
+  padding: 0.35rem 0.4rem;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  font-weight: 600;
+  color: #efe8d6;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+@media (min-width: 640px) {
+  .mc-gallery .mc-jump {
+    display: inline-flex;
+    min-height: 44px;
+    flex-direction: row;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0 1rem;
+    font-size: 0.8125rem;
+  }
+}
+.mc-gallery .mc-jump:hover { border-color: rgba(240, 215, 140, 0.8); background: rgba(201, 168, 76, 0.12); }
+.mc-gallery .mc-jump:focus-visible { outline: 2px solid #f0d78c; outline-offset: 2px; }
+.mc-gallery .mc-jump-count {
+  min-width: 1.4rem;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.2);
+  padding: 0 0.4rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #f0d78c;
+}
+
+/* ── Collection headings ────────────────────────────────────────────────── */
+.mc-gallery .mc-section { scroll-margin-top: 84px; }
+.mc-gallery .mc-section-rule {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, rgba(201, 168, 76, 0.55), rgba(201, 168, 76, 0));
+}
+.mc-gallery .mc-section-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  transform: rotate(45deg);
+  border: 1px solid rgba(240, 215, 140, 0.7);
+  background: rgba(7, 17, 31, 0.85);
+  box-shadow: 0 0 14px -4px rgba(240, 215, 140, 0.6);
+}
+.mc-gallery .mc-section-mark > * { transform: rotate(-45deg); }
+.mc-gallery .mc-cadence {
+  border-radius: 999px;
+  border: 1px solid rgba(127, 214, 239, 0.35);
+  padding: 0.15rem 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9fdcf0;
+  white-space: nowrap;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.mc-gallery .mc-card {
+  --mc-accent: #f0d78c;
+  position: relative;
+  display: grid;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  background: linear-gradient(165deg, rgba(14, 24, 42, 0.96) 0%, rgba(6, 13, 25, 0.97) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 14px 30px -20px rgba(0, 0, 0, 0.9);
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+/* The accent edge along the top: each game's own colour. */
+.mc-gallery .mc-card::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 2;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--mc-accent), transparent);
+  opacity: 0.85;
+}
+.mc-gallery .mc-card:hover,
+.mc-gallery .mc-card:focus-within {
+  border-color: color-mix(in srgb, var(--mc-accent) 55%, rgba(201, 168, 76, 0.4));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 36px -18px rgba(0, 0, 0, 0.95),
+    0 0 0 1px color-mix(in srgb, var(--mc-accent) 25%, transparent);
+}
+@media (hover: hover) {
+  .mc-gallery .mc-card:hover { transform: translateY(-2px); }
+}
+.mc-gallery .mc-card[data-dim="true"] .mc-art { filter: saturate(0.55) brightness(0.8); }
+
+.mc-gallery .mc-card-art {
+  position: relative;
+  flex: none;
+}
+.mc-gallery .mc-theme {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.65rem;
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--mc-accent) 80%, #ffffff);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.mc-gallery .mc-badge {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.55rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(4px);
+}
+.mc-gallery .mc-badge[data-tone="gold"] {
+  border: 1px solid rgba(240, 215, 140, 0.85);
+  background: rgba(40, 30, 8, 0.75);
+  color: #f6e2a4;
+}
+.mc-gallery .mc-badge[data-tone="lock"] {
+  border: 1px solid rgba(214, 193, 147, 0.6);
+  background: rgba(20, 22, 30, 0.8);
+  color: #e6d6b0;
+}
+.mc-gallery .mc-badge[data-tone="muted"] {
+  border: 1px solid rgba(169, 179, 193, 0.45);
+  background: rgba(10, 16, 28, 0.8);
+  color: #c3cad4;
+}
+
+/* The status plate that stands where Play would. */
+.mc-gallery .mc-plate {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(169, 179, 193, 0.28);
+  background: rgba(7, 15, 28, 0.7);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  color: #c3cad4;
+}
+.mc-gallery .mc-plate[data-state="played"] {
+  border-color: rgba(127, 214, 239, 0.4);
+  color: #cfeaf4;
+}
+.mc-gallery .mc-plate strong { color: #efe8d6; font-weight: 650; }
+
+/* Play: the same gold as every Mogzy primary, with a little more presence. */
+.mc-gallery .mc-play {
+  min-height: 44px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.mc-gallery .mc-play[data-variant="daily"] {
+  border: 1px solid rgba(240, 215, 140, 0.7);
+  background: rgba(201, 168, 76, 0.12);
+  color: #f6e2a4;
+}
+.mc-gallery .mc-play[data-variant="daily"]:hover { background: rgba(201, 168, 76, 0.22); }
+.mc-gallery .mc-rules {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(169, 179, 193, 0.3);
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #d4dae2;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+.mc-gallery .mc-rules:hover { border-color: rgba(240, 215, 140, 0.6); color: #f6e2a4; background: rgba(201, 168, 76, 0.08); }
+.mc-gallery .mc-rules:focus-visible,
+.mc-gallery .mc-play:focus-visible {
+  outline: 2px solid #f0d78c;
+  outline-offset: 2px;
+}
+
+/* ── Art ────────────────────────────────────────────────────────────────── */
+.mc-gallery .mc-art {
+  position: relative;
+  overflow: hidden;
+  color: var(--mc-accent);
+  background:
+    radial-gradient(60% 90% at 50% 55%, color-mix(in srgb, var(--mc-accent) 24%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg, #0f1d32 0%, #07101d 100%);
+}
+/* A faint engraved grid, so wide cards never show an empty band. */
+.mc-gallery .mc-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(240, 215, 140, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240, 215, 140, 0.05) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: radial-gradient(70% 90% at 50% 50%, #000 0%, transparent 85%);
+}
+.mc-gallery .mc-art::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 28%;
+  background: linear-gradient(180deg, transparent, rgba(6, 13, 25, 0.75));
+  pointer-events: none;
+}
+.mc-gallery .mc-art-canvas {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  height: 100%;
+  aspect-ratio: 240 / 100;
+  transform: translateX(-50%);
+}
+.mc-gallery .mc-art-pic {
+  position: absolute;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+.mc-gallery .mc-art-ring {
+  box-shadow: 0 0 0 2px #0a1626, 0 0 0 3.5px #f0d78c;
+}
+.mc-gallery .mc-pt-sweep {
+  position: absolute;
+  border-radius: 2px;
+  background: conic-gradient(from 126deg, rgba(4, 8, 16, 0.72) 0turn 0.65turn, transparent 0.65turn 1turn);
+  pointer-events: none;
+}
+
+/* Card layouts.
+   Phone: a thumbnail beside the title and objective, actions full width below.
+   sm+:   a tall card — art, copy, actions.
+   lg, Daily Extras: two wide cards, art beside the copy. */
+.mc-gallery .mc-card {
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "art body" "foot foot";
+}
+.mc-gallery .mc-card-art { grid-area: art; }
+.mc-gallery .mc-card-body { grid-area: body; }
+.mc-gallery .mc-card-foot { grid-area: foot; align-self: end; }
+.mc-gallery .mc-card .mc-card-art { margin: 0.75rem 0 0 0.75rem; }
+.mc-gallery .mc-card .mc-card-art .mc-art { height: 84px; border-radius: 0.6rem; }
+.mc-gallery .mc-card .mc-theme { display: none; }
+.mc-gallery .mc-card .mc-badge { left: 0.75rem; right: auto; top: auto; bottom: -0.55rem; font-size: 9.5px; padding: 0.1rem 0.4rem; white-space: nowrap; }
+@media (min-width: 640px) {
+  .mc-gallery .mc-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "art" "body" "foot";
+  }
+  .mc-gallery .mc-card .mc-card-art { margin: 0; }
+  .mc-gallery .mc-card .mc-card-art .mc-art { height: 148px; border-radius: 0; }
+  .mc-gallery .mc-card .mc-theme { display: block; }
+  .mc-gallery .mc-card .mc-badge { left: auto; right: 0.6rem; top: 0.55rem; bottom: auto; font-size: 10.5px; padding: 0.2rem 0.55rem; }
+}
+@media (min-width: 1024px) {
+  .mc-gallery .mc-card[data-feature="true"] {
+    grid-template-columns: 44% minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "art body" "art foot";
+  }
+  .mc-gallery .mc-card[data-feature="true"] .mc-card-art .mc-art { height: 100%; min-height: 210px; }
+}
+
+/* ── Motion: one gesture per scene, on hover or keyboard focus ─────────── */
+.mc-gallery .mc-art .mc-anim-spin,
+.mc-gallery .mc-art .mc-anim-shake,
+.mc-gallery .mc-art .mc-anim-lift,
+.mc-gallery .mc-art .mc-anim-slide,
+.mc-gallery .mc-art .mc-anim-settle,
+.mc-gallery .mc-art .mc-anim-pulse,
+.mc-gallery .mc-art .mc-anim-sweep,
+.mc-gallery .mc-art .mc-anim-drop,
+.mc-gallery .mc-art .mc-anim-tilt-l,
+.mc-gallery .mc-art .mc-anim-tilt-r {
+  transform-box: view-box;
+  transition: transform 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-spin { transform: rotate(120deg); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-shake { animation: mc-shake 420ms ease 1; }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-lift { transform: translateY(-3px); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-slide { transform: translateX(16px); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-settle { transform: none; }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-pulse { transform: scale(1.25); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-sweep { transform: rotate(60deg); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-drop { transform: translateY(4px); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-tilt-l { transform: translateY(-6%); }
+.mc-gallery .mc-card:is(:hover, :focus-within) .mc-anim-tilt-r { transform: translateY(6%); }
+.mc-gallery .mc-art .mc-anim-blink { animation: mc-blink 1.2s steps(2, start) infinite; }
+@keyframes mc-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+@keyframes mc-blink { to { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-gallery .mc-card,
+  .mc-gallery .mc-card *,
+  .mc-gallery .mc-jump { transition: none !important; animation: none !important; }
+  .mc-gallery .mc-card:hover { transform: none; }
+  .mc-gallery .mc-card:is(:hover, :focus-within) [class*="mc-anim-"] { transform: none !important; }
+}

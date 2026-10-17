@@ -115,7 +115,7 @@ describe("PGM1 — resolveModeAction", () => {
     for (const daily of [{ state: "ready" as const, run: null }, { state: "error" as const }]) {
       expect(resolveModeAction(entry("survival"), daily)).toEqual({
         kind: "play", label: "Start Today's Daily", to: DAILY_CHALLENGE_ROUTE, state: DAILY_START_STATE,
-        note: "Unlocks after today's Daily Challenge.",
+        note: "Unlocks after today's Daily Challenge.", gate: "daily_first",
       });
     }
   });
@@ -124,7 +124,7 @@ describe("PGM1 — resolveModeAction", () => {
     const e = entry("time_trial");
     const paused = { ...e, availability: { status: "paused" as const, reasonCode: "DAILY_PAUSED", message: "Paused for now." } };
     expect(resolveModeAction(paused, { state: "ready", run: null }))
-      .toEqual({ kind: "blocked", label: "Paused", note: "Paused for now." });
+      .toEqual({ kind: "blocked", label: "Paused", note: "Paused for now.", gate: "paused" });
     // …but a run already started still continues.
     expect(resolveModeAction(paused, { state: "ready", run: mainDone() }).kind).toBe("play");
   });
@@ -132,12 +132,12 @@ describe("PGM1 — resolveModeAction", () => {
   it("main Daily not finished: continues today's Daily, never the bonus stage", () => {
     const run = fixtureV5Run(V5_ELIGIBLE_DAY, { current_stage_index: 0 });
     expect(resolveModeAction(entry("time_trial"), { state: "ready", run })).toMatchObject({
-      kind: "play", label: "Continue Today's Daily", state: DAILY_START_STATE });
+      kind: "play", label: "Continue Today's Daily", state: DAILY_START_STATE, gate: "daily_first" });
   });
 
   it("the run's current bonus stage gets Play, with the continue intent", () => {
     expect(resolveModeAction(entry("time_trial"), { state: "ready", run: mainDone() })).toEqual({
-      kind: "play", label: "Play", to: DAILY_CHALLENGE_ROUTE, state: DAILY_CONTINUE_STATE, note: null });
+      kind: "play", label: "Play", to: DAILY_CHALLENGE_ROUTE, state: DAILY_CONTINUE_STATE, note: null, gate: "ready" });
   });
 
   it("a live child is resumed, not restarted", () => {
@@ -147,31 +147,31 @@ describe("PGM1 — resolveModeAction", () => {
 
   it("a later bonus stage says what it waits for instead of offering Play", () => {
     expect(resolveModeAction(entry("survival"), { state: "ready", run: mainDone() })).toEqual({
-      kind: "blocked", label: "Up after Time Trial", note: "Today's bonus stages play in order." });
+      kind: "blocked", label: "Up after Time Trial", note: "Today's bonus stages play in order.", gate: "waiting" });
   });
 
   it("a finished stage reports today's result and offers nothing", () => {
     const run = mainDone({ 1: { status: "completed", result: wireResult({ correct: 7 }) } }, { current_stage_index: 2 });
     expect(resolveModeAction(entry("time_trial"), { state: "ready", run }))
-      .toEqual({ kind: "done", label: "Played today", note: "7 correct" });
+      .toEqual({ kind: "done", label: "Played today", note: "7 correct", gate: "played" });
     expect(resolveModeAction(entry("survival"), { state: "ready", run }).kind).toBe("play");
   });
 
   it("a legacy (v1–v4) run has no bonus stage to continue", () => {
     const run = fixtureRun(FOUR_STAGE_DAY, { plan_version: 4 });
     expect(resolveModeAction(entry("time_trial"), { state: "ready", run }))
-      .toEqual({ kind: "blocked", label: "Not in today's Daily", note: null });
+      .toEqual({ kind: "blocked", label: "Not in today's Daily", note: null, gate: "unavailable" });
   });
 
   it("an unavailable or paused mode is never drawn as Play", () => {
     const off = { ...entry("time_trial"), launch: null,
       availability: { status: "unavailable" as const, reasonCode: "DAILY_UNAVAILABLE", message: "Not today." } };
     expect(resolveModeAction(off, { state: "ready", run: null }))
-      .toEqual({ kind: "blocked", label: "Unavailable right now", note: "Not today." });
+      .toEqual({ kind: "blocked", label: "Unavailable right now", note: "Not today.", gate: "unavailable" });
     const paused = { ...entry("match_grid"), launch: null,
       availability: { status: "paused" as const, reasonCode: "BONUS_PAUSED", message: "Paused for now." } };
     expect(resolveModeAction(paused, { state: "ready", run: null }))
-      .toEqual({ kind: "blocked", label: "Paused", note: "Paused for now." });
+      .toEqual({ kind: "blocked", label: "Paused", note: "Paused for now.", gate: "paused" });
   });
 
   it("PGM2: a Ranked-backed bonus game starts from its card, whatever the Daily", () => {
@@ -186,7 +186,7 @@ describe("PGM1 — resolveModeAction", () => {
     const session = { ...entry("rangefinder"), launch: { kind: "session" as const, guestsAllowed: true },
       availability: { status: "available" as const, reasonCode: null, message: null } };
     expect(resolveModeAction(session, { state: "loading" }))
-      .toEqual({ kind: "play", label: "Play", to: sessionModeRoute("rangefinder"), state: null, note: null });
+      .toEqual({ kind: "play", label: "Play", to: sessionModeRoute("rangefinder"), state: null, note: null, gate: "ready" });
     expect(sessionModeRoute("rangefinder")).toBe("/quiz/more-challenges/rangefinder");
   });
 

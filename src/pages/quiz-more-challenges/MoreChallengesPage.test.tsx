@@ -102,8 +102,9 @@ describe("PGM1 — More Challenges", () => {
     renderPage();
     await waitFor(() => expect(cards()).toHaveLength(13));
     expect(cards().map((c) => c.getAttribute("data-mode-id"))).toEqual(wire.modes.map((m) => m.id));
-    expect(screen.getByTestId("more-challenges-count"))
-      .toHaveTextContent(`13 bonus modes · ${OPEN.length} open now`);
+    // MC-UX1: the count is what can be played NOW — not every mode with a
+    // launch (the Daily stages wait for today's Daily).
+    expect(screen.getByTestId("more-challenges-count")).toHaveTextContent(`${OPEN.length - 2} ready to play now`);
     for (const c of cards()) {
       expect(within(c).getByTestId("mode-card-title")).toBeInTheDocument();
       expect(within(c).getByTestId("mode-card-theme")).toBeInTheDocument();
@@ -189,13 +190,20 @@ describe("PGM1 — More Challenges", () => {
     await waitFor(() => expect(cards()).toHaveLength(13));
   });
 
-  it("lays out one column on a phone, two from sm, three from lg, with 44px Play targets", async () => {
+  it("lays out one column on a phone, two from sm, three (Daily Extras: two) from lg, with 44px targets", async () => {
     renderPage();
     await waitFor(() => expect(cards()).toHaveLength(13));
-    expect(screen.getByTestId("more-challenges-grid").className)
-      .toMatch(/grid-cols-1.*sm:grid-cols-2.*lg:grid-cols-3/);
+    expect(screen.getByTestId("more-challenges-grid-daily_extras").className)
+      .toMatch(/grid-cols-1.*sm:grid-cols-2.*lg:grid-cols-2/);
+    for (const id of ["knowledge_arena", "precision_recall"]) {
+      expect(screen.getByTestId(`more-challenges-grid-${id}`).className)
+        .toMatch(/grid-cols-1.*sm:grid-cols-2.*lg:grid-cols-6/);
+    }
     for (const b of screen.getAllByTestId("mode-card-play")) expect(b.className).toMatch(/min-h-\[44px\]/);
+    // `.mc-rules` is a 44px box (gallery.css); the back link is 44px tall.
+    for (const b of screen.getAllByTestId("mode-card-rules")) expect(b.className).toContain("mc-rules");
     expect(screen.getByTestId("more-challenges-back")).toHaveAttribute("href", "/quiz");
+    expect(screen.getByTestId("more-challenges-back").className).toMatch(/min-h-\[44px\]/);
   });
 
   // ── PGM2: Ranked-backed bonus games ───────────────────────────────────────
@@ -267,5 +275,121 @@ describe("PGM1 — More Challenges", () => {
     fireEvent.click(screen.getByTestId("more-challenges-notice-return"));
     await waitFor(() => expect(router.state.location.pathname).toBe("/quiz/ranked"));
     expect(JSON.parse(screen.getByTestId("ranked-route").textContent!)).toEqual({ matchId: "rbg_live", origin: "bonus_game" });
+  });
+
+  // ── MC-UX1: the gallery ───────────────────────────────────────────────────
+
+  const inCollection = (id: string) =>
+    within(screen.getByTestId(`more-challenges-collection-${id}`)).getAllByTestId("mode-card")
+      .map((c) => c.getAttribute("data-mode-id"));
+
+  it("MC-UX1: three collections, each with its games and a jump link", async () => {
+    renderPage();
+    await waitFor(() => expect(cards()).toHaveLength(13));
+    expect(inCollection("daily_extras")).toEqual(["time_trial", "survival"]);
+    expect(inCollection("knowledge_arena"))
+      .toEqual(["roster_lock", "draft_memory", "chronoscope", "match_grid", "reconstruct", "order_forge"]);
+    expect(inCollection("precision_recall"))
+      .toEqual(["rangefinder", "glyph_press", "perfect_timing", "stat_drop", "combat_estimate"]);
+    for (const [id, title, n] of [["daily_extras", "Daily Extras", 2], ["knowledge_arena", "Knowledge Arena", 6],
+      ["precision_recall", "Precision & Recall", 5]] as const) {
+      expect(screen.getByRole("heading", { level: 2, name: title })).toBeInTheDocument();
+      const jump = screen.getByTestId(`more-challenges-jump-${id}`);
+      expect(jump).toHaveAttribute("href", `#mc-${id}`);
+      expect(jump).toHaveTextContent(`${title}${n}`);
+    }
+    // Every card carries its own game's art, hidden from assistive tech.
+    for (const c of cards()) {
+      const art = within(c).getByTestId("mode-card-art");
+      expect(art).toHaveAttribute("data-art", c.getAttribute("data-mode-id"));
+      expect(art).toHaveAttribute("aria-hidden", "true");
+    }
+    expect(screen.getByRole("heading", { level: 1, name: "More Challenges" })).toBeInTheDocument();
+    expect(screen.getByTestId("more-challenges-hero"))
+      .toHaveTextContent("Unrated: they never change your Daily score or Ranked rating.");
+  });
+
+  it("MC-UX1: no repeated OPEN chips; a playable bonus game shows Play and no badge", async () => {
+    renderPage();
+    await waitFor(() => expect(cards()).toHaveLength(13));
+    expect(screen.queryByText(/^open$/i)).toBeNull();
+    for (const id of ["match_grid", "rangefinder", "combat_estimate"]) {
+      expect(card(id)).toHaveAttribute("data-state", "ready");
+      expect(within(card(id)).queryByTestId("mode-card-status")).toBeNull();
+      expect(within(card(id)).getByTestId("mode-card-play")).toHaveTextContent("Play");
+    }
+  });
+
+  it("MC-UX1: with no Daily, the Daily stages are marked 'Daily first', not playable", async () => {
+    renderPage();
+    await waitFor(() => expect(within(card("time_trial")).getByTestId("mode-card-play")).toBeInTheDocument());
+    for (const id of ["time_trial", "survival"]) {
+      expect(card(id)).toHaveAttribute("data-state", "daily_first");
+      expect(within(card(id)).getByTestId("mode-card-status")).toHaveTextContent("Daily first");
+      // Same operation as before: Play starts today's Daily.
+      expect(within(card(id)).getByTestId("mode-card-play")).toHaveTextContent("Start Today's Daily");
+    }
+    fireEvent.click(within(card("survival")).getByTestId("mode-card-play"));
+    await waitFor(() => expect(screen.getByTestId("daily-route")).toBeInTheDocument());
+    expect(JSON.parse(screen.getByTestId("daily-route").textContent!)).toEqual({ startDaily: true });
+  });
+
+  it("MC-UX1: after the main Daily, the current stage is up now and the next one waits", async () => {
+    h.readToday.mockResolvedValue(mainDone());
+    renderPage();
+    await waitFor(() => expect(card("time_trial")).toHaveAttribute("data-state", "ready"));
+    expect(within(card("time_trial")).getByTestId("mode-card-status")).toHaveTextContent("Up now");
+    expect(card("survival")).toHaveAttribute("data-state", "waiting");
+    expect(within(card("survival")).getByTestId("mode-card-blocked"))
+      .toHaveTextContent("Up after Time TrialToday's bonus stages play in order.");
+    expect(screen.getByTestId("more-challenges-count")).toHaveTextContent(`${OPEN.length - 1} ready to play now`);
+  });
+
+  it("MC-UX1: stages played today show today's result and offer no Play", async () => {
+    h.readToday.mockResolvedValue(fixtureV5Run(V5_ELIGIBLE_DAY,
+      { main_completed_at: "2026-10-16T10:00:00Z", main_score: 1234, current_stage_index: 3 },
+      { 0: { status: "completed", result: wireResult() }, 1: { status: "completed", result: wireResult({ correct: 11 }) },
+        2: { status: "completed", result: wireResult({ correct: 7 }) } }));
+    renderPage();
+    await waitFor(() => expect(card("time_trial")).toHaveAttribute("data-state", "played"));
+    expect(within(card("time_trial")).getByTestId("mode-card-done")).toHaveTextContent("Played today11 correct");
+    expect(within(card("survival")).getByTestId("mode-card-done")).toHaveTextContent("Played today7 correct");
+    for (const id of ["time_trial", "survival"]) expect(within(card(id)).queryByTestId("mode-card-play")).toBeNull();
+  });
+
+  it("MC-UX1: paused bonus games say so once per collection; the Daily stages are untouched", async () => {
+    const paused = JSON.parse(JSON.stringify(wire));
+    for (const m of paused.modes) {
+      if (m.launch && m.launch.kind !== "daily_stage") {
+        m.launch = null;
+        m.availability = { status: "paused", reason_code: "BONUS_PAUSED", message: "New bonus games are paused for now." };
+      }
+    }
+    h.fetch.mockImplementation(() => ok(paused));
+    renderPage();
+    await waitFor(() => expect(cards()).toHaveLength(13));
+    for (const id of ["knowledge_arena", "precision_recall"]) {
+      expect(screen.getByTestId(`more-challenges-paused-${id}`)).toHaveTextContent("New bonus games are paused for now.");
+    }
+    expect(screen.queryByTestId("more-challenges-paused-daily_extras")).toBeNull();
+    expect(screen.getAllByText("New bonus games are paused for now.")).toHaveLength(2);
+    for (const id of ["match_grid", "rangefinder"]) {
+      expect(card(id)).toHaveAttribute("data-state", "paused");
+      expect(within(card(id)).getByTestId("mode-card-blocked")).toHaveTextContent(/^Paused$/);
+      expect(within(card(id)).queryByTestId("mode-card-play")).toBeNull();
+    }
+    expect(screen.getAllByTestId("mode-card-play")).toHaveLength(2);
+    expect(screen.getByTestId("more-challenges-count")).toHaveTextContent("0 ready to play now");
+  });
+
+  it("MC-UX1: Rules opens from every card's 44px control, named for its game", async () => {
+    renderPage();
+    await waitFor(() => expect(cards()).toHaveLength(13));
+    for (const c of cards()) {
+      const title = within(c).getByTestId("mode-card-title").textContent;
+      expect(within(c).getByTestId("mode-card-rules")).toHaveAccessibleName(`Rules for ${title}`);
+    }
+    fireEvent.click(within(card("perfect_timing")).getByTestId("mode-card-rules"));
+    expect(await screen.findByTestId("mode-rules-content-perfect_timing")).toHaveTextContent("practice, not a verified score");
   });
 });
