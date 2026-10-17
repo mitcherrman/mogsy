@@ -1,6 +1,6 @@
 # MISC Wave 2D: server-authoritative countdown, sound and TIME'S UP (F10–F12)
 
-Issue: mitcherrman/mogsy#61 · Branch `fix/misc-w2d-countdown-feedback` · Draft PR: see the PR link at the end of this file.
+Issue: mitcherrman/mogsy#61 · Branch `fix/misc-w2d-countdown-feedback` · Draft PR mitcherrman/mogsy#63
 Owner session: Claude Code, Opus 5.5, high effort · Date 2026-10-17
 
 ## Status
@@ -11,7 +11,7 @@ Owner session: Claude Code, Opus 5.5, high effort · Date 2026-10-17
 |---|---|
 | Base (`origin/main`, fresh fetch) | `f248f840` (F08, PR #57) |
 | Code | `c575fca9` (F10–F12) and `598d0592` (one-lock segment timeouts) |
-| Docs + evidence | the commit that adds this file |
+| Docs + evidence | `e50e0864` (PR opened at that head); later lines are updated by docs-only commits |
 | Draft PR #46 (Journey CSS) inspected | `64e45176` |
 | Draft PR #59 (F09 frontend test) inspected | `a3a47cca` |
 | Wave 2C branch inspected | `fix/misc-w2c-daily-discoveries` @ `7f416915` |
