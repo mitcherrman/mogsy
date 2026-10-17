@@ -73,6 +73,12 @@
  * current question needs are the Reasoning Chain's. The former anchor row is
  * gone (JP5 geometry pass): a phone's name line takes its column, and above a
  * phone its height went to the question region (`--jq-prompt-h`).
+ *
+ * MISC-W1B F08 — A STATED FORMULA STAYS ONE TAP AWAY. A formula a child only
+ * STATED (no `!`: it was not revealed) is offered from the stating child on as
+ * a REFERENCE on its ability's own tile (`lib/journey/abilityReference.ts`,
+ * `JourneyAbilityReference`); on an ability that already wears a `!`, inside
+ * that `!`'s card. One control per ability, either way.
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -96,6 +102,8 @@ import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
 import { JourneyChampionPortraitPopup } from "./JourneyChampionPortraitPopup";
 import { ShardIcon } from "./JourneyIcons";
 import { JourneyShardReference } from "./JourneyReferencePopover";
+import { statedAbilityReferences, type StatedAbilityReferences } from "@/lib/journey/abilityReference";
+import { JourneyAbilityReference } from "./JourneyAbilityReference";
 import { useBoardCoach } from "./useKnowledgeCoach";
 import { useSavedNow, type SavedNow } from "./useSavedNow";
 import { useItemArrivals } from "./useItemArrivals";
@@ -182,8 +190,10 @@ function ShardPage({ side, popup }: { side: JourneySide; popup: ChampionPortrait
   );
 }
 
-function SidePanel({ state, side, marks, knowledge, gains, saved, itemArrivals, attention, popup, shardColumn }: {
+function SidePanel({ state, side, marks, knowledge, references, gains, saved, itemArrivals, attention, popup, shardColumn }: {
   state: JourneyPublicState;
+  /** F08 — the formulas a reached child STATED, by ability key (`statedAbilityReferences`). */
+  references: StatedAbilityReferences;
   side: JourneySide;
   marks: JourneyMarks;
   knowledge: JourneyKnowledge;
@@ -255,6 +265,7 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, itemArrivals, 
         {side.abilities.map((a) => {
           const key = knowledgeKeyFor(side, a.slot);
           const known = knowledge.get(key) ?? null;
+          const stated = references.get(key) ?? null;
           const relevant = attention.of({ kind: "ability", side: id, slot: a.slot }).relevant;
           return (
             <span key={a.slot} className="journey-know-host journey-know-host--ability" data-know-key={key}
@@ -266,7 +277,12 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, itemArrivals, 
               {known && (
                 <JourneyKnowledgeMark mark={known} name={`${side.championName} ${a.slot}`} abilityName={a.name}
                   placement="ability" fresh={known.facts.some((f) => isFresh(known.key, f))} relevant={relevant}
+                  reference={stated && { reference: stated, rank: a.rank }}
                   testId={`journey-know-${id}-${a.slot}`} />
+              )}
+              {!known && stated && (
+                <JourneyAbilityReference reference={stated} ability={a} champion={side.championName}
+                  testId={`journey-ability-ref-${id}-${a.slot}`} />
               )}
             </span>
           );
@@ -422,6 +438,8 @@ export function JourneyStateBoard({
     opponent: championPortraitPopup(journey, knowledge, "opponent", state.step.index),
   };
   const attention = boardAttention(state, knowledge, journey, popups);
+  // F08 — stated formulas, reached prefix only (never ahead of the step on screen).
+  const references = statedAbilityReferences(journey, state.step.index, knowledge);
   // JATTN1 — the facts this reveal saved just now (seeded silently on mount).
   const saved = useSavedNow(persistentBoardFacts(journey, knowledge, state.step.index, popups),
     revealing ? state.step.index : null);
@@ -489,7 +507,7 @@ export function JourneyStateBoard({
       <SideArt side={subject} />
       <SideArt side={opponent} />
       <div className="journey-board__sides">
-        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} saved={saved} itemArrivals={itemArrivals}
+        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} references={references} gains={gains} saved={saved} itemArrivals={itemArrivals}
           attention={attention} popup={popups.subject ?? null} shardColumn={shardColumn} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
@@ -499,7 +517,7 @@ export function JourneyStateBoard({
             <span className="font-black tracking-[0.2em] text-[#e8c97a]/80">VS</span>
           )}
         </div>
-        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} saved={saved} itemArrivals={itemArrivals}
+        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} references={references} gains={gains} saved={saved} itemArrivals={itemArrivals}
           attention={attention} popup={popups.opponent ?? null} shardColumn={shardColumn} />
       </div>
       {coach.visible && <BoardCoach text={coach.text} onDismiss={coach.dismiss} />}

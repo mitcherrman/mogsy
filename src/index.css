@@ -19158,6 +19158,31 @@ html.reduce-motion [data-inspect="true"],
 html.reduce-motion .journey-portrait-btn,
 html.reduce-motion .journey-know-host--ability .journey-ability > span:first-child { animation: none !important; transition: none !important; transform: none !important; }
 .journey-ref-pop__note { padding: 2px 0; font-size: 0.6875rem; color: rgb(255 255 255 / 0.65); }
+/* MISC-W1B F08 — a STATED formula's reference: the ability's own tile is the
+   control (a `journey-ref-btn` over its host), with the same affordance as an
+   ability wearing a `!`. Scoped to hosts that carry one; nothing else changes. */
+.journey-know-host--ability:has(> .journey-ref-btn) .journey-ability > span:first-child {
+  cursor: pointer;
+  outline: 1.5px solid transparent;
+  outline-offset: 1px;
+}
+.journey-know-host--ability:has(> .journey-ref-btn:is(:hover, :active, :focus-visible, [data-state="open"])) .journey-ability > span:first-child {
+  filter: brightness(1.18);
+  outline-color: rgb(243 220 160 / 0.8);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-know-host--ability:has(> .journey-ref-btn) .journey-ability > span:first-child {
+    transition: transform 120ms ease-out, filter 120ms ease-out, outline-color 120ms ease-out;
+  }
+  .journey-know-host--ability:has(> .journey-ref-btn:is(:hover, :focus-visible, [data-state="open"])) .journey-ability > span:first-child {
+    transform: translateY(-1px);
+  }
+}
+.journey-ability-ref__meaning { max-width: 15rem; white-space: normal; }
+/* F08 — an ability's `!` is a marker inside its tile control (the portrait's
+   pattern): the tile takes the tap; the badge lights with the control. */
+.journey-know-btn > .journey-know { pointer-events: none; }
+.journey-know-btn:is(:hover, [data-state="open"]) > .journey-know { background: #f3dca0; }
 
 /* 6. THE ROLE SLOT. "Attacker" / "Target" appears and disappears from step to
    step; the slot beside the level is reserved at the longest label's width
