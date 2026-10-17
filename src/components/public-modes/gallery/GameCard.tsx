@@ -7,7 +7,7 @@
  * always did — and a card with no Play shows the resolver's own reason.
  */
 import { useId } from "react";
-import { BookOpen, Check, Clock3, Lock, PauseCircle, Sparkles } from "lucide-react";
+import { BookOpen, Check, Clock3, History, Lock, PauseCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PublicModeEntry } from "@/lib/public-modes/contracts";
@@ -19,7 +19,19 @@ import { GameArt } from "./GameArt";
 
 export type PlayAction = Extract<ModeAction, { kind: "play" | "start" }>;
 
-export function GameCard({ entry, action, status, onPlay, onRules, starting = false, busy = false, feature = false }: {
+/**
+ * MC-UX2 — the player's own record for this game, already worded (see
+ * `modeHistoryParts`): `loading` holds the line's height, `none` says there is
+ * no game yet.
+ */
+export type CardHistory =
+  | { state: "loading" }
+  /** No record: `text` says so honestly (see `modeHistoryEmptyText`). */
+  | { state: "none"; text?: string }
+  | { state: "ready"; parts: string[] };
+
+export function GameCard({ entry, action, status, onPlay, onRules, starting = false, busy = false, feature = false,
+  history }: {
   entry: PublicModeEntry;
   action: ModeAction;
   status: CardStatus;
@@ -29,6 +41,7 @@ export function GameCard({ entry, action, status, onPlay, onRules, starting = fa
   busy?: boolean;
   /** Daily Extras: a wide card with the art beside the copy (from lg). */
   feature?: boolean;
+  history?: CardHistory;
 }) {
   const titleId = useId();
   const dim = status.state === "coming_soon" || status.state === "paused" || status.state === "unavailable";
@@ -85,8 +98,29 @@ export function GameCard({ entry, action, status, onPlay, onRules, starting = fa
             {status.note}
           </p>
         )}
+        {history && <HistoryLine history={history} />}
       </div>
     </article>
+  );
+}
+
+function HistoryLine({ history }: { history: CardHistory }) {
+  if (history.state === "loading") {
+    return <Skeleton className="mc-history h-[18px] w-2/3 rounded" data-testid="mode-card-history" data-state="loading" />;
+  }
+  const parts = history.state === "ready" ? history.parts : [];
+  return (
+    <p className="mc-history" data-testid="mode-card-history" data-state={parts.length ? "ready" : "none"}>
+      <History className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+      <span className="sr-only">Your record: </span>
+      {parts.length ? (
+        <span className="min-w-0">
+          {parts.map((p, i) => (
+            <span key={p}>{i > 0 && <span className="mc-history-dot" aria-hidden="true"> · </span>}{p}</span>
+          ))}
+        </span>
+      ) : <span>{history.state === "none" && history.text ? history.text : "No games yet"}</span>}
+    </p>
   );
 }
 

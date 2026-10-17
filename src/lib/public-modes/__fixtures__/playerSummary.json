@@ -1,0 +1,204 @@
+{
+ "contract": "public_game_modes.player_summary.v1",
+ "generated_at": "2026-10-22T15:00:00+00:00",
+ "overall": {
+  "games_played": 15,
+  "favorite_mode_id": "combat_estimate",
+  "last_played": {
+   "mode_id": "glyph_press",
+   "at": "2026-10-22T13:00:00+00:00"
+  },
+  "games_this_week": 15,
+  "active_days_this_week": 7,
+  "streak_days": 7
+ },
+ "session_tracking_started_at": "2026-10-17T05:16:47+00:00",
+ "modes": {
+  "time_trial": {
+   "mode_id": "time_trial",
+   "played": 3,
+   "last_played_at": "2026-10-21T12:00:00+00:00",
+   "best": {
+    "correct": 17
+   },
+   "last": {
+    "correct": 12
+   },
+   "kind": "daily_stage"
+  },
+  "survival": {
+   "mode_id": "survival",
+   "played": 2,
+   "last_played_at": "2026-10-21T12:20:00+00:00",
+   "best": {
+    "correct": 11
+   },
+   "last": {
+    "correct": 11
+   },
+   "kind": "daily_stage"
+  },
+  "roster_lock": {
+   "mode_id": "roster_lock",
+   "played": 0,
+   "last_played_at": null,
+   "best": null,
+   "last": null,
+   "kind": "boards",
+   "wins": 0,
+   "best_window": null
+  },
+  "draft_memory": {
+   "mode_id": "draft_memory",
+   "played": 0,
+   "last_played_at": null,
+   "best": null,
+   "last": null,
+   "kind": "boards",
+   "wins": 0,
+   "best_window": null
+  },
+  "chronoscope": {
+   "mode_id": "chronoscope",
+   "played": 0,
+   "last_played_at": null,
+   "best": null,
+   "last": null,
+   "kind": "boards",
+   "wins": 0,
+   "best_window": null
+  },
+  "match_grid": {
+   "mode_id": "match_grid",
+   "played": 2,
+   "last_played_at": "2026-10-21T12:00:52.000000+00:00",
+   "best": {
+    "correct": 3,
+    "total": 3
+   },
+   "last": {
+    "correct": 3,
+    "total": 3,
+    "outcome": "loss"
+   },
+   "wins": 0,
+   "best_window": null,
+   "kind": "boards"
+  },
+  "reconstruct": {
+   "mode_id": "reconstruct",
+   "played": 0,
+   "last_played_at": null,
+   "best": null,
+   "last": null,
+   "kind": "boards",
+   "wins": 0,
+   "best_window": null
+  },
+  "order_forge": {
+   "mode_id": "order_forge",
+   "played": 0,
+   "last_played_at": null,
+   "best": null,
+   "last": null,
+   "kind": "boards",
+   "wins": 0,
+   "best_window": null
+  },
+  "rangefinder": {
+   "mode_id": "rangefinder",
+   "played": 2,
+   "last_played_at": "2026-10-20T12:00:00+00:00",
+   "best": {
+    "hits": 5,
+    "of": 10
+   },
+   "last": {
+    "hits": 5,
+    "of": 10
+   },
+   "rounds_locked": 20,
+   "sessions_completed": 2,
+   "total_hits": 8,
+   "kind": "exact",
+   "tracked_since": "2026-10-17T05:16:47+00:00"
+  },
+  "glyph_press": {
+   "mode_id": "glyph_press",
+   "played": 1,
+   "last_played_at": "2026-10-22T13:00:00+00:00",
+   "best": {
+    "hits": 4,
+    "of": 9
+   },
+   "last": {
+    "hits": 4,
+    "of": 9
+   },
+   "rounds_locked": 6,
+   "sessions_completed": 0,
+   "total_hits": 4,
+   "kind": "solved",
+   "tracked_since": "2026-10-17T05:16:47+00:00"
+  },
+  "perfect_timing": {
+   "mode_id": "perfect_timing",
+   "played": 1,
+   "last_played_at": "2026-10-22T12:00:00+00:00",
+   "best": {
+    "points": 287,
+    "of": 500
+   },
+   "last": {
+    "points": 287,
+    "of": 500
+   },
+   "rounds_locked": 5,
+   "sessions_completed": 1,
+   "closest": {
+    "abs_error_ms": 180,
+    "relative_error": 0.0189
+   },
+   "kind": "timing",
+   "tracked_since": "2026-10-17T05:16:47+00:00"
+  },
+  "stat_drop": {
+   "mode_id": "stat_drop",
+   "played": 1,
+   "last_played_at": "2026-10-19T12:02:00+00:00",
+   "best": {
+    "relative_error": 0.11504424778761062
+   },
+   "last": {
+    "relative_error": 0.25
+   },
+   "rounds_locked": 6,
+   "sessions_completed": 1,
+   "unit": "relative",
+   "mean": {
+    "relative_error": 0.5832873970779576
+   },
+   "kind": "estimate",
+   "tracked_since": "2026-10-17T05:16:47+00:00"
+  },
+  "combat_estimate": {
+   "mode_id": "combat_estimate",
+   "played": 3,
+   "last_played_at": "2026-10-22T12:02:00+00:00",
+   "best": {
+    "abs_error": 2.0
+   },
+   "last": {
+    "abs_error": 86.0
+   },
+   "rounds_locked": 18,
+   "sessions_completed": 3,
+   "unit": "damage",
+   "mean": {
+    "abs_error": 79.72222222222223
+   },
+   "kind": "estimate",
+   "tracked_since": "2026-10-17T05:16:47+00:00"
+  }
+ }
+}
