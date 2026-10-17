@@ -14,6 +14,12 @@
  * `cardStatus` derives from that same action. Every launch, notice, replay
  * and analytics path below is unchanged.
  *
+ * MC-UX2 — a HUB: the collections are paged one at a time (CategoryPager: arrows
+ * first, tabs to jump; `?c=` remembers the page), a Random button launches one
+ * of the modes playable right now through the same `play` path a card uses, and
+ * the player's own history (lib/public-modes/summary, `GET /me/summary`) shows
+ * as a stats strip and a line on each card.
+ *
  * WAYS IN AND OUT
  * ───────────────
  * In: the Daily's main result ("Play More Challenges"), a bonus stage's result,
@@ -25,13 +31,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
 import { ModeRulesPanel } from "@/components/public-modes/ModeRulesPanel";
+import { CategoryPager } from "@/components/public-modes/gallery/CategoryPager";
 import { CollectionSection } from "@/components/public-modes/gallery/CollectionSection";
 import { GalleryHero } from "@/components/public-modes/gallery/GalleryHero";
-import { GameCard, GameCardSkeleton, type PlayAction } from "@/components/public-modes/gallery/GameCard";
+import {
+  GameCard, GameCardSkeleton, type CardHistory, type PlayAction,
+} from "@/components/public-modes/gallery/GameCard";
+import { PlayerStats, RandomButton, type SummaryState } from "@/components/public-modes/gallery/HubToolbar";
 import "@/components/public-modes/gallery/gallery.css";
 import { track } from "@/lib/analytics/track";
 import { httpDailyRunTransport } from "@/lib/daily-challenge/run/client";
@@ -48,7 +58,11 @@ import {
   resolveModeAction,
   type DailyContext,
 } from "@/lib/public-modes/launch";
-import { cardStatus, collectionCellClass, countReady, groupModes, sharePause } from "@/lib/public-modes/gallery";
+import {
+  cardStatus, collectionCellClass, collectionOfMode, countReady, groupModes, initialCollection, pickRandomPlayable,
+  sharePause, stepCollection, type GalleryGroup,
+} from "@/lib/public-modes/gallery";
+import { modeHistoryParts, usePlayerSummary } from "@/lib/public-modes/summary";
 import {
   MORE_CHALLENGES_MODE_SELECTED,
   MORE_CHALLENGES_VIEWED,
@@ -124,6 +138,34 @@ export default function MoreChallengesPage() {
   );
   const groups = useMemo(() => groupModes(modes), [modes]);
 
+  // MC-UX2 — the collection on screen. The URL (`?c=`) remembers it, so a
+  // reload or Back lands on the same page.
+  const [chosen, setChosen] = useState<GalleryGroup["id"] | null>(null);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const active = chosen ?? initialCollection(groups, searchParams.get("c"), source);
+  const activeGroup = groups.find((g) => g.id === active) ?? null;
+  const pagerRef = useRef<HTMLDivElement>(null);
+  const changeCollection = (id: GalleryGroup["id"], dir: 1 | -1) => {
+    setDirection(dir);
+    setChosen(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("c", id);
+      return next;
+    }, { replace: true, state: location.state });
+  };
+
+  // MC-UX2 — the player's own record.
+  const summaryQuery = usePlayerSummary();
+  const summary: SummaryState = summaryQuery.isPending ? { state: "loading" }
+    : summaryQuery.isError ? { state: "error" } : { state: "ready", summary: summaryQuery.data ?? null };
+  const historyOf = (id: PublicModeId): CardHistory | undefined => {
+    if (summary.state === "loading") return { state: "loading" };
+    if (summary.state === "error") return undefined;
+    const parts = modeHistoryParts(summary.summary?.modes[id]);
+    return parts.length ? { state: "ready", parts } : { state: "none" };
+  };
+
   const start = async (entry: PublicModeEntry) => {
     if (startingRef.current) return;
     startingRef.current = true;
@@ -190,6 +232,21 @@ export default function MoreChallengesPage() {
     if (entry && action?.kind === "start") play(entry, action);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playParam, catalog.data]);
+  // MC-UX2 — Random: one of the modes playable right now, launched through the
+  // card's own path (same analytics, same start contract).
+  const playable = modes.filter((m) => statuses.get(m.id)?.state === "ready");
+  const [randomPick, setRandomPick] = useState<string | null>(null);
+  const random = () => {
+    const pick = pickRandomPlayable(modes, (m) => statuses.get(m.id), (m) => actions.get(m.id));
+    if (!pick) return;
+    const action = actions.get(pick.id);
+    if (!action || (action.kind !== "play" && action.kind !== "start")) return;
+    const where = collectionOfMode(groups, pick.id);
+    if (where && where !== active) changeCollection(where, 1);
+    setRandomPick(pick.title);
+    play(pick, action);
+  };
+
   const showRules = (entry: PublicModeEntry) => {
     track(MORE_CHALLENGES_MODE_SELECTED, { metadata: modeSelectedMetadata(entry.id, "rules", source) });
     setRulesFor(entry);
@@ -208,10 +265,18 @@ export default function MoreChallengesPage() {
         data-source={source}
       >
         <GalleryHero
-          groups={catalog.data ? groups : null}
           total={catalog.data ? modes.length : null}
           ready={catalog.data ? countReady(statuses.values()) : null}
-        />
+          action={catalog.data ? (
+            <RandomButton count={playable.length} busy={startingId !== null} onRandom={random} />
+          ) : null}
+        >
+          <PlayerStats summary={summary} />
+        </GalleryHero>
+
+        <p className="sr-only" aria-live="polite" data-testid="more-challenges-random-pick">
+          {randomPick ? `Random pick: ${randomPick}` : ""}
+        </p>
 
         <div aria-live="polite" className="empty:hidden">
           {notice && (
@@ -252,28 +317,52 @@ export default function MoreChallengesPage() {
             </Button>
           </section>
         ) : (
-          <div className="flex flex-col gap-8 sm:gap-10" data-testid="more-challenges-grid">
-            {groups.map((g) => {
+          <div className="flex flex-col gap-4" data-testid="more-challenges-grid" ref={pagerRef}>
+            {groups.length > 1 && active && (
+              <CategoryPager groups={groups} active={active} panelId="mc-collection-panel"
+                onChange={changeCollection} />
+            )}
+            {activeGroup && (() => {
+              const g = activeGroup;
               const pause = sharePause(g.modes.map((m) => statuses.get(m.id) ?? cardStatus(m, { kind: "coming_soon" })));
+              const next = groups.find((x) => x.id === stepCollection(groups, g.id, 1));
               return (
-              <CollectionSection key={g.id} group={g} pausedReason={pause.reason}>
-                {g.modes.map((m, i) => (
-                  <li key={m.id} className={collectionCellClass(g.id, i, g.modes.length)}>
-                    <GameCard
-                      entry={m}
-                      action={actions.get(m.id) ?? { kind: "coming_soon" }}
-                      status={pause.statuses[i]}
-                      onPlay={play}
-                      starting={startingId === m.id}
-                      busy={startingId !== null}
-                      onRules={() => showRules(m)}
-                      feature={g.id === "daily_extras"}
-                    />
-                  </li>
-                ))}
-              </CollectionSection>
+                <div id="mc-collection-panel" role="tabpanel" aria-labelledby={`mc-tab-${g.id}`}
+                  key={g.id} className="mc-page" data-direction={direction > 0 ? "next" : "prev"}
+                  data-testid="more-challenges-panel" data-collection={g.id}>
+                  <CollectionSection group={g} pausedReason={pause.reason}>
+                    {g.modes.map((m, i) => (
+                      <li key={m.id} className={collectionCellClass(g.id, i, g.modes.length)}>
+                        <GameCard
+                          entry={m}
+                          action={actions.get(m.id) ?? { kind: "coming_soon" }}
+                          status={pause.statuses[i]}
+                          onPlay={play}
+                          starting={startingId === m.id}
+                          busy={startingId !== null}
+                          onRules={() => showRules(m)}
+                          feature={g.id === "daily_extras"}
+                          history={historyOf(m.id)}
+                        />
+                      </li>
+                    ))}
+                  </CollectionSection>
+                  {next && next.id !== g.id && (
+                    <div className="mt-4 flex justify-end">
+                      <button type="button" className="mc-next-page" data-testid="more-challenges-next-page"
+                        onClick={() => {
+                          changeCollection(next.id, 1);
+                          const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+                          pagerRef.current?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
+                        }}>
+                        Next: {next.title}
+                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
-            })}
+            })()}
           </div>
         )}
       </div>

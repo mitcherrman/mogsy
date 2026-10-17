@@ -176,6 +176,52 @@ export function collectionCellClass(groupId: GalleryGroup["id"], index: number, 
   return cn(lastOdd, lgSpan);
 }
 
+/**
+ * MC-UX2 — the Random button's pick: uniformly one of the modes whose card is
+ * playable RIGHT NOW (its action is Play / Start and its state is `ready`). A
+ * Daily stage waiting on the Daily, a paused, unavailable, played or checking
+ * mode is never a candidate. Null when nothing is playable.
+ */
+export function pickRandomPlayable<T extends { id: PublicModeId }>(
+  modes: readonly T[],
+  statusOf: (m: T) => CardStatus | undefined,
+  actionOf: (m: T) => ModeAction | undefined,
+  rng: () => number = Math.random,
+): T | null {
+  const pool = modes.filter((m) => {
+    const a = actionOf(m);
+    return statusOf(m)?.state === "ready" && (a?.kind === "play" || a?.kind === "start");
+  });
+  if (!pool.length) return null;
+  return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+}
+
+/** MC-UX2 — the collection `delta` steps away, wrapping at both ends. */
+export function stepCollection(groups: readonly GalleryGroup[], active: GalleryGroup["id"], delta: number) {
+  const i = Math.max(0, groups.findIndex((g) => g.id === active));
+  const n = groups.length;
+  return groups[(((i + delta) % n) + n) % n].id;
+}
+
+/** The collection a mode is drawn in. */
+export const collectionOfMode = (groups: readonly GalleryGroup[], id: PublicModeId) =>
+  groups.find((g) => g.modes.some((m) => m.id === id))?.id ?? null;
+
+/**
+ * MC-UX2 — the page shown first. A collection named in the URL (`?c=`) wins;
+ * a player sent here by the Daily lands on Daily Extras (its bonus stages are
+ * what they came for); everyone else starts in the Knowledge Arena.
+ */
+export function initialCollection(
+  groups: readonly GalleryGroup[], requested: string | null, source: string,
+): GalleryGroup["id"] | null {
+  const ids = groups.map((g) => g.id);
+  if (requested && (ids as string[]).includes(requested)) return requested as GalleryGroup["id"];
+  if (source === "daily" && ids.includes("daily_extras")) return "daily_extras";
+  if (ids.includes("knowledge_arena")) return "knowledge_arena";
+  return ids[0] ?? null;
+}
+
 /** How many cards are playable right now (for the hero's count). */
 export const countReady = (statuses: Iterable<CardStatus>) =>
   [...statuses].filter((s) => s.state === "ready").length;

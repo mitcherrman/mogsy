@@ -1,3 +1,196 @@
+# More Challenges UX — MC-UX1 (gallery) + MC-UX2 (hub)
+
+**Status (2026-10-16):**
+* **MC-UX2: implemented, awaiting owner review.** Not merged, not published.
+  * Frontend branch `mc-ux2/hub-navigation-metrics` is pushed.
+  * Backend branch `mc-ux2/bonus-history-be` is **not committed yet**: the backend repo's rule is to stop before committing until told to. Its changes are in the `.worktrees/mcux2-be` worktree.
+* MC-UX1: merged into `main` at `af170999` (see the MC-UX1 section below).
+
+---
+
+# MC-UX2 — category navigation, Random, and the player's own record
+
+* Repositories: `mitcherrman/mogsy` (frontend) and `mitcherrman/League_Combat_Simulator` (backend, needed for history).
+* Verified starting commits:
+  * frontend `main` @ `6b46e1c0`; More Challenges is unchanged since MC-UX1 `6dd298f7`;
+  * backend `master` @ `fadec94a`.
+* Concurrent work checked: no other branch touches More Challenges or `public_game_modes`.
+
+## UX2.1 What the player gets
+
+| Request | Delivered |
+|---|---|
+| Category navigation, not one long scroll | One collection on screen at a time. Arrow buttons step through Daily Extras → Knowledge Arena → Precision & Recall (wrapping); the three tabs between them jump straight to one. A "Next: …" button sits at the foot of each page. `?c=` remembers the page. |
+| Random button | "Random game" in the hero picks uniformly among the cards that are **playable right now**, then launches through the card's own `play()` (same start contract, same `more_challenges_mode_selected` analytics, same notices). With nothing playable it is disabled and says "No game is playable right now." |
+| Top stats | Games played, Most played (with its count), This week (games + streak or active days), Last played (mode + when). A first-time or signed-out player sees "Your record starts with your first game…" instead of zeros. |
+| Per-mode mini history | A muted line under each card's actions, at most three parts. Examples: "Played 2 · Best 3/3 boards · Last yesterday", "1 run · Closest 0.18s off · Last today", "18 hits · Avg 67 damage off · Last today". "No games yet" when there is none. |
+| Reconstruct fix | The preview is a real recipe: **Spear of Shojin (3161) = Pickaxe (1037) + Ruby Crystal (1028) + Tunneler (2021)**, from the canonical wiki item graph (`item_build_components`). All four icons are served by production `/assets/items/`. |
+
+## UX2.2 What data exists (verified before building)
+
+| Modes | Persisted before MC-UX2? | Source used |
+|---|---|---|
+| Roster Lock, Draft Memory, Chronoscope, Match Grid, Reconstruct, Order Forge | **Yes** | `ranked_matches` (host `bonus_game`, `session_preset` `bonus.<mode>`), `ranked_results` (outcome), `ranked_resolved_rounds` settlements. A board counts as correct when the module awarded the viewer base points (`points_view.resolved_scoring`), the rule the result screen reads. |
+| Time Trial, Survival | **Yes** | `daily_run_stages.result_json.correct` for completed stages of the player's official Daily runs. |
+| Rangefinder, Glyph Press, Perfect Timing, Stat Drop, Combat Estimate | **No**: sessions lived only in process memory | **New**: `public_mode_rounds`, one row per locked round. |
+
+**So backend support was needed, and it is minimal:**
+* **Table** `public_mode_rounds`, added by `migrate_add_public_mode_rounds.py` (CREATE IF NOT EXISTS) and wired at startup after the Role Challenge migration.
+  * One row per locked session round, written once (`INSERT OR IGNORE` on `(session_id, round_key)`).
+  * It holds only graded facts: exact/solved `hit`, Perfect Timing `points`, `abs_error`, `relative_error`, and `run_rounds`. No content and no answers.
+  * Written by the public lock routes after the lock succeeds. A recording failure is logged and **never fails the lock** (tested).
+* **Route** `GET /api/game-modes/me/summary` (`public_game_modes.history.player_summary`), contract `public_game_modes.player_summary.v1`.
+  * Any verified player (account or verified guest) may read it; the shared guest sentinel and unverified callers get 401.
+  * It reads by the caller's own id only. It is rate-limited and bounded (300 matches, 5000 rounds, 400 Daily stages).
+* **Frontend read** (`src/lib/public-modes/summary.ts`): uses `getExistingBackendAuthToken`, so it **never mints an identity** (USERS1). With no session there is no request and the page shows no record.
+
+**Metric definitions (all real, none padded):**
+* **A game:** a finished match, a completed Daily stage, or a session run with at least one locked round.
+* **Board modes:**
+  * played;
+  * wins vs the bot;
+  * best and last boards correct, as `correct/total` (`total` is the frozen format's `match_length`);
+  * last outcome.
+* **Daily stages:** played; best and last `correct`.
+* **Rangefinder / Glyph Press:** runs; best and last exact / solved hits out of the run's rounds; total hits.
+* **Perfect Timing:** runs; best run points out of 100 per ability; the closest single stop in ms.
+* **Stat Drop:** stats locked; closest, last and mean **relative** error. Stats have different units, so absolute error would not compare.
+* **Combat Estimate:** hits locked; closest, last and mean **absolute** error in damage.
+* **Overall:**
+  * games played;
+  * most played (a tie goes to the more recently played mode);
+  * last played;
+  * games and active days in the last 7 days;
+  * streak of consecutive UTC days with a game, ending today or yesterday.
+
+**Gap (documented, not hidden):** session-game history starts at the deploy that adds the table. Earlier Rangefinder / Glyph Press / Perfect Timing / Stat Drop / Combat Estimate play was never stored, so it cannot be recovered.
+
+## UX2.3 Fixed in passing (backend)
+
+`perfect_timing.service.deal/lock` chose their store with `store or STORE`. `RoundStore` defines `__len__`, so an **empty** public store was falsy, and public Perfect Timing rounds were silently issued into the **owner lab's** store, defeating PGM2's separate public store.
+* Fix: `STORE if store is None else store`, in both places.
+* Regression test: `test_public_perfect_timing_rounds_never_enter_the_owner_lab_store`.
+
+## UX2.4 Architecture decisions
+
+* **Paging is presentation only.** `initialCollection` picks the first page:
+  1. `?c=` if valid;
+  2. Daily Extras for a visitor sent by the Daily;
+  3. otherwise the Knowledge Arena, since Daily Extras is often "Daily first" for a new visitor.
+* `stepCollection` and `pickRandomPlayable` live in `lib/public-modes/gallery.ts`.
+* **Accessibility:**
+  * The tabs are a WAI-ARIA tablist (roving tabindex; Left/Right/Home/End move selection and focus).
+  * The page is a `tabpanel` labelled by its tab, and arrows have descriptive labels ("Next collection: Precision & Recall").
+  * The Random pick is announced in a polite live region.
+  * Every control is at least 44 px.
+* **Motion:** turning a page slides 28 px in the direction of travel (260 ms). Reduced motion removes it, along with the Random and pager transitions.
+* **Random never bypasses anything.**
+  * The candidate pool is cards whose `cardStatus` is `ready` and whose action is `play` / `start`.
+  * A Daily stage waiting on the Daily, or a paused, unavailable, played or checking mode, is never a candidate.
+  * It then calls the same `play()` a card's button calls. If the pick lives in another collection, the page turns to it first so its "Starting…" state is visible.
+* **Analytics:** no new event. A random launch emits the existing `more_challenges_mode_selected` with `action: "play"`, so dashboards keep working. A distinct `random` action would need an analytics-contract change; that is left for the owner to decide.
+* **Hero:** the MC-UX1 jump links became the pager. The medallions show only at 2xl, so Random has room at 1366 px.
+
+## UX2.5 Files
+
+Backend (uncommitted on `mc-ux2/bonus-history-be`):
+* New:
+  * `migrate_add_public_mode_rounds.py`
+  * `public_game_modes/history.py`
+  * `public_game_modes/tests/test_bonus_history.py`
+* Changed:
+  * `api_server.py`: the migration call.
+  * `routes/public_game_modes.py`: lock routes record; `GET /me/summary`.
+  * `public_game_modes/sessions.py`: `run_size`.
+  * `perfect_timing/service.py`: the store fix.
+  * `public_game_modes/tests/test_bonus_sessions.py`: history DB kept in tmp; store regression test.
+
+Frontend (`mc-ux2/hub-navigation-metrics`):
+* New:
+  * `src/lib/public-modes/summary.ts`, `summary.test.ts`;
+  * fixtures `playerSummary.json` and `playerSummaryEmpty.json`: **real backend bodies** generated by playing games through the backend's own routes;
+  * `src/components/public-modes/gallery/CategoryPager.tsx`, `HubToolbar.tsx`;
+  * `docs/handoffs/more-challenges-ux/ux2/*.jpg`.
+* Changed:
+  * `src/lib/public-modes/gallery.ts`: `pickRandomPlayable`, `stepCollection`, `initialCollection`, `collectionOfMode`.
+  * `gallery.test.ts`
+  * `GameCard.tsx`: the history line.
+  * `GalleryHero.tsx`: Random and stats slots.
+  * `GameArt.tsx`: Spear of Shojin.
+  * `gallery.css`: scoped `.mc-gallery` additions.
+  * `MoreChallengesPage.tsx`, `MoreChallengesPage.test.tsx`.
+
+## UX2.6 Tests and results
+
+**Backend** (pytest, on the branch):
+* `public_game_modes/tests/test_bonus_history.py`: 11 tests, covering:
+  * a truthful empty history;
+  * verified-only reads; a guest reads their own;
+  * a lock recorded once and summarised;
+  * Glyph Press solved;
+  * Stat Drop / Combat Estimate errors;
+  * Perfect Timing points and closest stop;
+  * a recording failure never failing a lock;
+  * player isolation;
+  * a real Match Grid played to the end through the engine (3/3 boards, outcome);
+  * Daily Extras best/last from official runs only;
+  * overall favourite / week / streak.
+* `public_game_modes`, `perfect_timing`, `interaction_lab`, `numeric_lab`, `test_ops_queue_controls.py` and `test_rc3_role_challenge_launch.py`: 384 passed earlier; `public_game_modes` + `perfect_timing` after the store fix: 255 passed. `python -c "import api_server"` OK.
+
+**Frontend** (vitest 3.2.7):
+* `src/lib/public-modes`, `src/pages/quiz-more-challenges`, `src/components/public-modes`: 8 files, **105 passed**. New:
+  * `summary.test.ts`: the contract, words per kind, local-day dates, a read that never mints;
+  * `gallery.test.ts` additions: Random never picks Daily-first / waiting / paused; the live Daily stage is a candidate; paging and wrap; the initial page;
+  * page tests: one collection at a time; arrows wrap; the URL remembers; keyboard tablist; `?c=` and Next; Random launching through the start contract, a session page and the live Daily stage; Random disabled when nothing is playable; stats empty / returning / first-time / error; history lines; Spear of Shojin icons.
+* Regressions (`src/pages/quiz-daily-challenge`, `src/lib/daily-challenge`, `src/components/quiz`, `src/pages/quiz-ranked`, `src/lib/ranked-public`, the Perfect Timing page and components): 2612 passed, 5 failed. The 5 are pre-existing and fail identically on clean `main`: `QuizCategoryRail` ×3, `playModeCard.styles` ×2.
+* `tsc --noEmit -p tsconfig.app.json`: clean apart from the two pre-existing files.
+* eslint on the touched areas: 0 problems.
+* `vite build`: OK. The lazy page chunk is JS 45.9 kB (14.7 kB gzip) and CSS 14.5 kB (3.4 kB gzip).
+
+**Browser** (Playwright on the running branch, at 1920×1080, 1366×768, 768×1024, 390×844 and 360×640):
+* horizontal overflow: 0;
+* controls under 44 px: none.
+* The phone page is now about 2,100 px tall, down from 3,086 px for MC-UX1's long scroll.
+
+## UX2.7 Screenshots (`docs/handoffs/more-challenges-ux/ux2/`)
+
+**How they were captured:**
+* The branch's Vite dev server with `VITE_E2E_AUTH=1` (an injected persona).
+* A scratch mock API, not committed. It serves:
+  * the catalog fixture and a plan-v5 Daily per scenario;
+  * the backend's real `assets/`;
+  * `/me/summary` bodies that the **branch backend computed** after real play through its own routes, shifted onto today's date.
+
+| File | Shows |
+|---|---|
+| `01-hub-full__*`, `02-first-screen__*` | The whole hub, and the first screen, at all five sizes, for a returning player |
+| `03-top-random-stats__1366x768` | Hero with Random and the stats strip |
+| `04-page-{knowledge_arena,precision_recall,daily_extras-up-now}__1366x900` | Each collection page, with per-card history lines (Daily Extras with Time Trial up now) |
+| `05-pager-mobile__390x844` | The pager on a phone |
+| `06-card-{reconstruct,match_grid,perfect_timing}__…`, `06-card-time_trial-mobile` | Cards at 2×, including Spear of Shojin |
+| `07-first-time-player__{1366x768,390x844}`, `07-signed-out__1366x768` | Empty-history states |
+| `08-nothing-playable__1366x768` | Bonus Games paused and no Daily: Random disabled, with the reason |
+| `09-focus-next-arrow__1366x768`, `09-hover-chronoscope__1366x900` | Keyboard focus and hover |
+
+## UX2.8 Merge / publish status
+
+* Nothing is merged or published (owner review first).
+* **Deploy order when approved:**
+  1. Commit and push the backend branch, then merge it into `master`. Railway runs the `public_mode_rounds` migration at startup.
+  2. Verify `GET /api/game-modes/me/summary` answers 401 without auth.
+  3. Then merge the frontend into `main` and publish it via Lovable.
+* **If the frontend ships first:** the summary call answers 404. The stats show "couldn't be loaded" and the cards drop their history line; play is unaffected.
+
+## UX2.9 Remaining gaps / next improvement
+
+* Session-game history starts at deploy (see UX2.2).
+* The Daily Extras history counts official Daily runs only (practice policies are excluded).
+* **Next recommended improvement:**
+  * a per-mode "your recent games" drawer (the last five results) on the Rules / history line, built on the same summary route extended with a bounded `recent` list;
+  * whether Random gets its own analytics action.
+
+---
+
 # MC-UX1 — More Challenges public game gallery
 
 **Status (2026-10-16):** owner-approved and **merged** into `main` at `af170999` (`--no-ff`, onto main `4f73badf`). **Awaiting the owner's Lovable publish.** No backend change, so there is no backend deploy.

@@ -7,7 +7,10 @@ import { describe, expect, it } from "vitest";
 import wire from "./__fixtures__/publicModeCatalog.json";
 import { PUBLIC_MODE_IDS, readPublicModeCatalog, type PublicModeEntry } from "./contracts";
 import { resolveModeAction, type DailyContext } from "./launch";
-import { MODE_COLLECTIONS, cardStatus, collectionCellClass, countReady, groupModes, sharePause } from "./gallery";
+import {
+  MODE_COLLECTIONS, cardStatus, collectionCellClass, collectionOfMode, countReady, groupModes, initialCollection,
+  pickRandomPlayable, sharePause, stepCollection,
+} from "./gallery";
 import { FOUR_STAGE_DAY, V5_ELIGIBLE_DAY, fixtureRun, fixtureV5Run, wireResult } from "@/lib/daily-challenge/run/fixtures";
 
 const catalog = () => readPublicModeCatalog(JSON.parse(JSON.stringify(wire)));
@@ -122,5 +125,56 @@ describe("MC-UX1 — card status follows the player's real eligibility", () => {
     const ready = { state: "ready" as const, badge: null, plate: null, note: null };
     expect(sharePause([paused, ready]).reason).toBeNull();
     expect(sharePause([paused, { ...paused, plate: { label: "Paused", detail: "Other." } }]).reason).toBeNull();
+  });
+});
+
+describe("MC-UX2 — Random picks only what is playable right now", () => {
+  const all = () => catalog().modes;
+  const pick = (daily: DailyContext, r: number, modes = all()) => pickRandomPlayable(modes,
+    (m) => cardStatus(m, resolveModeAction(m, daily)), (m) => resolveModeAction(m, daily), () => r)?.id ?? null;
+
+  it("never a Daily stage that waits on the Daily", () => {
+    const daily = { state: "ready" as const, run: null };
+    const picks = new Set([0, 0.2, 0.4, 0.6, 0.8, 0.999].map((r) => pick(daily, r)));
+    expect(picks.has("time_trial")).toBe(false);
+    expect(picks.has("survival")).toBe(false);
+    expect(pick(daily, 0)).toBe("roster_lock");
+    expect(pick(daily, 0.999)).toBe("combat_estimate");
+  });
+
+  it("the Daily stage that is up now is a candidate; the one waiting is not", () => {
+    const daily = { state: "ready" as const, run: mainDone() };
+    expect(pick(daily, 0)).toBe("time_trial");
+    const picks = new Set(Array.from({ length: 50 }, (_, i) => pick(daily, i / 50)));
+    expect(picks.has("survival")).toBe(false);
+    expect(picks.size).toBe(12);
+  });
+
+  it("never a paused or unavailable mode, and null when nothing can be played", () => {
+    const paused = all().map((m) => (m.launch?.kind === "daily_stage" ? m : {
+      ...m, launch: null, availability: { status: "paused" as const, reasonCode: "BONUS_PAUSED", message: "x" } }));
+    expect(pick({ state: "ready", run: null }, 0, paused)).toBeNull();
+    expect(pick({ state: "loading" }, 0.5, paused)).toBeNull();
+  });
+});
+
+describe("MC-UX2 — paging", () => {
+  const groups = () => groupModes(catalog().modes);
+  it("steps through the collections in order and wraps at both ends", () => {
+    expect(stepCollection(groups(), "daily_extras", 1)).toBe("knowledge_arena");
+    expect(stepCollection(groups(), "precision_recall", 1)).toBe("daily_extras");
+    expect(stepCollection(groups(), "daily_extras", -1)).toBe("precision_recall");
+  });
+
+  it("opens the URL's collection, the Daily's for a Daily visitor, else the Knowledge Arena", () => {
+    expect(initialCollection(groups(), "precision_recall", "direct")).toBe("precision_recall");
+    expect(initialCollection(groups(), "nonsense", "daily")).toBe("daily_extras");
+    expect(initialCollection(groups(), null, "leaguecraft")).toBe("knowledge_arena");
+    expect(initialCollection([], null, "direct")).toBeNull();
+  });
+
+  it("names a mode's collection", () => {
+    expect(collectionOfMode(groups(), "reconstruct")).toBe("knowledge_arena");
+    expect(collectionOfMode(groups(), "stat_drop")).toBe("precision_recall");
   });
 });

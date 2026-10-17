@@ -2,9 +2,9 @@
  * MC-UX1 — each bonus game's decorative preview, drawn from its own mechanic.
  *
  * Static SVG compositions plus a few of Mogzy's real assets (rune, item,
- * champion and role icons). Purely decorative: `aria-hidden`, no question
- * content, no answers — a recipe preview shows components, never a real
- * item's recipe; a draft preview seats no historical draft.
+ * champion and role icons). Purely decorative: `aria-hidden`, and nothing from
+ * a live round. Reconstruct shows one real, public recipe (Spear of Shojin, at
+ * the owner's request, MC-UX2); a draft preview seats no historical draft.
  *
  * GEOMETRY. Every composition is drawn on one 240×100 canvas whose CORE is the
  * centred 100×100 square (x 70–170). The canvas always fills the art box's
@@ -250,19 +250,27 @@ function MatchGridArt() {
 
 const ITEM = (id: number) => backend(`assets/items/${id}.png`);
 
+/**
+ * MC-UX2 (owner request) — a REAL recipe, Spear of Shojin, from the canonical
+ * wiki item graph (`item_build_components`, item 3161): Pickaxe (1037) + Ruby
+ * Crystal (1028) + Tunneler (2021). A public, decorative fact on the card; it
+ * is not a dealt question and reveals nothing from a live round.
+ */
+const RECONSTRUCT_PREVIEW = { item: 3161, components: [1037, 1028, 2021] } as const;
+
 function ReconstructArt() {
+  const [a, b, c] = RECONSTRUCT_PREVIEW.components;
   return (
     <Scene pics={<>
-      <Pic src={ITEM(1036)} x={77} y={66} s={20} />
-      <Pic src={ITEM(1052)} x={110} y={66} s={20} />
-      <Pic src={ITEM(1028)} x={143} y={66} s={20} className="mc-anim-lift" />
+      <Pic src={ITEM(RECONSTRUCT_PREVIEW.item)} x={106} y={10} s={28} className="mc-anim-lift" />
+      <Pic src={ITEM(a)} x={77} y={66} s={20} />
+      <Pic src={ITEM(b)} x={110} y={66} s={20} />
+      <Pic src={ITEM(c)} x={143} y={66} s={20} />
       <Pic src={ITEM(1018)} x={26} y={40} s={16} className="opacity-35" />
-      <Pic src={ITEM(1037)} x={198} y={40} s={16} className="opacity-35" />
+      <Pic src={ITEM(1036)} x={198} y={40} s={16} className="opacity-35" />
     </>}>
-      {/* the legendary slot, still to be built */}
+      {/* the legendary, built from its three components */}
       <rect x="104" y="8" width="32" height="32" rx="3" fill={NAVY} stroke={GOLD} strokeWidth="2" />
-      <rect x="107" y="11" width="26" height="26" rx="2" fill="currentColor" fillOpacity="0.12" />
-      <text x="120" y="30" textAnchor="middle" fontSize="15" fontWeight="800" fill={GOLD}>?</text>
       <path d="M120 40 V52 M87 52 H153 M87 52 V64 M120 52 V64 M153 52 V64" fill="none" stroke="currentColor"
         strokeOpacity="0.75" strokeWidth="1.6" />
       {[87, 120, 153].map((x) => (

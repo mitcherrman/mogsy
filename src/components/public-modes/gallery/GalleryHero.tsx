@@ -1,20 +1,25 @@
 /**
- * MC-UX1 — the gallery's compact hero: what this page is, that the games are
- * optional and unrated, and a jump to each collection.
+ * MC-UX1/MC-UX2 — the hub's compact hero: what this page is (optional,
+ * unrated games), the Random button beside the title, and the player's own
+ * stats beneath. The collections are paged below it (CategoryPager).
  */
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import type { PublicModeId } from "@/lib/public-modes/contracts";
-import { MODE_ACCENT, type GalleryGroup } from "@/lib/public-modes/gallery";
+import { MODE_ACCENT } from "@/lib/public-modes/gallery";
 import { GameArt } from "./GameArt";
 
 const MEDALLIONS: readonly PublicModeId[] = ["match_grid", "perfect_timing", "reconstruct"];
 
-export function GalleryHero({ groups, total, ready }: {
-  groups: GalleryGroup[] | null;
+export function GalleryHero({ total, ready, action, children }: {
   total: number | null;
   /** Cards playable right now; null while the catalog loads. */
   ready: number | null;
+  /** Beside the title (MC-UX2: Random). */
+  action?: ReactNode;
+  /** Beneath the title (MC-UX2: the player's stats). */
+  children?: ReactNode;
 }) {
   return (
     <header className="mc-hero px-4 pb-4 pt-2 sm:px-6 sm:pb-5 sm:pt-3" data-testid="more-challenges-hero">
@@ -28,47 +33,34 @@ export function GalleryHero({ groups, total, ready }: {
         Back to Leaguecraft
       </Link>
 
-      <div className="flex items-center justify-between gap-6">
-        <div className="min-w-0">
-          <div className="ranked-eyebrow">Leaguecraft · Bonus games</div>
-          <h1 className="ranked-title mt-1.5 text-[1.65rem] font-bold leading-none min-[400px]:text-[2rem] sm:text-5xl">More Challenges</h1>
-          <p className="mt-2.5 max-w-xl text-[14px] leading-snug text-[color:var(--ranked-text)] opacity-90 sm:text-[15px]">
-            {total ? `${total} optional League games` : "Optional League games"} for extra practice.{" "}
-            <span className="text-[color:var(--ranked-muted)]">
-              Unrated: they never change your Daily score or Ranked rating.
-            </span>
-          </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-5">
+          <div className="min-w-0">
+            <div className="ranked-eyebrow">Leaguecraft · Bonus games</div>
+            <h1 className="ranked-title mt-1.5 text-[1.65rem] font-bold leading-none min-[400px]:text-[2rem] sm:text-5xl">More Challenges</h1>
+            <p className="mt-2.5 max-w-xl text-[14px] leading-snug text-[color:var(--ranked-text)] opacity-90 sm:text-[15px]">
+              {total ? `${total} optional League games` : "Optional League games"} for extra practice.{" "}
+              <span className="text-[color:var(--ranked-muted)]">
+                Unrated: they never change your Daily score or Ranked rating.
+              </span>
+            </p>
+            {ready !== null && (
+              <p className="mt-1.5 text-xs text-[color:var(--ranked-muted)]" data-testid="more-challenges-count">
+                {ready} ready to play now
+              </p>
+            )}
+          </div>
+          <div className="mc-hero-medallions hidden flex-none 2xl:grid" aria-hidden="true">
+            {MEDALLIONS.map((id) => (
+              <div key={id} style={{ ["--mc-accent" as string]: MODE_ACCENT[id] }}>
+                <GameArt modeId={id} />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mc-hero-medallions hidden flex-none md:grid" aria-hidden="true">
-          {MEDALLIONS.map((id) => (
-            <div key={id} style={{ ["--mc-accent" as string]: MODE_ACCENT[id] }}>
-              <GameArt modeId={id} />
-            </div>
-          ))}
-        </div>
+        {action}
       </div>
-
-      {groups && groups.length > 0 && (
-        <nav aria-label="Game collections" className="mt-3.5 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          {groups.map((g) => (
-            <a key={g.id} href={`#mc-${g.id}`} className="mc-jump" data-testid={`more-challenges-jump-${g.id}`}
-              onClick={(e) => {
-                const el = document.getElementById(`mc-${g.id}`);
-                if (!el) return;
-                e.preventDefault();
-                el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-              }}>
-              {g.title}
-              <span className="mc-jump-count">{g.modes.length}</span>
-            </a>
-          ))}
-          {ready !== null && (
-            <span className="col-span-3 text-right text-xs text-[color:var(--ranked-muted)] sm:ml-auto" data-testid="more-challenges-count">
-              {ready} ready to play now
-            </span>
-          )}
-        </nav>
-      )}
+      {children ? <div className="mt-4">{children}</div> : null}
     </header>
   );
 }

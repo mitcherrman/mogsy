@@ -1,0 +1,136 @@
+{
+ "contract": "public_game_modes.player_summary.v1",
+ "generated_at": "2026-10-22T15:00:00+00:00",
+ "overall": {
+  "games_played": 0,
+  "favorite_mode_id": null,
+  "last_played": null,
+  "games_this_week": 0,
+  "active_days_this_week": 0,
+  "streak_days": 0
+ },
+ "modes": {
+  "time_trial": {
+   "mode_id": "time_trial",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "daily_stage",
+   "best": null,
+   "last": null
+  },
+  "survival": {
+   "mode_id": "survival",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "daily_stage",
+   "best": null,
+   "last": null
+  },
+  "roster_lock": {
+   "mode_id": "roster_lock",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "boards",
+   "wins": 0,
+   "best": null,
+   "last": null
+  },
+  "draft_memory": {
+   "mode_id": "draft_memory",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "boards",
+   "wins": 0,
+   "best": null,
+   "last": null
+  },
+  "chronoscope": {
+   "mode_id": "chronoscope",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "boards",
+   "wins": 0,
+   "best": null,
+   "last": null
+  },
+  "match_grid": {
+   "mode_id": "match_grid",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "boards",
+   "wins": 0,
+   "best": null,
+   "last": null
+  },
+  "reconstruct": {
+   "mode_id": "reconstruct",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "boards",
+   "wins": 0,
+   "best": null,
+   "last": null
+  },
+  "order_forge": {
+   "mode_id": "order_forge",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "boards",
+   "wins": 0,
+   "best": null,
+   "last": null
+  },
+  "rangefinder": {
+   "mode_id": "rangefinder",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "exact",
+   "rounds_locked": 0,
+   "best": null,
+   "last": null,
+   "total_hits": 0
+  },
+  "glyph_press": {
+   "mode_id": "glyph_press",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "solved",
+   "rounds_locked": 0,
+   "best": null,
+   "last": null,
+   "total_hits": 0
+  },
+  "perfect_timing": {
+   "mode_id": "perfect_timing",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "timing",
+   "rounds_locked": 0,
+   "best": null,
+   "last": null,
+   "closest": null
+  },
+  "stat_drop": {
+   "mode_id": "stat_drop",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "estimate",
+   "rounds_locked": 0,
+   "unit": "relative",
+   "best": null,
+   "last": null,
+   "mean": null
+  },
+  "combat_estimate": {
+   "mode_id": "combat_estimate",
+   "played": 0,
+   "last_played_at": null,
+   "kind": "estimate",
+   "rounds_locked": 0,
+   "unit": "damage",
+   "best": null,
+   "last": null,
+   "mean": null
+  }
+ }
+}
