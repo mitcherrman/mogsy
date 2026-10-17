@@ -23,15 +23,22 @@
  * toggle and Escape closes (Radix Popover). The popover is portalled, so the
  * board's `overflow: hidden` cannot clip it, and Radix keeps it inside the
  * viewport. The badge is absolutely positioned: it lays out nothing.
+ *
+ * MISC-W1B F08 — an ability that wears a `!` AND has a formula a child only
+ * STATED keeps the `!` as its one control: the stated formula is a second
+ * section of this card ("stated Step N", `JourneyAbilityReference`), never a
+ * second button over the same tile and never a learned line.
  */
 import { useRef, useState } from "react";
 import { SquareFunction, Sword, Timer, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { knowledgeCard, stepLabel, type KnowledgeObjectMark } from "@/lib/journey/knowledge";
 import { RELEVANT_LABEL } from "@/lib/journey/attention";
+import type { StatedAbilityReference } from "@/lib/journey/abilityReference";
+import { StatedReferenceLines } from "./JourneyAbilityReference";
 
 export function JourneyKnowledgeMark({ mark, name, abilityName = null, championName = null, placement, fresh = false,
-  relevant = false, testId }: {
+  relevant = false, reference = null, testId }: {
   mark: KnowledgeObjectMark;
   /** The object's accessible name, e.g. "Zed E". */
   name: string;
@@ -47,6 +54,8 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
   fresh?: boolean;
   /** JATTN1 — the object is relevant to the question on screen (its name says so). */
   relevant?: boolean;
+  /** F08 — the ability's STATED formula and its current rank: a reference section of this card. */
+  reference?: { reference: StatedAbilityReference; rank: number } | null;
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -98,6 +107,9 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
             </li>
           ))}
         </ul>
+        {reference && (
+          <StatedReferenceLines reference={reference.reference} rank={reference.rank} testId={`${testId}-ref`} />
+        )}
       </PopoverContent>
     </Popover>
   );

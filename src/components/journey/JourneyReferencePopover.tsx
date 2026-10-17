@@ -19,7 +19,7 @@ import { loadItemReference, itemStatLine, type ItemReferenceStat } from "@/lib/j
 import type { ChampionPortraitPopup } from "@/lib/journey/portraitPopup";
 import { exactNumber, JOURNEY_STAT_META } from "@/lib/journey/stats";
 
-function ReferencePopover({ label, testId, title, children }: {
+export function ReferencePopover({ label, testId, title, children }: {
   label: string;
   testId: string;
   title: string;
