@@ -30,7 +30,8 @@ export function TimerDisplay({
   timer,
   label = "Round timer",
   durationNote,
-  expiredNote = "Time's up — waiting for the round to resolve.",
+  // MISC W2D (F12) — a local zero never claims a timeout; the server settles.
+  expiredNote = "Waiting for the round to resolve.",
 }: {
   timer: TimerView;
   label?: string;

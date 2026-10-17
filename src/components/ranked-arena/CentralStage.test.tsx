@@ -38,6 +38,9 @@ describe("the clock face", () => {
       result={null} moduleTitle={null} moduleEventId={null} />);
     expect(screen.getByTestId("timer-value")).toHaveAttribute("data-timer-state", "zero");
     expect(screen.getByTestId("central-timer-expired")).toBeInTheDocument();
+    // MISC W2D (F12) — a local zero is not the server's timeout.
+    expect(screen.getByTestId("central-timer-expired")).toHaveTextContent("Settling…");
+    expect(screen.getByTestId("timer-display").textContent).not.toMatch(/time'?s up|timed out/i);
   });
 });
 

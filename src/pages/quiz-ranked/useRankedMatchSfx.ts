@@ -32,6 +32,14 @@ export interface RankedSfxObservation {
   journeyKey?: string | null;
   journeyOwnReveals?: readonly { challengeIndex: number; isCorrect: boolean }[];
   /**
+   * MISC W2D (F12) — the SERVER's per-card expiry flags for the viewer
+   * (`own_timed_out_challenges`) on a card-clocked, non-Meta-Reflex segment,
+   * keyed like `journeyKey`. A flag that turns true while watched is the one
+   * authoritative "TIME'S UP" for that child; Meta Reflex states its expiries
+   * in `metaOwnReveals[].outcome` instead. `null` when the wire has none.
+   */
+  cardTimeouts?: { key: string; flags: readonly boolean[] } | null;
+  /**
    * OF3-F2 - an Order Forge segment's number and the viewer's own verdict from
    * `ownChallengeReveals[0].orderForge.isCorrect` (null until that reveal is
    * published). `null` segment for every non-Order-Forge round.
@@ -135,19 +143,29 @@ export function observeRankedSfx(
   if (current.metaKey && !current.terminal) {
     const seen = new Set((current.metaKey === previous.metaKey
       ? previous.metaOwnReveals : []).map((reveal) => reveal.challengeIndex));
+    // MISC W2D (F12) — the server's "timeout" for a card is its TIME'S UP.
+    // ("unanswered" is a card the block ended before; it stays silent.)
     const newest = [...current.metaOwnReveals].reverse().find((reveal) =>
       !seen.has(reveal.challengeIndex)
-      && (reveal.outcome === "correct" || reveal.outcome === "incorrect"));
+      && (reveal.outcome === "correct" || reveal.outcome === "incorrect"
+        || reveal.outcome === "timeout"));
     if (newest) {
       emissions.push({
-        event: newest.outcome === "correct"
-          ? "ranked.answer.correct" : "ranked.answer.incorrect",
+        event: newest.outcome === "correct" ? "ranked.answer.correct"
+          : newest.outcome === "timeout" ? "quiz.answer.timeout" : "ranked.answer.incorrect",
         eventId: id(`segment:${current.metaKey}:card:${newest.challengeIndex}:result`),
       });
     }
   }
 
+  // MISC W2D (F12) — a child the SERVER flagged as expired is a timeout, not
+  // a wrong answer. Same event id as its reveal's verdict, so whichever of the
+  // flag and the reveal is observed first is the one cue for that child.
+  const cardTimeouts = current.cardTimeouts ?? null;
+  const timedOutChild = (key: string | null, index: number) =>
+    cardTimeouts !== null && cardTimeouts.key === key && cardTimeouts.flags[index] === true;
   const journeyKey = current.journeyKey ?? null;
+  let journeyAnnounced: number | null = null;
   if (journeyKey && !current.terminal) {
     const seen = new Set((journeyKey === previous.journeyKey
       ? previous.journeyOwnReveals ?? [] : []).map((reveal) => reveal.challengeIndex));
@@ -156,8 +174,31 @@ export function observeRankedSfx(
       .find((reveal) => !seen.has(reveal.challengeIndex));
     if (newest) {
       emissions.push({
-        event: newest.isCorrect ? "ranked.answer.correct" : "ranked.answer.incorrect",
+        event: timedOutChild(journeyKey, newest.challengeIndex) ? "quiz.answer.timeout"
+          : newest.isCorrect ? "ranked.answer.correct" : "ranked.answer.incorrect",
         eventId: id(`segment:${journeyKey}:child:${newest.challengeIndex}:result`),
+      });
+      journeyAnnounced = newest.challengeIndex;
+    }
+  }
+  // An expiry with no reveal (a pooled Standard budget running out mid-card
+  // publishes the flag and finishes the module). Only a flag that turned true
+  // while watched — a baseline that already carries it is history.
+  // Deliberately NOT gated on `terminal`: the snapshot that settles a
+  // match-ending timeout is the moment it happened.
+  if (cardTimeouts) {
+    const before = previous.cardTimeouts?.key === cardTimeouts.key
+      ? previous.cardTimeouts.flags : null;
+    const revealed = new Set((cardTimeouts.key === journeyKey
+      ? current.journeyOwnReveals ?? [] : []).map((reveal) => reveal.challengeIndex));
+    let flipped: number | null = null;
+    cardTimeouts.flags.forEach((flag, index) => {
+      if (flag && before !== null && before[index] !== true && !revealed.has(index)) flipped = index;
+    });
+    if (flipped !== null && flipped !== journeyAnnounced) {
+      emissions.push({
+        event: "quiz.answer.timeout",
+        eventId: id(`segment:${cardTimeouts.key}:child:${flipped}:result`),
       });
     }
   }
@@ -210,6 +251,11 @@ export function observeRankedSfx(
       emissions.push({ event: "ranked.answer.correct", eventId: `${settlementId}:result` });
     } else if (current.ownSettlementOutcome === "incorrect") {
       emissions.push({ event: "ranked.answer.incorrect", eventId: `${settlementId}:result` });
+    } else if (current.ownSettlementOutcome === "timed_out") {
+      // MISC W2D (F12) — the settlement's own `timed_out` for the viewer is
+      // the ONLY round-level TIME'S UP. A local zero never reaches here, and
+      // an answer the server accepted settles as correct/incorrect instead.
+      emissions.push({ event: "quiz.answer.timeout", eventId: `${settlementId}:result` });
     }
     // SFX2 — ONE CUE PER SETTLEMENT. A per-question verdict owns its own
     // settlement: the award (+180 ms) and speed accent (+400 ms) used to ride
@@ -218,7 +264,8 @@ export function observeRankedSfx(
     // sounds only for an aggregate multi-card settlement (Journey / Meta
     // Reflex module completion), which carries no per-question verdict here.
     const verdictSounded = current.ownSettlementOutcome === "correct"
-      || current.ownSettlementOutcome === "incorrect";
+      || current.ownSettlementOutcome === "incorrect"
+      || current.ownSettlementOutcome === "timed_out";
     // OF3-F2 - a fallback verdict IS this settlement's cue; the award must not
     // stack behind it (see above). When the verdict came earlier from the own
     // reveal, the settlement keeps its ordinary award.
@@ -307,60 +354,71 @@ export interface UseRankedMatchSfxInput {
   outcomeMoment: boolean;
 }
 
+/**
+ * The observation of one projection, as a pure function (MISC W2D: exported
+ * so real captures can drive `observeRankedSfx` in tests exactly as the hook
+ * does). Null with no public round.
+ */
+export function rankedSfxObservation(input: UseRankedMatchSfxInput): RankedSfxObservation | null {
+  const round = input.publicRound;
+  if (!round) return null;
+  const own = round.players.find((player) => player.playerId === input.viewerUserId);
+  const opponent = round.players.find((player) => player.playerId !== input.viewerUserId);
+  const segment = round.segmentState;
+  const isMeta = segment?.moduleId === "item_cost_duel"
+    && segment.moduleVersion >= META_REFLEX_MIXED_VERSION;
+  const metaKey = isMeta
+    ? `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}` : null;
+  const settlement = input.lastResolved;
+  const ownSettlement = settlement?.players.p1.playerId === input.viewerUserId
+    ? settlement.players.p1
+    : settlement?.players.p2.playerId === input.viewerUserId
+      ? settlement.players.p2 : null;
+  const award = settlement?.modulePoints?.[input.viewerUserId] ?? null;
+  return {
+    matchId: input.matchId,
+    moduleKey: moduleIdentity(input.surfaceRound),
+    roundKey: roundIdentity(round),
+    ownSubmitted: own?.hasSubmitted ?? false,
+    opponentSubmitted: opponent?.hasSubmitted ?? false,
+    metaKey,
+    metaOpponentCompleted: isMeta ? segment.opponentChallengesCompleted : 0,
+    metaOwnFinished: isMeta ? segment.ownFinished : false,
+    metaOwnReveals: isMeta ? segment.ownCardReveals : [],
+    journeyKey: segment?.journey
+      ? `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}` : null,
+    journeyOwnReveals: segment?.journey ? segment.ownChallengeReveals : [],
+    cardTimeouts: segment && !isMeta && segment.ownTimedOutChallenges
+      ? { key: `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}`,
+          flags: segment.ownTimedOutChallenges }
+      : null,
+    orderForgeSegment: segment?.moduleId === ORDER_FORGE_MODULE_ID
+      ? segment.segmentNumber : null,
+    orderForgeOwnVerdict: segment?.moduleId === ORDER_FORGE_MODULE_ID
+      ? segment.ownChallengeReveals[0]?.orderForge?.isCorrect ?? null : null,
+    orderForgeSettled: orderForgeSettledVerdict(
+      input.lastSegmentSettlement ?? null, settlement?.roundNumber ?? null,
+      input.lastSegmentRoundNumber, input.viewerUserId),
+    settlementRound: settlement?.roundNumber ?? null,
+    settlementLive: input.revealHold,
+    // Multi-card modules publish their own per-card verdict stream. Their
+    // aggregate settlement is score authority, not another answer verdict.
+    ownSettlementOutcome: input.lastSegmentRoundNumber === settlement?.roundNumber
+      ? null : ownSettlement?.outcome ?? null,
+    ownAward: award ? {
+      pointsAwarded: award.pointsAwarded,
+      speedBonusPoints: award.speedBonusPoints,
+    } : null,
+    terminal: round.matchOver,
+    terminalResult: terminalResult(input.result, input.viewerUserId),
+    outcomeMoment: input.outcomeMoment,
+  };
+}
+
 export function useRankedMatchSfx(input: UseRankedMatchSfxInput): void {
   const { play } = useSfx();
   const watchRef = useRef<RankedSfxWatch | null>(null);
-  const observation = useMemo((): RankedSfxObservation | null => {
-    const round = input.publicRound;
-    if (!round) return null;
-    const own = round.players.find((player) => player.playerId === input.viewerUserId);
-    const opponent = round.players.find((player) => player.playerId !== input.viewerUserId);
-    const segment = round.segmentState;
-    const isMeta = segment?.moduleId === "item_cost_duel"
-      && segment.moduleVersion >= META_REFLEX_MIXED_VERSION;
-    const metaKey = isMeta
-      ? `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}` : null;
-    const settlement = input.lastResolved;
-    const ownSettlement = settlement?.players.p1.playerId === input.viewerUserId
-      ? settlement.players.p1
-      : settlement?.players.p2.playerId === input.viewerUserId
-        ? settlement.players.p2 : null;
-    const award = settlement?.modulePoints?.[input.viewerUserId] ?? null;
-    return {
-      matchId: input.matchId,
-      moduleKey: moduleIdentity(input.surfaceRound),
-      roundKey: roundIdentity(round),
-      ownSubmitted: own?.hasSubmitted ?? false,
-      opponentSubmitted: opponent?.hasSubmitted ?? false,
-      metaKey,
-      metaOpponentCompleted: isMeta ? segment.opponentChallengesCompleted : 0,
-      metaOwnFinished: isMeta ? segment.ownFinished : false,
-      metaOwnReveals: isMeta ? segment.ownCardReveals : [],
-      journeyKey: segment?.journey
-        ? `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}` : null,
-      journeyOwnReveals: segment?.journey ? segment.ownChallengeReveals : [],
-      orderForgeSegment: segment?.moduleId === ORDER_FORGE_MODULE_ID
-        ? segment.segmentNumber : null,
-      orderForgeOwnVerdict: segment?.moduleId === ORDER_FORGE_MODULE_ID
-        ? segment.ownChallengeReveals[0]?.orderForge?.isCorrect ?? null : null,
-      orderForgeSettled: orderForgeSettledVerdict(
-        input.lastSegmentSettlement ?? null, settlement?.roundNumber ?? null,
-        input.lastSegmentRoundNumber, input.viewerUserId),
-      settlementRound: settlement?.roundNumber ?? null,
-      settlementLive: input.revealHold,
-      // Multi-card modules publish their own per-card verdict stream. Their
-      // aggregate settlement is score authority, not another answer verdict.
-      ownSettlementOutcome: input.lastSegmentRoundNumber === settlement?.roundNumber
-        ? null : ownSettlement?.outcome ?? null,
-      ownAward: award ? {
-        pointsAwarded: award.pointsAwarded,
-        speedBonusPoints: award.speedBonusPoints,
-      } : null,
-      terminal: round.matchOver,
-      terminalResult: terminalResult(input.result, input.viewerUserId),
-      outcomeMoment: input.outcomeMoment,
-    };
-  }, [input]);
+  const observation = useMemo(() => rankedSfxObservation(input), [input]);
 
   useEffect(() => {
     if (!observation) return;

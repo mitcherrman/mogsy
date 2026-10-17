@@ -1961,6 +1961,69 @@ html.reduce-motion .reward-glow { opacity: 0.6; }
   }
 }
 
+/* ===== MISC W2D (F11/F12) — THE ANSWER CLOCK'S FINAL SECONDS ==============
+   `data-countdown` (5…1) and `data-countdown-intensity` (warn | strong |
+   final) are set on ANY answer-clock element from its own projected value
+   (`CountdownDigits`); the digits span inside is keyed by the second, so each
+   beat remounts it and replays ONE short beat. 5–4 warn, 3–2 strong, 1 is the
+   largest. Transform and text-shadow only: nothing lays out, so the clock's
+   reserved box, the header and the answers below cannot move by a pixel. The
+   `.ranked-timer-urgent` breath above keeps running on the clock itself.
+
+   Reduced motion (OS or the app's `html.reduce-motion`): no scale and no
+   replay — a static glow that still escalates, so the information stays. */
+.quiz-countdown-digits {
+  display: inline-block;
+  transform-origin: 50% 55%;
+}
+[data-countdown] > .quiz-countdown-digits {
+  animation: quiz-countdown-beat 560ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
+}
+[data-countdown-intensity="warn"]   { --qc-scale: 1.08; --qc-glow: 10px; --qc-glow-rest: 6px; }
+[data-countdown-intensity="strong"] { --qc-scale: 1.17; --qc-glow: 18px; --qc-glow-rest: 9px; }
+[data-countdown-intensity="final"]  { --qc-scale: 1.3;  --qc-glow: 26px; --qc-glow-rest: 12px; }
+@keyframes quiz-countdown-beat {
+  0%   { transform: scale(var(--qc-scale, 1.1)); text-shadow: 0 0 var(--qc-glow, 12px) rgba(236,111,119,0.85); }
+  45%  { transform: scale(calc(1 + (var(--qc-scale, 1.1) - 1) * 0.25)); }
+  100% { transform: scale(1); text-shadow: 0 0 var(--qc-glow-rest, 6px) rgba(236,111,119,0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-countdown] > .quiz-countdown-digits {
+    animation: none;
+    transform: none;
+    text-shadow: 0 0 var(--qc-glow-rest, 6px) rgba(236,111,119,0.55);
+  }
+}
+html.reduce-motion [data-countdown] > .quiz-countdown-digits {
+  animation: none !important;
+  transform: none;
+  text-shadow: 0 0 var(--qc-glow-rest, 6px) rgba(236,111,119,0.55);
+}
+
+/* F12 — the SERVER's timeout verdict. Only ever set from a settlement
+   (`data-timeout` on the card stamp and the centre's result face), never from
+   a local zero. A heavier, distinct stamp: an hourglass amber, not the plain
+   "incorrect" red, landing with a firmer slam. Reduced motion keeps it still
+   (the overlay's own reduced-motion rules already stop every animation). */
+.ranked-result-stamp[data-timeout="true"] {
+  background: #9a3412;
+  border-color: #fdba74;
+  box-shadow: 0 0 0 3px rgba(253,186,116,0.25), 0 12px 32px rgba(0,0,0,0.5);
+  font-size: clamp(1.2rem, 2.8vw, 1.85rem);
+  animation-name: quiz-timeout-stamp;
+  animation-duration: 460ms;
+}
+@keyframes quiz-timeout-stamp {
+  0%   { opacity: 0; transform: scale(1.45) rotate(-4deg); }
+  55%  { opacity: 1; transform: scale(0.96) rotate(0deg); }
+  75%  { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+[data-testid="central-result-verdict"][data-timeout="true"] {
+  color: #fdba74;
+  text-shadow: 0 0 14px rgba(253,186,116,0.45);
+}
+
 /* ===== RG — the round timeline (the arena's BOTTOM region) =================
    An adaptive moving viewport over an indefinite sequence of rounds. A Ranked
    match ends on HP, not on a round count, so there is no cycle here, nothing

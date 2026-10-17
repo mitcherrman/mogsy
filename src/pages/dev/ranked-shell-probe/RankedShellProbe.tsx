@@ -34,6 +34,9 @@
  *   and an evidence note. Advancing the SFX fixture therefore plays a real
  *   question → reveal → next question sequence inside ONE mount of the arena,
  *   which is what the visual-continuity certification measures.
+ * `?timeout=1` (MISC W2D) — with `?sfx=1`, every settled round reports the
+ *   VIEWER as server-timed-out (`outcome: "timeout"`, `timed_out: true`), so
+ *   the TIME'S UP stamp and cue can be seen arriving from a settlement.
  * `?broken=1` (VISCONT1) points every served asset path at a file that does
  *   not exist, so a failed load can be measured against a loaded one.
  * `?q=shape&alen=N&acount=K&plen=M&rich=1` (VISCONT1) serves a round of an
@@ -750,7 +753,7 @@ function publicFor(state: ProbeState, role: string | null) {
     const publicPlayers = payload.players as Record<string, unknown>[];
     publicPlayers[0].has_submitted = false;
     publicPlayers[1].has_submitted = probe.sfxStep === 1;
-    const viewerScore = completed >= 2 ? 5 : completed >= 1 ? 2 : 0;
+    const viewerScore = probe.timeout ? 0 : completed >= 2 ? 5 : completed >= 1 ? 2 : 0;
     const opponentScore = completed >= 3 ? 4 : completed >= 1 ? 2 : 0;
     return withPointsScoring(applied, {
       moduleNumber: round, matchLength: 10, modulesCompleted: completed,
@@ -813,12 +816,16 @@ function privateFor(state: ProbeState) {
 /** RMOB2 — one settled points module, in the shape the backend resolves. */
 function resolvedFor(round: number) {
   const T = "2026-07-18T12:00:00+00:00";
-  const youScored = round % 3 !== 0;
+  // MISC W2D — a `?timeout=1` viewer scored nothing: the server timed them out.
+  const youScored = !probe.timeout && round % 3 !== 0;
   const themScored = round % 2 === 1;
   const player = (id: string, scored: boolean) => ({
     player_id: id, class_id: id === VIEWER ? "tank" : "mage",
     outcome: scored ? "correct" : "incorrect", submitted_at: T,
     answered_first: id === VIEWER, timed_out: false, selected_ability_id: null,
+    // MISC W2D — `?timeout=1`: the SERVER settles the viewer as timed out.
+    ...(probe.timeout && id === VIEWER
+      ? { outcome: "timeout", submitted_at: null, answered_first: false, timed_out: true } : {}),
     damage: { base_damage_dealt: 0, outgoing_bonus: 0, final_damage_dealt: 0,
       shield_absorbed: 0, incoming_reduction: 0, final_damage_received: 0 },
     hp_before: 170, hp_after: 170, reached_zero_hp: false,
@@ -899,10 +906,12 @@ const probe: {
   evlen: number;
   /** SCBS1 — `?mrlive=1`: the Stat Check script step, or null outside it. */
   mrStep: number | null;
+  /** MISC W2D — `?timeout=1`: every settled round times the viewer out. */
+  timeout: boolean;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
   discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0,
-  seq: [], broken: false, ruleset: null, evlen: 0, mrStep: null };
+  seq: [], broken: false, ruleset: null, evlen: 0, mrStep: null, timeout: false };
 
 /** Stamp a live clock and a future round-1 start onto a canned envelope. */
 function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
@@ -1256,6 +1265,7 @@ export default function RankedShellProbe() {
   probe.seq = (params.get("seq") ?? "").split(",")
     .filter((s) => (PROBE_STATES as readonly string[]).includes(s) || SEQ_ENTRY.test(s));
   probe.broken = params.get("broken") === "1";
+  probe.timeout = params.get("timeout") === "1";
   const ruleset = params.get("ruleset");
   probe.ruleset = ruleset && ["time_trial", "survival", "standard"].includes(ruleset) ? ruleset : null;
   const dailyHost = params.get("host") === "daily";

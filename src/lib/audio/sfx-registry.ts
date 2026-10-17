@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward" | "quiz";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -119,6 +119,18 @@ export const SFX_REGISTRY = {
   "archives.reference.open": { group: "archives", minReplayMs: 120, relativeGain: 0.48, builtInGeneratorId: "sfx.archives.reference-open" },
   "pro-play.analysis.open": { group: "pro-play", minReplayMs: 160, relativeGain: 0.62, builtInGeneratorId: "sfx.pro-play.analysis-open" },
   "account.action.confirmed": { group: "auth", minReplayMs: 300, relativeGain: 0.6, builtInGeneratorId: "sfx.account.action-confirmed" },
+  // MISC W2D (F10–F12) — THE ANSWER CLOCK. Built-in voices on purpose: unlike
+  // `broadcast.countdown.tick` (asset-first, silent until configured), a timed
+  // quiz's final seconds must be audible by default. Three escalation levels
+  // (5–4, 3–2, 1) are three events so Audio Studio can rebind each. Callers
+  // pass `quiz-countdown:<clock>:<second>` / `quiz-timeout:<settled>` ids, so
+  // the engine's eventId dedupe is the once-per-second/per-clock guarantee;
+  // `minReplayMs` only keeps two stacked clocks from double-knocking.
+  "quiz.countdown.tick": { group: "quiz", minReplayMs: 350, relativeGain: 0.78, builtInGeneratorId: "sfx.quiz.countdown-tick" },
+  "quiz.countdown.urgent": { group: "quiz", minReplayMs: 350, relativeGain: 0.86, builtInGeneratorId: "sfx.quiz.countdown-urgent" },
+  "quiz.countdown.final": { group: "quiz", minReplayMs: 350, relativeGain: 0.92, builtInGeneratorId: "sfx.quiz.countdown-final" },
+  // Only ever for a SERVER-settled timeout (never a local zero).
+  "quiz.answer.timeout": { group: "quiz", minReplayMs: 1000, relativeGain: 0.86, builtInGeneratorId: "sfx.quiz.answer-timeout" },
   // Broadcast remains asset-first and session-configured. These entries give
   // its existing vocabulary canonical policy, unlock, mute, cache and dedupe
   // without inventing fallback sounds when an operator has configured none.

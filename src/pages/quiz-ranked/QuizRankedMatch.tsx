@@ -77,7 +77,9 @@ import {
   opponentLabelFor, opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants,
   projectPermissions, projectTimer, projectJourneyTimer, isJourneyFinalReveal,
+  answerClockKey,
 } from "./rankedViews";
+import { useCountdownSfx } from "@/lib/quiz-timer/useCountdownFeedback";
 import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
   type ObservedRoundKinds,
@@ -850,6 +852,20 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     ? (projectJourneyTimer(journeyClock, m.skewMs, countdownNow)
       ?? (isJourneyFinalReveal(journeyClock) ? null : projectTimer(m.publicRound, m.skewMs, countdownNow)))
     : null;
+  // MISC W2D (F10) — THE FINAL SECONDS' SOUND, decided ONCE, here, from the
+  // ONE `timer` both presenters render (they draw only the CSS pulse). Keyed
+  // by the clock's identity, so per-card Journey children and pooled budgets
+  // dedupe correctly. Silent once the viewer's own answer is submitted or in
+  // flight: the final seconds call the player to act, and nothing here can
+  // decide or announce a timeout (that is the settlement's, below).
+  const viewerSubmitted = m.publicRound?.players
+    .find((player) => player.playerId === viewerUserId)?.hasSubmitted ?? false;
+  useCountdownSfx({
+    clockKey: timer ? answerClockKey(matchId, m.publicRound, journeyClock) : null,
+    remainingSeconds: timer?.remainingSeconds ?? null,
+    running: timer !== null && !timer.paused,
+    armed: m.phase === "active" && !m.revealHold && !m.submitting && !viewerSubmitted,
+  });
   // Wake EXACTLY at the live round's authoritative start, so input opens at
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.

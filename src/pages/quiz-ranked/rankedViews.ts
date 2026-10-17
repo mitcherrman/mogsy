@@ -278,6 +278,34 @@ export function projectJourneyTimer(seg: SegmentStateView | null | undefined, sk
   return null;
 }
 
+/**
+ * MISC W2D (F10) — THE IDENTITY OF THE ANSWER CLOCK the header shows, for the
+ * final-seconds sound's dedupe. It follows the projection above exactly:
+ *
+ *   * a per-card Journey child (Survival, F09 Standard v2 — `card_timer_ms`)
+ *     is ONE clock per child: `…#seg:card:<own_card_index>`;
+ *   * a pooled Journey budget (historical Standard — `active_time_*`) is ONE
+ *     clock for the whole module, so a remainder resumed after a reveal or a
+ *     beat is the same clock and cannot re-sound a second it already sounded;
+ *   * every other segment is its round's clock: `r<round_number>`.
+ *
+ * Null when no clock is shown. Identity only — it decides no time.
+ */
+export function answerClockKey(matchId: string, round: PublicRoundView | null,
+                               journeyClock: SegmentStateView | null): string | null {
+  if (journeyClock?.journey) {
+    const seg = `${journeyClock.moduleId}.${journeyClock.moduleVersion}#${journeyClock.segmentNumber}`;
+    if (journeyClock.activeTimeMs !== null && journeyClock.activeTimeMs !== undefined) {
+      return `${matchId}:${seg}:pool`;
+    }
+    if (journeyClock.cardTimerMs !== null && journeyClock.cardTimerMs !== undefined) {
+      return journeyClock.ownCardIndex === null ? null : `${matchId}:${seg}:card:${journeyClock.ownCardIndex}`;
+    }
+  }
+  const roundNumber = round?.activeRound?.roundNumber ?? null;
+  return roundNumber === null ? null : `${matchId}:r${roundNumber}`;
+}
+
 /** Snapshot clock skew: server-clock offset relative to the local clock at
  * receipt (server-time − local-now). Used by timerMath to anchor the display
  * to the backend clock while still ticking down locally. */

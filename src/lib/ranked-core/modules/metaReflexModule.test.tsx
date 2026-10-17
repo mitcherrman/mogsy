@@ -218,8 +218,10 @@ describe("Meta Reflex — the card clock", () => {
     expect(screen.getByTestId("mr-choice-left")).toBeDisabled();
     fireEvent.click(screen.getByTestId("mr-choice-left"));
     expect(acts.submitChallenge).not.toHaveBeenCalled();
-    // The server's schedule decides the timeout; the UI only says it is coming.
-    expect(screen.getByTestId("mr-status")).toHaveTextContent("Time's up");
+    // The server's schedule decides the timeout; a LOCAL zero claims none
+    // (MISC W2D F12) — the server's reveal is what says the card timed out.
+    expect(screen.getByTestId("mr-status")).toHaveTextContent("Next card");
+    expect(screen.getByTestId("mr-status").textContent).not.toMatch(/time'?s up|timed out/i);
     expect(screen.getByTestId("mr-block").textContent).not.toMatch(/correct|incorrect/i);
   });
 

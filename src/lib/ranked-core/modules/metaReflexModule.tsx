@@ -28,6 +28,8 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { ChampionLevelBadge } from "@/components/ChampionLevelBadge";
+import { CountdownDigits } from "@/components/quiz-timer/CountdownDigits";
+import { countdownDataAttrs } from "@/lib/quiz-timer/countdownFeedback";
 import {
   MetaReflexSting, STING_MS, useEntrySting,
 } from "@/components/ranked-arena/MetaReflexSting";
@@ -96,7 +98,12 @@ function Countdown({ deadline, skewMs, timerMs }:
           clock would drown a screen reader. The value is labelled instead. */}
       <p className="text-sm font-semibold tabular-nums">
         <span className="sr-only">Time left on this card: </span>
-        {clock.seconds}s
+        {/* MISC W2D (F11) — the final-seconds pulse. Visual only: a six-second
+            reflex card would tick through almost its whole life, so the
+            block's sound stays with the header clock. */}
+        <span {...countdownDataAttrs({ remainingSeconds: clock.seconds, paused: false })}>
+          <CountdownDigits timer={{ remainingSeconds: clock.seconds, paused: false }}>{clock.seconds}s</CountdownDigits>
+        </span>
       </p>
     </div>
   );
@@ -456,7 +463,9 @@ function BlockPhase({ state, cards, actions, skewMs, errorLine }: {
       status={errorLine ?? (
         <p className={STATUS_CLASS} role="status" data-testid="mr-status">
           {answered ? "Locked in — next card…"
-            : expired ? "Time's up — next card…"
+            // MISC W2D (F12) — a LOCAL zero is not a timeout (a tap in flight
+            // may still be accepted); the server's verdict is the reveal.
+            : expired ? "Next card…"
               : `Opponent: ${state.opponentChallengesCompleted} of ${state.challengeCount} done`}
         </p>
       )} />
