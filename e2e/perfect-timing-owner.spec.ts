@@ -732,6 +732,7 @@ test.describe("PT5 mode pick", () => {
 for (const vp of [
   { name: "1440x900", width: 1440, height: 900, touch: false },
   { name: "390x844", width: 390, height: 844, touch: true },
+  { name: "375x812", width: 375, height: 812, touch: true },
 ] as const) {
   test.describe(`PT5 slice ${vp.name}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch });

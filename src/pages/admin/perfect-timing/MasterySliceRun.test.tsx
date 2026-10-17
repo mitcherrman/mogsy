@@ -230,7 +230,12 @@ describe("Mastery Slice — the integrated run", () => {
     expect(screen.getByTestId("pt-slice-subject")).toHaveTextContent("Ezreal");
     expect(screen.getByTestId("pt-slice-story")).toHaveTextContent("Rank 1 → 3: −0.50 s · Sheen +10 AH: −0.455 s");
     expect(screen.getByTestId("pt-ladder-stage-equipped")).toHaveTextContent("Equipped Sheen +10 AH");
-    expect(screen.getByTestId("pt-ladder-delta-rank_up")).toHaveTextContent("true −0.50 s");
+    // PT5.1: a slice row is stage, input, the player's own error, tier and points; the cooldown change is the story above.
+    expect(screen.queryByTestId("pt-ladder-delta-rank_up")).toBeNull();
+    const rows = screen.getByTestId("pt-ladder").textContent ?? "";
+    expect(rows).not.toMatch(/true [−+]/);
+    expect(rows).not.toContain(" vs ");
+    expect(screen.getByTestId("pt-ladder-row-2")).toHaveTextContent(/(early|late|Exact)/);
     expect(screen.getByTestId("pt-ladder-item")).toBeInTheDocument();
     // One deal, three locks, each with ITS stage's id and stop.
     expect(be.deals()).toHaveLength(1);
@@ -481,7 +486,7 @@ describe("Mastery Slice — PT5.1 the between-stage transition", () => {
     expect(screen.getByTestId("pt-tr-haste")).toHaveTextContent("+10 Ability Haste");
     expect(screen.getByTestId("pt-tr-item-icon").getAttribute("src")).toMatch(/assets\/items\/3057\.png$/);
     expect(screen.getByTestId("pt-tr-effect")).toHaveTextContent("Cooldown reduced");
-    expect(screen.getByTestId("pt-tr-rank")).toHaveTextContent("Still rank 3 / 5");
+    expect(screen.getByTestId("pt-tr-rank")).toHaveTextContent("Rank 3 / 5");
     expect(tr.textContent).not.toMatch(/\d+(\.\d+)?\s?(ms|s)\b/i);
     expect(screen.queryByTestId("pt-press-surface")).toBeNull();
     // The item comes from the deal: the name on screen is the deal's, not a constant.

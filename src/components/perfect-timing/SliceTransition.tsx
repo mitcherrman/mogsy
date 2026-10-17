@@ -35,7 +35,7 @@ import { useSettledAdvance } from "@/lib/perfect-timing/useSettledAdvance";
 import type { PtRoundView, PtSliceItemView, PtSliceStageView } from "@/lib/perfect-timing/viewModel";
 import { HeroArt } from "./PerfectTimingStage";
 import {
-  ADJUST_TIMING_TEXT, TRANSITION_READY_MS, TRANSITION_READY_REDUCED_MS, TRANSITION_TITLE, cooldownChangeText, hasTransition, hasteText, rankStepText,
+  ADJUST_TIMING_TEXT, TRANSITION_READY_MS, TRANSITION_READY_REDUCED_MS, TRANSITION_TITLE, cooldownChangeText, hasTransition, hasteText, rankStepText, rankText,
 } from "./presentation";
 import "./perfectTiming.css";
 
@@ -104,11 +104,7 @@ function TransitionBody({ round, slice, onContinue, continueLabel }: {
           <span className="pt-tr-icon" data-testid="pt-tr-icon">
             <SubjectArt media={round.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={round.slot} className="h-full w-full" />
           </span>
-          {item ? <ItemSlot item={item} /> : (
-            <span className="pt-tr-rankmark" aria-hidden data-testid="pt-tr-rankmark">
-              <b>{to}</b>
-            </span>
-          )}
+          {item ? <ItemSlot item={item} /> : null}
         </div>
 
         <div className="pt-tr-copy">
@@ -132,13 +128,23 @@ function TransitionBody({ round, slice, onContinue, continueLabel }: {
             </p>
           )}
 
-          <p className="pt-tr-rank" data-testid="pt-tr-rank">
-            <RankPips from={kind === "rank_up" ? from : to} to={to} count={round.rankCount} />
-            <span>{kind === "rank_up" ? `Rank ${to} / ${round.rankCount}` : `Still rank ${to} / ${round.rankCount}`}</span>
-          </p>
+          {/* One focal message per transition. Rank up: the rank change, with the ability-style pips
+              as its only companion. Equipped: the item and its haste, with the rank as a quiet line. */}
+          {kind === "rank_up" ? (
+            <p className="pt-tr-rank" data-testid="pt-tr-rank" data-kind="rank_up">
+              <RankPips from={from} to={to} count={round.rankCount} />
+            </p>
+          ) : (
+            <p className="pt-tr-rank" data-testid="pt-tr-rank" data-kind="equipped">
+              {rankText(round.rank, round.rankCount)}
+            </p>
+          )}
 
-          <p className="pt-tr-effect" data-testid="pt-tr-effect">{effect}</p>
-          <p className="pt-tr-adjust" data-testid="pt-tr-adjust">{ADJUST_TIMING_TEXT}</p>
+          <p className="pt-tr-support" data-testid="pt-tr-support">
+            <span className="pt-tr-effect" data-testid="pt-tr-effect">{effect}</span>
+            <span className="pt-tr-dash" aria-hidden>—</span>
+            <span className="pt-tr-adjust" data-testid="pt-tr-adjust">{ADJUST_TIMING_TEXT}</span>
+          </p>
 
           <div className="pt-tr-actions">
             <button ref={buttonRef} type="button" className="pt-next pt-tr-continue" data-testid="pt-tr-continue"

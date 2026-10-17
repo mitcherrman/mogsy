@@ -51,8 +51,13 @@ describe("SliceTransition — what it says", () => {
     expect(screen.getByTestId("pt-tr-to")).toHaveTextContent("Rank 3");
     expect(screen.getByTestId("pt-tr-effect")).toHaveTextContent("Cooldown changed");
     expect(screen.getByTestId("pt-tr-adjust")).toHaveTextContent("Adjust your timing");
+    // The supporting message is ONE line holding both phrases.
+    expect(screen.getByTestId("pt-tr-support")).toHaveTextContent("Cooldown changed—Adjust your timing");
     const pips = screen.getByTestId("pt-tr-pips").querySelectorAll("i");
     expect([...pips].map((p) => p.dataset.state)).toEqual(["kept", "gained", "gained", "empty", "empty"]);
+    // The rank is said by the change itself: no separate medal, no second "Rank 3 / 5" line.
+    expect(screen.queryByTestId("pt-tr-rankmark")).toBeNull();
+    expect(screen.getByTestId("pt-tr-rank")).not.toHaveTextContent(/rank/i);
     expect(screen.getByTestId("pt-tr-subject")).toHaveTextContent("EzrealQMystic Shot");
   });
 
@@ -64,9 +69,10 @@ describe("SliceTransition — what it says", () => {
     expect(screen.getByTestId("pt-tr-haste")).toHaveTextContent("+10 Ability Haste");
     expect(screen.getByTestId("pt-tr-item-icon")).toHaveAttribute("src", SHEEN.iconUrl);
     expect(screen.getByTestId("pt-tr-effect")).toHaveTextContent("Cooldown reduced");
-    expect(screen.getByTestId("pt-tr-rank")).toHaveTextContent("Still rank 3 / 5");
-    const pips = screen.getByTestId("pt-tr-pips").querySelectorAll("i");
-    expect([...pips].map((p) => p.dataset.state)).toEqual(["kept", "kept", "kept", "empty", "empty"]);
+    // The rank stays as one quiet line; the pips are only for the rank-up change.
+    expect(screen.getByTestId("pt-tr-rank")).toHaveTextContent("Rank 3 / 5");
+    expect(screen.queryByTestId("pt-tr-pips")).toBeNull();
+    expect(screen.queryByTestId("pt-tr-rankmark")).toBeNull();
   });
 
   it("draws the item's initial when its art fails, never an empty slot", () => {

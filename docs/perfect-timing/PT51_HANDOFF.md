@@ -66,7 +66,7 @@ Untouched: backend, `api.ts`, contracts, `viewModel.ts`, `timingEngine.ts`, scor
 | Vitest wider set (`src/pages/admin`, `src/components/admin`, `src/lib/{playtests,admin,ranked-arena}`, `src/test/guards`, `src/App*`) | 10 failed / 1,159 passed | 10 failed / 1,149 passed — **identical 10 failing tests** (App.routeGuards, App.routing-contract ×2, admin-registry.routes ×2, AdminPlatformPolicies, AdminQuizReview.proPlay, noStaticLeagueFacts, users1AudienceIdentity ×2) |
 | `tsc -p tsconfig.app.json` | the same 2 errors (`OnboardingProfile.tsx`, `identity/connections.ts`) | same 2 |
 | ESLint `src/components/perfect-timing src/pages/admin/perfect-timing src/lib/perfect-timing e2e/perfect-timing-owner.spec.ts` | 0 problems | — |
-| Playwright `e2e/perfect-timing-owner.spec.ts` (`playwright.arena.config.ts`, Vite :8123, stand-ins from the captures) | **61 / 61** | 17 / 17 PT5 subset (55 in PT5's own run) |
+| Playwright `e2e/perfect-timing-owner.spec.ts` (`playwright.arena.config.ts`, Vite :8123, stand-ins from the captures) | **61 / 61** at 067e4d94 (62 / 62 after §7) | 17 / 17 PT5 subset (55 in PT5's own run) |
 
 Playwright (all pass): the PT4.4 Random Run and fit matrix unchanged; the PT5 full slice by keyboard (1440×900) and touch (390×844) now walk **both transitions** (kind, title, icons, Rank 1→3 / Sheen +10, effect line, no duration, no truth, waits to be ready, Continue → armed); **every state fits at all 14 sizes** (1920×1080 … 320×568, 844×390, 667×375): mode pick, dealing, each stage armed/running/revealed, **each transition settled**, results, resume, voided — document/screen/main/stage/card overflow ≤ 1 px, no test-id'd element outside the viewport or clipped by the card, `<html>`/`<body>` `overflow: hidden`, keys and wheel scroll nothing. New PT5.1 specs (6): early Space/Enter cannot skip; a held key and a double press move one state; the key that continued cannot cast (re-pressed inside the guard it stays armed, after it casts); no looping animation ever and the entrance has finished inside 2.2 s; nothing animates in the transition while a stage is timed; reduced motion (`emulateMedia`) = no animation, ready < 1.5 s; a voided stage still shows the transition; a slice that lost its server state re-deals the same ability; touch: a tap before it is readable does nothing, and a quick second tap cannot cast.
 
@@ -86,3 +86,29 @@ Evidence (outside the repo): `C:/Users/mlmit/mogzy-wt/pt51-evidence/` — `befor
 ## 6. Release (owner-only)
 
 Frontend publish only; no backend dependency beyond PT5's. Merge `perfect-timing/pt51-transitions-typography` → `main`, Lovable **Publish**, then play one Mastery Slice at `/admin/playtests/perfect-timing` and one Random Run. Rollback: revert/publish the previous frontend (PT5 behavior returns exactly).
+
+## 7. Final refinements (owner review of the first screenshots, same branch)
+
+Two targeted changes; the state machine, input guards, timing, scoring, contracts and Random Run are untouched.
+
+**7.1 Mobile results: no truncation.** A slice ladder row is now only: stage identity, the input (`Rank 3` / `Sheen +10 AH`), the player's own error (`2,912 ms early`), tier and points. The per-row `true −0.455 s` and the `elapsed vs true` times are removed (the summary story and each stage's reveal already tell how the cooldown changed; Random Run rows keep their `vs` times). The input and the error are `white-space: nowrap` units that wrap *as units* (never `+10 / AH`), the story line wraps at its ` · ` separators, titles/sub lines clamp at two lines only as a last resort and nothing prints an ellipsis in the screenshots at 320, 375, 390, 667×375 and desktop. No font was reduced to force one line.
+
+**7.2 One dominant message per transition.**
+* *Rank up*: kicker **RANK UP** (smaller) · **RANK 1 → RANK 3** (the focal point, now ~76 px on desktop; the old rank dims, the new one lands) · the five ability pips as the only companion · one support line. **Removed** the circular rank medal (the third statement of the same rank) and the separate "Rank 3 / 5" line; **kept** the pips because on a rank-up they are the change itself (ranks gained light one by one) and cost one small row.
+* *Item equipped*: kicker **ITEM EQUIPPED** · **SHEEN** and a full-width **+10 ABILITY HASTE** plate (the focal point) · the Sheen icon is now the largest icon (the ability icon is smaller beside it, to say what is modified) and its flight into the slot is larger · rank is one quiet muted line (`Rank 3 / 5`). **Removed** the rank pips here (rank did not change).
+* Both: **one supporting line** `COOLDOWN CHANGED/REDUCED — ADJUST YOUR TIMING` (the old heavy gold ribbon and two big lines are gone; "adjust" stays gold). Stacked (portrait ≤ 900 px, short landscape) it becomes two lines and the dash is dropped.
+* Values still come from the deal (the Trinity Force +20/+35 test is unchanged and green). Motion, reduced motion and the 900/250 ms ready delay are unchanged.
+
+Spec: slice viewports now include 375×812 (full slice by touch).
+
+### Verification of the refinements (2026-10-16)
+
+| Check | Result |
+| --- | --- |
+| Vitest PT set (`src/lib|components|pages/admin/perfect-timing`, `src/pages/admin/playtests`) | **310 / 310** (same count as 067e4d94: tests were updated, not added; PT + public game + public-modes 372 / 372) |
+| Wider admin/guard set | unchanged since 067e4d94 (no file in it changed): same 10 failures as clean base `c5521d3e` (see §4) |
+| `tsc -p tsconfig.app.json` | the same 2 baseline errors |
+| ESLint on the PT folders and the spec | 0 problems |
+| Playwright `perfect-timing-owner` (full spec, all 14 sizes) | **62 / 62** (61 + the 375×812 slice) |
+
+Evidence (outside the repo, `C:/Users/mlmit/mogzy-wt/pt51-evidence/`): `refine/` (focused captures), `after2/` (final full sweep), `compare-refine/` (8 before/after composites vs 067e4d94: both transitions at 1440×900 and 390×844, results at 390×844, 320×568, 667×375, landscape equipped transition). Zero scrolling re-verified by the full sweep: every state, including both transitions and the results, has ≤ 1 px overflow on document/screen/main/stage/transition card, no test-id'd element outside the viewport or clipped by the card, `<html>`/`<body>` `overflow: hidden`, keys and wheel scroll nothing.

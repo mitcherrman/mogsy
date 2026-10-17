@@ -1570,32 +1570,12 @@
   box-shadow: 0 0 34px -4px var(--pt-tr-glow), 0 14px 30px -12px rgba(0, 0, 0, 0.95);
 }
 .pt-tr-icon > span { border-radius: inherit; }
-.pt-tr-rankmark {
-  position: absolute;
-  right: calc(var(--pt-tr-icon) * -0.1);
-  bottom: calc(var(--pt-tr-icon) * -0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(var(--pt-tr-icon) * 0.4);
-  height: calc(var(--pt-tr-icon) * 0.4);
-  border-radius: 50%;
-  border: 3px solid var(--pt-gold);
-  background: radial-gradient(circle at 50% 35%, #2a2110, #0b1727);
-  box-shadow: 0 0 22px -2px var(--pt-tr-glow);
-}
-.pt-tr-rankmark b {
-  font-size: calc(var(--pt-tr-icon) * 0.24);
-  font-weight: var(--pt-heavy, 700);
-  line-height: 1;
-  color: var(--pt-gold);
-}
 .pt-tr-slot {
   position: relative;
   flex: none;
   display: block;
-  width: calc(var(--pt-tr-icon) * 0.56);
-  height: calc(var(--pt-tr-icon) * 0.56);
+  width: var(--pt-tr-slot);
+  height: var(--pt-tr-slot);
   border-radius: 18%;
   border: 3px solid var(--pt-tr-accent);
   background: radial-gradient(circle at 50% 30%, #17294a, #07111f);
@@ -1875,7 +1855,6 @@
   100% { transform: none; box-shadow: 0 0 34px -4px var(--pt-tr-glow), 0 14px 30px -12px rgba(0, 0, 0, 0.95); }
 }
 .pt-transition[data-kind="equipped"][data-animate="true"] .pt-tr-icon { animation: pt-tr-enter 380ms var(--pt-ease) 120ms both; }
-.pt-transition[data-kind="rank_up"][data-animate="true"] .pt-tr-rankmark { animation: pt-tr-pop 520ms var(--pt-ease) 600ms both; }
 .pt-transition[data-kind="equipped"][data-animate="true"] .pt-tr-slot { animation: pt-tr-enter 380ms var(--pt-ease) 220ms both; }
 
 /* rank 1 → rank 3: the old rank dims, the new one lands */
@@ -1920,8 +1899,6 @@
 }
 
 .pt-transition[data-animate="true"] .pt-tr-rank { animation: pt-tr-enter 340ms var(--pt-ease) 600ms both; }
-.pt-transition[data-animate="true"] .pt-tr-effect { animation: pt-tr-enter 360ms var(--pt-ease) 760ms both; }
-.pt-transition[data-animate="true"] .pt-tr-adjust { animation: pt-tr-enter 360ms var(--pt-ease) 860ms both; }
 .pt-transition[data-animate="true"] .pt-tr-actions { animation: pt-tr-enter 320ms var(--pt-ease) 880ms both; }
 @keyframes pt-tr-enter {
   from { opacity: 0; transform: translateY(8px); }
@@ -2047,3 +2024,94 @@
 /* The slice hero's "no ability haste" note sits on its own quiet line, with no dangling dot. */
 .pt-rank--slice .pt-rank-base { flex-basis: 100%; font-size: 0.86em; font-weight: 700; color: var(--pt-muted); }
 .pt-rank--slice .pt-rank-dot { display: none; }
+
+/* ===========================================================================
+   PT5.1 — TRANSITION HIERARCHY. One dominant message per transition.
+     Rank up       RANK UP (kicker)  ·  RANK 1 -> RANK 3 (the focal point)  ·  the ability pips
+     Item equipped ITEM EQUIPPED (kicker)  ·  SHEEN + its ability haste (the focal point, and the
+                   item is the biggest thing on the left too)
+   then ONE supporting line: "Cooldown changed/reduced - Adjust your timing".
+   The old circular rank medal is gone (it said the rank a third time); the rank text under an
+   equipped item is a quiet line, and the pips stay only on rank up, where they ARE the change.
+   =========================================================================== */
+.pt-transition { --pt-tr-slot: calc(var(--pt-tr-icon) * 0.58); }
+.pt-transition[data-kind="equipped"] {
+  /* The item is the big thing; the ability icon stays beside it, smaller, to say what it modifies. */
+  --pt-tr-slot: var(--pt-tr-icon);
+  --pt-tr-icon: clamp(72px, min(20dvh, 12.5vw), 190px);
+}
+.pt-transition[data-kind="equipped"] .pt-tr-icon { width: calc(var(--pt-tr-slot) * 0.72); height: calc(var(--pt-tr-slot) * 0.72); }
+.pt-transition[data-kind="equipped"] .pt-tr-anchor { align-items: center; }
+.pt-tr-title {
+  font-size: clamp(22px, min(5.2dvh, 7.5vw), 46px);
+  letter-spacing: 0.05em;
+}
+.pt-tr-subject { font-size: clamp(15px, 2.5dvh, 21px); }
+.pt-tr-change { font-size: clamp(34px, min(8.4dvh, 10vw), 76px); gap: 2px 0.3em; }
+.pt-tr-from { font-size: 0.6em; }
+.pt-tr-arrow { font-size: 0.7em; }
+.pt-tr-change[data-kind="equipped"] { flex-direction: column; align-items: flex-start; gap: 0.12em; }
+.pt-tr-change[data-kind="equipped"] .pt-tr-haste {
+  font-size: clamp(18px, min(4.4dvh, 6vw), 34px);
+  padding: 0.12em 0.5em;
+}
+.pt-tr-rank { font-size: clamp(13px, 2.2dvh, 17px); gap: 8px; color: var(--pt-muted); }
+.pt-tr-rank[data-kind="rank_up"] { gap: 0; }
+.pt-tr-pips i { width: clamp(12px, 2.2dvh, 20px); height: clamp(12px, 2.2dvh, 20px); }
+
+.pt-tr-support {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 0.55em;
+  font-size: clamp(15px, 2.5dvh, 22px);
+  font-weight: var(--pt-heavy, 700);
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+.pt-tr-support .pt-tr-effect { font-size: inherit; line-height: inherit; letter-spacing: inherit; color: var(--pt-text); }
+/* The dash leads the second phrase, so a wrap never strands it at the end of a line. */
+.pt-tr-dash { display: none; }
+.pt-tr-support .pt-tr-adjust::before { content: "\2014\00a0"; color: var(--pt-brass-bright); text-shadow: none; }
+.pt-tr-support .pt-tr-adjust {
+  display: inline;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: var(--pt-gold);
+  text-shadow: 0 0 22px rgba(240, 215, 140, 0.35);
+}
+.pt-transition[data-animate="true"] .pt-tr-support { animation: pt-tr-enter 360ms var(--pt-ease) 780ms both; }
+/* the item is what arrives: a bigger flight and an earlier haste */
+@keyframes pt-tr-arrive {
+  0%   { opacity: 0; transform: translate(-110px, -170px) scale(2.2); }
+  70%  { opacity: 1; transform: translate(0, 0) scale(0.92); }
+  100% { opacity: 1; transform: none; }
+}
+.pt-transition[data-animate="true"] .pt-tr-haste { animation: pt-tr-pop 520ms var(--pt-ease) 760ms both; }
+
+@media (max-width: 559px), (max-width: 900px) and (orientation: portrait) {
+  .pt-transition[data-kind="equipped"] { --pt-tr-icon: clamp(72px, min(15dvh, 28vw), 170px); }
+  .pt-tr-title { font-size: clamp(22px, min(4.4dvh, 8vw), 38px); }
+  .pt-tr-change { font-size: clamp(30px, min(6.4dvh, 10.5vw), 64px); gap: 2px 0.3em; }
+  .pt-tr-change[data-kind="equipped"] { align-items: center; }
+  .pt-tr-change[data-kind="equipped"] .pt-tr-haste { font-size: clamp(16px, min(3.2dvh, 5.6vw), 28px); }
+  .pt-tr-support { flex-direction: column; align-items: center; font-size: clamp(15px, 2.6dvh, 22px); }
+  .pt-tr-support .pt-tr-adjust::before { content: none; }
+  .pt-tr-rank { justify-content: center; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .pt-transition[data-kind="equipped"] { --pt-tr-icon: clamp(60px, min(28dvh, 15vw), 120px); }
+  .pt-tr-title { font-size: clamp(20px, 6.2dvh, 28px); }
+  .pt-tr-subject { font-size: 14px; }
+  .pt-tr-change { font-size: clamp(26px, 9dvh, 36px); }
+  .pt-tr-change[data-kind="equipped"] .pt-tr-haste { font-size: 15px; }
+  .pt-tr-rank { font-size: 12px; }
+  .pt-tr-support { flex-direction: column; align-items: flex-start; font-size: 14.5px; }
+  .pt-tr-support .pt-tr-adjust::before { content: none; }
+}

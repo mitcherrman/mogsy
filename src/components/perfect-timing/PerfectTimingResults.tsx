@@ -75,7 +75,7 @@ export function PerfectTimingResults({ summary, onPlayAgain, onExit = null, exit
         </dl>
         {story ? (
           <p className="pt-slice-story" data-testid="pt-slice-story">
-            {story.split(" · ").map((part, i) => <span key={part}>{i > 0 ? " · " : null}<span className="pt-nw">{part}</span></span>)}
+            {story.split(" · ").map((part, i) => <span key={part}>{i > 0 ? " " : null}<span className="pt-nw">{i > 0 ? `· ${part}` : part}</span></span>)}
           </p>
         ) : null}
         <div className="pt-results-actions">
