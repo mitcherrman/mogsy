@@ -1,9 +1,10 @@
 # More Challenges UX — MC-UX1 (gallery) + MC-UX2 (hub)
 
 **Status (2026-10-16):**
-* **MC-UX2: implemented, awaiting owner review.** Not merged, not published.
-  * Frontend branch `mc-ux2/hub-navigation-metrics` is pushed.
-  * Backend branch `mc-ux2/bonus-history-be` @ `fce2d90c` is pushed (committed on the owner's instruction). It is not merged.
+* **MC-UX2: implemented and corrected; ready for owner approval.** Not merged, not published, not deployed.
+  * Backend `mc-ux2/bonus-history-be` @ `ea69f599` (draft PR #45).
+  * Frontend `mc-ux2/hub-navigation-metrics` @ `e71d7977`, plus this handoff (draft PR #56).
+  * The three review corrections are in §UX2.10.
 * MC-UX1: merged into `main` at `af170999` (see the MC-UX1 section below).
 
 ---
@@ -93,7 +94,7 @@
 
 ## UX2.5 Files
 
-Backend (`mc-ux2/bonus-history-be` @ `fce2d90c`):
+Backend (`mc-ux2/bonus-history-be` @ `fce2d90c`, corrected in `ea69f599`):
 * New:
   * `migrate_add_public_mode_rounds.py`
   * `public_game_modes/history.py`
@@ -188,6 +189,138 @@ Frontend (`mc-ux2/hub-navigation-metrics`):
 * **Next recommended improvement:**
   * a per-mode "your recent games" drawer (the last five results) on the Rules / history line, built on the same summary route extended with a bounded `recent` list;
   * whether Random gets its own analytics action.
+
+## UX2.10 Review corrections (2026-10-16)
+
+Before editing: both repos were fetched.
+* Backend `master` is still `fadec94a` (the branch's base).
+* Frontend `main` moved to `f83b01de` (Perfect Timing PT5.1 and Academy Core V3.5). None of its changes touch More Challenges, `public-modes` or `backend-auth`.
+
+### Fix 1: exact lifetime history and honest labels (backend `ea69f599`)
+
+Removed the capped scans: `MAX_MATCHES` = 300, `MAX_DAILY_STAGES` = 400, `MAX_SESSION_ROUNDS` = 5000.
+
+**Every figure below is now exact over the player's whole history:**
+* each mode's games played;
+* board-game wins and last result;
+* last played;
+* Daily stage best and last;
+* session counts, hits, Perfect Timing points, closest stop and estimate errors;
+* most played;
+* the week (games and active days in the last 7 × 24 h);
+* the streak.
+
+**How they are computed:**
+
+| Source | Method | Index used |
+|---|---|---|
+| Board games | `COUNT` / `SUM` / `MAX` grouped by `session_preset` | `idx_ranked_participants_user` |
+| Session games | `COUNT` / `COUNT DISTINCT` / `MIN` / `AVG`, plus per-session `GROUP BY` | `idx_public_mode_rounds_user` |
+| Daily stages | Every row is read (at most two per day, so this stays small) | — |
+| Activity days | `DISTINCT substr(at, 1, 10)` from all three sources, so the streak matches the data queried | — |
+
+The week reads only rows dated within it. A session counts once, on the day of its latest lock.
+
+**The one windowed figure:** a board game's **best**. It needs every match's settlements parsed, so it is read from the mode's latest `BOARD_BEST_WINDOW` (200) finished matches. The summary publishes `best_window: 200` when the player has more than that, and the card then reads "Best 3/3 boards (last 200)". Otherwise it is `null` and the best covers every game.
+
+**What "game played" means:**
+* a finished match;
+* a completed Daily stage;
+* or, for session modes, a **session**: a dealt run with at least one locked round, finished or not.
+
+`sessions_completed` is published beside it. Cards now say "2 sessions", never "runs", and the "Games played" tile's caption reads "Matches, Daily stages, sessions".
+
+**Tests** (`test_bonus_history.py`, 18 now):
+* 6,500 session rounds (exact counts and hits, and another player's rows never leaking in);
+* a partly played session (played, not completed);
+* 450 consecutive Daily stages with the best set 420 days ago (exact best, a 450-day streak, the week);
+* the board window (lifetime count 2, `best_window` 1, then `null`);
+* `EXPLAIN QUERY PLAN` uses the player indexes, and never a bare scan of `public_mode_rounds`;
+* a 30,000-round history summarises in under 3 s;
+* the tracking start.
+
+### Fix 2: when session history began (backend + frontend)
+
+* **Backend:** the migration records `session_tracking_started_at` **once** (`public_mode_history_meta`, `INSERT OR IGNORE`).
+  * The summary publishes it, and each session mode carries `tracked_since`.
+  * It is `null` before the migration has run: never a guess.
+  * Board games and Daily stages carry no such field, because they were always recorded.
+* **Frontend:** a session game with no record says **"History tracking starts now"** for the first 14 days after tracking began, then "No games tracked yet". Board games and Daily stages keep "No games yet", which is the truth for them.
+* **The stats empty state** now reads "No games on your record yet. Every bonus game you play from now on shows up here." Nothing simulated is inserted.
+
+### Fix 3: fresh stats on return (frontend `e71d7977`)
+
+* **Cache per identity.** The summary is cached per player: the key is the session token's `sub`, or a short hash for a non-JWT token, never the token itself. It is resolved with `getExistingBackendAuthToken`, so **no identity is ever minted**. Another player's cached numbers are never shown, not even for a frame (tested).
+* **Refresh on mount.** Every time the page mounts (coming back from a game, browser Back, or Play Again via `?play=`), that player's summary is fetched once, even inside the 15 s stale window.
+  * Resolving the identity switches the query key, which React Query does not treat as a mount. So the hook invalidates once, and only when that player's cached data is sitting idle; with no cache, the query fetches by itself. That gives one request and no loop (tested: exactly 1, 2, 3 calls across first visit, Back and Play Again).
+* **No flash.** The player's own numbers stay on screen while the refresh is in flight, and a failed refresh keeps them (tested).
+
+### Fixtures and screenshots
+
+Fixtures `playerSummary.json` and `playerSummaryEmpty.json` were regenerated from the corrected backend, by playing games through its own routes.
+
+New screenshots in `docs/handoffs/more-challenges-ux/ux2-corrections/`:
+
+| File | Shows |
+|---|---|
+| `10-precision-sessions-wording__1366x900` | Returning player: "2 sessions · Best 5/10 exact", "1 session · Closest 0.18s off", "6 stats · Avg 58% off", "18 hits · Avg 80 damage off" |
+| `11-first-time-tracking-starts-now__{1366x900,390x844}` | First-time player: every session game says "History tracking starts now" |
+| `12-first-time-board-games__1366x900` | Board games say "No games yet" |
+| `13-card-*` | Card close-ups |
+| `14-top-stats-{returning,first-time}` | The stats strip and the new empty copy |
+| `15-hub-full__{1366x768,390x844}` | The whole hub after the corrections |
+
+Every size: horizontal overflow 0, no control under 44 px.
+
+### Results
+
+**Backend**, on the branch:
+* `public_game_modes`, `perfect_timing`, `interaction_lab`, `numeric_lab`, `test_ops_queue_controls.py` and `test_rc3_role_challenge_launch.py`: **392 passed**, 5 skipped.
+* `import api_server` OK.
+* The branch merges cleanly onto `master` `fadec94a` (the same base; `git merge-tree` clean).
+
+**Frontend**, on the branch:
+* More Challenges, public modes and the gallery: **113 passed** (8 files).
+* Regressions (Daily, Leaguecraft quiz, Ranked, ranked-public, Perfect Timing): 2612 passed, 5 failed.
+* `tsc` clean apart from the two pre-existing files; eslint 0 problems; `vite build` OK.
+
+**Frontend trial merge onto the latest `main` `f83b01de`** (local only, not pushed):
+* No conflicts; `tsc` clean; `vite build` OK.
+* The combined suites: 2749 passed, 5 failed.
+* The 5 failures (`QuizCategoryRail` ×3, `playModeCard.styles` ×2) fail identically on clean `main` `f83b01de` (5 failed / 32 passed in those two files). They are pre-existing and unrelated.
+
+### Remaining limitations (precise)
+
+1. Session-game history starts when the migration first runs in production. Earlier Rangefinder, Glyph Press, Perfect Timing, Stat Drop and Combat Estimate play was never stored and cannot be recovered.
+2. A board game's best covers the latest 200 matches of that mode when the player has more, and the card says so. Every other figure is exact.
+3. The per-session aggregate reads one row per session. That is fine for any realistic player (a 5,000-session history summarises in under 3 s in the test).
+4. Daily Extras history counts official Daily runs only.
+5. "History tracking starts now" shows for 14 days after tracking began (`TRACKING_NEWS_DAYS`), then becomes "No games tracked yet".
+6. A random launch is recorded as the existing `play` analytics action: there is no separate "random" action.
+
+### PR updates (to paste; this machine cannot sign in to GitHub)
+
+**PR #45** (backend), comment:
+
+> MC-UX2 corrections, `ea69f599`.
+>
+> * The summary is now exact over a player's whole history: indexed SQL aggregates replace the 300 / 400 / 5000-row capped scans.
+> * The only windowed figure is a board game's best: the latest 200 matches per mode, published as `best_window`.
+> * Session modes publish `sessions_completed` and `tracked_since`. The migration records `session_tracking_started_at` once.
+> * Tests go past the old caps (6,500 rounds; 450 Daily stages; a best set 420 days ago), check index use, and time a 30,000-round history (under 3 s).
+> * Results: 392 passed. Merges cleanly onto `master` `fadec94a`.
+> * Still draft; not for merge until owner approval.
+
+**PR #56** (frontend), comment:
+
+> MC-UX2 corrections, `e71d7977`, plus the handoff.
+>
+> * Session games read as "sessions". A windowed board best says "(last N)".
+> * A session game with no record says "History tracking starts now" (14 days), then "No games tracked yet". Board games and Daily stages keep "No games yet".
+> * The summary is cached per identity, refreshed once on every mount (return from a game, Back, Play Again) inside the stale window, keeps the numbers while refreshing and on a failed refresh, and still never mints an identity.
+> * Results: 113 passed. Regressions show only the same 5 failures as on clean `main` `f83b01de`. A trial merge onto `f83b01de` is conflict-free and builds.
+> * Screenshots: `docs/handoffs/more-challenges-ux/ux2-corrections/`.
+> * Still draft; not for merge until owner approval.
 
 ---
 
