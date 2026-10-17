@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Shield, FileText, Info, Mail, Lock, MessageSquarePlus } from "lucide-react";
 import { SITE_NAME } from "@/lib/site-config";
+import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
 
 const links = [
   { to: "/about", label: "About", icon: Info },
@@ -49,6 +50,12 @@ export default function Footer() {
     pathname.startsWith("/dev/numeric-lab") ||
     pathname.startsWith("/dev/rangefinder") ||
     pathname.startsWith("/dev/word-puzzle") ||
+    // UX4 — the Worlds experience is one fixed screen with nothing below it.
+    // Only while its flag routes the URL to it (and its dev prototype); with
+    // the flag off the published Worlds page keeps this footer. Legal pages
+    // stay linked from every other page.
+    isWorldsExperienceSurface(pathname) ||
+    pathname.startsWith("/lol/dev/worlds-experience") ||
     pathname.startsWith("/admin");
   if (hidden) return null;
 

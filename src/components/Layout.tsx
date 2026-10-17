@@ -140,7 +140,12 @@ export default function Layout() {
   // an internal admin tool, and both were landing on top of it once the
   // console reached the viewport edges.
   const isAdminConsole = pathname === "/admin/quiz-content";
-  const showFriendsDrawer = !isChampionCardDuelSurface && !isAdminConsole;
+  // UX4 — the Worlds experience is a fixed-viewport application whose every
+  // corner holds controls (pagers, steppers, the detail's actions), and
+  // nothing in it scrolls out from under a floating button. Like the
+  // tabletop, it does not host the floating trigger; the global HUD stays.
+  const isWorldsFixedViewport = isWorldsExperienceSurface(pathname) || pathname.startsWith("/lol/dev/worlds-experience");
+  const showFriendsDrawer = !isChampionCardDuelSurface && !isAdminConsole && !isWorldsFixedViewport;
 
   // After first paint, warm the chunks the user is most likely to visit next.
   // LEGACY1 deleted /home, /play, /swipe and /shop with the retired product, so

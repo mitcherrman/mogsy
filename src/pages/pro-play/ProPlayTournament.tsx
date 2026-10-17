@@ -83,6 +83,7 @@ import {
   isWorldsExperienceSurface,
   usesWorldsExperience,
 } from "@/lib/pro-play/worldsExperience/productionGate";
+import { useViewportLock } from "@/lib/pro-play/worldsExperience/viewportLock";
 import { recoverFromChunkLoadError } from "@/lib/chunk-recovery";
 import { cn } from "@/lib/utils";
 
@@ -527,15 +528,64 @@ function TournamentBody({ data, now }: { data: TournamentResponse; now: number }
   );
 }
 
+/**
+ * The experience's frame while its data or chunk loads, or when the read
+ * failed: the same fixed viewport as the shell (UX4), document locked, so a
+ * slow or broken read never turns the screen into a scrolling page.
+ */
+function ExperienceFrame({ children, testId, loading }: { children: ReactNode; testId?: string; loading?: boolean }) {
+  useViewportLock();
+  return (
+    <div
+      className="flex h-[var(--app-viewport-h)] flex-col gap-4 overflow-clip p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] lg:p-6"
+      data-testid={testId}
+      data-experience="worlds"
+      data-viewport="fixed"
+      aria-busy={loading || undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
 /** Holds the experience's frame open while its data or chunk loads. */
 function ExperienceLoading() {
   return (
-    <div className="min-h-[var(--app-viewport-h)] space-y-4 p-4 lg:p-6" data-testid="tournament-loading" data-experience="worlds">
-      <Skeleton className="h-12 w-full" />
-      <div className="grid gap-4 lg:grid-cols-12">
-        <Skeleton className="h-72 lg:col-span-8" />
-        <Skeleton className="h-72 lg:col-span-4" />
+    <ExperienceFrame testId="tournament-loading" loading>
+      <Skeleton className="h-12 w-full shrink-0" />
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-12">
+        <Skeleton className="h-full lg:col-span-8" />
+        <Skeleton className="hidden h-full lg:col-span-4 lg:block" />
       </div>
+    </ExperienceFrame>
+  );
+}
+
+/** Why the tournament can't be shown (the published page and the experience say it the same way). */
+function TournamentError({ error }: { error: unknown }) {
+  return (
+    <div className="space-y-3 pt-8" role="alert">
+      <Link to={PRO_PLAY_ROUTE} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Pro Play
+      </Link>
+      <p className="text-base font-semibold">
+        {error instanceof TournamentNotFound
+          ? "No such tournament."
+          : error instanceof TournamentUnsupported
+            ? "This tournament can't be shown on this version of the page."
+            : "This tournament could not be loaded."}
+      </p>
+      {error instanceof TournamentUnsupported || error instanceof TournamentMalformed ? (
+        <p className="text-sm text-muted-foreground" data-testid="tournament-contract-error">
+          The Pro Play service answered in a format this page doesn't read
+          {error instanceof TournamentUnsupported ? ` (${error.version})` : ""}, so nothing is drawn from it. Reloading
+          after the site updates should fix it.
+        </p>
+      ) : (
+        !(error instanceof TournamentNotFound) && (
+          <p className="text-sm text-muted-foreground">The Pro Play service did not answer. Try again in a moment.</p>
+        )
+      )}
     </div>
   );
 }
@@ -591,23 +641,40 @@ export default function ProPlayTournament() {
   if (experience && v1 && location.pathname !== WORLDS_EXPERIENCE_BASE) {
     return <Navigate to={WORLDS_EXPERIENCE_BASE} replace />;
   }
+  const seo = (
+    <SEOHead
+      title={data ? `${data.context.short_name} — ${data.context.name} | Mogzy` : "Tournament | Mogzy"}
+      description={
+        v2
+          ? `${v2.context.name}: the ${v2.context.participants.length}-team field, the ${v2.context.stages
+              .map((s) => stageShortName(s))
+              .join(", ")} stages, the full schedule and results.`
+          : data
+            ? `${data.context.name}: the ${data.context.participants.length}-team field, tournament lineups, schedule and results.`
+            : "A professional League of Legends tournament: field, lineups, schedule and results."
+      }
+      path={proPlayTournamentUrl(contextId ?? "")}
+    />
+  );
+  // The experience's own route, before a body arrives: its fixed frame.
+  if (experience && !data) {
+    return (
+      <div className="relative bg-background">
+        {seo}
+        {query.isError ? (
+          <ExperienceFrame testId="tournament-experience-error">
+            <TournamentError error={error} />
+          </ExperienceFrame>
+        ) : (
+          <ExperienceLoading />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-background">
-      <SEOHead
-        title={data ? `${data.context.short_name} — ${data.context.name} | Mogzy` : "Tournament | Mogzy"}
-        description={
-          v2
-            ? `${v2.context.name}: the ${v2.context.participants.length}-team field, the ${v2.context.stages
-                .map((s) => stageShortName(s))
-                .join(", ")} stages, the full schedule and results.`
-            : data
-              ? `${data.context.name}: the ${data.context.participants.length}-team field, tournament lineups, schedule and results.`
-              : "A professional League of Legends tournament: field, lineups, schedule and results."
-        }
-        path={proPlayTournamentUrl(contextId ?? "")}
-      />
-      {experience && query.isLoading && <ExperienceLoading />}
+      {seo}
       <div className="mx-auto w-full max-w-[1200px] space-y-6 px-4 pb-10 sm:px-6">
         {query.isLoading && !experience && (
           <div className="space-y-4 pt-6" data-testid="tournament-loading">
@@ -616,31 +683,7 @@ export default function ProPlayTournament() {
             <Skeleton className="h-64 w-full" />
           </div>
         )}
-        {query.isError && !data && (
-          <div className="space-y-3 pt-8" role="alert">
-            <Link to={PRO_PLAY_ROUTE} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Pro Play
-            </Link>
-            <p className="text-base font-semibold">
-              {error instanceof TournamentNotFound
-                ? "No such tournament."
-                : error instanceof TournamentUnsupported
-                  ? "This tournament can't be shown on this version of the page."
-                  : "This tournament could not be loaded."}
-            </p>
-            {error instanceof TournamentUnsupported || error instanceof TournamentMalformed ? (
-              <p className="text-sm text-muted-foreground" data-testid="tournament-contract-error">
-                The Pro Play service answered in a format this page doesn't read
-                {error instanceof TournamentUnsupported ? ` (${error.version})` : ""}, so nothing is drawn from it. Reloading
-                after the site updates should fix it.
-              </p>
-            ) : (
-              !(error instanceof TournamentNotFound) && (
-                <p className="text-sm text-muted-foreground">The Pro Play service did not answer. Try again in a moment.</p>
-              )
-            )}
-          </div>
-        )}
+        {query.isError && !data && <TournamentError error={error} />}
         {v1 && (
           <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
             <Header ctx={v1.context} phase={v1.state.phase} />

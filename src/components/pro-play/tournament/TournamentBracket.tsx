@@ -56,6 +56,8 @@ export interface BracketSelection {
   onSelect: (matchId: string) => void;
   /** One header line: an upcoming match shows its time where the state badge sits. */
   dense?: boolean;
+  /** The two sides abreast in one row under the header (a short landscape phone). */
+  abreast?: boolean;
 }
 
 export const BracketSelectContext = createContext<BracketSelection | null>(null);
@@ -85,6 +87,7 @@ export function BracketMatchCard({ match, summary, stageName, winnerTag }: {
   const select = useContext(BracketSelectContext);
   const selected = select?.selectedId === match.match_id;
   const dense = Boolean(select?.dense);
+  const abreast = Boolean(select?.abreast);
   const authority = summary.bracket_authority === "standings";
   const routes = authority ? routesFrom(match.match_id, kit.state.matches) : [];
   const href = matchHref(match);
@@ -120,7 +123,7 @@ export function BracketMatchCard({ match, summary, stageName, winnerTag }: {
         )}
       </div>
       {!dense && <p className="px-3 pb-2 text-[11px] tabular-nums text-muted-foreground">{localStart(match.scheduled_start)}</p>}
-      <div className="divide-y divide-border/40 border-t border-border/40">
+      <div className={cn("border-t border-border/40", abreast ? "grid grid-cols-2 divide-x divide-border/40" : "divide-y divide-border/40")}>
         {match.teams.map((t, i) => {
           const outcome = outcomeOf(match, t);
           return (
@@ -128,7 +131,8 @@ export function BracketMatchCard({ match, summary, stageName, winnerTag }: {
               key={i}
               data-slot-row={`${match.match_id}:${i}`}
               className={cn(
-                "flex items-center gap-2 border-l-2 px-3 py-1.5",
+                "flex min-w-0 items-center gap-2 border-l-2 py-1.5",
+                abreast ? "px-2" : "px-3",
                 outcome === "win" ? "border-l-[#c9a84c]" : "border-l-transparent",
               )}
             >

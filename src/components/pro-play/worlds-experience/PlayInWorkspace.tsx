@@ -2,22 +2,26 @@
  * The Play-In workspace (UX1): the double-elimination bracket as one
  * instrument.
  *
- * DESKTOP: the whole bracket at once — an upper lane and a lower lane whose
- * columns line up, the Play-In Final beside them, and an end cap for the one
- * place it awards in Swiss. Cards and connector lines are the published
- * page's own (`BracketMatchCard`, `Connectors`), so the authority rules are
- * the same code: lines only along upstream's winner edges, "Out" / winner tags
- * only with standings authority. Selecting a card opens it in the side panel.
+ * DESKTOP: the whole bracket at once where it is readable in the stage area —
+ * an upper lane and a lower lane whose columns line up, the Play-In Final
+ * beside them, and an end cap for the one place it awards in Swiss. Cards and
+ * connector lines are the published page's own (`BracketMatchCard`,
+ * `Connectors`), so the authority rules are the same code: lines only along
+ * upstream's winner edges, "Out" / winner tags only with standings authority.
+ * Selecting a card opens it in the side panel.
  *
- * PHONE: the graph is not squeezed. One round at a time, chosen from a rail
- * in bracket order (upper rounds, lower rounds, final); each card still says
- * where its winner and loser go, and the detail sheet steps along those edges.
- * The round is in the URL (`?step=<upstream cell slug>`, UX2), so refresh and
- * links keep it; it is a view setting (replace) and is separate from the
- * Swiss `?round=`.
+ * WHEN IT DOES NOT FIT (UX4), it is never scrolled or squeezed: first a
+ * tighter bracket, then the bracket by region (Upper · Lower · Final, each
+ * with its own connectors), then one round at a time. Every card keeps its
+ * "Winner → / Loser →" line, so a region or round still says where its teams
+ * go, and the detail steps along those edges.
+ *
+ * PHONE: one round at a time, chosen from a segmented control in bracket order
+ * (upper rounds, lower rounds, final). The round is in the URL
+ * (`?step=<upstream cell slug>`, UX2), so refresh and links keep it; it is a
+ * view setting (replace) and is separate from the Swiss `?round=`.
  */
-import { useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import {
@@ -36,30 +40,35 @@ import { stageLabel } from "@/lib/pro-play/worldsExperience/navigation";
 import { cn } from "@/lib/utils";
 
 import { useExperience } from "./ExperienceContext";
+import { FitCascade, FitPages, ViewTabs } from "./fit";
 import { Eyebrow, calendarDay } from "./parts";
 
 /** "Semifinals" from "Upper Bracket - Semifinals"; the cell itself otherwise. */
 const roundWord = (cell: string) => cell.split(/\s+-\s+/)[1] ?? cell;
+
+const ABBR: Record<string, string> = { semifinals: "SF", finals: "F", quarterfinals: "QF" };
+const SIDE: Record<string, string> = { upper: "UB", lower: "LB" };
+const abbr = (word: string) => ABBR[word.toLowerCase()] ?? word.replace(/^Round\s+/i, "R");
 
 function EmptyStage({ text }: { text: string }) {
   return <p className="p-6 text-sm text-muted-foreground" data-testid="stage-empty">{text}</p>;
 }
 
 /** The place the Play-In awards, as the backend serves it (placed / won / open). */
-function SwissEndCap() {
+function SwissEndCap({ compact = false }: { compact?: boolean }) {
   const kit = useKit();
   const swiss = stageOf(kit.ctx, "swiss");
   const slot = playInSwissSlot(kit.ctx, kit.state);
   const p = slot.code ? kit.byCode.get(slot.code) : null;
   if (!swiss) return null;
   return (
-    <div className="rounded-xl border border-dashed border-[#c9a84c]/35 bg-[#c9a84c]/[0.03] p-3" data-testid="swiss-end-cap" data-state={slot.basis}>
+    <div className={cn("rounded-xl border border-dashed border-[#c9a84c]/35 bg-[#c9a84c]/[0.03]", compact ? "p-2.5" : "p-3")} data-testid="swiss-end-cap" data-state={slot.basis}>
       <Eyebrow>To {stageLabel(swiss)}</Eyebrow>
-      <div className="mt-2.5 flex items-center gap-2.5">
+      <div className={cn("flex items-center gap-2.5", compact ? "mt-2" : "mt-2.5")}>
         {p ? (
           <TeamCrest teamKey={p.team_key} name={displayName(p)} shortCode={p.code} size="sm" />
         ) : (
-          <span aria-hidden="true" className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[#c9a84c]/40 text-xs text-[#c9a84c]/80">?</span>
+          <span aria-hidden="true" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-dashed border-[#c9a84c]/40 text-xs text-[#c9a84c]/80">?</span>
         )}
         <span className="min-w-0 text-xs leading-snug">
           <span className="block font-semibold text-foreground">{p ? p.code : "One place"}</span>
@@ -72,82 +81,134 @@ function SwissEndCap() {
   );
 }
 
-function DesktopBracket({ matches }: { matches: TournamentMatchV2[] }) {
+type Layout = NonNullable<ReturnType<typeof doubleElimLayout>>;
+
+function Lane({ row, columns, tight }: { row: Layout["rows"][number]; columns: number; tight: boolean }) {
   const kit = useKit();
   const summary = kit.state.play_in;
-  const layout = useMemo(() => doubleElimLayout(matches), [matches]);
-  const authority = summary.bracket_authority === "standings";
-  const { edges, version } = useBracketEdges(matches, authority && layout !== null);
-  if (!layout) {
-    return (
-      <div className="space-y-3 p-5">
-        <AuthorityNotice summary={summary} />
-        <CellList matches={matches} />
-      </div>
-    );
-  }
-  const columns = Math.max(...layout.rows.map((r) => r.columns.length));
-  const card = (m: TournamentMatchV2) => <BracketMatchCard key={m.match_id} match={m} summary={summary} stageName="Play-In" winnerTag="Play-In winner" />;
-  const finalName = (layout.final?.matches.length === 1 && kit.names.get(layout.final.matches[0].match_id)) || "Final";
   return (
-    <div className="space-y-3 p-4" data-testid="playin-bracket" data-bracket="double_elimination">
-      <AuthorityNotice summary={summary} />
-      <div className="relative min-w-[860px]">
-        <Connectors edges={edges} version={version} />
-        <div className="grid grid-cols-[minmax(0,2.05fr)_minmax(0,0.95fr)] gap-8">
-          <div className="flex flex-col gap-3">
-            {layout.rows.map((row) => (
-              <div
-                key={row.key}
-                data-testid={`lane-${row.key}`}
-                className={cn(
-                  "grid grid-cols-[14px_minmax(0,1fr)] gap-3 rounded-2xl border py-3 pl-2.5 pr-3",
-                  row.key === "upper" ? "border-[#c9a84c]/[0.14] bg-[#c9a84c]/[0.025]" : "border-white/[0.06] bg-white/[0.012]",
-                )}
-              >
-                <p
-                  className={cn(
-                    "flex rotate-180 items-center justify-center whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.24em] [writing-mode:vertical-rl]",
-                    row.key === "upper" ? "text-[#c9a84c]" : "text-muted-foreground",
-                  )}
-                >
-                  {row.label}
-                </p>
-                <div className="grid gap-8" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-                  {row.columns.map((col) => (
-                    <div key={col.cell} data-testid="bracket-column" data-cell={col.cell} className="flex min-w-0 flex-col justify-around gap-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70">
-                        {roundWord(col.cell)}
-                        {daySpan(col.matches) && <span className="font-medium normal-case tracking-normal text-muted-foreground"> · {daySpan(col.matches)}</span>}
-                      </p>
-                      {col.matches.map(card)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+    <div
+      data-testid={`lane-${row.key}`}
+      className={cn(
+        "grid grid-cols-[14px_minmax(0,1fr)] gap-3 rounded-2xl border pl-2.5 pr-3",
+        tight ? "py-2" : "py-3",
+        row.key === "upper" ? "border-[#c9a84c]/[0.14] bg-[#c9a84c]/[0.025]" : "border-white/[0.06] bg-white/[0.012]",
+      )}
+    >
+      <p
+        className={cn(
+          "flex rotate-180 items-center justify-center whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.24em] [writing-mode:vertical-rl]",
+          row.key === "upper" ? "text-[#c9a84c]" : "text-muted-foreground",
+        )}
+      >
+        {row.label}
+      </p>
+      <div className={cn("grid", tight ? "gap-6" : "gap-8")} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        {row.columns.map((col) => (
+          <div key={col.cell} data-testid="bracket-column" data-cell={col.cell} className={cn("flex min-w-0 flex-col justify-around", tight ? "gap-2" : "gap-3")}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70">
+              {roundWord(col.cell)}
+              {daySpan(col.matches) && <span className="font-medium normal-case tracking-normal text-muted-foreground"> · {daySpan(col.matches)}</span>}
+            </p>
+            {col.matches.map((m) => <BracketMatchCard key={m.match_id} match={m} summary={summary} stageName="Play-In" winnerTag="Play-In winner" />)}
           </div>
-          {layout.final && (
-            <div className="flex min-w-0 flex-col justify-center gap-3" data-testid="bracket-final">
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-[#c9a84c]">
-                {finalName}
-                {daySpan(layout.final.matches) && <span className="font-medium normal-case tracking-normal text-muted-foreground"> · {daySpan(layout.final.matches)}</span>}
-              </p>
-              {layout.final.matches.map(card)}
-              <SwissEndCap />
-            </div>
-          )}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FinalColumn({ layout, tight }: { layout: Layout; tight: boolean }) {
+  const kit = useKit();
+  const summary = kit.state.play_in;
+  if (!layout.final) return null;
+  const finalName = (layout.final.matches.length === 1 && kit.names.get(layout.final.matches[0].match_id)) || "Final";
+  return (
+    <div className={cn("flex min-w-0 flex-col justify-center", tight ? "gap-2" : "gap-3")} data-testid="bracket-final">
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-[#c9a84c]">
+        {finalName}
+        {daySpan(layout.final.matches) && <span className="font-medium normal-case tracking-normal text-muted-foreground"> · {daySpan(layout.final.matches)}</span>}
+      </p>
+      {layout.final.matches.map((m) => <BracketMatchCard key={m.match_id} match={m} summary={summary} stageName="Play-In" winnerTag="Play-In winner" />)}
+      <SwissEndCap compact={tight} />
+    </div>
+  );
+}
+
+/** The whole bracket at once (level 0 spacious, level 1 tight). */
+function WholeBracket({ layout, matches, tight }: { layout: Layout; matches: TournamentMatchV2[]; tight: boolean }) {
+  const kit = useKit();
+  const summary = kit.state.play_in;
+  const authority = summary.bracket_authority === "standings";
+  const { edges, version } = useBracketEdges(matches, authority);
+  const columns = Math.max(...layout.rows.map((r) => r.columns.length));
+  return (
+    <div className={cn(tight ? "space-y-2 p-3" : "space-y-3 p-4")} data-testid="playin-bracket" data-bracket="double_elimination" data-view="whole">
+      <AuthorityNotice summary={summary} />
+      <div className={cn("relative", tight ? "min-w-[780px]" : "min-w-[860px]")}>
+        <Connectors edges={edges} version={version} />
+        <div className={cn("grid grid-cols-[minmax(0,2.05fr)_minmax(0,0.95fr)]", tight ? "gap-6" : "gap-8")}>
+          <div className={cn("flex flex-col", tight ? "gap-2" : "gap-3")}>
+            {layout.rows.map((row) => <Lane key={row.key} row={row} columns={columns} tight={tight} />)}
+          </div>
+          <FinalColumn layout={layout} tight={tight} />
         </div>
       </div>
     </div>
   );
 }
 
-/* ── phone ──────────────────────────────────────────────────────────────── */
+type Region = "upper" | "lower" | "final";
+
+/** The bracket a region at a time: each lane (with its own connectors), or the final. */
+function RegionBracket({ layout, matches }: { layout: Layout; matches: TournamentMatchV2[] }) {
+  const kit = useKit();
+  const x = useExperience();
+  const summary = kit.state.play_in;
+  const authority = summary.bracket_authority === "standings";
+  const regions: { key: Region; label: string }[] = [
+    ...layout.rows.map((r) => ({ key: r.key as Region, label: r.label })),
+    ...(layout.final ? [{ key: "final" as Region, label: "Final" }] : []),
+  ];
+  // Open on the region of the selected match, else of the live or next one.
+  const focusId = x.loc.matchId ?? kit.state.matches.find((m) => m.stage === "play_in" && m.state === "live")?.match_id ?? kit.state.next_match_id;
+  const regionOf = (id: string | null | undefined): Region | null => {
+    if (!id) return null;
+    if (layout.final?.matches.some((m) => m.match_id === id)) return "final";
+    const row = layout.rows.find((r) => r.columns.some((c) => c.matches.some((m) => m.match_id === id)));
+    return (row?.key as Region) ?? null;
+  };
+  const [chosen, setChosen] = useState<Region | null>(null);
+  const selectedRegion = regionOf(x.loc.matchId);
+  const region = selectedRegion ?? chosen ?? regionOf(focusId) ?? regions[0].key;
+  const row = layout.rows.find((r) => r.key === region);
+  const laneMatches = row ? row.columns.flatMap((c) => c.matches) : (layout.final?.matches ?? []);
+  const { edges, version } = useBracketEdges(laneMatches, authority);
+  const columns = Math.max(...layout.rows.map((r) => r.columns.length));
+  const pick = (r: Region) => {
+    setChosen(r);
+    // A selected match outside the region would be a detail for nothing on screen.
+    if (x.loc.matchId && regionOf(x.loc.matchId) !== r) x.selectMatch(null);
+  };
+  void matches;
+  return (
+    <div className="flex h-full flex-col gap-2.5 p-3" data-testid="playin-bracket" data-bracket="double_elimination" data-view="regions" data-region={region}>
+      <ViewTabs label="Play-In bracket regions" testId="playin-regions" value={region} onChange={pick} views={regions} className="max-w-md" />
+      <AuthorityNotice summary={summary} />
+      <div className="relative min-h-0 flex-1">
+        <Connectors edges={edges} version={version} />
+        {row ? <Lane row={row} columns={columns} tight /> : <div className="max-w-sm"><FinalColumn layout={layout} tight /></div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── one round at a time (phone, and the desktop floor) ─────────────────── */
 
 interface Step {
   key: string;
   label: string;
+  short: string;
   col: BracketColumn;
 }
 
@@ -155,85 +216,75 @@ interface Step {
 const stepKey = (col: BracketColumn) =>
   col.matches[0]?.bracket?.cell_slug ?? col.cell.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
-function PhoneRounds({ matches }: { matches: TournamentMatchV2[] }) {
-  const kit = useKit();
-  const summary = kit.state.play_in;
-  const layout = useMemo(() => doubleElimLayout(matches), [matches]);
-  const steps: Step[] = useMemo(() => {
+function useSteps(layout: Layout | null): Step[] {
+  return useMemo(() => {
     if (!layout) return [];
     const out: Step[] = [];
     for (const row of layout.rows) {
-      for (const col of row.columns) out.push({ key: stepKey(col), label: `${row.key === "upper" ? "Upper" : "Lower"} ${roundWord(col.cell).replace(/s$/, "")}`, col });
+      for (const col of row.columns) {
+        const side = row.key === "upper" ? "Upper" : "Lower";
+        out.push({ key: stepKey(col), label: `${side} ${roundWord(col.cell).replace(/s$/, "")}`, short: `${SIDE[row.key] ?? side} ${abbr(roundWord(col.cell))}`, col });
+      }
     }
-    if (layout.final) out.push({ key: stepKey(layout.final), label: "Final", col: layout.final });
+    if (layout.final) out.push({ key: stepKey(layout.final), label: "Final", short: "Final", col: layout.final });
     return out;
   }, [layout]);
+}
+
+function RoundSteps({ layout }: { layout: Layout }) {
+  const kit = useKit();
+  const x = useExperience();
+  const summary = kit.state.play_in;
+  const steps = useSteps(layout);
   const focusId = kit.state.matches.find((m) => m.stage === "play_in" && m.state === "live")?.match_id ?? kit.state.next_match_id;
   const initial = Math.max(0, steps.findIndex((s) => s.col.matches.some((m) => m.match_id === focusId)));
-  const x = useExperience();
   const fromUrl = steps.findIndex((s) => s.key === x.loc.step);
-  const chosen = fromUrl >= 0 ? fromUrl : null;
-  const setChosen = (i: number) => x.selectStep(steps[i].key);
-  if (!layout) {
-    return (
-      <div className="space-y-3 px-3">
-        <AuthorityNotice summary={summary} />
-        <CellList matches={matches} />
-      </div>
-    );
-  }
-  const at = chosen ?? initial;
+  const at = fromUrl >= 0 ? fromUrl : initial;
   const step = steps[at];
-  return (
-    <div className="space-y-3" data-testid="playin-rounds">
-      <div className="-mx-3 overflow-x-auto px-3 pb-1" data-swipe-ignore>
-        <ol className="flex w-max items-center gap-1" aria-label="Play-In rounds">
-          {steps.map((s, i) => (
-            <li key={s.key} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/50" aria-hidden="true" />}
-              <button
-                type="button"
-                aria-pressed={i === at}
-                data-testid="round-step"
-                onClick={() => setChosen(i)}
-                className={cn(
-                  "min-h-11 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors",
-                  i === at ? "border-[#c9a84c]/70 bg-[#c9a84c]/[0.1] text-[#f1dc9c]" : "border-white/10 text-foreground/75",
-                )}
-              >
-                {s.label}
-              </button>
-            </li>
-          ))}
-        </ol>
-      </div>
-      <AuthorityNotice summary={summary} />
-      <p className="px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+  const choose = (key: string) => {
+    const next = steps.find((s) => s.key === key);
+    // The detail follows the round: a selection in another round is closed.
+    if (next && x.loc.matchId && !next.col.matches.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
+    x.selectStep(key);
+  };
+  const last = at === steps.length - 1;
+  const heading = (
+    <p className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid="round-heading">
+      <span className="text-foreground/85">{step.label}</span>
+      <span className="normal-case tracking-normal">
         {daySpan(step.col.matches)} · {step.col.matches.length} {step.col.matches.length === 1 ? "match" : "matches"}
-      </p>
-      <div className="space-y-3" data-testid="round-cards">
-        {step.col.matches.map((m) => (
-          <BracketMatchCard key={m.match_id} match={m} summary={summary} stageName="Play-In" winnerTag="Play-In winner" />
-        ))}
-      </div>
-      {at === steps.length - 1 && <SwissEndCap />}
-      <div className="flex items-center justify-between pt-1">
-        <button
-          type="button"
-          disabled={at === 0}
-          onClick={() => setChosen(at - 1)}
-          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-foreground/80 disabled:opacity-30"
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" /> {at > 0 ? steps[at - 1].label : ""}
-        </button>
-        <button
-          type="button"
-          disabled={at === steps.length - 1}
-          onClick={() => setChosen(at + 1)}
-          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-[#e3c66f] disabled:opacity-30"
-        >
-          {at < steps.length - 1 ? steps[at + 1].label : ""} <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </button>
+      </span>
+    </p>
+  );
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2" data-testid="playin-rounds" data-step={step.key}>
+      <ViewTabs
+        label="Play-In rounds"
+        testId="round-steps"
+        tabTestId="round-step"
+        value={step.key}
+        onChange={choose}
+        views={steps.map((s) => ({ key: s.key, label: s.short, name: s.label }))}
+      />
+      <AuthorityNotice summary={summary} />
+      {/* A landscape phone's heading shares the pager's row. */}
+      {!x.landscape && heading}
+      <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="round-cards">
+        <FitPages
+          items={step.col.matches}
+          keyOf={(m) => m.match_id}
+          noun="Matches"
+          focusKey={x.loc.matchId}
+          resetKey={step.key}
+          onPage={(shown) => {
+            if (x.loc.matchId && !shown.some((m) => m.match_id === x.loc.matchId)) x.selectMatch(null);
+          }}
+          className="min-h-[96px]"
+          listClassName="grid gap-2 sm:grid-cols-2"
+          head={x.landscape ? heading : undefined}
+          render={(m) => <BracketMatchCard match={m} summary={summary} stageName="Play-In" winnerTag="Play-In winner" />}
+        />
+        {last && <SwissEndCap compact />}
       </div>
     </div>
   );
@@ -243,11 +294,63 @@ export function PlayInWorkspace() {
   const kit = useKit();
   const x = useExperience();
   const matches = stageMatches(kit.state, "play_in", kit.state.play_in);
-  const selection = useMemo(() => ({ selectedId: x.loc.matchId, onSelect: x.selectMatch, dense: x.desktop }), [x.loc.matchId, x.selectMatch, x.desktop]);
+  const layout = useMemo(() => doubleElimLayout(matches), [matches]);
+  const selection = useMemo(() => ({ selectedId: x.loc.matchId, onSelect: x.selectMatch, dense: true, abreast: x.landscape }), [x.loc.matchId, x.selectMatch, x.landscape]);
   if (!matches.length) return <EmptyStage text="No Play-In matches are on the official schedule right now." />;
+  const watch = matches.map((m) => `${m.match_id}:${m.state}:${m.teams.map((t) => t.code ?? "").join("/")}`).join("|");
   return (
     <BracketSelectContext.Provider value={selection}>
-      {x.desktop ? <DesktopBracket matches={matches} /> : <PhoneRounds matches={matches} />}
+      {!layout ? (
+        // Unrecognised cells: the published list, by cell, a page at a time.
+        <CellPages matches={matches} />
+      ) : x.desktop ? (
+        <FitCascade levels={4} watch={watch} className="h-full" testId="playin-fit">
+          {(level) =>
+            level === 0 ? (
+              <WholeBracket layout={layout} matches={matches} tight={false} />
+            ) : level === 1 ? (
+              <WholeBracket layout={layout} matches={matches} tight />
+            ) : level === 2 ? (
+              <RegionBracket layout={layout} matches={matches} />
+            ) : (
+              <div className="h-full p-3"><RoundSteps layout={layout} /></div>
+            )
+          }
+        </FitCascade>
+      ) : (
+        <RoundSteps layout={layout} />
+      )}
     </BracketSelectContext.Provider>
+  );
+}
+
+/** Without a recognisable bracket: the published cell list where it fits, else the matches a page at a time. */
+function CellPages({ matches }: { matches: TournamentMatchV2[] }) {
+  const kit = useKit();
+  const x = useExperience();
+  return (
+    <FitCascade levels={2} watch={matches.length} className="h-full">
+      {(level) =>
+        level === 0 ? (
+          <div className={cn("space-y-3", x.desktop ? "p-5" : "")}>
+            <AuthorityNotice summary={kit.state.play_in} />
+            <CellList matches={matches} />
+          </div>
+        ) : (
+          <div className={cn("flex h-full flex-col gap-2", x.desktop ? "p-4" : "")} data-testid="bracket-list">
+            <AuthorityNotice summary={kit.state.play_in} />
+            <FitPages
+              items={matches}
+              keyOf={(m) => m.match_id}
+              noun="Matches"
+              focusKey={x.loc.matchId}
+              className="min-h-[96px]"
+              listClassName="grid gap-2 sm:grid-cols-2"
+              render={(m) => <BracketMatchCard match={m} summary={kit.state.play_in} stageName="Play-In" winnerTag="Play-In winner" />}
+            />
+          </div>
+        )
+      }
+    </FitCascade>
   );
 }

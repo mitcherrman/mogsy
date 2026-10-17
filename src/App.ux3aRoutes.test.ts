@@ -79,7 +79,12 @@ describe("UX3A route map", () => {
     expect(layout).toMatch(/import \{ isWorldsExperienceSurface \} from "@\/lib\/pro-play\/worldsExperience\/productionGate";/);
     const fullBleed = layout.slice(layout.indexOf("const isFullBleed"), layout.indexOf(";", layout.indexOf("const isFullBleed")));
     expect(fullBleed).toContain("isWorldsExperienceSurface(pathname)");
-    expect(layout.match(/isWorldsExperienceSurface\(/g)).toHaveLength(1);
+    // UX4: the gate's second use keeps the floating Community trigger off the
+    // fixed-viewport experience; nothing else in the shell reads it.
+    const fixed = layout.slice(layout.indexOf("const isWorldsFixedViewport"), layout.indexOf(";", layout.indexOf("const isWorldsFixedViewport")));
+    expect(fixed).toContain("isWorldsExperienceSurface(pathname)");
+    expect(layout).toMatch(/const showFriendsDrawer = [^;]*!isWorldsFixedViewport/);
+    expect(layout.match(/isWorldsExperienceSurface\(/g)).toHaveLength(2);
   });
 
   it("keeps the development prototype's routes development-only", () => {

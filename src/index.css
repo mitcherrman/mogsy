@@ -4161,6 +4161,17 @@ html.high-contrast * { text-shadow: none !important; }
   padding-bottom: var(--bottom-nav-clearance);
 }
 
+/* UX4 — the Worlds 2026 experience is a fixed-viewport application. While it
+   is mounted (`worldsExperience/viewportLock.ts` adds the class and takes it
+   off again on the way out) the document cannot be scrolled by wheel, touch,
+   keys or a stale offset. Its frame is sized to fit exactly; this is the
+   backstop, not the fit. Every other route is untouched. */
+html.worlds-viewport-locked,
+html.worlds-viewport-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .book-title-glimmer {
   background-image: linear-gradient(
     105deg,

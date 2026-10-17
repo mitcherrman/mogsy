@@ -18,7 +18,7 @@
  * match lives, and a side's code opens that team in Teams. Simulated data
  * is marked in the header.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, CalendarDays, Clock, FlaskConical, GitBranch, MapPin, Trophy, X } from "lucide-react";
 
@@ -44,16 +44,18 @@ import { stageLabel } from "@/lib/pro-play/worldsExperience/navigation";
 import { cn } from "@/lib/utils";
 
 import { useExperience } from "./ExperienceContext";
+import { FitCascade, ViewTabs } from "./fit";
 import { useMatchCentreLink, type MatchCentreLink } from "./matchCentreLink";
 import { Eyebrow, Figure, GOLD_TEXT, SideMark, calendarDay } from "./parts";
 
 /* ── match ──────────────────────────────────────────────────────────────── */
 
-function Side({ team, match }: { team: TournamentMatchTeamV2; match: TournamentMatchV2 }) {
+function Side({ team, match, compact = false, dense = false }: { team: TournamentMatchTeamV2; match: TournamentMatchV2; compact?: boolean; dense?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   const started = match.state !== "upcoming";
   const outcome = outcomeOf(match, team);
+  const row = dense ? "py-1" : compact ? "py-1.5" : "py-2.5";
   if (team.tbd || !team.code) {
     const src = team.slot;
     const ref = src?.match_id ? kit.byId.get(src.match_id) : null;
@@ -73,8 +75,8 @@ function Side({ team, match }: { team: TournamentMatchTeamV2; match: TournamentM
       );
     }
     return (
-      <li className="flex items-center gap-3 py-2.5" data-testid="detail-side" data-team="tbd">
-        <SideMark team={team} size="md" byCodeName={(t) => teamName(t, kit.byCode)} />
+      <li className={cn("flex items-center gap-3", row)} data-testid="detail-side" data-team="tbd">
+        <SideMark team={team} size={compact ? "sm" : "md"} byCodeName={(t) => teamName(t, kit.byCode)} />
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold text-foreground/60">TBD</span>
           <span className="block text-xs text-muted-foreground">{source}</span>
@@ -85,8 +87,8 @@ function Side({ team, match }: { team: TournamentMatchTeamV2; match: TournamentM
   const p = kit.byCode.get(team.code);
   const meta = [p?.region, p?.qualification, p?.entry_stage === "play_in" ? "Play-In entrant" : p?.swiss_tier ? `Swiss tier ${p.swiss_tier}` : null].filter(Boolean).join(" · ");
   return (
-    <li className={cn("flex items-center gap-3 py-2.5", outcome === "loss" && "opacity-60")} data-testid="detail-side" data-team={team.code}>
-      <TeamCrest teamKey={team.team_key} name={teamName(team, kit.byCode)} shortCode={team.code} size="md" />
+    <li className={cn("flex items-center gap-3", row, outcome === "loss" && "opacity-60")} data-testid="detail-side" data-team={team.code}>
+      <TeamCrest teamKey={team.team_key} name={teamName(team, kit.byCode)} shortCode={team.code} size={compact ? "sm" : "md"} />
       <span className="min-w-0 flex-1">
         <button
           type="button"
@@ -102,8 +104,8 @@ function Side({ team, match }: { team: TournamentMatchTeamV2; match: TournamentM
         >
           {team.code}
         </button>
-        <span className="block truncate text-xs text-foreground/80">{teamName(team, kit.byCode)}</span>
-        {meta && <span className="block truncate text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground">{meta}</span>}
+        <span className="block text-xs leading-tight text-foreground/80">{teamName(team, kit.byCode)}</span>
+        {meta && <span className="block text-[10.5px] uppercase leading-tight tracking-[0.1em] text-muted-foreground">{meta}</span>}
       </span>
       {p && p.team_key === team.team_key && (
         <Link
@@ -115,12 +117,12 @@ function Side({ team, match }: { team: TournamentMatchTeamV2; match: TournamentM
           <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       )}
-      {started && <span className={cn("text-3xl font-extrabold tabular-nums", outcome === "win" ? GOLD_TEXT : "text-foreground/85")} data-testid="detail-score">{team.game_wins}</span>}
+      {started && <span className={cn("font-extrabold tabular-nums", compact ? "text-2xl" : "text-3xl", outcome === "win" ? GOLD_TEXT : "text-foreground/85")} data-testid="detail-score">{team.game_wins}</span>}
     </li>
   );
 }
 
-function OnwardLine({ who, onward, settled }: { who: "Winner" | "Loser"; onward: Onward | null; settled: boolean }) {
+function OnwardLine({ who, onward, settled, compact = false }: { who: "Winner" | "Loser"; onward: Onward | null; settled: boolean; compact?: boolean }) {
   const kit = useKit();
   const x = useExperience();
   if (!onward) return null;
@@ -146,7 +148,7 @@ function OnwardLine({ who, onward, settled }: { who: "Winner" | "Loser"; onward:
     body = <span className="font-semibold text-foreground/70">Eliminated</span>;
   }
   return (
-    <li className="flex items-center justify-between gap-3 py-2" data-testid={`onward-${who.toLowerCase()}`} data-kind={onward.kind}>
+    <li className={cn("flex items-center justify-between gap-3", compact ? "py-1.5" : "py-2")} data-testid={`onward-${who.toLowerCase()}`} data-kind={onward.kind}>
       <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground" data-testid="onward-label">{rowLabel(who, settled)}</span>
       <span className="text-sm">{body}</span>
     </li>
@@ -171,12 +173,60 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
   const drawn = awaitingDraw(match) && match.teams.some((t) => t.slot?.kind === "draw");
   const when = localStart(match.scheduled_start);
   const until = match.state === "upcoming" ? countdown(match.scheduled_start, kit.now) : null;
-  return (
-    <article className="flex h-full min-h-0 flex-col" data-testid="match-detail" data-match-id={match.match_id} aria-labelledby="match-detail-title">
-      <header className="flex items-start gap-3 border-b border-white/[0.07] px-5 pb-4 pt-5">
+  const sides = (compact: boolean, dense = false) => (
+    <ul className="divide-y divide-white/[0.06]" aria-label="Teams">
+      {match.teams.map((t, i) => <Side key={i} team={t} match={match} compact={compact} dense={dense} />)}
+    </ul>
+  );
+  const drawNote = drawn && <p className="text-xs text-muted-foreground" data-testid="detail-draw">Both teams are decided by the official draw.</p>;
+  const whenWhere = (compact: boolean) => (
+    <section className={compact ? "space-y-1" : "space-y-2"}>
+      <Eyebrow tone="muted">When &amp; where</Eyebrow>
+      <ul className={cn("text-sm", compact ? "space-y-1" : "space-y-1.5")}>
+        <li className="flex flex-wrap items-center gap-x-2 tabular-nums text-foreground/90">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+          {when}
+          {until && <span className="text-cyan-300">· {until}</span>}
+        </li>
+        {stage && (
+          <li className="flex items-center gap-2 text-foreground/80">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /> {stage.venue}
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+  // Why there is no Match Centre button (when there isn't one): part of the
+  // detail's content, so it compacts and divides with it.
+  const note = <MatchCentreNote link={centre} />;
+  const hasStakes = Boolean((onward && (onward.winner || onward.loser)) || swiss);
+  const stakes = (compact: boolean) => (
+    <>
+      {onward && (onward.winner || onward.loser) && (
+        <section className="space-y-1" data-testid="detail-onward">
+          <Eyebrow tone="muted">What the result decides</Eyebrow>
+          <ul className="divide-y divide-white/[0.06]">
+            <OnwardLine who="Winner" onward={onward.winner} settled={settled} compact={compact} />
+            <OnwardLine who="Loser" onward={onward.loser} settled={settled} compact={compact} />
+          </ul>
+        </section>
+      )}
+      {swiss && (
+        <section className="space-y-1" data-testid="detail-swiss-stakes">
+          <Eyebrow tone="muted">Played at {swiss.record}</Eyebrow>
+          <ul className="divide-y divide-white/[0.06] text-sm">
+            <li className={cn("flex justify-between", compact ? "py-1.5" : "py-2")}><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{rowLabel("Winner", settled)}</span><span className={cn("font-semibold", swiss.winner === "advances" && GOLD_TEXT)}>{swiss.winner === "advances" ? "Advances" : `Moves to ${swiss.winner}`}</span></li>
+            <li className={cn("flex justify-between", compact ? "py-1.5" : "py-2")}><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{rowLabel("Loser", settled)}</span><span className="font-semibold text-foreground/75">{swiss.loser === "eliminated" ? "Eliminated" : `Drops to ${swiss.loser}`}</span></li>
+          </ul>
+        </section>
+      )}
+    </>
+  );
+  const head = (tight: boolean) => (
+      <header className={cn("flex shrink-0 items-start gap-3 border-b border-white/[0.07] px-5", tight ? "pb-2 pt-2.5" : "pb-3.5 pt-4")}>
         <div className="min-w-0 flex-1">
           <Eyebrow>{[stage ? stageLabel(stage) : null, match.best_of ? `Bo${match.best_of}` : null].filter(Boolean).join(" · ")}</Eyebrow>
-          <h3 id="match-detail-title" className="mt-2.5 truncate text-xl font-bold text-foreground">
+          <h3 id="match-detail-title" className={cn("font-bold leading-tight text-foreground", tight ? "mt-1.5 text-lg" : "mt-2 text-xl")}>
             {ref && ref !== name ? ref : (name ?? "Match")}
           </h3>
           {ref && name && ref !== name && <p className="mt-0.5 text-xs font-medium text-muted-foreground">{name}</p>}
@@ -198,54 +248,15 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
             onClick={onClose}
             aria-label="Close match detail"
             data-testid="detail-close"
-            className="-mr-2 -mt-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#c9a84c]"
+            className="-mr-2 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         )}
       </header>
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4">
-        <ul className="divide-y divide-white/[0.06]" aria-label="Teams">
-          {match.teams.map((t, i) => <Side key={i} team={t} match={match} />)}
-        </ul>
-        {drawn && <p className="text-xs text-muted-foreground" data-testid="detail-draw">Both teams are decided by the official draw.</p>}
-
-        <section className="space-y-2">
-          <Eyebrow tone="muted">When &amp; where</Eyebrow>
-          <ul className="space-y-1.5 text-sm">
-            <li className="flex items-center gap-2 tabular-nums text-foreground/90">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-              {when}
-              {until && <span className="text-cyan-300">· {until}</span>}
-            </li>
-            {stage && (
-              <li className="flex items-center gap-2 text-foreground/80">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /> {stage.venue}
-              </li>
-            )}
-          </ul>
-        </section>
-
-        {onward && (onward.winner || onward.loser) && (
-          <section className="space-y-1" data-testid="detail-onward">
-            <Eyebrow tone="muted">What the result decides</Eyebrow>
-            <ul className="divide-y divide-white/[0.06]">
-              <OnwardLine who="Winner" onward={onward.winner} settled={settled} />
-              <OnwardLine who="Loser" onward={onward.loser} settled={settled} />
-            </ul>
-          </section>
-        )}
-        {swiss && (
-          <section className="space-y-1" data-testid="detail-swiss-stakes">
-            <Eyebrow tone="muted">Played at {swiss.record}</Eyebrow>
-            <ul className="divide-y divide-white/[0.06] text-sm">
-              <li className="flex justify-between py-2"><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{rowLabel("Winner", settled)}</span><span className={cn("font-semibold", swiss.winner === "advances" && GOLD_TEXT)}>{swiss.winner === "advances" ? "Advances" : `Moves to ${swiss.winner}`}</span></li>
-              <li className="flex justify-between py-2"><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{rowLabel("Loser", settled)}</span><span className="font-semibold text-foreground/75">{swiss.loser === "eliminated" ? "Eliminated" : `Drops to ${swiss.loser}`}</span></li>
-            </ul>
-          </section>
-        )}
-      </div>
-      <footer className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] px-5 py-3" data-testid="detail-footer" data-match-centre={centre.state}>
+  );
+  const foot = (tight: boolean) => (
+      <footer className={cn("flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.07] px-5", tight ? "py-1.5" : "py-3")} data-testid="detail-footer" data-match-centre={centre.state}>
         {href && (
           <Link to={href} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[linear-gradient(180deg,#e9cf7d,#c9a84c)] px-3.5 text-sm font-semibold text-[#14110a] outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]" data-testid="detail-match-centre">
             Match centre <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -271,9 +282,68 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /> Show in Schedule
           </button>
         )}
-        <MatchCentreNote link={centre} />
       </footer>
+  );
+  return (
+    <article className="flex min-h-0 flex-1 flex-col" data-testid="match-detail" data-match-id={match.match_id} aria-labelledby="match-detail-title">
+      {/* UX4: one composition for the whole detail: all at once where it fits,
+          then tighter, then two views, then three with a compact header and footer. */}
+      <FitCascade levels={hasStakes ? 4 : 3} watch={`${match.match_id}|${match.state}|${centre.state}`} className="flex min-h-0 flex-1 flex-col" testId="detail-body">
+        {(level) => {
+          const last = level === (hasStakes ? 3 : 2);
+          return (
+            <>
+              {head(last)}
+              {/* Not shrinkable (no min-h-0): content that does not fit must
+                  grow this box, where the cascade sees it, rather than slide
+                  under the footer. */}
+              <div className="flex flex-1 flex-col">
+                {level < 2 ? (
+                  <div className={cn("px-5", level === 0 ? "space-y-5 py-4" : "space-y-3 py-3")}>
+                    {sides(level === 1)}
+                    {drawNote}
+                    {whenWhere(level === 1)}
+                    {stakes(level === 1)}
+                    {note}
+                  </div>
+                ) : !last ? (
+                  <DetailViews
+                    views={[
+                      { key: "match", label: "Match", body: <>{sides(true)}{drawNote}{whenWhere(true)}{note}</> },
+                      { key: "stakes", label: "What it decides", body: stakes(true) },
+                    ]}
+                  />
+                ) : (
+                  <DetailViews
+                    tight
+                    views={[
+                      { key: "teams", label: "Teams", body: sides(true, true) },
+                      { key: "when", label: "When", name: "When and where", body: <>{whenWhere(true)}{drawNote}{note}</> },
+                      ...(hasStakes ? [{ key: "stakes", label: "Decides", name: "What the result decides", body: stakes(true) }] : []),
+                    ]}
+                  />
+                )}
+              </div>
+              {foot(last)}
+            </>
+          );
+        }}
+      </FitCascade>
     </article>
+  );
+}
+
+/** The detail as views (two, then three on the shortest columns) when it cannot be one. */
+function DetailViews({ views, tight = false }: { views: { key: string; label: string; name?: string; body: ReactNode }[]; tight?: boolean }) {
+  const [chosen, setView] = useState(views[0].key);
+  const view = views.find((v) => v.key === chosen) ?? views[0];
+  return (
+    <div className={cn("flex min-h-0 flex-1 flex-col px-5", tight ? "gap-1.5 py-1.5" : "gap-2.5 py-3")} data-testid="detail-views" data-views={views.length}>
+      <ViewTabs label="Match detail views" value={view.key} onChange={setView} views={views.map((v) => ({ key: v.key, label: v.label, name: v.name }))} />
+      <div role="tabpanel" aria-label={view.name ?? view.label} className="space-y-3" data-view={view.key}>
+        {view.body}
+      </div>
+    </div>
   );
 }
 
@@ -308,13 +378,15 @@ export function StageBrief({ stage }: { stage: TournamentStageV2 }) {
   const playIn = stageOf(ctx, "play_in");
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="stage-brief" data-stage={stage.key}>
-      <header className="border-b border-white/[0.07] px-5 pb-4 pt-5">
+      <header className="shrink-0 border-b border-white/[0.07] px-5 pb-3.5 pt-4">
         <Eyebrow>{stageLabel(stage)} brief</Eyebrow>
         <p className="mt-2.5 text-sm text-foreground/85">
           {calendarDay(stage.starts)} – {calendarDay(stage.ends)} · {stage.venue}
         </p>
       </header>
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4">
+      <FitCascade levels={2} watch={`${stage.key}|${recs.length}`} className="flex min-h-0 flex-1 flex-col">
+        {(level) => (
+      <div className={cn("px-5", level === 0 ? "space-y-5 py-4" : "space-y-3 py-3")}>
         {swiss && recs.length > 0 ? (
           <div className="grid grid-cols-3 gap-3">
             <Figure value={recs.filter((r) => r.status === "advanced").length} label="Advanced" tone="gold" />
@@ -397,8 +469,10 @@ export function StageBrief({ stage }: { stage: TournamentStageV2 }) {
             </ul>
           </section>
         )}
-        {x.desktop && <p className="border-t border-white/[0.06] pt-4 text-[11px] text-muted-foreground">Select any match to see who plays, when, and what the result decides.</p>}
+        {x.desktop && <p className="border-t border-white/[0.06] pt-3 text-[11px] text-muted-foreground">Select any match to see who plays, when, and what the result decides.</p>}
       </div>
+        )}
+      </FitCascade>
     </div>
   );
 }
