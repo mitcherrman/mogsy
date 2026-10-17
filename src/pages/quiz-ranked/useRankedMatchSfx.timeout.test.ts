@@ -11,9 +11,9 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { CaptureSnapshot } from "@/lib/journey/realFixtures";
-import { readPublicRound } from "@/lib/ranked-public/contracts";
+import { readPublicRound, readSegmentSettlement } from "@/lib/ranked-public/contracts";
 import {
-  observeRankedSfx, rankedSfxObservation,
+  observeRankedSfx, rankedSfxObservation, segmentSettledTimedOut,
   type RankedSfxObservation, type RankedSfxWatch,
 } from "./useRankedMatchSfx";
 
@@ -130,5 +130,50 @@ describe("real captures — Journey timeouts come from `own_timed_out_challenges
     const snaps = capture("jref/zed_ahri.reference.timeout.json");
     const from = snaps.findIndex((s) => s.label === "child3-timeout-reveal");
     expect(replay(snaps.slice(from))).toEqual([]);
+  });
+});
+
+// ── One-lock segment modules: the settlement's per-player `segment_result` ──
+const SERVER = resolve(process.cwd(), "src/lib/ranked-public/__fixtures__");
+const VIEWER = "0a11d111-0000-4000-8000-000000000001";
+const settled = (file: string, key: string) => {
+  const capture = JSON.parse(readFileSync(join(SERVER, `${file}.json`), "utf8")) as
+    Record<string, { payload: unknown; round_number: number }>;
+  return { settlement: readSegmentSettlement(capture[key].payload), round: capture[key].round_number };
+};
+
+describe("real server captures — one-lock segments (Order Forge, Reconstruct, Assembly)", () => {
+  it.each([
+    "orderForgeServerCapture", "reconstructServerCapture",
+    "assemblyRosterLockServerCapture", "assemblyDraftMemoryServerCapture",
+  ])("%s: only the viewer's server `timeout` reads as timed out", (file) => {
+    const timeout = settled(file, "resolved_timeout");
+    expect(segmentSettledTimedOut(timeout.settlement, timeout.round, timeout.round, VIEWER)).toBe(true);
+    for (const key of ["resolved_correct", "resolved_incorrect"]) {
+      const s = settled(file, key);
+      expect(segmentSettledTimedOut(s.settlement, s.round, s.round, VIEWER)).toBe(false);
+    }
+    // The OPPONENT's view of the same settlement is not a timeout for them.
+    const opponent = Object.keys(timeout.settlement!.reveal.players).find((id) => id !== VIEWER)!;
+    expect(segmentSettledTimedOut(timeout.settlement, timeout.round, timeout.round, opponent)).toBe(false);
+    // A settlement for another round is not this round's verdict.
+    expect(segmentSettledTimedOut(timeout.settlement, timeout.round, timeout.round + 1, VIEWER)).toBe(false);
+  });
+
+  it("the live settlement sounds TIME'S UP once, as the segment's one cue (no award stacked)", () => {
+    const start = observeRankedSfx(null, base());
+    const live = observeRankedSfx(start.watch, base({
+      settlementRound: 6, settlementLive: true, segmentSettledTimedOut: true,
+      ownAward: { pointsAwarded: 1, speedBonusPoints: 0 },
+    }));
+    expect(events(live)).toEqual(["quiz.answer.timeout@ranked:m1:round:6:result"]);
+  });
+
+  it("a Journey or Stat Check segment never doubles its card-level TIME'S UP", () => {
+    const timeout = settled("reconstructServerCapture", "resolved_timeout");
+    for (const moduleId of ["mastery_slice", "item_cost_duel"]) {
+      const disguised = { ...timeout.settlement!, reveal: { ...timeout.settlement!.reveal, moduleId } };
+      expect(segmentSettledTimedOut(disguised, timeout.round, timeout.round, VIEWER)).toBe(false);
+    }
   });
 });

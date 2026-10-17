@@ -6,7 +6,9 @@ import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
   MatchResultView, PublicRoundView, SegmentSettlementView, SettledCardReveal,
 } from "@/lib/ranked-public/contracts";
-import { META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID } from "@/lib/ranked-public/contracts";
+import {
+  MASTERY_SLICE_MODULE_ID, META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID,
+} from "@/lib/ranked-public/contracts";
 
 export interface RankedSfxEmission {
   event: SfxEvent;
@@ -39,6 +41,13 @@ export interface RankedSfxObservation {
    * in `metaOwnReveals[].outcome` instead. `null` when the wire has none.
    */
   cardTimeouts?: { key: string; flags: readonly boolean[] } | null;
+  /**
+   * MISC W2D (F12) — the settled SEGMENT says the viewer timed out
+   * (`segment_reveal.players[viewer].segment_result: "timeout"`), for a
+   * one-lock module that publishes no per-card flags (Order Forge,
+   * Reconstruct, Scrub, Assembly). Read for the settled round only.
+   */
+  segmentSettledTimedOut?: boolean;
   /**
    * OF3-F2 - an Order Forge segment's number and the viewer's own verdict from
    * `ownChallengeReveals[0].orderForge.isCorrect` (null until that reveal is
@@ -251,7 +260,7 @@ export function observeRankedSfx(
       emissions.push({ event: "ranked.answer.correct", eventId: `${settlementId}:result` });
     } else if (current.ownSettlementOutcome === "incorrect") {
       emissions.push({ event: "ranked.answer.incorrect", eventId: `${settlementId}:result` });
-    } else if (current.ownSettlementOutcome === "timed_out") {
+    } else if (current.ownSettlementOutcome === "timed_out" || current.segmentSettledTimedOut) {
       // MISC W2D (F12) — the settlement's own `timed_out` for the viewer is
       // the ONLY round-level TIME'S UP. A local zero never reaches here, and
       // an answer the server accepted settles as correct/incorrect instead.
@@ -265,7 +274,8 @@ export function observeRankedSfx(
     // Reflex module completion), which carries no per-question verdict here.
     const verdictSounded = current.ownSettlementOutcome === "correct"
       || current.ownSettlementOutcome === "incorrect"
-      || current.ownSettlementOutcome === "timed_out";
+      || current.ownSettlementOutcome === "timed_out"
+      || current.segmentSettledTimedOut === true;
     // OF3-F2 - a fallback verdict IS this settlement's cue; the award must not
     // stack behind it (see above). When the verdict came earlier from the own
     // reveal, the settlement keeps its ordinary award.
@@ -317,6 +327,25 @@ function terminalResult(
   if (!result) return null;
   if (result.outcome === "draw") return "draw";
   return result.winnerUserId === viewerUserId ? "victory" : "defeat";
+}
+
+/**
+ * MISC W2D (F12) — did the settled segment time the viewer out? Only for a
+ * module whose timeouts are not already stated card by card: a Journey
+ * (`mastery_slice`) states each child's expiry in `own_timed_out_challenges`,
+ * Meta Reflex in each card's own outcome, and announcing the segment as well
+ * would sound TIME'S UP twice for one expiry.
+ */
+export function segmentSettledTimedOut(
+  settlement: SegmentSettlementView | null,
+  settlementRound: number | null,
+  segmentRound: number | null,
+  viewerUserId: string,
+): boolean {
+  if (!settlement || settlementRound === null || segmentRound !== settlementRound) return false;
+  const moduleId = settlement.reveal.moduleId;
+  if (moduleId === MASTERY_SLICE_MODULE_ID || moduleId === "item_cost_duel") return false;
+  return settlement.reveal.players[viewerUserId]?.segmentResult === "timeout";
 }
 
 /**
@@ -396,6 +425,9 @@ export function rankedSfxObservation(input: UseRankedMatchSfxInput): RankedSfxOb
       ? segment.segmentNumber : null,
     orderForgeOwnVerdict: segment?.moduleId === ORDER_FORGE_MODULE_ID
       ? segment.ownChallengeReveals[0]?.orderForge?.isCorrect ?? null : null,
+    segmentSettledTimedOut: segmentSettledTimedOut(
+      input.lastSegmentSettlement ?? null, settlement?.roundNumber ?? null,
+      input.lastSegmentRoundNumber, input.viewerUserId),
     orderForgeSettled: orderForgeSettledVerdict(
       input.lastSegmentSettlement ?? null, settlement?.roundNumber ?? null,
       input.lastSegmentRoundNumber, input.viewerUserId),

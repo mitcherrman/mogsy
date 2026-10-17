@@ -243,11 +243,17 @@ describe("Ranked semantic SFX observation", () => {
       expect(step(hydrated.watch, settled(false)).emissions).toEqual([]);
     });
 
-    it("a timed-out settlement (no verdict stated) is silent", () => {
+    it("a timed-out settlement states no correct/incorrect VERDICT", () => {
       const initial = step(null, forge());
       expect(step(initial.watch, forge({
         settlementRound: 2, settlementLive: true, orderForgeSettled: null,
       })).emissions).toEqual([]);
+      // MISC W2D (F12) — the server's own `segment_result: "timeout"` is
+      // announced instead, as TIME'S UP (useRankedMatchSfx.timeout.test.ts).
+      expect(step(initial.watch, forge({
+        settlementRound: 2, settlementLive: true, orderForgeSettled: null,
+        segmentSettledTimedOut: true,
+      })).emissions.map((e) => e.event)).toEqual(["quiz.answer.timeout"]);
     });
 
     it("reorder actions change nothing the observer reads, so emit nothing", () => {
