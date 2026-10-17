@@ -26,11 +26,12 @@ export const RIFT_CENTRE_ART: string = riftLaneTurret;
  */
 export const MYSTERY_CHAMPION = "Lux";
 /**
- * The portrait window: a pointy-top hexagon with this corner radius (local lens
- * units; inradius ~74.5), aligned with and inside Leaguecraft's iris opening
- * (inradius 104). ~140 x 162 px at 1366 wide: the 128 px icon drawn at ~1.25x.
+ * The portrait chamber: a pointy-top hexagon with this corner radius (local lens
+ * units), aligned with Leaguecraft's iris opening and inside the ring of five
+ * role icons (r 76, rings r 9: the chamber, its halo and hinges stay within ~64,
+ * clear of their inner edge at 67). About 91 x 105 px at 1366 wide.
  */
-export const LUX_WINDOW_RADIUS = 86;
+export const LUX_WINDOW_RADIUS = 56;
 export const MATCHUP_LINEUP = {
   blue: ["Gnar", "Lee Sin", "Azir", "Jinx", "Thresh"],
   red: ["K'Sante", "Vi", "Orianna", "Kai'Sa", "Nautilus"],

@@ -1,13 +1,162 @@
 # Academy Core V3.5 — The Living Hextech Orrery (Phase 1 – Phase 3 production integration)
 
 Design branch `design/academy-core-v35-floating-orrery` (cut from `origin/main` `6407559a`; approved at **`abd50e5a`**, preserved).
-Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633`, `f6e5f6ca` and `c5521d3e`), PR → `main`.
-The Orrery is the `/lol` home on that branch. Nothing is merged, deployed or published. Frontend only: no backend, Supabase, Railway,
-database, env, flag or audio change.
+Integration branch **`academy-core/v35-production-integration`** (from `main` `f5f90c72`, re-merged with `main` `10534633`, `f6e5f6ca` and `c5521d3e`;
+tip `c47c11af`) was **merged to `main` as PR #53 (`9930da17`)**: the Orrery is the `/lol` home on `main`. Refinement branch
+**`academy-core/leaguecraft-lux-roles`** (§LCR) is not merged. Frontend only: no backend, Supabase, Railway, database, env, flag or
+audio change.
 
-> Status: the whole V3.5 experience (Phase 1, Phase 2, P2T, P2C's Pro Play, P2L.1's six-shutter Lux iris) is **approved** at `abd50e5a`.
-> **§P3, the production integration, is built and verified, and STOPPED at release readiness for the owner's inspection.** Start with
-> §P3 "Unresolved" and the release procedure.
+> Status: V3.5 is on `main` (PR #53, merged as `9930da17`; §P3). **§LCR, the Leaguecraft Lux final refinement** (five role
+> icons around Lux in a closed frosted-glass iris that opens on hover), is built on `academy-core/leaguecraft-lux-roles` and
+> **STOPPED FOR OWNER VISUAL REVIEW.** Watch `docs/handoffs/academy-core-v35/orrery-leaguecraft-hover-closeup.webm` first.
+
+## LCR. Leaguecraft — Lux final refinement (five role icons, frosted iris, hover reveal)
+
+Branch **`academy-core/leaguecraft-lux-roles`**, cut from `main` **`9930da17`** (the merge of PR #53, which put V3.5 on `main`). The
+Core files there are identical to the verified integration tip `c47c11af`.
+
+**Not merged, deployed or published: this waits for the owner's visual approval.**
+
+Only the Leaguecraft crystal projection changed. Pro Play, Combat, Archives, the crystal and lens sizes, the rings, the orbit, the
+books, the selector, routing, analytics, auth, audio and backend are untouched.
+
+### Owner brief
+
+Restore the five-role-icon composition. Put Lux, inside the six-piece corner-hinged iris, where the scroll/quill was.
+- The glass: neutral, realistic frosted glass that conceals her completely when closed.
+- At rest: closed and still, with no automatic reveal and no loop.
+- Hover (or keyboard focus) on the Leaguecraft book: all six shutters open slowly and together.
+- Leaving: they close again.
+- Navigation unchanged.
+
+### Recovered history
+
+The five role icons come from `StudyProjection` in **`4b77dd9c`** (P2C, `src/pages/dev/academy-core-v35/OrreryProjections.tsx`). That
+was itself the V3 Pro Play projection's arrangement moved to Leaguecraft. Restored exactly:
+- **Placement:** each icon is a `g.acore-role` at **r 76**, **72° apart**, the first at the top (−90°).
+- **Shape:** a `circle r=9 .acore-role-ring` and a 12 × 12 `image .acore-role-icon` (x −6, y −6).
+- **Files:** fed from the same `CORE_OBSERVE_ROLES` (`media.observeRoles`), which `OrreryCore` now passes to the projection.
+- **Styling:** their treatment is V3's own, unscoped shared CSS (`academy-core.css`: navy plate, soft violet ring, brightened icon),
+  unchanged, so the restored markup carries it exactly.
+
+Deliberately not restored: the scroll/quill emblem (replaced, as asked), the P2C violet crystal field ("unrelated older styling";
+Leaguecraft keeps its gold crystal), and the targeting reticle. The reticle is not a role icon. Its r 58 and r 22 rings and crosshair
+would cut across the Lux chamber, and its lock-on turn is a motion the brief does not ask for. It can come back in a line if wanted.
+
+### What changed
+
+- **Composition.** The five role icons sit on their pentagon, beneath the chamber.
+  - Lux's hexagonal chamber is centred where the emblem was. Corner radius **56** (was 86) keeps the chamber, its halo and the hinge
+    jewels within ~64 units, clear of the role rings' inner edge at 67.
+  - At 1366×768 the chamber is about **91 × 105 px** (measured ≥ 85 px wide in e2e). The old emblem was about 59 px.
+- **The iris** is the approved P2L.1 mechanism, unchanged in geometry: six identical triangles, each hinged at a chamber corner,
+  pivoting about the hinge; never overlapping; open share = θ/60.
+  - **At rest it is closed (0°):** the six cover the chamber completely (unit-tested: no gap at 0°).
+  - **Open is 64°:** every shutter has swung out under the frame.
+- **Frosted glass.**
+  - Removed: the blue/violet glass, the reeded texture, the facet lines and the magnified sharp refraction.
+  - Behind the shutters is now a frosted copy of the portrait: Gaussian blur (σ 6 lens units), desaturated (0.6), paled toward a cool
+    silver, and a touch magnified (1.08, a hint of refraction).
+  - An opaque neutral base under that copy keeps the blur's soft edges from showing anything sharp. The mask has a hairline stroke so
+    the shutters' shared edges leave no seam.
+  - On top: a faint neutral tint (white to silver, opacity 0.10–0.30), a restrained white sheen, and clean edges (a thin silver line
+    over a faint dark one).
+  - Closed, only soft colour shows through. Measured on the real-art captures: Lux's fine facial detail (eyes, mouth) correlates
+    **0.02–0.04** between the closed and revealed states (3× and 1×), so it is gone. Only the soft colour layout comes through
+    (0.67–0.75), as with real frosted glass.
+- **Motion** (CSS transitions on one pivot class; the visible shutters and their mask silhouettes move together).
+  - **Removed:** the 14 s loop, the light sweep, the edge glints, the portrait breathing and the swing-in on entering the room. No
+    keyframe animation remains in the projection (unit- and e2e-tested).
+  - **Hover or keyboard focus on the Leaguecraft book** (the existing navigator: the stage's `data-intent="book"` while Leaguecraft is
+    the focused room): all six turn together to 64° over **1.8 s**, at once, on CSS's `ease` curve (`cubic-bezier(0.25, 0.1, 0.25, 1)`).
+    Measured in Edge at 60 fps: 18° at 0.46 s, 47° at 0.9 s, 62° at 1.5 s, fully open at about 1.9 s.
+  - **Leaving** waits **400 ms**, then turns them back to 0° over 1.2 s (`cubic-bezier(0.45, 0, 0.25, 1)`). The wait exists because,
+    while the crystal pins Leaguecraft, the orbit keeps turning the pinned book toward the front (existing behaviour), so a resting
+    pointer briefly loses the book every ~0.6 s. Without the wait those blips restarted the closing, and the iris never got past
+    ~15° (measured). With it, a pinned hover opens fully in about 1.7 s and stays open; a real leave still closes. If Leaguecraft was not pinned by the crystal, the room itself fades out as focus
+    leaves the book (the existing navigator), and the iris is closed when it next appears.
+  - **Clicking the book:** unchanged one-click navigation. The existing 240 ms activation swings the shutters fully out on the way
+    (it adds no delay).
+  - **Reduced motion:** the same states, instantly. **Lite:** the same reveal (only the halo's glow goes).
+  - **Phone:** no hover, so the iris stays closed. A tap on the book is the existing one-tap open: the shutters swing out during its
+    240 ms activation as the room opens.
+
+### Files
+
+- `src/pages/academy-core/orrery/OrreryProjections.tsx`: `RoleIcons` (recovered), the Lux chamber with frosted glass, the
+  single-pivot shutters. The Pro Play section is untouched.
+- `src/pages/academy-core/orrery/OrreryCore.tsx`: passes the role icons (`media.observeRoles`) to the projection.
+- `src/pages/academy-core/orrery/orrery-projections-data.ts`: `LUX_WINDOW_RADIUS` 86 → 56.
+- `src/pages/academy-core/orrery/academy-core-v35.css`: the Leaguecraft block (loops removed; rest/hover/activation/reduced-motion
+  states; neutral glass).
+- Tests: `OrreryProjections.test.tsx`, `AcademyCorePage.test.tsx`, `e2e/academy-core-v35.spec.ts` (behaviour and evidence suites).
+
+### Verification (measured)
+
+- **Unit tests.**
+  - The Core suites: **124 / 124**. The Leaguecraft tests prove:
+    - the five role icons exactly as recovered (r 76, 72° apart, top first, ring r 9, 12 px icons, the shared classes);
+    - Lux centred in the chamber behind six shutters, with the frosted copy masked to the shutters on an opaque base, a blur
+      σ ≥ 5, seam-free mask strokes and neutral glass (no blue/violet/gold gradients);
+    - the geometry: closed (0°) covers the chamber with **no gap**, θ opens θ/60, no overlap, and the chamber, halo and hinges clear
+      the role rings;
+    - the motion contract read from the stylesheet: no `@keyframes` or `animation` in the projection; rest 0°; the reach is fully open
+      in 1.5–2 s with no delay; closing waits 300–600 ms; activation at 240 ms; reduced motion instant;
+    - no reticle, scroll, panes, light sweep or text.
+  - Funnel, routing and App: 289 passed, plus the 3 baseline `App.*` failures that fail identically on `main`.
+- **Typecheck and lint.** `tsc`: the 2 baseline errors only. `eslint`: 0 errors (the known `AcademyCoreInstrument.tsx:55` warning).
+- **Production build.** `npm run build`: exit 0. The Orrery chunk is 60.4 kB JS (18.8 kB gzip).
+- **Playwright (bundled Chromium):** `e2e/academy-core.spec.ts` + `e2e/academy-core-v35.spec.ts` = **79 / 79**. The Leaguecraft tests
+  cover:
+  - five roles, Lux's manifest icon, centred, ≥ 85 px, roles clear of the chamber;
+  - closed (every shutter 0°, 0 % uncovered);
+  - nothing moves over 4 s at rest, and no keyframe animation;
+  - hover: all six in step at every sample, under way at 0.35 s, only growing, fully open with the face 100 % uncovered;
+  - leave: closing, then closed and 0 % uncovered;
+  - keyboard focus opens, and focus moving away closes;
+  - activation swings out and the real click still navigates to `/quiz`;
+  - reduced motion: open and closed at once;
+  - lite: the same composition and reveal;
+  - phone: the five roles, closed, nothing running.
+- **Real browser at 60 fps (Edge).**
+  - Plain hover: 18° at 0.46 s, 47° at 0.9 s, 62° at 1.5 s, open at ~1.9 s.
+  - Crystal-pinned hover: open at ~1.7 s, staying open through the pointer blips (before the 400 ms close wait it stalled at ~15°).
+- **Concealment** (real art, Edge): Lux's fine facial detail correlates **0.02–0.04** between the closed and revealed states (3× and
+  1×). Only soft colour shows through the frost.
+- **Other projections:** reduced-motion crops at identical framing against the approved `abd50e5a` capture. Idle, Pro Play, Combat
+  and Archives have **0 changed pixels**; only Leaguecraft differs.
+
+### Evidence (`docs/handoffs/academy-core-v35/`, real art, Edge)
+
+- **Recording:** `orrery-leaguecraft-hover-closeup.webm` (26 s, the lens enlarged 2×) and `orrery-leaguecraft-hover.webm` (the full
+  1366×768 frame). Times are in the close-up:
+  - 0–5.8 s: the crystal shows Leaguecraft; five roles, Lux concealed, nothing moving;
+  - ~6 s: hover the Leaguecraft book, and the iris opens slowly (open by ~7.6 s);
+  - ~9.3 s: leave, and it closes (closed by ~10.5 s);
+  - ~12 s: a second hover and leave;
+  - ~21 s: with nothing pinned, hovering the book brings Leaguecraft up and reveals her;
+  - ~24 s: leaving returns to rest.
+- **Actual size (1×):** `lcr-1366x768-{closed,half,open,closed-again}.png` (the full homepage frame) and
+  `lcr-actual-size-{closed,half,open,closed-again}.png` (the crystal at its real size).
+- **Close-ups (3×):** `lcr-closeup-{closed,half,open,closed-again}.png`.
+- **Phone (390×844 at 2×):** `lcr-mobile-390x844.png` and `lcr-mobile-390x844-closed.png`.
+- **Pro Play unchanged:** `lcr-regression-actual-size-pro-play.png`.
+
+### Limitations
+
+- Lux is smaller than in P2L (about 91 px wide against 140 px) so that she fits inside the restored role ring. The 128 px icon is
+  sharper at this size.
+- If the Leaguecraft room is not pinned, the closing is mostly hidden by the room fading out as the pointer leaves the book. That is
+  the existing navigator's behaviour, which the brief keeps.
+- On phones (no hover) the slow reveal is not seen: the iris stays closed until a tap opens the book. Keyboard focus reveals her on
+  any device with a keyboard.
+- The reticle was not restored (see above).
+
+### Next
+
+Owner visual review. Nothing is merged, deployed or published.
+
+---
 
 ## P3. Phase 3 — production integration (`/lol` becomes the Orrery)
 
