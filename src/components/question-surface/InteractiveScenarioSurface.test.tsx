@@ -50,6 +50,12 @@ describe("InteractiveScenarioSurface", () => {
     for (const o of Q.options) expect(screen.getByText(o.label)).toBeInTheDocument();
   });
 
+  it("shows only a source-proven patch label", () => {
+    setup({ question: { ...Q, sourcePatch: "26.20" } });
+    expect(screen.getByTestId("question-patch-label")).toHaveTextContent("Patch 26.20");
+    expect(screen.getAllByText(Q.prompt)).toHaveLength(1);
+  });
+
   it("shows the COMPACT band (not a giant cinematic panel) when no scenario source", () => {
     setup();
     const compact = screen.getByTestId("scenario-compact");

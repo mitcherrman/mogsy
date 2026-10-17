@@ -21,6 +21,9 @@ on:
       - "src/components/quiz/centre-stage/**"
       - "src/lib/ranked-public/matchHost*"
       - "src/pages/quiz-ranked/**"
+      - "src/lib/ranked-core/adapters/adaptToViews*"
+      - "src/lib/ranked-core/viewTypes.ts"
+      - "src/components/question-surface/InteractiveScenarioSurface*"
       - ".github/workflows/role-challenge-review.yml"
   workflow_dispatch:
 
@@ -51,6 +54,8 @@ jobs:
           src/components/game-results
           src/lib/ranked-public/matchHost.test.ts
           src/pages/quiz-ranked
+          src/lib/ranked-core/adapters/adaptToViews.test.ts
+          src/components/question-surface/InteractiveScenarioSurface.test.tsx
           src/lib/platform-policy/policy.test.ts
           src/pages/admin/AdminPlatformPolicies.test.tsx
           src/components/quiz/centre-stage/centreStage.test.tsx
