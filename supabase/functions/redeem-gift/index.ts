@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { reconcileGiftPayment } from "../_shared/gift-payment.ts";
+import { handleGiftRedeemRequest } from "../_shared/gift-redeem.ts";
+import { giftByCode, giftPaymentDeps, type AdminClientLike, type StripeLike } from "../_shared/gift-wiring.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,105 +11,64 @@ const corsHeaders = {
 };
 
 /**
- * redeem-gift: signed-in recipient claims a gift.
- * - Diamonds gifts: handled by SQL function redeem_gift_code (adds to balance).
- * - Pro gifts (monthly/annual): PT1.4 — recorded as a non-Stripe entitlement
- *   grant (profiles.pro_grant_kind = 'gift' with a real expiry), written
- *   server-side with the service role. Never touches is_pro, which is
- *   Stripe-owned and force-synced from Stripe subscription state.
+ * redeem-gift — a signed-in recipient claims a gift (PT1.7).
+ *
+ *   POST { code }                    redeem (also { action: "redeem", code })
+ *   POST { action: "list" }          paid gifts addressed to my verified email
+ *
+ * PT1.7 replaced the old two-step flow (redeem_gift_code consumed the gift in
+ * SQL, then this function granted Premium from a stale JS read — a failure in
+ * between lost a paid gift, and any account holding the code could redeem).
+ * Now: the payment is re-read from Stripe, then public.gift_redeem does
+ * everything in ONE transaction — payment state, the verified recipient email,
+ * single use, and the Premium grant (pro_grant_kind 'gift', a real expiry of
+ * 365 / 30 days, stacked after any still-valid grant) or the diamonds credit.
+ * This function writes no profile column itself, and never is_pro, which is
+ * Stripe-derived (PT1.4).
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const reply = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401,
-      });
-    }
-    const { code } = await req.json();
-    if (!code) {
-      return new Response(JSON.stringify({ error: "Missing code" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-      });
-    }
-
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) return reply({ error: "Not authenticated" }, 401);
     const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
+      { auth: { persistSession: false } },
     );
-
-    const { data: userData } = await userClient.auth.getUser();
+    const { data: userData } = await admin.auth.getUser(authHeader.slice("Bearer ".length));
     const user = userData?.user;
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401,
-      });
-    }
+    if (!user) return reply({ error: "Not authenticated" }, 401);
 
-    // Use SQL function to atomically claim. Diamonds handled inside.
-    const { data: result, error: rpcErr } = await userClient.rpc("redeem_gift_code", { _code: code });
-    if (rpcErr) {
-      return new Response(JSON.stringify({ error: rpcErr.message }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-      });
-    }
-    if (!result?.success) {
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-      });
-    }
+    const body = await req.json().catch(() => ({}));
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", { apiVersion: "2025-08-27.basil" });
+    const paymentDeps = giftPaymentDeps(admin as unknown as AdminClientLike, stripe as unknown as StripeLike);
 
-    // For Pro gifts, grant Pro server-side (bypass premium-field trigger via service role)
-    if (result.gift_type === "pro_monthly" || result.gift_type === "pro_annual") {
-      const days = result.gift_type === "pro_annual" ? 365 : 30;
-      const { data: prof } = await admin
-        .from("profiles")
-        .select("id, pro_grant_kind, pro_grant_expires_at")
-        .eq("user_id", user.id)
-        .single();
-      if (prof) {
-        // PT1.4: a gift is a NON-Stripe entitlement source, so it writes the
-        // pro_grant_* columns and never is_pro (which is now Stripe-owned and
-        // would be force-synced away by check-subscription / stripe-webhook).
-        // The gifted period is a real expiry instead of an honour-based flag,
-        // and stacks onto any still-valid grant rather than truncating it.
-        const now = Date.now();
-        const existingMs = prof.pro_grant_expires_at ? Date.parse(prof.pro_grant_expires_at) : null;
-        const hasUnexpiringGrant = prof.pro_grant_kind != null && prof.pro_grant_expires_at == null;
-        if (!hasUnexpiringGrant) {
-          // An unexpiring grant already outlasts anything a gift could add.
-          const base = existingMs != null && existingMs > now ? existingMs : now;
-          await admin.from("profiles").update({
-            pro_grant_kind: "gift",
-            pro_grant_expires_at: new Date(base + days * 86400000).toISOString(),
-            pro_grant_reason: `Redeemed ${result.gift_type} gift`,
-            pro_grant_granted_at: new Date().toISOString(),
-          }).eq("id", prof.id);
-        }
-        // Record a purchases row so admins can see the gifted Pro period
-        await admin.from("purchases").insert({
-          profile_id: prof.id,
-          item_type: `gift_${result.gift_type}_${days}d`,
-          amount_cents: 0,
-        } as any);
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, gift_type: result.gift_type, diamond_amount: result.diamond_amount }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
-    });
+    const result = await handleGiftRedeemRequest(
+      { action: body?.action, code: body?.code, user: { id: user.id, isAnonymous: user.is_anonymous === true } },
+      {
+        rpc: async (fn, args) => await admin.rpc(fn, args),
+        getGiftByCode: (code) => giftByCode(admin as unknown as AdminClientLike, code),
+        reconcile: (gift) => reconcileGiftPayment(paymentDeps, gift),
+        log: (message, detail) => console.warn(message, detail ?? {}),
+        // Kept from the pre-PT1.7 flow: a purchases row lets admins see the
+        // gifted period. Bookkeeping only — the grant is already committed.
+        afterRedeem: async (r) => {
+          if (r.gift_type !== "pro_annual" && r.gift_type !== "pro_monthly") return;
+          await admin.from("purchases").insert({
+            profile_id: r.profile_id,
+            item_type: `gift_${r.gift_type}_${r.premium_days}d`,
+            amount_cents: 0,
+          });
+        },
+      },
+    );
+    return reply(result);
   } catch (e) {
     console.error("redeem-gift", e);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500,
-    });
+    return reply({ error: "Internal error" }, 500);
   }
 });

@@ -3,6 +3,8 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isCustomOfferSession } from "../_shared/custom-offer.ts";
 import { handleCustomOfferEvent, type WebhookDeps } from "../_shared/custom-offer-webhook.ts";
+import { handleGiftEvent } from "../_shared/gift-payment.ts";
+import { giftPaymentDeps, type AdminClientLike, type StripeLike } from "../_shared/gift-wiring.ts";
 
 // Stripe webhook — keeps profiles.is_pro in sync without relying on the
 // user revisiting the Shop page (check-subscription remains as a backstop).
@@ -25,7 +27,13 @@ import { handleCustomOfferEvent, type WebhookDeps } from "../_shared/custom-offe
 // its completed sessions are routed there BEFORE the subscription/gift logic
 // below, and it alone consumes checkout.session.async_payment_succeeded /
 // async_payment_failed / expired, charge.refunded and charge.dispute.closed.
-// Subscription and gift handling is unchanged.
+// Subscription handling is unchanged.
+//
+// PT1.7: gift sessions (metadata.gift_id) are no longer skipped. Every gift
+// event is a hint to re-read the session, PaymentIntent, charge and dispute
+// from Stripe and record the result via public.gift_record_payment
+// (../_shared/gift-payment.ts), so retried and out-of-order events converge.
+// Gifts still grant nothing here: Premium starts when the recipient redeems.
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
@@ -178,6 +186,7 @@ serve(async (req) => {
       retrievePaymentIntent: (id) => stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] }),
     },
   };
+  const giftDeps = giftPaymentDeps(supabase as unknown as AdminClientLike, stripe as unknown as StripeLike);
 
   try {
     switch (event.type) {
@@ -190,7 +199,12 @@ serve(async (req) => {
           break;
         }
         // Gift purchases grant Pro at redemption (redeem-gift), not at purchase.
-        if (session.metadata?.gift_id) break;
+        // PT1.7: the payment itself is verified and recorded here.
+        if (session.metadata?.gift_id) {
+          const r = await handleGiftEvent(event, giftDeps);
+          console.log("gift", { event: event.id, outcome: r.outcome });
+          break;
+        }
         if (session.mode !== "subscription") break;
         const userId = session.metadata?.supabase_user_id || session.client_reference_id;
         if (!userId) {
@@ -228,15 +242,21 @@ serve(async (req) => {
         await recordCommercialState(supabase, userId, subscription);
         break;
       }
-      // PT1.6b: only the custom one-time offer consumes these. Anything that is
-      // not one of its sessions/payments is reported unhandled and ignored.
+      // PT1.6b / PT1.7: the custom one-time offer and gifts consume these.
+      // Each handler ignores what is not its own; anything else is unhandled.
       case "checkout.session.async_payment_succeeded":
       case "checkout.session.async_payment_failed":
       case "checkout.session.expired":
       case "charge.refunded":
+      case "charge.dispute.created":
+      case "charge.dispute.updated":
       case "charge.dispute.closed": {
         const r = await handleCustomOfferEvent(event, customOfferDeps);
         console.log("custom offer", { event: event.id, type: event.type, handled: r.handled, outcome: r.outcome });
+        if (!r.handled) {
+          const g = await handleGiftEvent(event, giftDeps);
+          console.log("gift", { event: event.id, type: event.type, handled: g.handled, outcome: g.outcome });
+        }
         break;
       }
       default:

@@ -172,6 +172,8 @@ const AdminDemoAnalytics = lazy(() => import("./pages/admin/AdminDemoAnalytics")
 const AdminProCoverage = lazy(() => import("./pages/admin/AdminProCoverage"));
 const AdminCustomOffers = lazy(() => import("./pages/admin/AdminCustomOffers"));
 const LolPremiumClaim = lazy(() => import("./pages/LolPremiumClaim"));
+const LolPremiumGift = lazy(() => import("./pages/LolPremiumGift"));
+const LolPremiumRedeem = lazy(() => import("./pages/LolPremiumRedeem"));
 
 // Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
 const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
@@ -706,6 +708,9 @@ export const appRouter = createBrowserRouter(
                   {/* PT1.6b — a private one-time offer link (#token). noindex;
                       useless without a token minted by the owner. */}
                   <Route path="/lol/premium/claim" element={<Suspense fallback={<RouteFallback />}><LolPremiumClaim /></Suspense>} />
+                  {/* PT1.7 — buy a Premium gift (private offer) and redeem one. noindex. */}
+                  <Route path="/lol/premium/gift" element={<Suspense fallback={<RouteFallback />}><LolPremiumGift /></Suspense>} />
+                  <Route path="/lol/premium/redeem" element={<Suspense fallback={<RouteFallback />}><LolPremiumRedeem /></Suspense>} />
                   {LEGACY_PREMIUM_ROUTES.map((path) => (
                     <Route key={path} path={path} element={<LegacyPremiumRedirect />} />
                   ))}
