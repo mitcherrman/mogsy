@@ -1,6 +1,6 @@
 # MISC Wave 1B — F08: stated ability formula reference (Journey board)
 
-Issue: mitcherrman/mogsy#54 · Branch `fix/misc-w1b-journey-ability-reference` · Draft PR (see PR link in the issue thread)
+Issue: mitcherrman/mogsy#54 · Branch `fix/misc-w1b-journey-ability-reference` · Draft PR mitcherrman/mogsy#57
 Owner session: Claude Code, Opus 5.5, medium effort · Date 2026-10-16
 
 ## Status
@@ -10,7 +10,7 @@ Owner session: Claude Code, Opus 5.5, medium effort · Date 2026-10-16
 | | SHA |
 |---|---|
 | Base (`origin/main`, fresh fetch) | `9930da17` (Merge PR #53) |
-| Head (F08 commit) | see PR head; first F08 commit `f1f47eac` |
+| Head | `939f50cd` at PR open (fix `f1f47eac` + handoff); this line is updated by a later docs commit |
 | Backend authority read (`League_Combat_Simulator` `origin/master`) | `fadec94a` |
 | PR #46 head inspected | `64e45176` (draft, open, 84 commits behind `main`) |
 
