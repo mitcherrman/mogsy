@@ -3,7 +3,7 @@
 **Status (2026-10-16):**
 * **MC-UX2: implemented, awaiting owner review.** Not merged, not published.
   * Frontend branch `mc-ux2/hub-navigation-metrics` is pushed.
-  * Backend branch `mc-ux2/bonus-history-be` is **not committed yet**: the backend repo's rule is to stop before committing until told to. Its changes are in the `.worktrees/mcux2-be` worktree.
+  * Backend branch `mc-ux2/bonus-history-be` @ `fce2d90c` is pushed (committed on the owner's instruction). It is not merged.
 * MC-UX1: merged into `main` at `af170999` (see the MC-UX1 section below).
 
 ---
@@ -93,7 +93,7 @@
 
 ## UX2.5 Files
 
-Backend (uncommitted on `mc-ux2/bonus-history-be`):
+Backend (`mc-ux2/bonus-history-be` @ `fce2d90c`):
 * New:
   * `migrate_add_public_mode_rounds.py`
   * `public_game_modes/history.py`
@@ -176,7 +176,7 @@ Frontend (`mc-ux2/hub-navigation-metrics`):
 
 * Nothing is merged or published (owner review first).
 * **Deploy order when approved:**
-  1. Commit and push the backend branch, then merge it into `master`. Railway runs the `public_mode_rounds` migration at startup.
+  1. Merge backend `mc-ux2/bonus-history-be` into `master`. Railway runs the `public_mode_rounds` migration at startup.
   2. Verify `GET /api/game-modes/me/summary` answers 401 without auth.
   3. Then merge the frontend into `main` and publish it via Lovable.
 * **If the frontend ships first:** the summary call answers 404. The stats show "couldn't be loaded" and the cards drop their history line; play is unaffected.
