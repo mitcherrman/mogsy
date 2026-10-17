@@ -11,11 +11,14 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { CaptureSnapshot } from "@/lib/journey/realFixtures";
+import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import { readPublicRound, readSegmentSettlement } from "@/lib/ranked-public/contracts";
 import {
   observeRankedSfx, rankedSfxObservation, segmentSettledTimedOut,
   type RankedSfxObservation, type RankedSfxWatch,
 } from "./useRankedMatchSfx";
+
+type ResolvedProjection = Parameters<typeof adaptBackendSettlement>[0];
 
 const base = (over: Partial<RankedSfxObservation> = {}): RankedSfxObservation => ({
   matchId: "m1", moduleKey: "quiz.1#1", roundKey: "quiz.1#1",
@@ -175,5 +178,97 @@ describe("real server captures — one-lock segments (Order Forge, Reconstruct, 
       const disguised = { ...timeout.settlement!, reveal: { ...timeout.settlement!.reveal, moduleId } };
       expect(segmentSettledTimedOut(disguised, timeout.round, timeout.round, VIEWER)).toBe(false);
     }
+  });
+});
+
+// ── Review edge A — the FINAL round's timeout (terminal settlement) ───────────
+/**
+ * In every real one-lock server capture the timed-out settlement IS the last
+ * round: `resolved_timeout` carries `match_over: true` and
+ * `completion_reason: "segments_complete"`, and the next public projection is
+ * already terminal. There is no intermediate non-terminal settlement to hear.
+ */
+describe("review edge A — a timeout that ends the match", () => {
+  interface Envelope { round_number: number; payload: Record<string, unknown> & {
+    match_over?: boolean; players?: { player_id: string }[];
+    public?: { payload: { match_over: boolean } } } }
+  const capture = (file: string) =>
+    JSON.parse(readFileSync(join(SERVER, `${file}.json`), "utf8")) as Record<string, Envelope>;
+
+  function finalRound(file: string) {
+    const c = capture(file);
+    const resolved = c.resolved_timeout;
+    const opponent = resolved.payload.players!
+      .find((p) => p.player_id !== VIEWER)!.player_id;
+    const live = readPublicRound(c.public_after_bot_lock ?? c.public_locked);
+    const terminal = readPublicRound(c.resume_final.payload.public);
+    const settlement = adaptBackendSettlement(resolved.payload as unknown as ResolvedProjection,
+      { p1PlayerId: VIEWER, p2PlayerId: opponent });
+    const input = (round: typeof live, settled: boolean) => ({
+      matchId: "m1", viewerUserId: VIEWER, publicRound: round, surfaceRound: round,
+      lastResolved: settled ? settlement : null,
+      lastSegmentSettlement: settled ? readSegmentSettlement(resolved.payload) : null,
+      lastSegmentRoundNumber: settled ? resolved.round_number : null,
+      revealHold: settled, result: null, outcomeMoment: false,
+    });
+    return { live, terminal, round: resolved.round_number, input };
+  }
+
+  it.each(["reconstructServerCapture", "orderForgeServerCapture", "assemblyRosterLockServerCapture"])(
+    "%s: the capture's timeout settlement is terminal (no non-terminal settlement exists)", (file) => {
+      const c = capture(file);
+      expect(c.resolved_timeout.payload.match_over).toBe(true);
+      expect(c.resume_final.payload.public!.payload.match_over).toBe(true);
+    });
+
+  it.each(["reconstructServerCapture", "orderForgeServerCapture", "assemblyRosterLockServerCapture"])(
+    "%s: watched live → terminal timed-out settlement sounds TIME'S UP exactly once", (file) => {
+      const f = finalRound(file);
+      const live = observeRankedSfx(null, rankedSfxObservation(f.input(f.live, false))!);
+      expect(live.emissions).toEqual([]);
+      const ended = observeRankedSfx(live.watch, rankedSfxObservation(f.input(f.terminal, true))!);
+      expect(events(ended)).toEqual([`quiz.answer.timeout@ranked:m1:round:${f.round}:result`]);
+      // Re-polls of the finished match never repeat it.
+      expect(observeRankedSfx(ended.watch, rankedSfxObservation(f.input(f.terminal, true))!).emissions)
+        .toEqual([]);
+    });
+
+  it("the completion snapshot lands BEFORE the final settlement is fetched: still exactly once", () => {
+    const f = finalRound("reconstructServerCapture");
+    const live = observeRankedSfx(null, rankedSfxObservation(f.input(f.live, false))!);
+    const over = observeRankedSfx(live.watch, rankedSfxObservation(f.input(f.terminal, false))!);
+    expect(over.emissions).toEqual([]);
+    const settled = observeRankedSfx(over.watch, rankedSfxObservation(f.input(f.terminal, true))!);
+    expect(events(settled)).toEqual([`quiz.answer.timeout@ranked:m1:round:${f.round}:result`]);
+  });
+
+  it("a reconnect / history open onto the finished match replays nothing", () => {
+    const f = finalRound("reconstructServerCapture");
+    const opened = observeRankedSfx(null, rankedSfxObservation(f.input(f.terminal, false))!);
+    // The resume backfill captures the final settlement after the first read.
+    expect(observeRankedSfx(opened.watch, rankedSfxObservation(f.input(f.terminal, true))!).emissions)
+      .toEqual([]);
+    expect(observeRankedSfx(null, rankedSfxObservation(f.input(f.terminal, true))!).emissions).toEqual([]);
+  });
+
+  it("a quiz round's own `timed_out` on the final round sounds too; the match sting still waits for the outro", () => {
+    const start = observeRankedSfx(null, base());
+    const ended = observeRankedSfx(start.watch, base({
+      terminal: true, terminalResult: "defeat", outcomeMoment: false,
+      settlementRound: 10, settlementLive: true, ownSettlementOutcome: "timed_out",
+    }));
+    expect(events(ended)).toEqual(["quiz.answer.timeout@ranked:m1:round:10:result"]);
+    const outro = observeRankedSfx(ended.watch, base({
+      terminal: true, terminalResult: "defeat", outcomeMoment: true,
+      settlementRound: 10, settlementLive: true, ownSettlementOutcome: "timed_out",
+    }));
+    expect(events(outro)).toEqual(["ranked.match.defeat@ranked:m1:match:defeat"]);
+  });
+
+  it("a correct/incorrect final verdict is unchanged (still silent at terminal; the sting carries it)", () => {
+    const start = observeRankedSfx(null, base());
+    expect(observeRankedSfx(start.watch, base({
+      terminal: true, settlementRound: 10, settlementLive: true, ownSettlementOutcome: "incorrect",
+    })).emissions).toEqual([]);
   });
 });

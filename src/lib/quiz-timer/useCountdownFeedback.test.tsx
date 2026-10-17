@@ -48,9 +48,10 @@ function installAudio(state: AudioContextState = "running") {
   return { context, counts };
 }
 
-function Clock({ clockKey = "m1:r1", armed = true }: { clockKey?: string; armed?: boolean }) {
-  const now = useCountdownNow(DEADLINE, 0);
-  const seconds = Math.min(30, remainingSeconds(DEADLINE, 0, now));
+function Clock({ clockKey = "m1:r1", armed = true, deadline = DEADLINE }:
+{ clockKey?: string; armed?: boolean; deadline?: string }) {
+  const now = useCountdownNow(deadline, 0);
+  const seconds = Math.min(30, remainingSeconds(deadline, 0, now));
   useCountdownSfx({ clockKey, remainingSeconds: seconds, running: true, armed });
   return <span data-testid="clock">{seconds}</span>;
 }
@@ -180,6 +181,39 @@ describe("F10 — the final five seconds, on virtual time", () => {
     await advanceTo(0);
     expect(play).not.toHaveBeenCalled();
     expect(suspended.counts.oscillators).toBe(0);
+  });
+});
+
+describe("review edge C — two genuine clocks in their final seconds, staggered", () => {
+  // A Daily Time Trial question clock and its stage bank: both drain on the
+  // wall clock, so their second boundaries are offset by an arbitrary phase
+  // (here 500 ms — more than the old 350 ms anti-chord gap).
+  const BANK_DEADLINE = new Date(T0 + 30_500).toISOString();
+
+  it("ONE clock owns the beat: exactly five knocks, all from the clock that expires first", async () => {
+    render(<><Clock clockKey="m1:r1" /><Clock clockKey="daily-bank:s0" deadline={BANK_DEADLINE} /></>);
+    await advanceTo(-1_000);
+    expect(calls(play)).toEqual([
+      "quiz.countdown.tick@quiz-countdown:m1:r1:5",
+      "quiz.countdown.tick@quiz-countdown:m1:r1:4",
+      "quiz.countdown.urgent@quiz-countdown:m1:r1:3",
+      "quiz.countdown.urgent@quiz-countdown:m1:r1:2",
+      "quiz.countdown.final@quiz-countdown:m1:r1:1",
+    ]);
+  });
+
+  it("the other clock takes the beat once the owner has stopped (e.g. the next question's clock)", async () => {
+    render(<><Clock clockKey="m1:r1" /><Clock clockKey="daily-bank:s0"
+      deadline={new Date(T0 + 34_000).toISOString()} /></>);
+    await advanceTo(-4_000);
+    const ids = calls(play).map((c) => c.split("@")[1]);
+    // r1 owns 5..1. The bank's 5 and 4 fall inside r1's lease and stay silent;
+    // once r1 has gone quiet the bank, still counting, owns 3, 2, 1.
+    expect(ids.filter((i) => i.includes(":r1:"))).toHaveLength(5);
+    expect(ids.filter((i) => i.includes("daily-bank"))).toEqual([
+      "quiz-countdown:daily-bank:s0:3", "quiz-countdown:daily-bank:s0:2",
+      "quiz-countdown:daily-bank:s0:1",
+    ]);
   });
 });
 

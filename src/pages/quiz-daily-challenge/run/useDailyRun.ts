@@ -55,6 +55,7 @@ import {
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
 import { useSfx } from "@/lib/audio/useSfx";
+import { timeoutEventId } from "@/lib/quiz-timer/countdownFeedback";
 
 export type DailyRunLoad = "loading" | "ready" | "run" | "unavailable";
 
@@ -219,6 +220,14 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
       // SFX2 — only a stage this mount WATCHED finish sounds; a reload onto a
       // finished stage has no `prev` and stays silent. Skips are not earned.
       if (done.status === "completed") {
+        // MISC W2D (F12) — the SERVER ended this watched stage on the bank:
+        // that is its TIME'S UP. The bank readout announces the same fact from
+        // its own server reading of 0, but a stage that goes straight from a
+        // live bank to this result unmounts the readout first; the shared
+        // event id (`quiz-timeout:daily-bank:<stage>`) keeps it to one cue.
+        if (done.result?.endedBy === "time_bank_exhausted") {
+          playSfx("quiz.answer.timeout", { eventId: timeoutEventId(`daily-bank:${done.id}`) });
+        }
         playSfx("daily.stage.complete", { eventId: `daily:${next.runId}:stage:${done.id}:complete` });
       }
     }

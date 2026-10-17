@@ -28,15 +28,20 @@ export const COUNTDOWN_SFX_EVENT: Record<CountdownIntensity, SfxEvent> = {
 };
 
 /**
- * Two genuine clocks can be in their last seconds together (a Daily Time
- * Trial question clock inside a draining bank). One knock per ~second across
- * ALL clocks: the second is a call to act, not a chord.
+ * ONE CLOCK OWNS THE BEAT. Two genuine clocks can be in their last seconds
+ * together (a Daily Time Trial question clock inside a draining bank), and
+ * their second boundaries are offset by an arbitrary phase, so a time gap
+ * alone still let both knock — two knocks a second (review edge C). The first
+ * clock to knock holds the beat for as long as it keeps knocking (a lease a
+ * little over one second, renewed by each of its own knocks); another clock
+ * may knock only once the owner has gone quiet. Both drain on the wall clock,
+ * so the first clock into its final window is the one that expires first.
  */
-const CROSS_CLOCK_GAP_MS = 350;
-let lastKnockAt = Number.NEGATIVE_INFINITY;
+const BEAT_LEASE_MS = 1_100;
+let beatOwner: { clockKey: string; at: number } | null = null;
 
 export function resetCountdownFeedbackForTests(): void {
-  lastKnockAt = Number.NEGATIVE_INFINITY;
+  beatOwner = null;
 }
 
 function contextSuspended(): boolean {
@@ -60,8 +65,8 @@ export function useCountdownSfx(sample: CountdownSample): void {
     // lands after its second is worse than none, so a beat is never queued.
     if (contextSuspended()) return;
     const now = Date.now();
-    if (now - lastKnockAt < CROSS_CLOCK_GAP_MS) return;
-    lastKnockAt = now;
+    if (beatOwner && beatOwner.clockKey !== clockKey && now - beatOwner.at < BEAT_LEASE_MS) return;
+    beatOwner = { clockKey: clockKey!, at: now };
     play(COUNTDOWN_SFX_EVENT[tick.intensity], { eventId: tick.eventId });
   }, [clockKey, remainingSeconds, running, armed, play]);
 }

@@ -287,6 +287,25 @@ export function observeRankedSfx(
     }
   }
 
+  // MISC W2D review edge A — A TIMEOUT THAT ENDS THE MATCH. The final round
+  // settles in the same transaction that completes the match (every real
+  // one-lock capture's `resolved_timeout` carries `match_over: true`), so its
+  // settlement is only ever observed with `terminal` already true and the
+  // branch above never sees it. The timeout is still the viewer's own news:
+  // sound it once, under the same result id, but only for a match this mount
+  // WATCHED (`sawLive`) — a reconnect or History open stays silent. The result
+  // sting is a different event and still waits for the outro beat.
+  if (current.terminal && previous.sawLive
+      && current.settlementRound !== null
+      && current.settlementRound !== previous.settlementRound
+      && current.settlementLive
+      && (current.ownSettlementOutcome === "timed_out" || current.segmentSettledTimedOut)) {
+    emissions.push({
+      event: "quiz.answer.timeout",
+      eventId: `${id(`round:${current.settlementRound}`)}:result`,
+    });
+  }
+
   let terminalSounded = previous.terminalSounded;
   if (current.terminal && current.terminalResult && previous.sawLive && !terminalSounded
       && current.outcomeMoment) {
