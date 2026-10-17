@@ -176,7 +176,7 @@ Overview 1920/1440/1280×600/768/390/360; Play-In 1440 (whole) and 1280×600 (ro
 
 **Limitations**
 
-- **Landscape phones (e.g. 844 × 390) do not fit.** Not in the requested matrix; measured in §6 for transparency. Portrait compositions run out of height (~250 px of workspace under the HUD and the two-row bar). The document still never scrolls (locked), but content is clipped there. Needs its own composition (single-row bar, side-by-side controls) — recommended follow-up.
+- ~~**Landscape phones (e.g. 844 × 390) do not fit.**~~ Done in the UX5 follow-up (§9, branch `ux5/worlds-landscape-phones`).
 - Safe-area insets are applied (`env(safe-area-inset-bottom)` on the frame, sheets and error/loading frames) but headless Chromium reports 0, so they are verified by code review only, not on a notched device.
 - Very large text (the app's `large-text` setting, browser zoom > 100 %) is handled by the same measurements (compositions step down, pages shrink) but was not part of the browser matrix.
 - Text that is still single-line-truncated by design: the published `BracketMatchCard` match name on a narrow bracket column (e.g. "Quarterfinal 1 · Bo5" in a two-column desktop round focus); the full name is in the match detail one tap away.
@@ -189,3 +189,45 @@ Flaky check, not reproduced: one earlier interaction run had "Back closes the te
 ## 8. Machine notes
 
 Same workarounds as UX3A/UX3B: esbuild-JSX scratch configs and the rollup wasm hook (shared swc and native rollup are blocked here); builds with `vite build` (no pnpm). The flag-off build used for §6.4 is from `15bf752c`; later commits change only files inside the experience's lazy chunk, which a flag-off build never requests. Browser runs: headless Edge (Playwright, `channel: "msedge"`) against a `vite preview` of the production build (flag on) on `[::1]:5291`; simulated states served to the production route by intercepting `/api/live-esports/tournament/worlds-2026` with the prototype's scenario bodies and pinning the clock to each scenario's own time.
+
+## 9. UX5 — landscape phones (follow-up)
+
+| | |
+|---|---|
+| Branch | `ux5/worlds-landscape-phones` (worktree `C:\Users\mlmit\mogzy-wt\ux5-landscape`), off `ux4/worlds-zero-scroll` `589e1312`. Pushed. **Not merged, not deployed, not published** |
+| Implementation | `09476397` (code + `LandscapePhone.test.tsx`); this section and `docs/handoffs/ux5/` on top |
+| Scope | Frontend only, inside the experience's lazy chunk plus one opt-in field on the shared `BracketMatchCard` selection context. No data, URL, desktop or portrait composition change |
+
+### 9.1 Before
+
+`589e1312` at 844 × 390: **69 / 72** pages failed the §6.1 audit (every screen clipped in every state; the 3 passes were the schedule-unavailable state's near-empty Play-In, Knockouts and Schedule screens). At 740 × 360 (Swiss mid-R3, the one state measured there before) all 6 screens failed. Cause: the HUD band (56 px) + the two-row compact bar (88 px) left ~250 px (~210 px with a status notice) for compositions designed for a portrait column.
+
+### 9.2 What a landscape phone gets
+
+`LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 560px)"`, below the desktop width only (`x.landscape`, never with `x.desktop`; tests pin it with the `landscape` prop like `desktop`). Every composition below is still measured by `FitCascade` / `FitPages`; nothing is hard-coded to a device.
+
+- **Shell.** One-row command bar (44 px): back · identity · the five destinations · phase. Status strip 36 px (its pager buttons are 36 px).
+- **Overview.** The hero beside one panel; the panels are views `Coming up · Results · At stake · Road` (fixtures and results are views of their own so the list keeps the panel's height; "Full schedule" is an icon link at the end of the row). Where that does not fit (in the sweep: the between-stages heroes, and 740 × 360 under a status notice), the hero becomes the first view, **Now**, in a two-column wide form (who plays | when, countdown and actions; transition, champion and quiet heroes likewise) and the panel spans the width (fixtures two abreast). The road runs left to right.
+- **Stages.** A 164 px column of the three stages (dates dropped at the tightest level) with the one-line brief and the **Format** sheet beneath; the stage's own phone presentation gets the rest. Swiss: round tabs and `Fixtures · Records · Format` share one row; pairings are one line, two abreast. Play-In / Knockouts: the round's heading shares the pager's row (`FitPages head`), bracket cards put both sides **abreast** (`BracketSelection.abreast`, opt-in — the published page never sets it), the certified champion sits beside the round tabs. The no-standings Swiss fallback drops its format paragraph there (the Format sheet has it).
+- **Teams.** All region chips in one row; ten crest tiles per row (19 teams on one page); the team sheet puts identity, status and Team profile in a column beside `Overview · Matches · Lineup`.
+- **Schedule.** Stage filter (2 × 2) and the day header in a column; the date bar and the fixtures beside them, fixtures one line each, two abreast. Date cells drop the month line (the day header and each cell's label say it). "All dates" opens as two rows of ten.
+- **Sheets.** Up to `calc(100dvh − 0.5rem)` tall and 48 rem wide (match detail divides into its views as before).
+
+### 9.3 Evidence (production build of `09476397`, flag on, headless Edge, §6.1 audit unchanged)
+
+- **Sweep: 720 / 720** (`ux5/sweep-summary.json`) — 10 viewports (844 × 390, 740 × 360 and the UX4 set 1920 × 1080, 1440 × 900, 1280 × 800, 1280 × 600, 1024 × 768, 768 × 1024, 390 × 844, 360 × 640) × 12 data states × 6 screens. Landscape viewports run as phones (`isMobile`, touch; touch scroll gestures included).
+- **Interactions: 251 / 251** at the same 10 viewports (§6.3 script: deep link to the last fixture of the busiest day and its page, refresh, close, paging, All dates, last team and its three views, Play-In / Swiss / Knockout details and the "What it decides" view, Back / Forward, keyboard, leaving releases the lock).
+- **Reduced motion: 79 / 79** (1440 × 900, 390 × 844, 844 × 390).
+- **Unit tests:** Worlds experience suites **139 / 139** (UX4's 125 + 14 in `LandscapePhone.test.tsx`: one-row bar, portrait unchanged, desktop never landscape, each screen's side-by-side composition, sheets, no scroll containers). Focused suites (pro-play pages / components / lib, dev prototype) with `VITE_WORLDS_EXPERIENCE_ENABLED=false`: **1788 / 1788**; with the tracked `.env` (flag on): 1759 passed / 29 failed — the **same 29** flag-off tests fail on `589e1312` (1745 / 29, identical list).
+- `tsc --noEmit -p tsconfig.app.json`: the same 2 pre-existing errors only.
+- Experience chunk 183 KB → 200 KB (still lazy, never requested with the flag off).
+- Desktop and portrait unchanged: the fixed-clock scenario captures at 1920 × 1080, 1440 × 900 and 1280 × 600 are pixel-identical to UX4's (`docs/handoffs/ux4/`); the two 360 × 640 ones differ only in the pulsing live dot and a crest that loaded this time.
+- Screenshots: `docs/handoffs/ux5/` (`before_*` from `589e1312`; `<vp>_*` live data on 16 Oct; `<state>_<vp>_*` simulated states; sheets, picker and details from the interaction run).
+
+### 9.4 Limitations
+
+- Landscape is decided by height (≤ 560 px) and orientation, below 1024 px wide. A landscape tablet taller than 560 px (e.g. 960 × 600) keeps the portrait phone compositions, as before; not in the matrix.
+- 740 × 360 with a status notice is the tightest case: Schedule fixtures and Swiss pairings show 4 per page there (6 otherwise; the Overview's side-by-side list shows 2); every item stays one Next away.
+- Bracket card match names still truncate in the narrow two-column cards ("Quarterfinal 1 · B…", §7); the full name is in the detail.
+- The global HUD band (56 px) is unchanged; reclaiming it on landscape phones (as Ranked does) would be a shell decision outside the experience.
+- Not checked on a physical device (headless Edge, `isMobile` emulation); safe-area insets as in §7.
