@@ -33,7 +33,7 @@ export function RunLadder({ summary }: { summary: PtRunSummary }) {
           const width = reveal ? `${Math.min(50, (reveal.absErrorMs / scale) * 50)}%` : "0%";
           return (
             <li key={round.roundId} className="pt-ladder-row" data-testid={`pt-ladder-row-${round.index}`}
-              data-tier={reveal?.tier ?? "voided"}>
+              data-tier={reveal?.tier ?? "voided"} data-slice={slice ? "true" : undefined}>
               <span className="pt-ladder-icon" aria-hidden>
                 <SubjectArt media={round.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={round.slot} className="h-full w-full" />
                 {slice?.item?.iconUrl
@@ -59,7 +59,7 @@ export function RunLadder({ summary }: { summary: PtRunSummary }) {
                         : `${formatSeconds(reveal.elapsedMs)} vs ${formatSeconds(reveal.targetMs)} · `}</span>
                       <span>{signedErrorText(reveal.errorMs)}</span>
                       {slice && prevTrue !== null ? (
-                        <span className="pt-ladder-delta" data-testid={`pt-ladder-delta-${slice.kind}`}>{` · true ${deltaSecondsText(prevTrue, reveal.targetMs)}`}</span>
+                        <span className="pt-ladder-delta" data-testid={`pt-ladder-delta-${slice.kind}`}>{" · "}<span className="pt-nw">{`true ${deltaSecondsText(prevTrue, reveal.targetMs)}`}</span></span>
                       ) : null}
                     </>
                   ) : `${rankText(round.rank, round.rankCount)} · voided`}

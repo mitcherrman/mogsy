@@ -73,7 +73,11 @@ export function PerfectTimingResults({ summary, onPlayAgain, onExit = null, exit
             </div>
           )}
         </dl>
-        {story ? <p className="pt-slice-story" data-testid="pt-slice-story">{story}</p> : null}
+        {story ? (
+          <p className="pt-slice-story" data-testid="pt-slice-story">
+            {story.split(" · ").map((part, i) => <span key={part}>{i > 0 ? " · " : null}<span className="pt-nw">{part}</span></span>)}
+          </p>
+        ) : null}
         <div className="pt-results-actions">
           <button type="button" className="pt-next" data-testid="pt-play-again" onClick={onPlayAgain}>{slice ? "New slice" : "Play again"}</button>
           {onExit ? <button type="button" className="pt-quiet" data-testid="pt-exit" onClick={onExit}>{exitLabel}</button> : null}

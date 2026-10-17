@@ -90,7 +90,7 @@ export function dataLabelText(patchLabel: string | null, patchSource: string): s
  * number on the stage is the rank, which the round plate prints itself.
  */
 export interface PhaseFace {
-  /** The seal's word, in Cinzel. */
+  /** The seal's word. */
   word: string;
   /** The small line under the word. */
   sub: string;
@@ -263,4 +263,39 @@ export function sliceStory(summary: PtRunSummary): string | null {
   const item = e?.reveal?.slice?.item;
   if (e?.reveal && item) parts.push(`${item.name} ${hasteText(item.abilityHaste, true)}: ${deltaSecondsText(e.reveal.slice!.baseCooldownMs, e.reveal.targetMs)}`);
   return parts.length ? parts.join(" · ") : null;
+}
+
+// --------------------------------------------------- PT5.1 stage transitions
+
+/** The between-stage headline: the ability ranked up, or an item was equipped. */
+export const TRANSITION_TITLE: Record<Exclude<PtSliceKind, "foundation">, string> = {
+  rank_up: "Rank up",
+  equipped: "Item equipped",
+};
+
+/**
+ * What the transition says happened to the cooldown. "Reduced" only when the
+ * stage's item brings ability haste (positive haste always shortens the
+ * cooldown); a rank step is only "changed", because the certified progression
+ * does not promise a direction and the transition names no number.
+ */
+export function cooldownChangeText(kind: PtSliceKind, abilityHaste: number): string {
+  return kind === "equipped" && abilityHaste > 0 ? "Cooldown reduced" : "Cooldown changed";
+}
+
+export const ADJUST_TIMING_TEXT = "Adjust your timing";
+
+/** How long the transition's entrance takes to show the headline and the change, with motion allowed. */
+export const TRANSITION_READY_MS = 900;
+/** Under reduced motion the frame is complete at once; a key-up still has to pass. */
+export const TRANSITION_READY_REDUCED_MS = 250;
+
+/** The stage kinds that have a transition: the two that change an input. */
+export function hasTransition(kind: PtSliceKind | undefined): kind is "rank_up" | "equipped" {
+  return kind === "rank_up" || kind === "equipped";
+}
+
+/** "Rank 1 → Rank 3". */
+export function rankStepText(from: number, to: number): string {
+  return `Rank ${from} → Rank ${to}`;
 }

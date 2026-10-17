@@ -4,6 +4,10 @@
  * (`sliceCaptureV1.json`), the REAL PT2 engine and the REAL PT1 stage/reveal.
  * Each stop is stamped at exactly the captured `elapsed_ms`, so the stand-in
  * answers with the captured release (ids rewritten for resumed slices).
+ *
+ * PT5.1: leaving a revealed stage goes through the between-stage TRANSITION
+ * (Rank up, Item equipped); `leave()` is that way out, and the "PT5.1" block at
+ * the bottom is the transition's own rules.
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -12,6 +16,7 @@ import capture from "@/lib/perfect-timing/__fixtures__/sliceCaptureV1.json";
 import v1capture from "@/lib/perfect-timing/__fixtures__/captureV1.json";
 import { perfectTimingApi } from "@/lib/perfect-timing/api";
 import { formatSliceSeconds } from "@/components/perfect-timing/presentation";
+import { ADVANCE_KEY_GUARD_MS } from "./runShared";
 
 vi.mock("@/lib/admin-auth/adminCredentials", () => ({
   ADMIN_API_BASE_URL: "http://backend.test",
@@ -47,7 +52,7 @@ interface Reply { status: number; body: unknown }
 type Override = (path: string, body: Json, n: number) => Reply | "network" | undefined;
 
 /** Stand-in for PT5's slice routes. A resume mints fresh ids over the captured stages. */
-function standIn(override?: Override) {
+function standIn(override?: Override, mutateDeal?: (deal: Json) => void) {
   const calls: { path: string; body: Json }[] = [];
   /** round id → stage index (0-based) and its slice. */
   const rounds = new Map<string, { i: number; slice: string }>();
@@ -68,6 +73,7 @@ function standIn(override?: Override) {
     const reply = o ?? (() => {
       if (path === "/slices/deal") {
         const d = clone(capture.deal.response) as Json;
+        mutateDeal?.(d);
         if (body.resume) {
           const from = body.resume.from_stage as number;
           d.slice_id = `pts_${hex(++minted)}`;
@@ -112,6 +118,20 @@ function time(elapsed: number, target: Element | Document = seal(), init: Keyboa
   key(target, t0 + elapsed, init);
 }
 const next = (name: RegExp) => fireEvent.click(screen.getByRole("button", { name }), { detail: 1 });
+/** PT5.1: wait until the transition is readable, then Continue (a pointer click). */
+async function passTransition(kind: "rank_up" | "equipped") {
+  const tr = await screen.findByTestId("pt-transition");
+  expect(tr).toHaveAttribute("data-kind", kind);
+  await waitFor(() => expect(tr).toHaveAttribute("data-ready", "true"), { timeout: 4000 });
+  fireEvent.click(screen.getByTestId("pt-tr-continue"), { detail: 1 });
+  // Past the guard that keeps the continuing press from also casting the stage it armed.
+  await new Promise((r) => setTimeout(r, ADVANCE_KEY_GUARD_MS + 50));
+}
+/** The reveal's way on, and through the transition after stage `i` (0-based) when there is one. */
+async function leave(i: number) {
+  next(i === 2 ? /see results/i : /next stage/i);
+  if (i < 2) await passTransition(i === 0 ? "rank_up" : "equipped");
+}
 /** The slice prints at the graded precision: 5500 → "5.50 s", 4545 → "4.545 s". */
 const seconds = formatSliceSeconds;
 
@@ -202,7 +222,7 @@ describe("Mastery Slice — the integrated run", () => {
         expect(delta).toHaveTextContent("Sheen +10 AH");
         expect(screen.getByTestId("pt-evidence")).toHaveTextContent("Base cooldown 5 s · rank 3 · cast without cooldown refunds");
       }
-      next(i === 2 ? /see results/i : /next stage/i);
+      await leave(i);
     }
     const results = await screen.findByTestId("pt-results");
     expect(results).toHaveAttribute("data-mode", "slice");
@@ -229,7 +249,7 @@ describe("Mastery Slice — the integrated run", () => {
       expect(new Set(digits)).toEqual(new Set([["1", "5"], ["3", "5", "1"], ["3", "5", "10"]][i]));
       key(seal(), clock + ELAPSED[i]);
       await screen.findByTestId("pt-reveal-stage");
-      next(i === 2 ? /see results/i : /next stage/i);
+      await leave(i);
     }
   });
 
@@ -258,6 +278,8 @@ describe("Mastery Slice — the integrated run", () => {
     await waitFor(() => expect(screen.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided"));
     expect(be.locks()).toHaveLength(0);
     fireEvent.click(screen.getByTestId("pt-continue"));
+    // The rank still goes up when the stage before it was voided: the transition says so.
+    await passTransition("rank_up");
     await armed();
     expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", "rank_up");
     expect(screen.getByTestId("pt-champion")).toHaveTextContent("Ezreal");
@@ -277,7 +299,7 @@ describe("Mastery Slice — the integrated run", () => {
     await armed();
     time(ELAPSED[0]);
     await screen.findByTestId("pt-reveal-stage");
-    next(/next stage/i);
+    await leave(0);
     await armed();
     time(ELAPSED[1]);
     await armed();
@@ -303,7 +325,8 @@ describe("Mastery Slice — the integrated run", () => {
     await screen.findByTestId("pt-reveal-stage");
     const now = Date.now();
     const spy = vi.spyOn(Date, "now").mockReturnValue(now + 16 * 60_000);
-    next(/next stage/i);
+    // The transition opens on the stale slice; Continue is where it is re-dealt, before anything is armed.
+    await leave(0);
     await waitFor(() => expect(be.deals()).toHaveLength(2));
     spy.mockRestore();
     await armed();
@@ -366,7 +389,7 @@ describe("Mastery Slice — the integrated run", () => {
     time(ELAPSED[0]);
     await screen.findByTestId("pt-reveal-stage");
     expect(be.locks().map((c) => c.body.elapsed_ms)).toEqual([ELAPSED[0], ELAPSED[0]]);
-    next(/next stage/i);
+    await leave(0);
     await armed();
     time(ELAPSED[1]);
     const go = await screen.findByTestId("pt-void-continue");
@@ -396,11 +419,210 @@ describe("Mastery Slice — the integrated run", () => {
       await armed();
       time(ELAPSED[i]);
       await screen.findByTestId("pt-reveal-stage");
-      next(i === 2 ? /see results/i : /next stage/i);
+      await leave(i);
     }
     await screen.findByTestId("pt-results");
     expect(screen.getByTestId("pt-play-again")).toHaveTextContent("New slice");
     fireEvent.click(screen.getByTestId("pt-exit"));
     expect(screen.getByTestId("pt-mode-select")).toBeInTheDocument();
+  });
+});
+
+describe("Mastery Slice — PT5.1 the between-stage transition", () => {
+  /** Play stage 1 to its reveal, then leave it: the transition is up, nothing is armed. */
+  async function toTransition(be = standIn()) {
+    mount(be, "slice");
+    await armed();
+    time(ELAPSED[0]);
+    await screen.findByTestId("pt-reveal-stage");
+    next(/next stage/i);
+    const tr = await screen.findByTestId("pt-transition");
+    return { be, tr };
+  }
+
+  it("Rank up: a state of its own — the change is named, nothing is armed, no clock runs, no duration is shown", async () => {
+    const { be, tr } = await toTransition();
+    expect(screen.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "transition");
+    expect(tr).toHaveAttribute("data-kind", "rank_up");
+    expect(screen.getByTestId("pt-tr-title")).toHaveTextContent(/^Rank up$/);
+    expect(screen.getByTestId("pt-tr-from")).toHaveTextContent("Rank 1");
+    expect(screen.getByTestId("pt-tr-to")).toHaveTextContent("Rank 3");
+    expect(screen.getByTestId("pt-tr-effect")).toHaveTextContent("Cooldown changed");
+    expect(screen.getByTestId("pt-tr-adjust")).toHaveTextContent("Adjust your timing");
+    expect(screen.getByTestId("pt-tr-icon").querySelector("img")).not.toBeNull();
+    // Not playable: no seal, no stage, no reveal.
+    expect(screen.queryByTestId("pt-press-surface")).toBeNull();
+    expect(screen.queryByTestId("pt-stage")).toBeNull();
+    expect(screen.queryByTestId("pt-reveal")).toBeNull();
+    // No answer: none of the stage truths, none of the progression, no duration at all.
+    const text = tr.textContent ?? "";
+    expect(text).not.toMatch(/\d+(\.\d+)?\s?(ms|s)\b/i);
+    for (const t of TARGETS) expect(text).not.toContain(seconds(t));
+    expect(document.body.textContent).not.toContain("5.5 / 5.25");
+    // The bar already counts the stage being entered; nothing was dealt or locked on the way.
+    expect(be.locks()).toHaveLength(1);
+    expect(be.deals()).toHaveLength(1);
+  });
+
+  it("Item equipped: the deal's own item, haste and icon, and a cooldown that is only ever 'reduced' because haste is positive", async () => {
+    mount(standIn(), "slice");
+    await armed();
+    time(ELAPSED[0]);
+    await screen.findByTestId("pt-reveal-stage");
+    await leave(0);
+    await armed();
+    time(ELAPSED[1]);
+    await screen.findByTestId("pt-reveal-stage");
+    next(/next stage/i);
+    const tr = await screen.findByTestId("pt-transition");
+    expect(tr).toHaveAttribute("data-kind", "equipped");
+    expect(screen.getByTestId("pt-tr-title")).toHaveTextContent(/^Item equipped$/);
+    expect(screen.getByTestId("pt-tr-item-name")).toHaveTextContent("Sheen");
+    expect(screen.getByTestId("pt-tr-haste")).toHaveTextContent("+10 Ability Haste");
+    expect(screen.getByTestId("pt-tr-item-icon").getAttribute("src")).toMatch(/assets\/items\/3057\.png$/);
+    expect(screen.getByTestId("pt-tr-effect")).toHaveTextContent("Cooldown reduced");
+    expect(screen.getByTestId("pt-tr-rank")).toHaveTextContent("Still rank 3 / 5");
+    expect(tr.textContent).not.toMatch(/\d+(\.\d+)?\s?(ms|s)\b/i);
+    expect(screen.queryByTestId("pt-press-surface")).toBeNull();
+    // The item comes from the deal: the name on screen is the deal's, not a constant.
+    expect(capture.deal.response.stages[2].modifier?.name).toBe("Sheen");
+  });
+
+  it("the equipped transition reads the DEAL: another item and another haste, never a constant", async () => {
+    const dealWith = (haste: number) => standIn(undefined, (d) => {
+      d.stages[2].ability_haste = haste;
+      d.stages[2].modifier = { type: "item", item_id: 3078, name: "Trinity Force", ability_haste: haste };
+    });
+    // (The deal reader refuses an item with no ability haste, so "reduced" is always true of a real deal;
+    // the no-haste wording is covered on the helper.)
+    for (const [haste, effect] of [[20, "Cooldown reduced"], [35, "Cooldown reduced"]] as const) {
+      cleanup();
+      mount(dealWith(haste), "slice");
+      await armed();
+      time(ELAPSED[0]);
+      await screen.findByTestId("pt-reveal-stage");
+      await leave(0);
+      await armed();
+      time(ELAPSED[1]);
+      await screen.findByTestId("pt-reveal-stage");
+      next(/next stage/i);
+      await screen.findByTestId("pt-transition");
+      expect(screen.getByTestId("pt-tr-item-name")).toHaveTextContent("Trinity Force");
+      expect(screen.getByTestId("pt-tr-haste")).toHaveTextContent(`+${haste} Ability Haste`);
+      expect(screen.getByTestId("pt-tr-item-icon").getAttribute("src")).toMatch(/assets\/items\/3078\.png$/);
+      expect(screen.getByTestId("pt-tr-effect")).toHaveTextContent(effect);
+      expect(document.body.textContent).not.toContain("Sheen");
+    }
+  });
+
+  it("Space/Enter do nothing before it is readable, then Space continues exactly once; the key that continued cannot cast", async () => {
+    const { be, tr } = await toTransition();
+    expect(tr).toHaveAttribute("data-ready", "false");
+    expect(screen.getByTestId("pt-tr-continue")).toHaveAttribute("aria-disabled", "true");
+    // Too early: neither a key nor a click moves it.
+    key(document, (clock += 5_000), { key: " " });
+    key(document, (clock += 1), { key: "Enter" });
+    fireEvent.click(screen.getByTestId("pt-tr-continue"), { detail: 1 });
+    expect(screen.getByTestId("pt-transition")).toBeInTheDocument();
+    expect(screen.queryByTestId("pt-press-surface")).toBeNull();
+    await waitFor(() => expect(tr).toHaveAttribute("data-ready", "true"), { timeout: 4000 });
+    expect(screen.getByTestId("pt-tr-continue")).toHaveFocus();
+    // A held key (repeat) does nothing; the first real press continues once.
+    key(document, (clock += 5_000), { key: " ", repeat: true });
+    expect(screen.getByTestId("pt-transition")).toBeInTheDocument();
+    key(document, (clock += 5_000), { key: " " });
+    await armed();
+    expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", "rank_up");
+    // Double press: the second key lands inside the guard and neither starts the timer nor skips ahead.
+    key(document, (clock += 5_000), { key: " " });
+    key(document, (clock += 1), { key: "Enter" });
+    expect(seal()).toHaveAttribute("data-phase", "armed");
+    expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", "rank_up");
+    expect(be.locks()).toHaveLength(1);
+  });
+
+  it("a double click on Continue arms one stage; a quick tap on the seal behind it cannot cast", async () => {
+    const { tr } = await toTransition();
+    await waitFor(() => expect(tr).toHaveAttribute("data-ready", "true"), { timeout: 4000 });
+    const go = screen.getByTestId("pt-tr-continue");
+    fireEvent.click(go, { detail: 1 });
+    fireEvent.click(go, { detail: 2 });
+    await armed();
+    expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", "rank_up");
+    // A pointer press right behind the Continue click is inside the guard.
+    const down = new MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 0 });
+    Object.defineProperty(down, "isPrimary", { value: true });
+    Object.defineProperty(down, "timeStamp", { value: (clock += 5_000) });
+    fireEvent(seal(), down);
+    expect(seal()).toHaveAttribute("data-phase", "armed");
+  });
+
+  it("the keyboard player's focus lands on the seal after Continue", async () => {
+    const { tr } = await toTransition();
+    await waitFor(() => expect(tr).toHaveAttribute("data-ready", "true"), { timeout: 4000 });
+    fireEvent.click(screen.getByTestId("pt-tr-continue"), { detail: 0 });
+    await armed();
+    expect(seal()).toHaveFocus();
+  });
+
+  it("a slice that expired while the transition was open is re-dealt on Continue, not armed stale", async () => {
+    const { be, tr } = await toTransition();
+    await waitFor(() => expect(tr).toHaveAttribute("data-ready", "true"), { timeout: 4000 });
+    const spy = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 16 * 60_000);
+    fireEvent.click(screen.getByTestId("pt-tr-continue"), { detail: 1 });
+    await waitFor(() => expect(be.deals()).toHaveLength(2));
+    spy.mockRestore();
+    await armed();
+    expect(be.deals()[1].body.resume.from_stage).toBe(2);
+    expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", "rank_up");
+  });
+
+  it("is announced to assistive technology and carries no loop", async () => {
+    const { tr } = await toTransition();
+    const live = screen.getByTestId("pt-tr-announce");
+    expect(live).toHaveAttribute("role", "status");
+    expect(live.textContent).toMatch(/Rank up\. Ezreal Q, Mystic Shot\. Rank 1 → Rank 3\. Cooldown changed\. Adjust your timing\./);
+    expect(tr.querySelectorAll("[style*='infinite']")).toHaveLength(0);
+  });
+
+  it("an interrupted-and-voided stage 2 still gets the Item equipped transition before stage 3", async () => {
+    const be = standIn();
+    mount(be, "slice");
+    await armed();
+    time(ELAPSED[0]);
+    await screen.findByTestId("pt-reveal-stage");
+    await leave(0);
+    await armed();
+    key(seal(), (clock += 5_000));
+    const vis = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    vis.mockRestore();
+    await waitFor(() => expect(screen.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided"));
+    fireEvent.click(screen.getByTestId("pt-continue"));
+    await passTransition("equipped");
+    await armed();
+    expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", "equipped");
+    expect(be.locks()).toHaveLength(1);
+  });
+});
+
+describe("Mastery Slice — PT5.1 reduced motion", () => {
+  const realMatchMedia = window.matchMedia;
+  afterEach(() => { window.matchMedia = realMatchMedia; });
+
+  it("draws the finished frame at once and is readable almost immediately", async () => {
+    window.matchMedia = ((q: string) => ({
+      matches: /reduce/.test(q), media: q, onchange: null,
+      addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    mount(standIn(), "slice");
+    await armed();
+    time(ELAPSED[0]);
+    await screen.findByTestId("pt-reveal-stage");
+    next(/next stage/i);
+    const tr = await screen.findByTestId("pt-transition");
+    expect(tr).toHaveAttribute("data-animate", "false");
+    expect(screen.getByTestId("pt-tr-to")).toHaveTextContent("Rank 3");
+    await waitFor(() => expect(tr).toHaveAttribute("data-ready", "true"), { timeout: 700 });
   });
 });

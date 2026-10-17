@@ -24,6 +24,10 @@
  * PT5: the mode pick, and the Mastery Slice (one ability, three stages) under the
  * same fit, scroll, answer-isolation and input rules, at every size in FIT_SIZES.
  *
+ * PT5.1: leaving a revealed slice stage goes through a between-stage TRANSITION
+ * (Rank up, Item equipped) — its own state, nothing armed, no clock — and Continue
+ * (or Space/Enter once it has settled) arms the next stage; every state still fits.
+ *
  *   npx playwright test -c playwright.arena.config.ts perfect-timing-owner
  */
 import { mkdirSync, readFileSync } from "node:fs";
@@ -129,26 +133,40 @@ async function assertFits(page: Page, label: string) {
       viewport: [0, 0, vw, vh],
       screen: over(screen),
       main: over(screen.querySelector(".pt-main")),
-      stage: over(screen.querySelector(".pt-stage, .pt-results")),
+      stage: over(screen.querySelector(".pt-stage, .pt-results, .pt-transition")),
+      // PT5.1: the transition card clips its own overflow, so a thing that did not fit would be hidden, not scrolled.
+      card: over(screen.querySelector(".pt-tr-card")),
+      cardClipped: (() => {
+        const card = screen.querySelector(".pt-tr-card");
+        if (!card) return [] as string[];
+        const c = card.getBoundingClientRect();
+        return [...card.querySelectorAll<HTMLElement>("[data-testid]")].filter((el) => {
+          const r = el.getBoundingClientRect();
+          return (r.width || r.height) && (r.left < c.left - 1 || r.right > c.right + 1 || r.top < c.top - 1 || r.bottom > c.bottom + 1);
+        }).map((el) => el.dataset.testid ?? "");
+      })(),
       outside,
     };
   });
   expect(m.missing, `${label}: screen mounted`).toBe(false);
   if (m.missing) return;
-  expect(m.htmlOverflow, `${label}: html overflow`).toBe("hidden");
-  expect(m.bodyOverflow, `${label}: body overflow`).toBe("hidden");
-  expect(m.doc, `${label}: document overflow`).toEqual({ y: expect.any(Number), x: expect.any(Number) });
-  expect(m.doc.y, `${label}: document vertical overflow`).toBeLessThanOrEqual(1);
-  expect(m.doc.x, `${label}: document horizontal overflow`).toBeLessThanOrEqual(1);
-  expect(m.scroll, `${label}: page scrolled`).toEqual({ x: 0, y: 0 });
-  expect(m.screenBox, `${label}: screen fills the viewport`).toEqual(m.viewport);
-  expect(m.screen.y, `${label}: screen vertical overflow`).toBeLessThanOrEqual(1);
-  expect(m.screen.x, `${label}: screen horizontal overflow`).toBeLessThanOrEqual(1);
-  expect(m.main.y, `${label}: main vertical overflow`).toBeLessThanOrEqual(1);
-  expect(m.main.x, `${label}: main horizontal overflow`).toBeLessThanOrEqual(1);
-  expect(m.stage.y, `${label}: stage vertical overflow`).toBeLessThanOrEqual(1);
-  expect(m.stage.x, `${label}: stage horizontal overflow`).toBeLessThanOrEqual(1);
-  expect(m.outside, `${label}: elements outside the viewport`).toEqual([]);
+  expect.soft(m.htmlOverflow, `${label}: html overflow`).toBe("hidden");
+  expect.soft(m.bodyOverflow, `${label}: body overflow`).toBe("hidden");
+  expect.soft(m.doc, `${label}: document overflow`).toEqual({ y: expect.any(Number), x: expect.any(Number) });
+  expect.soft(m.doc.y, `${label}: document vertical overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.doc.x, `${label}: document horizontal overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.scroll, `${label}: page scrolled`).toEqual({ x: 0, y: 0 });
+  expect.soft(m.screenBox, `${label}: screen fills the viewport`).toEqual(m.viewport);
+  expect.soft(m.screen.y, `${label}: screen vertical overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.screen.x, `${label}: screen horizontal overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.main.y, `${label}: main vertical overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.main.x, `${label}: main horizontal overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.stage.y, `${label}: stage vertical overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.stage.x, `${label}: stage horizontal overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.card.y, `${label}: transition card vertical overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.card.x, `${label}: transition card horizontal overflow`).toBeLessThanOrEqual(1);
+  expect.soft(m.cardClipped, `${label}: elements clipped by the transition card`).toEqual([]);
+  expect.soft(m.outside, `${label}: elements outside the viewport`).toEqual([]);
 }
 
 /** No key and no wheel can move anything. Leaves the stage's state alone (no Space/Enter: those play). */
@@ -564,6 +582,41 @@ test.describe("PT4.3 keyboard without seal focus", () => {
   });
 });
 
+/**
+ * PT5.1: through the transition after stage `n` (1 or 2): it names the change, shows
+ * no duration, waits to be readable, then Continue arms the next stage.
+ */
+async function passTransition(page: Page, vp: { name: string; touch: boolean }, n: number) {
+  const tr = page.getByTestId("pt-transition");
+  await expect(tr).toBeVisible();
+  await expect(tr).toHaveAttribute("data-kind", n === 1 ? "rank_up" : "equipped");
+  await expect(page.getByTestId("pt-tr-title")).toHaveText(n === 1 ? /^rank up$/i : /^item equipped$/i);
+  await expect(page.getByTestId("pt-tr-icon").locator("img")).toHaveAttribute("src", /assets\/champions\/Ezreal\/Q_EzrealQ\.png$/);
+  if (n === 1) {
+    await expect(page.getByTestId("pt-tr-from")).toHaveText("Rank 1");
+    await expect(page.getByTestId("pt-tr-to")).toHaveText("Rank 3");
+  } else {
+    await expect(page.getByTestId("pt-tr-item-name")).toHaveText("Sheen");
+    await expect(page.getByTestId("pt-tr-haste")).toHaveText(/\+10 ability haste/i);
+    await expect(page.getByTestId("pt-tr-item-icon")).toHaveAttribute("src", /assets\/items\/3057\.png$/);
+    await expect(page.getByTestId("pt-tr-effect")).toHaveText(/cooldown reduced/i);
+  }
+  if (n === 1) await expect(page.getByTestId("pt-tr-effect")).toHaveText(/cooldown changed/i);
+  await expect(page.getByTestId("pt-tr-adjust")).toHaveText(/adjust your timing/i);
+  // Nothing is armed and no duration is on screen.
+  await expect(page.getByTestId("pt-press-surface")).toHaveCount(0);
+  const text = await tr.innerText();
+  expect(text, "no duration on the transition").not.toMatch(/\d+(\.\d+)?\s?(ms|s)\b/i);
+  expect(await page.locator("body").innerHTML(), "no truth in the DOM").not.toMatch(/target_ms|cooldown_raw|4\.545|5\.00 s|5\.50 s/);
+  await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5000 });
+  await page.waitForTimeout(1700); // the entrance is over
+  await assertFits(page, `${vp.name} transition ${n}`);
+  await page.screenshot({ path: path.join(SHOTS, `${vp.name}-slice-transition-${n}.png`) });
+  const cont = page.getByTestId("pt-tr-continue");
+  if (vp.touch) await cont.tap(); else { await expect(cont).toBeFocused(); await page.keyboard.press("Space"); }
+  await expect(page.getByTestId("pt-press-surface")).toHaveAttribute("data-phase", "armed", { timeout: 10_000 });
+}
+
 // ── PT5: the mode pick and the Mastery Slice ───────────────────────────────
 //
 // The slice stand-in deals the REAL backend slice capture
@@ -727,6 +780,7 @@ for (const vp of [
         await page.screenshot({ path: path.join(SHOTS, `${vp.name}-slice-${i + 1}-revealed.png`) });
         const next = page.getByRole("button", { name: i === 2 ? /see results/i : /next stage/i });
         if (vp.touch) await next.tap(); else { await next.focus(); await page.keyboard.press("Enter"); }
+        if (i < 2) await passTransition(page, vp, i + 1);
       }
       await expect(page.getByTestId("pt-results")).toHaveAttribute("data-mode", "slice");
       await expect(page.getByTestId("pt-slice-story")).toContainText("Sheen +10 AH");
@@ -788,6 +842,18 @@ test.describe("PT5 every slice state fits and cannot scroll", () => {
         await assertNothingScrolls(page, `${tag} slice ${i + 1} revealed`);
         await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-${i + 1}-revealed.png`) });
         await page.keyboard.press("Space"); // advance the settled reveal
+        if (i < 2) {
+          // PT5.1: the between-stage transition fits too, mid-entrance and settled.
+          const tr = page.getByTestId("pt-transition");
+          await expect(tr).toBeVisible();
+          await expect(tr).toHaveAttribute("data-kind", i === 0 ? "rank_up" : "equipped");
+          await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "transition");
+          await page.waitForTimeout(1800);
+          await assertFits(page, `${tag} slice transition ${i + 1}`);
+          await assertNothingScrolls(page, `${tag} slice transition ${i + 1}`);
+          await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-slice-transition-${i + 1}.png`) });
+          await page.keyboard.press("Space"); // continue
+        }
       }
       await expect(page.getByTestId("pt-results")).toBeVisible({ timeout: 10_000 });
       expect(be.locks, "exactly one lock per stage").toHaveLength(3);
@@ -832,4 +898,194 @@ test.describe("PT5 every slice state fits and cannot scroll", () => {
       expect(be2.locks[0].id).toBe(SLICE.deal.response.stages[0].round_id);
     });
   }
+});
+
+// ── PT5.1: the transition input and motion rules ───────────────────────────
+/** Play slice stage `i` (1-based) by keyboard to its settled reveal. */
+async function playToSettledReveal(page: Page, i: number) {
+  const seal = page.getByTestId("pt-press-surface");
+  await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+  await page.waitForTimeout(400);
+  await seal.focus();
+  await page.keyboard.press("Space");
+  await expect(seal).toHaveAttribute("data-phase", "running");
+  await page.waitForTimeout(1200 + i * 100);
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+  await page.waitForTimeout(2000); // past the reveal settle: Space/Enter now advance it
+}
+
+const runningInTransition = (page: Page) => page.evaluate(() => document.getAnimations().filter((a) => {
+  const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
+  return t && t.closest(".pt-transition") && a.playState === "running";
+}).length);
+const loopingAnywhere = (page: Page) => page.evaluate(() => document.getAnimations().filter((a) => {
+  const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
+  return t && t.closest('[data-testid="perfect-timing-page"]') && a.effect?.getComputedTiming().iterations === Infinity && a.playState === "running";
+}).length);
+
+test.describe("PT5.1 transitions: keys, motion, recovery", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("Space cannot skip the transition early, a held key and a double press move one state, and Continue never casts", async ({ page }) => {
+    test.setTimeout(120_000);
+    const be = await standInSlices(page);
+    await page.goto(SLICE_RUN);
+    await playToSettledReveal(page, 1);
+    await page.keyboard.press("Space"); // leaves the reveal
+    const tr = page.getByTestId("pt-transition");
+    await expect(tr).toBeVisible();
+    await expect(page.getByTestId("pt-press-surface")).toHaveCount(0);
+    expect(await loopingAnywhere(page), "nothing loops").toBe(0);
+    // A double press right behind the one that left the reveal cannot leave this too.
+    await page.keyboard.press("Space");
+    await page.keyboard.press("Enter");
+    await expect(tr).toHaveAttribute("data-ready", "false");
+    await expect(tr).toBeVisible();
+    // Settled: focus is on Continue. A held key (repeat) and a second press move exactly one state.
+    await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5000 });
+    await expect(page.getByTestId("pt-tr-continue")).toBeFocused();
+    await page.keyboard.down("Enter");
+    await page.keyboard.down("Enter");
+    await page.keyboard.down("Enter");
+    await page.keyboard.up("Enter");
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 10_000 });
+    // The key that continued, pressed again at once, does not start the timer.
+    await page.keyboard.press("Space");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(120);
+    await expect(seal).toHaveAttribute("data-phase", "armed");
+    // After the guard it casts as usual.
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Space");
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    expect(be.locks, "only stage 1 was ever locked").toHaveLength(1);
+  });
+
+  test("the entrance is finite, shows no truth, and never runs while a stage is timed", async ({ page }) => {
+    test.setTimeout(120_000);
+    await standInSlices(page);
+    await page.goto(SLICE_RUN);
+    await playToSettledReveal(page, 1);
+    await page.keyboard.press("Space");
+    const tr = page.getByTestId("pt-transition");
+    await expect(tr).toHaveAttribute("data-animate", "true");
+    await expect(tr).toBeVisible();
+    // Something is moving at first...
+    expect(await runningInTransition(page)).toBeGreaterThan(0);
+    // ...nothing infinite ever is, and all of it has finished well inside 2.2 s.
+    expect(await loopingAnywhere(page)).toBe(0);
+    await page.waitForTimeout(2200);
+    expect(await runningInTransition(page), "entrance finished").toBe(0);
+    await expect(tr).toHaveAttribute("data-ready", "true");
+    await page.keyboard.press("Space");
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed");
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Space");
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    expect(await runningInTransition(page)).toBe(0);
+    expect(await loopingAnywhere(page)).toBe(0);
+    await expect(page.getByTestId("pt-transition")).toHaveCount(0);
+  });
+
+  test("reduced motion: the finished frame at once, no animation, ready quickly", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await standInSlices(page);
+    await page.goto(SLICE_RUN);
+    await playToSettledReveal(page, 1);
+    await page.keyboard.press("Space");
+    const tr = page.getByTestId("pt-transition");
+    await expect(tr).toBeVisible();
+    await expect(tr).toHaveAttribute("data-animate", "false");
+    expect(await runningInTransition(page), "no animation under reduced motion").toBe(0);
+    await expect(page.getByTestId("pt-tr-to")).toHaveText("Rank 3");
+    await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 1500 });
+    await assertFits(page, "reduced motion transition");
+  });
+
+  test("a voided stage still announces the next stage change", async ({ page }) => {
+    test.setTimeout(120_000);
+    const be = await standInSlices(page);
+    await page.goto(SLICE_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await page.waitForTimeout(400);
+    await seal.focus();
+    await page.keyboard.press("Space");
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    });
+    await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided");
+    await page.getByTestId("pt-continue").click();
+    const tr = page.getByTestId("pt-transition");
+    await expect(tr).toBeVisible();
+    await expect(tr).toHaveAttribute("data-kind", "rank_up");
+    await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5000 });
+    await page.getByTestId("pt-tr-continue").click();
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 10_000 });
+    await expect(page.getByTestId("pt-stage-badge")).toHaveText("Rank up");
+    expect(be.locks, "the voided stage sent nothing").toHaveLength(0);
+  });
+
+  test("an expired slice at Continue re-deals the same ability, then plays the stage", async ({ page }) => {
+    test.setTimeout(120_000);
+    await standInSlices(page);
+    await page.goto(SLICE_RUN);
+    await playToSettledReveal(page, 1);
+    // The slice clock runs out while the player is reading: swap in a stand-in that has never seen it,
+    // and mark the deal as already expired on the client.
+    await page.unroute("**/api/admin/perfect-timing/**");
+    const be2 = await standInSlices(page);
+    await page.keyboard.press("Space");
+    const tr = page.getByTestId("pt-transition");
+    await expect(tr).toBeVisible();
+    await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5000 });
+    await page.keyboard.press("Space");
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await expect(page.getByTestId("pt-slice-step-rank_up")).toHaveAttribute("data-state", "current");
+    expect(be2.locks).toHaveLength(0);
+  });
+});
+
+test.describe("PT5.1 touch", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  test("tapping Continue arms the stage and a quick second tap cannot cast it", async ({ page }) => {
+    test.setTimeout(120_000);
+    await standInSlices(page);
+    await page.goto(SLICE_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await page.waitForTimeout(400);
+    await seal.tap();
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    await page.waitForTimeout(1200);
+    await seal.tap();
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: /next stage/i }).tap();
+    const tr = page.getByTestId("pt-transition");
+    await expect(tr).toBeVisible();
+    // A tap before it is readable does nothing.
+    const box = (await page.getByTestId("pt-tr-continue").boundingBox())!;
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(tr).toBeVisible();
+    await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5000 });
+    await page.waitForTimeout(1600);
+    const cb = (await page.getByTestId("pt-tr-continue").boundingBox())!;
+    // Two taps in a row, the second where the seal may now be.
+    await page.touchscreen.tap(cb.x + cb.width / 2, cb.y + cb.height / 2);
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 10_000 });
+    const sb = (await seal.boundingBox())!;
+    await page.touchscreen.tap(cb.x + cb.width / 2, cb.y + cb.height / 2);
+    await page.touchscreen.tap(sb.x + sb.width / 2, sb.y + sb.height / 2);
+    await page.waitForTimeout(100);
+    await expect(seal).toHaveAttribute("data-phase", "armed");
+  });
 });
