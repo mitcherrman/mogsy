@@ -73,9 +73,32 @@ Not browser-tested: physical touch device, Safari/WebKit, `html.reduce-motion` t
 
 `git merge-tree` results: #46 → `main` = **5 conflict hunks** (board coach line vs JUX1-F1 `itemArrivals`; 2 CSS; 2 coach hook). #46 → this branch = **the same 5, none new**. F08 touches a different board region (the ability map), a different CSS location, and no coach / flash code. **Order is free**: F08 can land first; #46 needs a rebase onto `main` regardless (its own conflicts must be resolved in favour of keeping both `itemArrivals` and the flash). F08 does not overwrite #46's flash or hints.
 
+## Review round 1 (command-center comment on #57, 2026-10-17) — unified tile control
+
+**Request.** Make the whole highlighted tile the single interaction target whether the ability has a learned `!` or only a stated formula, `!` kept as a visual marker, with no nested or competing buttons and no duplicate popovers. Keep the Pantheon E path unchanged.
+
+**Mechanism (least invasive, the portrait popup's existing pattern).** In `JourneyKnowledgeMark`, the Radix trigger moved from the corner badge to one transparent `journey-ref-btn journey-know-btn` over the whole ability host (the same box the stated-only control uses). The `!` is now a `<span aria-hidden class="journey-know journey-know--ability">` inside that button, with `pointer-events: none`, which is exactly how `.journey-portrait-btn > .journey-know` already works. The `!` keeps its position and size and lights with the control on hover/open. Unchanged: the test id (`journey-know-<side>-<slot>`), `data-facts`, `data-just-learned` (on the control only), `data-state`, the accessible name `Known facts: <Champion> <slot>[, relevant to this question]`, the hover-preview / tap-pin / Enter-Space / Escape handlers, and learned vs stated provenance in the card. `JourneyAbilityReference` (Pantheon E, stated-only) is untouched.
+
+**Tests.**
+- New (in `masterySliceModule.abilityReference.test.tsx`, 23 total now, all pass): for Pantheon E (stated only), Ashe W (`!` + stated), Volibear Q (`!` + restated) and Zed E (`!` only): exactly **one focusable control** in the ability host; it is a `BUTTON` with `journey-ref-btn` (fills the host), contains no nested button, and the host has one button. A click on it opens **one** popover (`data-radix-popper-content-wrapper` count 1) and a second click closes it. The `!` is inside the control and `aria-hidden`, with the `pointer-events: none` rule asserted. Provenance stays split (learned Step 1 / stated Step 2). Keyboard on a `!` tile: Enter opens, Escape closes, focus stays on the tile.
+- Two existing tests changed **only their DOM selector** to the new control class, with the same assertions and counts: `masterySliceModule.stageGrammar` `marks()` (`button.journey-know` → `button.journey-know-btn`) and `masterySliceModule.jp5` "board is untouched" (same change). No assertion was relaxed.
+- Focused regression (journey libs/components + all `masterySliceModule*`): on the branch 675/680, and on a **temporary merge with fresh `main` `f83b01de`** 676/680. The failures are always the **same 4 baseline** stylesheet tests (`jp5` fixed stage; `visualLanguage` art fade, band units, tablet polish). Two snapshot-looping tests (`visualLanguage` "no 'recall' pill", `portraitPopup` "no anchor chip") failed intermittently in one or two full parallel runs and pass in isolation and in the merged run. They look like load timing; I did not establish whether they flake on `main` too.
+- `tsc -p tsconfig.app.json --noEmit` clean (branch and merged tree); eslint clean on changed files.
+
+**Browser (local Vite harness, real captures).**
+- 390×844, Ashe W at `capture=jattn1-ashe-jinx&step=12`: one control (`BUTTON journey-know-subject-W`, "Known facts: Ashe W", 28×43 px). `elementFromPoint` at the tile centre **and** at the `!` both hit that button, and the `!` computes `pointer-events: none`. A real tap on the tile centre opens one card: 18s learned Step 1, Raw damage 60 learned Step 2, `60 / 95 / 130 / 165 / 200 + 100% bonus AD` stated Step 2, inside the viewport (x 8–280). Tapping again closes it (`data-state` closed); tapping the `!` opens it; Enter opens; Escape closes, and focus stays on the tile with `:focus-visible` and the gold tile outline `rgba(243,220,160,.8)`.
+- 1440×900: hover-preview opens it, 44×44 control, no horizontal scroll.
+- Pantheon E (`step=20`): still one control, `journey-ability-ref-subject-E`, "…damage formula, stated Step 3", no `!`.
+- Captures: `misc-w1b-journey-ref/390-ashe-w-tile-tap-learned-and-stated.jpg`, `misc-w1b-journey-ref/1440-ashe-w-tile-hover.jpg`.
+- Note for anyone re-checking: Radix keeps a closing popover's node through its exit animation, so judge open/closed by the trigger's `data-state`, not by the popover node's presence.
+
+**CI.** All 3 workflows passed on `a5ddbbdc`: Journey Mobile Space Experiment, mobile-arena-visibility, Mobile Recording Fit. The new head's runs start on push.
+
+**Merge compatibility.** `git merge-tree` with fresh `main` `f83b01de` is clean, with no conflicts. #46 was not absorbed: it is still a separate conflicted branch, and the earlier analysis still holds (F08 adds no new conflicts with it).
+
 ## Not done / blockers / follow-ups
 
 - "False premise" stage named in the issue: **no capture with a false-premise child exists** in `__fixtures__/`; not tested. Needs a backend capture if that stage type is real.
 - Timeout: covered for Zed reference (`.timeout`) and wrong-answer variants (Zed, Ashe); there is no Pantheon timeout capture in the K1-contract fixtures.
-- Ability with both a `!` and a stated formula: the **tile itself** is not a second control (the `!` is). If owners want the tile tappable there too, it needs a pointer-only proxy onto the `!`'s popover — a deliberate follow-up, not done to avoid two competing buttons.
+- ~~Ability with both a `!` and a stated formula: tile inert~~ — resolved in the review round below.
 - Next task in wave: stat shards (explicitly out of scope here).
