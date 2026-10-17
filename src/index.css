@@ -19179,6 +19179,10 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
   }
 }
 .journey-ability-ref__meaning { max-width: 15rem; white-space: normal; }
+/* F08 — an ability's `!` is a marker inside its tile control (the portrait's
+   pattern): the tile takes the tap; the badge lights with the control. */
+.journey-know-btn > .journey-know { pointer-events: none; }
+.journey-know-btn:is(:hover, [data-state="open"]) > .journey-know { background: #f3dca0; }
 
 /* 6. THE ROLE SLOT. "Attacker" / "Target" appears and disappears from step to
    step; the slot beside the level is reserved at the longest label's width

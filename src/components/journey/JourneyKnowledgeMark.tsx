@@ -24,10 +24,14 @@
  * board's `overflow: hidden` cannot clip it, and Radix keeps it inside the
  * viewport. The badge is absolutely positioned: it lays out nothing.
  *
- * MISC-W1B F08 — an ability that wears a `!` AND has a formula a child only
- * STATED keeps the `!` as its one control: the stated formula is a second
+ * MISC-W1B F08 — THE TILE IS THE CONTROL. The trigger is one transparent
+ * button over the whole ability host (`journey-ref-btn`, as a stated-only
+ * reference's); the `!` is a decorative marker inside it (`aria-hidden`, no
+ * pointer events — the portrait popup's own pattern). So tapping the
+ * highlighted tile opens this card, and there is exactly one focusable control
+ * and one popover per ability. A formula a child only STATED is a second
  * section of this card ("stated Step N", `JourneyAbilityReference`), never a
- * second button over the same tile and never a learned line.
+ * learned line.
  */
 import { useRef, useState } from "react";
 import { SquareFunction, Sword, Timer, Zap } from "lucide-react";
@@ -71,7 +75,7 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
         <button type="button" data-testid={testId} data-facts={mark.facts.length}
           data-just-learned={fresh ? "true" : undefined}
           aria-label={`Known facts: ${name}${relevant ? `, ${RELEVANT_LABEL}` : ""}`}
-          className={`journey-know journey-know--${placement}`}
+          className="journey-ref-btn journey-know-btn"
           onPointerEnter={(e) => { if (e.pointerType === "mouse" && !open) set(true); }}
           onPointerLeave={(e) => { if (e.pointerType === "mouse" && !pinned.current) set(false); }}
           onClick={(e) => {
@@ -81,7 +85,8 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
             if (open && pinned.current) set(false);
             else set(true, true);
           }}>
-          <span aria-hidden>!</span>
+          <span aria-hidden
+            className={`journey-know journey-know--${placement}`}>!</span>
         </button>
       </PopoverTrigger>
       <PopoverContent side="top" align="center" sideOffset={4} collisionPadding={8}

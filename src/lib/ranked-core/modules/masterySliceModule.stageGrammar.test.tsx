@@ -80,7 +80,8 @@ const tablets = () => [...child().querySelectorAll<HTMLButtonElement>("[data-qui
 const labels = () => tablets().map((b) => b.querySelector("[data-choice-letter]")!.nextElementSibling!.textContent);
 /** Every learned-history `!` on the board: an ability's (with its fact count) and (JP5) a champion portrait popup's. */
 const marks = () => [
-  ...[...document.querySelectorAll<HTMLButtonElement>("button.journey-know")]
+  // F08 — an ability's `!` control is its whole tile (`journey-know-btn`), the `!` a marker inside it.
+  ...[...document.querySelectorAll<HTMLButtonElement>("button.journey-know-btn")]
     .map((b) => `${b.dataset.testid!.replace("journey-know-", "")}:${b.dataset.facts}`),
   ...[...document.querySelectorAll<HTMLElement>(".journey-portrait-btn > .journey-know")]
     .map((b) => b.dataset.testid!.replace(/^journey-portrait-popup-(\w+)-mark$/, "$1-portrait")),

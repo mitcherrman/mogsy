@@ -183,6 +183,74 @@ describe("F08 — Pantheon E's stated formula is inspectable from its own tile",
   });
 });
 
+/** Focusable controls inside an ability's host (buttons, links, tabbables). */
+const focusables = (host: HTMLElement) =>
+  [...host.querySelectorAll<HTMLElement>("button, a[href], input, select, textarea, [tabindex]")]
+    .filter((e) => e.getAttribute("tabindex") !== "-1");
+
+describe("F08 review — the highlighted TILE is the one control, `!` or not", () => {
+  const CASES = [
+    // [capture, label, ability host side-slot, control test id, kind]
+    [PAN, "child3-live", "subject-E", E_REF, "stated only"],
+    ["jattn1/ashe_jinx.extended", "child2-live", "subject-W", "journey-know-subject-W", "learned `!` + stated"],
+    ["jattn1/voli.standard", "child4-live", "subject-Q", "journey-know-subject-Q", "learned `!` + stated (restated)"],
+    ["jattn1/zed_ahri.reference", "child2-live", "subject-E", "journey-know-subject-E", "learned `!` only"],
+  ] as const;
+
+  it.each(CASES)("%s %s %s: exactly one focusable control, it fills the tile, no nested button", (n, label, ss, control) => {
+    show(n, label);
+    const host = q(`journey-ability-host-${ss}`)!;
+    const controls = focusables(host);
+    expect(controls.map((c) => c.dataset.testid)).toEqual([control]);
+    expect(controls[0].tagName).toBe("BUTTON");
+    expect(controls[0]).toHaveClass("journey-ref-btn");            // inset: 0 over the whole host
+    expect(controls[0].querySelector("button")).toBeNull();        // nothing nested
+    expect(host.querySelectorAll("button")).toHaveLength(1);
+  });
+
+  it.each(CASES)("%s %s %s (%s): a click on the tile control opens ONE popover; a second click closes it", (n, label, ss, control) => {
+    show(n, label);
+    fireEvent.click(q(control)!);
+    expect(document.querySelectorAll('[data-radix-popper-content-wrapper]')).toHaveLength(1);
+    expect(q(`${control}-pop`)).toBeInTheDocument();
+    fireEvent.click(q(control)!);
+    expect(q(`${control}-pop`)).toBeNull();
+    void ss;
+  });
+
+  it("the `!` is a decorative marker inside the control: hidden from AT, takes no pointer", () => {
+    show("jattn1/ashe_jinx.extended", "child2-live");
+    const btn = q("journey-know-subject-W")!;
+    const bang = btn.querySelector<HTMLElement>(".journey-know")!;
+    expect(btn.contains(bang)).toBe(true);
+    expect(bang).toHaveAttribute("aria-hidden", "true");
+    expect(bang.textContent).toBe("!");
+    expect(btn).toHaveAccessibleName(/^Known facts: Ashe W/);       // the existing name contract, unchanged
+    const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+    expect(css).toMatch(/\.journey-know-btn > \.journey-know \{ pointer-events: none; \}/);
+  });
+
+  it("learned vs stated provenance stays separate in the one card (W: learned Step 1 / stated Step 2)", () => {
+    show("jattn1/ashe_jinx.extended", "child2-live");
+    fireEvent.click(q("journey-know-subject-W")!);
+    const pop = q("journey-know-subject-W-pop")!;
+    expect(pop.querySelector(".journey-know-pop__lines")!.textContent).toMatch(/learned Step 1/);
+    expect(q("journey-know-subject-W-ref-formula")!.textContent).toMatch(/stated Step 2/);
+    expect(q("journey-know-subject-W-ref-formula")!.textContent).not.toMatch(/learned/);
+  });
+
+  it("keyboard on a `!` tile: focus, Enter (click) opens, Escape closes, focus stays on the tile", () => {
+    show("jattn1/ashe_jinx.extended", "child2-live");
+    const btn = q("journey-know-subject-W")!;
+    btn.focus();
+    fireEvent.click(btn);
+    expect(btn).toHaveAttribute("data-state", "open");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    expect(q("journey-know-subject-W-pop")).toBeNull();
+    expect(document.activeElement).toBe(btn);
+  });
+});
+
 describe("F08 — the same rule for other champions", () => {
   it("Volibear Q: stated at Step 2 and restated at Step 4 — the card cites the latest statement", () => {
     show("jattn1/voli.standard", "child4-live");
@@ -195,7 +263,7 @@ describe("F08 — the same rule for other champions", () => {
     expect(REFS()).toEqual([]);
   });
 
-  it("Ashe W already wears a `!` (its cooldown, revealed Step 1): the `!` stays the one control and its card gains the stated formula", () => {
+  it("Ashe W already wears a `!` (its cooldown, revealed Step 1): one control, and its card gains the stated formula", () => {
     for (const n of ["jattn1/ashe_jinx.extended", "jattn1/ashe_jinx.extended.wrong"]) {
       cleanup();
       show(n, "child0-live");

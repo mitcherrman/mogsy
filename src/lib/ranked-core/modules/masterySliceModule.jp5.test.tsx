@@ -129,7 +129,7 @@ describe("LIVE: what this step builds on, before the answer", () => {
     const board = screen.getByTestId("journey-board");
     expect(board.querySelector(".journey-reasoning, .journey-node")).toBeNull();
     // Zed E's `!` (formula, raw damage) and Ahri's portrait `!` (her armor).
-    expect(board.querySelectorAll("button.journey-know")).toHaveLength(1);
+    expect(board.querySelectorAll("button.journey-know-btn")).toHaveLength(1);
     expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
     expect(board.textContent).not.toMatch(/\b85\b|\b24\b/);       // the board never reprints (JP4)
   });
