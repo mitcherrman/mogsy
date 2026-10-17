@@ -615,88 +615,41 @@ html.reduce-motion .o35-scene { transition: none; transform: none !important; }
    Archives are the V3 originals, untouched.
    ========================================================================== */
 
-/* LEAGUECRAFT — Arcane Mystery: Lux, behind the chamber's iris of six glass
-   shutters, each hinged at one corner of the hexagonal window. A shutter's
-   angle theta (rotate(-theta) about its hinge) sets the reveal: the shutters
-   never overlap, and the open part of the window is theta/60.
-   One 14 s action: rest (16 deg, a small aperture over her face) -> the
-   shutters pivot open, rippling round the ring (46 deg, most of her face)
-   -> hold open while a beam of arcane light crosses her -> close almost fully
-   and hold (5 deg) -> settle back to rest. 0 % equals 100 %, so the loop has no seam.
-   Everything holds still (paused, not removed) unless Leaguecraft is the
-   projection and the scene is on screen, so leaving and returning never jumps.
-   Positions are in the lens's local units (an SVG px inside the instrument). */
+/* LEAGUECRAFT — the five role icons (the shared .acore-role styling) around Lux,
+   who is concealed behind the chamber's iris of six frosted-glass shutters,
+   each hinged at one corner of the hexagonal window.
+   At rest the iris is CLOSED and stays still: no loop, nothing moves on its own.
+   Reaching for the Leaguecraft BOOK (hover / keyboard focus: the stage's
+   data-intent="book" while Leaguecraft is the focused room) turns all six
+   shutters together, slowly, outward on their hinges (rotate(-theta) about the
+   hinge; the open share of the window is theta/60) until she is fully revealed;
+   leaving the book turns them back to closed. Opening the book swings them
+   right out in the existing 240 ms activation. Positions are in the lens's
+   local units (an SVG px inside the instrument). */
 
-.o35-lux-halo { fill: none; stroke: #ffe9b8; stroke-opacity: 0.32; stroke-width: 6; filter: drop-shadow(0 0 6px rgba(255, 233, 184, 0.5)); }
+.o35-lux-halo { fill: none; stroke: #ffe9b8; stroke-opacity: 0.32; stroke-width: 3; filter: drop-shadow(0 0 4px rgba(255, 233, 184, 0.45)); }
 .o35-lux-backing { fill: #0b1030; }
-.o35-lux-frame { fill: none; stroke: #fff3cf; stroke-opacity: 0.9; stroke-width: 1.6; stroke-linejoin: round; }
+.o35-lux-frame { fill: none; stroke: #fff3cf; stroke-opacity: 0.9; stroke-width: 1.3; stroke-linejoin: round; }
 
-/* every moving part transforms about its own local origin (a shutter's: its hinge), as an SVG transform attribute would */
-.o35-shutter-engage, .o35-shutter-drift, .o35-lux-beam-track, .o35-lux-portrait { transform-box: view-box; transform-origin: 0 0; }
+/* the glass: neutral frosted glass with restrained silver-white highlights and clean edges */
+.o35-lux-frost-base { fill: #8a94a3; }
+.o35-shutter-sheen { opacity: 0.9; }
+.o35-shutter-edge-dark { fill: none; stroke: #1b2233; stroke-opacity: 0.35; stroke-width: 1.8; stroke-linejoin: round; }
+.o35-shutter-edge { fill: none; stroke: #f5f8fc; stroke-opacity: 0.75; stroke-width: 0.8; stroke-linejoin: round; }
+.o35-shutter-hinge { fill: #f3d98f; stroke: #5a3d10; stroke-width: 0.6; }
 
-/* the glass */
-.o35-shutter-reed { mix-blend-mode: normal; }
-.o35-shutter-sheen { opacity: 0.75; }
-.o35-shutter-facet { stroke: #ffffff; stroke-opacity: 0.32; stroke-width: 0.8; stroke-linecap: round; }
-.o35-shutter-edge-dark { fill: none; stroke: #0b1030; stroke-opacity: 0.5; stroke-width: 2.6; stroke-linejoin: round; }
-.o35-shutter-edge { fill: none; stroke: #fff3cf; stroke-opacity: 0.7; stroke-width: 1.1; stroke-linejoin: round; }
-.o35-shutter-hinge { fill: #f3d98f; stroke: #5a3d10; stroke-width: 0.8; }
+/* the pivot turns about its own local origin, the hinge, as an SVG transform attribute would */
+/* closing waits 400 ms first, so a momentary loss of the reach (the book sliding a little under a resting pointer while the
+   crystal's preview brings it round) never starts a close: only a real leave does */
+.o35-shutter-pivot { transform-box: view-box; transform-origin: 0 0; transform: rotate(0deg); transition: transform 1200ms cubic-bezier(0.45, 0, 0.25, 1) 400ms; }
+/* reaching for the Leaguecraft book (hover / keyboard focus): the iris opens slowly, at once, and reveals her */
+.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-shutter-pivot { transform: rotate(-64deg); transition-duration: 1800ms; transition-delay: 0ms; transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
+/* opening the book: the shutters swing right out in the existing 240 ms activation (outranks the rule above) */
+.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-shutter-pivot { transform: rotate(-64deg); transition-duration: 240ms; transition-delay: 0ms; }
+/* reduced motion: the same states, without the slow turn */
+.o35-root[data-reduced="true"] .o35-shutter-pivot { transition-duration: 0ms !important; transition-delay: 0ms !important; }
 
-/* engage: an extra pivot about the same hinge. Away from Leaguecraft the shutters wait swung out of the window; entering, they swing in */
-.o35-shutter-engage { transform: rotate(-62deg); transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-.acore-svg[data-focus="leaguecraft"] .o35-shutter-engage { transform: rotate(0deg); }
-/* reaching for the Leaguecraft book (hover / keyboard): the iris opens further */
-.o35-stage[data-intent="book"] .acore-svg[data-focus="leaguecraft"] .o35-shutter-engage { transform: rotate(-16deg); transition-duration: 700ms; }
-/* opening the book: the shutters swing right out and Lux is revealed (outranks the hover rule above) */
-.o35-root .o35-stage .acore-svg[data-focus="leaguecraft"][data-activating="leaguecraft"] .o35-shutter-engage { transform: rotate(-62deg); transition-duration: 240ms; }
-
-/* the reveal: rest (16 deg) is the base and the reduced-motion / lite still */
-.o35-shutter-drift { transform: rotate(-16deg); animation: o35-shutter 14s ease-in-out infinite paused; }
-/* the ripple: each shutter leads its neighbour by 0.1 s (inside the rest hold, so the still is even) */
-.o35-shutter-k1 { animation-delay: -0.1s; }
-.o35-shutter-k2 { animation-delay: -0.2s; }
-.o35-shutter-k3 { animation-delay: -0.3s; }
-.o35-shutter-k4 { animation-delay: -0.4s; }
-.o35-shutter-k5 { animation-delay: -0.5s; }
-@keyframes o35-shutter {
-  0%, 8% { transform: rotate(-16deg); }
-  34%, 60% { transform: rotate(-46deg); }
-  80%, 86% { transform: rotate(-5deg); }
-  100% { transform: rotate(-16deg); }
-}
-
-/* the light: across her face while the iris is open, then (a beat later) along the glass */
-.o35-lux-beam { mix-blend-mode: screen; }
-.o35-lux-beam-track { transform: translateX(-150px); opacity: 0; animation: o35-lux-beam 14s linear infinite paused; }
-.o35-lux-beam-track-glass { animation-delay: -13.6s; }
-@keyframes o35-lux-beam {
-  0%, 36% { transform: translateX(-150px); opacity: 0; }
-  40% { opacity: 1; }
-  58% { opacity: 1; }
-  62%, 100% { transform: translateX(150px); opacity: 0; }
-}
-.o35-shutter-edge, .o35-shutter-sheen { animation: o35-lux-glint 14s ease-in-out infinite paused; }
-@keyframes o35-lux-glint {
-  0%, 40% { stroke-opacity: 0.7; opacity: 0.75; }
-  49% { stroke-opacity: 1; opacity: 1; }
-  58%, 100% { stroke-opacity: 0.7; opacity: 0.75; }
-}
-.o35-lux-portrait { animation: o35-lux-breathe 14s ease-in-out infinite paused; }
-@keyframes o35-lux-breathe { 0%, 100% { transform: scale(1); } 47% { transform: scale(1.035); } }
-
-/* run only while Leaguecraft is the projection and the scene is live */
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-drift,
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-beam-track,
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-edge,
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-shutter-sheen,
-.acore-svg[data-ambient="on"][data-focus="leaguecraft"] .o35-lux-portrait { animation-play-state: running; }
-
-/* lite tier: the mystery stays (the iris at rest; the engage, reach and open pivots); the loop, beam and glints go */
-.o35-root[data-quality="lite"] .o35-shutter-drift,
-.o35-root[data-quality="lite"] .o35-lux-beam-track,
-.o35-root[data-quality="lite"] .o35-shutter-edge,
-.o35-root[data-quality="lite"] .o35-shutter-sheen,
-.o35-root[data-quality="lite"] .o35-lux-portrait { animation: none; }
+/* lite tier: the halo's glow goes (the iris and its reveal are the interaction and stay) */
 .o35-root[data-quality="lite"] .o35-lux-halo { filter: none; }
 
 /* Pro Play: two sides around Summoner's Rift */

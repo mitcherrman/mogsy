@@ -100,9 +100,9 @@ const OrreryCore = forwardRef<HTMLDivElement, OrreryCoreProps>(function OrreryCo
 ) {
   // V3.5's own Leaguecraft and Pro Play projections (V3 keeps its originals).
   const projectionOverrides = useMemo(() => ({
-    leaguecraft: <LuxMysteryProjection portrait={mystery} />,
+    leaguecraft: <LuxMysteryProjection portrait={mystery} roles={media.observeRoles ?? []} />,
     "pro-play": <MatchupProjection media={matchup} />,
-  }), [mystery, matchup]);
+  }), [mystery, matchup, media.observeRoles]);
   const dest = destinationById(focus);
   const readout = dest ? dest.readout : CORE_IDLE_READOUT;
   const arcId = "o35-readout-arc";

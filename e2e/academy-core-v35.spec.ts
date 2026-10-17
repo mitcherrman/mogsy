@@ -1078,14 +1078,15 @@ test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
     const crystal = page.getByTestId("academy-core-crystal");
     await crystal.click();
     await expect(page.getByTestId("academy-core-v35-lux-portrait")).toBeVisible();
-    expect((await page.locator(".o35-lux-frame").boundingBox())!.width, "Lux window on a phone").toBeGreaterThan(60);
-    // reduced motion: a still composition, Lux partly behind the glass, nothing running in the projection
+    expect((await page.locator(".o35-lux-frame").boundingBox())!.width, "Lux chamber on a phone").toBeGreaterThan(40);
+    await expect(page.locator(".acore-mode-leaguecraft .acore-role")).toHaveCount(5);
+    // reduced motion: a still composition, Lux concealed behind the closed glass, nothing running in the projection
     const running = await page.evaluate(() => [...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-")).filter((a) => a.playState === "running").length);
     expect(running).toBe(0);
-    // ... the iris composed at rest: six shutters, a sixth or so of the window open over her face
+    // ... the iris closed at rest
     await page.waitForTimeout(1000);
-    for (const s of await shutterAngles(page)) expect(s.total, "reduced motion: at rest").toBeCloseTo(16, 0);
-    expect((await revealed(page)).open).toBeCloseTo(16 / 60, 1);
+    for (const a of await shutterAngles(page)) expect(Math.abs(a), "reduced motion: closed").toBeLessThan(0.1);
+    expect((await revealed(page)).open).toBe(0);
     await crystal.click();
     await expect(page.locator(".o35-team-icon")).toHaveCount(10);
     await expect(page.locator("[data-testid='academy-core-v35-rift'] image")).toBeVisible();
@@ -1094,7 +1095,7 @@ test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
 });
 
 /* ===================================================================== */
-/* LEAGUECRAFT — Arcane Mystery: Lux                                       */
+/* LEAGUECRAFT — five role icons around a concealed Lux                   */
 /* ===================================================================== */
 
 /** Pin Leaguecraft with the crystal and wait for the projection to be fully shown. */
@@ -1102,29 +1103,38 @@ async function pinLeaguecraft(page: Page) {
   await page.getByTestId("academy-core-crystal").click();
   await page.mouse.move(40, 300);
   await expect.poll(() => page.locator(".acore-mode-leaguecraft").evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.95);
-  await page.waitForTimeout(1000); // the shutters swing in (900 ms)
+  await page.waitForTimeout(300);
 }
 
-/** Seek every Lux animation to `fraction` of its 14 s loop and pause (deterministic sampling). */
-async function seekLux(page: Page, fraction: number) {
-  await page.evaluate((f) => {
-    for (const a of [...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-"))) {
-      a.pause();
-      a.currentTime = f * 14000; // the loop's phase (the ripple and the glass beam keep their small offsets via their delays)
+/** Rest the pointer on the Leaguecraft book where it is (it orbits), and wait until the scene reports the reach. */
+async function reachLeaguecraft(page: Page) {
+  for (let i = 0; i < 30; i++) {
+    const b = (await page.getByTestId("academy-core-slot-leaguecraft").boundingBox())!;
+    const pt = { x: b.x + b.width / 2, y: b.y + b.height * 0.4 };
+    const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest("[data-testid^='academy-core-slot-']")?.getAttribute("data-testid"), [pt.x, pt.y]);
+    if (hit === "academy-core-slot-leaguecraft") {
+      await page.mouse.move(pt.x, pt.y, { steps: 2 });
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "book");
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "leaguecraft");
+      return;
     }
-  }, fraction);
+    await page.waitForTimeout(250);
+  }
+  throw new Error("the Leaguecraft book never came under a free point");
 }
 
-/** Each visible shutter's pivot about its hinge, in degrees opened (engage + loop), and the engage part alone. */
+/** Each visible shutter's pivot about its hinge, in degrees opened. */
 const shutterAngles = (page: Page) => page.evaluate(() => [0, 1, 2, 3, 4, 5].map((k) => {
-  const body = document.querySelector(`[data-testid='academy-core-v35-shutter-${k}']`)!;
-  const drift = body.parentElement!;
-  const engage = drift.parentElement!;
-  const deg = (el: Element) => { const m = new DOMMatrix(getComputedStyle(el).transform); return (-Math.atan2(m.b, m.a) * 180) / Math.PI; };
-  return { total: deg(engage) + deg(drift), engage: deg(engage), loop: deg(drift) };
+  const pivot = document.querySelector(`[data-testid='academy-core-v35-shutter-${k}']`)!.parentElement!;
+  const m = new DOMMatrix(getComputedStyle(pivot).transform);
+  return (-Math.atan2(m.b, m.a) * 180) / Math.PI;
 }));
+const inStep = (a: number[]) => Math.max(...a) - Math.min(...a);
+/** Wait until every shutter reaches a final state (a loaded headless browser can stall for hundreds of ms). */
+const settlesAt = (page: Page, state: "open" | "closed", timeout = 5000) =>
+  expect.poll(async () => (await shutterAngles(page)).every((a) => (state === "open" ? a > 62 : Math.abs(a) < 0.1)), { timeout, message: `shutters ${state}` }).toBe(true);
 
-/** The share of the window (or of its central face region) that no shutter covers, sampled on a grid in screen space. */
+/** The share of the chamber (or of its central face region) that no shutter covers, sampled on a grid in screen space. */
 const revealed = (page: Page, region: "window" | "face" = "window") => page.evaluate((region) => {
   const frame = document.querySelector(".o35-lux-frame") as SVGPolygonElement;
   const fm = frame.getScreenCTM()!;
@@ -1145,170 +1155,148 @@ const revealed = (page: Page, region: "window" | "face" = "window") => page.eval
   const inv = bodies.map((b) => b.getScreenCTM()!.inverse());
   let n = 0;
   let open = 0;
-  let overlap = 0;
-  for (let x = cx - R; x <= cx + R; x += R / 24) {
-    for (let y = cy - R; y <= cy + R; y += R / 24) {
+  // the grid is offset off the chamber's axes, so no sample lands exactly on a seam two shutters share
+  const step = R / 24;
+  for (let x = cx - R + step * 0.37; x <= cx + R; x += step) {
+    for (let y = cy - R + step * 0.21; y <= cy + R; y += step) {
       if (!inPoly(x, y)) continue;
       if (region === "face" && Math.hypot(x - cx, y - cy) > R * 0.42) continue;
       n++;
       const hits = bodies.filter((b, i) => { const q = new DOMPoint(x, y).matrixTransform(inv[i]); return b.isPointInFill(new DOMPoint(q.x, q.y)); }).length;
       if (hits === 0) open++;
-      if (hits > 1) overlap++;
     }
   }
-  return { open: open / n, overlap: overlap / n };
+  return { open: open / n };
 }, region);
+/** The projection's own CSS animations (keyframe loops), wherever they are. */
+const luxAnimations = (page: Page) => page.evaluate(() => [...document.querySelectorAll(".o35-lux, .o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").length > 0 && !String((a as CSSAnimation).animationName).startsWith("acore-fade")).length);
 
-test.describe("Leaguecraft: Arcane Mystery — Lux behind the chamber's iris", () => {
-  test("Lux's genuine manifest icon, large and centred in the crystal, behind six shutters hinged at the window's corners", async ({ page }) => {
+test.describe("Leaguecraft: five role icons around a concealed Lux", () => {
+  test("the five role icons around Lux's genuine icon, centred, clear of each other, and the iris closed", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     await open(page, 1366, 768);
     await pinLeaguecraft(page);
+    const roles = page.locator(".acore-mode-leaguecraft .acore-role");
+    await expect(roles).toHaveCount(5);
     const href = await page.getByTestId("academy-core-v35-lux-portrait").getAttribute("href");
     expect(href, "the manifest's square icon").toMatch(/assets\/champions\/Lux\/icon\.png$/);
-    expect(href).not.toMatch(/splash|loading/);
     const L = await lensGeometry(page);
     const win = (await page.locator(".o35-lux-frame").boundingBox())!;
     const c = centreOf(win);
-    expect(Math.hypot(c.x - L.cx, c.y - L.cy), "centred").toBeLessThan(3);
-    expect(win.width, "the portrait is the main attraction").toBeGreaterThanOrEqual(130);
-    expect(win.width / (2 * L.r), "share of the lens").toBeGreaterThan(0.6);
-    await expect(page.locator(".acore-mode-leaguecraft [data-testid^='academy-core-v35-shutter-']")).toHaveCount(6);
-    // each shutter's hinge (its local origin) sits exactly on its own corner of the window, at any angle
-    const hinges = await page.evaluate(() => {
-      const frame = document.querySelector(".o35-lux-frame") as SVGPolygonElement;
-      const fm = frame.getScreenCTM()!;
-      const corners = [...frame.points].map((p) => new DOMPoint(p.x, p.y).matrixTransform(fm));
-      return [0, 1, 2, 3, 4, 5].map((k) => {
-        const body = document.querySelector(`[data-testid='academy-core-v35-shutter-${k}'] .o35-shutter-body`) as SVGGraphicsElement;
-        const h = new DOMPoint(0, 0).matrixTransform(body.getScreenCTM()!);
-        return Math.hypot(h.x - corners[k].x, h.y - corners[k].y);
-      });
-    });
-    for (const d of hinges) expect(d, "hinge on its corner").toBeLessThan(0.5);
-    for (const sel of [".acore-reticle", ".acore-role", "[data-testid='academy-core-v35-study-emblem']", "[class*='o35-pane']"]) {
+    expect(Math.hypot(c.x - L.cx, c.y - L.cy), "centred where the scroll was").toBeLessThan(3);
+    expect(win.width, "the chamber reads at homepage size").toBeGreaterThanOrEqual(85);
+    // the role icons surround the chamber without touching it: each ring is outside the chamber's circumcircle (plus its halo)
+    const R = win.height / 2;
+    for (let i = 0; i < 5; i++) {
+      const rb = (await roles.nth(i).locator("circle").boundingBox())!;
+      const rc = centreOf(rb);
+      expect(Math.hypot(rc.x - c.x, rc.y - c.y) - rb.width / 2, `role ${i} clear of the chamber`).toBeGreaterThan(R + 2);
+    }
+    for (const sel of [".acore-reticle", "[data-testid='academy-core-v35-study-emblem']", ".o35-lux-beam"]) {
       await expect(page.locator(`.acore-mode-leaguecraft ${sel}`), sel).toHaveCount(0);
     }
+    // closed: every shutter at 0 deg, nothing of the chamber uncovered
+    for (const a of await shutterAngles(page)) expect(Math.abs(a), "closed").toBeLessThan(0.1);
+    expect((await revealed(page)).open, "nothing uncovered").toBe(0);
     expect(errors).toEqual([]);
   });
 
-  test("one coordinated reveal: the six shutters pivot together, open over her face, close, and the loop has no seam", async ({ page }) => {
+  test("at rest nothing moves: no loop, no automatic reveal", async ({ page }) => {
     await open(page, 1366, 768);
     await pinLeaguecraft(page);
-    const at = async (f: number) => { await seekLux(page, f); return { angles: (await shutterAngles(page)).map((a) => a.total), win: await revealed(page), face: await revealed(page, "face") }; };
-    const rest = await at(0);
-    const open_ = await at(0.47);
-    const closed = await at(0.83);
-    // the six move as one mechanism (the ripple is inside the holds, so here they agree exactly)
-    for (const s of [rest, open_, closed]) for (const a of s.angles) expect(Math.abs(a - s.angles[0]), "shutters in step").toBeLessThan(0.5);
-    expect(rest.angles[0]).toBeCloseTo(16, 0);
-    expect(open_.angles[0]).toBeCloseTo(46, 0);
-    expect(closed.angles[0]).toBeCloseTo(5, 0);
-    // the reveal follows the angle (theta / 60 of the window), and the shutters never overlap
-    for (const s of [rest, open_, closed]) {
-      expect(s.win.open, `revealed at ${s.angles[0].toFixed(1)} deg`).toBeCloseTo(s.angles[0] / 60, 1);
-      expect(s.win.overlap, "no overlap").toBeLessThan(0.01);
+    expect(await luxAnimations(page), "no keyframe animation in the projection").toBe(0);
+    const a = await shutterAngles(page);
+    await page.waitForTimeout(4000);
+    const b = await shutterAngles(page);
+    expect([...a, ...b].every((v) => Math.abs(v) < 0.1), "closed and still over 4 s").toBe(true);
+    expect((await revealed(page)).open).toBe(0);
+  });
+
+  test("reaching for the Leaguecraft book opens all six together, slowly; leaving closes them", async ({ page }) => {
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page); // pinned, so the projection stays shown after the pointer leaves and the closing can be measured
+    await reachLeaguecraft(page);
+    const t0 = Date.now();
+    const samples: { t: number; a: number[] }[] = [];
+    for (const at of [350, 800, 1300, 2300]) {
+      const wait = at - (Date.now() - t0);
+      if (wait > 0) await page.waitForTimeout(wait);
+      samples.push({ t: Date.now() - t0, a: await shutterAngles(page) });
     }
-    // the action is about her face: almost all of the central region is open at the height of the reveal, little of it when closed
-    expect(open_.face.open, "face revealed").toBeGreaterThan(0.95);
-    expect(closed.face.open, "face concealed").toBeLessThan(0.3);
-    expect(rest.face.open, "rest: partly concealed").toBeGreaterThan(closed.face.open);
-    expect(rest.face.open, "rest: partly concealed").toBeLessThan(open_.face.open);
-    // opening: the reveal only grows (a pivot, not a shuffle)
-    const opening: number[] = [];
-    for (const f of [0.08, 0.14, 0.2, 0.26, 0.34]) opening.push((await at(f)).win.open);
-    for (let i = 1; i < opening.length; i++) expect(opening[i], `opening step ${i}`).toBeGreaterThanOrEqual(opening[i - 1] - 0.01);
-    expect(opening[opening.length - 1] - opening[0]).toBeGreaterThan(0.4);
-    // the ripple: while opening, each shutter is a little ahead of the next round the ring
-    const mid = (await (async () => { await seekLux(page, 0.2); return shutterAngles(page); })()).map((a) => a.total);
-    for (let k = 1; k < 6; k++) expect(mid[k], `ripple ${k}`).toBeGreaterThan(mid[k - 1]);
-    // seam
-    const end = await at(0.99995);
-    for (let k = 0; k < 6; k++) expect(Math.abs(end.angles[k] - rest.angles[k]), `shutter ${k} loop seam`).toBeLessThan(0.05);
+    for (const s of samples) expect(inStep(s.a), `in step at ${s.t} ms`).toBeLessThan(0.5);
+    const mean = samples.map((s) => s.a.reduce((x, y) => x + y, 0) / 6);
+    // slow: still opening well after the first frames, then fully open
+    expect(mean[0], "under way, not instant").toBeLessThan(55);
+    for (let i = 1; i < mean.length; i++) expect(mean[i], `opening only grows (${i})`).toBeGreaterThanOrEqual(mean[i - 1] - 0.5);
+    await settlesAt(page, "open");
+    expect((await revealed(page)).open, "Lux revealed").toBeGreaterThan(0.97);
+    expect((await revealed(page, "face")).open, "her face revealed").toBe(1);
+    // leaving: back to closed
+    await page.mouse.move(40, 300, { steps: 2 });
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+    await page.waitForTimeout(400);
+    const closing = (await shutterAngles(page)).reduce((x, y) => x + y, 0) / 6;
+    expect(closing, "closing, not instant").toBeGreaterThan(1);
+    await settlesAt(page, "closed");
+    expect((await revealed(page)).open, "concealed again").toBe(0);
   });
 
-  test("the light sweep crosses once per loop: dark before, bright mid-sweep, gone after", async ({ page }) => {
+  test("keyboard focus on the Leaguecraft book reveals her too, and moving focus away conceals her", async ({ page }) => {
     await open(page, 1366, 768);
     await pinLeaguecraft(page);
-    const beam = async () => page.evaluate(() => {
-      const t = document.querySelector(".o35-lux-beam-track:not(.o35-lux-beam-track-glass)")!;
-      const m = new DOMMatrix(getComputedStyle(t).transform);
-      return { opacity: Number(getComputedStyle(t).opacity), x: m.e };
-    });
-    await seekLux(page, 0.2);
-    const before = await beam();
-    await seekLux(page, 0.49);
-    const mid = await beam();
-    await seekLux(page, 0.8);
-    const after = await beam();
-    expect(before.opacity).toBeLessThan(0.05);
-    expect(mid.opacity).toBeGreaterThan(0.9);
-    expect(after.opacity).toBeLessThan(0.05);
-    expect(before.x).toBeLessThan(mid.x);
-    expect(mid.x).toBeLessThan(after.x);
-    // it crosses while the iris is open
-    expect((await shutterAngles(page)).length).toBe(6);
-    await seekLux(page, 0.49);
-    expect((await shutterAngles(page))[0].total).toBeCloseTo(46, 0);
-  });
-
-  test("the loop runs while Leaguecraft is shown and holds still otherwise (no work for a hidden projection)", async ({ page }) => {
-    await open(page, 1366, 768);
-    // the projection's own keyframe loops (not the images' one-off fade-in, not transitions)
-    const states = () => page.evaluate(() => [...new Set([...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-")).map((a) => a.playState))]);
-    expect(await states()).toEqual(["paused"]);
-    await pinLeaguecraft(page);
-    expect(await states()).toEqual(["running"]);
-    const a = (await shutterAngles(page)).map((s) => s.loop);
-    await page.waitForTimeout(2000);
-    expect((await shutterAngles(page)).map((s) => s.loop), "the shutters pivoted in 2 s").not.toEqual(a);
-    await page.getByTestId("academy-core-crystal").click(); // on to Pro Play
-    await page.waitForTimeout(300);
-    expect(await states()).toEqual(["paused"]);
-  });
-
-  test("reaching for the Leaguecraft book opens the iris further; opening the book swings it right out", async ({ page }) => {
-    await open(page, 1366, 768);
-    await pinLeaguecraft(page);
-    await seekLux(page, 0); // the loop at rest, so only the reach and the opening move the shutters
-    const pinned = await shutterAngles(page);
-    for (const s of pinned) expect(Math.abs(s.engage), "pinned: no extra pivot").toBeLessThan(0.5);
-    const restOpen = (await revealed(page)).open;
-    // hover the book (where it is now)
-    const b = (await boxes(page)).leaguecraft;
-    await page.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 6 });
+    await page.getByTestId("academy-core-slot-leaguecraft").getByRole("link").focus();
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "book");
-    await page.waitForTimeout(1000);
-    for (const s of await shutterAngles(page)) expect(s.engage, "hover: each shutter pivots further").toBeCloseTo(16, 0);
-    const reach = await revealed(page);
-    expect(reach.open - restOpen, "hover reveals more of her").toBeGreaterThan(0.2);
-    // activation: the iris swings right out. The real 240 ms activation navigates before a slow
-    // headless browser paints a frame, so the activating STATE is checked directly, then the
-    // real click is checked to navigate.
+    await settlesAt(page, "open");
+    await page.getByTestId("academy-core-crystal").focus(); // not a book: the reach ends (Leaguecraft stays pinned)
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+    await settlesAt(page, "closed");
+  });
+
+  test("opening the book swings the iris out within the existing 240 ms activation, and the click still navigates", async ({ page }) => {
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    // the activating STATE, checked directly (a slow headless browser navigates before it paints the 240 ms beat)
     await page.evaluate(() => document.querySelector(".acore-svg")!.setAttribute("data-activating", "leaguecraft"));
-    await page.waitForTimeout(700);
-    for (const s of await shutterAngles(page)) expect(s.engage, "activation: shutters swung out").toBeCloseTo(62, 0);
-    expect((await revealed(page)).open, "activation: Lux fully revealed").toBeGreaterThan(0.97);
+    await settlesAt(page, "open", 3000);
     await page.evaluate(() => document.querySelector(".acore-svg")!.setAttribute("data-activating", ""));
+    await settlesAt(page, "closed");
+    await reachLeaguecraft(page);
     await page.mouse.down();
     await page.mouse.up();
     await page.waitForURL(/\/quiz$/);
   });
 
-  test("lite quality keeps the mystery still: the iris at rest, no loop or sweep", async ({ page }) => {
+  test("reduced motion: the same open and closed states, at once", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, 1366, 768);
+    await pinLeaguecraft(page);
+    for (const a of await shutterAngles(page)) expect(Math.abs(a)).toBeLessThan(0.1);
+    // the books hold still under reduced motion, so the book can be aimed directly
+    await page.getByTestId("academy-core-slot-leaguecraft").hover();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "book");
+    await page.waitForTimeout(150);
+    for (const a of await shutterAngles(page)) expect(a, "open at once").toBeGreaterThan(62);
+    await page.mouse.move(40, 300);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+    await page.waitForTimeout(150);
+    for (const a of await shutterAngles(page)) expect(Math.abs(a), "closed at once").toBeLessThan(0.1);
+  });
+
+  test("lite quality keeps the same composition and the same reveal", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await stubCommon(page);
     await stubChampions(page);
     await page.goto(`${ROUTE}?quality=lite`);
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
     await pinLeaguecraft(page);
-    const anims = await page.evaluate(() => [...document.querySelectorAll(".o35-lux *")].flatMap((el) => el.getAnimations()).filter((a) => String((a as CSSAnimation).animationName ?? "").startsWith("o35-")).length);
-    expect(anims).toBe(0);
-    await expect(page.getByTestId("academy-core-v35-lux-portrait")).toBeVisible();
+    expect(await luxAnimations(page)).toBe(0);
+    await expect(page.locator(".acore-mode-leaguecraft .acore-role")).toHaveCount(5);
     await expect(page.locator("[data-testid^='academy-core-v35-shutter-']")).toHaveCount(6);
-    for (const s of await shutterAngles(page)) expect(s.total, "at rest").toBeCloseTo(16, 0);
-    expect((await revealed(page)).open).toBeCloseTo(16 / 60, 1);
+    expect((await revealed(page)).open).toBe(0);
+    await reachLeaguecraft(page);
+    await settlesAt(page, "open");
+    expect((await revealed(page)).open).toBeGreaterThan(0.97);
   });
 });
 
@@ -1750,7 +1738,7 @@ evidence("evidence: crystal redesign", () => {
   });
 });
 
-evidence("evidence: Lux mystery", () => {
+evidence("evidence: Leaguecraft roles and Lux", () => {
   test.setTimeout(300_000);
 
   /** The real Lux icon (asset host) decoded, so no still catches it mid-load. */
@@ -1768,87 +1756,61 @@ evidence("evidence: Lux mystery", () => {
     const h = c.width / 2 + margin;
     return { x: c.x + c.width / 2 - h, y: c.y + c.height / 2 - h, width: 2 * h, height: 2 * h };
   }
-  /** Seek to `fraction` of the loop and let the frame paint. */
-  async function frame(page: Page, fraction: number) {
-    await seekLux(page, fraction);
-    await page.waitForTimeout(250);
+  /** Closed (pinned, nobody reaching), then the hover reveal halfway (~0.8 s) and fully open (~2.3 s). */
+  async function states(page: Page, name: (s: string) => string, clip: { x: number; y: number; width: number; height: number } | null) {
+    const shot = (s: string) => page.screenshot({ path: path.join(OUT, name(s)), ...(clip ? { clip } : {}) });
+    await pinLeaguecraft(page);
+    await page.waitForTimeout(900);
+    await shot("closed");
+    await reachLeaguecraft(page);
+    await page.waitForTimeout(750);
+    await shot("half");
+    await page.waitForTimeout(1600);
+    await shot("open");
+    await page.mouse.move(40, 300, { steps: 2 });
+    await page.waitForTimeout(1600);
+    await shot("closed-again");
   }
 
-  test("evidence: Lux stills (actual size, close-up, loop frames, states, phone, Pro Play regression)", async ({ browser }) => {
-    // actual desktop size (1x)
+  test("evidence: Leaguecraft stills (actual size, close-ups, phone, Pro Play regression)", async ({ browser }) => {
+    // actual desktop size (1x): the full homepage frame, and the crystal at its real size
     const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
     const page = await ctx.newPage();
     await open(page, 1366, 768, { real: true });
     await luxReady(page);
-    await pinLeaguecraft(page);
-    await frame(page, 0);
-    await page.screenshot({ path: path.join(OUT, "lux-1366x768-leaguecraft.png") });
-    await page.screenshot({ path: path.join(OUT, "lux-actual-size.png"), clip: await lensClip(page, 60) });
-    // Pro Play, one click on, for regression comparison with crystal-redesign-actual-size-pro-play.png
+    await states(page, (s) => `lcr-1366x768-${s}.png`, null);
+    await page.reload();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    await luxReady(page);
+    await states(page, (s) => `lcr-actual-size-${s}.png`, await lensClip(page, 40));
+    // Pro Play, for regression comparison with lux-regression-actual-size-pro-play.png
     await page.getByTestId("academy-core-crystal").click();
     await page.mouse.move(40, 300);
     await page.waitForTimeout(1600);
-    await page.screenshot({ path: path.join(OUT, "lux-regression-actual-size-pro-play.png"), clip: await lensClip(page, 60) });
+    await page.screenshot({ path: path.join(OUT, "lcr-regression-actual-size-pro-play.png"), clip: await lensClip(page, 60) });
     await ctx.close();
-
-    // close-up (3x device pixels): the iris at rest, then the story of one loop, the reach and the opening
+    // close-ups (3x device pixels)
     const hi = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 3 });
     const hp = await hi.newPage();
     await open(hp, 1366, 768, { real: true });
     await luxReady(hp);
-    await pinLeaguecraft(hp);
-    const clip = await lensClip(hp, 8);
-    // at rest (partly concealed) -> pivoting open -> open, the light crossing her -> closing -> closed -> settling back
-    for (const [name, f] of [["closeup", 0], ["frame-1-rest", 0], ["frame-2-opening", 0.2], ["frame-3-open-sweep", 0.47], ["frame-4-closing", 0.7], ["frame-5-closed", 0.83], ["frame-6-settling", 0.93]] as const) {
-      await frame(hp, f);
-      await hp.screenshot({ path: path.join(OUT, `lux-${name}.png`), clip });
-    }
-    // reaching for the Leaguecraft book: the iris opens further
-    await frame(hp, 0);
-    const b = (await boxes(hp)).leaguecraft;
-    await hp.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 6 });
-    await hp.waitForTimeout(1200);
-    await hp.screenshot({ path: path.join(OUT, "lux-book-intent.png"), clip });
-    // opening the book: the shutters swing right out (the activating state, held for the still)
-    await hp.evaluate(() => document.querySelector(".acore-svg")!.setAttribute("data-activating", "leaguecraft"));
-    await hp.waitForTimeout(500);
-    await hp.screenshot({ path: path.join(OUT, "lux-activation.png"), clip });
+    await states(hp, (s) => `lcr-closeup-${s}.png`, await lensClip(hp, 8));
     await hi.close();
-
-    // reduced motion: a polished still
-    const rm = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 2, reducedMotion: "reduce" });
-    const rp = await rm.newPage();
-    await open(rp, 1366, 768, { real: true });
-    await luxReady(rp);
-    await pinLeaguecraft(rp);
-    await rp.screenshot({ path: path.join(OUT, "lux-reduced-motion.png"), clip: await lensClip(rp, 8) });
-    await rm.close();
-
-    // lite tier
-    const lt = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 2 });
-    const lp = await lt.newPage();
-    await lp.setViewportSize({ width: 1366, height: 768 });
-    await stubCommon(lp);
-    await lp.goto(`${ROUTE}?quality=lite`);
-    await expect(lp.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
-    await luxReady(lp);
-    await pinLeaguecraft(lp);
-    await lp.screenshot({ path: path.join(OUT, "lux-lite.png"), clip: await lensClip(lp, 8) });
-    await lt.close();
-
-    // phone
+    // phone (390x844 at 2x): pinned and closed; a tap on the book reveals her
     const mob = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
     const mp = await mob.newPage();
     await open(mp, 390, 844, { real: true });
     await luxReady(mp);
-    await pinLeaguecraft(mp);
-    await frame(mp, 0);
-    await mp.screenshot({ path: path.join(OUT, "lux-mobile-390x844.png") });
-    await mp.screenshot({ path: path.join(OUT, "lux-mobile-390x844-crystal.png"), clip: await lensClip(mp, 40) });
+    // a phone has no hover: tap the crystal and leave the pointer there (parking it at the desktop helper's spot would hover a book)
+    await mp.getByTestId("academy-core-crystal").click();
+    await expect(mp.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+    await mp.waitForTimeout(1500);
+    await mp.screenshot({ path: path.join(OUT, "lcr-mobile-390x844.png") });
+    await mp.screenshot({ path: path.join(OUT, "lcr-mobile-390x844-closed.png"), clip: await lensClip(mp, 40) });
     await mob.close();
   });
 
-  test("evidence: the Lux recording", async ({ browser }) => {
+  test("evidence: the Leaguecraft recording (hover and leave)", async ({ browser }) => {
     const videoDir = path.join(OUT, "_video");
     mkdirSync(videoDir, { recursive: true });
     const tCtx = Date.now();
@@ -1859,50 +1821,38 @@ evidence("evidence: Lux mystery", () => {
     const tReady = Date.now();
     const marks: Record<string, number> = {};
     const mark = (k: string) => { marks[k] = (Date.now() - tCtx) / 1000; };
-    const crystal = page.getByTestId("academy-core-crystal");
-    await page.mouse.move(60, 420);
+    await page.mouse.move(40, 300);
     await page.waitForTimeout(1200);
-    // the shutters swing in; one whole 14 s loop (open over her face, the sweep, close, back to rest)
-    mark("pin");
-    await crystal.click();
-    await page.mouse.move(60, 420);
-    await page.waitForTimeout(15_500);
-    // reaching for the Leaguecraft book opens the iris further; moving away lets it back
-    mark("intent");
-    const b = (await boxes(page)).leaguecraft;
-    await page.mouse.move(b.cx, b.cy + b.h * 0.2, { steps: 10 });
-    await page.waitForTimeout(2600);
-    await page.mouse.move(60, 420, { steps: 10 });
-    await page.waitForTimeout(1800);
-    // Leaguecraft -> Pro Play (crystal), then the selector arrows bring Leaguecraft round again
-    mark("transition");
-    await crystal.click();
-    await page.mouse.move(60, 420);
-    await page.waitForTimeout(2600);
-    const stage = page.getByTestId("academy-core-stage");
-    for (let i = 0; i < 4 && (await stage.getAttribute("data-focus")) !== "leaguecraft"; i++) {
-      await arrow(page, "left").click();
-      await page.mouse.move(60, 420);
-      await waitStill(page);
-      await page.waitForTimeout(1400);
+    // 1. the crystal shows Leaguecraft: five roles, Lux concealed, nothing moving
+    mark("pinned");
+    await pinLeaguecraft(page);
+    await page.waitForTimeout(3500);
+    // 2. hover the Leaguecraft book: the iris opens slowly; then leave: it closes
+    for (let i = 0; i < 2; i++) {
+      mark(`hover${i + 1}`);
+      await reachLeaguecraft(page);
+      await page.waitForTimeout(3200);
+      mark(`leave${i + 1}`);
+      await page.mouse.move(40, 300, { steps: 6 });
+      await page.waitForTimeout(2600);
     }
-    await expect(stage).toHaveAttribute("data-focus", "leaguecraft");
+    // 3. without the crystal: hovering the book alone brings Leaguecraft up and reveals her; leaving returns to rest
+    await page.getByTestId("academy-core-crystal").click(); // -> Pro Play
+    for (let i = 0; i < 3; i++) { await page.getByTestId("academy-core-crystal").click(); await page.waitForTimeout(250); } // -> rest
+    await page.mouse.move(40, 300);
     await page.waitForTimeout(1500);
-    // opening the Leaguecraft book (held in front by the selector): the shutters swing right out, then the room opens
-    mark("activate");
-    const b2 = (await boxes(page)).leaguecraft;
-    await page.mouse.move(b2.cx, b2.cy + b2.h * 0.2, { steps: 10 });
-    await page.waitForTimeout(1400);
-    await page.mouse.down();
-    await page.mouse.up();
-    await page.waitForURL(/\/quiz$/);
-    await page.waitForTimeout(900);
+    mark("hover-unpinned");
+    await reachLeaguecraft(page);
+    await page.waitForTimeout(3000);
+    mark("leave-unpinned");
+    await page.mouse.move(40, 300, { steps: 6 });
+    await page.waitForTimeout(2000);
     const tEnd = Date.now();
     const video = page.video()!;
     await ctx.close();
     const file = await video.path();
     expect(existsSync(file)).toBe(true);
-    copyFileSync(file, path.join(OUT, "_video", "raw-lux.webm"));
-    writeFileSync(path.join(OUT, "_video", "meta-lux.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000, marks }));
+    copyFileSync(file, path.join(OUT, "_video", "raw-lcr.webm"));
+    writeFileSync(path.join(OUT, "_video", "meta-lcr.json"), JSON.stringify({ readyAt: (tReady - tCtx) / 1000, endAt: (tEnd - tCtx) / 1000, marks }));
   });
 });

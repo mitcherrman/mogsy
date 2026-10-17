@@ -3,6 +3,8 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 vi.mock("@/hooks/useReducedMotionPreference", () => ({ useReducedMotionPreference: () => true }));
 
@@ -37,7 +39,7 @@ describe("V3 stays V3 unless a caller opts in", () => {
         focus="idle"
         compact
         media={{ observeRoles: ROLES }}
-        projectionOverrides={{ leaguecraft: <LuxMysteryProjection portrait="/lux.png" />, "pro-play": <MatchupProjection media={MATCHUP} /> }}
+        projectionOverrides={{ leaguecraft: <LuxMysteryProjection portrait="/lux.png" roles={ROLES} />, "pro-play": <MatchupProjection media={MATCHUP} /> }}
       />,
     );
     expect(container.querySelector(".acore-mode-leaguecraft")).toHaveAttribute("data-projection", "override");
@@ -52,52 +54,76 @@ describe("V3 stays V3 unless a caller opts in", () => {
   });
 });
 
-describe("Leaguecraft: Arcane Mystery — Lux behind the chamber's iris of six shutters", () => {
+describe("Leaguecraft: five role icons around Lux, concealed behind six frosted-glass shutters", () => {
   const LUX = "/assets/champions/Lux/icon.png";
   const LEAGUECRAFT_IRIS = 104;
   const R = LUX_WINDOW_RADIUS;
   const corner = (k: number) => ({ x: R * Math.cos(((-90 + 60 * k) * Math.PI) / 180), y: R * Math.sin(((-90 + 60 * k) * Math.PI) / 180) });
+  const lux = (portrait: string | null = LUX) => render(<svg><LuxMysteryProjection portrait={portrait} roles={ROLES} /></svg>);
 
-  it("one large subject: Lux's icon in the hexagonal window, behind six shutters inside the window", () => {
-    const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
+  it("restores the five role icons exactly as the earlier composition drew them (r 76, 72 deg apart, top first, the shared role styling)", () => {
+    const { container } = lux();
+    const roles = [...container.querySelectorAll(".acore-role")];
+    expect(roles).toHaveLength(5);
+    roles.forEach((g, i) => {
+      const t = ((-90 + i * 72) * Math.PI) / 180;
+      expect(g.getAttribute("transform")).toBe(`translate(${(76 * Math.cos(t)).toFixed(1)} ${(76 * Math.sin(t)).toFixed(1)})`);
+      expect(g.querySelector("circle.acore-role-ring")).toHaveAttribute("r", "9");
+      const img = g.querySelector("image.acore-role-icon")!;
+      expect(img.getAttribute("href")).toBe(ROLES[i]);
+      expect([img.getAttribute("x"), img.getAttribute("y"), img.getAttribute("width"), img.getAttribute("height")]).toEqual(["-6", "-6", "12", "12"]);
+    });
+  });
+
+  it("Lux sits in the centre, where the scroll was, in the hexagonal chamber behind six shutters", () => {
+    const { container } = lux();
     const portrait = container.querySelector("[data-testid='academy-core-v35-lux-portrait']")!;
     expect(portrait.getAttribute("href")).toBe(LUX);
     expect(Number(portrait.getAttribute("width"))).toBeCloseTo(2 * R, 6);
+    expect(Number(portrait.getAttribute("x")) + Number(portrait.getAttribute("width")) / 2).toBeCloseTo(0, 6);
     expect(portrait.closest("[clip-path='url(#o35-lux-window)']")).not.toBeNull();
     const shutters = [0, 1, 2, 3, 4, 5].map((k) => container.querySelector(`[data-testid='academy-core-v35-shutter-${k}']`)!);
     expect(shutters.every(Boolean)).toBe(true);
-    expect(container.querySelectorAll("[data-testid^='academy-core-v35-shutter-']")).toHaveLength(6);
-    for (const s of shutters) {
-      // clipped to the window, so they swing out under the frame and never past it
-      expect(s.closest("[clip-path='url(#o35-lux-window)']")).not.toBeNull();
-    }
-    // the shutters are drawn after (in front of) the portrait, and the frame after the shutters
+    for (const s of shutters) expect(s.closest("[clip-path='url(#o35-lux-window)']")).not.toBeNull();
+    // the shutters in front of the portrait, the frame in front of the shutters
     const order = [...container.querySelectorAll("[data-testid='academy-core-v35-lux-portrait'], [data-testid^='academy-core-v35-shutter-'], .o35-lux-frame")];
     expect(order[0]).toBe(portrait);
     expect(order[order.length - 1]).toHaveClass("o35-lux-frame");
-    // through the glass the portrait is refracted: a magnified copy masked to the shutters
-    const refract = container.querySelector(".o35-lux-refract")!;
-    expect(refract.getAttribute("href")).toBe(LUX);
-    expect(refract.closest("[mask='url(#o35-lux-glass-mask)']")).not.toBeNull();
-    expect(container.querySelectorAll("#o35-lux-glass-mask polygon")).toHaveLength(6);
-    // the mask's silhouettes carry the same pivot classes as the visible shutters, so they move together
-    for (let k = 0; k < 6; k++) expect(container.querySelectorAll(`.o35-shutter-drift.o35-shutter-k${k}`)).toHaveLength(2);
-    expect(container.querySelectorAll(".o35-shutter-engage")).toHaveLength(12);
-    // the light sweep: across the portrait and along the glass
-    expect(container.querySelectorAll(".o35-lux-beam")).toHaveLength(2);
+    // the role icons are drawn first: surrounding decoration, beneath the chamber
+    const all = [...container.querySelectorAll(".acore-role, .o35-lux-halo")];
+    expect(all[all.length - 1]).toHaveClass("o35-lux-halo");
   });
 
-  it("the shutters are one geometry, repeated about the centre and hinged at the window's six corners", () => {
-    const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
+  it("frosted glass: behind the shutters the portrait is blurred and paled (an opaque base under it), and the glass is neutral", () => {
+    const { container } = lux();
+    const frost = container.querySelector(".o35-lux-frost")!;
+    expect(frost.getAttribute("href")).toBe(LUX);
+    expect(frost.getAttribute("filter")).toBe("url(#o35-frost)");
+    const masked = frost.closest("[mask='url(#o35-lux-glass-mask)']")!;
+    expect(masked).not.toBeNull();
+    // an opaque base under the frosted copy, so nothing sharp shows through the frost's soft edges
+    expect(masked.querySelector(".o35-lux-frost-base")).not.toBeNull();
+    const blur = container.querySelector("#o35-frost feGaussianBlur")!;
+    expect(Number(blur.getAttribute("stdDeviation"))).toBeGreaterThanOrEqual(5);
+    // the mask is the six shutters, with a hairline stroke so their shared edges leave no seam
+    const sil = [...container.querySelectorAll("#o35-lux-glass-mask polygon")];
+    expect(sil).toHaveLength(6);
+    for (const p of sil) expect(Number(p.getAttribute("stroke-width"))).toBeGreaterThan(0);
+    // one pivot class drives the visible shutters and their mask silhouettes together
+    expect(container.querySelectorAll(".o35-shutter-pivot")).toHaveLength(12);
+    // neutral: no coloured glass
+    for (const id of ["o35-glass-blue", "o35-glass-violet", "o35-glass-gold"]) expect(container.querySelector(`#${id}`), id).toBeNull();
+    for (const s of container.querySelectorAll(".o35-shutter-body")) expect(s.getAttribute("fill")).toBe("url(#o35-frost-tint)");
+  });
+
+  it("the shutters are one geometry, repeated about the centre and hinged at the chamber's six corners", () => {
+    const { container } = lux();
     const shutters = [0, 1, 2, 3, 4, 5].map((k) => container.querySelector(`[data-testid='academy-core-v35-shutter-${k}']`)!);
     for (const [k, s] of shutters.entries()) {
       expect(s.querySelector(".o35-shutter-body")!.getAttribute("points")).toBe(SHUTTER_POINTS);
-      const placement = s.closest(".o35-shutter-engage")!.parentElement!.getAttribute("transform");
+      const placement = s.closest(".o35-shutter-pivot")!.parentElement!.getAttribute("transform");
       expect(placement).toBe(`rotate(${60 * k}) translate(0 ${-R})`);
-      // alternating Hextech blue and violet glass
-      expect(s).toHaveClass(k % 2 ? "o35-shutter-violet" : "o35-shutter-blue");
     }
-    // in its hinge's coordinates a shutter is (hinge, next corner, centre): an exact sixth of the window
     const pts = SHUTTER_POINTS.split(" ").map((p) => p.split(",").map(Number));
     expect(pts).toHaveLength(3);
     const c0 = corner(0);
@@ -107,19 +133,17 @@ describe("Leaguecraft: Arcane Mystery — Lux behind the chamber's iris of six s
     expect(pts[1][1]).toBeCloseTo(c1.y - c0.y, 1);
     expect(pts[2][0]).toBeCloseTo(-c0.x, 1);
     expect(pts[2][1]).toBeCloseTo(-c0.y, 1);
-    // one hinge jewel per corner, on the frame
     expect(container.querySelectorAll(".o35-shutter-hinge")).toHaveLength(6);
   });
 
-  it("a clean reveal mechanism: pivoting by theta opens theta/60 of the window and the shutters never overlap", () => {
+  it("a clean mechanism: closed (0 deg) covers the whole chamber; pivoting by theta opens theta/60 of it; the shutters never overlap", () => {
     const pts = SHUTTER_POINTS.split(" ").map((p) => p.split(",").map(Number));
-    /** Shutter k, pivoted by theta about its hinge, in the window's coordinates (the CSS rotate(-theta) about the hinge). */
     const placed = (k: number, theta: number) => {
       const t = (-theta * Math.PI) / 180;
       const a = (60 * k * Math.PI) / 180;
       return pts.map(([x, y]) => {
         const px = x * Math.cos(t) - y * Math.sin(t);
-        const py = x * Math.sin(t) + y * Math.cos(t) - R; // then translate(0, -R)
+        const py = x * Math.sin(t) + y * Math.cos(t) - R;
         return [px * Math.cos(a) - py * Math.sin(a), px * Math.sin(a) + py * Math.cos(a)];
       });
     };
@@ -133,13 +157,13 @@ describe("Leaguecraft: Arcane Mystery — Lux behind the chamber's iris of six s
       return c;
     };
     const windowPoly = [0, 1, 2, 3, 4, 5].map((k) => [corner(k).x, corner(k).y]);
-    for (const theta of [0, 5, 16, 30, 46, 60]) {
+    for (const theta of [0, 16, 30, 46, 60, 64]) {
       const blades = [0, 1, 2, 3, 4, 5].map((k) => placed(k, theta));
       let inside = 0;
       let open = 0;
       let overlap = 0;
-      for (let x = -R; x <= R; x += 2) {
-        for (let y = -R; y <= R; y += 2) {
+      for (let x = -R; x <= R; x += 1.5) {
+        for (let y = -R; y <= R; y += 1.5) {
           if (!inPoly(windowPoly, x + 0.37, y + 0.21)) continue;
           inside++;
           const n = blades.filter((b) => inPoly(b, x + 0.37, y + 0.21)).length;
@@ -147,35 +171,64 @@ describe("Leaguecraft: Arcane Mystery — Lux behind the chamber's iris of six s
           if (n > 1) overlap++;
         }
       }
-      expect(open / inside, `theta ${theta}: open fraction`).toBeCloseTo(theta / 60, 1);
+      expect(open / inside, `theta ${theta}: open fraction`).toBeCloseTo(Math.min(1, theta / 60), 1);
       expect(overlap / inside, `theta ${theta}: overlap`).toBeLessThan(0.005);
+      if (theta === 0) expect(open, "closed: no gap anywhere").toBe(0);
     }
   });
 
-  it("nothing of the previous designs remains: no reticle, role icons, scroll or quill, free panes, or text", () => {
-    const { container } = render(<svg><LuxMysteryProjection portrait={LUX} /></svg>);
-    for (const sel of [".acore-reticle", ".acore-role", "[data-testid='academy-core-v35-study-emblem']", ".o35-study-emblem", "[class*='o35-pane']", "text"]) {
+  it("the motion contract: closed and still at rest, slow open on reaching for the book, 240 ms on opening it, instant under reduced motion; no loop", () => {
+    const css = readFileSync(path.resolve(__dirname, "academy-core-v35.css"), "utf8");
+    const block = css.slice(css.indexOf("/* LEAGUECRAFT — the five role icons"), css.indexOf("/* Pro Play: two sides around Summoner's Rift */"));
+    expect(block.length).toBeGreaterThan(200);
+    // nothing in Leaguecraft's projection runs on its own
+    expect(block).not.toMatch(/@keyframes|animation\s*:/);
+    expect(css).not.toMatch(/o35-shutter-drift|o35-lux-beam|o35-lux-glint|o35-lux-breathe|@keyframes o35-shutter/);
+    // at rest: closed. Closing waits a moment first, so a momentary loss of the reach (the book sliding under a resting pointer)
+    // never starts a close; opening starts at once
+    const rest = block.match(/\n\.o35-shutter-pivot \{([^}]*)\}/)![1];
+    expect(rest).toMatch(/transform: rotate\(0deg\)/);
+    const closeDelay = Number(rest.match(/transition: transform \d+ms [^;]* (\d+)ms;/)![1]);
+    expect(closeDelay).toBeGreaterThanOrEqual(300);
+    expect(closeDelay).toBeLessThanOrEqual(600);
+    // reaching for the Leaguecraft book (hover / keyboard: data-intent="book" while Leaguecraft is focused): fully open, in 1.5–2 s
+    const reach = block.match(/\.o35-stage\[data-intent="book"\] \.acore-svg\[data-focus="leaguecraft"\] \.o35-shutter-pivot \{([^}]*)\}/)![1];
+    expect(Number(reach.match(/rotate\(-(\d+)deg\)/)![1])).toBeGreaterThanOrEqual(60);
+    const ms = Number(reach.match(/transition-duration: (\d+)ms/)![1]);
+    expect(ms).toBeGreaterThanOrEqual(1500);
+    expect(ms).toBeLessThanOrEqual(2000);
+    expect(reach).toMatch(/transition-delay: 0ms/);
+    // opening the book keeps the existing 240 ms activation
+    expect(block).toMatch(/\[data-activating="leaguecraft"\] \.o35-shutter-pivot \{[^}]*rotate\(-64deg\)[^}]*transition-duration: 240ms/);
+    // reduced motion: the same states, at once
+    expect(block).toMatch(/\.o35-root\[data-reduced="true"\] \.o35-shutter-pivot \{[^}]*transition-duration: 0ms/);
+  });
+
+  it("nothing else of the earlier designs: no reticle, scroll or quill, free panes, light sweep or text; the images are the roles and Lux", () => {
+    const { container } = lux();
+    for (const sel of [".acore-reticle", "[data-testid='academy-core-v35-study-emblem']", ".o35-study-emblem", "[class*='o35-pane']", ".o35-lux-beam", "text"]) {
       expect(container.querySelector(sel), sel).toBeNull();
     }
-    // the only raster images are the portrait and its refraction
-    expect([...container.querySelectorAll("image")].map((i) => i.getAttribute("href"))).toEqual([LUX, LUX]);
+    expect([...container.querySelectorAll("image")].map((i) => i.getAttribute("href"))).toEqual([...ROLES, LUX, LUX]);
   });
 
-  it("before the art is due it draws the window and the shutters, and never a guessed image", () => {
-    const { container } = render(<svg><LuxMysteryProjection portrait={null} /></svg>);
-    expect(container.querySelectorAll("image")).toHaveLength(0);
+  it("before the art is due it draws the roles, the chamber and the closed shutters, and never a guessed image", () => {
+    const { container } = lux(null);
+    expect([...container.querySelectorAll("image")].map((i) => i.getAttribute("href"))).toEqual([...ROLES]);
     expect(container.querySelector(".o35-lux-frame")).not.toBeNull();
     expect(container.querySelectorAll("[data-testid^='academy-core-v35-shutter-']")).toHaveLength(6);
   });
 
-  it("geometry: the window sits inside Leaguecraft's open iris and the lens, aligned with the iris", () => {
-    // pointy-top hexagon of corner radius R: its corners project to R * cos(30deg) on the iris's blade normals (0, 60, ... deg)
+  it("geometry: the chamber sits inside Leaguecraft's open iris, inside the ring of role icons, aligned with the iris", () => {
     for (const c of [-90, -30, 30, 90, 150, 210]) {
       for (let k = 0; k < 6; k++) {
         const proj = R * Math.cos(((c - k * 60) * Math.PI) / 180);
         expect(proj, `corner ${c} vs blade ${k}`).toBeLessThan(LEAGUECRAFT_IRIS);
       }
     }
+    // chamber + halo (r + 3.5, half its 3-unit stroke) + hinge jewels (3.4) all stay clear of the role rings' inner edge (76 - 9 = 67)
+    expect(R + 3.5 + 1.5, "halo").toBeLessThan(76 - 9);
+    expect(R + 3.4, "hinge jewels").toBeLessThan(76 - 9);
     expect(R).toBeLessThan(LENS_R);
     expect(MYSTERY_CHAMPION).toBe("Lux");
   });
