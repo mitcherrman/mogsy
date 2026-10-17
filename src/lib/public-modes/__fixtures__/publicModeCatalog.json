@@ -1,0 +1,462 @@
+{
+  "contract": "public_game_modes.catalog.v1",
+  "modes": [
+    {
+      "id": "time_trial",
+      "order": 1,
+      "title": "Time Trial",
+      "theme": "Speed",
+      "summary": "Answer as many questions as you can on a 90-second clock. The clock only runs while a question is waiting for your answer.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "daily_stage",
+        "stage_kind": "time_trial",
+        "min_plan_version": 5
+      },
+      "scoring": {
+        "summary": "Your result is the number of questions you answer correctly before the clock runs out. It never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "time_trial",
+      "report_id": "time_trial",
+      "rules": []
+    },
+    {
+      "id": "survival",
+      "order": 2,
+      "title": "Survival",
+      "theme": "Endurance",
+      "summary": "Keep answering until you make three mistakes. A wrong answer or a timeout costs a strike.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "daily_stage",
+        "stage_kind": "survival",
+        "min_plan_version": 5
+      },
+      "scoring": {
+        "summary": "Your result is the number of questions you answer correctly before your third strike. It never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "survival",
+      "report_id": "survival",
+      "rules": []
+    },
+    {
+      "id": "roster_lock",
+      "order": 3,
+      "title": "Roster Lock",
+      "theme": "Pro Play",
+      "summary": "Rebuild a historical pro team: seat each of its five players in the lane they played.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each board scores 2 points only when all five players are in their own lanes; a partly right board scores nothing. A correct board locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "roster_lock",
+      "report_id": "roster_lock",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Three teams against a bot. You have 45 seconds for each board."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Ten players are dealt, starters and bench mixed together. Seat five in the Top, Jungle, Mid, Bot and Support positions, then Lock."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each board, the real lineup is shown with the series it comes from."
+        }
+      ]
+    },
+    {
+      "id": "draft_memory",
+      "order": 4,
+      "title": "Draft Memory",
+      "theme": "Pro Play",
+      "summary": "Recall a historical pro draft: seat each of its five champions in the position it was played.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each board scores 2 points only when all five champions are in their own positions; a partly right board scores nothing. A correct board locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "draft_memory",
+      "report_id": "draft_memory",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Three drafts against a bot. You have 45 seconds for each board."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Ten champions are dealt. Seat the five this team played in the Top, Jungle, Mid, Bot and Support positions, then Lock."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each board, the real draft is shown with the game it comes from."
+        }
+      ]
+    },
+    {
+      "id": "chronoscope",
+      "order": 5,
+      "title": "Chronoscope",
+      "theme": "Laning",
+      "summary": "Scrub a lane's timeline wave by wave and stop on the first wave where the stated condition comes true.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each objective scores 2 points only when you lock the exact first wave; any other wave scores nothing. A correct wave locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "chronoscope",
+      "report_id": "chronoscope",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Three objectives against a bot, such as the first wave where a duo laner reaches level 3. You have 30 seconds for each."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Scrub through the wave checkpoints. Each one shows the wave, the level after it and the lane's total XP. Lock the first wave where the objective is true."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each objective, the correct wave and the XP that proves it are shown. Timing is to the wave, not the exact minion."
+        }
+      ]
+    },
+    {
+      "id": "match_grid",
+      "order": 6,
+      "title": "Match Grid",
+      "theme": "Runes",
+      "summary": "Seat each rune under the rune tree it belongs to.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each board scores 2 points only when every rune is under its own tree; a partly right board scores nothing. A correct board locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "match_grid",
+      "report_id": "match_grid",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Three boards against a bot: 3 rune trees, then 4, then 5. You have 45 seconds for each board."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Seat every rune under a tree, then Lock. Many runes can share one tree."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each board, every rune's real tree is shown."
+        }
+      ]
+    },
+    {
+      "id": "reconstruct",
+      "order": 7,
+      "title": "Reconstruct",
+      "theme": "Items",
+      "summary": "Rebuild a legendary item's recipe from its components.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each recipe scores 2 points only when every component is right; a partly right recipe scores nothing. A correct recipe locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "reconstruct",
+      "report_id": "reconstruct",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Three legendary items against a bot. You have 30 seconds for each."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Fill every slot of the recipe from a tray of six components, then Lock. Where a slot sits doesn't matter, and a component the recipe needs twice goes in twice."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each item, the real recipe is shown, with each component's own recipe beneath it."
+        }
+      ]
+    },
+    {
+      "id": "order_forge",
+      "order": 8,
+      "title": "Order Forge",
+      "theme": "Ordering",
+      "summary": "Put champions in order by a stat, then items by gold cost.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "ranked_match",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each order scores 2 points only when all five cards are in the right place; a partly right order scores nothing. A correct order locked strictly before the bot's earns 1 more. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "order_forge",
+      "report_id": "order_forge",
+      "rules": [
+        {
+          "heading": "The match",
+          "body": "Two boards against a bot: five champions by Health at level 18, then five items by gold cost. You have 30 seconds for each."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Drag the cards, or use the arrows, into the order the board asks for, then Lock."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each board, the correct order is shown with every card's value."
+        }
+      ]
+    },
+    {
+      "id": "rangefinder",
+      "order": 9,
+      "title": "Rangefinder",
+      "theme": "Abilities",
+      "summary": "Drag the target to an ability's exact cast range on the targeting board.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "An ability counts as exact only when you stop on its exact cast range; otherwise the reveal says short or long, and by how many units. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "rangefinder",
+      "report_id": "rangefinder",
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Ten abilities, one at a time. The board is marked every 25 units, from 100 to 6000."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Drag the target to where the ability's cast range ends, then Lock. Each ability locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each lock, the real cast range is shown with its source."
+        }
+      ]
+    },
+    {
+      "id": "glyph_press",
+      "order": 10,
+      "title": "Glyph Press",
+      "theme": "Names",
+      "summary": "Complete a partially engraved champion, ability or item name.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Every open letter is graded right or wrong, and a name is solved only when every letter is right. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "glyph_press",
+      "report_id": "glyph_press",
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "A run of names, each with a picture clue and some letters already engraved."
+        },
+        {
+          "heading": "Soundings",
+          "body": "Up to three soundings per name: pick a letter and every place it appears is engraved for you."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Fill the open letters, then Lock. After each lock, the full name is shown."
+        }
+      ]
+    },
+    {
+      "id": "perfect_timing",
+      "order": 11,
+      "title": "Perfect Timing",
+      "theme": "Cooldowns",
+      "summary": "Time an ability's base cooldown with Start and Stop, with no number on screen.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Each stop scores up to 100 points, more the closer you are: within 3% of the real cooldown is Perfect, within 7% Great, within 15% Good, and anything further is a miss worth 0. Your time is measured in your browser, so this is practice, not a verified score. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "perfect_timing",
+      "report_id": "perfect_timing",
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Five abilities, each at a stated rank, with 0 ability haste."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Press Start, wait for the cooldown in your head, and press Stop. Each ability locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each stop, the real cooldown and how far off you were are shown."
+        }
+      ]
+    },
+    {
+      "id": "stat_drop",
+      "order": 12,
+      "title": "Stat Drop",
+      "theme": "Stats",
+      "summary": "Drop a marker where a historical stat lands on its scale.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Not graded: after you lock, the real value is revealed with how far off you were. No pass mark is applied. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "stat_drop",
+      "report_id": "stat_drop",
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Six historical stats, one at a time, each on its own scale."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Drop the marker where you think the value lands, then Lock. Each stat locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each lock, the real value and its source are shown, with your error."
+        }
+      ]
+    },
+    {
+      "id": "combat_estimate",
+      "order": 13,
+      "title": "Combat Estimate",
+      "theme": "Damage",
+      "summary": "Set the two-beam balance to the damage one hit deals.",
+      "availability": {
+        "status": "available",
+        "reason_code": null,
+        "message": null
+      },
+      "launch": {
+        "kind": "session",
+        "guests_allowed": true
+      },
+      "scoring": {
+        "summary": "Not graded: after you lock, the real damage is revealed with how far off you were. No pass mark is applied. Unrated, so it never changes your Daily score or your Ranked rating.",
+        "affects_daily_score": false,
+        "affects_ranked_rating": false
+      },
+      "rules_id": "combat_estimate",
+      "report_id": "combat_estimate",
+      "rules": [
+        {
+          "heading": "The game",
+          "body": "Six hits, one at a time: an ability, its rank, the attacker's items and the target."
+        },
+        {
+          "heading": "Your answer",
+          "body": "Set the balance to the damage one hit deals, then Lock. Each hit locks once."
+        },
+        {
+          "heading": "The reveal",
+          "body": "After each lock, the real damage is shown with the working behind it, and your error."
+        }
+      ]
+    }
+  ]
+}

@@ -21,6 +21,7 @@ vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer jwt" }),
 }));
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { RANKED_MATCH_ORIGINS } from "./matchOrigin";
 import {
@@ -51,10 +52,13 @@ let cfg: {
    *  match state. `undefined` omits the key (a backend predating it). */
   resumeHost?: string | null;
   stateHost?: string | null;
+  /** PGM2 — `payload.game_mode_id` beside the host; `undefined` omits it. */
+  gameModeId?: string | null;
 };
 
 function withHost<E extends { payload: Record<string, unknown> }>(env: E, host: string | null | undefined): E {
   if (host !== undefined) env.payload.host = host;
+  if (cfg.gameModeId !== undefined) env.payload.game_mode_id = cfg.gameModeId;
   return env;
 }
 
@@ -436,4 +440,46 @@ describe("JLIB-HOST — the persisted host decides the result screen", () => {
       expect(await screen.findByTestId("result-primary")).toHaveTextContent("Play Again");
       expect(screen.getByTestId("result-tertiary")).toHaveTextContent("Back to Leaguecraft");
     });
+});
+
+describe("PGM2 — a bonus game's result screen", () => {
+  const withQuery = (ui: React.ReactElement) => (
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {ui}
+    </QueryClientProvider>
+  );
+
+  it("names the mode, plays the SAME mode again, reviews in place, and returns to More Challenges", async () => {
+    cfg.resumeHost = "bonus_game";
+    cfg.stateHost = "bonus_game";
+    cfg.gameModeId = "match_grid";
+    const onTerminalNavigate = vi.fn();
+    const onOriginChange = vi.fn();
+    render(withQuery(<QuizRankedMatch matchId="m1" viewerUserId="userA"
+      onOriginChange={onOriginChange} onTerminalNavigate={onTerminalNavigate} />));
+    await screen.findByTestId("ranked-match-over");
+    const primary = await screen.findByTestId("result-primary");
+    await waitFor(() => expect(primary).toHaveTextContent("Play Again"));
+    expect(screen.getByTestId("result-secondary")).toHaveTextContent("Review Match");
+    expect(screen.getByTestId("result-tertiary")).toHaveTextContent("Back to More Challenges");
+    expect(document.body.textContent).toContain("Match Grid");
+    expect(document.body.textContent).not.toContain("bonus_game");
+    expect(onOriginChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: "bonus_game", href: "/quiz/more-challenges" }));
+    fireEvent.click(primary);
+    expect(onTerminalNavigate).toHaveBeenCalledWith("/quiz/more-challenges?play=match_grid");
+    fireEvent.click(screen.getByTestId("result-tertiary"));
+    expect(onTerminalNavigate).toHaveBeenLastCalledWith("/quiz/more-challenges");
+    // Bonus games are not in Ranked history: Review opens this match's details.
+    expect(onTerminalNavigate).not.toHaveBeenCalledWith("/quiz#history");
+  });
+
+  it("an ordinary match never shows the bonus actions", async () => {
+    cfg.resumeHost = null;
+    cfg.stateHost = null;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" onTerminalNavigate={vi.fn()} />);
+    await screen.findByTestId("ranked-match-over");
+    expect(await screen.findByTestId("result-tertiary")).toHaveTextContent("Back to Leaguecraft");
+    expect(screen.queryByText("Back to More Challenges")).toBeNull();
+  });
 });

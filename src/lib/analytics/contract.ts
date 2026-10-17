@@ -158,6 +158,11 @@ export const PRODUCT_EVENTS = [
   "playtest_stage_checkpoint_reached",
   "playtest_feedback_submitted",
   "playtest_completed",
+  // PGM1 — the public More Challenges catalog. Presentation events only, keyed
+  // by the public game_mode_id; each mode's gameplay keeps its own events.
+  // Metadata is bounded to source / game_mode_id / action.
+  "more_challenges_viewed",
+  "more_challenges_mode_selected",
 ] as const;
 
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];

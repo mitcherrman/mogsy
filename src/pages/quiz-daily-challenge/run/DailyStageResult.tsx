@@ -84,6 +84,7 @@ import { ResultHero } from "@/components/game-results/ResultHero";
 import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, hasMainDaily } from "@/lib/daily-challenge/run/contracts";
+import { dailySection } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyStageResult } from "@/lib/daily-challenge/run/stageResultModel";
 import { DailyLadder, StageTag } from "./StageTag";
 
@@ -102,7 +103,7 @@ export interface StageResultPlacementContext {
 export type StageResultPlacement = (ctx: StageResultPlacementContext) => ReactNode;
 
 export function DailyStageResult({
-  run, stage, error, onRetry, busy, onProceed, onDone, placement,
+  run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges,
 }: {
   run: DailyRun;
   stage: DailyStage;
@@ -114,6 +115,11 @@ export function DailyStageResult({
   /** DV2-P2A, v5+ only — leave the Daily page for the hub. Presentation only. */
   onDone?: () => void;
   placement?: StageResultPlacement;
+  /**
+   * PGM1, v5+ only — back to the public More Challenges catalog. Offered on a
+   * bonus stage's result, so a player who picked the mode there returns there.
+   */
+  onMoreChallenges?: () => void;
 }) {
   const model = buildDailyStageResult(run, stage);
   const settled = stage.result !== null;
@@ -186,6 +192,14 @@ export function DailyStageResult({
           disabled: !settled || !onProceed,
           testId: "daily-stage-result-continue",
         },
+        ...(main && onMoreChallenges && dailySection(stage) === "more" ? {
+          secondary: {
+            label: "More Challenges",
+            onClick: onMoreChallenges,
+            disabled: !settled,
+            testId: "daily-stage-result-more-challenges",
+          },
+        } : {}),
         ...(main && onDone ? {
           tertiary: {
             label: run.status === "completed" ? "Back to Leaguecraft" : "Done for now",

@@ -12,9 +12,13 @@
  * again: up to 3 retries with backoff, on a network failure or a 5xx only. A
  * 4xx is the server's answer and is never retried. `deal` mints new rounds on
  * every call and is never retried automatically.
+ *
+ * PT5 adds the Mastery Slice pair (`dealSlice`, `lockSlice`) under the same
+ * policy: the slice lock is idempotent per stage, the slice deal is not.
  */
 import { ADMIN_API_BASE_URL, buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
 import { MAX_ELAPSED_MS, PtContractError, parseDeal, parseRelease, type PtDeal, type PtRelease } from "./contract";
+import { parseSliceDeal, parseSliceRelease, type PtSliceDeal, type PtSliceRelease } from "./sliceContract";
 
 export const PERFECT_TIMING_API = "/api/admin/perfect-timing";
 
@@ -72,31 +76,61 @@ function read<T>(parse: (raw: unknown) => T, raw: unknown): T {
   }
 }
 
+/** PT5: re-deal the SAME ability from a stage after its slice expired (the server refuses a changed revision). */
+export interface PtSliceResume {
+  champion: string;
+  slot: string;
+  from_stage: number;
+  ability_revision_id: string;
+  item_source_revision: string;
+}
+
 export function perfectTimingApi(options: PerfectTimingApiOptions = {}) {
   const fetchImpl: Fetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
 
+  /** Send an idempotent lock; retry a network failure or 5xx only, and check the echo. */
+  async function lockWithRetry<T extends { round_id: string; elapsed_ms: number }>(
+    path: string, roundId: string, elapsedMs: number, parse: (raw: unknown) => T,
+  ): Promise<T> {
+    if (!Number.isInteger(elapsedMs) || elapsedMs < 0 || elapsedMs > MAX_ELAPSED_MS) {
+      throw new PerfectTimingApiError("That time cannot be submitted.", null, "PT_CLIENT_RANGE");
+    }
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const release = read(parse, await post(path, { elapsed_ms: elapsedMs }, fetchImpl));
+        if (release.round_id !== roundId || release.elapsed_ms !== elapsedMs) {
+          throw new PerfectTimingApiError("Backend released a different round or time.", 200, "PT_CONTRACT");
+        }
+        return release;
+      } catch (err) {
+        const transient = err instanceof PerfectTimingApiError && err.transient;
+        if (!transient || attempt >= LOCK_RETRY_DELAYS_MS.length) throw err;
+        await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
+      }
+    }
+  }
+
   return {
     deal: async (count: number): Promise<PtDeal> => read(parseDeal, await post("/deal", { count }, fetchImpl)),
 
-    lock: async (roundId: string, elapsedMs: number): Promise<PtRelease> => {
-      if (!Number.isInteger(elapsedMs) || elapsedMs < 0 || elapsedMs > MAX_ELAPSED_MS) {
-        throw new PerfectTimingApiError("That time cannot be submitted.", null, "PT_CLIENT_RANGE");
+    lock: (roundId: string, elapsedMs: number): Promise<PtRelease> =>
+      lockWithRetry(`/rounds/${encodeURIComponent(roundId)}/lock`, roundId, elapsedMs, parseRelease),
+
+    dealSlice: async (resume?: PtSliceResume): Promise<PtSliceDeal> => {
+      const deal = read(parseSliceDeal, await post("/slices/deal", resume ? { resume } : {}, fetchImpl));
+      if (resume && (deal.champion !== resume.champion || deal.slot !== resume.slot || deal.start_stage !== resume.from_stage)) {
+        // A resume is the SAME ability from the same stage, or nothing.
+        throw new PerfectTimingApiError("Backend resumed a different slice.", 200, "PT_CONTRACT");
       }
-      const path = `/rounds/${encodeURIComponent(roundId)}/lock`;
-      for (let attempt = 0; ; attempt++) {
-        try {
-          const release = read(parseRelease, await post(path, { elapsed_ms: elapsedMs }, fetchImpl));
-          if (release.round_id !== roundId || release.elapsed_ms !== elapsedMs) {
-            throw new PerfectTimingApiError("Backend released a different round or time.", 200, "PT_CONTRACT");
-          }
-          return release;
-        } catch (err) {
-          const transient = err instanceof PerfectTimingApiError && err.transient;
-          if (!transient || attempt >= LOCK_RETRY_DELAYS_MS.length) throw err;
-          await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
-        }
-      }
+      return deal;
+    },
+
+    lockSlice: async (sliceId: string, roundId: string, elapsedMs: number): Promise<PtSliceRelease> => {
+      const path = `/slices/${encodeURIComponent(sliceId)}/rounds/${encodeURIComponent(roundId)}/lock`;
+      const release = await lockWithRetry(path, roundId, elapsedMs, parseSliceRelease);
+      if (release.slice_id !== sliceId) throw new PerfectTimingApiError("Backend released a different slice.", 200, "PT_CONTRACT");
+      return release;
     },
   };
 }

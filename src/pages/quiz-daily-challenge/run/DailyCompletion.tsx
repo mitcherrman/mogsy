@@ -24,6 +24,7 @@ import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { hasMainDaily, isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
 import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { skippedStageNote, stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
+import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import { StageTag } from "./StageTag";
 
@@ -105,10 +106,21 @@ export function DailyCompletion({ run, saveRequired = false }: {
             ))}
           </ol>
         )}
-        <Link to="/quiz" data-testid="daily-run-home"
-          className="pt-3 text-sm text-muted-foreground underline">
-          Back to Leaguecraft
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-3">
+          {/* PGM1 — the bonus modes outlive the day's run: a finished Daily
+              can still go on to the public catalog. v5+ only, where there is
+              a "More Challenges" at all. */}
+          {main && (
+            <Link to={MORE_CHALLENGES_ROUTE} state={moreChallengesState("daily")} data-testid="daily-run-more-challenges"
+              className="text-sm text-[#f0d78c] underline">
+              More Challenges
+            </Link>
+          )}
+          <Link to="/quiz" data-testid="daily-run-home"
+            className="text-sm text-muted-foreground underline">
+            Back to Leaguecraft
+          </Link>
+        </div>
       </div>
       {/* Portaled: the beat section is its own stacking context, which would
           trap the gate's fixed overlay beneath the recap. */}

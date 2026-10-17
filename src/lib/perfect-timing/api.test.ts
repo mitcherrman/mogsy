@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import capture from "./__fixtures__/captureV1.json";
+import sliceCapture from "./__fixtures__/sliceCaptureV1.json";
 
 vi.mock("@/lib/admin-auth/adminCredentials", () => ({
   ADMIN_API_BASE_URL: "http://backend.test",
@@ -78,5 +79,52 @@ describe("perfectTimingApi", () => {
     const { api, fetchImpl } = client();
     await expect(api.lock(LOCK.round_id, v)).rejects.toMatchObject({ code: "PT_CLIENT_RANGE" });
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe("perfectTimingApi — PT5 Mastery Slice", () => {
+  const SLICE = sliceCapture.deal.response;
+  const SLOCK = sliceCapture.locks[0];
+  const URL_BASE = "http://backend.test/api/admin/perfect-timing";
+
+  it("deals a slice with an empty body, never retried", async () => {
+    const { api, fetchImpl } = client(res(200, SLICE));
+    const d = await api.dealSlice();
+    expect(d.champion).toBe("Ezreal");
+    expect(fetchImpl).toHaveBeenCalledWith(`${URL_BASE}/slices/deal`, expect.objectContaining({ body: "{}" }));
+    const again = client(res(503, { detail: "busy" }));
+    await expect(again.api.dealSlice()).rejects.toMatchObject({ status: 503 });
+    expect(again.fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a resume and refuses one that comes back as another ability or stage", async () => {
+    const resume = sliceCapture.resume.request.resume;
+    const ok = client(res(200, sliceCapture.resume.response));
+    await expect(ok.api.dealSlice(resume)).resolves.toMatchObject({ start_stage: 3, champion: "Ezreal" });
+    expect(ok.fetchImpl).toHaveBeenCalledWith(`${URL_BASE}/slices/deal`, expect.objectContaining({ body: JSON.stringify({ resume }) }));
+    const other = client(res(200, sliceCapture.resume.response));
+    await expect(other.api.dealSlice({ ...resume, from_stage: 2 })).rejects.toMatchObject({ code: "PT_CONTRACT" });
+  });
+
+  it("locks a slice stage on its own route, retrying a 5xx with the same stop", async () => {
+    const { api, fetchImpl, sleep } = client(res(503, {}), "network", res(200, SLOCK.response));
+    const r = await api.lockSlice(SLOCK.slice_id, SLOCK.round_id, SLOCK.request.elapsed_ms);
+    expect(r.target_ms).toBe(5500);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(sleep.mock.calls.map((c) => c[0])).toEqual(LOCK_RETRY_DELAYS_MS.slice(0, 2));
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      `${URL_BASE}/slices/${SLOCK.slice_id}/rounds/${SLOCK.round_id}/lock`,
+      expect.objectContaining({ body: JSON.stringify({ elapsed_ms: SLOCK.request.elapsed_ms }) }),
+    );
+  });
+
+  it("never retries a slice 4xx and refuses a release for another slice", async () => {
+    const closed = client(res(409, { detail: { error: { code: "PT_STAGE_CLOSED", message: "closed" } } }));
+    await expect(closed.api.lockSlice(SLOCK.slice_id, SLOCK.round_id, SLOCK.request.elapsed_ms))
+      .rejects.toMatchObject({ status: 409, code: "PT_STAGE_CLOSED" });
+    expect(closed.fetchImpl).toHaveBeenCalledTimes(1);
+    const wrong = client(res(200, SLOCK.response));
+    await expect(wrong.api.lockSlice(`pts_${"e".repeat(32)}`, SLOCK.round_id, SLOCK.request.elapsed_ms))
+      .rejects.toBeInstanceOf(PerfectTimingApiError);
   });
 });

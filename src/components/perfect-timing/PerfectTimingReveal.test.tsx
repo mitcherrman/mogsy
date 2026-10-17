@@ -51,17 +51,14 @@ describe("PerfectTimingReveal — tier, points, provenance", () => {
     expect(screen.getByTestId("pt-points")).toHaveTextContent("+0");
   });
 
-  it("shows the authority's progression and rank, and the base-cooldown premise", () => {
+  it("shows the authority's progression and rank, ", () => {
     render(<PerfectTimingReveal reveal={reveal({ cooldownRaw: "9 / 8 / 7 / 6 / 5", rank: 3 })} onNext={() => {}} />);
-    const evidence = screen.getByTestId("mig-evidence");
-    expect(evidence).toHaveTextContent("Cooldown 9 / 8 / 7 / 6 / 5 s · rank 3");
-    expect(evidence).toHaveTextContent(/base cooldown/i);
-    expect(evidence).toHaveTextContent(/0 ability haste/i);
+    expect(screen.getByTestId("pt-evidence")).toHaveTextContent("Cooldown 9 / 8 / 7 / 6 / 5 s · rank 3");
   });
 
   it("says 'any rank' for a rank-invariant reveal", () => {
     render(<PerfectTimingReveal reveal={DEMO_REVEALS.exact} onNext={() => {}} />);
-    expect(screen.getByTestId("mig-evidence")).toHaveTextContent(/any rank/);
+    expect(screen.getByTestId("pt-evidence")).toHaveTextContent(/any rank/);
   });
 
   it("flags an unverified window and only then", () => {
@@ -70,6 +67,14 @@ describe("PerfectTimingReveal — tier, points, provenance", () => {
     expect(screen.getByTestId("pt-reveal")).toHaveAttribute("data-plausible", "false");
     rerender(<PerfectTimingReveal reveal={DEMO_REVEALS.early} onNext={() => {}} />);
     expect(screen.queryByTestId("pt-unverified")).toBeNull();
+  });
+});
+
+describe("PerfectTimingReveal — you against true", () => {
+  it("prints both durations as plates, the server's figures verbatim", () => {
+    render(<PerfectTimingReveal reveal={reveal({ elapsedMs: 6830, targetMs: 7000, errorMs: -170, absErrorMs: 170 })} onNext={() => {}} />);
+    expect(screen.getByTestId("pt-you-time")).toHaveTextContent("6.83 s");
+    expect(screen.getByTestId("pt-true-time")).toHaveTextContent("7.00 s");
   });
 });
 
@@ -135,6 +140,51 @@ describe("PerfectTimingReveal — motion and the way on", () => {
     expect(document.activeElement).toBe(next);
     fireEvent.click(next);
     expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets Space or Enter advance once the choreography has settled, and only once", () => {
+    vi.useFakeTimers();
+    const onNext = vi.fn();
+    render(<PerfectTimingReveal reveal={DEMO_REVEALS.early} onNext={onNext} />);
+    // During the reveal the keys do nothing: a double-tap on the stop can never skip it.
+    fireEvent.keyDown(document.body, { key: " " });
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(onNext).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(REVEAL_BEATS.focus + 1); });
+    // A held key (repeat) never advances.
+    fireEvent.keyDown(document.body, { key: " ", repeat: true });
+    expect(onNext).not.toHaveBeenCalled();
+    const space = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    document.body.dispatchEvent(space);
+    expect(space.defaultPrevented).toBe(true);
+    expect(onNext).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a key aimed at the button to the button, so one press advances exactly once", () => {
+    vi.useFakeTimers();
+    const onNext = vi.fn();
+    render(<PerfectTimingReveal reveal={DEMO_REVEALS.early} onNext={onNext} />);
+    act(() => { vi.advanceTimersByTime(REVEAL_BEATS.focus + 1); });
+    const next = screen.getByTestId("pt-next");
+    expect(next).toHaveFocus();
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    next.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(false);
+    expect(onNext).not.toHaveBeenCalled();
+    fireEvent.click(next);
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops listening for keys when it unmounts", () => {
+    vi.useFakeTimers();
+    const onNext = vi.fn();
+    const { unmount } = render(<PerfectTimingReveal reveal={DEMO_REVEALS.early} onNext={onNext} />);
+    act(() => { vi.advanceTimersByTime(REVEAL_BEATS.focus + 1); });
+    unmount();
+    fireEvent.keyDown(document.body, { key: " " });
+    expect(onNext).not.toHaveBeenCalled();
   });
 
   it("takes a different label for the last round", () => {

@@ -130,6 +130,19 @@ export interface ModuleViewportProps {
  * members the shell actually consumes today are defined, so nothing here is
  * speculative or untested.
  */
+/** PGM2 — see `ModuleRenderer.reportBoard`. Every string is display text. */
+export interface ModuleBoardReport {
+  prompt: string;
+  /** The entries dealt, in display order. */
+  choices?: string[];
+  /** The viewer's locked board, one line per entry; null before a lock. */
+  selected?: string | null;
+  /** The correct board — ONLY from a reveal the server sent this viewer. */
+  canonical?: string | null;
+  /** Where the correct board comes from — reveal-only, like `canonical`. */
+  evidence?: string | null;
+}
+
 export interface ModuleRenderer {
   moduleId: string;
   moduleVersion: number;
@@ -176,6 +189,14 @@ export interface ModuleRenderer {
    * and drives its viewport from `publicRound` directly.
    */
   projectQuestion: (pub: PublicRoundView) => QuestionView | null;
+  /**
+   * PGM2 — what a BOARD module (no multiple-choice question) says about the
+   * board on screen when the player reports it: its prompt, the entries, the
+   * viewer's locked board, and — ONLY once the server has revealed it to this
+   * viewer — the correct board and its evidence. Absent: the module files no
+   * board report (a question module reports through `projectQuestion`).
+   */
+  reportBoard?: (pub: PublicRoundView) => ModuleBoardReport | null;
   /** Short human summary of the pending selection, for the review panel. */
   summaryLabel: (pub: PublicRoundView, selection: unknown) => string | null;
 }

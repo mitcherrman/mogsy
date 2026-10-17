@@ -40,6 +40,9 @@ export const POLICY_KEYS = {
   queueDailyEnabled: "queue_daily_enabled",
   queueRoleEnabled: "queue_role_challenge_enabled",
   queueRankedEnabled: "queue_ranked_enabled",
+  // PGM2 — the public bonus games (More Challenges). Independent of Daily
+  // and Ranked: the backend's `queue_mode_enabled("bonus")`.
+  queueBonusGamesEnabled: "queue_bonus_games_enabled",
 } as const;
 
 export interface PlatformPolicy {
@@ -48,6 +51,8 @@ export interface PlatformPolicy {
     daily: boolean;
     role: boolean;
     ranked: boolean;
+    /** PGM2 — new bonus game starts (More Challenges). */
+    bonus: boolean;
   };
   combatSim: {
     /** Non-Pro users must possess/spend Combat Sim tokens to run a simulation. */
@@ -174,7 +179,7 @@ export interface PlatformPolicy {
  * be a regression, and a missing or malformed row correctly means "no badge".
  */
 export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
-  queues: { daily: true, role: true, ranked: true },
+  queues: { daily: true, role: true, ranked: true, bonus: true },
   combatSim: { tokensRequiredForNonPro: true },
   navigation: { globalNavbarVisible: true },
   community: { showBotLabels: false },
@@ -237,6 +242,9 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
         break;
       case POLICY_KEYS.queueRankedEnabled:
         policy.queues.ranked = readEnabled(row.value, DEFAULT_PLATFORM_POLICY.queues.ranked);
+        break;
+      case POLICY_KEYS.queueBonusGamesEnabled:
+        policy.queues.bonus = readEnabled(row.value, DEFAULT_PLATFORM_POLICY.queues.bonus);
         break;
       case POLICY_KEYS.combatSimTokensRequiredForNonPro:
         policy.combatSim.tokensRequiredForNonPro = readEnabled(

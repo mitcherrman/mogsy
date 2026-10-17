@@ -25,7 +25,7 @@
  * Once the main Daily is complete, leaving is guarded only while an optional
  * child is live (`shouldGuardDailyLeave`).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -42,7 +42,8 @@ import { DailyStageResult, type StageResultPlacement } from "./DailyStageResult"
 import { DailyMainResult } from "./DailyMainResult";
 import { DailyCompletion } from "./DailyCompletion";
 import { useDailyRun } from "./useDailyRun";
-import { hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
+import { hasDailyContinueIntent, hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
+import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
 import { dailyLeaveCopy, shouldBlockDailyNavigation, shouldGuardDailyLeave } from "./dailyLeaveContract";
 import { hasMainDaily } from "@/lib/daily-challenge/run/contracts";
 import { isDailyOpeningStage } from "@/lib/daily-challenge/run/flow";
@@ -88,9 +89,11 @@ export function DailyRunPage({
   // Read the Play intent ONCE, then drop it from history so Back/Reload never
   // re-sends a start the player did not press again.
   const [routeStartIntent] = useState(() => hasDailyStartIntent(location.state));
+  // PGM1 — a More Challenges card's Play for a bonus stage: go on into it.
+  const [routeContinueIntent] = useState(() => hasDailyContinueIntent(location.state));
   const [autoStart] = useState(() => startOnMount || routeStartIntent);
   useEffect(() => {
-    if (routeStartIntent) navigate(location.pathname, { replace: true, state: null });
+    if (routeStartIntent || routeContinueIntent) navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const dc = useDailyRun(transport, autoStart);
@@ -109,6 +112,21 @@ export function DailyRunPage({
 
   const run = dc.run;
   const flow = dc.flow;
+  // PGM1 — the continue intent is spent on the FIRST optional-entry this mount
+  // reaches, and only there: a live child still recovers as it always did, and
+  // the server's stage order is never skipped (the card offered Play only for
+  // the run's current stage).
+  const continueSpent = useRef(!routeContinueIntent);
+  const { enterOptional } = dc;
+  useEffect(() => {
+    if (continueSpent.current || !flow) return;
+    if (flow.phase === "optional-entry") {
+      continueSpent.current = true;
+      enterOptional();
+    } else if (flow.phase !== "daily-intro") {
+      continueSpent.current = true;
+    }
+  }, [flow, enterOptional]);
   const guard = useTransactionalLeaveGuard({
     active: shouldGuardDailyLeave(run, flow, dc.optionalLaunchPending),
     kind: "daily_run",
@@ -118,6 +136,8 @@ export function DailyRunPage({
   // DV2-P2A — "Done for now": leave for the hub. Presentation only; the run
   // stays open on the server and resumes from the hub.
   const doneForNow = () => navigate("/quiz");
+  // PGM1 — the public More Challenges catalog, where the bonus modes live.
+  const toMoreChallenges = () => navigate(MORE_CHALLENGES_ROUTE, { state: moreChallengesState("daily") });
   // B7 — the stage's last server-reported strike count (see `strikesSeen`).
   const strikesFloor = flow?.stage ? dc.strikesSeen[flow.stage.id] ?? null : null;
 
@@ -207,10 +227,12 @@ export function DailyRunPage({
       const beat = shell(
         main ? (
           <DailyMainResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
-            onProceed={onProceed} onDone={doneForNow} placement={stageResultPlacement} />
+            onProceed={onProceed} onDone={doneForNow} placement={stageResultPlacement}
+            onMoreChallenges={flow.phase === "stage-result" ? toMoreChallenges : undefined} />
         ) : (
           <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={hasMainDaily(run) ? doneForNow : undefined}
+            onMoreChallenges={hasMainDaily(run) && flow.phase === "stage-result" ? toMoreChallenges : undefined}
             placement={stageResultPlacement} />
         ),
         <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} strikesFloor={strikesFloor} />);

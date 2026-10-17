@@ -19,28 +19,36 @@
  * `PERFECT_TIMING_LAB_ENABLED`. The page never holds a target before the
  * server releases it: the deal reader refuses a payload that carries one.
  *
+ * PT5: the page is now a two-mode shell. It opens on a mode pick (or the
+ * `?run=random|slice` it was linked with): RANDOM RUN is the PT4.4 five-round
+ * game below, unchanged; MASTERY SLICE (`MasterySliceRun`) times one ability
+ * through three connected stages. Results offer Play again (same mode) and
+ * Change mode.
+ *
  * WHAT IT CLAIMS. Elapsed time is measured in this browser and is NOT
  * tamper-proof; the server grades it and reports an upper-bound plausibility
  * verdict only. Scoring constants are playtest starting values. Nothing is
- * stored. Not part of Quiz, Daily or Ranked.
+ * stored. Not part of Quiz, Daily or Ranked. None of this is printed on the
+ * screen (PT4.4): the mode is a fixed, non-scrolling frame with no disclaimers.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { FlaskConical } from "lucide-react";
-import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
+import { Link, useSearchParams } from "react-router-dom";
 import { PerfectTimingArena } from "@/components/perfect-timing/PerfectTimingArena";
 import { PerfectTimingResults } from "@/components/perfect-timing/PerfectTimingResults";
+import { PerfectTimingModeSelect, type PtMode } from "@/components/perfect-timing/PerfectTimingModeSelect";
+import { PerfectTimingBar, PerfectTimingScreen } from "@/components/perfect-timing/PerfectTimingScreen";
 import { PerfectTimingApiError, perfectTimingApi, type PerfectTimingApi } from "@/lib/perfect-timing/api";
 import { toRevealView, type PtDeal, type PtDealRound } from "@/lib/perfect-timing/contract";
+import { useSplashManifest } from "@/lib/perfect-timing/useSplashManifest";
 import { useTimingEngine } from "@/lib/perfect-timing/useTimingEngine";
-import type { InterruptReason } from "@/lib/perfect-timing/timingEngine";
 import type { PtPhase, PtRevealView, PtRunHud, PtRunSummary, PtStageModel, PtTier } from "@/lib/perfect-timing/viewModel";
+import { MasterySliceRun } from "./MasterySliceRun";
 import { toRoundView } from "./roundView";
+import { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS, VOID_TEXT, dealErrorText } from "./runShared";
 
 export const ROUNDS_PER_RUN = 5;
 
-/** How long the stop reads "Locked" before it reads "checking the archive". */
-export const SUBMITTING_DELAY_MS = 250;
+export { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS };
 
 interface Slot {
   wire: PtDealRound;
@@ -63,30 +71,73 @@ type Stage =
   | { kind: "lock-error"; roundId: string; elapsedMs: number; message: string; retryable: boolean }
   | { kind: "complete" };
 
-const VOID_TEXT: Record<InterruptReason, string> = {
-  hidden: "Run interrupted — round voided. The tab was hidden while timing.",
-  pagehide: "Run interrupted — round voided. The page was left while timing.",
-  clock: "Run interrupted — round voided. The browser clock jumped.",
-  timeout: "Run interrupted — round voided. Over ten minutes passed.",
-};
-
 const EXPIRED_TEXT = "Round expired — dealing a fresh one.";
-
-function dealErrorText(status: number | null, message: string): string {
-  if (status === 404) return "The Perfect Timing lab is not enabled on this backend (PERFECT_TIMING_LAB_ENABLED).";
-  if (status === 401 || status === 403) return "This backend did not accept an owner session for the Perfect Timing lab.";
-  return message;
-}
 
 const isExpired = (r: PtDealRound) => Date.parse(r.expires_at) <= Date.now();
 
-export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead }: {
+/**
+ * PGM2 — the public bonus game host (More Challenges). Absent on the owner
+ * lab, which keeps every word and action it had. A public host plays the
+ * Random Run directly: no mode pick, no slice runs.
+ */
+export interface PerfectTimingPublicHost {
+  /** Player-facing copy for a failed deal (never a flag or an owner session). */
+  dealErrorText: (status: number | null, message: string) => string;
+  /** The results' way out, e.g. back to More Challenges. */
+  exitLabel: string;
+  onExit: () => void;
+  /** The round on screen and its reveal (null until locked), for reports. */
+  onRound?: (round: PtDealRound | null, reveal: PtRevealView | null, index: number) => void;
+}
+
+const RUN_PARAM = "run";
+const isMode = (v: string | null): v is PtMode => v === "random" || v === "slice";
+
+export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, initialMode, publicHost }: {
   api?: PerfectTimingApi;
   exitTo?: string;
-  /** PT4.1: launched from Ranked → Playtests; heads the chrome row and replaces "Exit lab". */
+  /** PT4.1: launched from Ranked → Playtests; heads the top bar and replaces "Exit". */
   lead?: ReactNode;
+  /** PT5: skip the mode pick (tests, links). `?run=random|slice` does the same. */
+  initialMode?: PtMode;
+  publicHost?: PerfectTimingPublicHost;
 } = {}) {
   const api = useMemo(() => injected ?? perfectTimingApi(), [injected]);
+  const [params, setParams] = useSearchParams();
+  const linked = params.get(RUN_PARAM);
+  const [mode, setMode] = useState<PtMode | null>(initialMode ?? (isMode(linked) ? linked : null));
+  const pick = useCallback((m: PtMode | null) => {
+    setMode(m);
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      if (m) next.set(RUN_PARAM, m); else next.delete(RUN_PARAM);
+      return next;
+    }, { replace: true });
+  }, [setParams]);
+  const changeMode = useCallback(() => pick(null), [pick]);
+  const leadNode = lead ?? <Link to={exitTo} className="pt-back">Exit</Link>;
+
+  if (publicHost) return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} publicHost={publicHost} />;
+
+  if (mode === "random") return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} />;
+  if (mode === "slice") return <MasterySliceRun api={api} lead={leadNode} onChangeMode={changeMode} />;
+  return (
+    <PerfectTimingScreen bar={<div className="pt-bar" data-testid="pt-chrome">{leadNode}</div>} stage="mode">
+      <PerfectTimingModeSelect onPick={pick} />
+    </PerfectTimingScreen>
+  );
+}
+
+/** The PT4.4 Random Run: five distinct abilities, base cooldowns, one at a time. Unchanged by PT5. */
+function RandomRun({ api, lead, onChangeMode, publicHost }: {
+  api: PerfectTimingApi;
+  lead: ReactNode;
+  onChangeMode: () => void;
+  publicHost?: PerfectTimingPublicHost;
+}) {
+  const publicHostRef = useRef(publicHost);
+  publicHostRef.current = publicHost;
+  const manifest = useSplashManifest();
   const [run, setRun] = useState<Run | null>(null);
   const [index, setIndex] = useState(0);
   const [stage, setStage] = useState<Stage>({ kind: "dealing", message: null });
@@ -140,7 +191,9 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
 
   // PT4.3: Space/Enter work anywhere on the page while a round is in play,
   // not only with focus on the seal (owner report from production).
-  const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play" });
+  const keyGuardUntil = useRef(0);
+  const keyGuard = useCallback(() => performance.now() < keyGuardUntil.current, []);
+  const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play", keyGuard });
   const { arm, reset } = engine;
 
   // ---------------------------------------------------------------- rounds
@@ -175,7 +228,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     } catch (err) {
       if (!alive.current || token !== runToken.current) return;
       const e = err instanceof PerfectTimingApiError ? err : null;
-      setStage({ kind: "deal-error", message: dealErrorText(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
+      setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
     }
   }, [api, index, reset, commitRun, beginRound]);
   const replaceRef = useRef(replace);
@@ -198,7 +251,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     } catch (err) {
       if (!alive.current || token !== runToken.current) return;
       const e = err instanceof PerfectTimingApiError ? err : null;
-      setStage({ kind: "deal-error", message: dealErrorText(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
+      setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
     }
   }, [api, reset, commitRun, beginRound]);
 
@@ -230,6 +283,11 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     else { currentRoundId.current = null; setStage({ kind: "complete" }); }
   }, [index, beginRound]);
 
+  const onReveal = useCallback((source?: "key") => {
+    if (source === "key") keyGuardUntil.current = performance.now() + ADVANCE_KEY_GUARD_MS;
+    advance();
+  }, [advance]);
+
   const voidAndAdvance = useCallback(() => {
     const r = runRef.current;
     const roundId = r?.slots[index]?.wire.round_id;
@@ -248,7 +306,7 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   const slots = run?.slots ?? [];
   const total = slots.length || ROUNDS_PER_RUN;
   const slot = slots[index] ?? null;
-  const roundView = useMemo(() => (slot ? toRoundView(slot.wire, index, total) : null), [slot, index, total]);
+  const roundView = useMemo(() => (slot ? toRoundView(slot.wire, index, total, manifest) : null), [slot, index, total, manifest]);
 
   const phase: PtPhase = (() => {
     switch (stage.kind) {
@@ -279,12 +337,20 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
     press: engine.press,
     statusText,
     reveal: stage.kind === "revealed" ? slot?.reveal ?? null : null,
-    onNext: advance,
+    onNext: onReveal,
     hud,
   };
 
+  // PGM2 — tell a public host which round is on screen (and its reveal), so
+  // the round can be reported. Keyed by value, not identity.
+  const reportKey = `${slot?.wire.round_id ?? ""}:${slot?.reveal ? "r" : "o"}:${index}`;
+  useEffect(() => {
+    publicHostRef.current?.onRound?.(slot?.wire ?? null, slot?.reveal ?? null, index);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportKey]);
+
   const summary: PtRunSummary | null = run && stage.kind === "complete" ? {
-    rounds: slots.map((s, i) => ({ round: toRoundView(s.wire, i, slots.length), reveal: s.reveal })),
+    rounds: slots.map((s, i) => ({ round: toRoundView(s.wire, i, slots.length, manifest), reveal: s.reveal })),
     totalPoints: slots.reduce((n, s) => n + (s.reveal?.points ?? 0), 0),
     patchLabel: run.dataLabel.patch_label,
     patchSource: run.dataLabel.patch_source,
@@ -298,56 +364,45 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   }, [stage.kind]);
 
   const lastRound = index + 1 >= slots.length;
-  const BTN = "min-h-[36px] whitespace-nowrap rounded border border-[#d5b66f]/60 bg-[#2a2110] px-3 text-[11px] uppercase tracking-[0.14em] text-[#f6e6bb] hover:border-[#d5b66f]";
   const actions = stage.kind === "voided" ? (
-    <button ref={actionRef} type="button" data-testid="pt-continue" onClick={advance} className={BTN}>{lastRound ? "See results" : "Next round"}</button>
+    <button ref={actionRef} type="button" data-testid="pt-continue" onClick={advance} className="pt-btn">{lastRound ? "See results" : "Next round"}</button>
   ) : stage.kind === "lock-error" ? (
     <>
-      {stage.retryable ? <button ref={actionRef} type="button" data-testid="pt-retry-lock" onClick={retryLock} className={BTN}>Retry submission</button> : null}
-      <button ref={stage.retryable ? undefined : actionRef} type="button" data-testid="pt-void-continue" onClick={voidAndAdvance} className={BTN}>
+      {stage.retryable ? <button ref={actionRef} type="button" data-testid="pt-retry-lock" onClick={retryLock} className="pt-btn">Retry submission</button> : null}
+      <button ref={stage.retryable ? undefined : actionRef} type="button" data-testid="pt-void-continue" onClick={voidAndAdvance} className="pt-btn">
         {stage.retryable ? "Void round" : lastRound ? "See results" : "Next round"}
       </button>
     </>
   ) : stage.kind === "deal-error" ? (
-    <button ref={actionRef} type="button" data-testid="pt-retry-deal" onClick={() => (run ? void replace() : void startRun())} className={BTN}>Try again</button>
+    <button ref={actionRef} type="button" data-testid="pt-retry-deal" onClick={() => (run ? void replace() : void startRun())} className="pt-btn">Try again</button>
   ) : null;
 
-  const chrome = (
-    <div data-testid="pt-chrome" className={`${arenaHeaderRowClass("wide")} flex-nowrap gap-x-2 overflow-x-auto whitespace-nowrap text-[11px] text-[#a9b3c1] [scrollbar-width:thin]`}>
-      {lead}
-      <span className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-400/60 bg-amber-950/60 px-2 py-0.5 uppercase tracking-[0.14em] text-amber-100">
-        <FlaskConical aria-hidden className="size-3" /> Prototype · owner lab
-      </span>
-      {/* Left-aligned: the app's floating account cluster covers this row's right end at lg. */}
-      <span className="flex shrink-0 items-center gap-1">
-        {actions}
-        {lead ? null : <Link to={exitTo} className="rounded px-2 py-0.5 underline-offset-2 hover:underline">Exit lab</Link>}
-      </span>
-    </div>
+  const pointsSoFar = slots.reduce((n, s) => n + (s.reveal?.points ?? 0), 0);
+  const bar = (
+    <PerfectTimingBar
+      lead={lead}
+      index={stage.kind === "complete" ? total : slot ? index + 1 : 0}
+      total={total}
+      outcomes={hud?.outcomes}
+      points={slots.some((s) => s.reveal) ? pointsSoFar : null}
+    />
   );
 
+  // The backdrop is the current champion; on the results it is the closest stop's champion.
+  const art = summary
+    ? summary.rounds.reduce<{ url: string | null; err: number }>((best, r) => (
+        r.reveal && r.reveal.absErrorMs < best.err ? { url: r.round.splashUrl ?? null, err: r.reveal.absErrorMs } : best
+      ), { url: null, err: Infinity }).url
+    : roundView?.splashUrl ?? null;
+
   return (
-    <div data-testid="perfect-timing-page" data-stage={stage.kind} className="min-h-screen w-full bg-[#050b15] pb-10 text-[#efe8d6]">
+    <PerfectTimingScreen bar={bar} art={art} stage={stage.kind}>
       {summary ? (
-        <div className="mx-auto w-full max-w-3xl px-3 pt-4">
-          <div className="mb-3">{chrome}</div>
-          <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()} onExit={null} />
-        </div>
+        <PerfectTimingResults summary={summary} onPlayAgain={() => void startRun()}
+          onExit={publicHost ? publicHost.onExit : onChangeMode} exitLabel={publicHost ? publicHost.exitLabel : "Change mode"} />
       ) : (
-        <PerfectTimingArena model={model} chrome={chrome} />
+        <PerfectTimingArena model={model} actions={actions} />
       )}
-      <div className="relative z-30 mx-auto mt-3 w-full max-w-3xl px-3">
-        <div role="note" data-testid="pt-banner"
-          className="flex items-start gap-2 rounded border border-amber-400/60 bg-amber-950/60 px-3 py-2 text-[12px] leading-snug text-amber-100">
-          <FlaskConical aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>
-            <strong className="uppercase tracking-[0.14em]">Prototype — owner-only playtest.</strong>{" "}
-            Your time is measured in this browser and is not tamper-proof; the server grades it against the canonical
-            base cooldown (0 ability haste). Scoring tiers are playtest starting values. Nothing is stored. Not part of
-            Quiz, Daily or Ranked.
-          </span>
-        </div>
-      </div>
-    </div>
+    </PerfectTimingScreen>
   );
 }

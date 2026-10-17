@@ -1,0 +1,251 @@
+{
+  "capture": "perfect_timing.slice_capture.v1",
+  "generated_by": "perfect_timing/tests/make_slice_capture.py",
+  "data": "TEST FIXTURE DATABASE (perfect_timing/tests/fixture_db.py build_slice_db): ability rows copied from audit/champdata_p11_cooldown_ledger.csv, Sheen from fixtures/reconstruct_recipe_graph_rev4065930.json. Not production data.",
+  "integrity": "elapsed_ms is browser-measured and not tamper-proof; plausibility is an upper-bound check only.",
+  "scoring_version": "pt-scoring-0.2",
+  "deal": {
+    "request": {},
+    "response": {
+      "contract": "perfect_timing.slice_deal.v1",
+      "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+      "data_label": {
+        "patch_label": null,
+        "patch_source": "unknown"
+      },
+      "champion": "Ezreal",
+      "slot": "Q",
+      "ability_name": "Mystic Shot",
+      "rank_count": 5,
+      "assumption": "no_cooldown_refunds",
+      "authority": {
+        "ability_revision_id": "4013233",
+        "item_source_revision": "4065930"
+      },
+      "start_stage": 1,
+      "expires_at": "2026-10-16T18:15:00.000000Z",
+      "stages": [
+        {
+          "stage": 1,
+          "kind": "foundation",
+          "round_id": "pt_8c39d2ee690383a8ae5b7a7da9f7e03c",
+          "rank": 1,
+          "ability_haste": 0,
+          "modifier": null
+        },
+        {
+          "stage": 2,
+          "kind": "rank_up",
+          "round_id": "pt_1939b0172c97bfa571ad04cf4be4be01",
+          "rank": 3,
+          "ability_haste": 0,
+          "modifier": null
+        },
+        {
+          "stage": 3,
+          "kind": "equipped",
+          "round_id": "pt_d94d7fdcf41c2ed896256bbeb51f55bf",
+          "rank": 3,
+          "ability_haste": 10,
+          "modifier": {
+            "type": "item",
+            "item_id": 3057,
+            "name": "Sheen",
+            "ability_haste": 10
+          }
+        }
+      ]
+    }
+  },
+  "locks": [
+    {
+      "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+      "round_id": "pt_8c39d2ee690383a8ae5b7a7da9f7e03c",
+      "request": {
+        "elapsed_ms": 5225
+      },
+      "response": {
+        "contract": "perfect_timing.slice_release.v1",
+        "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+        "round_id": "pt_8c39d2ee690383a8ae5b7a7da9f7e03c",
+        "stage": 1,
+        "kind": "foundation",
+        "elapsed_ms": 5225,
+        "target_ms": 5500,
+        "error_ms": -275,
+        "abs_error_ms": 275,
+        "relative_error": 0.05,
+        "tier": "great",
+        "points": 80,
+        "plausibility": {
+          "server_window_ms": 30000,
+          "verdict": "ok"
+        },
+        "calculation": {
+          "rank": 1,
+          "base_cooldown_ms": 5500,
+          "ability_haste": 0,
+          "formula": "base_cooldown × 100 / (100 + ability_haste)",
+          "exact_ms": "5500.0000",
+          "rounding": "nearest_ms_half_up"
+        },
+        "authority": {
+          "cooldown_at_rank": "5.5",
+          "cooldown_raw": null,
+          "revision_id": "4013233",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00",
+          "item": null
+        },
+        "slice_expires_at": "2026-10-16T18:15:00.000000Z"
+      }
+    },
+    {
+      "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+      "round_id": "pt_1939b0172c97bfa571ad04cf4be4be01",
+      "request": {
+        "elapsed_ms": 5100
+      },
+      "response": {
+        "contract": "perfect_timing.slice_release.v1",
+        "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+        "round_id": "pt_1939b0172c97bfa571ad04cf4be4be01",
+        "stage": 2,
+        "kind": "rank_up",
+        "elapsed_ms": 5100,
+        "target_ms": 5000,
+        "error_ms": 100,
+        "abs_error_ms": 100,
+        "relative_error": 0.02,
+        "tier": "perfect",
+        "points": 92,
+        "plausibility": {
+          "server_window_ms": 20000,
+          "verdict": "ok"
+        },
+        "calculation": {
+          "rank": 3,
+          "base_cooldown_ms": 5000,
+          "ability_haste": 0,
+          "formula": "base_cooldown × 100 / (100 + ability_haste)",
+          "exact_ms": "5000.0000",
+          "rounding": "nearest_ms_half_up"
+        },
+        "authority": {
+          "cooldown_at_rank": "5",
+          "cooldown_raw": null,
+          "revision_id": "4013233",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00",
+          "item": null
+        },
+        "slice_expires_at": "2026-10-16T18:15:00.000000Z"
+      }
+    },
+    {
+      "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+      "round_id": "pt_d94d7fdcf41c2ed896256bbeb51f55bf",
+      "request": {
+        "elapsed_ms": 5000
+      },
+      "response": {
+        "contract": "perfect_timing.slice_release.v1",
+        "slice_id": "pts_83c9e5db8f89697fba6dd33e22266a0b",
+        "round_id": "pt_d94d7fdcf41c2ed896256bbeb51f55bf",
+        "stage": 3,
+        "kind": "equipped",
+        "elapsed_ms": 5000,
+        "target_ms": 4545,
+        "error_ms": 455,
+        "abs_error_ms": 455,
+        "relative_error": 0.1001,
+        "tier": "good",
+        "points": 60,
+        "plausibility": {
+          "server_window_ms": 1000,
+          "verdict": "exceeds_server_window"
+        },
+        "calculation": {
+          "rank": 3,
+          "base_cooldown_ms": 5000,
+          "ability_haste": 10,
+          "formula": "base_cooldown × 100 / (100 + ability_haste)",
+          "exact_ms": "4545.4545",
+          "rounding": "nearest_ms_half_up"
+        },
+        "authority": {
+          "cooldown_at_rank": "5",
+          "cooldown_raw": "5.5 / 5.25 / 5 / 4.75 / 4.5",
+          "revision_id": "4013233",
+          "verified_at": "2026-08-08T08:04:25.496582+00:00",
+          "item": {
+            "item_id": 3057,
+            "name": "Sheen",
+            "ability_haste": 10,
+            "source_revision": "4065930"
+          }
+        },
+        "slice_expires_at": "2026-10-16T18:15:00.000000Z"
+      }
+    }
+  ],
+  "resume": {
+    "request": {
+      "resume": {
+        "champion": "Ezreal",
+        "slot": "Q",
+        "from_stage": 3,
+        "ability_revision_id": "4013233",
+        "item_source_revision": "4065930"
+      }
+    },
+    "response": {
+      "contract": "perfect_timing.slice_deal.v1",
+      "slice_id": "pts_44e607c587b8d17b3b0b01d086bfc778",
+      "data_label": {
+        "patch_label": null,
+        "patch_source": "unknown"
+      },
+      "champion": "Ezreal",
+      "slot": "Q",
+      "ability_name": "Mystic Shot",
+      "rank_count": 5,
+      "assumption": "no_cooldown_refunds",
+      "authority": {
+        "ability_revision_id": "4013233",
+        "item_source_revision": "4065930"
+      },
+      "start_stage": 3,
+      "expires_at": "2026-10-16T18:15:00.000000Z",
+      "stages": [
+        {
+          "stage": 1,
+          "kind": "foundation",
+          "round_id": null,
+          "rank": 1,
+          "ability_haste": 0,
+          "modifier": null
+        },
+        {
+          "stage": 2,
+          "kind": "rank_up",
+          "round_id": null,
+          "rank": 3,
+          "ability_haste": 0,
+          "modifier": null
+        },
+        {
+          "stage": 3,
+          "kind": "equipped",
+          "round_id": "pt_a7f5050da4a714d3a22116b9c3fd9d7f",
+          "rank": 3,
+          "ability_haste": 10,
+          "modifier": {
+            "type": "item",
+            "item_id": 3057,
+            "name": "Sheen",
+            "ability_haste": 10
+          }
+        }
+      ]
+    }
+  }
+}

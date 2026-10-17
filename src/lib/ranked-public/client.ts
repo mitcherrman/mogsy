@@ -357,6 +357,40 @@ export const launchJourney = (
     { method: "POST", signal },
   );
 
+/**
+ * PGM2 — start (or get back) the caller's bonus game for a public mode
+ * (`POST /api/game-modes/{modeId}/start`). Any verified session may call it:
+ * a POST mints an anonymous identity when there is none, so a guest can play.
+ * The answer is the queue's `matched` snapshot plus which mode the match plays
+ * (`result`: `created`, `existing` for a retried press, `resumed` when an
+ * already-live bonus game is handed back). `startKey` is minted once per
+ * press and reused on retry, so a retry never creates a second match.
+ */
+export interface BonusGameStartView {
+  status: QueueStatusView;
+  modeId: string | null;
+  result: "created" | "existing" | "resumed" | null;
+}
+
+export const startBonusGame = (
+  modeId: string,
+  startKey: string,
+  signal?: AbortSignal,
+): Promise<BonusGameStartView> =>
+  request(
+    `/api/game-modes/${encodeURIComponent(modeId)}/start`,
+    (json) => {
+      const block = (json as { bonus_game?: { mode_id?: unknown; result?: unknown } } | null)?.bonus_game;
+      const result = block?.result;
+      return {
+        status: readQueueStatus(json),
+        modeId: typeof block?.mode_id === "string" ? block.mode_id : null,
+        result: result === "created" || result === "existing" || result === "resumed" ? result : null,
+      };
+    },
+    { method: "POST", body: { start_key: startKey }, signal },
+  );
+
 /** The caller's own active match, or null. Account-bound reconnect discovery so
  * a full page reload can recover an active match — including a bot match, which
  * is never in the queue and so cannot be recovered from queue status. */

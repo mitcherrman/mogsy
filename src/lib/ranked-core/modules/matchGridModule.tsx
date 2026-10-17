@@ -37,7 +37,7 @@ import {
   type ReconstructMedia,
   type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
-import type { ModuleRenderer, ModuleViewportProps } from "./types";
+import type { ModuleBoardReport, ModuleRenderer, ModuleViewportProps } from "./types";
 
 export { MATCH_MODULE_ID };
 export const MATCH_MODULE_VERSION = 1;
@@ -292,6 +292,34 @@ function MatchViewport({ segmentState, actions, skewMs, publicRound }: ModuleVie
   );
 }
 
+/**
+ * PGM2 — the board a player reports: the prompt and its trees, the runes
+ * dealt, the viewer's locked board, and — only from the viewer's own reveal,
+ * which the server sends after the lock — the correct board and its source.
+ */
+export function matchBoardReport(pub: PublicRoundView): ModuleBoardReport | null {
+  const state = pub.segmentState;
+  const block = state?.block?.contract === "match" ? state.block : null;
+  if (!state || !block) return null;
+  const entity = new Map(block.entities.map((e) => [e.entityId, e.label]));
+  const group = new Map(block.groups.map((g) => [g.groupId, g.label]));
+  const line = (rows: readonly MatchAssignmentView[]) => rows
+    .map((r) => `${entity.get(r.entityId) ?? r.entityId} → ${group.get(r.groupId) ?? r.groupId}`)
+    .join("; ");
+  const served = state.ownChallengeReveals.find((r) => r.challengeIndex === CHALLENGE_INDEX)?.match ?? null;
+  const echoed = state.ownSubmittedAssignments?.[CHALLENGE_INDEX] ?? null;
+  const mine = served?.assignments ?? echoed;
+  const digest = served?.source?.snapshotDigest ?? null;
+  return {
+    prompt: `${block.prompt} Trees: ${block.groups.map((g) => g.label).join(", ")}.`,
+    choices: block.entities.map((e) => e.label),
+    selected: mine && mine.length ? line(mine) : null,
+    canonical: served ? line(served.canonicalAssignments) : null,
+    evidence: served
+      ? `Certified rune → tree snapshot${digest ? ` ${digest.slice(0, 12)}` : ""}` : null,
+  };
+}
+
 export const matchGridModule: ModuleRenderer = {
   moduleId: MATCH_MODULE_ID,
   moduleVersion: MATCH_MODULE_VERSION,
@@ -303,6 +331,7 @@ export const matchGridModule: ModuleRenderer = {
     (r) => r.challengeIndex === CHALLENGE_INDEX && !!r.match),
   Viewport: MatchViewport,
   projectQuestion: (_pub: PublicRoundView): QuestionView | null => null,
+  reportBoard: matchBoardReport,
   summaryLabel: (pub) => {
     const state = pub.segmentState;
     if (!state) return null;

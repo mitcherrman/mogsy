@@ -29,6 +29,7 @@ import {
 } from "@/lib/ranked-public/contracts";
 import { toChronoscopePublic, toChronoscopeReveal, type WaveXpScene } from "@/lib/scrub/waveXpChronoscope";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
+import { scrubBoardReport } from "./boardReports";
 
 export { SCRUB_MODULE_ID };
 export const SCRUB_MODULE_VERSION = 1;
@@ -177,6 +178,8 @@ export const scrubModule: ModuleRenderer = {
     (r) => r.challengeIndex === CHALLENGE_INDEX && !!r.scrub),
   Viewport: ScrubViewport,
   projectQuestion: (_pub: PublicRoundView): QuestionView | null => null,
+  // PGM2 — the board a player reports (answer only after the reveal).
+  reportBoard: scrubBoardReport,
   summaryLabel: (pub) => {
     const state = pub.segmentState;
     if (!state) return null;

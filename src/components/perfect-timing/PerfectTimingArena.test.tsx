@@ -9,7 +9,6 @@ vi.mock("@/lib/audio/useSfx", () => ({
 }));
 
 import { PerfectTimingArena } from "./PerfectTimingArena";
-import { perfectTimingArenaView } from "./arenaView";
 
 const model = (over: Partial<PtStageModel> = {}): PtStageModel => ({
   round: DEMO_ROUNDS[1],
@@ -24,32 +23,38 @@ const model = (over: Partial<PtStageModel> = {}): PtStageModel => ({
 beforeEach(() => { play.mockClear(); });
 afterEach(() => { vi.clearAllMocks(); });
 
-describe("PerfectTimingArena — the real arena, the lab's renderer", () => {
-  it("mounts the stage inside CanonicalArena's question stage", () => {
+describe("PerfectTimingArena — the stage and the reveal, no Ranked chrome", () => {
+  it("draws the stage without mounting the Ranked arena", () => {
     render(<PerfectTimingArena model={model()} />);
-    expect(screen.getByTestId("quiz-ranked")).toBeInTheDocument();
-    const viewport = screen.getByTestId("perfect-timing-lab-viewport");
-    expect(viewport.closest(".ranked-question-stage")).not.toBeNull();
+    expect(screen.queryByTestId("quiz-ranked")).toBeNull();
+    expect(document.querySelector(".ranked-question-stage")).toBeNull();
     expect(screen.getByTestId("pt-stage")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cast the ability" })).toBeInTheDocument();
   });
 
-  it("shows no clock anywhere, and blanks the header's pulsing note while running", () => {
+  it("carries no prototype, owner-lab or playtest copy, no flanks and no header note", () => {
+    render(<PerfectTimingArena model={model()} />);
+    expect(document.body.textContent).not.toMatch(/prototype|owner lab|playtest|not tamper|0 ability haste|hidden clock/i);
+    expect(screen.queryByTestId("pt-flank-run")).toBeNull();
+    expect(screen.queryByTestId("pt-flank-archive")).toBeNull();
+    expect(screen.queryByTestId("ranked-round-transition")).toBeNull();
+  });
+
+  it("shows no clock anywhere and nothing periodic while running", () => {
     const { rerender } = render(<PerfectTimingArena model={model({ phase: "armed" })} />);
     expect(screen.queryByTestId("timer-value")).toBeNull();
-    expect(screen.getByTestId("ranked-round-transition")).toHaveTextContent("Hidden clock");
     rerender(<PerfectTimingArena model={model({ phase: "running", press: demoPress("The ability is back up") })} />);
     expect(screen.queryByTestId("timer-value")).toBeNull();
-    expect(screen.getByTestId("ranked-round-transition")).toHaveTextContent("");
-    // Nothing periodic is drawn INSIDE the stage while running.
     expect(screen.getByTestId("pt-stage").querySelectorAll(".animate-pulse")).toHaveLength(0);
   });
 
-  it("swaps the seal for the reveal once a reveal exists, keeping the round plate", () => {
+  it("swaps the seal for the reveal once a reveal exists, keeping the champion hero", () => {
     render(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.early, press: demoPress("seal", true) })} />);
     expect(screen.queryByTestId("pt-press-surface")).toBeNull();
     expect(screen.getByTestId("pt-reveal")).toBeInTheDocument();
     expect(screen.getByTestId("pt-round-plate")).toHaveAttribute("data-compact", "true");
+    expect(screen.getByTestId("pt-champion")).toHaveTextContent("Archivist (demo)");
+    expect(screen.getByTestId("pt-reveal-stage")).toHaveAttribute("data-tier", "perfect");
     expect(screen.getByTestId("pt-next")).toHaveTextContent("Next round");
   });
 
@@ -71,24 +76,11 @@ describe("PerfectTimingArena — the real arena, the lab's renderer", () => {
     expect(screen.getByTestId("pt-next")).toHaveTextContent("See results");
   });
 
-  it("titles the header by round and projects the run onto the flanks and the rail", () => {
-    render(<PerfectTimingArena model={model()} />);
-    expect(screen.getByTestId("quiz-ranked")).toHaveTextContent("Round 2 of 5");
-    expect(screen.getByTestId("pt-flank-points")).toHaveTextContent("160");
-    expect(screen.getByTestId("pt-flank-data")).toHaveTextContent("Data: 0.0 (demo) (patch-notes fallback)");
-    const view = perfectTimingArenaView(model());
-    expect(view.header.timer).toBeNull();
-    expect(view.timeline?.nodes.map((n) => n.state)).toEqual(["resolved", "current", "upcoming", "upcoming", "upcoming"]);
-    expect(view.timeline?.nodes.map((n) => n.outcome)).toEqual(["correct", "correct", null, null, null]);
-  });
-
-  it("maps a miss to an incorrect node and a voided round to no verdict", () => {
-    const view = perfectTimingArenaView(model({
-      round: DEMO_ROUNDS[3],
-      hud: { ...DEMO_HUD, outcomes: ["miss", "voided", "good", null, null] },
-    }));
-    expect(view.timeline?.nodes.map((n) => n.outcome)).toEqual(["incorrect", null, "correct", null, null]);
-    expect(view.timeline?.nodes.map((n) => n.state)).toEqual(["resolved", "resolved", "resolved", "current", "upcoming"]);
+  it("draws recovery actions under the status line and flags the stage for the seal to make room", () => {
+    render(<PerfectTimingArena model={model({ phase: "error", press: demoPress("seal", true) })}
+      actions={<button type="button">Try again</button>} />);
+    expect(screen.getByTestId("pt-actions")).toContainElement(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByTestId("pt-stage")).toHaveAttribute("data-actions", "true");
   });
 });
 

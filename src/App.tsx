@@ -329,6 +329,8 @@ const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentS
 const MasteryJourneysPage = lazy(() => import("./pages/quiz-mastery/MasteryJourneysPage"));
 // JLIB-FE — the public Journey Library (NOT the legacy /quiz/mastery system).
 const JourneyLibraryPage = lazy(() => import("./pages/quiz-journeys/JourneyLibraryPage"));
+const MoreChallengesPage = lazy(() => import("./pages/quiz-more-challenges/MoreChallengesPage"));
+const BonusSessionPage = lazy(() => import("./pages/quiz-more-challenges/BonusSessionPage"));
 const MasteryJourneyPlayerPage = lazy(() => import("./pages/quiz-mastery/MasteryJourneyPlayerPage"));
 
 // Live Mastery (H1/G7) — gated dev player + admin reviewer. Not linked from
@@ -632,6 +634,14 @@ export const appRouter = createBrowserRouter(
                       no ProtectedRoute: the page itself asks for an account at
                       Start, and the backend re-decides on the launch. */}
                   <Route path="/quiz/journeys" element={<Suspense fallback={<RouteFallback />}><JourneyLibraryPage /></Suspense>} />
+                  {/* PGM1 — the public More Challenges catalog. Browsing is
+                      public, so no ProtectedRoute: each launch goes through its
+                      own host (today the Daily), which decides who may play. */}
+                  <Route path="/quiz/more-challenges" element={<Suspense fallback={<RouteFallback />}><MoreChallengesPage /></Suspense>} />
+                  {/* PGM2 — a specialized bonus game's own page (Rangefinder,
+                      Glyph Press, Perfect Timing, Stat Drop, Combat Estimate).
+                      Public, like the catalog: its session route decides. */}
+                  <Route path="/quiz/more-challenges/:mode" element={<Suspense fallback={<RouteFallback />}><BonusSessionPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   {/* Layout is already mounted here and already painting the

@@ -25,7 +25,7 @@ export const PHONE_ROOM_FLOOR_PX = 380;
  * be handed its own collapsed height. There the room is what the viewport
  * leaves under the stage's top edge, never less than a usable floor.
  */
-export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | undefined {
+export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>, phoneReservePx = 0): number | undefined {
   const measured = useStageRoom(ref);
   const [phoneRoom, setPhoneRoom] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -36,7 +36,9 @@ export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | 
       if (desktop.matches || !stage) { setPhoneRoom(undefined); return; }
       const cs = getComputedStyle(stage);
       const top = stage.getBoundingClientRect().top + window.scrollY;
-      const room = Math.floor(window.innerHeight - top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 12);
+      // PGM2: a host whose dock tabs float at the foot of a phone (Report,
+      // Rules) reserves that band, so the instrument's own controls stay clear.
+      const room = Math.floor(window.innerHeight - top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 12 - phoneReservePx);
       setPhoneRoom(Math.max(PHONE_ROOM_FLOOR_PX, room));
     };
     read();
@@ -46,12 +48,15 @@ export function useOwnerStageRoom(ref: RefObject<HTMLElement | null>): number | 
       window.removeEventListener("resize", read);
       desktop.removeEventListener?.("change", read);
     };
-  }, [ref]);
+  }, [ref, phoneReservePx]);
   return phoneRoom ?? measured;
 }
 
-/** The chrome row's lead: back to Playtests, then the mode's name. */
-export function PlaytestLead({ mode }: { mode: LabModeId }) {
+/**
+ * The chrome row's lead: back to Playtests, then the mode's name. `bare` (PT4.4,
+ * the fixed-screen Perfect Timing) is the way back alone.
+ */
+export function PlaytestLead({ mode, bare = false }: { mode: LabModeId; bare?: boolean }) {
   return (
     <span className="flex shrink-0 items-center gap-2" data-testid="playtest-lead">
       <Link
@@ -61,7 +66,7 @@ export function PlaytestLead({ mode }: { mode: LabModeId }) {
       >
         <ArrowLeft className="h-3 w-3" aria-hidden /> Playtests
       </Link>
-      <span className="ranked-eyebrow shrink-0" data-testid="playtest-mode-title">{LAB_MODES[mode].title}</span>
+      {bare ? null : <span className="ranked-eyebrow shrink-0" data-testid="playtest-mode-title">{LAB_MODES[mode].title}</span>}
     </span>
   );
 }

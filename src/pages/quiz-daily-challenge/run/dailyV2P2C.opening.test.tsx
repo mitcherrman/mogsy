@@ -48,6 +48,7 @@ import {
   wireRun, wireV5Run, type FixtureStageSpec, type FixtureTransport,
 } from "@/lib/daily-challenge/run/fixtures";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
+import { MORE_CHALLENGES_STAND_IN, MoreChallengesStandIn } from "@/test/moreChallengesStandIn";
 import {
   DAILY_INTRO_MS, STAGE_INTRO_MIN_MS, isDailyOpeningStage, opensWithDailyIntro,
 } from "@/lib/daily-challenge/run/flow";
@@ -82,6 +83,7 @@ function mount(t: FixtureTransport, { play = true }: { play?: boolean } = {}) {
         <Route path="/quiz/daily-challenge"
           element={<DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA" />} />
         <Route path="/quiz" element={<div data-testid="hub-stand-in" />} />
+        <Route path="/quiz/more-challenges" element={<MoreChallengesStandIn />} />
       </Routes>
     </MemoryRouter>);
 }
@@ -277,6 +279,8 @@ describe("DV2-P2C — optional stage tags still name their mode", () => {
     expect(q("daily-main-result")).toBeInTheDocument();
 
     await act(async () => { screen.getByTestId("daily-main-continue").click(); });
+    await flush(10);
+    await act(async () => { screen.getByTestId(MORE_CHALLENGES_STAND_IN).click(); });
     await flush(10);
     const tt = screen.getByTestId("daily-stage-intro");
     expect(tt).not.toHaveAttribute("data-opening");
