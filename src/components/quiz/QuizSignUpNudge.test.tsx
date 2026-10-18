@@ -28,7 +28,7 @@ describe("Practice soft signup moment", () => {
     expect(screen.getByRole("button", { name: "Sign up" })).toBeInTheDocument();
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith("signup_offer_shown", {
-      metadata: { placement: "practice_after_three_answers", activity: "practice", return_to: "/quiz" },
+      metadata: { placement: "practice_soft_nudge", activity: "practice", return_to: "/quiz" },
     });
   });
 
@@ -36,7 +36,7 @@ describe("Practice soft signup moment", () => {
     show();
     fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
     expect(track).toHaveBeenCalledWith("signup_offer_clicked", {
-      metadata: { placement: "practice_after_three_answers", activity: "practice", return_to: "/quiz" },
+      metadata: { placement: "practice_soft_nudge", activity: "practice", return_to: "/quiz" },
     });
     expect(screen.getByTestId("route")).toHaveTextContent("/auth?mode=signup&returnTo=%2Fquiz");
   });
@@ -48,7 +48,7 @@ describe("Practice soft signup moment", () => {
     // Persisted suppression and dismissal telemetry are the source of truth.
     expect(sessionStorage.getItem("quiz:gate:nudge_seen")).toBe("1");
     expect(track).toHaveBeenCalledWith("signup_offer_dismissed", {
-      metadata: { placement: "practice_after_three_answers", activity: "practice", return_to: "/quiz" },
+      metadata: { placement: "practice_soft_nudge", activity: "practice", return_to: "/quiz" },
     });
     expect(screen.queryByTestId("route")).toBeNull();
   });
