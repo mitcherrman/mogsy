@@ -55,6 +55,7 @@ import {
   SourcesSection,
 } from "@/components/admin/users/AudienceSections";
 import { VisitorsSection } from "@/components/admin/users/VisitorsSection";
+import { AudiencePulse } from "@/components/admin/users/AudiencePulse";
 import { useAdminRoles } from "@/hooks/useAdminRoles";
 import { ADMIN_AREAS_BY_ID } from "@/lib/admin/admin-registry";
 import { loadAnalytics, ROW_CAP, type LoadedAnalytics } from "@/lib/admin/analytics/loadAnalytics";
@@ -335,19 +336,46 @@ export default function AdminUsersPage() {
           )}
 
           <div className="space-y-6" data-testid="users-section-audience">
-            <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
+            <AudiencePulse
+              dataset={viewLoaded.dataset}
+              range={state.range}
+              now={state.now}
+              classification={filtered.byVisitor}
+              onVisitor={(id) => {
+                const next = new URLSearchParams(params);
+                next.delete("population");
+                next.set("visitor", id);
+                setParams(next, { replace: false });
+                const visitors = document.getElementById("users-audience-visitors");
+                if (typeof visitors?.scrollIntoView === "function") visitors.scrollIntoView({ block: "start" });
+              }}
+            />
             <section id="users-audience-visitors" aria-label="Visitors">
-              <h2 className="mb-3 text-sm font-semibold">Visitors</h2>
-              <VisitorsSection
-                dataset={viewLoaded.dataset}
-                range={state.range}
-                byVisitor={filtered.byVisitor}
-                population={population}
-                onPopulation={(key) => setParam("population", key)}
-                selected={visitor}
-                onSelect={(id) => setParam("visitor", id)}
-              />
+              <details
+                open={Boolean(visitor || population)}
+                data-testid="users-full-visitor-list"
+                className="rounded-lg border border-border p-3"
+              >
+                <summary className="cursor-pointer text-sm font-semibold">
+                  View all visitors and individual records
+                </summary>
+                <div className="mt-3">
+                  <VisitorsSection
+                    dataset={viewLoaded.dataset}
+                    range={state.range}
+                    byVisitor={filtered.byVisitor}
+                    population={population}
+                    onPopulation={(key) => setParam("population", key)}
+                    selected={visitor}
+                    onSelect={(id) => setParam("visitor", id)}
+                  />
+                </div>
+              </details>
             </section>
+            <details data-testid="users-advanced-analytics" className="rounded-lg border border-border p-3">
+              <summary className="cursor-pointer text-sm font-semibold">Advanced analytics and diagnostics</summary>
+              <div className="mt-4 space-y-6">
+                <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
             <section aria-label="Engagement and activity">
               <h2 className="mb-3 text-sm font-semibold">Engagement / Activity</h2>
               <EngagementSection loaded={viewLoaded} range={state.range} now={state.now} />
@@ -383,6 +411,8 @@ export default function AdminUsersPage() {
               </AdminPanel>
               <HealthSection loaded={viewLoaded} range={state.range} now={state.now} />
             </section>
+              </div>
+            </details>
           </div>
         </DrillContext.Provider>
       )}
