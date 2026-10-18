@@ -313,6 +313,10 @@ const DynastyRunPage = lazy(() => import("./pages/admin/dynasty/DynastyRunPage")
 const DynastyPreview = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/dynasty/DynastyPreview"))
   : null;
+// UX-1: synthetic clickable Dynasty gameplay prototype (DEV only, no backend).
+const DynastyV2Prototype = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/dynasty-v2/DynastyV2Prototype"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -771,6 +775,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {DynastyPreview ? (
                     <Route path="/dev/dynasty" element={<Suspense fallback={<RouteFallback />}><DynastyPreview /></Suspense>} />
+                  ) : null}
+                  {DynastyV2Prototype ? (
+                    <Route path="/dev/dynasty-v2" element={<Suspense fallback={<RouteFallback />}><DynastyV2Prototype /></Suspense>} />
                   ) : null}
                   {RangefinderLab ? (
                     <Route path="/dev/rangefinder" element={<Suspense fallback={<RouteFallback />}><RangefinderLab /></Suspense>} />

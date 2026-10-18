@@ -23,3 +23,5 @@ See spec §17 (O-1..O-11); most impactful: starting roster policy, which majors 
 
 ## Next step
 Owner reviews the spec, then authorizes **UX-1**: DEV-only clickable prototype on synthetic fixtures (new files only, no routing/auth/shared-CSS changes beyond a dev route), with Playwright screenshots at 390x844 and 1440x900.
+
+**UX-1 follow-up:** a synthetic clickable prototype now exists at `/dev/dynasty-v2` on branch `ux/ux-1-synthetic-prototype`; see `WORLDS_DYNASTY_UX_1_HANDOFF.md`.
