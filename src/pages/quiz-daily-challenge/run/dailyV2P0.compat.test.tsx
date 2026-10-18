@@ -272,12 +272,12 @@ describe("D — Weak Areas and Recently Missed are told apart", () => {
     expect(skippedStageNote({ kind: "order_forge", skipReason: "perfect" })).toBe("Not played");
   });
 
-  it("the guest save gate does not promise Weak Areas 'from tomorrow'", () => {
+  it("the guest recap offer does not promise Weak Areas 'from tomorrow'", () => {
     const done = readDailyRun(finishedWire(FIVE_STAGE_DAY));
     render(<MemoryRouter><DailyCompletion run={done} saveRequired /></MemoryRouter>);
-    const gate = screen.getByTestId("daily-save-gate");
+    const gate = screen.getByTestId("daily-save-offer");
     expect(gate).not.toHaveTextContent(/tomorrow/i);
-    expect(gate).toHaveTextContent("Weak Areas questions drawn from your saved history");
+    expect(gate).toHaveTextContent("Weak Areas practice");
   });
 
   it("no daily-run source still carries the old misleading strings", () => {
