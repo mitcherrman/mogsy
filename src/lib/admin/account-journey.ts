@@ -50,8 +50,8 @@ const readable = (name: string): string => name.replace(/_/g, " ").replace(/\b\w
 const events: Record<string, { title: string; detail: string; kind: JourneyKind }> = {
   signup_completed: { title: "Signup completion recorded", detail: "Client event, not an independently verified registration timestamp", kind: "auth" },
   signup_offer_clicked: { title: "Signup invitation clicked", detail: "A contextual offer was clicked; not proof of registration", kind: "interest" },
-  ranked_started: { title: "Ranked game started", detail: "Server-reported game start", kind: "game" },
-  ranked_completed: { title: "Ranked game completed", detail: "Server-reported game completion", kind: "game" },
+  ranked_started: { title: "Ranked-engine round started", detail: "Server match start; may be a Daily child round, not a complete Daily start", kind: "game" },
+  ranked_completed: { title: "Ranked-engine round completed", detail: "Server match completion; may be a Daily child round, not a complete Daily finish", kind: "game" },
   practice_quiz_started: { title: "Practice quiz started", detail: "Server-reported quiz start", kind: "game" },
   practice_quiz_completed: { title: "Practice quiz completed", detail: "Server-reported quiz completion", kind: "game" },
   mastery_started: { title: "Mastery activity started", detail: "Server-reported start", kind: "game" },
@@ -117,15 +117,23 @@ export function buildAccountJourney(input: AccountJourneyInput): JourneyMoment[]
   return result.sort((a,b) => Date.parse(b.at) - Date.parse(a.at)).slice(0,80);
 }
 
+/** Precisely tagged QA prefixes from known release automation, not a universal
+ * definition of tests or of human accounts. Extend using explicit owner labels.
+ */
+export function isKnownQaEmail(email: string | null | undefined): boolean {
+  return typeof email === "string" && /^mogzy-launch-qa-[^@]+@mogzy\\.lol$/i.test(email);
+}
+
 export function countAccountMilestones(items: Array<{
   is_bot: boolean | null;
   is_anonymous: boolean | null;
   last_seen_at: string | null;
   id: string;
-}>, linked: Map<string,{discord: unknown;riot: unknown}>, premium: (id:string)=>boolean, now:number) {
+}>, linked: Map<string,{discord: unknown;riot: unknown}>, premium: (id:string)=>boolean, now:number, emails: Record<string,string> = {}, uid: (id:string)=>string = id => id) {
   const real = items.filter(p => !p.is_anonymous && !p.is_bot);
   return {
     registered: real.length,
+    knownQa: real.filter(p => isKnownQaEmail(emails[uid(p.id)])).length,
     bots: items.filter(p => !p.is_anonymous && !!p.is_bot).length,
     discord: real.filter(p => !!linked.get(p.id)?.discord).length,
     riot: real.filter(p => !!linked.get(p.id)?.riot).length,
