@@ -1131,7 +1131,7 @@ export function computeDaily(ds: AnalyticsDataset, range: AnalyticsRange): Daily
       // whose session/event never arrived; this produced 12 new out of 3 visitors.
       newVisitors: [...r.v].filter((visitorId) => {
         const first = firstSeen.get(visitorId);
-        return first !== undefined && day(first) === d;
+        return first !== undefined && inRange(first, range) && day(first) === d;
       }).length,
       authoritativeStarts: r.a,
     }));
