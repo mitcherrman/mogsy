@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: ["release-qa/guest-upgrade-live.spec.ts"],
-  timeout: 180_000,
+  timeout: 660_000,
   expect: { timeout: 25_000 },
   retries: 0,
   workers: 1,

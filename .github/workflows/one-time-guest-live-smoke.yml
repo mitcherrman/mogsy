@@ -16,7 +16,7 @@ jobs:
     # branch may invoke it. Never run for arbitrary PRs/forks.
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'qa/release-guest-smoke-20261018' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 17
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

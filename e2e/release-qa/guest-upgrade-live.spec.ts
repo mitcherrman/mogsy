@@ -35,8 +35,42 @@ test("fresh mobile guest starts Daily and retains the same run after account upg
   expect(before.anonymous, "Daily should start under a real anonymous guest").toBe(true);
   expect(before.runId).toBeTruthy();
 
-  // Actual production signup UI and account-upgrade state machine.
-  await page.goto("/auth?mode=signup&returnTo=%2Fquiz%2Fdaily-challenge");
+  // Real main Daily stage. Answer whatever the public question surface offers;
+  // no answer key, question bypass, or server state modification is involved.
+  await page.goto("/quiz/daily-challenge", { waitUntil: "domcontentloaded" });
+  const finished = page.locator('[data-testid="daily-main-result"][data-settled="true"]');
+  const until = Date.now() + 8 * 60_000;
+  let answered = 0;
+  while (Date.now() < until && !(await finished.isVisible().catch(() => false))) {
+    const grid = page.locator('[data-testid="answer-grid"][data-answers-state="open"]');
+    if (await grid.isVisible().catch(() => false)) {
+      const choice = grid.locator('[data-quiz-choice="0"]').first();
+      if (await choice.isEnabled().catch(() => false)) {
+        await choice.click({ timeout: 3_000 }).catch(() => {});
+        answered++;
+        // Do not spam the same card; allow the authoritative next round.
+        await page.waitForTimeout(2_500);
+      } else {
+        await page.waitForTimeout(750);
+      }
+    } else {
+      await page.waitForTimeout(750);
+    }
+  }
+  expect(answered, "a real Daily question must be played").toBeGreaterThan(0);
+  await expect(finished, "real main Daily must actually settle").toBeVisible({ timeout: 2_000 });
+  const settledScore = await page.evaluate(async () => {
+    const { httpDailyRunTransport } = await import("/src/lib/daily-challenge/run/client.ts");
+    const run = await httpDailyRunTransport.readToday();
+    return { runId: run?.runId ?? null, mainScore: run?.mainScore ?? null };
+  });
+  expect(settledScore.runId).toBe(before.runId);
+  expect(typeof settledScore.mainScore).toBe("number");
+
+  // Click the REAL guest-only invitation at the settled main result.
+  await page.getByTestId("daily-main-save-score").click();
+  await expect(page).toHaveURL(/\/auth\?/, { timeout: 15_000 });
+
   const nameInput = page.getByTestId("upgrade-username-input");
   await expect(nameInput).toBeVisible({ timeout: 30_000 });
   // Profile identity resolves asynchronously; avoid racing its one-time
@@ -83,6 +117,13 @@ test("fresh mobile guest starts Daily and retains the same run after account upg
     return run?.runId ?? null;
   });
   expect(after, "Daily parent persisted after same-UID permanent conversion").toBe(before.runId);
+
+  const afterScore = await page.evaluate(async () => {
+    const { httpDailyRunTransport } = await import("/src/lib/daily-challenge/run/client.ts");
+    const run = await httpDailyRunTransport.readToday();
+    return run?.mainScore ?? null;
+  });
+  expect(afterScore, "the frozen main Daily score survives account upgrade").toBe(settledScore.mainScore);
 
   // The app must not strand the guest in the auth form.
   await expect(page).toHaveURL(/\/(quiz|lol)(?:\/|\?|$)/, { timeout: 20_000 });
