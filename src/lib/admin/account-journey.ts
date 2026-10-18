@@ -21,7 +21,27 @@ export interface AccountAuthSnapshot {
   last_sign_in_at: string | null;
   is_anonymous: boolean;
 }
+export interface AccountLinkedBrowser {
+  visitorId: string;
+  firstSeenAt: string | null;
+  firstObservedAt: string;
+  source: string | null;
+  landing: string | null;
+  campaign: string | null;
+}
+export function acquisitionSource(source: string | null, referrer: string | null): string | null {
+  if (source?.trim()) return source.trim();
+  if (!referrer) return null;
+  try {
+    const url = new URL(referrer);
+    if (!["https:", "http:"].includes(url.protocol)) return null;
+    return url.hostname || null;
+  } catch { return null; }
+}
+
 export interface AccountJourneyInput {
+  linkedBrowsers?: AccountLinkedBrowser[];
+  linkedBrowserError?: boolean;
   profileCreatedAt: string;
   lastSeenAt: string | null;
   auth: AccountAuthSnapshot | null;
