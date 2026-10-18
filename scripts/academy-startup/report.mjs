@@ -5,8 +5,11 @@
  *
  * Landing rows (path "/") are relative to the client-side hand-off to /lol;
  * direct rows (path "/lol") to navigation start. Medians, with (min–max).
- * Runs with fewer than 100 animation frames (a background-throttled window)
- * are counted as invalid and left out.
+ * Runs with fewer than ACADEMY_PERF_MIN_FRAMES animation frames (default 100:
+ * a background-throttled window) are counted as invalid and left out. Headless
+ * Chromium renders in software at a few frames per second: pass e.g. 20 there,
+ * and read only the load timings (they tick once per frame, so expect ~100 ms
+ * granularity), never the frame columns.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -31,13 +34,14 @@ const lastEnd = (res, rx) => {
   return hit.length ? Math.max(...hit.map((r) => r.e)) : null;
 };
 
+const MIN_FRAMES = Number(process.env.ACADEMY_PERF_MIN_FRAMES ?? 100);
 const main = [];
 const net = [];
 for (const dir of process.argv.slice(2)) {
   for (const f of readdirSync(dir).filter((n) => n.endsWith(".json") && !n.endsWith("trace.json")).sort()) {
     const { scenario: sc, results } = JSON.parse(readFileSync(join(dir, f), "utf8"));
     const runs = results.filter((r) => r.A);
-    const valid = runs.filter((r) => r.A.frames.length > 100);
+    const valid = runs.filter((r) => r.A.frames.length > MIN_FRAMES);
     if (!valid.length) continue;
     const direct = sc.path === "/lol";
     const M = {};
