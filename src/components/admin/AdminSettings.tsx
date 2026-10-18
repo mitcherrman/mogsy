@@ -31,6 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Settings2, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateAppSettings } from "@/hooks/useAppSettings";
 import { toast } from "sonner";
 
 interface SettingsState {
@@ -67,6 +68,7 @@ export default function AdminSettings() {
       setSettings({ require_auth: !newVal });
       return;
     }
+    invalidateAppSettings();
     toast.success("Setting updated");
   };
 

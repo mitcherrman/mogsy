@@ -13,7 +13,7 @@
  * the real-browser measurements live in e2e/academy-core-v35.spec.ts.
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import { render, screen, fireEvent, act, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { readFileSync } from "node:fs";
@@ -57,9 +57,12 @@ vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
 });
 
 const warm = vi.fn(() => Promise.resolve({ leaguecraft: null, "pro-play": null, "combat-lab": null, archives: null }));
+// The first-screen art's real settle (ACADEMY STARTUP S3): resolved unless a test holds it.
+const settledGate = vi.hoisted(() => ({ promise: Promise.resolve() as Promise<void> }));
 vi.mock("@/pages/academy-core/academy-core-warm", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/pages/academy-core/academy-core-warm")>()),
   warmAcademyCore: () => warm(),
+  academyCoreSettled: () => settledGate.promise,
 }));
 vi.mock("@/lib/audio/academy-radio", () => ({
   useAcademyRadio: () => ({ isPlaying: false, isTransmitting: false, title: "", subtitle: "", volume: 0.15, tune: vi.fn(), next: vi.fn(), setVolume: vi.fn(), status: "idle" }),
@@ -129,6 +132,7 @@ beforeEach(() => {
   sfxPlay.mockReset();
   prefetchRoute.mockReset();
   warm.mockClear();
+  settledGate.promise = Promise.resolve();
   feed.current = INITIAL_BROADCAST_FEED;
   reduced.current = false;
   auth.user = { id: "test-user" };
@@ -705,6 +709,8 @@ describe("the redesigned crystal projections, in the page", () => {
   it("Leaguecraft shows the five role icons around Lux behind the six-shutter iris; Pro Play shows the 5 v 5 lineup around the Rift", async () => {
     const { container } = mount();
     await act(async () => { await Promise.resolve(); }); // the (mocked) warm resolves -> the art is due
+    // the projections' icons follow at idle once the first screen has settled (ACADEMY STARTUP S3)
+    await waitFor(() => expect(container.querySelector("[data-testid='academy-core-v35-lux-portrait']")).not.toBeNull());
     const lc = container.querySelector(".acore-mode-leaguecraft")!;
     expect(lc).toHaveAttribute("data-projection", "override");
     expect(lc.querySelector("[data-testid='academy-core-v35-lux-portrait']")?.getAttribute("href")).toContain("assets/champions/Lux/icon.png");
@@ -733,5 +739,26 @@ describe("the redesigned crystal projections, in the page", () => {
     expect(document.querySelector(".acore-svg")).toHaveAttribute("data-focus", "pro-play");
     fireEvent.click(screen.getByTestId("academy-core-crystal"));
     expect(document.querySelector(".acore-svg")).toHaveAttribute("data-focus", "combat-lab");
+  });
+});
+
+
+describe("what nobody sees on arrival waits (ACADEMY STARTUP S3)", () => {
+  it("the destination pages, Mogzy's reaction poses and the projection icons wait for the first screen to settle, then follow at idle", async () => {
+    let release!: () => void;
+    settledGate.promise = new Promise<void>((r) => { release = r; });
+    const { container } = mount();
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
+    expect(prefetchRoute.mock.calls.map((c) => c[0])).not.toEqual(expect.arrayContaining(["/quiz", "/combat-lab"]));
+    expect(container.querySelector("[data-testid='academy-core-mogzy']")).toHaveAttribute("data-reactions", "pending");
+    expect(container.querySelector("[data-testid='academy-core-v35-lux-portrait']")).toBeNull();
+    expect(container.querySelectorAll("img[src*='icon.png'], image[href*='icon.png']")).toHaveLength(0);
+    await act(async () => { release(); await Promise.resolve(); });
+    await waitFor(() => expect(prefetchRoute.mock.calls.map((c) => c[0])).toEqual(
+      expect.arrayContaining(["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]),
+    ));
+    expect(container.querySelector("[data-testid='academy-core-mogzy']")).toHaveAttribute("data-reactions", "ready");
+    expect(container.querySelector("[data-testid='academy-core-v35-lux-portrait']")).not.toBeNull();
   });
 });

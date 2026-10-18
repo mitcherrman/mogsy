@@ -156,9 +156,9 @@ describe("MogzyEntryV2 autoEnter — root boot sequence", () => {
     expect(set).not.toHaveBeenCalledWith("mogsy.academyWelcome.v1", expect.anything());
   });
 
-  it("warms the home route during the hold", () => {
+  it("warms the home route during the hold — requested at once, not at idle (ACADEMY STARTUP S3)", () => {
     render(<MogzyEntryV2 seo="root" autoEnter />);
-    expect(mocks.prefetchRoute).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE);
+    expect(mocks.prefetchRoute).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { intent: true });
   });
 
   it("attempts the entry music, and navigates on schedule if it is refused", () => {

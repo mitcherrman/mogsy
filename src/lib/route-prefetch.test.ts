@@ -72,11 +72,11 @@ describe("prefetchRoute", () => {
     expect(idle).toHaveLength(0);
   });
 
-  it("warms /lol's set: the Academy Core, Combat Lab and Leaguecraft — never the retired Hall", () => {
+  it("warms /lol's own chunk alone — its destinations wait until the Core is shown (ACADEMY STARTUP S3), never the retired Hall", () => {
     prefetchRoute("/lol", { intent: true });
     expect(Routes.AcademyCore.prefetch).toHaveBeenCalledTimes(1);
-    expect(Routes.CombatLab.prefetch).toHaveBeenCalledTimes(1);
-    expect(Routes.Quiz.prefetch).toHaveBeenCalledTimes(1);
+    expect(Routes.CombatLab.prefetch).not.toHaveBeenCalled();
+    expect(Routes.Quiz.prefetch).not.toHaveBeenCalled();
     expect(Routes.LolHub.prefetch).not.toHaveBeenCalled();
   });
 

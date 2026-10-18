@@ -24,9 +24,19 @@
  *   3. as soon as the manifest answers: the four cover splashes — all four at
  *      high priority on desktop (all on screen); on phones the upper pair
  *      high and the lower pair low (below the first screen);
- *   4. once the critical set settles (or a short budget runs out): the four
- *      reaction poses (~10 KB each), the tiny local shards / role marks, and
- *      the four destination route chunks at idle.
+ *   3b. ACADEMY STARTUP S2 — the Patch Report book's feed (list -> detail, the
+ *      page's own query keys) and then its champion icons: on desktop at once
+ *      and high (the open book is on the first screen and was the last thing
+ *      to arrive), on phones only after the critical set and low (below the
+ *      fold there);
+ *   4. once the first-screen art has ACTUALLY settled (loaded or failed — not
+ *      when the short budget runs out): the four reaction poses (~10 KB
+ *      each), the tiny local shards / role marks and, on phones, the open
+ *      book. ACADEMY STARTUP S3: the four destination route chunks are no
+ *      longer started here; the page asks for them at idle after it is shown
+ *      (`academyCoreSettled`). On slow networks the old budget-driven step
+ *      started all of this while the frame and covers were still downloading
+ *      (measured: slow 4G, critical art not in after 14 s).
  *
  * Not fetched any more (V2 → V3): the two manifest champion ICONS — the
  * crystal's projections now reuse the cover splashes that are already in cache.
@@ -35,10 +45,9 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { ACADEMY_BOOK_FRAME, ACADEMY_BROADCAST_BOOK } from "@/academy/hub/hub-art";
 import { getMogzyArtAssetPath, type MogzyMascotPose } from "@/components/mascot/mascot-assets";
-import { HUB_DESTINATION_ROUTES } from "@/lib/hub/academy-hub-warm";
 import { championAssetsQuery, getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
 import { prepareImage, prepareImages } from "@/lib/ranked-core/media/prepareImage";
-import { prefetchRoute } from "@/lib/route-prefetch";
+import { patchBriefIconUrls, prefetchPatchBrief } from "@/components/lol/broadcast/usePatchBriefFeed";
 import { CORE_DESTINATIONS, type CoreDestination } from "./academy-core-destinations";
 
 /** Mogzy at rest beside the instrument — the Landing / Hall encode (71 KB). */
@@ -70,6 +79,8 @@ export const CORE_OBSERVE_ROLES = [
 ] as const;
 
 const CRITICAL_BUDGET_MS = 4000;
+/** How long the decorative follow-ups may wait for the first-screen art before going anyway. */
+const SETTLE_CAP_MS = 20_000;
 /** Same breakpoint the page uses to choose the full (book-beside-Core) composition. */
 export const CORE_FULL_LAYOUT_MEDIA = "(min-width: 1024px)";
 
@@ -96,6 +107,7 @@ export function coreCoverSplashes(manifest: ChampionManifest | null | undefined)
 export type CoreWarmResult = Record<CoreDestination["id"], string | null>;
 
 let started: Promise<CoreWarmResult> | null = null;
+let settled: Promise<void> | null = null;
 
 /**
  * Start (or join) the Core warm. Resolves with the cover splash URLs once the
@@ -129,19 +141,53 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
     return Promise.all(jobs).then(() => splashes);
   });
 
-  started = critical.then(async () => {
-    for (const to of HUB_DESTINATION_ROUTES) prefetchRoute(to);
+  // The first screen has really settled when every critical image and every
+  // on-screen cover has loaded or failed. These calls JOIN the loads above (the
+  // budget belongs to the caller, not the request), they only wait longer.
+  const firstScreen = Promise.all([
+    prepareImages(coreCriticalImages(full), { timeoutMs: SETTLE_CAP_MS }),
+    manifest.then((m) => {
+      const splashes = coreCoverSplashes(m);
+      return Promise.all(
+        CORE_DESTINATIONS.filter((d) => full || d.tier === "upper").map((d) =>
+          prepareImage(splashes[d.id], { timeoutMs: SETTLE_CAP_MS })),
+      );
+    }),
+  ]).then(() => undefined);
+  settled = firstScreen;
+
+  // The Patch Report's feed is two serial API reads: start them now on desktop
+  // (they are small; the latency, not the bytes, is what made the book last).
+  if (client) {
+    const brief = full ? prefetchPatchBrief(client, manifest) : firstScreen.then(() => prefetchPatchBrief(client, manifest));
+    void brief.then((b) => {
+      for (const url of patchBriefIconUrls(b)) void prepareImage(url, { priority: full ? "high" : "low" });
+    });
+  }
+
+  void settled.then(() => {
     for (const pose of Object.values(CORE_MOGZY_REACTION_POSE)) {
       void prepareImage(coreReactionSrc(pose), { priority: "low" });
     }
     for (const u of [...CORE_MEASURE_SHARDS, ...CORE_OBSERVE_ROLES]) void prepareImage(u, { priority: "low" });
     if (!full) void prepareImage(ACADEMY_BROADCAST_BOOK, { priority: "low" });
-    return covers;
   });
+
+  started = critical.then(() => covers);
   return started;
+}
+
+/**
+ * Resolves once a running warm's first-screen art has settled (loaded or
+ * failed; at most SETTLE_CAP_MS). Immediately when no warm is running: then
+ * there is nothing on the network to make way for.
+ */
+export function academyCoreSettled(): Promise<void> {
+  return settled ?? Promise.resolve();
 }
 
 /** Test seam. */
 export function __resetAcademyCoreWarmForTests(): void {
   started = null;
+  settled = null;
 }
