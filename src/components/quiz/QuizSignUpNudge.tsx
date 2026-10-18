@@ -18,14 +18,14 @@ export default function QuizSignUpNudge({ returnTo = "/quiz" }: Props) {
     if (recorded.current) return;
     recorded.current = true;
     track("signup_offer_shown", { metadata: {
-      placement: "practice_after_three_answers", activity: "practice", return_to: returnTo,
+      placement: "practice_soft_nudge", activity: "practice", return_to: returnTo,
     } });
   }, [returnTo]);
 
   const dismiss = () => {
     markSoftNudgeSeen();
     track("signup_offer_dismissed", { metadata: {
-      placement: "practice_after_three_answers", activity: "practice", return_to: returnTo,
+      placement: "practice_soft_nudge", activity: "practice", return_to: returnTo,
     } });
     setVisible(false);
   };
@@ -50,7 +50,7 @@ export default function QuizSignUpNudge({ returnTo = "/quiz" }: Props) {
               className="shrink-0 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
               onClick={() => {
                 track("signup_offer_clicked", { metadata: {
-                  placement: "practice_after_three_answers", activity: "practice", return_to: returnTo,
+                  placement: "practice_soft_nudge", activity: "practice", return_to: returnTo,
                 } });
                 navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`);
               }}
