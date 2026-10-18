@@ -115,6 +115,9 @@ export const PRODUCT_EVENTS = [
   "quiz_question_answered",
   "quiz_completed",
   "quiz_signup_gate_shown",
+  // A contextual offer is not the auth signup screen and must not inflate signup_viewed.
+  "signup_offer_shown",
+  "signup_offer_clicked",
   "quiz_signup_clicked",
   "quiz_guest_continue_clicked",
   "hud_signup_chip_clicked",

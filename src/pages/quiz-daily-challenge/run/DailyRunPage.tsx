@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
 import { ArenaShell, arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { useAuth } from "@/hooks/useAuth";
+import { authHref } from "@/lib/auth/auth-destination";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import type { MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import { httpDailyRunTransport, type DailyRunTransport } from "@/lib/daily-challenge/run/client";
@@ -233,7 +234,9 @@ export function DailyRunPage({
           <DailyMainResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={doneForNow} placement={stageResultPlacement}
             onMoreChallenges={flow.phase === "stage-result" ? toMoreChallenges : undefined}
-            onReviewDiscoveries={reviewDiscoveries} />
+            onReviewDiscoveries={reviewDiscoveries}
+            guestSaveEligible={user?.is_anonymous === true}
+            onSaveScore={() => navigate(authHref("/quiz/daily-challenge", { mode: "signup" }))} />
         ) : (
           <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={hasMainDaily(run) ? doneForNow : undefined}

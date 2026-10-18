@@ -42,6 +42,7 @@
  * `OptionalEntryBeat`), so the ceremony is seen once and never replayed.
  */
 import { useEffect, useRef, type CSSProperties } from "react";
+import { track } from "@/lib/analytics";
 import { ResultActions } from "@/components/game-results/ResultActions";
 import { ResultHero, SCORE_REVEAL_BEATS } from "@/components/game-results/ResultHero";
 import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
@@ -85,6 +86,7 @@ function delayStyle(ms: number): CSSProperties {
 
 export function DailyMainResult({
   run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges, onReviewDiscoveries,
+  guestSaveEligible = false, onSaveScore,
 }: {
   run: DailyRun;
   /** The MAIN stage (Standard). */
@@ -110,6 +112,10 @@ export function DailyMainResult({
    * "Done for now" is the host's to give.
    */
   onReviewDiscoveries?: () => void;
+  /** True only for a genuine anonymous guest identity; a visitor without auth cannot own a run. */
+  guestSaveEligible?: boolean;
+  /** Enter the existing in-place guest upgrade flow, retaining the Daily return target. */
+  onSaveScore?: () => void;
 }) {
   const settled = isMainDailyComplete(run) && stage.status === "completed";
   const model = buildDailyMainResult(run, stage);
@@ -125,6 +131,15 @@ export function DailyMainResult({
   // standing; the engine's `eventId` dedupe is what makes a second mount silent.
   const sfx = useSfx();
   const cued = useRef(false);
+  const offeredRunId = useRef<string | null>(null);
+  const showSaveOffer = guestSaveEligible && !!onSaveScore;
+  useEffect(() => {
+    if (!settled || !showSaveOffer || offeredRunId.current === run.runId) return;
+    offeredRunId.current = run.runId;
+    track("signup_offer_shown", { metadata: {
+      placement: "daily_main_result", activity: "daily_challenge", run_id: run.runId,
+    } });
+  }, [settled, showSaveOffer, run.runId]);
   useEffect(() => {
     if (!settled || cued.current) return;
     const timer = window.setTimeout(() => {
@@ -162,6 +177,35 @@ export function DailyMainResult({
           <span aria-hidden data-testid="daily-main-result-scoring" />
         )}
       </div>
+
+      {/* A guest may finish and leave after Standard, without ever reaching
+          the final Daily completion gate. Keep the result actions unchanged:
+          this is an optional invitation, never an interstitial or a lock. */}
+      {showSaveOffer && (
+        <div className="min-h-[3.5rem] max-sm:min-h-[3.25rem]" data-testid="daily-main-save-offer-slot">
+          {settled && (
+            <aside data-testid="daily-main-save-offer" aria-label="Save today's score"
+              className="flex min-h-[3.5rem] max-sm:min-h-[3.25rem] flex-wrap items-center justify-between gap-2 rounded-md border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-[#f0d78c]">Keep today's Daily score</p>
+                <p className="text-[11px] text-[var(--ranked-vellum,#f1e6c8)]/80">
+                  Create a free account to save your score and history.
+                </p>
+              </div>
+              <button type="button" data-testid="daily-main-save-score"
+                className="shrink-0 rounded-md border border-[#f0d78c]/65 bg-[#c9a84c] px-3 py-2 text-xs font-bold text-[#1a1530] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]"
+                onClick={() => {
+                  track("signup_offer_clicked", { metadata: {
+                    placement: "daily_main_result", activity: "daily_challenge", run_id: run.runId,
+                  } });
+                  onSaveScore?.();
+                }}>
+                Save score
+              </button>
+            </aside>
+          )}
+        </div>
+      )}
 
       {onReviewDiscoveries && (
         <DailyDiscoveries stage={stage} settled={settled}

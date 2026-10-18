@@ -1,0 +1,32 @@
+name: Daily Save Offer Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/quiz-daily-challenge/run/DailyMainResult*'
+      - 'src/pages/quiz-daily-challenge/run/DailyRunPage.tsx'
+      - 'src/lib/analytics/contract.ts'
+      - '.github/workflows/daily-save-offer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  daily-save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Guest save and existing Daily result contracts
+        run: npm test -- src/pages/quiz-daily-challenge/run/DailyMainResult.signup.test.tsx src/pages/quiz-daily-challenge/run/DailyMainResult.reveal.test.tsx src/pages/quiz-daily-challenge/run/dailyResultDensity.test.tsx
+      - name: Chromium setup
+        run: npx playwright install --with-deps chromium
+      - name: Guest result browser fit (320 / 390)
+        run: npx playwright test -c playwright.daily-save-offer.config.ts
+      - name: Vite compilation
+        run: npx vite build
