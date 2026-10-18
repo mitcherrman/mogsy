@@ -27,5 +27,7 @@ jobs:
         run: npm test -- src/lib/admin/analytics/metrics.test.ts src/lib/admin/analytics/traffic.test.ts src/components/admin/users/AudienceSections.gameplay.test.tsx src/components/admin/users/AudiencePulse.test.tsx src/pages/admin/areas/AdminShell.areas.test.tsx
       - name: Vite production compile
         run: npx vite build
-      - name: Frontend type check (existing repository baseline also fails)
-        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Fetch main for baseline check
+        run: git fetch --no-tags --depth=1 origin main
+      - name: Verify only existing main-branch TypeScript diagnostics
+        run: node scripts/ci/check-audience-typecheck.mjs
