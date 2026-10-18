@@ -453,29 +453,29 @@ describe("a guest's first Daily (owner decision: sign up at the END to save)", (
     await flush(10);
     expect(screen.queryByRole("button", { name: /begin/i })).toBeNull();
     expect(t.calls).toContain("startToday");
-    expect(q("daily-save-gate")).toBeNull();
+    expect(q("daily-save-offer")).toBeNull();
     expect(screen.queryByText(/create account/i)).toBeNull();
   });
 
-  it("a guest's finished day ends on the signup-to-save gate, routed to the in-place upgrade", async () => {
+  it("a guest sees a non-blocking save invitation and keeps normal navigation", async () => {
     mockAuth.user = { id: "guest-1", is_anonymous: true };
     mount(finishedDay());
     await flush();
     expect(phase()).toBe("complete");
-    const gate = screen.getByTestId("daily-save-gate");
-    expect(within(gate).getByText("Save today's Daily Challenge")).toBeInTheDocument();
-    expect(within(gate).getByRole("button", { name: "Create Account" })).toBeInTheDocument();
-    // Saving is the point of the end of the first Daily: no guest dismissal.
-    expect(within(gate).queryByRole("button", { name: /keep playing as guest/i })).toBeNull();
-    // The recap is still the page behind it.
+    const offer = screen.getByTestId("daily-save-offer");
+    expect(within(offer).getByText("Keep today's results in your account")).toBeInTheDocument();
+    expect(within(offer).getByRole("link", { name: "Create free account" })).toHaveAttribute(
+      "href", "/auth?mode=signup&returnTo=%2Fquiz%2Fdaily-challenge");
+    expect(screen.getByTestId("daily-run-home")).toBeInTheDocument();
+    expect(screen.queryByTestId("daily-save-gate")).toBeNull();
     expect(screen.getByTestId("daily-run-complete")).toBeInTheDocument();
   });
 
-  it("a signed-in player's finished day has no save gate", async () => {
+  it("a signed-in player's finished day has no save offer", async () => {
     mount(finishedDay());
     await flush();
     expect(phase()).toBe("complete");
-    expect(q("daily-save-gate")).toBeNull();
+    expect(q("daily-save-offer")).toBeNull();
   });
 });
 

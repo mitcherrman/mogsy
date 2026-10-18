@@ -112,7 +112,7 @@ function Scene() {
   let node: JSX.Element;
   if (view === "completion") {
     run = completeDay();
-    node = <DailyCompletion run={run} />;
+    node = <DailyCompletion run={run} saveRequired={guestSave} />;
   } else if (view === "optional") {
     ({ run, stage } = dayAt(0, true));
     node = <OptionalEntryBeat run={run} stage={run.stages[1]} onPlayOptional={noop} onDone={noop} />;
