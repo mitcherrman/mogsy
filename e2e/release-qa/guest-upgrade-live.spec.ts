@@ -37,19 +37,44 @@ test("fresh mobile guest starts Daily and retains the same run after account upg
 
   // Actual production signup UI and account-upgrade state machine.
   await page.goto("/auth?mode=signup&returnTo=%2Fquiz%2Fdaily-challenge");
-  await expect(page.getByTestId("upgrade-username-input")).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId("upgrade-username-input").fill(username);
+  const nameInput = page.getByTestId("upgrade-username-input");
+  await expect(nameInput).toBeVisible({ timeout: 30_000 });
+  // Profile identity resolves asynchronously; avoid racing its one-time
+  // initial seed against our Playwright-controlled form fill.
+  await page.waitForTimeout(1500);
+  await nameInput.fill(username);
   await page.getByTestId("upgrade-email-input").fill(email);
   await page.getByTestId("upgrade-password-input").fill(password);
+  await expect(nameInput).toHaveValue(username);
+  await expect(page.getByTestId("upgrade-email-input")).toHaveValue(email);
+  await expect(page.getByTestId("upgrade-password-input")).toHaveValue(password);
+  const formValidity = await page.evaluate(() => {
+    const form = document.querySelector('[data-testid="upgrade-submit"]')?.closest("form");
+    if (!form) return { valid: false, invalidNames: ["missing-form"] };
+    return { valid: form.checkValidity(), invalidNames: [...form.querySelectorAll("input")]
+      .filter((x) => !x.checkValidity()).map((x) => x.id) };
+  });
+  expect(formValidity, "signup form must validate before submit").toEqual({ valid: true, invalidNames: [] });
   await page.getByTestId("upgrade-submit").click();
 
-  // No assumption that a form submission means a verified signup.
-  await expect.poll(async () => await page.evaluate(async () => {
-    const { supabase } = await import("/src/integrations/supabase/client.ts");
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return null;
-    return { userId: data.user.id, anonymous: data.user.is_anonymous === true };
-  }), { timeout: 60_000 }).toEqual({ userId: before.userId, anonymous: false });
+  // A failure MUST surface the product's own safe error, not silently time out.
+  try {
+    await expect.poll(async () => await page.evaluate(async () => {
+      const { supabase } = await import("/src/integrations/supabase/client.ts");
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return null;
+      return { userId: data.user.id, anonymous: data.user.is_anonymous === true };
+    }), { timeout: 30_000 }).toEqual({ userId: before.userId, anonymous: false });
+  } catch {
+    const diagnostic = await page.evaluate(() => ({
+      usernameError: document.querySelector('[data-testid="upgrade-username-input-error"]')?.textContent ?? null,
+      upgradeError: document.querySelector('[data-testid="upgrade-error"]')?.textContent ?? null,
+      verificationPending: !!document.querySelector('[data-testid="pending-email"]'),
+      formPresent: !!document.querySelector('[data-testid="upgrade-submit"]'),
+      submitDisabled: (document.querySelector('[data-testid="upgrade-submit"]') as HTMLButtonElement | null)?.disabled ?? null,
+    }));
+    throw new Error("Live signup conversion blocked; product-safe state: " + JSON.stringify(diagnostic));
+  }
 
   // The server-owned Daily parent must still belong to the SAME JWT identity.
   const after = await page.evaluate(async () => {
