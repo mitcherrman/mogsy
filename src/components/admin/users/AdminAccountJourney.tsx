@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Crown, UserRoundCheck, Radio, MessageCircle, Gamepad2, Activity, Mail, BadgeCheck, Clock, ShieldAlert, CircleDot, ShoppingBag, Link2 } from "lucide-react";
 import type { JourneyMoment } from "@/lib/admin/account-journey";
 import { buildAccountJourney, type AccountJourneyInput } from "@/lib/admin/account-journey";
@@ -24,6 +25,8 @@ function Milestone({ title, value, detail, verified }: {title:string;value:strin
 }
 export function AdminAccountJourney({ input, email, loading, error, browserLoading = false }: {input:AccountJourneyInput;email:string|null;loading:boolean;error:boolean;browserLoading?:boolean}) {
   const moments=buildAccountJourney(input);
+  const [expanded, setExpanded]=useState(false);
+  const shownMoments=expanded ? moments : moments.slice(0, 8);
   const signup= input.events.find(e=>e.event_name==="signup_completed" && e.source_system==="web");
   const emailStatus=input.auth?.email_confirmed ? "Confirmed" : input.auth ? "Not confirmed" : "Not loaded";
   return <section data-testid="admin-account-journey" className="space-y-4">
@@ -86,10 +89,10 @@ export function AdminAccountJourney({ input, email, loading, error, browserLoadi
       </div>
       {error && <p role="alert" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-300">Some activity could not be loaded. This timeline is incomplete.</p>}
       {moments.length===0 ? <p className="py-7 text-center text-sm text-muted-foreground">No account-linked history available.</p> : <ol className="space-y-0" data-testid="account-timeline">
-        {moments.map((m: JourneyMoment, index) => {
+        {shownMoments.map((m: JourneyMoment, index) => {
           const Icon = icons[m.kind];
           return <li key={m.id} className="relative flex gap-3 pb-4 last:pb-0">
-            {index < moments.length-1 && <span aria-hidden className="absolute left-[15px] top-8 bottom-0 w-px bg-border"/>}
+            {index < shownMoments.length-1 && <span aria-hidden className="absolute left-[15px] top-8 bottom-0 w-px bg-border"/>}
             <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${tone[m.kind]}`}><Icon className="h-3.5 w-3.5"/></div>
             <div className="min-w-0 flex-1 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
               <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
@@ -102,6 +105,11 @@ export function AdminAccountJourney({ input, email, loading, error, browserLoadi
           </li>;
         })}
       </ol>}
+      {moments.length > 8 && <button type="button" data-testid="account-timeline-expand"
+        className="mt-3 w-full rounded-lg border border-border bg-background/50 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        onClick={() => setExpanded(value => !value)}>
+        {expanded ? "Show recent activity only" : `Show all ${moments.length} account events`}
+      </button>}
     </div>
   </section>;
 }
