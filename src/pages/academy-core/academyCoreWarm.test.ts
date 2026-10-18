@@ -11,18 +11,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
-const loader = vi.hoisted(() => ({
-  prepared: [] as { url: string; priority?: string }[],
-  resolveCritical: () => {},
-}));
+// Requests are recorded when a caller sets a priority (that is what issues
+// them); a priority-less call only JOINS a load already in flight with a
+// longer wait (the warm's "has it really settled" check), so it is not a request.
+const loader = vi.hoisted(() => {
+  const pending: { budget?: number; resolve: () => void }[] = [];
+  return {
+    prepared: [] as { url: string; priority?: string }[],
+    pending,
+    /** The short (4 s) critical budget answers. */
+    resolveCritical: () => { for (const p of pending.filter((x) => x.budget === 4000)) p.resolve(); },
+    /** The first-screen art has actually loaded (the long, joining waits answer). */
+    resolveSettled: () => { for (const p of pending.filter((x) => x.budget !== 4000)) p.resolve(); },
+  };
+});
 vi.mock("@/lib/ranked-core/media/prepareImage", () => ({
   prepareImage: (url: string, opts: { priority?: string } = {}) => {
-    loader.prepared.push({ url, priority: opts.priority });
+    if (opts.priority) loader.prepared.push({ url, priority: opts.priority });
     return Promise.resolve("ok");
   },
-  prepareImages: (urls: string[], opts: { priority?: string } = {}) => {
-    for (const url of urls) loader.prepared.push({ url, priority: opts.priority });
-    return new Promise<void>((resolve) => { loader.resolveCritical = resolve; });
+  prepareImages: (urls: string[], opts: { priority?: string; timeoutMs?: number } = {}) => {
+    if (opts.priority) for (const url of urls) loader.prepared.push({ url, priority: opts.priority });
+    return new Promise<void>((resolve) => { loader.pending.push({ budget: opts.timeoutMs, resolve }); });
   },
 }));
 const prefetchRoute = vi.fn();
@@ -41,7 +51,7 @@ import {
 } from "@/academy/hub/hub-art";
 import { championAssetsQuery } from "@/hooks/useChampionAssets";
 import {
-  CORE_MOGZY_REST_SRC, __resetAcademyCoreWarmForTests, coreCriticalImages, warmAcademyCore,
+  CORE_MOGZY_REST_SRC, __resetAcademyCoreWarmForTests, academyCoreSettled, coreCriticalImages, warmAcademyCore,
 } from "./academy-core-warm";
 
 const HALL_ONLY = [ACADEMY_LIBRARY_DESKTOP, ACADEMY_LIBRARY_MOBILE, ACADEMY_BOOK_SPINE];
@@ -61,6 +71,7 @@ beforeEach(() => {
   patch.prefetch.mockReset();
   patch.prefetch.mockImplementation(() => Promise.resolve(null));
   loader.prepared.length = 0;
+  loader.pending.length = 0;
   prefetchRoute.mockClear();
   __resetAcademyCoreWarmForTests();
 });
@@ -89,12 +100,16 @@ describe("warmAcademyCore", () => {
     const covers = loader.prepared.slice(3);
     expect(covers.map((p) => p.url)).toEqual([splash("Ryze"), splash("Ahri"), splash("Akali"), splash("Viktor")]);
     expect(covers.every((p) => p.priority === "high")).toBe(true);
-    expect(prefetchRoute).not.toHaveBeenCalled();
     loader.resolveCritical();
     const result = await done;
-    expect(prefetchRoute.mock.calls.map((c) => c[0])).toEqual(["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]);
     expect(result.leaguecraft).toMatch(/Ryze\/splash/);
     expect(result["pro-play"]).toMatch(/Ahri\/splash/);
+    // the decorative follow-ups wait for the art to have REALLY settled
+    expect(loader.prepared.slice(7)).toEqual([]);
+    loader.resolveSettled();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    // ACADEMY STARTUP S3: the destination pages are the page's to ask for, once shown
+    expect(prefetchRoute).not.toHaveBeenCalled();
     const later = loader.prepared.slice(7);
     expect(later.every((p) => p.priority === "low")).toBe(true);
     expect(later.map((p) => p.url)).toEqual(expect.arrayContaining([
@@ -118,6 +133,9 @@ describe("warmAcademyCore", () => {
     expect(byUrl.get([...byUrl.keys()].find((u) => /Viktor\/splash/.test(u))!)).toBe("low");
     loader.resolveCritical();
     await done;
+    expect(loader.prepared.find((p) => p.url === ACADEMY_BROADCAST_BOOK)).toBeUndefined();
+    loader.resolveSettled();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     expect(loader.prepared.find((p) => p.url === ACADEMY_BROADCAST_BOOK)?.priority).toBe("low");
   });
 
@@ -161,6 +179,10 @@ describe("warmAcademyCore — the Patch Report book (ACADEMY STARTUP S2)", () =>
     loader.resolveCritical();
     await done;
     await Promise.resolve(); await Promise.resolve();
+    // integration: the phone's feed follows the first screen's REAL settle (S3), not the 4 s budget
+    expect(patch.prefetch).not.toHaveBeenCalled();
+    loader.resolveSettled();
+    await new Promise((r) => setTimeout(r, 0));
     expect(patch.prefetch).toHaveBeenCalledTimes(1);
     const icons = loader.prepared.filter((p) => /\/icon\.png$/.test(p.url));
     expect(icons.map((p) => p.url)).toEqual(BRIEF.icons);
@@ -173,5 +195,43 @@ describe("warmAcademyCore — the Patch Report book (ACADEMY STARTUP S2)", () =>
     loader.resolveCritical();
     await done;
     expect(patch.prefetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("warmAcademyCore — slow networks (ACADEMY STARTUP S3)", () => {
+  it("the critical budget running out does NOT start the decorative loads while the first-screen art is still downloading", async () => {
+    setLayout(true);
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
+    const done = warmAcademyCore(client);
+    await Promise.resolve(); await Promise.resolve();
+    const before = loader.prepared.length;
+    loader.resolveCritical(); // 4 s pass; the frame and covers are still on the wire
+    await done;
+    await Promise.resolve(); await Promise.resolve();
+    expect(loader.prepared.length).toBe(before);
+    expect(prefetchRoute).not.toHaveBeenCalled();
+    loader.resolveSettled();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(loader.prepared.length).toBeGreaterThan(before);
+    expect(loader.prepared.slice(before).every((p) => p.priority === "low")).toBe(true);
+  });
+
+  it("academyCoreSettled answers when the first screen has settled, and at once when no warm runs", async () => {
+    let settledNow = false;
+    await academyCoreSettled().then(() => { settledNow = true; });
+    expect(settledNow).toBe(true);
+    setLayout(true);
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
+    void warmAcademyCore(client);
+    let settled = false;
+    void academyCoreSettled().then(() => { settled = true; });
+    loader.resolveCritical();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(settled).toBe(false);
+    loader.resolveSettled();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(settled).toBe(true);
   });
 });

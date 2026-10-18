@@ -18,6 +18,7 @@ import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { prefetchAppSettings } from "@/hooks/useAppSettings";
 import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
+import { championAssetsQuery } from "@/hooks/useChampionAssets";
 import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
@@ -312,9 +313,14 @@ export default function MogzyEntryV2({
 
   useEffect(() => {
     if (!autoEnter) return;
-    // The hub chunk (and Quiz/CombatLab, which it links to) loads during the
-    // hold rather than after the navigation. Idle-scheduled and deduped.
-    prefetchRoute(LEAGUE_HOME_ROUTE);
+    // The hub chunk loads during the hold rather than after the navigation.
+    // ACADEMY STARTUP S3: requested now (`intent`), not at idle — it is the
+    // one chunk this screen is certain to need, and an idle slot can come late
+    // on a busy device. Its destinations are no longer part of this warm.
+    prefetchRoute(LEAGUE_HOME_ROUTE, { intent: true });
+    // The champion manifest names the four cover splashes. It is small and its
+    // cost is latency, so it starts now rather than after this screen's art.
+    void queryClientRef.current?.prefetchQuery(championAssetsQuery);
     // ACADEMY STARTUP S1 — the shell (`Layout`) shows only its startup surface
     // until the app settings are known. Read them now, during the hold, so the
     // hand-off does not pay that round trip after the veil has gone.
