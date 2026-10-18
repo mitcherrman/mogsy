@@ -22,7 +22,7 @@ function Milestone({ title, value, detail, verified }: {title:string;value:strin
     <p className="mt-1 truncate text-[11px] text-muted-foreground" title={detail}>{detail}</p>
   </div>;
 }
-export function AdminAccountJourney({ input, email, loading, error }: {input:AccountJourneyInput;email:string|null;loading:boolean;error:boolean}) {
+export function AdminAccountJourney({ input, email, loading, error, browserLoading = false }: {input:AccountJourneyInput;email:string|null;loading:boolean;error:boolean;browserLoading?:boolean}) {
   const moments=buildAccountJourney(input);
   const signup= input.events.find(e=>e.event_name==="signup_completed" && e.source_system==="web");
   const emailStatus=input.auth?.email_confirmed ? "Confirmed" : input.auth ? "Not confirmed" : "Not loaded";
@@ -58,9 +58,11 @@ export function AdminAccountJourney({ input, email, loading, error }: {input:Acc
         </div>
       </div>
       {input.linkedBrowserError && <p role="alert" className="mb-3 text-xs text-amber-400">Browser association lookup failed; acquisition information is incomplete.</p>}
-      {!input.linkedBrowsers?.length
-        ? <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">No verified browser association recorded. Source unknown, not necessarily direct.</p>
-        : <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {browserLoading
+        ? <p role="status" className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">Loading browser associations…</p>
+        : !input.linkedBrowsers?.length
+          ? <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">No deterministic browser association recorded. Source unknown, not necessarily direct.</p>
+          : <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {input.linkedBrowsers.map(browser => (
             <div key={browser.visitorId} className="rounded-lg border border-border/70 bg-background/50 px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Browser acquisition</p>
