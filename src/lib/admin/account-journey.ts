@@ -155,8 +155,14 @@ export function countAccountMilestones(items: Array<{
     registered: real.length,
     knownQa: real.filter(p => isKnownQaEmail(emails[uid(p.id)])).length,
     bots: items.filter(p => !p.is_anonymous && !!p.is_bot).length,
-    discord: real.filter(p => !!linked.get(p.id)?.discord).length,
-    riot: real.filter(p => !!linked.get(p.id)?.riot).length,
+    discord: real.filter(p => {
+      const link=linked.get(p.id)?.discord;
+      return !!link && typeof link === "object" && "verifiedAt" in link && validTime(String(link.verifiedAt ?? ""));
+    }).length,
+    riot: real.filter(p => {
+      const link=linked.get(p.id)?.riot;
+      return !!link && typeof link === "object" && "verifiedAt" in link && validTime(String(link.verifiedAt ?? ""));
+    }).length,
     premium: real.filter(p => premium(p.id)).length,
     active7d: real.filter(p => validTime(p.last_seen_at) && Date.parse(p.last_seen_at) >= now - 7*86400_000 && Date.parse(p.last_seen_at) <= now).length,
   };
