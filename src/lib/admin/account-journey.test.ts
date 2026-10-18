@@ -100,3 +100,13 @@ describe("source attribution is first-party browser evidence only",()=>{
     expect(acquisitionSource(null,null)).toBeNull();
   });
 });
+
+describe("verified identity link population", () => {
+  it("does not count unverified provider rows as connected",()=>{
+    const p=[{id:"r",is_anonymous:false,is_bot:false,last_seen_at:null}];
+    const links=new Map([["r",{discord:{verifiedAt:null},riot:{verifiedAt:"2026-10-18T12:00:00Z"}}]]);
+    const summary=countAccountMilestones(p,links,()=>false,Date.parse("2026-10-18T12:00:00Z"));
+    expect(summary.discord).toBe(0);
+    expect(summary.riot).toBe(1);
+  });
+});
