@@ -33,11 +33,6 @@ export function AudiencePulse({ dataset, range, now, classification, onVisitor }
       .slice(0, 12),
     [dataset, range, classification],
   );
-  const classes = useMemo(() => {
-    const counts = { human: 0, unknown: 0, automation: 0, internal: 0 };
-    for (const row of recent) counts[row.trafficClass] += 1;
-    return counts;
-  }, [recent]);
   const visitorClasses = useMemo(() => {
     const ids = new Set<string>();
     for (const session of dataset.sessions) {
