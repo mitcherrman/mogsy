@@ -351,16 +351,26 @@ export default function AdminUsersPage() {
               }}
             />
             <section id="users-audience-visitors" aria-label="Visitors">
-              <h2 className="mb-3 text-sm font-semibold">Visitors</h2>
-              <VisitorsSection
-                dataset={viewLoaded.dataset}
-                range={state.range}
-                byVisitor={filtered.byVisitor}
-                population={population}
-                onPopulation={(key) => setParam("population", key)}
-                selected={visitor}
-                onSelect={(id) => setParam("visitor", id)}
-              />
+              <details
+                open={Boolean(visitor || population)}
+                data-testid="users-full-visitor-list"
+                className="rounded-lg border border-border p-3"
+              >
+                <summary className="cursor-pointer text-sm font-semibold">
+                  View all visitors and individual records
+                </summary>
+                <div className="mt-3">
+                  <VisitorsSection
+                    dataset={viewLoaded.dataset}
+                    range={state.range}
+                    byVisitor={filtered.byVisitor}
+                    population={population}
+                    onPopulation={(key) => setParam("population", key)}
+                    selected={visitor}
+                    onSelect={(id) => setParam("visitor", id)}
+                  />
+                </div>
+              </details>
             </section>
             <details data-testid="users-advanced-analytics" className="rounded-lg border border-border p-3">
               <summary className="cursor-pointer text-sm font-semibold">Advanced analytics and diagnostics</summary>
