@@ -1009,6 +1009,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         {/* Compact verified milestones + timeline come before operational tabs,
             so repeated owner checks don't require hunting across nine tabs. */}
         <AdminAccountJourney
+          key={selectedUser.user_id}
           email={emailMap[selectedUser.user_id] ?? null}
           loading={accountActivityLoading}
           browserLoading={accountBrowsersLoading}
