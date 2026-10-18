@@ -51,15 +51,20 @@ import { currentStage, isMainDailyComplete } from "@/lib/daily-challenge/run/con
 import { dailySection, dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyMainResult, optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import { DAILY_DISCOVERY_HOLD_MS, DailyDiscoveries } from "./DailyDiscoveries";
+import {
+  RESULT_FOCUS_CLEARANCE, RESULT_FRAME_GAP, RESULT_HERO_DENSITY, RESULT_SNAPSHOT_3COL, RESULT_TAG_DENSITY,
+  TOUCH_TARGET,
+} from "./dailyResultDensity";
 import type { StageResultPlacement } from "./DailyStageResult";
 import { StageTag } from "./StageTag";
 
 /**
  * The snapshot slot's floor: Standard's (DailyStageResult `SNAPSHOT_FLOOR`).
  * The main snapshot has at most three tiles (Correct, Accuracy, Missed with
- * its hint line): two rows below `sm`, one from it, as Standard's four did.
+ * its hint line): one row of three below `sm` (F05; 86px measured at 320px,
+ * where it was two rows and 10rem), one row from it, as Standard's four did.
  */
-const MAIN_SNAPSHOT_FLOOR = "min-h-[10rem] sm:min-h-[6rem]";
+const MAIN_SNAPSHOT_FLOOR = "min-h-[5.5rem] sm:min-h-[6rem]";
 
 /** MPE-D — the section's beats, in ms after the result settles. */
 export const DAILY_REVEAL_BEATS = {
@@ -137,14 +142,16 @@ export function DailyMainResult({
       data-stage-kind={stage.kind}
       data-pending={settled ? undefined : "true"}
       data-settled={settled ? "true" : undefined}
-      className="ranked-shell mx-auto flex w-full max-w-2xl flex-col gap-4"
+      className={`ranked-shell mx-auto flex w-full max-w-2xl flex-col ${RESULT_FRAME_GAP} ${
+        RESULT_TAG_DENSITY} ${RESULT_HERO_DENSITY} ${RESULT_FOCUS_CLEARANCE}`}
     >
       <div className="flex justify-center">
         <StageTag stage={stage} size="lg" />
       </div>
       <ResultHero model={model} reserveScore revealScore pendingPose="thinking" />
 
-      <div data-testid="daily-main-result-snapshot-slot" className={MAIN_SNAPSHOT_FLOOR}>
+      <div data-testid="daily-main-result-snapshot-slot"
+        className={`${MAIN_SNAPSHOT_FLOOR} ${RESULT_SNAPSHOT_3COL}`}>
         {settled ? (
           <div data-testid="daily-main-result-summary" className="reward-enter"
             style={delayStyle(DAILY_REVEAL_BEATS.snapshot)}>
@@ -163,14 +170,15 @@ export function DailyMainResult({
 
       {optional.length > 0 && (
         <section aria-label="Optional" data-testid="daily-main-optional"
-          className="space-y-2 rounded-[0.6rem] border border-white/10 bg-black/20 px-4 py-3">
+          className="space-y-2 rounded-[0.6rem] border border-white/10 bg-black/20 px-4 py-3
+            max-sm:space-y-1.5 max-sm:px-3 max-sm:py-2.5">
           <p className="text-center">
             <span className="ranked-eyebrow">Optional</span>
             <span className="block pt-1 text-xs text-[var(--ranked-muted,#a8a29e)]">
               Keep playing if you like. Nothing here changes your Daily score.
             </span>
           </p>
-          <ul className="flex flex-col items-center gap-2.5 sm:flex-row sm:items-start sm:justify-center sm:gap-8">
+          <ul className="flex flex-col items-center gap-2.5 max-sm:gap-1.5 sm:flex-row sm:items-start sm:justify-center sm:gap-8">
             {optional.map((g) => (
               <li key={g.id} data-testid={`daily-main-optional-${g.id}`} data-section={g.id}
                 className="flex flex-col items-center gap-1">
@@ -195,7 +203,7 @@ export function DailyMainResult({
           <p role="alert" className="text-xs text-rose-300" data-testid="daily-run-error">{error}</p>
           {onRetry && (
             <button type="button" onClick={onRetry} disabled={busy} data-testid="daily-run-retry"
-              className="rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em]">
+              className={`rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em] ${TOUCH_TARGET}`}>
               Try again
             </button>
           )}
