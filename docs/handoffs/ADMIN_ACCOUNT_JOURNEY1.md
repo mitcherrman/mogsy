@@ -38,3 +38,11 @@ Still required: owner-authorized account detail smoke in the actual Admin route.
 1. Check CI and fix errors, visually inspect viewport/browser harness. Ensure authorization failures are never presented as zero activity.
 2. Add authoritative profile/registration milestone service with stable chronology, Stripe webhook payment-state milestones, identity disconnect history, and deterministic pre-signup browser linking in next PR(s).
 3. Add conversion dashboard source- and placement-aware after event linkage is certified (issue #73). Don't infer human users from `analytics_visitors` alone.
+
+## Owner authorization and email confirmation extension (2026-10-18 continued)
+- The existing owner-trusted `supabase/functions/admin-get-emails/index.ts` now returns an additive `email_confirmations` map alongside the unchanged `emails` response, populated solely via `ctx.service.auth.admin.getUserById` under `requireOwner(req, "trusted")`; existing rate limit, batch cap, UUID validation and `auditOwnerAction` remain unchanged.
+- `AdminUsers` displays **Email confirmed**, **Email pending** and **Email status unknown** (for unavailable/older Edge response); it NEVER maps missing status to pending. Owner metrics show confirmed count over observed coverage and use a dash when no coverage exists.
+- Discord/Riot directory badges and headline counts now mean `verifiedAt` is present; unverified connection rows are not counted or green-highlighted as verified.
+- Focused CI now includes the existing `AdminUsers.phase1.test.tsx` owner-action harness with tests for the additive Edge payload, backward compatible unknown status, pending status, and list→detail owner-authorized auth date; checks source still calls owner gate and audit.
+- **Required publishing sequence**: verify the updated protected `admin-get-emails` Edge Function is deployed (not just checked in to GitHub/Lovable editor), then confirm status labels via a real MFA-authenticated owner session. If the Edge deployment is not synchronized, the frontend gracefully reports status unknown.
+- No tool in this session has the owner's browser MFA session. Never assert real signed-in Admin smoke passed solely because Playwright uses mocked auth fixtures.
