@@ -49,6 +49,31 @@ export function AdminAccountJourney({ input, email, loading, error }: {input:Acc
         {input.auth?.email_confirmed_at && <span className="inline-flex items-center gap-1"><BadgeCheck className="h-3 w-3"/>Email confirmed: {stamp(input.auth.email_confirmed_at)}</span>}
       </div>
     </div>
+    <section data-testid="account-acquisition" className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Radio className="h-4 w-4 text-primary"/>
+        <div>
+          <h4 className="text-sm font-semibold">Acquisition context</h4>
+          <p className="text-[11px] text-muted-foreground">Deterministically associated first-party browser IDs. A browser can be shared; this is not proof of a person's first visit.</p>
+        </div>
+      </div>
+      {input.linkedBrowserError && <p role="alert" className="mb-3 text-xs text-amber-400">Browser association lookup failed; acquisition information is incomplete.</p>}
+      {!input.linkedBrowsers?.length
+        ? <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">No verified browser association recorded. Source unknown, not necessarily direct.</p>
+        : <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {input.linkedBrowsers.map(browser => (
+            <div key={browser.visitorId} className="rounded-lg border border-border/70 bg-background/50 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Browser acquisition</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">{browser.source || "Unknown source"}</span>
+                {browser.campaign && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{browser.campaign}</span>}
+              </div>
+              <p className="mt-1 break-all text-[11px] text-muted-foreground">Landing: {browser.landing || "Unknown"} · First browser visit: {browser.firstSeenAt ? stamp(browser.firstSeenAt) : "Unknown"}</p>
+              <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">Visitor {browser.visitorId.slice(0,8)}… · Linked {stamp(browser.firstObservedAt)}</p>
+            </div>
+          ))}
+        </div>}
+    </section>
     <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
