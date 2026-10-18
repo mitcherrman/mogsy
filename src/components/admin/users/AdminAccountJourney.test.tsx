@@ -24,7 +24,7 @@ describe("owner account intelligence",()=>{
    expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("No entitlement");
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("Legacy ledger");
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("payment unverified");
-   expect(screen.getByTestId("account-timeline")).toHaveTextContent("Ranked game started");
+   expect(screen.getByTestId("account-timeline")).toHaveTextContent("Ranked-engine round started");
  });
  it("does not claim email verification when owner-authorized auth read has not loaded",()=>{
    render(<AdminAccountJourney input={{...input,auth:null,discord:null,purchases:[],events:[]}} email="qa@example.test" loading error/>);
@@ -33,8 +33,8 @@ describe("owner account intelligence",()=>{
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("Profile created");
  });
  it("exposes accurate profile counts without billing guesses",()=>{
-   render(<AccountOperationsPulse loading={false} values={{registered:7,bots:1,discord:0,riot:0,premium:1,active7d:3}}/>);
-   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("Registered people");
+   render(<AccountOperationsPulse loading={false} values={{registered:7,bots:1,knownQa:2,discord:0,riot:0,premium:1,active7d:3}}/>);
+   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("Email accounts");
    expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("7");
    expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("1 bot account excluded");
  });
