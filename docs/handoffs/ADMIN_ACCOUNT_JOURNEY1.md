@@ -6,6 +6,7 @@ Daily-use admin operator experience for registered Mogzy users: elegant, accurat
 ## Existing truth / sources
 - `AdminUsers.tsx`: existing Accounts route, `admin_list_profiles` owner/admin RPC, `admin-get-emails` trusted owner Edge auth lookup, `admin-user-actions` get_auth_info, identity links via `admin_list_identity_links`, existing premium provenance helper, leagues, purchases, notes, actions and moderation.
 - `analytics_events` admin RLS supports a UID-scoped bounded read. Only events bearing exact `user_id` appear; no IP/fingerprint/cross-browser joins.
+- `analytics_visitor_user_links` and `analytics_visitors` are protected under current admin RLS. The optional browser-level acquisition card uses only exact DB-recorded UID/browser links and explicitly warns that browser evidence may include shared devices; it is never merged with authenticated activity as proof of identity.
 - Auth original `created_at` may predate guest→permanent signup; it is NOT claimed as registration time. Email `email_confirmed_at` is authoritative (on owner-auth detail read).
 - Identity `verified_at` is authoritative for Discord/Riot connected providers.
 - `purchases` historical status is not confirmed Stripe payment; Stripe subscriptions and comped grants are distinguished. No real monetary revenue is inferred.
@@ -22,6 +23,8 @@ Daily-use admin operator experience for registered Mogzy users: elegant, accurat
 - Gameplay not attached to account uid remains unattributed; no complete pre-signup browsing timeline.
 - Stripe purchase/refund verification requires billing-side trusted data integration, not old ledger rows.
 - Existing admin permissions / MFA / Premium mutation/notes entirely unchanged.
+- Auth reads use request tokens to avoid cross-account stale display while switching selected users.
+- Known release QA addresses are explicitly labeled when they match the verified `mogzy-launch-qa-*@mogzy.lol` pattern. Other untagged QA may exist; do not interpret registered total as confirmed organic people.
 
 ## QA
 CI pending. Resolve regressions before merge. Validate live owner flow only after branch is reviewed; no production writes/deploy in this workstream.
