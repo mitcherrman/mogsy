@@ -89,3 +89,14 @@ describe("known QA email labeling",()=>{
     expect(isKnownQaEmail("mogzy-launch-qa-bad@mogzyxlol")).toBe(false);
   });
 });
+
+describe("source attribution is first-party browser evidence only",()=>{
+  it("uses explicit UTM source before referrer, with safe origin-only fallback",async ()=>{
+    const { acquisitionSource } = await import("./account-journey");
+    expect(acquisitionSource("youtube","https://m.facebook.com/post")).toBe("youtube");
+    expect(acquisitionSource(null,"https://m.facebook.com/path")).toBe("m.facebook.com");
+    expect(acquisitionSource(null,"javascript:evil()")).toBeNull();
+    expect(acquisitionSource(null,"not a url")).toBeNull();
+    expect(acquisitionSource(null,null)).toBeNull();
+  });
+});
