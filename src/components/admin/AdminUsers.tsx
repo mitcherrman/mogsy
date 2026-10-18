@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import { AdminIdentityLines } from "@/components/admin/AdminUserCard";
 import { AccountOperationsPulse, AdminAccountJourney } from "@/components/admin/users/AdminAccountJourney";
-import { countAccountMilestones, type AccountActivityEvent } from "@/lib/admin/account-journey";
+import { countAccountMilestones, isKnownQaEmail, type AccountActivityEvent } from "@/lib/admin/account-journey";
 import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
 import { BotStateToggle } from "@/components/admin/BotStateToggle";
 import { notifyFriendsChanged } from "@/lib/community/friends-refresh";
@@ -378,8 +378,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     profiles, identities, (id) => {
       const profile = profiles.find((p) => p.id === id);
       return profile ? isEffectivePro(profile) : false;
-    }, Date.now(),
-  ), [profiles, identities]);
+    }, Date.now(), emailMap, id => profiles.find(p=>p.id===id)?.user_id ?? id,
+  ), [profiles, identities, emailMap]);
 
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
@@ -1956,6 +1956,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     <p className="font-semibold text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
                     {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
                     {p.is_bot && <RowTag>{p.is_disabled ? "Bot · disabled" : "Bot"}</RowTag>}
+                    {isKnownQaEmail(emailMap[p.user_id]) && <RowTag tone="warning">QA test account</RowTag>}
                     {p.is_anonymous && <RowTag>Anonymous</RowTag>}
                     {isEffectivePro(p) && <RowTag tone="primary">Premium</RowTag>}
                     {roles.includes("master_admin") && <RowTag tone="primary">Master admin</RowTag>}
