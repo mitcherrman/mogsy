@@ -1,6 +1,6 @@
 # MISC Wave 3B: Play selector on short phones (F06)
 
-Issue: mitcherrman/mogsy#66 · Branch `fix/misc-w3b-play-mobile` · Draft PR: see the PR link in the issue thread (opened from this branch)
+Issue: mitcherrman/mogsy#66 · Branch `fix/misc-w3b-play-mobile` · Draft PR [mitcherrman/mogsy#68](https://github.com/mitcherrman/mogsy/pull/68)
 Owner session: Claude Code, Sonnet 5.5, high effort · Date 2026-10-17
 
 ## Status
@@ -10,7 +10,8 @@ Owner session: Claude Code, Sonnet 5.5, high effort · Date 2026-10-17
 | | SHA |
 |---|---|
 | Base (`origin/main`, fetched at session start) | `67118b2b` (F10–F12 countdown, PR #63) |
-| Head | the branch tip; the PR shows the exact SHA |
+| Code head | `79420f77` (docs-only commits may follow; the PR shows the tip) |
+| `origin/main` when the PR opened | `3d5cb057` (unrelated billing merge; a trial merge with this branch is clean) |
 | Draft PR #46 (Journey CSS), not rebased in | unrelated conflicts, left alone as the issue says |
 
 Files changed:
