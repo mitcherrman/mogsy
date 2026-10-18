@@ -133,10 +133,17 @@ describe("gift redemption is a grant, not a Stripe write", () => {
     expect(src).not.toMatch(/update\(\{\s*is_pro/);
   });
 
-  it("records a gift grant with a real expiry", () => {
-    expect(src).toContain('pro_grant_kind: "gift"');
-    expect(src).toContain("pro_grant_expires_at");
-    expect(src).toContain("days * 86400000");
+  // PT1.7 moved the grant out of this function and into ONE SQL transaction
+  // (public.gift_redeem), together with consuming the gift — the old split
+  // could consume a paid gift without granting anything.
+  it("records a gift grant with a real expiry — in SQL, atomically with the claim", () => {
+    const m0004 = readFileSync(join(process.cwd(), "drizzle/migrations/0004_pt1_7_annual_gift.sql"), "utf8");
+    expect(m0004).toContain("public.apply_pro_grant(_p.id, 'gift', _end,");
+    expect(m0004).toContain("_end := _start + make_interval(days => _days);");
+    const handler = readFileSync(join(process.cwd(), "supabase/functions/_shared/gift-redeem.ts"), "utf8");
+    expect(src).toContain("handleGiftRedeemRequest(");
+    expect(handler).toContain('deps.rpc("gift_redeem"');
+    expect(src + handler).not.toMatch(/pro_grant_kind\s*:/);
   });
 });
 

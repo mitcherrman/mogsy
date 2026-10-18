@@ -13,6 +13,10 @@ project_id = "kewgjwrzpzpeltwidvuc"
   # function authenticates the caller itself (and refuses guest sessions).
   [functions.custom-offer-checkout]
     verify_jwt = false
+  # PT1.7 — the private annual gift. Authenticates the caller itself (and
+  # answers availability to signed-out callers with { available: false }).
+  [functions.gift-checkout]
+    verify_jwt = false
   [functions.customer-portal]
     verify_jwt = false
   # The provider OAuth redirect (Discord/Riot -> GET) carries no Supabase JWT,
