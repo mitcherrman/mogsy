@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AdminAccountJourney, AccountOperationsPulse } from "./AdminAccountJourney";
 import type { AccountJourneyInput } from "@/lib/admin/account-journey";
@@ -35,6 +35,18 @@ describe("owner account intelligence",()=>{
    expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("Not loaded");
    expect(screen.getByRole("alert")).toHaveTextContent("timeline is incomplete");
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("Profile created");
+ });
+ it("starts with recent history but lets the owner inspect all bounded records",()=>{
+   const longEvents=Array.from({length:20},(_,i)=>({
+     event_name:"ranked_started",received_at:new Date(Date.parse("2026-10-18T12:00:00Z")-i*60000).toISOString(),
+     source_system:"railway",
+   }));
+   render(<AdminAccountJourney input={{...input,events:longEvents}} email="qa@example.test" loading={false} error={false}/>);
+   expect(screen.getByTestId("account-timeline").querySelectorAll("li")).toHaveLength(8);
+   fireEvent.click(screen.getByTestId("account-timeline-expand"));
+   expect(screen.getByTestId("account-timeline").querySelectorAll("li").length).toBeGreaterThan(20);
+   fireEvent.click(screen.getByTestId("account-timeline-expand"));
+   expect(screen.getByTestId("account-timeline").querySelectorAll("li")).toHaveLength(8);
  });
  it("exposes accurate profile counts without billing guesses",()=>{
    render(<AccountOperationsPulse loading={false} values={{registered:7,bots:1,knownQa:2,discord:0,riot:0,premium:1,active7d:3}}/>);
