@@ -60,6 +60,8 @@ import {
   hasVisitedHub,
   hasSoftNudgeBeenSeen,
   markSoftNudgeSeen,
+  hasRecentHardGate,
+  markHardGateShown,
 } from "@/lib/quiz/onboarding-gate";
 import type { QuizOnboardingConfig } from "@/pages/QuizAdmin";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
@@ -1091,7 +1093,10 @@ export default function Quiz() {
       // for a completed practice quiz is Railway's `quiz_sessions.completed_at`.
       trackFunnelEvent("quiz_completed", completionPayload);
       // First signup prompt appears after a completed quiz, not before.
-      if (gateArmed.current && isAnonymous) {
+      if (gateArmed.current && isAnonymous && !hasRecentHardGate()) {
+        markHardGateShown();
+        // Do not resurface the earlier soft nudge when the modal is dismissed.
+        setShowNudge(false);
         setShowGate(true);
       }
     } else {
