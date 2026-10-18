@@ -16,6 +16,7 @@ import { useSurfaceEvent } from "@/lib/analytics";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { prefetchAppSettings } from "@/hooks/useAppSettings";
 import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
 import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
@@ -277,6 +278,9 @@ export default function MogzyEntryV2({
     //    a first visit, otherwise the hub — resolved here rather than at render
     //    time so it reflects storage as of the click.
     const destination = autoEnter ? LEAGUE_HOME_ROUTE : resolveEntryDestination();
+    // 5a. the destination renders inside the shell, which waits for the app
+    //     settings: a no-op when the hold already started the read.
+    prefetchAppSettings();
     // 5b. the veil below runs for 780ms whatever happens, and a first-time
     //     visitor is about to land on a scene made of a ~530KB painting, a
     //     display face and a mascot (HI1-C4). Spending that window fetching
@@ -311,6 +315,10 @@ export default function MogzyEntryV2({
     // The hub chunk (and Quiz/CombatLab, which it links to) loads during the
     // hold rather than after the navigation. Idle-scheduled and deduped.
     prefetchRoute(LEAGUE_HOME_ROUTE);
+    // ACADEMY STARTUP S1 — the shell (`Layout`) shows only its startup surface
+    // until the app settings are known. Read them now, during the hold, so the
+    // hand-off does not pay that round trip after the veil has gone.
+    prefetchAppSettings();
     const hold = prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS;
     // PERF1 — then the Hub's own art, but only once THIS screen's art is in
     // (or the hold is over and the visitor is about to leave anyway), so the
