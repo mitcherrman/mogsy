@@ -14,7 +14,7 @@ Prompt inventory:
 
 ## V1 changes
 1. Daily final recap becomes a guest-only **inline** save invitation. No portal / forced modal, preserves entire result recap, Back to Leaguecraft and More Challenges, uses existing authHref `returnTo=/quiz/daily-challenge`, same UID upgrade untouched. Analytics `signup_offer_shown/clicked` tagged `daily_final_recap`.
-2. Practice soft nudge emits `signup_offer_shown/clicked/dismissed` placement-tagged `practice_after_three_answers`. No extra interrupt and no new auth behavior.
+2. Practice soft nudge emits `signup_offer_shown/clicked/dismissed` placement-tagged `practice_soft_nudge`. No extra interrupt and no new auth behavior.
 3. Practice completion gate remains dismissible but is capped at once per 24h (localStorage timestamp); successful signup clears cooldown. Prevents resurfacing stale soft nudge right after closing completion gate.
 4. Existing header chip and Ranked account requirement untouched.
 
