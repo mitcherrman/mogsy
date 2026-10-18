@@ -79,8 +79,27 @@ async function one(browser, s, vp) {
 
 (async () => {
   let browser;
+  let browserClosing;
+  let interrupted = false;
+  // Only this sweep's browser is closed; unrelated Edge/Chrome tabs are untouched.
+  const closeOwnBrowser = () => {
+    if (!browser) return Promise.resolve();
+    if (!browserClosing) browserClosing = browser.close();
+    return browserClosing;
+  };
+  const requestStop = (signal) => {
+    interrupted = true;
+    process.exitCode = signal === "SIGINT" ? 130 : 143;
+    console.warn(`[w3a] ${signal}: stopping sweep and closing test-owned browser`);
+    void closeOwnBrowser().catch((e) => console.error("[w3a] shutdown:", e));
+  };
+  const onSigint = () => requestStop("SIGINT");
+  const onSigterm = () => requestStop("SIGTERM");
+  process.once("SIGINT", onSigint);
+  process.once("SIGTERM", onSigterm);
   try {
     browser = await chromium.launch({ ...(CHANNEL ? { channel: CHANNEL } : {}), headless: true });
+    if (interrupted) return;
   const todo = [];
   for (const s of lib.STATES) {
     if (ONLY && !s.id.includes(ONLY)) continue;
@@ -93,6 +112,7 @@ async function one(browser, s, vp) {
   let next = 0;
   const worker = async () => {
     for (;;) {
+      if (interrupted) return;
       const i = next; next += 1;
       if (i >= todo.length) return;
       const [s, vp] = todo[i];
@@ -102,13 +122,17 @@ async function one(browser, s, vp) {
     }
   };
     await Promise.all(Array.from({ length: PARALLEL }, worker));
-    fs.writeFileSync(OUT, JSON.stringify({ base: BASE, reduced: REDUCED, fonts: FONTS, channel: CHANNEL || "chromium", results }, null, 1));
+    if (!interrupted) {
+      fs.writeFileSync(OUT, JSON.stringify({ base: BASE, reduced: REDUCED, fonts: FONTS, channel: CHANNEL || "chromium", results }, null, 1));
+    }
   } finally {
-    // The browser must close on an unexpected worker, file-system, or runner error.
-    if (browser) await browser.close();
+    process.off("SIGINT", onSigint);
+    process.off("SIGTERM", onSigterm);
+    // Close test-owned Edge/Chromium, including on a graceful interrupt.
+    await closeOwnBrowser();
   }
 })().catch((e) => {
   console.error(e);
-  // Give Playwright/process handles a chance to finish closing.
-  process.exitCode = 1;
+  // No forced process.exit(): let Playwright handles unwind.
+  if (!process.exitCode) process.exitCode = 1;
 });
