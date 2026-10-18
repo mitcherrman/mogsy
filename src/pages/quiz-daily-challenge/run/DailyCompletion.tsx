@@ -179,7 +179,7 @@ function RecapRow({ stage: s, closing, main, mainScore }: {
                 <span className="block text-lg font-black leading-tight text-[#f5e6b8]"
                   data-testid="daily-recap-main-score">
                   {mainScore.toLocaleString()}
-                  <span className="pl-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] opacity-70">
+                  <span className="pl-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] opacity-70 max-sm:block max-sm:pl-0">
                     Daily score
                   </span>
                 </span>

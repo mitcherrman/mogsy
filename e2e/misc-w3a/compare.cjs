@@ -12,8 +12,8 @@
  * because both sides move together. So that is what is asserted here:
  *
  *   1. SAVINGS   on portrait phones, the primary action sits at least `MIN_SAVE[state]`
- *                px higher than on the original (70% of the saving measured when the
- *                work was done on Windows Edge, per state, worst phone size).
+ *                px higher than on the original (70% of the saving measured on
+ *                Windows Edge with the bundled fonts, per state, worst phone size).
  *   2. NEVER TALLER  no state at any viewport is taller than the original (+2px
  *                rounding; +20px for the two error states, whose "Try again" is now a
  *                real 44px target).
@@ -42,7 +42,7 @@ const MIN_SAVE = {
   "main-pending": 126, "main-settled-cards": 142, "main-settled-nocards": 126, "main-flip": 126,
   "main-error": 116, "tt-pending": 150, "tt-settled": 150, "tt-settled-cards": 167, "tt-flip": 150,
   "surv-settled": 150, "weak-settled": 83, "review-settled": 133, "stage-error": 140,
-  "legacy-standard": 67, "optional-entry": 0, "completion": 19, "completion-perfect": 21,
+  "legacy-standard": 67, "optional-entry": 0, "completion": 11, "completion-perfect": 11,
   "completion-legacy": 23,
 };
 const ERROR_STATES = new Set(["main-error", "stage-error"]);

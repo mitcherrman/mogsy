@@ -8,7 +8,7 @@
  *   W3A_BASE=http://127.0.0.1:8131  W3A_OUT=<file.json>  W3A_SHOTS=<dir>
  *   W3A_ONLY=<substring of state id>  W3A_VP=<substring of viewport id>
  *   W3A_REDUCED=1          prefers-reduced-motion: reduce
- *   W3A_FONTS=system       measure the OS fallback faces instead of bundled Inter/Cinzel
+ *   W3A_FONTS=system|wide  measure the OS fallback faces (or a wide-face stress) instead of bundled Inter/Cinzel
  *   W3A_CHANNEL=           browser channel; default "msedge" (set to "" for bundled Chromium, as CI does)
  *   W3A_PARALLEL=4         pages measured at once (each in its own context)
  *
@@ -28,7 +28,7 @@ const SHOTS = process.env.W3A_SHOTS || "";
 const ONLY = process.env.W3A_ONLY || "";
 const ONLY_VP = process.env.W3A_VP || "";
 const REDUCED = process.env.W3A_REDUCED === "1";
-const FONTS = process.env.W3A_FONTS === "system" ? "system" : "bundled";
+const FONTS = ["system", "wide"].includes(process.env.W3A_FONTS) ? process.env.W3A_FONTS : "bundled";
 const CHANNEL = process.env.W3A_CHANNEL === undefined ? "msedge" : process.env.W3A_CHANNEL;
 const PARALLEL = Math.max(1, Number(process.env.W3A_PARALLEL || 1));
 

@@ -95,9 +95,9 @@ jobs:
           kill "$(cat out/vite.pid)" || true
           git checkout HEAD -- $FILES
       - name: Relative contract (bundled Inter/Cinzel, as production renders)
-        run: W3A_COMPARE_REPORT=1 node e2e/misc-w3a/compare.cjs out/base-bundled.json out/after-bundled.json
+        run: node e2e/misc-w3a/compare.cjs out/base-bundled.json out/after-bundled.json
       - name: Relative contract (OS fallback fonts)
-        run: W3A_COMPARE_REPORT=1 node e2e/misc-w3a/compare.cjs out/base-system.json out/after-system.json
+        run: node e2e/misc-w3a/compare.cjs out/base-system.json out/after-system.json
       - name: Upload measurements
         if: always()
         uses: actions/upload-artifact@v4

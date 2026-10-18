@@ -69,16 +69,20 @@ export const RESULT_HERO_DENSITY = [
 /**
  * The Performance snapshot on a phone: three columns instead of two, with the
  * tile padding and value size that three 90px-wide tiles at 320px need ("Out of
- * mistakes" wraps onto two lines and fits; no tile clips). A grid of two tiles
+ * mistakes" wraps onto two lines and fits; no tile clips, in Inter or in a wider
+ * fallback face — the first Linux CI run found 2px of spill in DejaVu). A grid of two tiles
  * keeps the same three columns, which only narrows them. Applies below `sm`
  * only: from `sm` the grid is the shared one (four columns).
  */
 export const RESULT_SNAPSHOT_3COL = [
   "max-sm:[&_[data-testid=result-snapshot]>div]:grid-cols-3",
   "max-sm:[&_[data-testid=result-snapshot]>div]:gap-1.5",
-  "max-sm:[&_[data-testid=result-snapshot]>div>div]:px-2",
+  "max-sm:[&_[data-testid=result-snapshot]>div>div]:px-1.5",
   "max-sm:[&_[data-testid=result-snapshot]>div>div]:py-1.5",
   "max-sm:[&_[data-testid=result-snapshot]_.tabular-nums]:text-[0.9375rem]",
+  // A face wider than Inter (an OS fallback) must wrap "mistakes" rather than
+  // spill past a 90px tile: break the word, never overflow the box.
+  "max-sm:[&_[data-testid=result-snapshot]_.tabular-nums]:[overflow-wrap:anywhere]",
 ].join(" ");
 
 /**

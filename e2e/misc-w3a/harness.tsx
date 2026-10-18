@@ -16,6 +16,7 @@
  *         perfect=1                   (completion: a perfect day)
  *         error=1                     (an error + Try again under the actions)
  *         fonts=system                (no bundled Inter/Cinzel: the OS fallback faces)
+ *         fonts=wide                  (stress: Verdana / DejaVu Sans for everything)
  */
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -153,8 +154,15 @@ function Scene() {
 // every measurement sees real glyph widths; `fonts=system` drops them to measure
 // the OS fallback instead (how a platform difference is diagnosed).
 async function start() {
-  if (q.get("fonts") === "system") {
+  if (q.get("fonts") === "system" || q.get("fonts") === "wide") {
     document.getElementById("w3a-fonts")?.remove();
+    if (q.get("fonts") === "wide") {
+      // Stress mode: one wide humanist face everywhere (Verdana, or DejaVu Sans on
+      // Linux), to prove the settlement frame and tiles hold for a face wider than Inter.
+      const st = document.createElement("style");
+      st.textContent = '*{font-family:Verdana,"DejaVu Sans",sans-serif !important}';
+      document.head.appendChild(st);
+    }
   } else {
     await Promise.all([
       "400 16px Inter", "500 16px Inter", "600 16px Inter", "700 16px Inter", "900 16px Inter",

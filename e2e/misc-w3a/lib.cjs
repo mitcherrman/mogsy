@@ -131,6 +131,8 @@ function measure(arg) {
         owner: owner ? owner.getAttribute("data-testid") : null,
         scrollW: e.scrollWidth, clientW: e.clientWidth,
         overflow: cs.overflowX, wrap: cs.whiteSpace, font: cs.fontFamily.split(",")[0],
+        // `truncate` is an intentional, visible "…" (pre-existing), not text spilling out of its box.
+        ellipsis: cs.textOverflow === "ellipsis" && cs.overflowX !== "visible",
         cls: (e.getAttribute("class") || "").slice(0, 80),
       };
     }).slice(0, 8);
@@ -192,7 +194,7 @@ async function prepare(page, state, opts = {}) {
 }
 
 async function open(page, base, state, opts = {}) {
-  const fonts = opts.fonts === "system" ? "&fonts=system" : "";
+  const fonts = opts.fonts === "system" || opts.fonts === "wide" ? `&fonts=${opts.fonts}` : "";
   await page.goto(`${base}/e2e/misc-w3a/harness.html?${state.q}${fonts}`, { waitUntil: "load", timeout: 90000 });
   await page.waitForSelector(HERO_SEL, { timeout: 60000 });
 }
