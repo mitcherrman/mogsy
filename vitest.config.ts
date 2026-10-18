@@ -25,6 +25,8 @@ export default defineConfig({
       // are pure TypeScript with injected Stripe/RPC, so they are unit tested
       // here too (the SQL is run on PGlite in src/test/security/pt16*).
       "supabase/functions/_shared/custom-offer.test.ts",
+      // PT1.7's private annual gift rules, likewise pure TypeScript.
+      "supabase/functions/_shared/private-annual-gift.test.ts",
       // FUNNEL1B3.1's ingest contract is likewise pure TypeScript — the Deno
       // and Supabase imports live in its index.ts, not here — and it decides
       // what may enter analytics_events from Railway, so it is unit tested.
