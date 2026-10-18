@@ -13,7 +13,7 @@ Daily-use admin operator experience for registered Mogzy users: elegant, accurat
 
 ## Implementation
 - `src/lib/admin/account-journey.ts`: deterministic bounded projection with provenance labels, server-only gameplay starts, precise source semantics, and registered user KPI cohort.
-- `src/components/admin/users/AdminAccountJourney.tsx`: premium-looking restrained dark theme, mobile-responsive 4 status cards + chronological timeline with evidence source labels.
+- `src/components/admin/users/AdminAccountJourney.tsx`: restrained gold-accent dark theme, 6 responsive operator KPI cards and 4 per-account status tiles; acquisition context kept separate from a concise 8-most-recent timeline expandable to 80 entries.
 - `src/components/admin/AdminUsers.tsx`: operator headline cards and improved list row status chips; existing secure auth read invoked on selected registered account; UID-scoped analytics query; timeline next to existing actions/tabs.
 - Tests and Playwright smoke at 320/390/1280; CI checks no new TS errors vs main.
 
@@ -27,7 +27,12 @@ Daily-use admin operator experience for registered Mogzy users: elegant, accurat
 - Known release QA addresses are explicitly labeled when they match the verified `mogzy-launch-qa-*@mogzy.lol` pattern. Other untagged QA may exist; do not interpret registered total as confirmed organic people.
 
 ## QA
-CI pending. Resolve regressions before merge. Validate live owner flow only after branch is reviewed; no production writes/deploy in this workstream.
+GitHub Actions [Admin Account Journey Acceptance run 39129210542](https://github.com/mitcherrman/mogsy/actions/runs/39129210542) succeeded on code commit 96f722a02b7b5e3af0823fd87ca313c7f670c60e:
+- 116 focused unit/integration regressions passed.
+- Vite production build succeeded.
+- TypeScript reported no new diagnostics beyond current main's acknowledged baseline.
+- Chromium UI passed at 320, 390 and 1280px with account summary, acquisition and timeline visible and no viewport overflow.
+Still required: owner-authorized account detail smoke in the actual Admin route. No production writes/deploy in this workstream.
 
 ## Next
 1. Check CI and fix errors, visually inspect viewport/browser harness. Ensure authorization failures are never presented as zero activity.
