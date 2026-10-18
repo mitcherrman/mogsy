@@ -6,6 +6,8 @@
 
 const ACTION_COUNT_KEY = "quiz:gate:action_count";
 const NUDGE_SEEN_KEY = "quiz:gate:nudge_seen";
+const LAST_GATE_SHOWN_KEY = "quiz:gate:last_seen_at";
+export const HARD_GATE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const HUB_VISITED_KEY = "quiz:gate:hub_visited";
 
 function readInt(storage: Storage, key: string): number {
@@ -39,6 +41,7 @@ export function getAnonymousActionCount(): number {
 export function resetGateState(): void {
   try {
     localStorage.removeItem(ACTION_COUNT_KEY);
+    localStorage.removeItem(LAST_GATE_SHOWN_KEY);
     sessionStorage.removeItem(NUDGE_SEEN_KEY);
   } catch {
     // Storage unavailable (private mode / disabled): gate state simply won't clear.
@@ -77,4 +80,20 @@ export function hasVisitedHub(): boolean {
   } catch {
     return false;
   }
+}
+
+/** Keep the completed-quiz signup overlay from recurring after every quiz.
+ * If storage is blocked, allow the normal (non-blocking-to-progress) experience.
+ */
+export function hasRecentHardGate(now = Date.now()): boolean {
+  try {
+    const previous = Number(localStorage.getItem(LAST_GATE_SHOWN_KEY));
+    return Number.isFinite(previous) && previous > 0
+      && now >= previous && now - previous < HARD_GATE_COOLDOWN_MS;
+  } catch { return false; }
+}
+
+export function markHardGateShown(now = Date.now()): void {
+  try { localStorage.setItem(LAST_GATE_SHOWN_KEY, String(now)); }
+  catch { /* no persistent cooldown in storage-restricted browsers */ }
 }
