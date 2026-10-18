@@ -602,12 +602,13 @@ describe("F — the v4 Daily is unchanged", () => {
     expect(q("daily-recap-section-today")).toBeNull();
   });
 
-  it("the v5 completion's guest save gate still appears, after the recap", () => {
+  it("the v5 completion offers saving without covering the recap", () => {
     mockAuth.user = { id: "guest", is_anonymous: true };
     const wire = mainCompleteWire({ status: "completed", outcome: "reviewed", current_stage_index: null },
       Object.fromEntries([1, 2, 3, 4].map((i) => [i, { status: "completed", result: wireResult() }])));
     render(<MemoryRouter><DailyCompletion run={readDailyRun(wire)} saveRequired /></MemoryRouter>);
-    expect(screen.getByTestId("daily-save-gate")).toBeInTheDocument();
+    expect(screen.getByTestId("daily-save-offer")).toBeInTheDocument();
+    expect(screen.getByTestId("daily-run-home")).toBeInTheDocument();
     expect(screen.getByTestId("daily-run-recap")).toBeInTheDocument();
     expect(screen.getByTestId("daily-run-complete").textContent).not.toMatch(NO_FAKE_AUTHORITY);
   });
@@ -619,6 +620,6 @@ describe("F — the v4 Daily is unchanged", () => {
     await flush(DAILY_INTRO_MS + 10);
     await playStage(t);
     expect(q("daily-main-result")).toBeInTheDocument();
-    expect(q("daily-save-gate")).toBeNull();
+    expect(q("daily-save-offer")).toBeNull();
   });
 });
