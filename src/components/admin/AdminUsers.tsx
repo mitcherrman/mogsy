@@ -206,6 +206,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+  const [emailConfirmations, setEmailConfirmations] = useState<Record<string, { confirmed: boolean; confirmed_at: string | null }>>({});
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
 
   const [noteEntries, setNoteEntries] = useState<{ id: string; text: string; created_at: string; updated_at?: string }[]>([]);
@@ -291,6 +292,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       const userIds = nonAnonUsers.map((p) => p.user_id);
       const BATCH_SIZE = 50;
       const allEmails: Record<string, string> = {};
+      const allConfirmations: Record<string, { confirmed: boolean; confirmed_at: string | null }> = {};
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
         const batch = userIds.slice(i, i + BATCH_SIZE);
         // OWN1.1: routine owner read; recovers a lapsed device attestation once.
@@ -304,8 +306,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         if (emailData?.emails) {
           Object.assign(allEmails, emailData.emails);
         }
+        // The Edge response extends the existing protected lookup. If the
+        // deployment still returns only emails, do not claim verification.
+        if (emailData?.email_confirmations) {
+          Object.assign(allConfirmations, emailData.email_confirmations);
+        }
       }
       setEmailMap(allEmails);
+      setEmailConfirmations(allConfirmations);
     }
 
     // Verified Discord / Riot identities, keyed by public profile id. A failure
@@ -2034,14 +2042,15 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   </div>
                   <p className="text-xs text-primary truncate">{emailMap[p.user_id] || (p.is_anonymous ? "Guest — no email" : "Email unavailable")}</p>
                   <div className="mt-1 flex flex-wrap gap-1.5" data-testid="account-status-strip">
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${emailMap[p.user_id] ? "border-sky-500/25 bg-sky-500/10 text-sky-400" : "border-border text-muted-foreground"}`}>
-                      {emailMap[p.user_id] ? "Email on file" : "No email shown"}
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${emailConfirmations[p.user_id]?.confirmed ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : emailConfirmations[p.user_id]?.confirmed === false ? "border-amber-500/25 bg-amber-500/10 text-amber-400" : "border-border text-muted-foreground"}`}
+                      title={emailConfirmations[p.user_id]?.confirmed_at || undefined}>
+                      {emailConfirmations[p.user_id]?.confirmed ? "Email confirmed" : emailConfirmations[p.user_id]?.confirmed === false ? "Email pending" : emailMap[p.user_id] ? "Email status unknown" : "No email shown"}
                     </span>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${identities.get(p.id)?.discord ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-border text-muted-foreground"}`}>
-                      Discord {identities.get(p.id)?.discord ? "linked" : "—"}
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${identities.get(p.id)?.discord?.verifiedAt ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-border text-muted-foreground"}`}>
+                      Discord {identities.get(p.id)?.discord?.verifiedAt ? "verified" : identities.get(p.id)?.discord ? "unverified" : "—"}
                     </span>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${identities.get(p.id)?.riot ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-border text-muted-foreground"}`}>
-                      Riot {identities.get(p.id)?.riot ? "linked" : "—"}
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${identities.get(p.id)?.riot?.verifiedAt ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-border text-muted-foreground"}`}>
+                      Riot {identities.get(p.id)?.riot?.verifiedAt ? "verified" : identities.get(p.id)?.riot ? "unverified" : "—"}
                     </span>
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
