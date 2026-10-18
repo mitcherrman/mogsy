@@ -40,7 +40,7 @@ describe("verified account journey projection", () => {
 
   it("shows only server-authoritative starts and labels web opens as interest", () => {
     const rows = buildAccountJourney(BASE);
-    expect(rows.filter(x=>x.title==="Ranked game started")).toHaveLength(1);
+    expect(rows.filter(x=>x.title==="Ranked-engine round started")).toHaveLength(1);
     expect(rows.find(x=>x.title==="Practice opened")?.detail).toContain("not proof of play");
   });
 
@@ -76,7 +76,16 @@ describe("account overview cohorts",()=>{
   it("excludes bots and anonymous auth identities from registered human-signal population",()=>{
     const links=new Map([["real1",{discord:{verifiedAt:"2026-10-18"},riot:null}],["bot",{discord:{},riot:{}}]]);
     expect(countAccountMilestones(profiles,links,id=>id==="real2"||id==="bot",Date.parse("2026-10-18T12:00:00Z"))).toEqual({
-      registered:2,bots:1,discord:1,riot:0,premium:1,active7d:1,
+      registered:2,bots:1,knownQa:0,discord:1,riot:0,premium:1,active7d:1,
     });
+  });
+});
+
+describe("known QA email labeling",()=>{
+  it("recognizes only the documented release test address prefix",async ()=>{
+    const { isKnownQaEmail }=await import("./account-journey");
+    expect(isKnownQaEmail("mogzy-launch-qa-9f3@mogzy.lol")).toBe(true);
+    expect(isKnownQaEmail("someone@gmail.com")).toBe(false);
+    expect(isKnownQaEmail("mogzy-launch-qa-bad@mogzyxlol")).toBe(false);
   });
 });
