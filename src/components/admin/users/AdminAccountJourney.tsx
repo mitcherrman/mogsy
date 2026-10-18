@@ -115,13 +115,13 @@ export function AdminAccountJourney({ input, email, loading, error, browserLoadi
 }
 
 export function AccountOperationsPulse({ values, loading }:{
- values: {registered:number;bots:number;knownQa:number;discord:number;riot:number;premium:number;active7d:number};
+ values: {registered:number;bots:number;knownQa:number;verifiedEmails:number;emailCoverage:number;discord:number;riot:number;premium:number;active7d:number};
  loading:boolean;
 }) {
  const entries=[
-  {label:"Email accounts",value:values.registered,icon:UserRoundCheck,caption:"Permanent · QA may be included"},
+  {label:"Permanent accounts",value:values.registered,icon:UserRoundCheck,caption:"Excludes anonymous + bot"},
   {label:"Active in 7 days",value:values.active7d,icon:Activity,caption:"Profile last-seen signal"},
-  {label:"Known QA emails",value:values.knownQa,icon:ShieldAlert,caption:"Recognized test address pattern"},
+  {label:"Confirmed emails",value:values.verifiedEmails,icon:BadgeCheck,caption:`Of ${values.emailCoverage} known email statuses`},
   {label:"Discord connected",value:values.discord,icon:MessageCircle,caption:"Verified identity links"},
   {label:"Riot connected",value:values.riot,icon:Gamepad2,caption:"Verified identity links"},
   {label:"Premium access",value:values.premium,icon:Crown,caption:"Includes legitimate grants"},
@@ -133,7 +133,7 @@ export function AccountOperationsPulse({ values, loading }:{
      <h3 className="mt-1 text-xl font-semibold tracking-tight text-foreground">Your player community</h3>
      <p className="mt-1 text-xs text-muted-foreground">Permanent accounts first. Anonymous guests and bots excluded; QA email accounts remain included and are labeled separately.</p>
    </div>
-   <span className="rounded-full border border-border bg-background/60 px-3 py-1 text-xs text-muted-foreground">{values.bots} bot account{values.bots===1?"":"s"} excluded</span>
+   <span className="rounded-full border border-border bg-background/60 px-3 py-1 text-xs text-muted-foreground">{values.bots} bot{values.bots===1?"":"s"} excluded · {values.knownQa} known QA</span>
   </div>
   <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
    {entries.map(({label,value,icon:Icon,caption})=><div key={label} className="rounded-xl border border-border/70 bg-background/50 px-3 py-3">

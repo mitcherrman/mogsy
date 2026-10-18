@@ -49,8 +49,8 @@ describe("owner account intelligence",()=>{
    expect(screen.getByTestId("account-timeline").querySelectorAll("li")).toHaveLength(8);
  });
  it("exposes accurate profile counts without billing guesses",()=>{
-   render(<AccountOperationsPulse loading={false} values={{registered:7,bots:1,knownQa:2,discord:0,riot:0,premium:1,active7d:3}}/>);
-   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("Email accounts");
+   render(<AccountOperationsPulse loading={false} values={{registered:7,bots:1,knownQa:2,verifiedEmails:5,emailCoverage:6,discord:0,riot:0,premium:1,active7d:3}}/>);
+   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("Permanent accounts");
    expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("7");
    expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("1 bot account excluded");
  });

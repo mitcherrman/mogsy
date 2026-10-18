@@ -1875,7 +1875,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   return (
     <div className="space-y-4">
-      <AccountOperationsPulse values={communityTotals} loading={loading} />
+      <AccountOperationsPulse values={{
+        ...communityTotals,
+        verifiedEmails: profiles.filter(p => !p.is_bot && !p.is_anonymous && emailConfirmations[p.user_id]?.confirmed === true).length,
+        emailCoverage: profiles.filter(p => !p.is_bot && !p.is_anonymous && emailConfirmations[p.user_id] !== undefined).length,
+      }} loading={loading} />
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
