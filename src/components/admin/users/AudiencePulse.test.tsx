@@ -54,7 +54,8 @@ describe("Audience Pulse", () => {
     const onVisitor = vi.fn();
     render(<AudiencePulse dataset={dataset} classification={classification}
       range={range} now={NOW} onVisitor={onVisitor} />);
-    fireEvent.click(screen.getByRole("button", { name: /human-browser/ }));
-    expect(onVisitor).toHaveBeenCalledExactlyOnceWith("human-browser");
+    fireEvent.click(screen.getByRole("button", { name: /human-br/ }));
+    expect(onVisitor).toHaveBeenCalledTimes(1);
+    expect(onVisitor).toHaveBeenCalledWith("human-browser");
   });
 });
