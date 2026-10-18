@@ -1,0 +1,130 @@
+/**
+ * RELEASE-QA — one real, bounded guest→permanent authentication + Daily
+ * persistence smoke. THIS RUNS AGAINST THE EXISTING LIVE AUTH/BACKEND.
+ * Intentional side effect: ONE QA-labelled real account and Daily parent run.
+ * No actual user records are modified or cleaned. Never run on untrusted forks.
+ * No passwords, session tokens, or JWTs are printed or attached.
+ *
+ * This does not assert completion of the actual Daily questions.
+ */
+import { randomBytes, randomUUID } from "node:crypto";
+import { test, expect } from "@playwright/test";
+
+test("fresh mobile guest starts Daily and retains the same run after account upgrade", async ({ page }) => {
+  const suffix = randomUUID().replace(/-/g, "").slice(0, 12);
+  const email = `mogzy-launch-qa-${suffix}@mogzy.lol`;
+  const username = `launchqa${suffix.slice(0, 6)}`;
+  const password = `QA!${randomBytes(24).toString("base64url")}`;
+
+  await page.goto("/quiz", { waitUntil: "domcontentloaded" });
+  await expect.poll(async () => await page.evaluate(async () => {
+    const { supabase } = await import("/src/integrations/supabase/client.ts");
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  }), { timeout: 25_000 }).toBeNull();
+
+  // Real public Daily POST — intentionally mints one true guest identity.
+  const before = await page.evaluate(async () => {
+    const { httpDailyRunTransport } = await import("/src/lib/daily-challenge/run/client.ts");
+    const { supabase } = await import("/src/integrations/supabase/client.ts");
+    const run = await httpDailyRunTransport.startToday();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("missing authenticated guest after Daily creation");
+    return { userId: data.user.id, anonymous: data.user.is_anonymous === true, runId: run.runId };
+  });
+  expect(before.anonymous, "Daily should start under a real anonymous guest").toBe(true);
+  expect(before.runId).toBeTruthy();
+
+  // Real main Daily stage. Answer whatever the public question surface offers;
+  // no answer key, question bypass, or server state modification is involved.
+  await page.goto("/quiz/daily-challenge", { waitUntil: "domcontentloaded" });
+  const finished = page.locator('[data-testid="daily-main-result"][data-settled="true"]');
+  const until = Date.now() + 8 * 60_000;
+  let answered = 0;
+  while (Date.now() < until && !(await finished.isVisible().catch(() => false))) {
+    const grid = page.locator('[data-testid="answer-grid"][data-answers-state="open"]');
+    if (await grid.isVisible().catch(() => false)) {
+      const choice = grid.locator('[data-quiz-choice="0"]').first();
+      if (await choice.isEnabled().catch(() => false)) {
+        await choice.click({ timeout: 3_000 }).catch(() => {});
+        answered++;
+        // Do not spam the same card; allow the authoritative next round.
+        await page.waitForTimeout(2_500);
+      } else {
+        await page.waitForTimeout(750);
+      }
+    } else {
+      await page.waitForTimeout(750);
+    }
+  }
+  expect(answered, "a real Daily question must be played").toBeGreaterThan(0);
+  await expect(finished, "real main Daily must actually settle").toBeVisible({ timeout: 2_000 });
+  const settledScore = await page.evaluate(async () => {
+    const { httpDailyRunTransport } = await import("/src/lib/daily-challenge/run/client.ts");
+    const run = await httpDailyRunTransport.readToday();
+    return { runId: run?.runId ?? null, mainScore: run?.mainScore ?? null };
+  });
+  expect(settledScore.runId).toBe(before.runId);
+  expect(typeof settledScore.mainScore).toBe("number");
+
+  // Click the REAL guest-only invitation at the settled main result.
+  await page.getByTestId("daily-main-save-score").click();
+  await expect(page).toHaveURL(/\/auth\?/, { timeout: 15_000 });
+
+  const nameInput = page.getByTestId("upgrade-username-input");
+  await expect(nameInput).toBeVisible({ timeout: 30_000 });
+  // Profile identity resolves asynchronously; avoid racing its one-time
+  // initial seed against our Playwright-controlled form fill.
+  await page.waitForTimeout(1500);
+  await nameInput.fill(username);
+  await page.getByTestId("upgrade-email-input").fill(email);
+  await page.getByTestId("upgrade-password-input").fill(password);
+  await expect(nameInput).toHaveValue(username);
+  await expect(page.getByTestId("upgrade-email-input")).toHaveValue(email);
+  await expect(page.getByTestId("upgrade-password-input")).toHaveValue(password);
+  const formValidity = await page.evaluate(() => {
+    const form = document.querySelector('[data-testid="upgrade-submit"]')?.closest("form");
+    if (!form) return { valid: false, invalidNames: ["missing-form"] };
+    return { valid: form.checkValidity(), invalidNames: [...form.querySelectorAll("input")]
+      .filter((x) => !x.checkValidity()).map((x) => x.id) };
+  });
+  expect(formValidity, "signup form must validate before submit").toEqual({ valid: true, invalidNames: [] });
+  await page.getByTestId("upgrade-submit").click();
+
+  // A failure MUST surface the product's own safe error, not silently time out.
+  try {
+    await expect.poll(async () => await page.evaluate(async () => {
+      const { supabase } = await import("/src/integrations/supabase/client.ts");
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return null;
+      return { userId: data.user.id, anonymous: data.user.is_anonymous === true };
+    }), { timeout: 30_000 }).toEqual({ userId: before.userId, anonymous: false });
+  } catch {
+    const diagnostic = await page.evaluate(() => ({
+      usernameError: document.querySelector('[data-testid="upgrade-username-input-error"]')?.textContent ?? null,
+      upgradeError: document.querySelector('[data-testid="upgrade-error"]')?.textContent ?? null,
+      verificationPending: !!document.querySelector('[data-testid="pending-email"]'),
+      formPresent: !!document.querySelector('[data-testid="upgrade-submit"]'),
+      submitDisabled: (document.querySelector('[data-testid="upgrade-submit"]') as HTMLButtonElement | null)?.disabled ?? null,
+    }));
+    throw new Error("Live signup conversion blocked; product-safe state: " + JSON.stringify(diagnostic));
+  }
+
+  // The server-owned Daily parent must still belong to the SAME JWT identity.
+  const after = await page.evaluate(async () => {
+    const { httpDailyRunTransport } = await import("/src/lib/daily-challenge/run/client.ts");
+    const run = await httpDailyRunTransport.readToday();
+    return run?.runId ?? null;
+  });
+  expect(after, "Daily parent persisted after same-UID permanent conversion").toBe(before.runId);
+
+  const afterScore = await page.evaluate(async () => {
+    const { httpDailyRunTransport } = await import("/src/lib/daily-challenge/run/client.ts");
+    const run = await httpDailyRunTransport.readToday();
+    return run?.mainScore ?? null;
+  });
+  expect(afterScore, "the frozen main Daily score survives account upgrade").toBe(settledScore.mainScore);
+
+  // The app must not strand the guest in the auth form.
+  await expect(page).toHaveURL(/\/(quiz|lol)(?:\/|\?|$)/, { timeout: 20_000 });
+});
