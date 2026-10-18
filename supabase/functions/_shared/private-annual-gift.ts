@@ -18,6 +18,17 @@
 //   PRIVATE_ANNUAL_GIFT_BUYER_USER_IDS=<uuid>[,<uuid>…]   (who may buy it)
 //   and, against a LIVE Stripe key, PRIVATE_ANNUAL_GIFT_LIVE_APPROVED=true.
 //
+// TEST-KEY LANE (PT1.7-T) — for a Stripe test-mode end-to-end run on the real
+// production stack without touching live billing:
+//   PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test        (unset or "live" = live)
+//   STRIPE_TEST_SECRET_KEY=sk_test_…            (must be a TEST key)
+//   STRIPE_PRIVATE_ANNUAL_GIFT_TEST_PRICE_ID=price_…  (a test-mode $50 price)
+//   STRIPE_TEST_WEBHOOK_SECRET=whsec_…          (read by stripe-webhook)
+// Only the private gift ever uses the test key. Subscriptions, catalog gifts
+// and the custom offer keep STRIPE_SECRET_KEY. A gift's mode is fixed by its
+// Checkout Session id (cs_test_… / cs_live_…), so every later read of that gift
+// uses the matching key no matter how the switch is set by then.
+//
 // Pure TypeScript (no Deno/URL imports) so vitest can run it.
 
 export const PRIVATE_ANNUAL_GIFT = "first_customer_annual_gift" as const;
@@ -52,6 +63,16 @@ export type GiftTaxMode = "stripe_tax_inclusive" | "approved_not_taxable";
 
 export type EnvReader = (name: string) => string | undefined;
 
+/** Which Stripe account mode a private gift checkout runs in. */
+export type GiftStripeMode = "live" | "test";
+
+const TEST_KEY_RE = /^(sk|rk)_test_[A-Za-z0-9]+$/;
+
+/** A gift's Stripe mode, from its Checkout Session id (Stripe encodes it there). */
+export function giftStripeMode(sessionId: string | null | undefined): GiftStripeMode {
+  return typeof sessionId === "string" && sessionId.startsWith("cs_test_") ? "test" : "live";
+}
+
 function denoEnv(name: string): string | undefined {
   const v = (globalThis as { Deno?: { env?: { get?: (n: string) => unknown } } }).Deno?.env?.get?.(name);
   return typeof v === "string" && v.length > 0 ? v : undefined;
@@ -65,7 +86,9 @@ export type PrivateGiftDisabledReason =
   | "price_not_configured"
   | "tax_not_approved"
   | "buyers_not_configured"
-  | "live_not_approved";
+  | "live_not_approved"
+  | "stripe_mode_invalid"
+  | "test_key_not_configured";
 
 export interface PrivateGiftConfig {
   enabled: boolean;
@@ -73,21 +96,37 @@ export interface PrivateGiftConfig {
   priceId: string;
   taxMode: GiftTaxMode | null;
   liveMode: boolean;
+  /** "test" only via PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test with a real test key. */
+  stripeMode: GiftStripeMode;
   buyerIds: readonly string[];
 }
 
+/** STRIPE_TEST_SECRET_KEY when it really is a test key; otherwise null. */
+export function testStripeKey(env: EnvReader = denoEnv): string | null {
+  const k = env("STRIPE_TEST_SECRET_KEY") ?? "";
+  return TEST_KEY_RE.test(k) ? k : null;
+}
+
 export function privateGiftConfig(env: EnvReader = denoEnv): PrivateGiftConfig {
-  const key = env("STRIPE_SECRET_KEY") ?? "";
-  const priceId = env("STRIPE_PRIVATE_ANNUAL_GIFT_PRICE_ID") ?? "";
+  const rawMode = env("PRIVATE_ANNUAL_GIFT_STRIPE_MODE");
+  const modeValid = rawMode === undefined || rawMode === "live" || rawMode === "test";
+  const stripeMode: GiftStripeMode = rawMode === "test" ? "test" : "live";
+  const key = stripeMode === "test" ? (env("STRIPE_TEST_SECRET_KEY") ?? "") : (env("STRIPE_SECRET_KEY") ?? "");
+  const priceId = env(stripeMode === "test"
+    ? "STRIPE_PRIVATE_ANNUAL_GIFT_TEST_PRICE_ID"
+    : "STRIPE_PRIVATE_ANNUAL_GIFT_PRICE_ID") ?? "";
   const rawTax = env("PRIVATE_ANNUAL_GIFT_TAX_MODE");
   const taxMode: GiftTaxMode | null =
     rawTax === "stripe_tax_inclusive" || rawTax === "approved_not_taxable" ? rawTax : null;
   const buyerIds = (env("PRIVATE_ANNUAL_GIFT_BUYER_USER_IDS") ?? "")
     .split(",").map((s) => s.trim().toLowerCase()).filter((s) => UUID_RE.test(s));
   const liveMode = key.startsWith("sk_live_") || key.startsWith("rk_live_");
-  const base = { priceId, taxMode, liveMode, buyerIds };
+  const base = { priceId, taxMode, liveMode, stripeMode, buyerIds };
   const off = (reason: PrivateGiftDisabledReason): PrivateGiftConfig => ({ ...base, enabled: false, reason });
   if (env("PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED") !== "true") return off("not_enabled");
+  if (!modeValid) return off("stripe_mode_invalid");
+  // The test lane must never charge real money: a live key there is refused.
+  if (stripeMode === "test" && !TEST_KEY_RE.test(key)) return off("test_key_not_configured");
   if (!key) return off("stripe_not_configured");
   if (!/^price_[A-Za-z0-9]+$/.test(priceId)) return off("price_not_configured");
   if (!taxMode) return off("tax_not_approved");
@@ -155,6 +194,8 @@ export interface GiftSessionInput {
   taxMode: GiftTaxMode;
   origin: string;
   nowMs: number;
+  /** Informational: recorded on the session; the session id is the authority. */
+  stripeMode?: GiftStripeMode;
 }
 
 /**
@@ -172,6 +213,7 @@ export function buildPrivateGiftSessionParams(i: GiftSessionInput): Record<strin
     private_offer: PRIVATE_ANNUAL_GIFT,
     recipient_email: normalizeEmail(i.recipientEmail),
     tax_mode: i.taxMode,
+    stripe_mode: i.stripeMode ?? "live",
   };
   return {
     mode: "payment",

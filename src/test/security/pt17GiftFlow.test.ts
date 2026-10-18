@@ -19,6 +19,7 @@ import {
 import { handleGiftRedeemRequest, type GiftRedeemDeps } from "../../../supabase/functions/_shared/gift-redeem";
 import {
   handleGiftEvent,
+  reconcileByMode,
   reconcileGiftPayment,
   type ChargeLike,
   type DisputeLike,
@@ -68,45 +69,63 @@ const created: Record<string, unknown>[] = [];
 let stripeDown = false;
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
-const fakeStripe = {
-  retrievePrice: async (id: string) => clone(prices.get(id)!),
-  findCustomerIdByEmail: async () => null,
-  createSession: async (params: Record<string, unknown>) => {
-    created.push(params);
-    const id = `cs_test_${++seq}`;
-    const li = (params.line_items as Array<{ price: string; quantity: number }>)[0];
-    const s: FakeSession = {
-      id, params, mode: "payment", status: "open", url: `https://checkout.stripe.test/${id}`,
-      expires_at: params.expires_at as number, payment_status: "unpaid", payment_intent: null,
-      amount_total: prices.get(li.price)!.unit_amount!, currency: "usd",
-      metadata: clone(params.metadata as Record<string, string>),
-      total_details: { amount_discount: 0 },
-      automatic_tax: { enabled: !!(params.automatic_tax as { enabled?: boolean } | undefined)?.enabled, status: null },
-      line_items: { has_more: false, data: [{ quantity: li.quantity, price: clone(prices.get(li.price)!) }] },
-    };
-    sessions.set(id, s);
-    return clone(s);
-  },
-  retrieveSession: async (id: string) => {
-    if (stripeDown) throw new Error("stripe unavailable");
-    return clone(sessions.get(id)!);
-  },
-  expireSession: async (id: string) => {
-    const s = sessions.get(id)!;
-    if (s.status !== "open") throw new Error("not open");
-    s.status = "expired";
-  },
-  retrievePaymentIntent: async (id: string) => {
-    if (stripeDown) throw new Error("stripe unavailable");
-    return clone(intents.get(id)!);
-  },
-  listDisputes: async (pi: string) => clone(disputes.get(pi) ?? []),
+// Two Stripe accounts, as in reality: a live client cannot see test objects
+// and a test client cannot see live ones ("No such checkout.session").
+type Mode = "live" | "test";
+const accountOf = new Map<string, Mode>();
+const own = (mode: Mode, id: string) => {
+  if (accountOf.get(id) !== mode) throw new Error(`No such object in ${mode} mode: ${id}`);
 };
+
+function makeFakeStripe(mode: Mode) {
+  return {
+    retrievePrice: async (id: string) => clone(prices.get(id)!),
+    findCustomerIdByEmail: async () => null,
+    createSession: async (params: Record<string, unknown>) => {
+      created.push(params);
+      const id = `cs_${mode}_${++seq}`;
+      accountOf.set(id, mode);
+      const li = (params.line_items as Array<{ price: string; quantity: number }>)[0];
+      const s: FakeSession = {
+        id, params, mode: "payment", status: "open", url: `https://checkout.stripe.test/${id}`,
+        expires_at: params.expires_at as number, payment_status: "unpaid", payment_intent: null,
+        amount_total: prices.get(li.price)!.unit_amount!, currency: "usd",
+        metadata: clone(params.metadata as Record<string, string>),
+        total_details: { amount_discount: 0 },
+        automatic_tax: { enabled: !!(params.automatic_tax as { enabled?: boolean } | undefined)?.enabled, status: null },
+        line_items: { has_more: false, data: [{ quantity: li.quantity, price: clone(prices.get(li.price)!) }] },
+      };
+      sessions.set(id, s);
+      return clone(s);
+    },
+    retrieveSession: async (id: string) => {
+      if (stripeDown) throw new Error("stripe unavailable");
+      own(mode, id);
+      return clone(sessions.get(id)!);
+    },
+    expireSession: async (id: string) => {
+      own(mode, id);
+      const s = sessions.get(id)!;
+      if (s.status !== "open") throw new Error("not open");
+      s.status = "expired";
+    },
+    retrievePaymentIntent: async (id: string) => {
+      if (stripeDown) throw new Error("stripe unavailable");
+      own(mode, id);
+      return clone(intents.get(id)!);
+    },
+    listDisputes: async (pi: string) => { own(mode, pi); return clone(disputes.get(pi) ?? []); },
+  };
+}
+const fakeStripe = makeFakeStripe("live");
+const fakeTestStripe = makeFakeStripe("test");
 
 /** The buyer pays on Stripe's page; returns the event Stripe would send. */
 function pay(sessionId: string, amount = 5000) {
   const s = sessions.get(sessionId)!;
-  const pi = `pi_test_${++seq}`;
+  const mode = accountOf.get(sessionId)!;
+  const pi = `pi_${mode}_${++seq}`;
+  accountOf.set(pi, mode);
   intents.set(pi, {
     id: pi, status: "succeeded", amount_received: amount, currency: "usd",
     metadata: clone((s.params.payment_intent_data as { metadata: Record<string, string> }).metadata),
@@ -133,13 +152,14 @@ function dispute(pi: string, status: string) {
 // ---- deps wiring (mirrors the Edge Functions) ------------------------------
 const logs: string[] = [];
 const paymentDeps: GiftPaymentDeps = {
-  rpc, log: (m) => { logs.push(m); },
+  rpc, log: (m) => { logs.push(m); }, mode: "live",
   stripe: fakeStripe,
   getGiftById: (id) => giftWhere("id::text", id),
   getGiftByPaymentIntent: (pi) => giftWhere("stripe_payment_intent_id", pi),
 };
 const config: PrivateGiftConfig = {
-  enabled: true, reason: null, priceId: "price_gift50", taxMode: "approved_not_taxable", liveMode: false, buyerIds: [OWNER],
+  enabled: true, reason: null, priceId: "price_gift50", taxMode: "approved_not_taxable", liveMode: false,
+  stripeMode: "live", buyerIds: [OWNER],
 };
 const checkoutDeps = (c: PrivateGiftConfig = config): GiftCheckoutDeps => ({
   config: c, rpc, stripe: fakeStripe, now: () => Date.now(), log: (m) => { logs.push(m); },
@@ -410,6 +430,7 @@ describe("refunds, disputes and out-of-order webhooks", () => {
   });
 
   it("events for payments that are not gifts are left alone", async () => {
+    accountOf.set("pi_diamonds", "live");
     intents.set("pi_diamonds", { id: "pi_diamonds", status: "succeeded", metadata: {}, latest_charge: { id: "ch_d", paid: true } });
     const evt = { id: "evt_d", type: "charge.refunded", data: { object: { id: "ch_d", payment_intent: "pi_diamonds", amount_refunded: 499 } } };
     expect(await handleGiftEvent(evt, paymentDeps)).toEqual({ handled: false, outcome: "not_a_gift" });
@@ -438,3 +459,89 @@ describe("existing catalog gifts keep working through the same verified path", (
     expect(await redeem(id.redeem_code, recipient)).toMatchObject({ success: true, gift_type: "pro_monthly", premium_days: 30 });
   });
 });
+
+// ─────────────────────────────── PT1.7-T — the Stripe test-key lane
+
+describe("PT1.7-T test-key lane: a full test-mode gift on the production code path", () => {
+  const testPaymentDeps: GiftPaymentDeps = { ...paymentDeps, mode: "test", stripe: fakeTestStripe };
+  const lanes = { live: paymentDeps, test: testPaymentDeps };
+  const testConfig: PrivateGiftConfig = { ...config, stripeMode: "test", priceId: "price_gift50_test" };
+  const testCheckoutDeps = (): GiftCheckoutDeps => ({
+    ...checkoutDeps(testConfig), stripe: fakeTestStripe, reconcile: (g) => reconcileByMode(g as GiftRow, lanes),
+  });
+  const laneRedeemDeps = (test: GiftPaymentDeps | null = testPaymentDeps): GiftRedeemDeps => ({
+    ...redeemDeps, reconcile: (g) => reconcileByMode(g, { live: paymentDeps, test }),
+  });
+
+  beforeAll(async () => {
+    prices.set("price_gift50_test", { ...prices.get("price_gift50")!, id: "price_gift50_test" });
+    await db.exec(`UPDATE public.gifts SET status = 'expired' WHERE status = 'pending'`);
+  });
+
+  it("buy → test-lane webhook → redeem 365 days → refund revokes; the live lane never touches it", async () => {
+    const tester = "20000000-0000-4000-8000-000000000030";
+    await addUser(db, tester, "tester@ca.example");
+
+    const avail = await handleGiftCheckoutRequest({ action: "availability", user: buyer(), origin: "x" }, testCheckoutDeps());
+    expect(avail).toMatchObject({ available: true, test_mode: true });
+
+    const r = await handleGiftCheckoutRequest(
+      { action: "checkout", recipientEmail: "tester@ca.example", message: "test", user: buyer(), origin: "http://localhost:5173" },
+      testCheckoutDeps());
+    const sid = sessionOf(r);
+    expect(sid).toMatch(/^cs_test_/);
+    expect(created.at(-1)).toMatchObject({
+      line_items: [{ price: "price_gift50_test", quantity: 1 }],
+      metadata: { stripe_mode: "test", private_offer: "first_customer_annual_gift" },
+    });
+    const evt = pay(sid);
+
+    // Delivered to the LIVE lane (wrong secret can't happen, but the guard holds anyway).
+    expect(await handleGiftEvent(evt, paymentDeps)).toEqual({ handled: true, outcome: "other_mode" });
+    expect((await giftWhere("id::text", r.gift_id as string))!.status).toBe("pending");
+
+    // The test lane records it.
+    expect(await handleGiftEvent(evt, testPaymentDeps)).toEqual({ handled: true, outcome: "paid:paid" });
+    const view = await handleGiftCheckoutRequest({ action: "status", giftId: r.gift_id, user: buyer(), origin: "x" }, testCheckoutDeps());
+    expect(view).toMatchObject({ status: "paid", test_mode: true, amount_cents: 5000 });
+
+    // Redemption re-reads Stripe with the TEST key (the live key cannot see cs_test_).
+    const ok = await handleGiftRedeemRequest({ action: "redeem", code: view.redeem_code, user: { id: tester, isAnonymous: false } }, laneRedeemDeps());
+    expect(ok).toMatchObject({ success: true, premium_days: 365 });
+    expect((await grantOf(tester)).k).toBe("gift");
+
+    // A live-lane refund event for a test payment is ignored; the test lane revokes.
+    const pi = (await giftWhere("id::text", r.gift_id as string))!.stripe_payment_intent_id!;
+    const rf = refund(pi);
+    expect(await handleGiftEvent(rf, paymentDeps)).toEqual({ handled: true, outcome: "other_mode" });
+    expect((await grantOf(tester)).k).toBe("gift");
+    expect(await handleGiftEvent(rf, testPaymentDeps)).toEqual({ handled: true, outcome: "refunded:revoked" });
+    expect((await grantOf(tester)).k).toBeNull();
+  });
+
+  it("a test gift fails closed when the test key is gone", async () => {
+    const t2 = "20000000-0000-4000-8000-000000000031";
+    await addUser(db, t2, "t2@ca.example");
+    const r = await handleGiftCheckoutRequest(
+      { action: "checkout", recipientEmail: "t2@ca.example", message: "", user: buyer(), origin: "x" }, testCheckoutDeps());
+    await handleGiftEvent(pay(sessionOf(r)), testPaymentDeps);
+    const code = (await giftWhere("id::text", r.gift_id as string))!.redeem_code;
+    expect(await handleGiftRedeemRequest({ action: "redeem", code, user: { id: t2, isAnonymous: false } }, laneRedeemDeps(null)))
+      .toMatchObject({ success: false, reason: "payment_check_unavailable" });
+    expect((await grantOf(t2)).k).toBeNull();
+  });
+
+  it("switching modes never leaves two payable checkouts; a stale other-mode one is retired", async () => {
+    await db.exec(`UPDATE public.gifts SET status = 'expired' WHERE status = 'pending'`);
+    const liveOpen = await checkout("switch@ca.example");             // live checkout left open
+    expect(sessionOf(liveOpen)).toMatch(/^cs_live_/);
+    const req = { action: "checkout", recipientEmail: "switch@ca.example", message: "", user: buyer(), origin: "x" };
+    expect(await handleGiftCheckoutRequest(req, testCheckoutDeps())).toMatchObject({ code: "CHECKOUT_BUSY" });
+    // 33 minutes later the live session can no longer be paid: retire it, start in test mode.
+    await db.query(`UPDATE public.gifts SET created_at = now() - interval '33 minutes' WHERE id = $1::uuid`, [liveOpen.gift_id]);
+    const t = await handleGiftCheckoutRequest(req, testCheckoutDeps());
+    expect(sessionOf(t)).toMatch(/^cs_test_/);
+    expect((await giftWhere("id::text", liveOpen.gift_id as string))!.status).toBe("expired");
+  });
+});
+

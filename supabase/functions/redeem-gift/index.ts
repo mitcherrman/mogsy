@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import { reconcileGiftPayment } from "../_shared/gift-payment.ts";
 import { handleGiftRedeemRequest } from "../_shared/gift-redeem.ts";
-import { giftByCode, giftPaymentDeps, type AdminClientLike, type StripeLike } from "../_shared/gift-wiring.ts";
+import { testStripeKey } from "../_shared/private-annual-gift.ts";
+import { giftByCode, giftLanes, type AdminClientLike, type StripeLike } from "../_shared/gift-wiring.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,14 +45,21 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", { apiVersion: "2025-08-27.basil" });
-    const paymentDeps = giftPaymentDeps(admin as unknown as AdminClientLike, stripe as unknown as StripeLike);
+    const testKey = testStripeKey();
+    // PT1.7-T: each gift is re-read with the key of its own Stripe mode; a test
+    // gift with no test key configured fails closed (payment_check_unavailable).
+    const lanes = giftLanes(
+      admin as unknown as AdminClientLike,
+      stripe as unknown as StripeLike,
+      (testKey ? new Stripe(testKey, { apiVersion: "2025-08-27.basil" }) : null) as unknown as StripeLike | null,
+    );
 
     const result = await handleGiftRedeemRequest(
       { action: body?.action, code: body?.code, user: { id: user.id, isAnonymous: user.is_anonymous === true } },
       {
         rpc: async (fn, args) => await admin.rpc(fn, args),
         getGiftByCode: (code) => giftByCode(admin as unknown as AdminClientLike, code),
-        reconcile: (gift) => reconcileGiftPayment(paymentDeps, gift),
+        reconcile: (gift) => lanes.reconcile(gift),
         log: (message, detail) => console.warn(message, detail ?? {}),
         // Kept from the pre-PT1.7 flow: a purchases row lets admins see the
         // gifted period. Bookkeeping only — the grant is already committed.

@@ -81,7 +81,7 @@ Unauthenticated, guest and unverified purchasers · unverified, wrong-email and 
 4. ~~Apply 0004~~ **DONE** (owner-verified: ledger id 5, hash `1779ec0c…2926`, 5 SQL checks passed; re-confirmed read-only on 2026-10-17, §10). Do not reapply.
 5. ~~Deploy Edge Functions~~ **DONE by Lovable Cloud** from `main`. `gift-checkout` and `redeem-gift` were fingerprinted as the new code. `verify-gift` and `stripe-webhook` can't be told apart from outside (§10).
 6. **Owner, Stripe dashboard:** subscribe the webhook to `checkout.session.expired`, `checkout.session.async_payment_succeeded/failed`, `charge.refunded`, `charge.dispute.created/updated/closed` (in addition to `checkout.session.completed`).
-7. **Stripe test-mode end-to-end. BLOCKED, owner decision needed (§10.3).** Production runs on the live Stripe key, so a test-mode purchase can't go through the production functions as they are.
+7. **Stripe test-mode end-to-end:** option A is built on `billing/pt17-test-lane` (§11). It needs merge + Lovable redeploy, then the §11.3 runbook. Production runs on the live Stripe key, so this can't run before then.
 8. Lovable Publish (frontend gift pages). The Buy button stays hidden while checkout is off, so publishing exposes only "Redeem a gift".
 9. Only then: live price + live secrets + `PRIVATE_ANNUAL_GIFT_LIVE_APPROVED=true`, then the owner's real purchase with the prepaid Visa.
 
@@ -127,7 +127,7 @@ Production's `STRIPE_SECRET_KEY` is the **live** key (create-checkout sells live
 
 | Option | What it takes | Assessment |
 |---|---|---|
-| **A. Test-key lane for the private gift (recommended)** | Small code change + PR: `gift-checkout` uses `STRIPE_TEST_SECRET_KEY` when `PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test`; the gift row records the mode; `stripe-webhook` tries the live secret, then `STRIPE_TEST_WEBHOOK_SECRET`, and reads Stripe with the key matching `event.livemode`; `redeem-gift`/`verify-gift` reconcile with the gift's recorded mode. Subscriptions keep using the live key and secret only. | Full E2E on the real production stack with zero live-money risk. The test gift's Premium lands on the owner's test accounts. After it passes, flip the mode to `live` |
+| **A. Test-key lane for the private gift (recommended; IMPLEMENTED on `billing/pt17-test-lane`, §11)** | Small code change + PR: `gift-checkout` uses `STRIPE_TEST_SECRET_KEY` when `PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test`; the gift row records the mode; `stripe-webhook` tries the live secret, then `STRIPE_TEST_WEBHOOK_SECRET`, and reads Stripe with the key matching `event.livemode`; `redeem-gift`/`verify-gift` reconcile with the gift's recorded mode. Subscriptions keep using the live key and secret only. | Full E2E on the real production stack with zero live-money risk. The test gift's Premium lands on the owner's test accounts. After it passes, flip the mode to `live` |
 | B. Separate staging project | A second Supabase/Lovable project with test keys | New infrastructure; not available today |
 | C. Live-mode check with a real card | — | **Ruled out** (never use a real card for testing) |
 
@@ -140,3 +140,42 @@ Production's `STRIPE_SECRET_KEY` is the **live** key (create-checkout sells live
 5. **Publish (Lovable):** the Gift Premium entry and the `/lol/premium/gift` and `/lol/premium/redeem` pages. Buying stays invisible while checkout is off.
 6. **Live activation (owner, at purchase time):** set `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED=true` and `PRIVATE_ANNUAL_GIFT_LIVE_APPROVED=true`. Sign in as the owner (verified email), open `/lol/premium/gift`, enter the friend's email, and confirm the review shows **$50.00 total, one-time, never renews**. Pay with the prepaid Visa. Wait for "Gift confirmed" and send the code/link. The friend signs in with that verified email and redeems: **365 days** of Premium.
 7. **Afterwards:** unset `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED` (single sale), and run `supabase/verification/pt17_gift_verify.sql` A1 to see the row.
+
+## 11. PT1.7-T — Stripe test-key lane (branch `billing/pt17-test-lane`)
+
+**Purpose:** prove purchase → webhook → redemption → refund on the real production stack with Stripe **test** keys, while live billing is untouched. Nothing here is deployed or enabled.
+
+### 11.1 Design
+
+- **One switch:** `PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test`. When set, new private-gift checkouts use `STRIPE_TEST_SECRET_KEY` and `STRIPE_PRIVATE_ANNUAL_GIFT_TEST_PRICE_ID`. The config refuses a live key in the test slot (`test_key_not_configured`), never falls back to the live price, and treats any other value as `stripe_mode_invalid` (off). Test mode needs no `LIVE_APPROVED`, because its key can't move real money. Unset or `live` = exactly the PT1.7 behaviour.
+- **A gift's mode is fixed by its Checkout Session id** (`cs_test_…` / `cs_live_…`), so no migration is needed. Every later read of that gift (return page, redemption, webhook) uses the matching key. A test gift with no test key configured **fails closed** (`payment_check_unavailable`).
+- **Webhook:** the live verification line is **byte-identical** to before. Only when the live secret rejects a delivery is `STRIPE_TEST_WEBHOOK_SECRET` tried. A test-lane event must have `livemode === false`, must be a gift event type, and reaches **only** `handleGiftEvent` with the test key. It returns before the subscription `is_pro` sync, commercial state and the custom offer. Gift handlers also ignore gifts of the other mode (`other_mode`), on both lanes. With no test secret set (production today), behaviour is unchanged: same log line, same 400.
+- **Switching modes:** an open checkout from the other mode blocks a new one (`CHECKOUT_BUSY`) until it can no longer be paid (32 min). It is then retired; a payment that did land is still recorded (expired → paid).
+- **UI:** a TEST MODE banner on the buy form and the confirmation whenever the server reports test mode.
+- Untouched: `create-checkout`, `check-subscription`, `customer-portal`, `custom-offer-checkout`. None of them reads `STRIPE_TEST_*` (contract-tested).
+
+### 11.2 Verification (2026-10-17)
+
+- New tests: flow +3 (full test-mode gift: buy → live lane ignores (`other_mode`) → test lane records paid → redeem 365 days with the test key → live-lane refund ignored → test-lane refund revokes; fail closed without a test key; mode switch). Unit +9 (config matrix, key/price separation, session-id mode, lane verification incl. a test secret never admitting a live event, gift-only event types). Contract +2 (test lane isolated from subscription and custom-offer code; non-gift functions never read test keys). The fake Stripe now models separate live and test accounts that can't read each other's objects.
+- PT1.7 suites: SQL 24/24, flow 26/26, contract 13/13, unit 21/21, pages 17/17. PT1.6b suites unchanged.
+- Wide regression (2,105 tests): **9 failures, identical to the `3d5cb057` baseline**. `tsc`: 2 pre-existing errors. Shared modules pass `tsc --strict`. ESLint clean. `vite build` succeeds.
+
+### 11.3 Test-mode runbook (owner; no real card at any point)
+
+**Before:** merge `billing/pt17-test-lane`. Lovable redeploys `gift-checkout`, `redeem-gift`, `verify-gift`, `stripe-webhook`. **Do not publish** the frontend for this. Run it locally (step 4).
+
+1. **Stripe Dashboard, TEST mode:**
+   - Product "Mogzy Premium gift — 12 months (TEST)" with a **one-time** Price of **50.00 USD**, tax behavior **inclusive**. Note `price_…`.
+   - Developers → Webhooks → Add endpoint `https://kewgjwrzpzpeltwidvuc.supabase.co/functions/v1/stripe-webhook`. Events: `checkout.session.completed`, `checkout.session.expired`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`. Note its signing secret `whsec_…`.
+   - Developers → API keys: the **test** secret key `sk_test_…`.
+2. **Lovable Cloud secrets:** `STRIPE_TEST_SECRET_KEY=sk_test_…`, `STRIPE_TEST_WEBHOOK_SECRET=whsec_…` (test endpoint), `STRIPE_PRIVATE_ANNUAL_GIFT_TEST_PRICE_ID=price_…`, `PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test`, `PRIVATE_ANNUAL_GIFT_TAX_MODE=approved_not_taxable` (test only; the live value is the §10.4 tax decision), `PRIVATE_ANNUAL_GIFT_BUYER_USER_IDS=<owner user id>`, `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED=true`. **Do not** set `PRIVATE_ANNUAL_GIFT_LIVE_APPROVED` or `STRIPE_PRIVATE_ANNUAL_GIFT_PRICE_ID`.
+3. **Two verified accounts:** buyer = the owner's account (its id is in the allowlist); recipient = a second Mogzy account whose email inbox you control, with the email confirmed.
+4. **Local frontend against production:** `npm run dev -- --port 5173`. Port 5173 is an allowlisted return origin; the default 8080 is not.
+5. **Buy:** as the buyer, open `http://localhost:5173/lol/premium/gift`. Expect the **TEST MODE** banner and a review of **$50.00 Total, USD**, one payment, never renews, 365 days. Enter the recipient's email, tick the acknowledgement, and pay on Stripe's test page with `4242 4242 4242 4242`, any future date, any CVC/ZIP.
+6. **Confirm:** back on `/lol/premium/gift?gift=…&checkout=success`, expect "Confirming…" then **"Gift confirmed — payment received"** with the code and link. Stripe test webhook log: `checkout.session.completed` → 200.
+7. **Redeem:** sign in as the recipient and open `http://localhost:5173/lol/premium/redeem#CODE` (or the inbox list). Redeem → "Premium is active… **365 days**… It does not renew." Optional: the buyer account is refused (different email); a second redeem is refused (already redeemed).
+8. **Refund:** Stripe test Dashboard → the payment → Refund in full. Expect `charge.refunded` → 200, the recipient back on Free (`/lol/premium`), and the gift status `refunded` on the buyer's page.
+9. **Evidence (read-only SQL):** `SELECT status, amount_cents, stripe_session_id LIKE 'cs_test_%' AS test, grant_ends_at - grant_starts_at AS granted, revoke_note FROM public.gifts WHERE id = '<gift id>';` Expect `refunded`, `5000`, `true`, `365 days`, `revoked`.
+10. **Close the lane:** unset `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED` and `PRIVATE_ANNUAL_GIFT_STRIPE_MODE`. Keep `STRIPE_TEST_*` only while test gifts might still receive events; removing them makes leftover test gifts fail closed. Then follow §10.4 for live.
+
+**Residual risk:** while `STRIPE_MODE=test` and checkout are on, an allowlisted buyer can mint real Premium gifts with test cards. Only allowlisted accounts can buy, which is equivalent to the owner granting Premium, but close the lane right after the run (step 10).

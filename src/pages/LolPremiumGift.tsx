@@ -40,6 +40,16 @@ const STATUS_COPY: Record<string, string> = {
   invalid: "This payment didn't match the gift's terms, so the gift wasn't issued. Contact support for a refund.",
 };
 
+/** PT1.7-T: unmistakable while the gift runs on Stripe test keys. */
+function TestModeBanner() {
+  return (
+    <p data-testid="gift-test-mode" role="note"
+      className="mb-4 rounded-md border border-amber-400/60 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-200">
+      TEST MODE — Stripe test payments only. Use a Stripe test card (4242 4242 4242 4242); no real money moves.
+    </p>
+  );
+}
+
 function Panel({ children, testId }: { children: React.ReactNode; testId?: string }) {
   return (
     <div
@@ -79,6 +89,7 @@ function GiftReturn({ giftId, returned }: { giftId: string; returned: string | n
     const link = gift.redeemCode ? redeemLink(window.location.origin, gift.redeemCode) : null;
     return (
       <Panel testId="gift-confirmed">
+        {gift.testMode && <TestModeBanner />}
         <p className="text-lg font-semibold text-[#f5e9c8]">
           {gift.status === "redeemed" ? "Your gift has been redeemed." : "Gift confirmed — payment received."}
         </p>
@@ -177,6 +188,7 @@ function GiftForm() {
 
   return (
     <Panel testId="gift-form">
+      {availability.testMode && <TestModeBanner />}
       <div className="space-y-4">
         <label className="block space-y-1 text-sm">
           <span>Recipient's email</span>

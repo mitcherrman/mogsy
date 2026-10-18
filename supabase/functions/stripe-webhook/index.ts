@@ -5,6 +5,8 @@ import { isCustomOfferSession } from "../_shared/custom-offer.ts";
 import { handleCustomOfferEvent, type WebhookDeps } from "../_shared/custom-offer-webhook.ts";
 import { handleGiftEvent } from "../_shared/gift-payment.ts";
 import { giftPaymentDeps, type AdminClientLike, type StripeLike } from "../_shared/gift-wiring.ts";
+import { testStripeKey } from "../_shared/private-annual-gift.ts";
+import { isTestLaneEventType, verifyTestLaneEvent } from "../_shared/stripe-lanes.ts";
 
 // Stripe webhook — keeps profiles.is_pro in sync without relying on the
 // user revisiting the Shop page (check-subscription remains as a backstop).
@@ -34,6 +36,9 @@ import { giftPaymentDeps, type AdminClientLike, type StripeLike } from "../_shar
 // from Stripe and record the result via public.gift_record_payment
 // (../_shared/gift-payment.ts), so retried and out-of-order events converge.
 // Gifts still grant nothing here: Premium starts when the recipient redeems.
+//
+// PT1.7-T: an optional TEST lane (STRIPE_TEST_WEBHOOK_SECRET) admits test-mode
+// events for the private gift's test-mode end-to-end run, and nothing else.
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
@@ -171,14 +176,58 @@ serve(async (req) => {
   const body = await req.text();
 
   let event: Stripe.Event;
+  let testLane = false;
   try {
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);
   } catch (err) {
-    console.error("Webhook signature verification failed", err);
-    return new Response("Invalid signature", { status: 400 });
+    // PT1.7-T: only if the LIVE secret rejected it, try the optional test lane
+    // (STRIPE_TEST_WEBHOOK_SECRET): test-mode events only, private gift only.
+    // See ../_shared/stripe-lanes.ts.
+    const testEvent = await verifyTestLaneEvent<Stripe.Event>(
+      body,
+      signature,
+      Deno.env.get("STRIPE_TEST_WEBHOOK_SECRET"),
+      (b, s, secret) => stripe.webhooks.constructEventAsync(b, s, secret, undefined, cryptoProvider),
+    );
+    if (!testEvent) {
+      console.error("Webhook signature verification failed", err);
+      return new Response("Invalid signature", { status: 400 });
+    }
+    event = testEvent;
+    testLane = true;
   }
 
   const supabase = adminClient();
+
+  if (testLane) {
+    // Test-mode lane: private gift events only. Never the is_pro sync, the
+    // commercial state recorder or the custom offer.
+    if (!isTestLaneEventType(event.type)) {
+      return new Response(JSON.stringify({ received: true, lane: "test", ignored: true }), {
+        headers: { "Content-Type": "application/json" }, status: 200,
+      });
+    }
+    const testKey = testStripeKey();
+    if (!testKey) {
+      console.error("test-mode webhook verified but STRIPE_TEST_SECRET_KEY is not a test key");
+      return new Response("Server misconfigured", { status: 500 });
+    }
+    const testStripe = new Stripe(testKey, { apiVersion: "2025-08-27.basil" });
+    try {
+      const r = await handleGiftEvent(
+        event,
+        giftPaymentDeps(supabase as unknown as AdminClientLike, testStripe as unknown as StripeLike, "test"),
+      );
+      console.log("gift (test lane)", { event: event.id, type: event.type, handled: r.handled, outcome: r.outcome });
+    } catch (err) {
+      console.error("Webhook handler error (test lane)", { type: event.type, err });
+      return new Response("Handler error", { status: 500 });
+    }
+    return new Response(JSON.stringify({ received: true, lane: "test" }), {
+      headers: { "Content-Type": "application/json" }, status: 200,
+    });
+  }
+
   const customOfferDeps: WebhookDeps = {
     rpc: (fn, args) => supabase.rpc(fn, args),
     log: (message, detail) => console.warn(message, detail ?? {}),
@@ -186,7 +235,8 @@ serve(async (req) => {
       retrievePaymentIntent: (id) => stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] }),
     },
   };
-  const giftDeps = giftPaymentDeps(supabase as unknown as AdminClientLike, stripe as unknown as StripeLike);
+  // Live lane: live gifts only (a test gift is ignored here, read on its own lane).
+  const giftDeps = giftPaymentDeps(supabase as unknown as AdminClientLike, stripe as unknown as StripeLike, "live");
 
   try {
     switch (event.type) {

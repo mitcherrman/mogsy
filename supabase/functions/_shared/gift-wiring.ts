@@ -1,13 +1,16 @@
 // PT1.7 — adapts the real service-role Supabase client and Stripe client to the
 // injected interfaces of gift-payment.ts, so every gift Edge Function (and the
 // webhook) reconciles payments through the same code.
-import type {
-  DisputeLike,
-  GiftPaymentDeps,
-  GiftRow,
-  GiftSessionLike,
-  IntentLike,
+import {
+  reconcileByMode,
+  type DisputeLike,
+  type GiftPaymentDeps,
+  type GiftRow,
+  type GiftSessionLike,
+  type IntentLike,
+  type ReconcileResult,
 } from "./gift-payment.ts";
+import type { GiftStripeMode } from "./private-annual-gift.ts";
 
 interface Query {
   select(cols: string): Query;
@@ -30,8 +33,9 @@ async function one(admin: AdminClientLike, col: string, value: string): Promise<
   return (data as GiftRow | null) ?? null;
 }
 
-export function giftPaymentDeps(admin: AdminClientLike, stripe: StripeLike): GiftPaymentDeps {
+export function giftPaymentDeps(admin: AdminClientLike, stripe: StripeLike, mode: GiftStripeMode = "live"): GiftPaymentDeps {
   return {
+    mode,
     rpc: async (fn, args) => await admin.rpc(fn, args),
     log: (message, detail) => console.warn(message, detail ?? {}),
     getGiftById: (id) => one(admin, "id", id),
@@ -44,6 +48,26 @@ export function giftPaymentDeps(admin: AdminClientLike, stripe: StripeLike): Gif
       listDisputes: async (pi) =>
         (await stripe.disputes.list({ payment_intent: pi, limit: 1 })).data as DisputeLike[],
     },
+  };
+}
+
+/**
+ * PT1.7-T: reconcile a gift with the Stripe client of ITS OWN mode (fixed by
+ * its Checkout Session id). A test gift with no test key configured fails
+ * closed: the caller sees an error, never a guess.
+ */
+export function giftLanes(admin: AdminClientLike, live: StripeLike, test: StripeLike | null) {
+  const depsFor = (mode: GiftStripeMode): GiftPaymentDeps => {
+    if (mode === "test" && !test) throw new Error("test-mode gift but STRIPE_TEST_SECRET_KEY is not configured");
+    return giftPaymentDeps(admin, mode === "test" ? test! : live, mode);
+  };
+  return {
+    depsFor,
+    reconcile: async (gift: GiftRow): Promise<ReconcileResult> =>
+      await reconcileByMode(gift, {
+        live: giftPaymentDeps(admin, live, "live"),
+        test: test ? giftPaymentDeps(admin, test, "test") : null,
+      }),
   };
 }
 
