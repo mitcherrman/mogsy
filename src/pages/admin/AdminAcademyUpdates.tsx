@@ -52,6 +52,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { POLICY_KEYS } from "@/lib/platform-policy/policy";
+import { invalidateAppSettings } from "@/hooks/useAppSettings";
 import { validateCtaHref, type AcademyUpdate } from "@/lib/lol/academy-updates";
 import {
   createUpdate,
@@ -205,6 +206,8 @@ export default function AdminAcademyUpdates() {
       );
       return;
     }
+    // The Hall reads this switch through the session-cached app settings.
+    invalidateAppSettings();
     const confirmed = await readAcademyUpdatesEnabled(POLICY_KEYS.academyUpdatesEnabled);
     setSwitchPending(false);
     if (confirmed.error) {
