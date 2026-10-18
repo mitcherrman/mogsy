@@ -80,12 +80,13 @@ export function AdminAccountJourney({ input, email, loading, error }: {input:Acc
 }
 
 export function AccountOperationsPulse({ values, loading }:{
- values: {registered:number;bots:number;discord:number;riot:number;premium:number;active7d:number};
+ values: {registered:number;bots:number;knownQa:number;discord:number;riot:number;premium:number;active7d:number};
  loading:boolean;
 }) {
  const entries=[
-  {label:"Registered people",value:values.registered,icon:UserRoundCheck,caption:"Permanent · excludes bots"},
+  {label:"Email accounts",value:values.registered,icon:UserRoundCheck,caption:"Permanent · QA may be included"},
   {label:"Active in 7 days",value:values.active7d,icon:Activity,caption:"Profile last-seen signal"},
+  {label:"Known QA emails",value:values.knownQa,icon:ShieldAlert,caption:"Recognized test address pattern"},
   {label:"Discord connected",value:values.discord,icon:MessageCircle,caption:"Verified identity links"},
   {label:"Riot connected",value:values.riot,icon:Gamepad2,caption:"Verified identity links"},
   {label:"Premium access",value:values.premium,icon:Crown,caption:"Includes legitimate grants"},
@@ -95,11 +96,11 @@ export function AccountOperationsPulse({ values, loading }:{
    <div>
      <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Audience · Accounts</div>
      <h3 className="mt-1 text-xl font-semibold tracking-tight text-foreground">Your player community</h3>
-     <p className="mt-1 text-xs text-muted-foreground">Registered accounts first. No guest identities, bots, or payment guesses in these counts.</p>
+     <p className="mt-1 text-xs text-muted-foreground">Permanent accounts first. Anonymous guests and bots excluded; QA email accounts remain included and are labeled separately.</p>
    </div>
    <span className="rounded-full border border-border bg-background/60 px-3 py-1 text-xs text-muted-foreground">{values.bots} bot account{values.bots===1?"":"s"} excluded</span>
   </div>
-  <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
+  <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
    {entries.map(({label,value,icon:Icon,caption})=><div key={label} className="rounded-xl border border-border/70 bg-background/50 px-3 py-3">
     <div className="flex items-center justify-between text-muted-foreground"><span className="text-[10px] font-semibold uppercase tracking-wide">{label}</span><Icon className="h-4 w-4 text-primary/75"/></div>
     <div className="mt-2 text-2xl font-bold tabular-nums">{loading?"—":value}</div>
