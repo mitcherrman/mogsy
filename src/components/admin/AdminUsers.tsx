@@ -1013,7 +1013,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           email={emailMap[selectedUser.user_id] ?? null}
           loading={accountActivityLoading}
           browserLoading={accountBrowsersLoading}
-          error={accountActivityError || authError}
+          error={accountActivityError}
           input={{
             profileCreatedAt: selectedUser.created_at,
             lastSeenAt: selectedUser.last_seen_at,
@@ -1041,6 +1041,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             linkedBrowserError: accountBrowsersError,
           }}
         />
+
+        {authError && (
+          <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-400">
+            The owner-authorized authentication read did not succeed. Email confirmation status is unavailable; other activity may still be complete.
+          </p>
+        )}
 
         {/* Per-user actions that used to live in the separate directories. */}
         <div className="flex flex-wrap items-start gap-2" data-testid="detail-quick-actions">
