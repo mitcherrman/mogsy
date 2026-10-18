@@ -346,10 +346,6 @@ export default function AdminUsersPage() {
                 setParam("visitor", id);
               }}
             />
-            <details data-testid="users-advanced-analytics" className="rounded-lg border border-border p-3">
-              <summary className="cursor-pointer text-sm font-semibold">Advanced analytics and diagnostics</summary>
-              <div className="mt-4 space-y-6">
-                <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
             <section id="users-audience-visitors" aria-label="Visitors">
               <h2 className="mb-3 text-sm font-semibold">Visitors</h2>
               <VisitorsSection
@@ -362,6 +358,10 @@ export default function AdminUsersPage() {
                 onSelect={(id) => setParam("visitor", id)}
               />
             </section>
+            <details data-testid="users-advanced-analytics" className="rounded-lg border border-border p-3">
+              <summary className="cursor-pointer text-sm font-semibold">Advanced analytics and diagnostics</summary>
+              <div className="mt-4 space-y-6">
+                <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
             <section aria-label="Engagement and activity">
               <h2 className="mb-3 text-sm font-semibold">Engagement / Activity</h2>
               <EngagementSection loaded={viewLoaded} range={state.range} now={state.now} />
