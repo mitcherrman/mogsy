@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import { AdminIdentityLines } from "@/components/admin/AdminUserCard";
 import { AccountOperationsPulse, AdminAccountJourney } from "@/components/admin/users/AdminAccountJourney";
-import { countAccountMilestones, isKnownQaEmail, type AccountActivityEvent } from "@/lib/admin/account-journey";
+import { acquisitionSource, countAccountMilestones, isKnownQaEmail, type AccountActivityEvent, type AccountLinkedBrowser } from "@/lib/admin/account-journey";
 import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
 import { BotStateToggle } from "@/components/admin/BotStateToggle";
 import { notifyFriendsChanged } from "@/lib/community/friends-refresh";
@@ -190,6 +190,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [accountActivity, setAccountActivity] = useState<AccountActivityEvent[]>([]);
   const [accountActivityLoading, setAccountActivityLoading] = useState(false);
   const [accountActivityError, setAccountActivityError] = useState(false);
+  const [accountBrowsers, setAccountBrowsers] = useState<AccountLinkedBrowser[]>([]);
+  const [accountBrowsersLoading, setAccountBrowsersLoading] = useState(false);
+  const [accountBrowsersError, setAccountBrowsersError] = useState(false);
   const accountActivityRequest = useRef(0);
   const accountAuthRequest = useRef(0);
   const [allLeagues, setAllLeagues] = useState<{ id: string; name: string; type: string }[]>([]);
@@ -417,6 +420,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setAccountActivity([]);
     setAccountActivityError(false);
     setAccountActivityLoading(true);
+    setAccountBrowsers([]);
+    setAccountBrowsersError(false);
+    setAccountBrowsersLoading(true);
     const request = ++accountActivityRequest.current;
     // Existing owner-authorized Edge action; do not expose auth.users via
     // a browser-level anon query or promote email lookup to a public RPC.
@@ -434,6 +440,46 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         setAccountActivityError(!!error);
         setAccountActivityLoading(false);
       });
+
+    // Exact uid→visitor links ONLY, under existing admin RLS. A linked browser
+    // is NOT necessarily an exclusive physical person or their gameplay.
+    void (async () => {
+      const { data: links, error: linkError } = await supabase
+        .from("analytics_visitor_user_links")
+        .select("visitor_id,first_observed_at")
+        .eq("user_id", profile.user_id)
+        .order("first_observed_at", { ascending: false })
+        .limit(12);
+      if (request !== accountActivityRequest.current) return;
+      if (linkError) {
+        setAccountBrowsersError(true);
+        setAccountBrowsersLoading(false);
+        return;
+      }
+      if (!links?.length) {
+        setAccountBrowsersLoading(false);
+        return;
+      }
+      const { data: sources, error: sourceError } = await supabase
+        .from("analytics_visitors")
+        .select("visitor_id,first_seen_at,first_landing_path,first_referrer,first_utm_source,first_utm_campaign")
+        .in("visitor_id", links.map(l => l.visitor_id));
+      if (request !== accountActivityRequest.current) return;
+      const byId = new Map((sources ?? []).map(v => [v.visitor_id, v]));
+      setAccountBrowsers(links.map(link => {
+        const browser = byId.get(link.visitor_id);
+        return {
+          visitorId: link.visitor_id,
+          firstObservedAt: link.first_observed_at,
+          firstSeenAt: browser?.first_seen_at ?? null,
+          landing: browser?.first_landing_path ?? null,
+          source: acquisitionSource(browser?.first_utm_source ?? null, browser?.first_referrer ?? null),
+          campaign: browser?.first_utm_campaign ?? null,
+        };
+      }));
+      setAccountBrowsersError(!!sourceError);
+      setAccountBrowsersLoading(false);
+    })();
 
     const [membRes, matchRes, purchRes, commRes, feedbackRes] = await Promise.all([
       supabase.from("league_memberships").select("*").eq("profile_id", profile.id),
@@ -989,6 +1035,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             events: accountActivity,
             matches,
             purchases,
+            linkedBrowsers: accountBrowsersLoading ? undefined : accountBrowsers,
+            linkedBrowserError: accountBrowsersError,
           }}
         />
 
