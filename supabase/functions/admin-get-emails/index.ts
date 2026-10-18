@@ -65,14 +65,24 @@ Deno.serve(async (req) => {
 
     // Fetch emails from auth.users using service role
     const emailMap: Record<string, string> = {};
+    // Additive owner-only metadata. Never expose identities to anonymous callers
+    // or infer a permanent registration date from guest auth.created_at.
+    const confirmationMap: Record<string, { confirmed: boolean; confirmed_at: string | null }> = {};
     for (const uid of user_ids) {
-      const { data } = await adminClient.auth.admin.getUserById(uid);
+      const { data, error } = await adminClient.auth.admin.getUserById(uid);
+      if (error) continue;
       if (data?.user?.email) {
         emailMap[uid] = data.user.email;
+        confirmationMap[uid] = {
+          confirmed: !!data.user.email_confirmed_at,
+          confirmed_at: data.user.email_confirmed_at ?? null,
+        };
       }
     }
 
-    return new Response(JSON.stringify({ emails: emailMap }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ emails: emailMap, email_confirmations: confirmationMap }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error('admin-get-emails error:', e);
     return new Response(JSON.stringify({ error: 'An internal error occurred' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
