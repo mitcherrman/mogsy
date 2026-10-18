@@ -342,8 +342,11 @@ export default function AdminUsersPage() {
               now={state.now}
               classification={filtered.byVisitor}
               onVisitor={(id) => {
-                setParam("population", null);
-                setParam("visitor", id);
+                const next = new URLSearchParams(params);
+                next.delete("population");
+                next.set("visitor", id);
+                setParams(next, { replace: false });
+                document.getElementById("users-audience-visitors")?.scrollIntoView({ block: "start" });
               }}
             />
             <section id="users-audience-visitors" aria-label="Visitors">
