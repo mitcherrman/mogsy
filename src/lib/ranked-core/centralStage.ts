@@ -115,6 +115,23 @@ const VERDICT_WORD: Record<ResolvedCombatantView["outcome"], string> = {
 };
 
 /**
+ * MISC W2D (F12) — is this result face the SERVER's timeout verdict? The
+ * face only ever carries a settled verdict, so this is the one place the
+ * arena can stamp TIME'S UP prominently without a local clock deciding it.
+ */
+export function isTimeoutVerdict(verdict: string): boolean {
+  return verdict === VERDICT_WORD.timed_out;
+}
+
+/**
+ * MISC W2D (F12) — what the clock says at a LOCAL zero. Never "Time's up": the
+ * digits reaching 0 decide nothing (an answer in flight may still be accepted),
+ * so the face says only that the server is settling. The server's own timeout
+ * verdict arrives as the result face ("TIMED OUT") and its cue.
+ */
+export const LOCAL_ZERO_NOTE = "Settling…";
+
+/**
  * WHAT THIS MODULE IS CALLED, for the centre's third face.
  *
  * The precedence is lifted verbatim from `rankedResultsModel.moduleSubject`,

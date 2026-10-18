@@ -62,7 +62,9 @@ describe("timer geometry", () => {
     // Expiry and modifier notices are OVERLAID, never stacked into the flow —
     // mounting one used to make this section taller and push the HUD down.
     rerender(<TimerDisplay timer={timer({ remainingSeconds: 0 })} />);
-    const expiredLine = screen.getByText(/Time's up/);
+    // MISC W2D (F12) — a local zero never claims "Time's up".
+    expect(screen.queryByText(/Time's up/)).toBeNull();
+    const expiredLine = screen.getByText(/Waiting for the round to resolve/);
     expect(expiredLine.closest(".absolute")).not.toBeNull();
 
     rerender(<TimerDisplay timer={timer({ modifierNotices: ["-5s pressure"] })} />);

@@ -366,6 +366,33 @@ const renderers = {
     tone(context, output, startAt, { dur: 0.09, peak: 0.026, freq: 440, type: "triangle" });
     tone(context, output, startAt, { at: 0.07, dur: 0.14, peak: 0.029, freq: 587.3, type: "triangle" });
   },
+  // MISC W2D — THE ANSWER CLOCK'S FINAL SECONDS. A woodblock metronome: one
+  // short knock per second, rising in pitch and weight as it escalates, so
+  // 5–4 read as a warning, 3–2 as pressure and 1 as the last call. Every
+  // voice ends well inside 250 ms, so consecutive seconds never overlap.
+  quizCountdownTick(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.03, peak: 0.05, from: 2600, to: 1700, q: 2.2, attack: 0.05 });
+    tone(context, output, startAt, { dur: 0.08, peak: 0.05, freq: 784, type: "triangle", attack: 0.03 });
+  },
+  quizCountdownUrgent(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.034, peak: 0.065, from: 3000, to: 1900, q: 2.2, attack: 0.05 });
+    tone(context, output, startAt, { dur: 0.1, peak: 0.068, freq: 988, type: "triangle", attack: 0.03 });
+    tone(context, output, startAt, { dur: 0.06, peak: 0.022, freq: 1976, attack: 0.03 });
+  },
+  quizCountdownFinal(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.04, peak: 0.08, from: 3400, to: 2100, q: 2, attack: 0.05 });
+    tone(context, output, startAt, { dur: 0.16, peak: 0.085, freq: 1175, type: "triangle", attack: 0.025 });
+    tone(context, output, startAt, { dur: 0.12, peak: 0.03, freq: 2350, attack: 0.025 });
+  },
+  // F12 — TIME'S UP, sounded only for a SERVER-settled timeout: a falling
+  // two-step under a short paper rasp — final and unmistakable, but lighter
+  // than a match result.
+  quizAnswerTimeout(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.16, peak: 0.03, from: 1400, to: 500, q: 1.1, attack: 0.1 });
+    tone(context, output, startAt, { dur: 0.16, peak: 0.07, freq: 659.3, slideTo: 587.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.15, dur: 0.34, peak: 0.075, freq: 440, slideTo: 349.2, type: "triangle" });
+    tone(context, output, startAt, { at: 0.15, dur: 0.3, peak: 0.026, freq: 220, slideTo: 174.6 });
+  },
   scribble(context, output, startAt, options) {
     const duration = Math.min(MAX_SCRIBBLE_MS, Math.max(0, options.durationMs ?? 0)) / 1000;
     if (duration <= 0) return;
@@ -462,6 +489,10 @@ export const SFX_GENERATORS = {
   "sfx.archives.reference-open": renderers.archivesReferenceOpen,
   "sfx.pro-play.analysis-open": renderers.proPlayAnalysisOpen,
   "sfx.account.action-confirmed": renderers.accountActionConfirmed,
+  "sfx.quiz.countdown-tick": renderers.quizCountdownTick,
+  "sfx.quiz.countdown-urgent": renderers.quizCountdownUrgent,
+  "sfx.quiz.countdown-final": renderers.quizCountdownFinal,
+  "sfx.quiz.answer-timeout": renderers.quizAnswerTimeout,
   "sfx.legacy.welcome-scribble": renderers.scribble,
   "sfx.legacy.welcome-page-turn": renderers.pageTurn,
 } as const satisfies Record<string, SfxSynthRenderer>;

@@ -50,9 +50,14 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { DuelEventView, DuelStanding } from "@/lib/ranked-core/duelState";
-import { CENTRAL_STAGE_BOX, MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
+import {
+  CENTRAL_STAGE_BOX, LOCAL_ZERO_NOTE, MODULE_TITLE_MS, isTimeoutVerdict,
+} from "@/lib/ranked-core/centralStage";
 import type { CentralStageView } from "@/lib/ranked-core/centralStage";
 import type { TimerView } from "@/lib/ranked-core/viewTypes";
+import { CountdownDigits } from "@/components/quiz-timer/CountdownDigits";
+import { countdownDataAttrs } from "@/lib/quiz-timer/countdownFeedback";
+
 
 const format = (totalSeconds: number): string => {
   const clamped = Math.max(0, totalSeconds);
@@ -166,7 +171,7 @@ export function useCentralStage({
 
 export function CentralStage({
   timer, result, moduleTitle, moduleEventId, label = "Round timer",
-  durationNote, expiredNote = "Time's up", standing = null, event = null,
+  durationNote, expiredNote = LOCAL_ZERO_NOTE, standing = null, event = null,
   moduleTitleWindowMs,
 }: CentralStageProps) {
   const stage = useCentralStage({ result, moduleTitle, moduleEventId, moduleTitleWindowMs });
@@ -223,6 +228,7 @@ export function CentralStage({
               data-testid="timer-value"
               data-timer-state={timer.paused ? "paused"
                 : expired ? "zero" : urgent ? "urgent" : "running"}
+              {...countdownDataAttrs(timer)}
               // RD1 — `ranked-timer-urgent` is a glow breath on the digits
               // (text-shadow/opacity only), so the primary line keeps its size.
               className={`font-mono text-4xl font-black tabular-nums leading-none
@@ -230,11 +236,13 @@ export function CentralStage({
                 expired || urgent ? "text-destructive" : "text-foreground"} ${
                 urgent && !expired && !timer.paused ? "ranked-timer-urgent" : ""}`}
             >
-              {format(timer.remainingSeconds)}
+              <CountdownDigits timer={timer}>{format(timer.remainingSeconds)}</CountdownDigits>
             </div>
           )}
           {stage.kind === "result" && (
             <span aria-hidden data-testid="central-result-verdict"
+              // MISC W2D (F12) — the server's timeout verdict gets the stamp.
+              data-timeout={isTimeoutVerdict(stage.verdict) ? "true" : undefined}
               className="truncate text-2xl font-black uppercase tracking-[0.12em]
                 sm:text-3xl min-[1500px]:text-4xl">
               {stage.verdict}

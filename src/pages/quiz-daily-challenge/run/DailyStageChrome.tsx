@@ -21,15 +21,20 @@ import { hasMainDaily, isMainDailyComplete } from "@/lib/daily-challenge/run/con
 import { stagePositionLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import { stageContentLine, stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 import { formatBank, projectTimeBank } from "@/lib/daily-challenge/run/timeBank";
+import { CountdownDigits } from "@/components/quiz-timer/CountdownDigits";
+import { countdownDataAttrs } from "@/lib/quiz-timer/countdownFeedback";
+import { useCountdownSfx, useServerTimeoutSfx } from "@/lib/quiz-timer/useCountdownFeedback";
 import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { StageTag } from "./StageTag";
 
 const LEAGUECRAFT_HREF = "/quiz";
 
-export function TimeBankMeter({ bank, skewMs, childPhase }: {
+export function TimeBankMeter({ bank, skewMs, childPhase, stageId = null }: {
   bank: DailyTimeBank;
   skewMs: number;
   childPhase: RankedPresentationPhase | null;
+  /** The stage this bank belongs to: the bank's clock identity (MISC W2D). */
+  stageId?: string | null;
 }) {
   const answerable = childPhase === "answering";
   // Draining is possible when the server said so at `asOf`, or when the
@@ -46,6 +51,18 @@ export function TimeBankMeter({ bank, skewMs, childPhase }: {
   }, [holding]);
   const ms = projectTimeBank({ bank, nowMs: holding ? Date.now() : now, skewMs, answerable });
   const pct = bank.totalMs > 0 ? Math.max(0, Math.min(100, (ms / bank.totalMs) * 100)) : 0;
+  // MISC W2D (F10–F12) — the bank IS the Time Trial's answer clock: its last
+  // five seconds knock and pulse while it drains (one clock across all the
+  // stage's questions, so a remainder resumed on the next question never
+  // re-sounds), and TIME'S UP sounds only when the SERVER's own reading says
+  // the bank is spent — never from this projection reaching zero.
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  const bankKey = stageId ? `daily-bank:${stageId}` : null;
+  const clock = { remainingSeconds: seconds, paused: holding };
+  useCountdownSfx({ clockKey: bankKey, remainingSeconds: seconds, running: !holding,
+    armed: answerable && !bank.answered });
+  useServerTimeoutSfx({ settledKey: bankKey,
+    serverTimedOut: bank.totalMs > 0 && bank.remainingMs <= 0 });
   return (
     <div data-testid="daily-time-bank" data-bank-ms={String(ms)}
       data-bank-state={holding ? "held" : "draining"}
@@ -56,7 +73,10 @@ export function TimeBankMeter({ bank, skewMs, childPhase }: {
         <span className={`absolute inset-y-0 left-0 rounded-full ${ms < 10_000 ? "bg-rose-400" : "bg-amber-300"}`}
           style={{ width: `${pct}%` }} />
       </span>
-      <span className="whitespace-nowrap font-mono text-[10px] tabular-nums min-[500px]:text-sm">{formatBank(ms)}</span>
+      <span data-testid="daily-time-bank-value" {...countdownDataAttrs(clock)}
+        className="whitespace-nowrap font-mono text-[10px] tabular-nums min-[500px]:text-sm">
+        <CountdownDigits timer={clock}>{formatBank(ms)}</CountdownDigits>
+      </span>
     </div>
   );
 }
@@ -109,7 +129,8 @@ function RulesetReadout({ stage, skewMs, childPhase, survival, strikesFloor }: {
 }) {
   const live = stage.live;
   if (stage.ruleset?.id === "time_trial" && live?.timeBank) {
-    return <TimeBankMeter bank={live.timeBank} skewMs={skewMs} childPhase={childPhase} />;
+    return <TimeBankMeter bank={live.timeBank} skewMs={skewMs} childPhase={childPhase}
+      stageId={stage.id} />;
   }
   if (stage.ruleset?.id === "survival") {
     // Both sources are the server's own ledger; the higher reading is simply

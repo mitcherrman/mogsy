@@ -18,6 +18,8 @@
  */
 import { CheckCircle2, Hourglass, Lock, ShieldCheck, XCircle } from "lucide-react";
 import { RoleMascot } from "@/components/mascot/RoleMascot";
+import { CountdownDigits } from "@/components/quiz-timer/CountdownDigits";
+import { countdownDataAttrs } from "@/lib/quiz-timer/countdownFeedback";
 import type { ArenaHeaderView, ArenaRail } from "@/lib/ranked-core/arenaView";
 import type { CombatantView, TimerView } from "@/lib/ranked-core/viewTypes";
 import { classIdentityFor } from "./classIdentity";
@@ -176,9 +178,12 @@ function Clock({ timer, header }: { timer: TimerView | null; header: ArenaHeader
       {timer ? (
         <span data-testid="mobile-timer-value" aria-label={`Time remaining ${formatClock(timer.remainingSeconds)}`}
           data-timer-state={timer.paused ? "paused" : expired ? "zero" : timer.urgent ? "urgent" : "running"}
+          {...countdownDataAttrs(timer)}
           className={`font-mono text-[1.25rem] font-black leading-none tabular-nums ${
             expired || timer.urgent ? "text-destructive" : "text-foreground"}`}>
-          {formatClock(timer.remainingSeconds)}
+          {/* MISC W2D (F11) — the same pulse as the desktop clock, drawn from
+              the same `header.timer`; the controller owns the one sound. */}
+          <CountdownDigits timer={timer}>{formatClock(timer.remainingSeconds)}</CountdownDigits>
         </span>
       ) : (
         <span data-testid="mobile-timer-value" aria-hidden

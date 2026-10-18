@@ -88,6 +88,9 @@ export function QuestionResultOverlay({ feedback }: { feedback: RankedResultFeed
       {viewer && vf && (
         <div key={viewer.id} data-testid="result-stamp-viewer" aria-hidden
           data-event-id={viewer.id} data-tone={vf.tone}
+          // MISC W2D (F12) — the SERVER's timeout verdict (the cue only ever
+          // comes from a settlement) gets the heavier TIME'S UP stamp.
+          data-timeout={viewer.kind !== "block" && viewer.verdict === "timed_out" ? "true" : undefined}
           className={`ranked-result-stamp ranked-result-stamp--${vf.tone}`}>
           <Icon tone={vf.tone} block={viewer.kind === "block"}
             timedOut={viewer.kind !== "block" && viewer.verdict === "timed_out"} />
