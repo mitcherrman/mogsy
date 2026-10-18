@@ -18,14 +18,15 @@
  * More Challenges and Review, from the stages actually in the run. v1–v4 keep
  * the one linear recap and the legacy title.
  */
-import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
+import { track } from "@/lib/analytics";
+import { authHref } from "@/lib/auth/auth-destination";
 import { Link } from "react-router-dom";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { hasMainDaily, isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
 import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { skippedStageNote, stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
 import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
-import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import { COMPLETION_SHORT_DENSITY, TOUCH_TARGET } from "./dailyResultDensity";
 import { StageTag } from "./StageTag";
 
@@ -37,14 +38,8 @@ const ENDED_BY: Record<string, string> = {
   strikes_exhausted: "out of mistakes",
 };
 
-/**
- * `saveRequired` — the player is on an anonymous guest session. Owner
- * decision: a guest may play their first Daily without signing up and is
- * asked to sign up at the END to save it. The prompt is the app's existing
- * signup gate; "Create Account" routes through `/auth?mode=signup`, whose
- * `AccountUpgradePanel` converts the guest IN PLACE (same user id), so the
- * finished run — already stored under that id — is kept. There is no "keep
- * playing as guest" here: saving is the point of the end of the first Daily.
+/** Guest results are already stored under a guest UID. Offer an account
+ * without covering the recap; upgrade retains the same UID and progress.
  */
 export function DailyCompletion({ run, saveRequired = false }: {
   run: DailyRun; saveRequired?: boolean;
@@ -52,6 +47,14 @@ export function DailyCompletion({ run, saveRequired = false }: {
   const perfect = isPerfect(run);
   const review = reviewStage(run);
   const main = hasMainDaily(run);
+  const announcedRun = useRef<string | null>(null);
+  useEffect(() => {
+    if (!saveRequired || announcedRun.current === run.runId) return;
+    announcedRun.current = run.runId;
+    track("signup_offer_shown", { metadata: {
+      placement: "daily_final_recap", activity: "daily_challenge", run_id: run.runId,
+    } });
+  }, [saveRequired, run.runId]);
   return (
     <section data-testid="daily-run-complete" data-perfect={perfect ? "true" : "false"}
       data-hierarchy={main ? "main" : undefined}
@@ -107,6 +110,24 @@ export function DailyCompletion({ run, saveRequired = false }: {
             ))}
           </ol>
         )}
+        {saveRequired && (
+          <aside data-testid="daily-save-offer" aria-label="Keep today's Daily results"
+            className="w-full max-w-xl rounded-md border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 py-3 text-center">
+            <p className="text-sm font-semibold text-[#f0d78c]">Keep today's results in your account</p>
+            <p className="mt-1 text-xs text-[var(--ranked-vellum,#f1e6c8)]/85">
+              Create a free account to keep your Daily score and history on the same profile.
+              Use your saved misses for Weak Areas practice.
+            </p>
+            <Link data-testid="daily-save-create-account"
+              to={authHref(DAILY_SAVE_RETURN_TO, { mode: "signup" })}
+              onClick={() => track("signup_offer_clicked", { metadata: {
+                placement: "daily_final_recap", activity: "daily_challenge", run_id: run.runId,
+              } })}
+              className="mx-auto mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-[#f0d78c]/65 bg-[#c9a84c] px-5 py-2 text-sm font-bold text-[#1a1530] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]">
+              Create free account
+            </Link>
+          </aside>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-0 pt-1 sm:pt-3">
           {/* PGM1 — the bonus modes outlive the day's run: a finished Daily
               can still go on to the public catalog. v5+ only, where there is
@@ -123,25 +144,6 @@ export function DailyCompletion({ run, saveRequired = false }: {
           </Link>
         </div>
       </div>
-      {/* Portaled: the beat section is its own stacking context, which would
-          trap the gate's fixed overlay beneath the recap. */}
-      {saveRequired && typeof document !== "undefined" && createPortal(
-        <div data-testid="daily-save-gate">
-          <QuizSignUpGate
-            progress={null}
-            actionCount={0}
-            returnTo={DAILY_SAVE_RETURN_TO}
-            heading="Save today's Daily Challenge"
-            description="Create a free account to keep this run and your Daily progress."
-            benefits={[
-              "Keep today's Daily results",
-              "Weak Areas questions drawn from your saved history",
-              "Your Ranked standing and history",
-            ]}
-          />
-        </div>,
-        document.body,
-      )}
     </section>
   );
 }
