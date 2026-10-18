@@ -38,11 +38,11 @@ async function one(browser, s, vp) {
     hasTouch: vp.phone, isMobile: false, deviceScaleFactor: vp.phone ? 2 : 1,
     reducedMotion: REDUCED ? "reduce" : "no-preference",
   });
-  const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
   let rec = { state: s.id, vp: vp.id };
   try {
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
     await lib.prepare(page, s, { reduced: REDUCED });
     await lib.open(page, BASE, s, { fonts: FONTS });
     await lib.settle(page, s, { reduced: REDUCED });
@@ -65,14 +65,22 @@ async function one(browser, s, vp) {
     }
   } catch (e) {
     rec.error = String(e).slice(0, 300);
+  } finally {
+    // Always dispose the context, even when navigation/screenshotting fails.
+    try {
+      await ctx.close();
+    } catch (closeError) {
+      if (!rec.error) rec.error = `context cleanup: ${String(closeError).slice(0, 260)}`;
+    }
   }
   rec.pageErrors = errors;
-  await ctx.close();
   return rec;
 }
 
 (async () => {
-  const browser = await chromium.launch({ ...(CHANNEL ? { channel: CHANNEL } : {}), headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ ...(CHANNEL ? { channel: CHANNEL } : {}), headless: true });
   const todo = [];
   for (const s of lib.STATES) {
     if (ONLY && !s.id.includes(ONLY)) continue;
@@ -93,7 +101,14 @@ async function one(browser, s, vp) {
       console.log(`${s.id.padEnd(22)} ${vp.id.padEnd(13)} ${rec.error ? "ERR " + rec.error : `docH ${rec.docH} vh ${rec.vh} travel ${rec.travel} cta ${rec.primary ? rec.primary.top + "-" + rec.primary.bottom : "-"} inView ${rec.primaryInView} ovX ${rec.overflowX}${rec.clipped && rec.clipped.length ? " CLIPPED " + rec.clipped.map((c) => `${c.tag}[${c.owner}]"${c.text}" ${c.scrollW}>${c.clientW}`).join(",") : ""}${rec.flip ? ` heroDrift ${rec.flip.heroDrift} actDrift ${rec.flip.actDrift} cls ${rec.flip.cls}` : ""}`}`);
     }
   };
-  await Promise.all(Array.from({ length: PARALLEL }, worker));
-  fs.writeFileSync(OUT, JSON.stringify({ base: BASE, reduced: REDUCED, fonts: FONTS, channel: CHANNEL || "chromium", results }, null, 1));
-  await browser.close();
-})().catch((e) => { console.error(e); process.exit(1); });
+    await Promise.all(Array.from({ length: PARALLEL }, worker));
+    fs.writeFileSync(OUT, JSON.stringify({ base: BASE, reduced: REDUCED, fonts: FONTS, channel: CHANNEL || "chromium", results }, null, 1));
+  } finally {
+    // The browser must close on an unexpected worker, file-system, or runner error.
+    if (browser) await browser.close();
+  }
+})().catch((e) => {
+  console.error(e);
+  // Give Playwright/process handles a chance to finish closing.
+  process.exitCode = 1;
+});
