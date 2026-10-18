@@ -137,18 +137,97 @@ describe("useAppSettings — freshness", () => {
     expect(seen.a.some((s, i) => i > 0 && s.loading)).toBe(false);
   });
 
-  it("a mount after five minutes revalidates in the background without a loading frame", async () => {
+  it("a mount after 30 seconds revalidates in the background without a loading frame", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     reply(OPEN);
     const seen: Record<string, { loading: boolean; requireAuth: boolean }[]> = {};
     const first = render(<Probe id="a" seen={seen} />);
     await waitFor(() => expect(seen.a.at(-1)?.loading).toBe(false));
     first.unmount();
-    vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1);
+    vi.setSystemTime(Date.now() + 30 * 1000 + 1);
     reply({ data: [{ key: "require_auth", value: { enabled: true } }] });
     render(<Probe id="b" seen={seen} />);
     expect(seen.b[0]).toEqual({ loading: false, requireAuth: false });
     await waitFor(() => expect(seen.b.at(-1)).toEqual({ loading: false, requireAuth: true }));
     expect(calls).toHaveLength(2);
+  });
+});
+
+describe("useAppSettings — RC1 audit: policy freshness, invalidation, failure", () => {
+  const CLOSED = { data: [{ key: "require_auth", value: { enabled: true } }] };
+
+  it("a mount within 30 seconds reuses the copy and reads nothing", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    reply(OPEN);
+    const seen: Record<string, { loading: boolean; requireAuth: boolean }[]> = {};
+    const first = render(<Probe id="a" seen={seen} />);
+    await waitFor(() => expect(seen.a.at(-1)?.loading).toBe(false));
+    first.unmount();
+    vi.setSystemTime(Date.now() + 29 * 1000);
+    render(<Probe id="b" seen={seen} />);
+    await act(async () => { await Promise.resolve(); });
+    expect(seen.b.at(-1)).toEqual({ loading: false, requireAuth: false });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("an admin save that lands while an older read is in flight is not overwritten by that read", async () => {
+    const seen: Record<string, { loading: boolean; requireAuth: boolean }[]> = {};
+    const older = deferred(); // started before the save: still says the OLD value
+    render(<Probe id="a" seen={seen} />);
+    const newer = deferred();
+    await act(async () => { invalidateAppSettings(); });
+    expect(calls).toHaveLength(2); // the save forces its own read, never joins the old one
+    await act(async () => { newer(CLOSED); });
+    await waitFor(() => expect(seen.a.at(-1)).toEqual({ loading: false, requireAuth: true }));
+    await act(async () => { older(OPEN); });
+    await act(async () => { await Promise.resolve(); });
+    expect(seen.a.at(-1)).toEqual({ loading: false, requireAuth: true });
+    // and a later consumer gets the saved state from the cache
+    render(<Probe id="b" seen={seen} />);
+    expect(seen.b[0]).toEqual({ loading: false, requireAuth: true });
+  });
+
+  it("a superseded read finishing first does not release a waiting consumer onto defaults", async () => {
+    const seen: Record<string, { loading: boolean; requireAuth: boolean }[]> = {};
+    const older = deferred();
+    prefetchAppSettings();
+    const newer = deferred();
+    invalidateAppSettings();
+    render(<Probe id="a" seen={seen} />);
+    await act(async () => { older(OPEN); });
+    await act(async () => { await Promise.resolve(); });
+    expect(seen.a.at(-1)?.loading).toBe(true);
+    await act(async () => { newer(OPEN); });
+    await waitFor(() => expect(seen.a.at(-1)).toEqual({ loading: false, requireAuth: false }));
+  });
+
+  it("a failed background revalidation keeps the session's last server copy, and the next mount retries", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    reply(OPEN);
+    const seen: Record<string, { loading: boolean; requireAuth: boolean }[]> = {};
+    const first = render(<Probe id="a" seen={seen} />);
+    await waitFor(() => expect(seen.a.at(-1)?.loading).toBe(false));
+    first.unmount();
+    vi.setSystemTime(Date.now() + 31 * 1000);
+    reply(new Error("network down"));
+    const second = render(<Probe id="b" seen={seen} />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(seen.b.at(-1)).toEqual({ loading: false, requireAuth: false });
+    expect(calls).toHaveLength(2);
+    second.unmount();
+    reply(CLOSED);
+    render(<Probe id="c" seen={seen} />);
+    await waitFor(() => expect(seen.c.at(-1)).toEqual({ loading: false, requireAuth: true }));
+    expect(calls).toHaveLength(3);
+  });
+
+  it("with no copy at all, a failure is fail-closed: require_auth true and the default policy", async () => {
+    reply({ data: null });
+    let last: ReturnType<typeof useAppSettings> | null = null;
+    function Spy() { last = useAppSettings(); return null; }
+    render(<Spy />);
+    await waitFor(() => expect(last?.loading).toBe(false));
+    expect(last!.settings.require_auth).toBe(true);
+    expect(last!.settings.policy.premium.globalAccess).toBe(false);
   });
 });

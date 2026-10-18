@@ -43,16 +43,28 @@ type RequireAuthValue = { enabled?: boolean };
  *
  * Freshness: a mount after FRESH_MS revalidates in the background without
  * going back to `loading`; the admin screens that write these rows call
- * `invalidateAppSettings()` after a confirmed save.
+ * `invalidateAppSettings()` after a confirmed save. FRESH_MS is short on
+ * purpose (RC1 audit): before S1 every consumer mount re-read these rows, so a
+ * changed `require_auth` or policy reached the next guarded route at once. The
+ * cache exists for the Landing -> /lol hand-off (a few seconds), not to hold a
+ * policy for minutes; 30 s keeps the hand-off free and later navigations close
+ * to the old freshness, while still rendering from the cached copy.
  *
  * A failed read (no data, or a rejected request — which used to leave
  * `loading` true forever) settles on the defaults for that consumer exactly as
- * before, and is NOT cached: the next mount reads again.
+ * before, and is NOT cached: the next mount reads again. A failed REVALIDATION
+ * keeps the last copy the server returned this session (marked stale, so the
+ * next mount tries again) rather than dropping a settled screen to defaults.
+ *
+ * Invalidation is generation-safe: a read that was already in flight when an
+ * admin save invalidated is neither joined nor allowed to overwrite the newer
+ * read's result, so the saved state is what every consumer ends up with.
  */
-const FRESH_MS = 5 * 60 * 1000;
+const FRESH_MS = 30 * 1000;
 
 let cached: { settings: AppSettings; at: number } | null = null;
-let inflight: Promise<AppSettings | null> | null = null;
+let generation = 0;
+let inflight: { gen: number; promise: Promise<AppSettings | null> } | null = null;
 const listeners = new Set<() => void>();
 
 function parse(data: { key: string; value: unknown }[]): AppSettings {
@@ -68,24 +80,28 @@ function parse(data: { key: string; value: unknown }[]): AppSettings {
 }
 
 function read(): Promise<AppSettings | null> {
-  if (inflight) return inflight;
-  const run = (async (): Promise<AppSettings | null> => {
+  if (inflight && inflight.gen === generation) return inflight.promise;
+  const gen = generation;
+  const promise = (async (): Promise<AppSettings | null> => {
     try {
       const { data } = await supabase.from("app_settings").select("key, value");
       if (!data) return null;
       const settings = parse(data as { key: string; value: unknown }[]);
-      cached = { settings, at: Date.now() };
+      if (gen === generation) cached = { settings, at: Date.now() };
       return settings;
     } catch {
       return null;
     }
   })();
-  inflight = run;
-  void run.then(() => {
-    inflight = null;
+  const entry = { gen, promise };
+  inflight = entry;
+  void promise.then(() => {
+    if (inflight === entry) inflight = null;
+    // A superseded read says nothing: the current generation's read will.
+    if (gen !== generation) return;
     for (const l of [...listeners]) l();
   });
-  return run;
+  return promise;
 }
 
 /** Start (or join) the session's settings read. Never rejects; nothing waits on it. */
@@ -96,6 +112,7 @@ export function prefetchAppSettings(): void {
 
 /** After an admin write: drop the cached copy and re-read for every mounted consumer. */
 export function invalidateAppSettings(): void {
+  generation += 1;
   cached = null;
   void read();
 }
@@ -104,6 +121,7 @@ export function invalidateAppSettings(): void {
 export function __resetAppSettingsForTests(): void {
   cached = null;
   inflight = null;
+  generation = 0;
   listeners.clear();
 }
 
