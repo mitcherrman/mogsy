@@ -23,7 +23,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Guest save and existing Daily result contracts
-        run: npm test -- src/pages/quiz-daily-challenge/run/DailyMainResult.signup.test.tsx src/pages/quiz-daily-challenge/run/DailyMainResult.reveal.test.tsx src/pages/quiz-daily-challenge/run/dailyResultDensity.test.tsx src/lib/auth/account-upgrade.test.ts src/lib/auth/auth-destination.test.ts src/lib/auth/anonymous-identity.test.ts
+        run: npm test -- src/pages/quiz-daily-challenge/run/DailyMainResult.signup.test.tsx src/pages/quiz-daily-challenge/run/DailyMainResult.reveal.test.tsx src/pages/quiz-daily-challenge/run/dailyResultDensity.test.tsx src/lib/auth/account-upgrade.test.ts src/lib/auth/auth-destination.test.ts src/lib/auth/anonymous-identity.test.ts src/components/auth/AccountUpgradePanel.username.test.tsx
       - name: Chromium setup
         run: npx playwright install --with-deps chromium
       - name: Guest result browser fit (320 / 390)
