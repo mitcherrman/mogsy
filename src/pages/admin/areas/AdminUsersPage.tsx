@@ -346,7 +346,8 @@ export default function AdminUsersPage() {
                 next.delete("population");
                 next.set("visitor", id);
                 setParams(next, { replace: false });
-                document.getElementById("users-audience-visitors")?.scrollIntoView({ block: "start" });
+                const visitors = document.getElementById("users-audience-visitors");
+                if (typeof visitors?.scrollIntoView === "function") visitors.scrollIntoView({ block: "start" });
               }}
             />
             <section id="users-audience-visitors" aria-label="Visitors">
