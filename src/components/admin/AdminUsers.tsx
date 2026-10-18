@@ -191,6 +191,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [accountActivityLoading, setAccountActivityLoading] = useState(false);
   const [accountActivityError, setAccountActivityError] = useState(false);
   const accountActivityRequest = useRef(0);
+  const accountAuthRequest = useRef(0);
   const [allLeagues, setAllLeagues] = useState<{ id: string; name: string; type: string }[]>([]);
 
   const [editForm, setEditForm] = useState<Partial<Profile>>({});
@@ -410,6 +411,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setDetailErrors([]);
     setFeedback([]);
     setFeedbackError(false);
+    ++accountAuthRequest.current; // invalidate an outstanding read for a different account
     setAuthInfo(null);
     setAuthError(false);
     setAccountActivity([]);
@@ -561,6 +563,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   };
 
   const loadAuthInfo = async (userId: string) => {
+    const request = ++accountAuthRequest.current;
     setAuthInfo(null);
     setAuthError(false);
     setGeneratedLink(null);
@@ -571,6 +574,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         body: { action: "get_auth_info", target_user_id: userId },
       }),
     );
+    if (request !== accountAuthRequest.current) return;
     if (outcome.status !== "done") {
       setAuthError(true);
       return;
@@ -910,7 +914,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={() => {
+          ++accountAuthRequest.current;
+          ++accountActivityRequest.current;
+          setSelectedUser(null);
+        }} className="text-muted-foreground">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Users
         </Button>
 
