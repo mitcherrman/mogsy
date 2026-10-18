@@ -1,0 +1,67 @@
+{
+  "earned": {
+    "match_id": "rkb_daily_standard_0",
+    "payload": {
+      "collection_total": 426,
+      "collection_total_before": 423,
+      "includes_default_library": false,
+      "match_id": "rkb_daily_standard_0",
+      "new_count": 3,
+      "new_discoveries": [
+        {
+          "canonical_question_ref": "ranked:v2-030",
+          "first_round_number": 2,
+          "first_seen_at": "2026-10-17T09:27:41Z",
+          "metadata_source": "frozen_round",
+          "metadata_status": "resolved",
+          "question": {
+            "category": "Summoner Spells",
+            "prompt": "What is Flash's base cooldown?"
+          }
+        },
+        {
+          "canonical_question_ref": "ranked:v2-118",
+          "first_round_number": 5,
+          "first_seen_at": "2026-10-17T09:28:19Z",
+          "metadata_source": "frozen_round",
+          "metadata_status": "resolved",
+          "question": {
+            "category": "Item Costs",
+            "prompt": "How much does a Long Sword cost?"
+          }
+        },
+        {
+          "canonical_question_ref": "ranked:v2-402",
+          "first_round_number": 9,
+          "first_seen_at": "2026-10-17T09:29:30Z",
+          "metadata_source": "current_serving_bank",
+          "metadata_status": "unavailable",
+          "question": null
+        }
+      ],
+      "scope": "ranked_discoveries",
+      "truncated": false
+    },
+    "projection_type": "match_discoveries",
+    "round_number": null,
+    "schema_version": "ranked_duel.match_discoveries.v1",
+    "server_time": "2026-10-17T09:30:05+00:00"
+  },
+  "none": {
+    "match_id": "rkb_daily_standard_1",
+    "payload": {
+      "collection_total": 426,
+      "collection_total_before": 426,
+      "includes_default_library": false,
+      "match_id": "rkb_daily_standard_1",
+      "new_count": 0,
+      "new_discoveries": [],
+      "scope": "ranked_discoveries",
+      "truncated": false
+    },
+    "projection_type": "match_discoveries",
+    "round_number": null,
+    "schema_version": "ranked_duel.match_discoveries.v1",
+    "server_time": "2026-10-17T09:30:05+00:00"
+  }
+}
