@@ -121,7 +121,7 @@ export function buildAccountJourney(input: AccountJourneyInput): JourneyMoment[]
  * definition of tests or of human accounts. Extend using explicit owner labels.
  */
 export function isKnownQaEmail(email: string | null | undefined): boolean {
-  return typeof email === "string" && /^mogzy-launch-qa-[^@]+@mogzy\\.lol$/i.test(email);
+  return typeof email === "string" && /^mogzy-launch-qa-[^@]+@mogzy\.lol$/i.test(email);
 }
 
 export function countAccountMilestones(items: Array<{
