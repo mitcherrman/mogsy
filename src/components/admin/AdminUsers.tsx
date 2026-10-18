@@ -38,7 +38,7 @@ import {
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
   KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
-  RefreshCw, RotateCcw, Ghost, Bot, ExternalLink, MessageCircle, Gamepad2,
+  RefreshCw, RotateCcw, Ghost, Bot, ExternalLink,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
