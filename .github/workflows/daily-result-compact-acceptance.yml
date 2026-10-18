@@ -51,6 +51,10 @@ jobs:
   # are measured by the same harness, browser and fonts on this runner, so what is
   # asserted (and what is explained when it fails) is relative and OS-portable.
   daily-result-compact-relative:
+    # A one-time F05 reduction contract. Follow-up PRs use the absolute
+    # density/browser regression job above; measuring an already-compacted
+    # parent against itself would require the same savings a second time.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'fix/misc-w3a-daily-mobile' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
