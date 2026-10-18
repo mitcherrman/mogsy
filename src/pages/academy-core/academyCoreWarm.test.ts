@@ -27,6 +27,14 @@ vi.mock("@/lib/ranked-core/media/prepareImage", () => ({
 }));
 const prefetchRoute = vi.fn();
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: (p: string) => prefetchRoute(p) }));
+const patch = vi.hoisted(() => ({
+  prefetch: vi.fn<(client: unknown, manifest: Promise<unknown>) => Promise<unknown>>(() => Promise.resolve(null)),
+}));
+vi.mock("@/components/lol/broadcast/usePatchBriefFeed", () => ({
+  prefetchPatchBrief: (client: unknown, manifest: Promise<unknown>) => patch.prefetch(client, manifest),
+  patchBriefIconUrls: (brief: { icons: string[] } | null) => brief?.icons ?? [],
+}));
+const BRIEF = { icons: ["https://api.example/assets/champions/Diana/icon.png", "https://api.example/assets/champions/Ashe/icon.png"] };
 
 import {
   ACADEMY_BOOK_FRAME, ACADEMY_BOOK_SPINE, ACADEMY_BROADCAST_BOOK, ACADEMY_LIBRARY_DESKTOP, ACADEMY_LIBRARY_MOBILE,
@@ -50,6 +58,8 @@ function setLayout(full: boolean) {
 const splash = (n: string) => expect.stringMatching(new RegExp(`assets/champions/${n}/splash/0_default\\.jpg$`));
 
 beforeEach(() => {
+  patch.prefetch.mockReset();
+  patch.prefetch.mockImplementation(() => Promise.resolve(null));
   loader.prepared.length = 0;
   prefetchRoute.mockClear();
   __resetAcademyCoreWarmForTests();
@@ -119,5 +129,49 @@ describe("warmAcademyCore", () => {
     loader.resolveCritical();
     await a;
     expect(loader.prepared.filter((p) => p.url === ACADEMY_BOOK_FRAME)).toHaveLength(1);
+  });
+});
+
+
+describe("warmAcademyCore — the Patch Report book (ACADEMY STARTUP S2)", () => {
+  it("desktop: starts the feed at once, before the critical art settles, then warms every brief icon at high priority", async () => {
+    setLayout(true);
+    patch.prefetch.mockImplementation(() => Promise.resolve(BRIEF));
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
+    const done = warmAcademyCore(client);
+    expect(patch.prefetch).toHaveBeenCalledTimes(1);
+    expect(patch.prefetch.mock.calls[0][0]).toBe(client);
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    const icons = loader.prepared.filter((p) => /\/icon\.png$/.test(p.url));
+    expect(icons.map((p) => p.url)).toEqual(BRIEF.icons);
+    expect(icons.every((p) => p.priority === "high")).toBe(true);
+    loader.resolveCritical();
+    await done;
+  });
+
+  it("phone: the feed waits for the critical art (the book is below the fold) and its icons are low", async () => {
+    setLayout(false);
+    patch.prefetch.mockImplementation(() => Promise.resolve(BRIEF));
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
+    const done = warmAcademyCore(client);
+    await Promise.resolve(); await Promise.resolve();
+    expect(patch.prefetch).not.toHaveBeenCalled();
+    loader.resolveCritical();
+    await done;
+    await Promise.resolve(); await Promise.resolve();
+    expect(patch.prefetch).toHaveBeenCalledTimes(1);
+    const icons = loader.prepared.filter((p) => /\/icon\.png$/.test(p.url));
+    expect(icons.map((p) => p.url)).toEqual(BRIEF.icons);
+    expect(icons.every((p) => p.priority === "low")).toBe(true);
+  });
+
+  it("without a query client (no provider) nothing is prefetched", async () => {
+    setLayout(true);
+    const done = warmAcademyCore(null);
+    loader.resolveCritical();
+    await done;
+    expect(patch.prefetch).not.toHaveBeenCalled();
   });
 });

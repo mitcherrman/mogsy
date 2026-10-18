@@ -24,6 +24,11 @@
  *   3. as soon as the manifest answers: the four cover splashes — all four at
  *      high priority on desktop (all on screen); on phones the upper pair
  *      high and the lower pair low (below the first screen);
+ *   3b. ACADEMY STARTUP S2 — the Patch Report book's feed (list -> detail, the
+ *      page's own query keys) and then its champion icons: on desktop at once
+ *      and high (the open book is on the first screen and was the last thing
+ *      to arrive), on phones only after the critical set and low (below the
+ *      fold there);
  *   4. once the critical set settles (or a short budget runs out): the four
  *      reaction poses (~10 KB each), the tiny local shards / role marks, and
  *      the four destination route chunks at idle.
@@ -39,6 +44,7 @@ import { HUB_DESTINATION_ROUTES } from "@/lib/hub/academy-hub-warm";
 import { championAssetsQuery, getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
 import { prepareImage, prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { patchBriefIconUrls, prefetchPatchBrief } from "@/components/lol/broadcast/usePatchBriefFeed";
 import { CORE_DESTINATIONS, type CoreDestination } from "./academy-core-destinations";
 
 /** Mogzy at rest beside the instrument — the Landing / Hall encode (71 KB). */
@@ -128,6 +134,15 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
     });
     return Promise.all(jobs).then(() => splashes);
   });
+
+  // The Patch Report's feed is two serial API reads: start them now on desktop
+  // (they are small; the latency, not the bytes, is what made the book last).
+  if (client) {
+    const brief = full ? prefetchPatchBrief(client, manifest) : critical.then(() => prefetchPatchBrief(client, manifest));
+    void brief.then((b) => {
+      for (const url of patchBriefIconUrls(b)) void prepareImage(url, { priority: full ? "high" : "low" });
+    });
+  }
 
   started = critical.then(async () => {
     for (const to of HUB_DESTINATION_ROUTES) prefetchRoute(to);
