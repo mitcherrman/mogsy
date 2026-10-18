@@ -69,9 +69,11 @@ export function buildAccountJourney(input: AccountJourneyInput): JourneyMoment[]
   const add = (moment: JourneyMoment) => { if (validTime(moment.at)) result.push(moment); };
   add({
     id: "auth-created", at: input.auth?.created_at || input.profileCreatedAt,
-    title: "Auth identity created",
-    detail: "May predate email signup when this account began as a guest",
-    kind: "auth", authority: "verified",
+    title: input.auth ? "Auth identity created" : "Profile created",
+    detail: input.auth
+      ? "May predate email signup when this account began as a guest"
+      : "Profile timestamp; the authoritative auth creation date has not loaded",
+    kind: "auth", authority: input.auth ? "verified" : "observed",
   });
   if (input.auth?.email_confirmed && input.auth.email_confirmed_at) {
     add({ id: "email-confirmed", at: input.auth.email_confirmed_at,
