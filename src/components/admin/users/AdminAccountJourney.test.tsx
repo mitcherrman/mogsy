@@ -1,0 +1,41 @@
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { AdminAccountJourney, AccountOperationsPulse } from "./AdminAccountJourney";
+import type { AccountJourneyInput } from "@/lib/admin/account-journey";
+
+const input: AccountJourneyInput = {
+  profileCreatedAt:"2026-10-14T12:00:00Z",lastSeenAt:"2026-10-18T12:00:00Z",
+  auth:{created_at:"2026-10-14T12:00:00Z",email_confirmed:true,
+    email_confirmed_at:"2026-10-17T12:00:00Z",last_sign_in_at:null,is_anonymous:false},
+  discord:{provider:"discord",verifiedAt:"2026-10-17T14:00:00Z",label:"Example#0001"},
+  riot:null,
+  effectivePremium:false,premiumSource:"Free",premiumGrantedAt:null,premiumAcquiredAt:null,
+  stripeStatus:null,stripeSubscriptionId:null,
+  events:[{event_name:"ranked_started",received_at:"2026-10-18T11:00:00Z",source_system:"railway"}],
+  matches:[], purchases:[{id:"purchase-1",created_at:"2026-10-17T18:00:00Z",item_type:"pro_subscription",status:"completed"}],
+};
+afterEach(cleanup);
+describe("owner account intelligence",()=>{
+ it("shows verified email and Discord, Riot unlinked, Premium not implied from legacy purchase",()=>{
+   render(<AdminAccountJourney input={input} email="qa@example.test" loading={false} error={false}/>);
+   expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("Confirmed");
+   expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("Example#0001");
+   expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("Not linked");
+   expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("No entitlement");
+   expect(screen.getByTestId("account-timeline")).toHaveTextContent("Legacy ledger");
+   expect(screen.getByTestId("account-timeline")).toHaveTextContent("payment unverified");
+   expect(screen.getByTestId("account-timeline")).toHaveTextContent("Ranked game started");
+ });
+ it("does not claim email verification when owner-authorized auth read has not loaded",()=>{
+   render(<AdminAccountJourney input={{...input,auth:null,discord:null,purchases:[],events:[]}} email="qa@example.test" loading error/>);
+   expect(screen.getByTestId("admin-account-journey")).toHaveTextContent("Not loaded");
+   expect(screen.getByRole("alert")).toHaveTextContent("timeline is incomplete");
+   expect(screen.getByTestId("account-timeline")).toHaveTextContent("Profile created");
+ });
+ it("exposes accurate profile counts without billing guesses",()=>{
+   render(<AccountOperationsPulse loading={false} values={{registered:7,bots:1,discord:0,riot:0,premium:1,active7d:3}}/>);
+   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("Registered people");
+   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("7");
+   expect(screen.getByTestId("admin-accounts-operations-pulse")).toHaveTextContent("1 bot account excluded");
+ });
+});
