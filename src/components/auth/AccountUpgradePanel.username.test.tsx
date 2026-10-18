@@ -183,6 +183,24 @@ describe("a guest who already has a name", () => {
     );
   });
 
+  it("never overwrites a name typed while the profile read is pending", async () => {
+    identity.loading = true;
+    identity.displayName = null;
+    const view = renderPanel();
+
+    fill("Username", "QuickGuest");
+    identity.loading = false;
+    identity.displayName = "OldServerName";
+    view.rerender(
+      <MemoryRouter>
+        <AccountUpgradePanel returnTo="/quiz" onSignInInstead={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect((screen.getByLabelText("Username") as HTMLInputElement).value).toBe("QuickGuest");
+    expect(screen.queryByText(/name you chose/i)).toBeNull();
+  });
+
   it("does not seed the field from a profile read that has not resolved", async () => {
     identity.loading = true;
     identity.displayName = null;

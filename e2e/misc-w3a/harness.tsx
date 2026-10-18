@@ -40,6 +40,7 @@ const kind = (q.get("kind") ?? "time_trial") as Kind;
 const legacy = q.get("legacy") === "1";
 const perfect = q.get("perfect") === "1";
 const withError = q.get("error") === "1";
+const guestSave = q.get("guest") === "1";
 const flipMs = Number(q.get("flip") ?? 0);
 const startPhase = (q.get("phase") ?? "settled") as "pending" | "settled";
 
@@ -131,7 +132,8 @@ function Scene() {
     node = (
       <DailyMainResult run={run} stage={stage} error={err} onRetry={noop}
         onProceed={settled ? noop : undefined} onDone={noop}
-        onMoreChallenges={settled ? noop : undefined} onReviewDiscoveries={noop} />
+        onMoreChallenges={settled ? noop : undefined} onReviewDiscoveries={noop}
+        guestSaveEligible={guestSave} onSaveScore={noop} />
     );
   }
   const header = <DailyStageChrome run={run} stage={view === "stage" || view === "main" ? stage : null} />;
