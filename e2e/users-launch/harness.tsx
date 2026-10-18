@@ -11,7 +11,7 @@ const time = new Date(now - 60_000).toISOString();
 const old = new Date(now - 2 * 24 * 3600_000).toISOString();
 const data: AnalyticsDataset = {
   visitors: [
-    { visitor_id: "human-browser-1", first_seen_at: old, first_landing_path: "/lol", first_referrer: null, first_utm_source: "youtube", first_utm_medium: "social", first_utm_campaign: "creator_launch", first_utm_content: null },
+    { visitor_id: "human-browser-1", first_seen_at: old, first_landing_path: "/lol", first_referrer: null, first_utm_source: "youtube", first_utm_medium: "social", first_utm_campaign: "creator_launch" },
     { visitor_id: "unknown-browser-2", first_seen_at: time, first_landing_path: "/", first_referrer: "https://m.facebook.com/", first_utm_source: null, first_utm_medium: null, first_utm_campaign: null },
   ],
   sessions: [
