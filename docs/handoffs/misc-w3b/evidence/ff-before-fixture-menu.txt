@@ -1,0 +1,11 @@
+320x568 ERROR TimeoutError: page.waitForSelector: Timeout 180000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-testid="play-scroll"]') to be visible[22m
+
+360x640            sheet 344x618.5      body 325/325             hOver:false unreachable w/o scroll: [] err:0/0
+375x667            sheet 359x609        body 311/311             hOver:false unreachable w/o scroll: [] err:0/0
+390x844            sheet 374x623.9      body 311/311             hOver:false unreachable w/o scroll: [] err:0/0
+568x320-landscape  sheet 268.8x725.7    body 457/457             hOver:false unreachable w/o scroll: [mode-ranked,mode-daily,mode-invite,practice] err:0/0
+667x375-landscape  sheet 315x689.9      body 400/400             hOver:false unreachable w/o scroll: [mode-daily,mode-invite,practice] err:0/0
+844x390-landscape  sheet 327.6x660.9    body 366/366             hOver:false unreachable w/o scroll: [mode-daily,mode-invite,practice] err:0/0
+1440x900           sheet 752x786.8      body 288/288             hOver:false unreachable w/o scroll: [] err:0/0

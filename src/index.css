@@ -8316,7 +8316,26 @@ html.worlds-viewport-locked body {
    * tall enough to justify.
    */
   width: min(100%, 47rem, 84vh);
-  max-height: 95vh;
+  width: min(100%, 47rem, 84dvh);
+  /*
+   * BOUNDED BY THE FRAME, never by a viewport unit (MISC W3B).
+   *
+   * `95vh` and the narrow-screen `97vh` were each the frame height minus its
+   * own padding, so on desktop they were the same number as `100%`. On a phone
+   * they are not: `vh` is the LARGE viewport, so with the browser toolbar
+   * showing the sheet was taller than the fixed frame that holds it and its
+   * foot ran off screen. A percentage resolves against the frame, which is
+   * exactly the visible area, and it already has the padding taken out.
+   *
+   * The short-viewport block below used to lift this cap entirely
+   * (`max-height: none`). A fixed frame cannot scroll, so on any viewport
+   * 620px tall or less the sheet simply grew past it: at 320x568 it measured
+   * 663px, and Invite and Practice were cut off with nothing to scroll. With
+   * the cap kept, the sheet fits the frame and `.play-scroll__body` is the
+   * one scroll region, with the title, the close stamp and the role stepper
+   * staying put above it.
+   */
+  max-height: 100%;
 }
 
 .play-scroll {
@@ -8505,10 +8524,6 @@ html.worlds-viewport-locked body {
     padding: 1.5vh 0.5rem;
   }
 
-  .play-scroll-sizer {
-    max-height: 97vh;
-  }
-
   .play-scroll {
     /* Narrow screens can only ever move the sides IN toward the paper edge,
        never out past it: 13.1% is the floor, not a suggestion. */
@@ -8523,11 +8538,6 @@ html.worlds-viewport-locked body {
 @media (max-height: 620px) {
   .play-scroll-frame {
     padding: 0.5rem;
-    align-items: flex-start;
-  }
-
-  .play-scroll-sizer {
-    max-height: none;
   }
 }
 
@@ -9698,6 +9708,154 @@ html.worlds-viewport-locked body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* ── MISC W3B: touch targets, and the record on a short screen ───────────
+   TARGETS. The close stamp is 32px and the role arrows 40px. Both stay that
+   size to the eye, but each gains an invisible hit area out to 44px with a
+   pseudo-element: the ink on the parchment does not change and a thumb gets
+   the full target. The stamp sits on the sheet margin and the arrows have a
+   gap either side, so the extra area never lands on another control.
+
+   SHORT SCREENS (a 320x568 phone, any landscape phone). Declared HERE, after
+   every size rule above, and scoped under `.play-scroll`, so these win on
+   specificity and not on source order: the banner steps and the card
+   container steps above would otherwise out-rank a bare media rule that came
+   first in the file.
+
+   What changes, and why those things. The sheet is height-limited (it is
+   bounded by the frame, see `.play-scroll-sizer`), and the title, close and
+   role stay pinned above the one scroll region. So the head is what gets
+   cheaper, because every pixel it gives back is a pixel of mode list:
+     · the role band becomes ONE row, [<] Jungle (crest) [>]. The mascot is
+       the one decorative element on it and is the tallest, so it is dropped
+       at this height only; the role is still named and still steppable.
+     · the three cards keep their three columns and every line of copy,
+       with a smaller plate, a tighter gutter and a shorter minimum height.
+   Nothing here changes what is shown to a screen reader, what is focusable,
+   or the order of anything. */
+.play-scroll-stamp,
+.play-scroll-arrow {
+  position: relative;
+}
+
+.play-scroll-stamp::after {
+  content: "";
+  position: absolute;
+  /* -7px, not -6px: an absolute box is placed against the PADDING box, which
+     sits inside the 1px border. The stamp's is 30px, so -7px gives 44. */
+  inset: -7px;
+}
+
+.play-scroll-arrow::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+}
+
+@media (max-height: 620px) {
+  .play-scroll .lc-scroll__content {
+    gap: 0.25rem;
+  }
+
+  .play-scroll .play-scroll-rule {
+    margin-top: 0.25rem;
+  }
+
+  /* One row. `display: contents` lifts the two arrows out of the stepper so
+     they and the name share the banner's three columns; the figure is the
+     only thing taken out of the layout. DOM order is untouched, so the tab
+     order is still previous, next. */
+  .play-scroll .play-scroll-banner {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    column-gap: 0.25rem;
+    padding-bottom: 0.3rem;
+  }
+
+  .play-scroll .play-scroll-stepper {
+    display: contents;
+  }
+
+  .play-scroll .play-scroll-stepper__figure {
+    display: none;
+  }
+
+  .play-scroll .play-scroll-stepper > .play-scroll-arrow:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .play-scroll .play-scroll-stepper > .play-scroll-arrow:last-child {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .play-scroll .play-scroll-banner__name {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .play-scroll .play-scroll-banner__role {
+    font-size: 20px;
+  }
+
+  .play-scroll .lc-emblem.play-scroll-banner__standing {
+    width: 40px;
+    height: 40px;
+  }
+
+  .play-scroll [data-testid="play-scroll-modes"] {
+    gap: 0.3rem;
+  }
+
+  .play-scroll .play-mode-card {
+    gap: 0.5rem;
+    min-height: 56px;
+    padding-block: 0.3rem;
+  }
+
+  .play-scroll .play-plate {
+    --plate-size: 44px;
+  }
+
+  .play-scroll .play-scroll-footer {
+    margin-top: 0.25rem;
+    padding-top: 0.2rem;
+  }
+}
+
+/* The narrowest sheet a short screen can make: a 568x320 landscape phone is
+   bounded by its height, so the sheet is ~270px wide and the title and the
+   role name were both being cut to an ellipsis. Measured against the sheet,
+   like the rest of the head, so it is right on any viewport that produces
+   a sheet this narrow. */
+@media (max-height: 620px) {
+  @container play-record-sheet (max-width: 232px) {
+    .play-scroll .play-scroll-heading {
+      font-size: 14px;
+      letter-spacing: 0.03em;
+    }
+
+    .play-scroll .play-scroll-banner {
+      grid-template-columns: 40px minmax(0, 1fr) 40px;
+      column-gap: 0.15rem;
+    }
+
+    .play-scroll .play-scroll-banner__name {
+      gap: 0.3rem;
+    }
+
+    .play-scroll .play-scroll-banner__role {
+      font-size: 16px;
+    }
+
+    .play-scroll .lc-emblem.play-scroll-banner__standing {
+      width: 30px;
+      height: 30px;
+    }
+  }
 }
 
 /* ── A refusal ──────────────────────────────────────────────────────────── */

@@ -1,0 +1,8 @@
+320x568            sheet 304x554.1      body 274/274             hOver:false unreachable w/o scroll: [back] err:0/0
+360x640            sheet 344x567.1      body 274/274             hOver:false unreachable w/o scroll: [back] err:0/0
+375x667            sheet 359x572        body 274/274             hOver:false unreachable w/o scroll: [back] err:0/0
+390x844            sheet 374x586.9      body 274/274             hOver:false unreachable w/o scroll: [back] err:0/0
+568x320-landscape  sheet 268.8x542.7    body 274/274             hOver:false unreachable w/o scroll: [back] err:0/0
+667x375-landscape  sheet 315x566.5      body 276/276             hOver:false unreachable w/o scroll: [back] err:0/0
+844x390-landscape  sheet 327.6x570.8    body 276/276             hOver:false unreachable w/o scroll: [back] err:0/0
+1440x900           sheet 752x787.3      body 288/288             hOver:false unreachable w/o scroll: [] err:0/0
