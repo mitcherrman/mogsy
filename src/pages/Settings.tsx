@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import SEOHead from "@/components/SEOHead";
 import TwoFactorAuth from "@/components/TwoFactorAuth";
 import AccountConnections from "@/components/settings/AccountConnections";
+import EmailPreferences from "@/components/settings/EmailPreferences";
 import {
   setAutoMuteWhenInactive,
   setPlayRadioByDefault,
@@ -297,6 +298,9 @@ export default function Settings() {
 
         {/* Account Connections — verified external identities */}
         <AccountConnections />
+
+        {/* EMAIL1 — optional reminders and news; renders nothing while the flag is off */}
+        <EmailPreferences />
 
         {/* Account */}
         <motion.section

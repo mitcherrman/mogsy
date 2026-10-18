@@ -12,6 +12,8 @@ import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
 import { searchCities } from "@/lib/cities-data";
 import { toast } from "sonner";
 import OnboardingDots from "./OnboardingDots";
+import EmailOptInFields from "@/components/email/EmailOptInFields";
+import { NO_SIGNUP_EMAIL_CHOICE, topicsFromSignupChoice, type SignupEmailChoice } from "@/lib/email/topics";
 
 interface FieldConfig {
   enabled: boolean;
@@ -48,6 +50,8 @@ export default function OnboardingProfile({ onNext }: Props) {
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // EMAIL1: optional, unchecked, and only ever changed by the user.
+  const [emailChoice, setEmailChoice] = useState<SignupEmailChoice>(NO_SIGNUP_EMAIL_CHOICE);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -192,7 +196,11 @@ export default function OnboardingProfile({ onNext }: Props) {
           return;
         }
         const redirectTo = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent("/quiz")}`;
-        const res = await upgradeAnonymousEmail(email.trim(), password, redirectTo);
+        // EMAIL1: a fourth argument only when a box was ticked.
+        const res =
+          topicsFromSignupChoice(emailChoice).length > 0
+            ? await upgradeAnonymousEmail(email.trim(), password, redirectTo, emailChoice)
+            : await upgradeAnonymousEmail(email.trim(), password, redirectTo);
         if (!res.ok) {
           setLinkError(res.error || "Could not start account creation.");
           setSaving(false);
@@ -362,6 +370,12 @@ export default function OnboardingProfile({ onNext }: Props) {
               autoComplete="new-password"
               minLength={PASSWORD_MIN_LENGTH}
               maxLength={128}
+            />
+            <EmailOptInFields
+              idPrefix="onboarding"
+              value={emailChoice}
+              onChange={(patch) => setEmailChoice((c) => ({ ...c, ...patch }))}
+              disabled={saving}
             />
             {linkError && <p className="text-xs text-destructive">{linkError}</p>}
           </div>

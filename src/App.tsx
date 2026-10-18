@@ -57,6 +57,8 @@ const Profile = R.Profile.Component;
 const Settings = R.Settings.Component;
 const UserProfile = R.UserProfile.Component;
 const ResetPassword = R.ResetPassword.Component;
+const EmailConfirm = R.EmailConfirm.Component;
+const EmailUnsubscribe = R.EmailUnsubscribe.Component;
 // Anonymous -> permanent account confirmation callback (Concern B).
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const SecretRoom = R.SecretRoom.Component;
@@ -482,6 +484,10 @@ export const appRouter = createBrowserRouter(
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
                 <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
+                {/* EMAIL1: public, token-authorised pages reached from an email. No ProtectedRoute: a
+                    person must be able to confirm or unsubscribe without signing in. */}
+                <Route path="/email/confirm" element={<Suspense fallback={<RouteLoader />}><EmailConfirm /></Suspense>} />
+                <Route path="/email/unsubscribe" element={<Suspense fallback={<RouteLoader />}><EmailUnsubscribe /></Suspense>} />
                 <Route element={<Layout />}>
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/settings" element={<Settings />} />

@@ -26,6 +26,8 @@ import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import { useAuth } from "@/hooks/useAuth";
 import { readPreferredUsername } from "@/lib/identity/preferred-username";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "@/lib/auth/password-policy";
+import EmailOptInFields from "@/components/email/EmailOptInFields";
+import { NO_SIGNUP_EMAIL_CHOICE, topicsFromSignupChoice, type SignupEmailChoice } from "@/lib/email/topics";
 
 interface Props {
   /** Already-validated safe relative path for after conversion completes. */
@@ -46,6 +48,8 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
   const [emailInput, setEmailInput] = useState(upgrade.email);
   const [passwordInput, setPasswordInput] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  // EMAIL1: optional, and unchecked on every mount — nothing seeds it.
+  const [emailChoice, setEmailChoice] = useState<SignupEmailChoice>(NO_SIGNUP_EMAIL_CHOICE);
 
   // AUTH3 — the guest's public name. This surface has a session, so unlike the
   // brand-new signup form it can consider the account's OWN name first and the
@@ -166,7 +170,13 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitted(true);
-          void upgrade.submit(emailInput, passwordInput, undefined, username);
+          void upgrade.submit(
+            emailInput,
+            passwordInput,
+            undefined,
+            username,
+            topicsFromSignupChoice(emailChoice).length > 0 ? emailChoice : undefined,
+          );
         }}
         className="space-y-4"
       >
@@ -212,6 +222,8 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
           data-testid="upgrade-password-input"
         />
         <p className="text-[11px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
+
+        <EmailOptInFields idPrefix="upgrade" value={emailChoice} onChange={(patch) => setEmailChoice((c) => ({ ...c, ...patch }))} disabled={busy} />
 
         {upgrade.error && (
           <p className="text-sm text-destructive" role="alert" data-testid="upgrade-error">

@@ -23,6 +23,8 @@ import { mapAuthError } from "@/lib/auth/auth-errors";
 import AccountUpgradePanel from "@/components/auth/AccountUpgradePanel";
 import PasswordField from "@/components/auth/PasswordField";
 import UsernameField from "@/components/auth/UsernameField";
+import EmailOptInFields from "@/components/email/EmailOptInFields";
+import { NO_SIGNUP_EMAIL_CHOICE, topicsFromSignupChoice, type SignupEmailChoice } from "@/lib/email/topics";
 import { claimUsername } from "@/lib/identity/claim-username";
 import { readPreferredUsername } from "@/lib/identity/preferred-username";
 import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
@@ -45,6 +47,8 @@ export default function Auth() {
   const [usernameCarried] = useState(() => readPreferredUsername().source !== "none");
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  // EMAIL1: optional newsletter checkboxes - unchecked, and only ever changed by the user.
+  const [emailChoice, setEmailChoice] = useState<SignupEmailChoice>(NO_SIGNUP_EMAIL_CHOICE);
   /**
    * The account was created, but the username it asked for was taken.
    *
@@ -276,7 +280,12 @@ export default function Auth() {
         fromGuest: false,
         returnTo: safeReturnTo,
       });
-      const { error, session } = await signUp(email, password, username);
+      // EMAIL1: a fourth argument only when a box was ticked, so an unticked
+      // signup calls signUp exactly as before.
+      const { error, session } =
+        topicsFromSignupChoice(emailChoice).length > 0
+          ? await signUp(email, password, username, emailChoice)
+          : await signUp(email, password, username);
       if (error) {
         playSfx("ui.feedback.error");
         const mapped = mapAuthError(error, "signup");
@@ -631,6 +640,10 @@ export default function Auth() {
 
           {mode === "signup" && !awaitingUsername && (
             <p className="text-[10px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
+          )}
+
+          {mode === "signup" && !awaitingUsername && (
+            <EmailOptInFields idPrefix="signup" value={emailChoice} onChange={(patch) => setEmailChoice((c) => ({ ...c, ...patch }))} disabled={loading} />
           )}
 
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>

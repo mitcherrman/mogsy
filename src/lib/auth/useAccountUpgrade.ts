@@ -27,6 +27,7 @@ import { claimUsername } from "@/lib/identity/claim-username";
 import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
 import { useSfx } from "@/lib/audio/useSfx";
 import { trackSignupStarted } from "@/lib/analytics";
+import { topicsFromSignupChoice, type SignupEmailChoice } from "@/lib/email/topics";
 
 export type UpgradePhase =
   | "idle"
@@ -63,6 +64,8 @@ export interface AccountUpgradeState {
      * the current name (including an 'Anonymous<n>' placeholder) alone.
      */
     username?: string,
+    /** EMAIL1: the optional newsletter checkboxes (unchecked by default). */
+    emailChoice?: SignupEmailChoice,
   ) => Promise<void>;
   /** A refusal that belongs to the username field rather than the form. */
   usernameError: string | null;
@@ -112,7 +115,13 @@ export function useAccountUpgrade(
   );
 
   const submit = useCallback(
-    async (rawEmail: string, password: string, confirmPassword?: string, username?: string) => {
+    async (
+      rawEmail: string,
+      password: string,
+      confirmPassword?: string,
+      username?: string,
+      emailChoice?: SignupEmailChoice,
+    ) => {
       // Wait for auth to resolve; require an anonymous user; block duplicates.
       if (authLoading) return;
       if (submittingRef.current) return;
@@ -186,7 +195,12 @@ export function useAccountUpgrade(
         }
       }
 
-      const res = await upgradeAnonymousEmail(trimmed, password, callbackUrl());
+      // EMAIL1: a fourth argument only when something was actually ticked, so
+      // an unticked (or flag-off) submit calls exactly what it always did.
+      const res =
+        emailChoice && topicsFromSignupChoice(emailChoice).length > 0
+          ? await upgradeAnonymousEmail(trimmed, password, callbackUrl(), emailChoice)
+          : await upgradeAnonymousEmail(trimmed, password, callbackUrl());
       submittingRef.current = false;
       if (res.ok) {
         setEmail(trimmed);

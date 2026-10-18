@@ -10,6 +10,9 @@ import {
 import { getE2EIdentity, e2eSession, e2eEnabled } from "@/lib/e2e/identity";
 import { observeAuthIdentity } from "@/lib/analytics";
 import { observeAuthenticatedVisitor } from "@/lib/analytics/sessionIntelligence";
+import { signupIntentData } from "@/lib/email/signup-intent";
+import { type SignupEmailChoice } from "@/lib/email/topics";
+import { useEmailSignupIntent } from "@/lib/email/useEmailSignupIntent";
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +42,13 @@ interface AuthContextType {
      * why. Omitted entirely when there is no name to carry.
      */
     displayName?: string,
+    /**
+     * EMAIL1: the optional newsletter / reminder checkboxes. Absent (or nothing
+     * ticked, or the feature off) adds NOTHING to the request. When ticked it
+     * is recorded as an intent on the new account; it subscribes no one until
+     * the mailbox owner clicks the emailed confirmation link.
+     */
+    emailChoice?: SignupEmailChoice,
   ) => Promise<{ error: any; session: Session | null }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -56,6 +66,8 @@ interface AuthContextType {
     email: string,
     password: string,
     redirectTo: string,
+    /** EMAIL1: as for signUp. Optional; omitted when nothing is ticked. */
+    emailChoice?: SignupEmailChoice,
   ) => Promise<UpgradeResult>;
 }
 
@@ -89,6 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     observeAuthIdentity(user);
     void observeAuthenticatedVisitor(user);
   }, [user]);
+
+  // EMAIL1: a signup checkbox leaves an INTENT on the account; this starts the
+  // double opt-in once the account is permanent. No-op unless the user has one.
+  useEmailSignupIntent(user);
 
   useEffect(() => {
     let mounted = true;
@@ -170,8 +186,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    displayName?: string,
+    emailChoice?: SignupEmailChoice,
+  ) => {
     const name = (displayName ?? "").replace(/\s+/g, " ").trim();
+    const intent = signupIntentData(emailChoice);
+    const metadata = { ...(name ? { display_name: name } : {}), ...(intent ?? {}) };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -180,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only sent when there is actually a name. An empty metadata key would
         // be indistinguishable from "no name given" at the trigger anyway, and
         // writing one would put a meaningless field on every auth user.
-        ...(name ? { data: { display_name: name } } : {}),
+        ...(Object.keys(metadata).length ? { data: metadata } : {}),
       },
     });
     // `data.session` is non-null only when the project does not require email
@@ -204,6 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     redirectTo: string,
+    emailChoice?: SignupEmailChoice,
   ): Promise<UpgradeResult> => {
     // Guard: only an authenticated anonymous user may be upgraded. Never fall
     // back to signUp() and never sign out.
@@ -222,7 +246,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { ok: true, converted: true };
     }
-    return initiateAnonymousEmailUpgrade({ userId: user.id, email, password, redirectTo });
+    return initiateAnonymousEmailUpgrade({
+      userId: user.id,
+      email,
+      password,
+      redirectTo,
+      ...(emailChoice ? { emailChoice } : {}),
+    });
   };
 
   return (

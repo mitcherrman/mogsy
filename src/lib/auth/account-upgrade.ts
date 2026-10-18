@@ -56,6 +56,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { mapAuthError, type SupabaseAuthErrorLike } from "@/lib/auth/auth-errors";
+import { signupIntentData } from "@/lib/email/signup-intent";
+import type { SignupEmailChoice } from "@/lib/email/topics";
 
 const PENDING_KEY = "mogzy.account-upgrade.pending.v1";
 
@@ -171,13 +173,21 @@ export async function initiateAnonymousEmailUpgrade(params: {
   /** The password to set on the account, already validated by the caller. */
   password: string;
   redirectTo: string;
+  /**
+   * EMAIL1: optional newsletter checkboxes. When something is ticked (and the
+   * feature is on) an INTENT rides along as account metadata in the SAME
+   * request; otherwise the request is byte-for-byte what it always was.
+   */
+  emailChoice?: SignupEmailChoice;
 }): Promise<UpgradeResult> {
   const email = params.email.trim();
+  const intent = signupIntentData(params.emailChoice);
+  const intentPart = intent ? { data: intent } : {};
 
   // Step 1 — email AND password in ONE request. Attaching the email in the
   // same call is what makes setting the password legal on an anonymous user.
   let res = await supabase.auth.updateUser(
-    { email, password: params.password },
+    { email, password: params.password, ...intentPart },
     { emailRedirectTo: params.redirectTo },
   );
 
@@ -186,7 +196,7 @@ export async function initiateAnonymousEmailUpgrade(params: {
     // rather than this request. Attaching the email de-anonymises the user, so
     // the password becomes legal on a second call. Also verified to work.
     const emailRes = await supabase.auth.updateUser(
-      { email },
+      { email, ...intentPart },
       { emailRedirectTo: params.redirectTo },
     );
     if (emailRes.error) return toUpgradeError(emailRes.error);

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
+import AdminNewsletter from "@/components/admin/AdminNewsletter";
 import { AdminIdentityLines } from "@/components/admin/AdminUserCard";
 import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
 import { BotStateToggle } from "@/components/admin/BotStateToggle";
@@ -20,6 +21,9 @@ import {
 } from "@/lib/pro/entitlement";
 import { toast } from "sonner";
 import { ownerActionNotice, runOwnerAction, type OwnerActionOutcome } from "@/lib/admin-auth/ownerAction";
+import {
+  emailBadge, emailDetailLine, isReachable, loadEmailSubscriptionStatus, type AdminEmailSub,
+} from "@/lib/admin/email-subscriptions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -37,6 +41,7 @@ import {
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
   KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
   RefreshCw, RotateCcw, Ghost, Bot, ExternalLink,
+  Mail as NewsletterIcon,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -138,6 +143,8 @@ const ACCOUNT_FILTERS = [
   ["moderators", "Moderators"],
   ["underage", "Underage"],
   ["anonymous", "Anonymous"],
+  // EMAIL1: accounts that would actually receive newsletter mail today.
+  ["newsletter", "Newsletter"],
 ] as const;
 
 function RowTag({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "primary" | "warning" }) {
@@ -172,6 +179,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
   const [invitesOpen, setInvitesOpen] = useState(false);
+  // EMAIL1: the owner-only newsletter workspace opens from a page-level action,
+  // like Invite links. (Users keeps exactly three sections — USERS2.1 guard.)
+  const [newsletterOpen, setNewsletterOpen] = useState(false);
   const [identities, setIdentities] = useState<Map<string, AdminIdentitySummary>>(new Map());
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   // COM1-2 deep link. `?user=<profileId>` preselects one account so another
@@ -196,6 +206,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+  // EMAIL1: newsletter status by auth user id. Empty when the owner RPC is
+  // unavailable; the list never depends on it.
+  const [emailSubs, setEmailSubs] = useState<Record<string, AdminEmailSub>>({});
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
 
   const [noteEntries, setNoteEntries] = useState<{ id: string; text: string; created_at: string; updated_at?: string }[]>([]);
@@ -296,6 +309,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         }
       }
       setEmailMap(allEmails);
+      void loadEmailSubscriptionStatus(userIds).then(setEmailSubs);
     }
 
     // Verified Discord / Riot identities, keyed by public profile id. A failure
@@ -351,6 +365,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
       case "moderators": list = list.filter(p => (roles[p.user_id] || []).includes("moderator")); break;
       case "underage": list = list.filter(p => p.is_flagged_underage); break;
+      case "newsletter": list = list.filter(p => isReachable(emailSubs[p.user_id])); break;
     }
 
     // Apply sort
@@ -363,7 +378,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
 
     return list;
-  }, [profiles, search, emailMap, filterMode, sortMode, userRoles, identities]);
+  }, [profiles, search, emailMap, filterMode, sortMode, userRoles, identities, emailSubs]);
 
   const anonymousUsers = useMemo(() => profiles.filter(p => p.is_anonymous), [profiles]);
   const registered = useMemo(() => profiles.filter(p => !p.is_anonymous), [profiles]);
@@ -893,6 +908,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <h3 className="font-bold text-foreground truncate">{selectedUser.display_name || "Unnamed"}</h3>
             <p className="text-xs text-primary truncate">{emailMap[selectedUser.user_id] || "No email"}</p>
             <p className="text-xs text-muted-foreground truncate">{selectedUser.user_id}</p>
+            {!selectedUser.is_anonymous && (
+              <p className="text-xs text-muted-foreground truncate" data-testid="user-email-subscription">
+                {emailDetailLine(emailSubs[selectedUser.user_id])}
+              </p>
+            )}
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Joined {new Date(selectedUser.created_at).toLocaleDateString()}</span>
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Last seen {timeAgo(selectedUser.last_seen_at)}</span>
@@ -1756,7 +1776,20 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1 text-xs" onClick={() => setInvitesOpen(true)} data-testid="accounts-invite-links">
           <Link2 className="h-3.5 w-3.5" /> Invite links
         </Button>
+        <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1 text-xs" onClick={() => setNewsletterOpen(true)} data-testid="accounts-newsletter">
+          <NewsletterIcon className="h-3.5 w-3.5" /> Newsletter
+        </Button>
       </div>
+
+      <Dialog open={newsletterOpen} onOpenChange={setNewsletterOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Newsletter</DialogTitle>
+            <DialogDescription>Owner only. Subscribers opted in and confirmed by email; sending is off until enabled.</DialogDescription>
+          </DialogHeader>
+          {newsletterOpen && <AdminNewsletter />}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={invitesOpen} onOpenChange={setInvitesOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -1895,6 +1928,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     {roles.includes("master_admin") && <RowTag tone="primary">Master admin</RowTag>}
                     {roles.includes("admin") && <RowTag tone="primary">Admin</RowTag>}
                     {roles.includes("moderator") && <RowTag>Mod</RowTag>}
+                    {(() => {
+                      const badge = emailBadge(emailSubs[p.user_id]);
+                      return badge ? <RowTag tone={badge.tone}>{badge.label}</RowTag> : null;
+                    })()}
                     {p.avatar_url ? (
                       <ImageIcon className="h-3 w-3 text-primary shrink-0" />
                     ) : (

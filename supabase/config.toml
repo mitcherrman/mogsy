@@ -1,6 +1,20 @@
 project_id = "kewgjwrzpzpeltwidvuc"
 
 [functions]
+  # EMAIL1 — optional newsletter / Daily Challenge reminders. Each function
+  # authenticates itself: email-subscription and newsletter-admin verify the
+  # caller's JWT (newsletter-admin additionally requires the canonical owner at
+  # aal2); email-link is reached from an email and is authorised by a
+  # single-use / HMAC-signed token; email-provider-webhook verifies the
+  # provider's Svix signature over the raw body.
+  [functions.email-subscription]
+    verify_jwt = false
+  [functions.email-link]
+    verify_jwt = false
+  [functions.email-provider-webhook]
+    verify_jwt = false
+  [functions.newsletter-admin]
+    verify_jwt = false
   [functions.admin-get-emails]
     verify_jwt = false
   [functions.auth-email-hook]
