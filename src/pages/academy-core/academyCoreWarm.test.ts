@@ -59,6 +59,9 @@ const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Vikt
   icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
 }])) };
 
+/** Let a chain of already-resolved promises run (the count is not the contract). */
+const ticks = async (n = 8) => { for (let i = 0; i < n; i++) await Promise.resolve(); };
+
 function setLayout(full: boolean) {
   window.matchMedia = ((q: string) => ({
     matches: full && q.includes("min-width: 1024px"), media: q, onchange: null,
@@ -107,7 +110,7 @@ describe("warmAcademyCore", () => {
     // the decorative follow-ups wait for the art to have REALLY settled
     expect(loader.prepared.slice(7)).toEqual([]);
     loader.resolveSettled();
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await ticks(); // the settle answers (through its 20 s cap's wrapper)
     // ACADEMY STARTUP S3: the destination pages are the page's to ask for, once shown
     expect(prefetchRoute).not.toHaveBeenCalled();
     const later = loader.prepared.slice(7);
@@ -135,7 +138,7 @@ describe("warmAcademyCore", () => {
     await done;
     expect(loader.prepared.find((p) => p.url === ACADEMY_BROADCAST_BOOK)).toBeUndefined();
     loader.resolveSettled();
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await ticks(); // the settle answers (through its 20 s cap's wrapper)
     expect(loader.prepared.find((p) => p.url === ACADEMY_BROADCAST_BOOK)?.priority).toBe("low");
   });
 
@@ -212,7 +215,7 @@ describe("warmAcademyCore — slow networks (ACADEMY STARTUP S3)", () => {
     expect(loader.prepared.length).toBe(before);
     expect(prefetchRoute).not.toHaveBeenCalled();
     loader.resolveSettled();
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await ticks(); // the settle answers (through its 20 s cap's wrapper)
     expect(loader.prepared.length).toBeGreaterThan(before);
     expect(loader.prepared.slice(before).every((p) => p.priority === "low")).toBe(true);
   });
@@ -231,7 +234,63 @@ describe("warmAcademyCore — slow networks (ACADEMY STARTUP S3)", () => {
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     expect(settled).toBe(false);
     loader.resolveSettled();
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await ticks(); // the settle answers (through its 20 s cap's wrapper)
+    expect(settled).toBe(true);
+  });
+});
+
+describe("settling when things hang (ACADEMY STARTUP RC1)", () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("a stalled manifest: the warm still resolves one budget after the critical set, and the settle is capped at 20 s", async () => {
+    vi.useFakeTimers();
+    setLayout(true);
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockReturnValue(new Promise(() => {}) as never); // never answers
+    let warmed: Record<string, string | null> | null = null;
+    void warmAcademyCore(client).then((r) => { warmed = r; });
+    let settled = false;
+    void academyCoreSettled().then(() => { settled = true; });
+    loader.resolveCritical(); // frame, Mogzy and the Patch book are in
+    await vi.advanceTimersByTimeAsync(3999);
+    expect(warmed).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(warmed).toEqual({ leaguecraft: null, "pro-play": null, "combat-lab": null, archives: null });
+    expect(settled).toBe(false); // the art is still downloading as far as anyone knows
+    await vi.advanceTimersByTimeAsync(20_000 - 4000 - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toBe(true);
+    // and what follows the settle runs: the reaction poses, at low priority
+    await vi.advanceTimersByTimeAsync(0);
+    expect(loader.prepared.filter((p) => /mogzy-.*-192\.webp/.test(p.url)).every((p) => p.priority === "low")).toBe(true);
+    expect(loader.prepared.some((p) => /mogzy-.*-192\.webp/.test(p.url))).toBe(true);
+  });
+
+  it("a stalled manifest on a phone: the Patch feed warm (which waits for the settle) still starts by the cap", async () => {
+    vi.useFakeTimers();
+    setLayout(false);
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockReturnValue(new Promise(() => {}) as never);
+    void warmAcademyCore(client);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(patch.prefetch).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(patch.prefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("art that settles early ends the wait early: the cap is a ceiling, not a delay", async () => {
+    vi.useFakeTimers();
+    setLayout(true);
+    const client = new QueryClient();
+    vi.spyOn(client, "fetchQuery").mockResolvedValue(MANIFEST as never);
+    void warmAcademyCore(client);
+    let settled = false;
+    void academyCoreSettled().then(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(0);
+    loader.resolveCritical();
+    loader.resolveSettled();
+    await vi.advanceTimersByTimeAsync(0);
     expect(settled).toBe(true);
   });
 });

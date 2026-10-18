@@ -109,6 +109,14 @@ export type CoreWarmResult = Record<CoreDestination["id"], string | null>;
 let started: Promise<CoreWarmResult> | null = null;
 let settled: Promise<void> | null = null;
 
+/** `p`, or `fallback` once `ms` have passed — whichever comes first. Never rejects. */
+function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    p.then((v) => { clearTimeout(timer); resolve(v); }, () => { clearTimeout(timer); resolve(fallback); });
+  });
+}
+
 /**
  * Start (or join) the Core warm. Resolves with the cover splash URLs once the
  * manifest has answered (nulls when it does not name a champion). The page's
@@ -144,7 +152,11 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
   // The first screen has really settled when every critical image and every
   // on-screen cover has loaded or failed. These calls JOIN the loads above (the
   // budget belongs to the caller, not the request), they only wait longer.
-  const firstScreen = Promise.all([
+  // RC1: the WHOLE wait is capped, not only each image's: the manifest request
+  // has no timeout of its own, and a stalled one used to hold everything that
+  // follows the settle (destination chunks, poses, shards, the phone Patch
+  // warm) for as long as the request hung.
+  const firstScreen = within(Promise.all([
     prepareImages(coreCriticalImages(full), { timeoutMs: SETTLE_CAP_MS }),
     manifest.then((m) => {
       const splashes = coreCoverSplashes(m);
@@ -153,7 +165,7 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
           prepareImage(splashes[d.id], { timeoutMs: SETTLE_CAP_MS })),
       );
     }),
-  ]).then(() => undefined);
+  ]).then(() => undefined), SETTLE_CAP_MS, undefined);
   settled = firstScreen;
 
   // The Patch Report's feed is two serial API reads: start them now on desktop
@@ -173,7 +185,12 @@ export function warmAcademyCore(client?: QueryClient | null): Promise<CoreWarmRe
     if (!full) void prepareImage(ACADEMY_BROADCAST_BOOK, { priority: "low" });
   });
 
-  started = critical.then(() => covers);
+  // RC1: the page's `warmed` (cover art, shards, role marks) must not hang on a
+  // stalled manifest either: after the critical set, the covers get one more
+  // budget, then the warm resolves with what it can name (nothing yet). The
+  // covers still appear whenever the manifest does — the page reads the same
+  // query — the warm just stops holding the rest back.
+  started = critical.then(() => within(covers, CRITICAL_BUDGET_MS, coreCoverSplashes(null)));
   return started;
 }
 
