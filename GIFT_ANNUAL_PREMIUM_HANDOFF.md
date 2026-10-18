@@ -2,7 +2,7 @@
 
 **Objective.** The owner buys 12 months of Premium as a gift for a friend in California, for exactly **$50.00 USD total**, paid once, never renewed. The friend redeems it with their own verified account and gets **365 days of Premium from the redemption date**.
 
-**Branch:** `billing/annual-gift-50`, cut from `origin/main` `6b46e1c0`. **Status: implemented and tested locally. Nothing has been applied, deployed, published or enabled. No card has been charged.**
+**Branch:** `billing/annual-gift-50` (7c99892b), merged to `main` by PR #67 (merge commit `3d5cb057`). **Status (2026-10-17): 0004 applied in production (ledger id 5), and the gift Edge Functions are live from `main` (§10). Private gift checkout is still OFF, no Stripe test-mode run has happened, nothing has been published, and no card has been charged.**
 
 ## 1. What existed vs what changed
 
@@ -77,18 +77,66 @@ Unauthenticated, guest and unverified purchasers · unverified, wrong-email and 
 
 1. **Owner / tax advisor:** decide the California tax treatment, then set `PRIVATE_ANNUAL_GIFT_TAX_MODE`. Not decided here; no tax advice is implied.
 2. **Owner:** create the live one-time $50.00 USD Price (tax-inclusive if Stripe Tax is used).
-3. **Owner:** review and merge this branch.
-4. Apply 0004 via Lovable. Run `supabase/verification/pt17_gift_verify.sql` before (check A1/A2) and after (section B all true).
-5. Deploy edge functions **after** 0004: `redeem-gift`, `verify-gift`, `stripe-webhook`, `gift-checkout` (new). Until `redeem-gift` is redeployed, gift redemption fails closed. No live UI uses it today.
-6. Stripe dashboard: subscribe the webhook to `checkout.session.expired`, `checkout.session.async_payment_succeeded/failed`, `charge.refunded`, `charge.dispute.created/updated/closed` (in addition to `checkout.session.completed`).
-7. **Stripe test-mode end-to-end:** test key + test $50 price + `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED` + `TAX_MODE` + buyer allowlist. Buy with card 4242…, confirm the gift is paid, redeem from a second verified account, then refund and confirm the revocation.
-8. Lovable Publish.
+3. ~~Review and merge~~ **DONE**: PR #67, `3d5cb057`.
+4. ~~Apply 0004~~ **DONE** (owner-verified: ledger id 5, hash `1779ec0c…2926`, 5 SQL checks passed; re-confirmed read-only on 2026-10-17, §10). Do not reapply.
+5. ~~Deploy Edge Functions~~ **DONE by Lovable Cloud** from `main`. `gift-checkout` and `redeem-gift` were fingerprinted as the new code. `verify-gift` and `stripe-webhook` can't be told apart from outside (§10).
+6. **Owner, Stripe dashboard:** subscribe the webhook to `checkout.session.expired`, `checkout.session.async_payment_succeeded/failed`, `charge.refunded`, `charge.dispute.created/updated/closed` (in addition to `checkout.session.completed`).
+7. **Stripe test-mode end-to-end. BLOCKED, owner decision needed (§10.3).** Production runs on the live Stripe key, so a test-mode purchase can't go through the production functions as they are.
+8. Lovable Publish (frontend gift pages). The Buy button stays hidden while checkout is off, so publishing exposes only "Redeem a gift".
 9. Only then: live price + live secrets + `PRIVATE_ANNUAL_GIFT_LIVE_APPROVED=true`, then the owner's real purchase with the prepaid Visa.
 
-**Exact next task:** step 1 (owner tax decision). After that, step 7 (Stripe test-mode E2E) is the gate that proves payment and entitlement on real infrastructure. The first customer purchase is **not ready** until step 7 passes.
+**Exact next task:** decide how to run the test-mode E2E (§10.3), together with the tax decision (step 1). The first customer purchase is **not ready** until step 7 passes.
 
 ## 9. Residual risks
 
 - `redeem-gift` re-reads Stripe before redeeming. If a catalog gift's Price is later removed from `gift-catalog.ts`, its paid gifts would be reclassified `invalid`.
 - No rate limit on the gift functions. Codes are 10 characters from a UUID and redemption is recipient-bound, so a guessed code is useless to anyone else.
 - `admin_set_pro_grant` can still override a gift grant (admin power, unchanged).
+
+## 10. Deployment verification (2026-10-17, read-only)
+
+### 10.1 Deployment access
+
+- This machine has **no Supabase CLI**, **no Supabase access token** (`~/.supabase` holds telemetry only; `SUPABASE_ACCESS_TOKEN` unset), **no Stripe CLI** and no Stripe key. No CLI deployment was attempted and none is authorized from here.
+- The project (`kewgjwrzpzpeltwidvuc`) is **Lovable Cloud**. The supported operation is Lovable's own deployment: it deploys Edge Functions from `main` (cf. the "Deployed PT1.6b functions" commit `3e543625`). That has already happened for PT1.7. **No manual deployment is needed or was performed.**
+
+### 10.2 What production serves now
+
+All probes used the public anon key only: unauthenticated or anon-bearer requests that stop before any database write or Stripe call.
+
+| Check | Result | Meaning |
+|---|---|---|
+| `gift-checkout` POST, no session | `200 {"available":false,"error":"Sign in to buy a gift","code":"ACCOUNT_REQUIRED"}` | **new function is live**; refuses signed-out callers |
+| `redeem-gift` POST, anon bearer, `{}` | `401 {"error":"Not authenticated"}` | **new code** (the old code parsed the body first and returned `400 Missing code`) |
+| `verify-gift` POST, no auth / anon bearer | `401 Missing authorization header` (gateway) / `401 {"error":"Unauthorized"}` | gateway JWT check still on; old and new look identical from outside |
+| `stripe-webhook` POST, unsigned | `400 Missing stripe-signature header` | signature guard intact; old and new look identical from outside |
+| `rpc/gift_redeem`, `rpc/private_gift_terms` as anon | `42501 permission denied` | 0004 functions present, service-role only |
+| `rpc/redeem_gift_code` | `PGRST202` not found | the non-atomic claim is gone |
+| `gifts` table as anon | `42501 permission denied for table gifts` | G5 closed (anon used to have SELECT) |
+| `check-subscription`, no auth | `200 {"subscribed":false}` | unchanged |
+| `create-checkout` `offer_availability` | `200 {"mode":"standard","available":["standard_monthly","standard_annual"]}` | **subscriptions unaffected**; standard offers live |
+| `custom-offer-checkout`, anon bearer | `200 ACCOUNT_REQUIRED` | PT1.6b unchanged and still closed |
+
+The gift sources on `main` are byte-identical to the reviewed `7c99892b` (`git diff 7c99892b 3d5cb057` is empty for every gift function and shared module).
+
+**Not observable from here:** exact deployed function versions or timestamps (needs Lovable or the Supabase dashboard); Edge Function secrets, including that every `PRIVATE_ANNUAL_GIFT_*` flag is unset (the signed-out behaviour above is consistent with OFF); and the post-deploy `stripe-webhook` and `verify-gift` code paths, which need a signed Stripe event or a signed-in user.
+
+### 10.3 Why the Stripe test-mode E2E is blocked, and the options
+
+Production's `STRIPE_SECRET_KEY` is the **live** key (create-checkout sells live standard offers). Every gift function uses that one key, and `stripe-webhook` verifies one signing secret. A test-mode Checkout Session therefore can't be created or verified by the production functions, and swapping production to a test key would break live subscriptions. The two verified test accounts also need real inboxes to confirm their emails, and accounts are not created from this machine.
+
+| Option | What it takes | Assessment |
+|---|---|---|
+| **A. Test-key lane for the private gift (recommended)** | Small code change + PR: `gift-checkout` uses `STRIPE_TEST_SECRET_KEY` when `PRIVATE_ANNUAL_GIFT_STRIPE_MODE=test`; the gift row records the mode; `stripe-webhook` tries the live secret, then `STRIPE_TEST_WEBHOOK_SECRET`, and reads Stripe with the key matching `event.livemode`; `redeem-gift`/`verify-gift` reconcile with the gift's recorded mode. Subscriptions keep using the live key and secret only. | Full E2E on the real production stack with zero live-money risk. The test gift's Premium lands on the owner's test accounts. After it passes, flip the mode to `live` |
+| B. Separate staging project | A second Supabase/Lovable project with test keys | New infrastructure; not available today |
+| C. Live-mode check with a real card | — | **Ruled out** (never use a real card for testing) |
+
+### 10.4 Precise remaining steps (after the test-mode run passes)
+
+1. **Tax (owner + adviser):** decide California treatment for this digital subscription gift. Then set `PRIVATE_ANNUAL_GIFT_TAX_MODE=approved_not_taxable` (no tax is due) or `stripe_tax_inclusive` (Stripe Tax registered and active for CA).
+2. **Stripe live Price (owner, live dashboard):** Product "Mogzy Premium gift — 12 months". Price: **one-time**, **50.00 USD**, `tax_behavior` **inclusive** (required for `stripe_tax_inclusive`; harmless otherwise). Record the `price_…` id.
+3. **Webhook (owner, live dashboard):** on the existing `stripe-webhook` endpoint, add `checkout.session.expired`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`. Keep the existing subscription events.
+4. **Secrets (owner, Lovable Cloud):** `STRIPE_PRIVATE_ANNUAL_GIFT_PRICE_ID=<step 2>`, `PRIVATE_ANNUAL_GIFT_TAX_MODE=<step 1>`, `PRIVATE_ANNUAL_GIFT_BUYER_USER_IDS=<owner's user id>`. Leave `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED` and `PRIVATE_ANNUAL_GIFT_LIVE_APPROVED` unset until step 6.
+5. **Publish (Lovable):** the Gift Premium entry and the `/lol/premium/gift` and `/lol/premium/redeem` pages. Buying stays invisible while checkout is off.
+6. **Live activation (owner, at purchase time):** set `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED=true` and `PRIVATE_ANNUAL_GIFT_LIVE_APPROVED=true`. Sign in as the owner (verified email), open `/lol/premium/gift`, enter the friend's email, and confirm the review shows **$50.00 total, one-time, never renews**. Pay with the prepaid Visa. Wait for "Gift confirmed" and send the code/link. The friend signs in with that verified email and redeems: **365 days** of Premium.
+7. **Afterwards:** unset `PRIVATE_ANNUAL_GIFT_CHECKOUT_ENABLED` (single sale), and run `supabase/verification/pt17_gift_verify.sql` A1 to see the row.
