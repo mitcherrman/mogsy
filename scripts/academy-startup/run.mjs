@@ -7,8 +7,8 @@
  * Scenario fields (defaults in brackets):
  *   label           output name (required)
  *   base            server origin [$ACADEMY_PERF_BASE or https://127.0.0.1:4418]
- *   browser         msedge | chromium | firefox [msedge]
- *   headless        [false] — frame timings need a real, FOREGROUND window
+ *   browser         chromium (Playwright's bundled build) [chromium]; msedge | firefox only on CI
+ *   headless        [true]; a visible window only on CI
  *   w, h, dpr       viewport [1366, 768, 1]; mobile: true adds Chromium device emulation
  *   path            "/" (the Landing journey) | "/lol" (a direct visit) ["/"]
  *   cache           cold      a fresh browser profile (cold HTTP and GPU caches)
@@ -30,6 +30,15 @@
  * One JSON file per scenario in `out`; summarise with report.mjs. Runs whose
  * window was background-throttled (< 100 animation frames) are reported as
  * invalid — headed Firefox windows are prone to it.
+ *
+ * LOCAL SAFETY (AGENTS.md): on a developer machine this script only launches
+ * Playwright's bundled Chromium, headless, one browser at a time, and only
+ * after the owner has authorised the run. Installed Edge/Chrome and visible
+ * windows are refused unless CI is set (GitHub Actions runners). Headless
+ * Chromium renders this scene in software: its LOAD timings (mount, art,
+ * Patch Report, network milestones) are meaningful, its FRAME timings are not.
+ * Every browser is closed in `finally`, and SIGINT/SIGTERM close the open one
+ * before exiting. ACADEMY_PERF_MAX_MINUTES (default 40) bounds the whole run.
  */
 import { chromium, firefox } from "playwright";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -38,7 +47,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const S = {
-  browser: "msedge", headless: false, w: 1366, h: 768, dpr: 1, path: "/", cache: "cold", net: "none", cpu: 1,
+  browser: "chromium", headless: true, w: 1366, h: 768, dpr: 1, path: "/", cache: "cold", net: "none", cpu: 1,
   reps: 3, ms: 6000, out: "test-results/academy-startup",
   base: process.env.ACADEMY_PERF_BASE ?? "https://127.0.0.1:4418",
   ...JSON.parse(process.argv[2] ?? "{}"),
@@ -51,6 +60,19 @@ const NET = {
   slow4g: { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 },
 };
 const chromiumBased = S.browser !== "firefox";
+if (!process.env.CI && (S.browser !== "chromium" || !S.headless)) {
+  console.error(`[${S.label}] refused: locally only headless bundled Chromium may run (AGENTS.md). Got browser=${S.browser} headless=${S.headless}.`);
+  process.exit(2);
+}
+const runDeadline = Date.now() + Number(process.env.ACADEMY_PERF_MAX_MINUTES ?? 40) * 60_000;
+let openBrowser = null;
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, async () => {
+    console.error(`[${S.label}] ${sig}: closing the browser`);
+    await openBrowser?.close().catch(() => {});
+    process.exit(130); // after teardown
+  });
+}
 
 async function measureOnce(browser, ctx, rep, warmup) {
   const page = await ctx.newPage();
@@ -123,7 +145,12 @@ if (chromiumBased) launch.args.push("--ignore-certificate-errors", "--autoplay-p
 mkdirSync(S.out, { recursive: true });
 const results = [];
 for (let rep = 0; rep < S.reps; rep++) {
+  if (Date.now() > runDeadline) {
+    console.error(`[${S.label}] stopping: ACADEMY_PERF_MAX_MINUTES reached`);
+    break;
+  }
   const browser = await type.launch(launch);
+  openBrowser = browser;
   try {
     const ctxOpts = {
       viewport: { width: S.w, height: S.h }, deviceScaleFactor: S.dpr, ignoreHTTPSErrors: true,
@@ -161,6 +188,7 @@ for (let rep = 0; rep < S.reps; rep++) {
     results.push({ rep, failed: String(err) });
   } finally {
     await browser.close().catch(() => {});
+    openBrowser = null;
   }
 }
 writeFileSync(join(S.out, `${S.label}.json`), JSON.stringify({ scenario: S, results }));

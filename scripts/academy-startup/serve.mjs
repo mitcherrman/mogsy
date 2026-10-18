@@ -84,5 +84,12 @@ const tls = TLS && existsSync(join(TLS, "key.pem")) && existsSync(join(TLS, "cer
 const server = tls
   ? createSecureServer({ key: readFileSync(join(TLS, "key.pem")), cert: readFileSync(join(TLS, "cert.pem")), allowHTTP1: true }, handle)
   : createServer(handle);
+// Owned process: stop cleanly when asked (AGENTS.md — never leave servers running).
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 2000).unref(); // open keep-alive sessions must not hold it up
+  });
+}
 server.listen(PORT, "127.0.0.1", () =>
   console.log(`${tls ? "https (HTTP/2)" : "http (HTTP/1.1 — set ACADEMY_PERF_TLS_DIR for HTTP/2)"}://127.0.0.1:${PORT} <- ${DIST}`));
