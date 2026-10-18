@@ -31,6 +31,8 @@ export function isValidGiftCode(value: unknown): value is string {
 export interface GiftAvailability {
   available: boolean;
   emailVerified: boolean;
+  /** PT1.7-T: the server is running the gift on Stripe TEST keys. */
+  testMode?: boolean;
 }
 
 /** May the signed-in account buy the private gift? Unknown → not available. */
@@ -38,7 +40,7 @@ export async function fetchGiftAvailability(): Promise<GiftAvailability> {
   try {
     const { data, error } = await supabase.functions.invoke("gift-checkout", { body: { action: "availability" } });
     if (error || !data?.available) return { available: false, emailVerified: false };
-    return { available: true, emailVerified: data.email_verified === true };
+    return { available: true, emailVerified: data.email_verified === true, testMode: data.test_mode === true };
   } catch {
     return { available: false, emailVerified: false };
   }
@@ -73,6 +75,8 @@ export interface BuyerGift {
   redeemCode: string | null;
   paidAt: string | null;
   redeemedAt: string | null;
+  /** PT1.7-T: bought on Stripe test keys — no real money moved. */
+  testMode?: boolean;
 }
 
 /** The buyer's own gift, re-checked against Stripe by the server. Null = unknown. */
@@ -88,6 +92,7 @@ export async function fetchBuyerGift(giftId: string): Promise<BuyerGift | null> 
       redeemCode: data.redeem_code ?? null,
       paidAt: data.paid_at ?? null,
       redeemedAt: data.redeemed_at ?? null,
+      testMode: data.test_mode === true,
     };
   } catch {
     return null;

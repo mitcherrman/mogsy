@@ -12,6 +12,8 @@ import {
 } from "./private-annual-gift.ts";
 import { resolveGiftByPriceId } from "./gift-catalog.ts";
 import { handleGiftRedeemRequest } from "./gift-redeem.ts";
+import { giftStripeMode, testStripeKey } from "./private-annual-gift.ts";
+import { isTestLaneEventType, verifyStripeEventLanes } from "./stripe-lanes.ts";
 
 /**
  * PT1.7 — pure rules of the private annual gift. The SQL and the full flow are
@@ -133,3 +135,69 @@ describe("handleGiftRedeemRequest — input handling", () => {
     expect(called).toBe(0);
   });
 });
+
+describe("PT1.7-T test-key lane — configuration", () => {
+  const TEST = {
+    ...READY,
+    STRIPE_SECRET_KEY: "sk_live_realkey",
+    PRIVATE_ANNUAL_GIFT_STRIPE_MODE: "test",
+    STRIPE_TEST_SECRET_KEY: "sk_test_abc123",
+    STRIPE_PRIVATE_ANNUAL_GIFT_TEST_PRICE_ID: "price_test50",
+  };
+  it("uses the test key and the TEST price, and needs no live approval", () => {
+    const c = privateGiftConfig(env(TEST));
+    expect(c).toMatchObject({ enabled: true, stripeMode: "test", liveMode: false, priceId: "price_test50" });
+  });
+  it("refuses a live or missing key in the test slot — the test lane can never charge real money", () => {
+    expect(privateGiftConfig(env({ ...TEST, STRIPE_TEST_SECRET_KEY: "sk_live_oops" })).reason).toBe("test_key_not_configured");
+    expect(privateGiftConfig(env({ ...TEST, STRIPE_TEST_SECRET_KEY: "" })).reason).toBe("test_key_not_configured");
+  });
+  it("never falls back to the live price, and rejects unknown modes", () => {
+    expect(privateGiftConfig(env({ ...TEST, STRIPE_PRIVATE_ANNUAL_GIFT_TEST_PRICE_ID: "" })).reason).toBe("price_not_configured");
+    expect(privateGiftConfig(env({ ...TEST, PRIVATE_ANNUAL_GIFT_STRIPE_MODE: "Test" })).reason).toBe("stripe_mode_invalid");
+  });
+  it("live mode is unchanged by the test variables", () => {
+    const c = privateGiftConfig(env({ ...TEST, PRIVATE_ANNUAL_GIFT_STRIPE_MODE: "live" }));
+    expect(c).toMatchObject({ enabled: false, reason: "live_not_approved", stripeMode: "live", priceId: "price_gift50" });
+  });
+  it("testStripeKey only returns real test keys", () => {
+    expect(testStripeKey(env({ STRIPE_TEST_SECRET_KEY: "rk_test_x1" }))).toBe("rk_test_x1");
+    expect(testStripeKey(env({ STRIPE_TEST_SECRET_KEY: "sk_live_x1" }))).toBeNull();
+    expect(testStripeKey(env({}))).toBeNull();
+  });
+  it("a gift's mode comes from its Checkout Session id", () => {
+    expect(giftStripeMode("cs_test_a1")).toBe("test");
+    expect(giftStripeMode("cs_live_a1")).toBe("live");
+    expect(giftStripeMode(null)).toBe("live");
+  });
+});
+
+describe("PT1.7-T test-key lane — webhook verification", () => {
+  const construct = (signedWith: string, livemode: boolean) =>
+    async (_b: string, _s: string, secret: string) => {
+      if (secret !== signedWith) throw new Error("bad signature");
+      return { id: "evt", type: "checkout.session.completed", livemode };
+    };
+  it("the live secret wins and behaves exactly as before", async () => {
+    expect(await verifyStripeEventLanes("b", "s", { live: "whsec_live", test: "whsec_test" }, construct("whsec_live", true)))
+      .toMatchObject({ lane: "live" });
+    expect(await verifyStripeEventLanes("b", "s", { live: "whsec_live" }, construct("whsec_other", true))).toBeNull();
+  });
+  it("the test secret admits only test-mode events", async () => {
+    expect(await verifyStripeEventLanes("b", "s", { live: "whsec_live", test: "whsec_test" }, construct("whsec_test", false)))
+      .toMatchObject({ lane: "test" });
+    expect(await verifyStripeEventLanes("b", "s", { live: "whsec_live", test: "whsec_test" }, construct("whsec_test", true)))
+      .toBeNull();
+    expect(await verifyStripeEventLanes("b", "s", { live: "whsec_live", test: null }, construct("whsec_test", false)))
+      .toBeNull();
+  });
+  it("the test lane accepts gift event types only", () => {
+    for (const t of ["checkout.session.completed", "checkout.session.expired", "charge.refunded", "charge.dispute.closed"]) {
+      expect(isTestLaneEventType(t)).toBe(true);
+    }
+    for (const t of ["customer.subscription.updated", "customer.subscription.deleted", "invoice.paid"]) {
+      expect(isTestLaneEventType(t)).toBe(false);
+    }
+  });
+});
+

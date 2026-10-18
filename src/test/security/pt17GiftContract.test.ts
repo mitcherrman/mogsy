@@ -46,7 +46,8 @@ describe("the browser cannot choose what it pays or what it gets", () => {
 describe("payment truth comes from Stripe, never from a redirect", () => {
   it("verify-gift no longer sets status from payment_status alone", () => {
     expect(code(verifyEntry)).not.toMatch(/status:\s*"paid"/);
-    expect(code(verifyEntry)).toContain("reconcileGiftPayment(");
+    // PT1.7-T: through giftLanes, which reads each gift with its own mode's key.
+    expect(code(verifyEntry)).toMatch(/giftLanes\([\s\S]*?\)\.reconcile\(gift\)/);
   });
 
   it("the webhook verifies gift sessions instead of skipping them, before the subscription branch", () => {
@@ -97,3 +98,31 @@ describe("migration 0004 hygiene", () => {
     expect(shared).toContain("PRIVATE_ANNUAL_GIFT_BUYER_USER_IDS");
   });
 });
+
+describe("PT1.7-T test-key lane isolation (stripe-webhook)", () => {
+  const raw = read("supabase/functions/stripe-webhook/index.ts");
+  const lane = raw.slice(raw.indexOf("if (testLane) {"), raw.indexOf("const customOfferDeps"));
+
+  it("verifies with the live secret first and returns before any subscription or custom-offer code", () => {
+    // The live call is byte-identical to before; the test lane is tried only in its catch.
+    const liveCall = raw.indexOf("event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);");
+    const testTry = raw.indexOf("verifyTestLaneEvent<Stripe.Event>(");
+    expect(liveCall).toBeGreaterThan(-1);
+    expect(testTry).toBeGreaterThan(liveCall);
+    expect(raw.slice(liveCall, testTry)).toContain("} catch (err) {");
+    expect(lane.length).toBeGreaterThan(100);
+    expect(raw.indexOf("if (testLane) {")).toBeLessThan(raw.indexOf("switch (event.type)"));
+    expect(code(lane)).toContain("handleGiftEvent(");
+    expect(code(lane)).toContain("isTestLaneEventType(event.type)");
+    for (const forbidden of ["syncProStatus", "recordCommercialState", "handleCustomOfferEvent", "STRIPE_SECRET_KEY"]) {
+      expect(code(lane)).not.toContain(forbidden);
+    }
+  });
+
+  it("subscriptions, the custom offer and catalog gifts never read the test key", () => {
+    for (const f of ["create-checkout", "check-subscription", "customer-portal", "custom-offer-checkout"]) {
+      expect(read(`supabase/functions/${f}/index.ts`)).not.toMatch(/STRIPE_TEST_|testStripeKey/);
+    }
+  });
+});
+

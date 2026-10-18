@@ -12,9 +12,11 @@ import { resolveGiftByPriceId } from "./gift-catalog.ts";
 import {
   PRIVATE_ANNUAL_GIFT,
   PRIVATE_GIFT_AMOUNT,
+  giftStripeMode,
   isPrivateGift,
   normalizeEmail,
   validPrivatePrice,
+  type GiftStripeMode,
   type GiftTaxMode,
   type PriceLike,
 } from "./private-annual-gift.ts";
@@ -94,6 +96,12 @@ export interface GiftPaymentDeps {
   getGiftById(id: string): Promise<GiftRow | null>;
   getGiftByPaymentIntent(pi: string): Promise<GiftRow | null>;
   log: (message: string, detail?: Record<string, unknown>) => void;
+  /**
+   * PT1.7-T: the Stripe mode `stripe` talks to. When set, handleGiftEvent
+   * ignores gifts of the other mode (a test-lane event can never act on a live
+   * gift, nor the reverse). Left unset only by tests that predate the lane.
+   */
+  mode?: GiftStripeMode;
 }
 
 export interface Inspection {
@@ -205,6 +213,20 @@ export async function reconcileGiftPayment(deps: GiftPaymentDeps, gift: GiftRow)
   return { state, note, result: r.result, status: r.status };
 }
 
+/**
+ * PT1.7-T: reconcile a gift with the deps (Stripe key) of ITS OWN mode, fixed
+ * by its Checkout Session id. A test-mode gift with no test lane configured
+ * fails closed — it is never read with the live key, or guessed.
+ */
+export async function reconcileByMode(
+  gift: GiftRow,
+  lanes: { live: GiftPaymentDeps; test: GiftPaymentDeps | null },
+): Promise<ReconcileResult> {
+  const mode = giftStripeMode(gift.stripe_session_id);
+  if (mode === "test" && !lanes.test) throw new Error("test-mode gift but no Stripe test key is configured");
+  return await reconcileGiftPayment(mode === "test" ? lanes.test! : lanes.live, gift);
+}
+
 export const GIFT_EVENT_TYPES = [
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
@@ -262,6 +284,9 @@ export async function handleGiftEvent(
     return { handled: false, outcome: "unrelated_event" };
   }
 
+  if (deps.mode && giftStripeMode(gift.stripe_session_id) !== deps.mode) {
+    return { handled: true, outcome: "other_mode" };
+  }
   const r = await reconcileGiftPayment(deps, gift);
   return { handled: true, outcome: `${r.state}:${r.result}` };
 }

@@ -9,10 +9,12 @@
 import {
   GIFT_MESSAGE_MAX,
   GIFT_SESSION_REUSE_MARGIN_MS,
+  GIFT_SESSION_TTL_SECONDS,
   PRIVATE_GIFT_AMOUNT,
   PRIVATE_GIFT_DAYS,
   buildPrivateGiftSessionParams,
   buyerAllowed,
+  giftStripeMode,
   normalizeEmail,
   validPrivatePrice,
   validRecipientEmail,
@@ -42,6 +44,7 @@ export interface BuyerGiftRow extends GiftRow {
   paid_at: string | null;
   redeemed_at: string | null;
   amount_cents: number | null;
+  created_at?: string;
 }
 
 export interface GiftCheckoutDeps {
@@ -118,6 +121,7 @@ function buyerView(g: BuyerGiftRow): GiftCheckoutResponse {
   const usable = g.status === "paid" || g.status === "redeemed";
   return {
     gift_id: g.id,
+    test_mode: giftStripeMode(g.stripe_session_id) === "test",
     status: g.status,
     recipient_email: g.recipient_email,
     message: g.message,
@@ -140,6 +144,7 @@ export async function handleGiftCheckoutRequest(
     if (!signedIn || !buyerAllowed(deps.config, u.id)) return { available: false };
     return {
       available: true,
+      test_mode: deps.config.stripeMode === "test",
       email_verified: u.emailConfirmed,
       amount_cents: PRIVATE_GIFT_AMOUNT,
       currency: "usd",
@@ -185,6 +190,22 @@ export async function handleGiftCheckoutRequest(
   if (!prep.ok || !prep.gift_id) return refuse(PREPARE_REASONS[prep.reason ?? ""] ?? "OFFER_NOT_AVAILABLE");
 
   const nowMs = deps.now();
+  // PT1.7-T: an open checkout from the OTHER Stripe mode cannot be read or
+  // expired with this mode's key; it expires on its own (≤31 min) through its
+  // own webhook lane. Never start a second payable checkout beside it.
+  if (prep.existing_session_id && giftStripeMode(prep.existing_session_id) !== deps.config.stripeMode) {
+    const row = await deps.getGift(prep.gift_id);
+    const ageMs = row?.created_at ? nowMs - Date.parse(row.created_at) : 0;
+    // Sessions live at most GIFT_SESSION_TTL_SECONDS (31 min): past 32 min the
+    // other-mode session can no longer be paid. Retire the row (a payment that
+    // did complete is still recorded later: expired → paid is allowed in SQL).
+    if (!(ageMs > (GIFT_SESSION_TTL_SECONDS + 60) * 1000)) {
+      return refuse("CHECKOUT_BUSY", { gift_id: prep.gift_id });
+    }
+    await call(deps, "gift_private_abandon", { _gift_id: prep.gift_id, _sender: u.id, _session_id: prep.existing_session_id });
+    prep = await prepare();
+    if (!prep.ok || !prep.gift_id || prep.existing_session_id) return refuse("CHECKOUT_BUSY");
+  }
   if (prep.existing_session_id) {
     const existing = await deps.stripe.retrieveSession(prep.existing_session_id);
     if (existing.status === "complete") return refuse("PAYMENT_PROCESSING", { gift_id: prep.gift_id });
@@ -218,6 +239,7 @@ export async function handleGiftCheckoutRequest(
     taxMode: deps.config.taxMode,
     origin: req.origin,
     nowMs,
+    stripeMode: deps.config.stripeMode,
   }));
 
   const attached = (await call(deps, "gift_attach_session", {
