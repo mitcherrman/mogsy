@@ -15,6 +15,7 @@
  *         legacy=1                    (plan v1 day instead of plan v5)
  *         perfect=1                   (completion: a perfect day)
  *         error=1                     (an error + Try again under the actions)
+ *         fonts=system                (no bundled Inter/Cinzel: the OS fallback faces)
  */
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -148,4 +149,18 @@ function Scene() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<Scene />);
+// The app's real faces (see fonts/fonts.css) are loaded BEFORE first paint, so
+// every measurement sees real glyph widths; `fonts=system` drops them to measure
+// the OS fallback instead (how a platform difference is diagnosed).
+async function start() {
+  if (q.get("fonts") === "system") {
+    document.getElementById("w3a-fonts")?.remove();
+  } else {
+    await Promise.all([
+      "400 16px Inter", "500 16px Inter", "600 16px Inter", "700 16px Inter", "900 16px Inter",
+      "500 16px Cinzel", "700 16px Cinzel", "900 16px Cinzel",
+    ].map((f) => document.fonts.load(f)));
+  }
+  createRoot(document.getElementById("root")!).render(<Scene />);
+}
+void start();
