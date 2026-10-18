@@ -55,6 +55,7 @@ import {
   SourcesSection,
 } from "@/components/admin/users/AudienceSections";
 import { VisitorsSection } from "@/components/admin/users/VisitorsSection";
+import { AudiencePulse } from "@/components/admin/users/AudiencePulse";
 import { useAdminRoles } from "@/hooks/useAdminRoles";
 import { ADMIN_AREAS_BY_ID } from "@/lib/admin/admin-registry";
 import { loadAnalytics, ROW_CAP, type LoadedAnalytics } from "@/lib/admin/analytics/loadAnalytics";
@@ -335,7 +336,20 @@ export default function AdminUsersPage() {
           )}
 
           <div className="space-y-6" data-testid="users-section-audience">
-            <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
+            <AudiencePulse
+              dataset={viewLoaded.dataset}
+              range={state.range}
+              now={state.now}
+              classification={filtered.byVisitor}
+              onVisitor={(id) => {
+                setParam("population", null);
+                setParam("visitor", id);
+              }}
+            />
+            <details data-testid="users-advanced-analytics" className="rounded-lg border border-border p-3">
+              <summary className="cursor-pointer text-sm font-semibold">Advanced analytics and diagnostics</summary>
+              <div className="mt-4 space-y-6">
+                <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
             <section id="users-audience-visitors" aria-label="Visitors">
               <h2 className="mb-3 text-sm font-semibold">Visitors</h2>
               <VisitorsSection
@@ -383,6 +397,8 @@ export default function AdminUsersPage() {
               </AdminPanel>
               <HealthSection loaded={viewLoaded} range={state.range} now={state.now} />
             </section>
+              </div>
+            </details>
           </div>
         </DrillContext.Provider>
       )}
