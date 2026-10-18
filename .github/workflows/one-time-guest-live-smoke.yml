@@ -1,0 +1,39 @@
+name: One-Time Live Guest Upgrade QA
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/one-time-guest-live-smoke.yml'
+      - 'e2e/release-qa/**'
+      - 'playwright.release-guest-live.config.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  one-time-live-smoke:
+    # This deliberately touches a live backend. Only our one, trusted QA
+    # branch may invoke it. Never run for arbitrary PRs/forks.
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'qa/release-guest-smoke-20261018' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify public environment wiring exists
+        run: |
+          test -f .env
+          grep -q '^VITE_SUPABASE_URL=' .env
+          grep -q '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env
+          grep -q '^VITE_COMBAT_API_URL=' .env
+      - name: ONE real Daily guest -> account upgrade smoke
+        env:
+          VITE_E2E_AUTH: '0'
+        run: npx playwright test -c playwright.release-guest-live.config.ts
