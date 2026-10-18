@@ -42,8 +42,8 @@ export function AdminAccountJourney({ input, email, loading, error, browserLoadi
       </div>
       <div className="relative mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         <Milestone title="Email" value={email ? emailStatus : "Unavailable"} detail={email || "Owner email lookup unavailable"} verified={!!email && !!input.auth?.email_confirmed}/>
-        <Milestone title="Discord" value={input.discord ? "Linked" : "Not linked"} detail={input.discord?.label || "No verified link"} verified={!!input.discord}/>
-        <Milestone title="Riot ID" value={input.riot ? "Linked" : "Not linked"} detail={input.riot?.label || "No verified link"} verified={!!input.riot}/>
+        <Milestone title="Discord" value={input.discord?.verifiedAt ? "Verified" : input.discord ? "Not verified" : "Not linked"} detail={input.discord?.label || "No verified link"} verified={!!input.discord?.verifiedAt}/>
+        <Milestone title="Riot ID" value={input.riot?.verifiedAt ? "Verified" : input.riot ? "Not verified" : "Not linked"} detail={input.riot?.label || "No verified link"} verified={!!input.riot?.verifiedAt}/>
         <Milestone title="Premium" value={input.effectivePremium ? "Active" : "No entitlement"} detail={input.effectivePremium ? input.premiumSource : "No active entitlement"} verified={input.effectivePremium}/>
       </div>
       <div className="relative mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
