@@ -113,7 +113,12 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/quiz/admin", keys: ["QuizAdmin"] },
   { test: (p) => p.startsWith("/admin/quiz-content"), keys: ["AdminQuizWorkspace", "AdminQuizReview"] },
   { test: (p) => p === "/admin/quiz-builder" || p === "/admin/quiz-review", keys: ["AdminQuizWorkspace"] },
-  { test: (p) => p === "/lol", keys: ["AcademyCore", "CombatLab", "Quiz"] },
+  // ACADEMY STARTUP S3: the home's own chunk only. Its destinations (Quiz,
+  // Combat Lab, Archives, Pro Play) used to come along here, which put ~540 kB
+  // of other pages' code in front of the Core's first-screen art during the
+  // Landing; the Core now asks for them at idle once it is shown, and a hover
+  // or focus on a book still fetches that book's page at once (`intent`).
+  { test: (p) => p === "/lol", keys: ["AcademyCore"] },
   { test: (p) => p === "/lol/hall", keys: ["LolHub"] },
   { test: (p) => p === "/lol/tier-list", keys: ["LolTierList"] },
   { test: (p) => p.startsWith("/items/"), keys: ["ItemDetail"] },

@@ -17,6 +17,7 @@ import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
+import { championAssetsQuery } from "@/hooks/useChampionAssets";
 import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
@@ -308,9 +309,14 @@ export default function MogzyEntryV2({
 
   useEffect(() => {
     if (!autoEnter) return;
-    // The hub chunk (and Quiz/CombatLab, which it links to) loads during the
-    // hold rather than after the navigation. Idle-scheduled and deduped.
-    prefetchRoute(LEAGUE_HOME_ROUTE);
+    // The hub chunk loads during the hold rather than after the navigation.
+    // ACADEMY STARTUP S3: requested now (`intent`), not at idle — it is the
+    // one chunk this screen is certain to need, and an idle slot can come late
+    // on a busy device. Its destinations are no longer part of this warm.
+    prefetchRoute(LEAGUE_HOME_ROUTE, { intent: true });
+    // The champion manifest names the four cover splashes. It is small and its
+    // cost is latency, so it starts now rather than after this screen's art.
+    void queryClientRef.current?.prefetchQuery(championAssetsQuery);
     const hold = prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS;
     // PERF1 — then the Hub's own art, but only once THIS screen's art is in
     // (or the hold is over and the visitor is about to leave anyway), so the

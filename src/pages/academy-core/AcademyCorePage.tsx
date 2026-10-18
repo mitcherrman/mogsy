@@ -76,8 +76,10 @@ import {
   CORE_FULL_LAYOUT_MEDIA,
   CORE_MEASURE_SHARDS,
   CORE_OBSERVE_ROLES,
+  academyCoreSettled,
   warmAcademyCore,
 } from "@/pages/academy-core/academy-core-warm";
+import { HUB_DESTINATION_ROUTES } from "@/lib/hub/academy-hub-warm";
 import {
   ACADEMY_COMMONS_FRAGMENT,
   ACADEMY_COMMONS_HREF,
@@ -137,6 +139,21 @@ const COMPOSED_RING: BookId[] = ["leaguecraft", "pro-play", "archives", "combat-
 const TEMPO: Record<string, number> = { idle: 1, leaguecraft: 1.6, "pro-play": 1.3, "combat-lab": 2.5, archives: 0.65 };
 const IDLE_LINE = "Pick a book and I'll take a reading.";
 
+type IdleWindow = Window & {
+  requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+  cancelIdleCallback?: (id: number) => void;
+};
+/** Run once the browser is idle (or after a short delay where it cannot say). Returns a cancel. */
+function whenIdle(cb: () => void): () => void {
+  const w = window as IdleWindow;
+  if (w.requestIdleCallback) {
+    const id = w.requestIdleCallback(cb, { timeout: 1500 });
+    return () => w.cancelIdleCallback?.(id);
+  }
+  const id = window.setTimeout(cb, 200);
+  return () => window.clearTimeout(id);
+}
+
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia?.(query)?.matches === true : false,
@@ -185,10 +202,26 @@ function AcademyCoreOrrery() {
 
   /* ---------------- warm, then the covers ---------------- */
   const [warmed, setWarmed] = useState(false);
+  // ACADEMY STARTUP S3 — what nobody sees on arrival waits until the first
+  // screen's art has settled AND the browser is idle: the four destination
+  // pages' code (a hover or focus on a book still fetches its page at once),
+  // Mogzy's reaction poses and the projections' champion icons (only shown on
+  // hover / the crystal). They used to start with the page and compete with
+  // the Patch Report and the covers.
+  const [deferredReady, setDeferredReady] = useState(false);
   useEffect(() => {
     let active = true;
+    let cancelIdle = () => {};
     warmAcademyCore(queryClient).then(() => { if (active) setWarmed(true); });
-    return () => { active = false; };
+    academyCoreSettled().then(() => {
+      if (!active) return;
+      cancelIdle = whenIdle(() => {
+        if (!active) return;
+        setDeferredReady(true);
+        for (const to of HUB_DESTINATION_ROUTES) prefetchRoute(to);
+      });
+    });
+    return () => { active = false; cancelIdle(); };
   }, [queryClient]);
   const { data: manifest } = useChampionAssets();
   const splashes = useMemo(() => {
@@ -213,13 +246,16 @@ function AcademyCoreOrrery() {
   }), [warmed, splashes, brief]);
 
   // Pro Play's 5 v 5: manifest icons for the lineup and the Rift image, after the critical art (as the other projections)
-  const matchup = useMemo<MatchupMedia | null>(() => (warmed ? {
+  const matchup = useMemo<MatchupMedia | null>(() => (warmed && deferredReady ? {
     blue: MATCHUP_LINEUP.blue.map((n) => getChampionIcon(manifest, n)),
     red: MATCHUP_LINEUP.red.map((n) => getChampionIcon(manifest, n)),
     rift: RIFT_CENTRE_ART,
-  } : null), [warmed, manifest]);
+  } : null), [warmed, deferredReady, manifest]);
   // Leaguecraft's mystery portrait: the manifest's square Lux icon, on the same schedule
-  const mystery = useMemo(() => (warmed ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null), [warmed, manifest]);
+  const mystery = useMemo(
+    () => (warmed && deferredReady ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null),
+    [warmed, deferredReady, manifest],
+  );
 
   /* ---------------- the orbit engine ---------------- */
   const mode = fullLayout ? "orbit" : "composed";
@@ -626,7 +662,7 @@ function AcademyCoreOrrery() {
                 ambient={ambient}
                 reduced={reduced}
                 facing="left"
-                reactionsReady={warmed}
+                reactionsReady={warmed && deferredReady}
               />
             </div>
           </div>
