@@ -19,7 +19,7 @@ const input: AccountJourneyInput = {
  purchases:[{id:"p-one",item_type:"rewinds",status:"completed",created_at:"2026-10-16T10:00:00Z"}],
 };
 function Demo(){return <main className="mx-auto max-w-5xl space-y-5 px-3 py-5 sm:px-6">
- <AccountOperationsPulse values={{registered:7,bots:1,discord:1,riot:1,premium:1,active7d:4}} loading={false}/>
+ <AccountOperationsPulse values={{registered:7,bots:1,knownQa:2,discord:1,riot:1,premium:1,active7d:4}} loading={false}/>
  <AdminAccountJourney input={input} email="example@mogzy.test" loading={false} error={false}/>
 </main>;}
 createRoot(document.getElementById("root")!).render(<Demo/>);
