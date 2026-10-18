@@ -13,6 +13,7 @@ const input: AccountJourneyInput = {
   stripeStatus:null,stripeSubscriptionId:null,
   events:[{event_name:"ranked_started",received_at:"2026-10-18T11:00:00Z",source_system:"railway"}],
   matches:[], purchases:[{id:"purchase-1",created_at:"2026-10-17T18:00:00Z",item_type:"pro_subscription",status:"completed"}],
+  linkedBrowsers:[{visitorId:"browser-a",firstSeenAt:"2026-10-14T10:00:00Z",firstObservedAt:"2026-10-15T10:00:00Z",source:"youtube",landing:"/lol",campaign:"creator_launch"}],
 };
 afterEach(cleanup);
 describe("owner account intelligence",()=>{
@@ -25,6 +26,9 @@ describe("owner account intelligence",()=>{
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("Legacy ledger");
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("payment unverified");
    expect(screen.getByTestId("account-timeline")).toHaveTextContent("Ranked-engine round started");
+   expect(screen.getByTestId("account-acquisition")).toHaveTextContent("youtube");
+   expect(screen.getByTestId("account-acquisition")).toHaveTextContent("creator_launch");
+   expect(screen.getByTestId("account-acquisition")).toHaveTextContent("browser can be shared");
  });
  it("does not claim email verification when owner-authorized auth read has not loaded",()=>{
    render(<AdminAccountJourney input={{...input,auth:null,discord:null,purchases:[],events:[]}} email="qa@example.test" loading error/>);
