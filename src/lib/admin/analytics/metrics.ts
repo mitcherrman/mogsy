@@ -1098,10 +1098,10 @@ export function computeDaily(ds: AnalyticsDataset, range: AnalyticsRange): Daily
   const sessions = indexSessions(ds);
   const firstSeen = firstSeenByVisitor(ds, sessions);
   const day = (t: number) => new Date(t).toISOString().slice(0, 10);
-  const rows = new Map<string, { v: Set<string>; s: number; n: number; a: number }>();
+  const rows = new Map<string, { v: Set<string>; s: number; a: number }>();
   const get = (d: string) => {
     let r = rows.get(d);
-    if (!r) rows.set(d, (r = { v: new Set(), s: 0, n: 0, a: 0 }));
+    if (!r) rows.set(d, (r = { v: new Set(), s: 0, a: 0 }));
     return r;
   };
   for (const s of sessions.values()) {
@@ -1110,10 +1110,29 @@ export function computeDaily(ds: AnalyticsDataset, range: AnalyticsRange): Daily
     r.s += 1;
     r.v.add(s.visitor_id);
   }
-  for (const [, f] of firstSeen) if (inRange(f, range)) get(day(f)).n += 1;
+  // Same population as the headline visitor metric: browser events also count,
+  // including when a session insert failed. Railway events alone do not turn
+  // an unlinked user into a browser visitor.
+  for (const e of webEventsInRange(ds, range)) {
+    if (e.visitor_id) get(day(ts(e.received_at))).v.add(e.visitor_id);
+  }
   const starts = new Set(AUTHORITATIVE_START_EVENTS);
-  for (const e of railwayEventsInRange(ds, range)) if (starts.has(e.event_name)) get(day(ts(e.received_at))).a += 1;
+  for (const e of railwayEventsInRange(ds, range)) {
+    if (starts.has(e.event_name)) get(day(ts(e.received_at))).a += 1;
+  }
   return [...rows.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([d, r]) => ({ day: d, visitors: r.v.size, sessions: r.s, newVisitors: r.n, authoritativeStarts: r.a }));
+    .map(([d, r]) => ({
+      day: d,
+      visitors: r.v.size,
+      sessions: r.s,
+      // New visitors are a SUBSET of the visitors actually active that day.
+      // The older implementation counted all first-seen records, even those
+      // whose session/event never arrived; this produced 12 new out of 3 visitors.
+      newVisitors: [...r.v].filter((visitorId) => {
+        const first = firstSeen.get(visitorId);
+        return first !== undefined && day(first) === d;
+      }).length,
+      authoritativeStarts: r.a,
+    }));
 }
