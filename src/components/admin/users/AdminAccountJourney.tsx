@@ -67,8 +67,8 @@ export function AdminAccountJourney({ input, email, loading, error, browserLoadi
             <div key={browser.visitorId} className="rounded-lg border border-border/70 bg-background/50 px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Browser acquisition</p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">{browser.source || "Unknown source"}</span>
-                {browser.campaign && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{browser.campaign}</span>}
+                <span className="min-w-0 break-all text-sm font-semibold">{browser.source || "Unknown source"}</span>
+                {browser.campaign && <span title={browser.campaign} className="max-w-full truncate rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{browser.campaign}</span>}
               </div>
               <p className="mt-1 break-all text-[11px] text-muted-foreground">Landing: {browser.landing || "Unknown"} · First browser visit: {browser.firstSeenAt ? stamp(browser.firstSeenAt) : "Unknown"}</p>
               <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">Visitor {browser.visitorId.slice(0,8)}… · Linked {stamp(browser.firstObservedAt)}</p>
