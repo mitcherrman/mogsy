@@ -7,10 +7,6 @@ on:
       - 'src/components/admin/users/**'
       - 'src/pages/admin/areas/AdminUsersPage.tsx'
       - '.github/workflows/launch-audience-pulse.yml'
-  push:
-    branches:
-      - feature/users-launch-pulse-20261018
-
 permissions:
   contents: read
 
@@ -29,7 +25,7 @@ jobs:
         run: npm install --no-save --package-lock=false --no-audit --no-fund
       - name: Focused analytics and Admin tests
         run: npm test -- src/lib/admin/analytics/metrics.test.ts src/lib/admin/analytics/traffic.test.ts src/components/admin/users/AudienceSections.gameplay.test.tsx src/components/admin/users/AudiencePulse.test.tsx src/pages/admin/areas/AdminShell.areas.test.tsx
-      - name: Frontend type check
-        run: npx tsc --noEmit -p tsconfig.app.json
       - name: Vite production compile
         run: npx vite build
+      - name: Frontend type check (existing repository baseline also fails)
+        run: npx tsc --noEmit -p tsconfig.app.json
