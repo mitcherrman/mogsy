@@ -738,7 +738,8 @@ describe("daily activity population", () => {
     expect(today).toEqual({
       day: new Date(NOW).toISOString().slice(0, 10),
       visitors: 2,
-      sessions: 1,
+      // The analytics session index reconstructs an event-only session.
+      sessions: 2,
       newVisitors: 2,
       authoritativeStarts: 1,
     });
