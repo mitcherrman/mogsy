@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { track } from "@/lib/analytics";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles } from "lucide-react";
@@ -12,9 +13,20 @@ interface Props {
 export default function QuizSignUpNudge({ returnTo = "/quiz" }: Props) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(true);
+  const recorded = useRef(false);
+  useEffect(() => {
+    if (recorded.current) return;
+    recorded.current = true;
+    track("signup_offer_shown", { metadata: {
+      placement: "practice_after_three_answers", activity: "practice", return_to: returnTo,
+    } });
+  }, [returnTo]);
 
   const dismiss = () => {
     markSoftNudgeSeen();
+    track("signup_offer_dismissed", { metadata: {
+      placement: "practice_after_three_answers", activity: "practice", return_to: returnTo,
+    } });
     setVisible(false);
   };
 
@@ -36,7 +48,12 @@ export default function QuizSignUpNudge({ returnTo = "/quiz" }: Props) {
             <Button
               size="sm"
               className="shrink-0 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
-              onClick={() => navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`)}
+              onClick={() => {
+                track("signup_offer_clicked", { metadata: {
+                  placement: "practice_after_three_answers", activity: "practice", return_to: returnTo,
+                } });
+                navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`);
+              }}
             >
               Sign up
             </Button>
