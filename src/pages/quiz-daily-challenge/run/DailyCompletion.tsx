@@ -26,6 +26,7 @@ import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { skippedStageNote, stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
 import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
+import { COMPLETION_SHORT_DENSITY, TOUCH_TARGET } from "./dailyResultDensity";
 import { StageTag } from "./StageTag";
 
 /** Where a guest lands back after the in-place account upgrade. */
@@ -55,10 +56,10 @@ export function DailyCompletion({ run, saveRequired = false }: {
     <section data-testid="daily-run-complete" data-perfect={perfect ? "true" : "false"}
       data-hierarchy={main ? "main" : undefined}
       aria-live="polite"
-      className="ranked-beat ranked-beat--major rounded-md py-10"
-      style={{ minHeight: "min(70vh, 38rem)" }}>
+      className={`ranked-beat ranked-beat--major rounded-md py-5 sm:min-h-[min(70vh,38rem)] sm:py-10 ${
+        COMPLETION_SHORT_DENSITY}`}>
       <span aria-hidden className="ranked-beat__scrim rounded-md" />
-      <div className="ranked-beat__inner px-4">
+      <div className="ranked-beat__inner px-4 max-sm:!gap-2">
         <p className="ranked-beat__meta">{run.planDate}</p>
         {main ? (
           <>
@@ -82,7 +83,7 @@ export function DailyCompletion({ run, saveRequired = false }: {
           </p>
         )}
         {main ? (
-          <div className="flex w-full max-w-xl flex-col gap-3 pt-2" data-testid="daily-run-recap">
+          <div className="flex w-full max-w-xl flex-col gap-3 pt-2 max-sm:gap-2 max-sm:pt-0" data-testid="daily-run-recap">
             {dailySections(run).map((g) => (
               <section key={g.id} data-testid={`daily-recap-section-${g.id}`} data-section={g.id}
                 aria-label={g.label} className="flex flex-col gap-1.5">
@@ -100,24 +101,24 @@ export function DailyCompletion({ run, saveRequired = false }: {
             ))}
           </div>
         ) : (
-          <ol className="flex w-full max-w-xl flex-col gap-2 pt-2" data-testid="daily-run-recap">
+          <ol className="flex w-full max-w-xl flex-col gap-2 pt-2 max-sm:pt-0" data-testid="daily-run-recap">
             {run.stages.map((s) => (
               <RecapRow key={s.id} stage={s} closing={s.id === review.id} main={false} mainScore={null} />
             ))}
           </ol>
         )}
-        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-0 pt-1 sm:pt-3">
           {/* PGM1 — the bonus modes outlive the day's run: a finished Daily
               can still go on to the public catalog. v5+ only, where there is
               a "More Challenges" at all. */}
           {main && (
             <Link to={MORE_CHALLENGES_ROUTE} state={moreChallengesState("daily")} data-testid="daily-run-more-challenges"
-              className="text-sm text-[#f0d78c] underline">
+              className={`inline-flex items-center text-sm text-[#f0d78c] underline ${TOUCH_TARGET}`}>
               More Challenges
             </Link>
           )}
           <Link to="/quiz" data-testid="daily-run-home"
-            className="text-sm text-muted-foreground underline">
+            className={`inline-flex items-center text-sm text-muted-foreground underline ${TOUCH_TARGET}`}>
             Back to Leaguecraft
           </Link>
         </div>
@@ -158,7 +159,7 @@ function RecapRow({ stage: s, closing, main, mainScore }: {
   return (
     <li data-testid={`daily-recap-${s.index}`} data-stage-kind={s.kind}
       data-closing={closing ? "true" : undefined} data-main={main ? "true" : undefined}
-      className={`flex items-center justify-between gap-3 rounded-sm border px-3 py-2 text-left ${
+      className={`flex items-center justify-between gap-3 rounded-sm border px-3 py-2 text-left max-sm:py-1.5 ${
         closing ? "border-amber-300/50 bg-amber-300/5"
           : main ? "border-[rgba(240,215,140,0.55)] bg-[rgba(240,215,140,0.06)]"
             : "border-white/10 bg-black/20"}`}>
@@ -178,7 +179,7 @@ function RecapRow({ stage: s, closing, main, mainScore }: {
                 <span className="block text-lg font-black leading-tight text-[#f5e6b8]"
                   data-testid="daily-recap-main-score">
                   {mainScore.toLocaleString()}
-                  <span className="pl-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] opacity-70">
+                  <span className="pl-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] opacity-70 max-sm:block max-sm:pl-0">
                     Daily score
                   </span>
                 </span>

@@ -50,6 +50,7 @@ import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type { MatchDiscoveriesView } from "@/lib/ranked-public/contracts";
 import type { DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { useMatchDiscoveries } from "@/lib/ranked-core/flow/useMatchDiscoveries";
+import { DISCOVERY_PANEL_DENSITY, RESULT_GAP_CANCEL } from "./dailyResultDensity";
 
 /** Stage kinds that can mint a new card. A Review replays the day's misses,
  *  which are already owned by definition, so it never asks. */
@@ -116,8 +117,8 @@ export function DailyDiscoveries({
       data-match-id={view.matchId}
       data-expanded={expanded ? "true" : "false"}
       className={`grid transition-[grid-template-rows,margin,opacity] duration-300 ease-out
-        motion-reduce:transition-none ${expanded
-          ? "grid-rows-[1fr] opacity-100" : "-mt-4 grid-rows-[0fr] opacity-0"}`}
+        motion-reduce:transition-none ${DISCOVERY_PANEL_DENSITY} ${expanded
+          ? "grid-rows-[1fr] opacity-100" : `${RESULT_GAP_CANCEL} grid-rows-[0fr] opacity-0`}`}
     >
       <div className="min-h-0 overflow-hidden">
         <DiscoveryReveal view={view} ceremony onReview={onReview} />

@@ -1,0 +1,10251 @@
+{
+ "base": "http://127.0.0.1:8131",
+ "reduced": false,
+ "results": [
+  {
+   "state": "main-pending",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1001,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 433,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 460,
+    "bottom": 504,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-pending",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1001,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 361,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 532,
+    "bottom": 576,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-pending",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1001,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 334,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 559,
+    "bottom": 603,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-pending",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1001,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 157,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 736,
+    "bottom": 780,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-pending",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 107.3,
+     "bottom": 455.3,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 471.3,
+     "bottom": 567.3,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-optional": {
+     "top": 583.3,
+     "bottom": 702.8,
+     "h": 119.5,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 718.8,
+     "bottom": 762.8,
+     "h": 44,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 718.8,
+    "bottom": 762.8,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 718.8,
+    "bottom": 762.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-pending",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 818,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 443,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 761.5,
+     "bottom": 805.5,
+     "h": 44,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 761.5,
+    "bottom": 805.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 314.5
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 318.5,
+    "bottom": 362.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-pending",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 818,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 428,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 761.5,
+     "bottom": 805.5,
+     "h": 44,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 761.5,
+    "bottom": 805.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 333.5,
+    "bottom": 377.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1503,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 935,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 304
+    },
+    "daily-discoveries": {
+     "top": 690,
+     "bottom": 1175.9,
+     "h": 485.9,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-optional": {
+     "top": 1191.9,
+     "bottom": 1378.9,
+     "h": 187,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 1394.9,
+     "bottom": 1490.9,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 1394.9,
+    "bottom": 1438.9,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 459.9,
+    "bottom": 503.9,
+    "inView": true
+   },
+   "cls": 0.0151,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1463,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 823,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 344
+    },
+    "daily-discoveries": {
+     "top": 690,
+     "bottom": 1136.3,
+     "h": 446.3,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-optional": {
+     "top": 1152.3,
+     "bottom": 1339.3,
+     "h": 187,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 1355.3,
+     "bottom": 1451.3,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 1355.3,
+    "bottom": 1399.3,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 532.3,
+    "bottom": 576.3,
+    "inView": true
+   },
+   "cls": 0.0069,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1453,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 786,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 359
+    },
+    "daily-discoveries": {
+     "top": 690,
+     "bottom": 1126.3,
+     "h": 436.3,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-optional": {
+     "top": 1142.3,
+     "bottom": 1329.3,
+     "h": 187,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 1345.3,
+     "bottom": 1441.3,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 1345.3,
+    "bottom": 1389.3,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 559.3,
+    "bottom": 603.3,
+    "inView": true
+   },
+   "cls": 0.0079,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1420,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 576,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 374
+    },
+    "daily-discoveries": {
+     "top": 690,
+     "bottom": 1092.6,
+     "h": 402.6,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-optional": {
+     "top": 1108.6,
+     "bottom": 1295.6,
+     "h": 187,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 1311.6,
+     "bottom": 1407.6,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 1311.6,
+    "bottom": 1355.6,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 735.6,
+    "bottom": 779.6,
+    "inView": true
+   },
+   "cls": 0.0279,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1155,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 355,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 542,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 539,
+     "h": 93,
+     "l": 304,
+     "r": 976
+    },
+    "daily-discoveries": {
+     "top": 558,
+     "bottom": 959.1,
+     "h": 401.1,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-optional": {
+     "top": 975.1,
+     "bottom": 1094.6,
+     "h": 119.5,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 1110.6,
+     "bottom": 1154.6,
+     "h": 44,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 1110.6,
+    "bottom": 1154.6,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 378,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 755.6,
+    "bottom": 799.6,
+    "inView": true
+   },
+   "cls": 0.0333,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 1235,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 860,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 16,
+     "r": 651
+    },
+    "daily-discoveries": {
+     "top": 626,
+     "bottom": 1027.1,
+     "h": 401.1,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-optional": {
+     "top": 1043.1,
+     "bottom": 1162.6,
+     "h": 119.5,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 1178.6,
+     "bottom": 1222.6,
+     "h": 44,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 1178.6,
+    "bottom": 1222.6,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 314.5
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 318.6,
+    "bottom": 362.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-cards",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 1235,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 845,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 86,
+     "r": 758
+    },
+    "daily-discoveries": {
+     "top": 626,
+     "bottom": 1027.1,
+     "h": 401.1,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-optional": {
+     "top": 1043.1,
+     "bottom": 1162.6,
+     "h": 119.5,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 1178.6,
+     "bottom": 1222.6,
+     "h": 44,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 1178.6,
+    "bottom": 1222.6,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 333.6,
+    "bottom": 377.6,
+    "inView": true
+   },
+   "cls": 0.0017,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1001,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 433,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 460,
+    "bottom": 504,
+    "inView": true
+   },
+   "cls": 0.013,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1001,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 361,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 532,
+    "bottom": 576,
+    "inView": true
+   },
+   "cls": 0.0096,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1001,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 334,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 559,
+    "bottom": 603,
+    "inView": true
+   },
+   "cls": 0.009,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1001,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 157,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 736,
+    "bottom": 780,
+    "inView": true
+   },
+   "cls": 0.0043,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 107.3,
+     "bottom": 455.3,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 471.3,
+     "bottom": 567.3,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 471.3,
+     "bottom": 564.3,
+     "h": 93,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-optional": {
+     "top": 583.3,
+     "bottom": 702.8,
+     "h": 119.5,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 718.8,
+     "bottom": 762.8,
+     "h": 44,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 718.8,
+    "bottom": 762.8,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 403.3,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 718.8,
+    "bottom": 762.8,
+    "inView": true
+   },
+   "cls": 0.0022,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 818,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 443,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 761.5,
+     "bottom": 805.5,
+     "h": 44,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 761.5,
+    "bottom": 805.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 314.5
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 318.5,
+    "bottom": 362.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-settled-nocards",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 818,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 428,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 761.5,
+     "bottom": 805.5,
+     "h": 44,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 761.5,
+    "bottom": 805.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 333.5,
+    "bottom": 377.5,
+    "inView": true
+   },
+   "cls": 0.0019,
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1001,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 433,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 460,
+    "bottom": 504,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0.0155,
+    "shifts": [
+     {
+      "v": 0.0017,
+      "t": 2145
+     },
+     {
+      "v": 0.0008,
+      "t": 2161
+     },
+     {
+      "v": 0.0021,
+      "t": 2178
+     },
+     {
+      "v": 0.0005,
+      "t": 2194
+     },
+     {
+      "v": 0.0005,
+      "t": 2228
+     },
+     {
+      "v": 0.0005,
+      "t": 2245
+     },
+     {
+      "v": 0.0005,
+      "t": 2278
+     },
+     {
+      "v": 0.0005,
+      "t": 2294
+     },
+     {
+      "v": 0.0005,
+      "t": 2378
+     },
+     {
+      "v": 0.0005,
+      "t": 2395
+     },
+     {
+      "v": 0.0034,
+      "t": 2428
+     },
+     {
+      "v": 0.001,
+      "t": 2495
+     },
+     {
+      "v": 0.0005,
+      "t": 2512
+     },
+     {
+      "v": 0.0005,
+      "t": 2595
+     },
+     {
+      "v": 0.0005,
+      "t": 2612
+     },
+     {
+      "v": 0.0005,
+      "t": 2662
+     },
+     {
+      "v": 0.0005,
+      "t": 2695
+     },
+     {
+      "v": 0.0005,
+      "t": 2712
+     }
+    ],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 893,
+    "finalAct": 893,
+    "actDrift": 0,
+    "preH": 1001,
+    "finalH": 1001
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1001,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 361,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 532,
+    "bottom": 576,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0.0095,
+    "shifts": [
+     {
+      "v": 0.0018,
+      "t": 2040
+     },
+     {
+      "v": 0.0015,
+      "t": 2056
+     },
+     {
+      "v": 0.0004,
+      "t": 2106
+     },
+     {
+      "v": 0.0003,
+      "t": 2290
+     },
+     {
+      "v": 0.0028,
+      "t": 2306
+     },
+     {
+      "v": 0.0003,
+      "t": 2323
+     },
+     {
+      "v": 0.0003,
+      "t": 2339
+     },
+     {
+      "v": 0.0003,
+      "t": 2357
+     },
+     {
+      "v": 0.0003,
+      "t": 2473
+     },
+     {
+      "v": 0.0003,
+      "t": 2490
+     },
+     {
+      "v": 0.0003,
+      "t": 2540
+     },
+     {
+      "v": 0.0003,
+      "t": 2573
+     },
+     {
+      "v": 0.0003,
+      "t": 2590
+     }
+    ],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 893,
+    "finalAct": 893,
+    "actDrift": 0,
+    "preH": 1001,
+    "finalH": 1001
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1001,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 334,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 559,
+    "bottom": 603,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0.0084,
+    "shifts": [
+     {
+      "v": 0.0008,
+      "t": 1972
+     },
+     {
+      "v": 0.0008,
+      "t": 1989
+     },
+     {
+      "v": 0.0013,
+      "t": 2006
+     },
+     {
+      "v": 0.0003,
+      "t": 2023
+     },
+     {
+      "v": 0.0003,
+      "t": 2206
+     },
+     {
+      "v": 0.0003,
+      "t": 2222
+     },
+     {
+      "v": 0.0018,
+      "t": 2256
+     },
+     {
+      "v": 0.0004,
+      "t": 2273
+     },
+     {
+      "v": 0.0006,
+      "t": 2323
+     },
+     {
+      "v": 0.0003,
+      "t": 2339
+     },
+     {
+      "v": 0.0003,
+      "t": 2423
+     },
+     {
+      "v": 0.0003,
+      "t": 2439
+     },
+     {
+      "v": 0.0003,
+      "t": 2489
+     },
+     {
+      "v": 0.0003,
+      "t": 2523
+     },
+     {
+      "v": 0.0003,
+      "t": 2540
+     }
+    ],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 893,
+    "finalAct": 893,
+    "actDrift": 0,
+    "preH": 1001,
+    "finalH": 1001
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1001,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 157,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 893,
+     "bottom": 989,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 893,
+    "bottom": 937,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 736,
+    "bottom": 780,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0.0051,
+    "shifts": [
+     {
+      "v": 0.0006,
+      "t": 2234
+     },
+     {
+      "v": 0.0003,
+      "t": 2251
+     },
+     {
+      "v": 0.0007,
+      "t": 2428
+     },
+     {
+      "v": 0.0002,
+      "t": 2433
+     },
+     {
+      "v": 0.0002,
+      "t": 2467
+     },
+     {
+      "v": 0.0002,
+      "t": 2484
+     },
+     {
+      "v": 0.0011,
+      "t": 2517
+     },
+     {
+      "v": 0.0002,
+      "t": 2534
+     },
+     {
+      "v": 0.0004,
+      "t": 2583
+     },
+     {
+      "v": 0.0002,
+      "t": 2600
+     },
+     {
+      "v": 0.0002,
+      "t": 2685
+     },
+     {
+      "v": 0.0002,
+      "t": 2700
+     },
+     {
+      "v": 0.0002,
+      "t": 2750
+     },
+     {
+      "v": 0.0002,
+      "t": 2784
+     },
+     {
+      "v": 0.0002,
+      "t": 2800
+     }
+    ],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 893,
+    "finalAct": 893,
+    "actDrift": 0,
+    "preH": 1001,
+    "finalH": 1001
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 107.3,
+     "bottom": 455.3,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 471.3,
+     "bottom": 567.3,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 471.3,
+     "bottom": 564.3,
+     "h": 93,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-optional": {
+     "top": 583.3,
+     "bottom": 702.8,
+     "h": 119.5,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 718.8,
+     "bottom": 762.8,
+     "h": 44,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 718.8,
+    "bottom": 762.8,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 403.3,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 718.8,
+    "bottom": 762.8,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0.0024,
+    "shifts": [
+     {
+      "v": 0.0003,
+      "t": 2160
+     },
+     {
+      "v": 0.0001,
+      "t": 2176
+     },
+     {
+      "v": 0.0002,
+      "t": 2193
+     },
+     {
+      "v": 0.0002,
+      "t": 2209
+     },
+     {
+      "v": 0.0001,
+      "t": 2242
+     },
+     {
+      "v": 0.0001,
+      "t": 2259
+     },
+     {
+      "v": 0.0001,
+      "t": 2293
+     },
+     {
+      "v": 0.0001,
+      "t": 2309
+     },
+     {
+      "v": 0.0001,
+      "t": 2393
+     },
+     {
+      "v": 0.0001,
+      "t": 2409
+     },
+     {
+      "v": 0.0005,
+      "t": 2443
+     },
+     {
+      "v": 0.0002,
+      "t": 2510
+     },
+     {
+      "v": 0.0001,
+      "t": 2527
+     },
+     {
+      "v": 0.0001,
+      "t": 2610
+     },
+     {
+      "v": 0.0001,
+      "t": 2627
+     },
+     {
+      "v": 0.0001,
+      "t": 2676
+     },
+     {
+      "v": 0.0001,
+      "t": 2710
+     },
+     {
+      "v": 0.0001,
+      "t": 2727
+     }
+    ],
+    "preHero": 107.3,
+    "finalHero": 107.3,
+    "heroDrift": 0,
+    "preAct": 718.8,
+    "finalAct": 718.8,
+    "actDrift": 0,
+    "preH": 800,
+    "finalH": 800
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 818,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 443,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 761.5,
+     "bottom": 805.5,
+     "h": 44,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 761.5,
+    "bottom": 805.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 314.5
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 318.5,
+    "bottom": 362.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 150,
+    "finalHero": 150,
+    "heroDrift": 0,
+    "preAct": 761.5,
+    "finalAct": 761.5,
+    "actDrift": 0,
+    "preH": 818,
+    "finalH": 818
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-flip",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 818,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 428,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 761.5,
+     "bottom": 805.5,
+     "h": 44,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 761.5,
+    "bottom": 805.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 333.5,
+    "bottom": 377.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0.0018,
+    "shifts": [
+     {
+      "v": 0.0003,
+      "t": 2085
+     },
+     {
+      "v": 0.0003,
+      "t": 2103
+     },
+     {
+      "v": 0.0001,
+      "t": 2135
+     },
+     {
+      "v": 0.0001,
+      "t": 2302
+     },
+     {
+      "v": 0.0001,
+      "t": 2319
+     },
+     {
+      "v": 0.0001,
+      "t": 2335
+     },
+     {
+      "v": 0.0005,
+      "t": 2352
+     },
+     {
+      "v": 0.0001,
+      "t": 2369
+     },
+     {
+      "v": 0.0001,
+      "t": 2385
+     },
+     {
+      "v": 0.0001,
+      "t": 2402
+     },
+     {
+      "v": 0.0001,
+      "t": 2519
+     },
+     {
+      "v": 0.0001,
+      "t": 2536
+     },
+     {
+      "v": 0.0001,
+      "t": 2585
+     },
+     {
+      "v": 0.0001,
+      "t": 2619
+     },
+     {
+      "v": 0.0001,
+      "t": 2636
+     }
+    ],
+    "preHero": 150,
+    "finalHero": 150,
+    "heroDrift": 0,
+    "preAct": 761.5,
+    "finalAct": 761.5,
+    "actDrift": 0,
+    "preH": 818,
+    "finalH": 818
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1067,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 499,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 304
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 304
+    },
+    "daily-run-error": {
+     "top": 893,
+     "bottom": 909,
+     "h": 16,
+     "l": 56.6,
+     "r": 263.4
+    },
+    "result-actions": {
+     "top": 959,
+     "bottom": 1055,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 959,
+    "bottom": 1003,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 460,
+    "bottom": 504,
+    "inView": true
+   },
+   "cls": 0.0125,
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1067,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 427,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 344
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 344
+    },
+    "daily-run-error": {
+     "top": 893,
+     "bottom": 909,
+     "h": 16,
+     "l": 76.6,
+     "r": 283.4
+    },
+    "result-actions": {
+     "top": 959,
+     "bottom": 1055,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 959,
+    "bottom": 1003,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 532,
+    "bottom": 576,
+    "inView": true
+   },
+   "cls": 0.0096,
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1067,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 400,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 359
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 359
+    },
+    "daily-run-error": {
+     "top": 893,
+     "bottom": 909,
+     "h": 16,
+     "l": 84.1,
+     "r": 290.9
+    },
+    "result-actions": {
+     "top": 959,
+     "bottom": 1055,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 959,
+    "bottom": 1003,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 559,
+    "bottom": 603,
+    "inView": true
+   },
+   "cls": 0.0094,
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1067,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 223,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 374
+    },
+    "daily-main-optional": {
+     "top": 690,
+     "bottom": 877,
+     "h": 187,
+     "l": 16,
+     "r": 374
+    },
+    "daily-run-error": {
+     "top": 893,
+     "bottom": 909,
+     "h": 16,
+     "l": 91.6,
+     "r": 298.4
+    },
+    "result-actions": {
+     "top": 959,
+     "bottom": 1055,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 959,
+    "bottom": 1003,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 736,
+    "bottom": 780,
+    "inView": true
+   },
+   "cls": 0.0058,
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 804,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 4,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 542,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 539,
+     "h": 93,
+     "l": 304,
+     "r": 976
+    },
+    "daily-main-optional": {
+     "top": 558,
+     "bottom": 677.5,
+     "h": 119.5,
+     "l": 304,
+     "r": 976
+    },
+    "daily-run-error": {
+     "top": 693.5,
+     "bottom": 709.5,
+     "h": 16,
+     "l": 536.6,
+     "r": 743.4
+    },
+    "result-actions": {
+     "top": 759.5,
+     "bottom": 803.5,
+     "h": 44,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 759.5,
+    "bottom": 803.5,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 378,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 755.5,
+    "bottom": 799.5,
+    "inView": true
+   },
+   "cls": 0.0021,
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 884,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 509,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 16,
+     "r": 651
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 16,
+     "r": 651
+    },
+    "daily-run-error": {
+     "top": 761.5,
+     "bottom": 777.5,
+     "h": 16,
+     "l": 230.1,
+     "r": 436.9
+    },
+    "result-actions": {
+     "top": 827.5,
+     "bottom": 871.5,
+     "h": 44,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 827.5,
+    "bottom": 871.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 314.5
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 318.5,
+    "bottom": 362.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "main-error",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 884,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 494,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 86,
+     "r": 758
+    },
+    "daily-main-optional": {
+     "top": 626,
+     "bottom": 745.5,
+     "h": 119.5,
+     "l": 86,
+     "r": 758
+    },
+    "daily-run-error": {
+     "top": 761.5,
+     "bottom": 777.5,
+     "h": 16,
+     "l": 318.6,
+     "r": 525.4
+    },
+    "result-actions": {
+     "top": 827.5,
+     "bottom": 871.5,
+     "h": 44,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 827.5,
+    "bottom": 871.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-main-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 333
+    }
+   ],
+   "scoreBottom": 446,
+   "scoreEl": "daily-main-score",
+   "atBottom": {
+    "top": 333.5,
+    "bottom": 377.5,
+    "inView": true
+   },
+   "cls": 0.0017,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1060,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 492,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 473,
+     "h": 331,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 489,
+     "bottom": 729,
+     "h": 240,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 745,
+     "bottom": 767,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 951.5,
+     "bottom": 1047.5,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 951.5,
+    "bottom": 995.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 459.5,
+    "bottom": 503.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1049,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 409,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1036.5,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 531.5,
+    "bottom": 575.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1049,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 382,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1036.5,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 558.5,
+    "bottom": 602.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1049,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 205,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1036.5,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 735.5,
+    "bottom": 779.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 834,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 34,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 622,
+     "h": 176,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 638,
+     "bottom": 660,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 737.5,
+     "bottom": 833.5,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 737.5,
+    "bottom": 781.5,
+    "h": 44,
+    "l": 304,
+    "r": 976
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 703.5,
+    "bottom": 747.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 914,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 539,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 16,
+    "r": 651
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 635
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 266.5,
+    "bottom": 310.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-pending",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 914,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 524,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 86,
+    "r": 758
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1112,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 544,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 473,
+     "h": 331,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 489,
+     "bottom": 729,
+     "h": 240,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 489,
+     "bottom": 726,
+     "h": 237,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 745,
+     "bottom": 767,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 951.5,
+     "bottom": 1099.5,
+     "h": 148,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 951.5,
+    "bottom": 995.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 407.5,
+    "bottom": 451.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1101,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 461,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 479.5,
+    "bottom": 523.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1101,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 434,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 506.5,
+    "bottom": 550.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1101,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 257,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 683.5,
+    "bottom": 727.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 834,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 34,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 622,
+     "h": 176,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 620,
+     "h": 174,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 638,
+     "bottom": 660,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 737.5,
+     "bottom": 833.5,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 737.5,
+    "bottom": 781.5,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 703.5,
+    "bottom": 747.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 914,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 539,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 314.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 266.5,
+    "bottom": 310.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 914,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 524,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1613,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 1045,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 473,
+     "h": 331,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 489,
+     "bottom": 729,
+     "h": 240,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 489,
+     "bottom": 726,
+     "h": 237,
+     "l": 16,
+     "r": 304
+    },
+    "daily-discoveries": {
+     "top": 745,
+     "bottom": 1230.9,
+     "h": 485.9,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1246.9,
+     "bottom": 1268.9,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 1453.4,
+     "bottom": 1601.4,
+     "h": 148,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 1453.4,
+    "bottom": 1497.4,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 408.4,
+    "bottom": 452.4,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1563,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 923,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 344
+    },
+    "daily-discoveries": {
+     "top": 734,
+     "bottom": 1180.3,
+     "h": 446.3,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1196.3,
+     "bottom": 1218.3,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 1402.8,
+     "bottom": 1550.8,
+     "h": 148,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 1402.8,
+    "bottom": 1446.8,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 479.8,
+    "bottom": 523.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1553,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 886,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 359
+    },
+    "daily-discoveries": {
+     "top": 734,
+     "bottom": 1170.3,
+     "h": 436.3,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1186.3,
+     "bottom": 1208.3,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 1392.8,
+     "bottom": 1540.8,
+     "h": 148,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 1392.8,
+    "bottom": 1436.8,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 506.8,
+    "bottom": 550.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1519,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 675,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 374
+    },
+    "daily-discoveries": {
+     "top": 734,
+     "bottom": 1136.6,
+     "h": 402.6,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1152.6,
+     "bottom": 1174.6,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 1359.1,
+     "bottom": 1507.1,
+     "h": 148,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 1359.1,
+    "bottom": 1403.1,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 684.1,
+    "bottom": 728.1,
+    "inView": true
+   },
+   "cls": 0.0114,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1251,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 451,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 622,
+     "h": 176,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 620,
+     "h": 174,
+     "l": 304,
+     "r": 976
+    },
+    "daily-discoveries": {
+     "top": 638,
+     "bottom": 1039.1,
+     "h": 401.1,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1055.1,
+     "bottom": 1077.1,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 1154.6,
+     "bottom": 1250.6,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 1154.6,
+    "bottom": 1198.6,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 703.6,
+    "bottom": 747.6,
+    "inView": true
+   },
+   "cls": 0.0084,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 1331,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 956,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 16,
+     "r": 651
+    },
+    "daily-discoveries": {
+     "top": 706,
+     "bottom": 1107.1,
+     "h": 401.1,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1123.1,
+     "bottom": 1145.1,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 1222.6,
+     "bottom": 1318.6,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 1222.6,
+    "bottom": 1266.6,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 314.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 266.6,
+    "bottom": 310.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-settled-cards",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 1331,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 941,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 86,
+     "r": 758
+    },
+    "daily-discoveries": {
+     "top": 706,
+     "bottom": 1107.1,
+     "h": 401.1,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 1123.1,
+     "bottom": 1145.1,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 1222.6,
+     "bottom": 1318.6,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 1222.6,
+    "bottom": 1266.6,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.6,
+    "bottom": 325.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1112,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 544,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 473,
+     "h": 331,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 489,
+     "bottom": 729,
+     "h": 240,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 489,
+     "bottom": 726,
+     "h": 237,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 745,
+     "bottom": 767,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 951.5,
+     "bottom": 1099.5,
+     "h": 148,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 951.5,
+    "bottom": 995.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 407.5,
+    "bottom": 451.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 951.5,
+    "finalAct": 951.5,
+    "actDrift": 0,
+    "preH": 1060,
+    "finalH": 1112
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1101,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 461,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 479.5,
+    "bottom": 523.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 940.5,
+    "finalAct": 940.5,
+    "actDrift": 0,
+    "preH": 1049,
+    "finalH": 1101
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1101,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 434,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 506.5,
+    "bottom": 550.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 940.5,
+    "finalAct": 940.5,
+    "actDrift": 0,
+    "preH": 1049,
+    "finalH": 1101
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1101,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 257,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 683.5,
+    "bottom": 727.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 142,
+    "finalHero": 142,
+    "heroDrift": 0,
+    "preAct": 940.5,
+    "finalAct": 940.5,
+    "actDrift": 0,
+    "preH": 1049,
+    "finalH": 1101
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 834,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 34,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 622,
+     "h": 176,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 620,
+     "h": 174,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 638,
+     "bottom": 660,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 737.5,
+     "bottom": 833.5,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 737.5,
+    "bottom": 781.5,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 703.5,
+    "bottom": 747.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 82,
+    "finalHero": 82,
+    "heroDrift": 0,
+    "preAct": 737.5,
+    "finalAct": 737.5,
+    "actDrift": 0,
+    "preH": 834,
+    "finalH": 834
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 914,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 539,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 314.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 266.5,
+    "bottom": 310.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 150,
+    "finalHero": 150,
+    "heroDrift": 0,
+    "preAct": 805.5,
+    "finalAct": 805.5,
+    "actDrift": 0,
+    "preH": 914,
+    "finalH": 914
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "tt-flip",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 914,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 524,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "flip": {
+    "cls": 0,
+    "shifts": [],
+    "preHero": 150,
+    "finalHero": 150,
+    "heroDrift": 0,
+    "preAct": 805.5,
+    "finalAct": 805.5,
+    "actDrift": 0,
+    "preH": 914,
+    "finalH": 914
+   },
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1148,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 580,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 509,
+     "h": 367,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 525,
+     "bottom": 765,
+     "h": 240,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 525,
+     "bottom": 762,
+     "h": 237,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 781,
+     "bottom": 803,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 987.5,
+     "bottom": 1135.5,
+     "h": 148,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 987.5,
+    "bottom": 1031.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 407.5,
+    "bottom": 451.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1101,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 461,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 479.5,
+    "bottom": 523.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1101,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 434,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 506.5,
+    "bottom": 550.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1101,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 257,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 940.5,
+     "bottom": 1088.5,
+     "h": 148,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 940.5,
+    "bottom": 984.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 683.5,
+    "bottom": 727.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 834,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 34,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 622,
+     "h": 176,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 602,
+     "h": 156,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 638,
+     "bottom": 660,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 737.5,
+     "bottom": 833.5,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 737.5,
+    "bottom": 781.5,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 703.5,
+    "bottom": 747.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 914,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 539,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 314.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 266.5,
+    "bottom": 310.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "surv-settled",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 914,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 524,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 805.5,
+     "bottom": 901.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 805.5,
+    "bottom": 849.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1005,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 437,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 690,
+     "bottom": 712,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 896.5,
+     "bottom": 992.5,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 896.5,
+    "bottom": 940.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 459.5,
+    "bottom": 503.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1005,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 365,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 690,
+     "bottom": 712,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 896.5,
+     "bottom": 992.5,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 896.5,
+    "bottom": 940.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 531.5,
+    "bottom": 575.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 969,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 302,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 638,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 634,
+     "h": 156,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 654,
+     "bottom": 676,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 860.5,
+     "bottom": 956.5,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 860.5,
+    "bottom": 904.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 558.5,
+    "bottom": 602.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 969,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 125,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 638,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 634,
+     "h": 156,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 654,
+     "bottom": 676,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 860.5,
+     "bottom": 956.5,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 860.5,
+    "bottom": 904.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 735.5,
+    "bottom": 779.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 99.3,
+     "bottom": 447.3,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 463.3,
+     "bottom": 559.3,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 463.3,
+     "bottom": 556.3,
+     "h": 93,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 575.3,
+     "bottom": 597.3,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 674.8,
+     "bottom": 770.8,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 674.8,
+    "bottom": 718.8,
+    "h": 44,
+    "l": 304,
+    "r": 976
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 674.8,
+    "bottom": 718.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 887,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 512,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 626,
+     "bottom": 648,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 779,
+     "bottom": 875,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 779,
+    "bottom": 823,
+    "h": 44,
+    "l": 16,
+    "r": 651
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 635
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 267,
+    "bottom": 311,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "weak-settled",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 834,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 444,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 626,
+     "bottom": 648,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 725.5,
+     "bottom": 821.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 725.5,
+    "bottom": 769.5,
+    "h": 44,
+    "l": 86,
+    "r": 758
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 985,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 417,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 654,
+     "h": 140,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 651,
+     "h": 137,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 670,
+     "bottom": 692,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 876.5,
+     "bottom": 972.5,
+     "h": 96,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 876.5,
+    "bottom": 920.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 459.5,
+    "bottom": 503.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 985,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 345,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 654,
+     "h": 140,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 651,
+     "h": 137,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 670,
+     "bottom": 692,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 876.5,
+     "bottom": 972.5,
+     "h": 96,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 876.5,
+    "bottom": 920.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 531.5,
+    "bottom": 575.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 985,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 318,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 654,
+     "h": 140,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 651,
+     "h": 137,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 670,
+     "bottom": 692,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 876.5,
+     "bottom": 972.5,
+     "h": 96,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 876.5,
+    "bottom": 920.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 558.5,
+    "bottom": 602.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 985,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 141,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 654,
+     "h": 140,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 651,
+     "h": 137,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 670,
+     "bottom": 692,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 876.5,
+     "bottom": 972.5,
+     "h": 96,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 876.5,
+    "bottom": 920.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 735.5,
+    "bottom": 779.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 109.3,
+     "bottom": 457.3,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 473.3,
+     "bottom": 549.3,
+     "h": 76,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 473.3,
+     "bottom": 547.3,
+     "h": 74,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 565.3,
+     "bottom": 587.3,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 664.8,
+     "bottom": 760.8,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 664.8,
+    "bottom": 708.8,
+    "h": 44,
+    "l": 304,
+    "r": 976
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 664.8,
+    "bottom": 708.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 867,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 492,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 590,
+     "h": 76,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 588,
+     "h": 74,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 606,
+     "bottom": 628,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 759,
+     "bottom": 855,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 759,
+    "bottom": 803,
+    "h": 44,
+    "l": 16,
+    "r": 651
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 635
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 267,
+    "bottom": 311,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "review-settled",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 814,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 424,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 590,
+     "h": 76,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 588,
+     "h": 74,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 606,
+     "bottom": 628,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 705.5,
+     "bottom": 801.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 705.5,
+    "bottom": 749.5,
+    "h": 44,
+    "l": 86,
+    "r": 758
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 1178,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 610,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 473,
+     "h": 331,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 489,
+     "bottom": 729,
+     "h": 240,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 489,
+     "bottom": 726,
+     "h": 237,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 745,
+     "bottom": 767,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "daily-run-error": {
+     "top": 951.5,
+     "bottom": 967.5,
+     "h": 16,
+     "l": 56.6,
+     "r": 263.4
+    },
+    "result-actions": {
+     "top": 1017.5,
+     "bottom": 1165.5,
+     "h": 148,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 1017.5,
+    "bottom": 1061.5,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 288
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 407.5,
+    "bottom": 451.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 1167,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 527,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "daily-run-error": {
+     "top": 940.5,
+     "bottom": 956.5,
+     "h": 16,
+     "l": 76.6,
+     "r": 283.4
+    },
+    "result-actions": {
+     "top": 1006.5,
+     "bottom": 1154.5,
+     "h": 148,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 1006.5,
+    "bottom": 1050.5,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 328
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 479.5,
+    "bottom": 523.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 1167,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 500,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 715,
+     "h": 237,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "daily-run-error": {
+     "top": 940.5,
+     "bottom": 956.5,
+     "h": 16,
+     "l": 84.1,
+     "r": 290.9
+    },
+    "result-actions": {
+     "top": 1006.5,
+     "bottom": 1154.5,
+     "h": 148,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 1006.5,
+    "bottom": 1050.5,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 343
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 506.5,
+    "bottom": 550.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 1167,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 323,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 718,
+     "h": 240,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 697,
+     "h": 219,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 734,
+     "bottom": 756,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "daily-run-error": {
+     "top": 940.5,
+     "bottom": 956.5,
+     "h": 16,
+     "l": 91.6,
+     "r": 298.4
+    },
+    "result-actions": {
+     "top": 1006.5,
+     "bottom": 1154.5,
+     "h": 148,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 1006.5,
+    "bottom": 1050.5,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 358
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 683.5,
+    "bottom": 727.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 900,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 100,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 82,
+     "bottom": 430,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 446,
+     "bottom": 622,
+     "h": 176,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 446,
+     "bottom": 620,
+     "h": 174,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 638,
+     "bottom": 660,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "daily-run-error": {
+     "top": 737.5,
+     "bottom": 753.5,
+     "h": 16,
+     "l": 536.6,
+     "r": 743.4
+    },
+    "result-actions": {
+     "top": 803.5,
+     "bottom": 899.5,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 803.5,
+    "bottom": 847.5,
+    "h": 44,
+    "l": 304,
+    "r": 635
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 703.5,
+    "bottom": 747.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 980,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 605,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "daily-run-error": {
+     "top": 805.5,
+     "bottom": 821.5,
+     "h": 16,
+     "l": 230.1,
+     "r": 436.9
+    },
+    "result-actions": {
+     "top": 871.5,
+     "bottom": 967.5,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 871.5,
+    "bottom": 915.5,
+    "h": 44,
+    "l": 16,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 312.5
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 314.5
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 266.5,
+    "bottom": 310.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "stage-error",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 980,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 590,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 690,
+     "h": 176,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 688,
+     "h": 174,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 706,
+     "bottom": 728,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "daily-run-error": {
+     "top": 805.5,
+     "bottom": 821.5,
+     "h": 16,
+     "l": 318.6,
+     "r": 525.4
+    },
+    "result-actions": {
+     "top": 871.5,
+     "bottom": 967.5,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 871.5,
+    "bottom": 915.5,
+    "h": 44,
+    "l": 86,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-retry",
+     "h": 26,
+     "w": 102.1
+    },
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 331
+    },
+    {
+     "id": "daily-stage-result-more-challenges",
+     "h": 44,
+     "w": 333
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 281.5,
+    "bottom": 325.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 861,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 293,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 304
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 304
+    },
+    "daily-stage-result-next-slot": {
+     "top": 690,
+     "bottom": 712,
+     "h": 22,
+     "l": 16,
+     "r": 304
+    },
+    "result-actions": {
+     "top": 805,
+     "bottom": 849,
+     "h": 44,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 805,
+    "bottom": 849,
+    "h": 44,
+    "l": 16,
+    "r": 304
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 288
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 512,
+    "bottom": 556,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 861,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 221,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 498,
+     "h": 356,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 674,
+     "h": 160,
+     "l": 16,
+     "r": 344
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 670,
+     "h": 156,
+     "l": 16,
+     "r": 344
+    },
+    "daily-stage-result-next-slot": {
+     "top": 690,
+     "bottom": 712,
+     "h": 22,
+     "l": 16,
+     "r": 344
+    },
+    "result-actions": {
+     "top": 805,
+     "bottom": 849,
+     "h": 44,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 805,
+    "bottom": 849,
+    "h": 44,
+    "l": 16,
+    "r": 344
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 328
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 584,
+    "bottom": 628,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 825,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 158,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 638,
+     "h": 160,
+     "l": 16,
+     "r": 359
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 634,
+     "h": 156,
+     "l": 16,
+     "r": 359
+    },
+    "daily-stage-result-next-slot": {
+     "top": 654,
+     "bottom": 676,
+     "h": 22,
+     "l": 16,
+     "r": 359
+    },
+    "result-actions": {
+     "top": 769,
+     "bottom": 813,
+     "h": 44,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 769,
+    "bottom": 813,
+    "h": 44,
+    "l": 16,
+    "r": 359
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 343
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 611,
+    "bottom": 655,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 844,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 142,
+     "bottom": 462,
+     "h": 320,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 478,
+     "bottom": 638,
+     "h": 160,
+     "l": 16,
+     "r": 374
+    },
+    "result-snapshot": {
+     "top": 478,
+     "bottom": 634,
+     "h": 156,
+     "l": 16,
+     "r": 374
+    },
+    "daily-stage-result-next-slot": {
+     "top": 654,
+     "bottom": 676,
+     "h": 22,
+     "l": 16,
+     "r": 374
+    },
+    "result-actions": {
+     "top": 769,
+     "bottom": 813,
+     "h": 44,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 769,
+    "bottom": 813,
+    "h": 44,
+    "l": 16,
+    "r": 374
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 358
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 769,
+    "bottom": 813,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 134.8,
+     "bottom": 482.8,
+     "h": 348,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 498.8,
+     "bottom": 594.8,
+     "h": 96,
+     "l": 304,
+     "r": 976
+    },
+    "result-snapshot": {
+     "top": 498.8,
+     "bottom": 591.8,
+     "h": 93,
+     "l": 304,
+     "r": 976
+    },
+    "daily-stage-result-next-slot": {
+     "top": 610.8,
+     "bottom": 632.8,
+     "h": 22,
+     "l": 304,
+     "r": 976
+    },
+    "result-actions": {
+     "top": 691.3,
+     "bottom": 735.3,
+     "h": 44,
+     "l": 304,
+     "r": 976
+    }
+   },
+   "primary": {
+    "top": 691.3,
+    "bottom": 735.3,
+    "h": 44,
+    "l": 304,
+    "r": 976
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 691.3,
+    "bottom": 735.3,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 763,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 388,
+   "overflowX": 4,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 16,
+     "r": 651
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 16,
+     "r": 651
+    },
+    "daily-stage-result-next-slot": {
+     "top": 626,
+     "bottom": 648,
+     "h": 22,
+     "l": 16,
+     "r": 651
+    },
+    "result-actions": {
+     "top": 706.5,
+     "bottom": 750.5,
+     "h": 44,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 706.5,
+    "bottom": 750.5,
+    "h": 44,
+    "l": 16,
+    "r": 651
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 635
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 318.5,
+    "bottom": 362.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "legacy-standard",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 763,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 373,
+   "overflowX": 0,
+   "regions": {
+    "result-hero": {
+     "top": 150,
+     "bottom": 498,
+     "h": 348,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-snapshot-slot": {
+     "top": 514,
+     "bottom": 610,
+     "h": 96,
+     "l": 86,
+     "r": 758
+    },
+    "result-snapshot": {
+     "top": 514,
+     "bottom": 607,
+     "h": 93,
+     "l": 86,
+     "r": 758
+    },
+    "daily-stage-result-next-slot": {
+     "top": 626,
+     "bottom": 648,
+     "h": 22,
+     "l": 86,
+     "r": 758
+    },
+    "result-actions": {
+     "top": 706.5,
+     "bottom": 750.5,
+     "h": 44,
+     "l": 86,
+     "r": 758
+    }
+   },
+   "primary": {
+    "top": 706.5,
+    "bottom": 750.5,
+    "h": 44,
+    "l": 86,
+    "r": 758
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-stage-result-continue",
+     "h": 44,
+     "w": 672
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 333.5,
+    "bottom": 377.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 641,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 73,
+   "overflowX": 4,
+   "regions": {
+    "result-actions": {
+     "top": 492.5,
+     "bottom": 588.5,
+     "h": 96,
+     "l": 32,
+     "r": 288
+    },
+    "daily-optional-entry": {
+     "top": 96,
+     "bottom": 628.5,
+     "h": 532.5,
+     "l": 16,
+     "r": 304
+    }
+   },
+   "primary": {
+    "top": 492.5,
+    "bottom": 536.5,
+    "h": 44,
+    "l": 32,
+    "r": 288
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 256
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 256
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 419.5,
+    "bottom": 463.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 641,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 1,
+   "overflowX": 4,
+   "regions": {
+    "result-actions": {
+     "top": 493.4,
+     "bottom": 589.4,
+     "h": 96,
+     "l": 32,
+     "r": 328
+    },
+    "daily-optional-entry": {
+     "top": 96,
+     "bottom": 629.4,
+     "h": 533.4,
+     "l": 16,
+     "r": 344
+    }
+   },
+   "primary": {
+    "top": 493.4,
+    "bottom": 537.4,
+    "h": 44,
+    "l": 32,
+    "r": 328
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 296
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 296
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 492.4,
+    "bottom": 536.4,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 667,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 4,
+   "regions": {
+    "result-actions": {
+     "top": 494.7,
+     "bottom": 590.7,
+     "h": 96,
+     "l": 32,
+     "r": 343
+    },
+    "daily-optional-entry": {
+     "top": 96,
+     "bottom": 630.7,
+     "h": 534.7,
+     "l": 16,
+     "r": 359
+    }
+   },
+   "primary": {
+    "top": 494.7,
+    "bottom": 538.7,
+    "h": 44,
+    "l": 32,
+    "r": 343
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 311
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 311
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 494.7,
+    "bottom": 538.7,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 844,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 4,
+   "regions": {
+    "result-actions": {
+     "top": 523.3,
+     "bottom": 619.3,
+     "h": 96,
+     "l": 32,
+     "r": 358
+    },
+    "daily-optional-entry": {
+     "top": 96,
+     "bottom": 686.8,
+     "h": 590.8,
+     "l": 16,
+     "r": 374
+    }
+   },
+   "primary": {
+    "top": 523.3,
+    "bottom": 567.3,
+    "h": 44,
+    "l": 32,
+    "r": 358
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 326
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 326
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 523.3,
+    "bottom": 567.3,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "result-actions": {
+     "top": 542.1,
+     "bottom": 586.1,
+     "h": 44,
+     "l": 448,
+     "r": 832
+    },
+    "daily-optional-entry": {
+     "top": 132,
+     "bottom": 692,
+     "h": 560,
+     "l": 48,
+     "r": 1232
+    }
+   },
+   "primary": {
+    "top": 542.1,
+    "bottom": 586.1,
+    "h": 44,
+    "l": 448,
+    "r": 635
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 187
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 189
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 542.1,
+    "bottom": 586.1,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 577,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 202,
+   "overflowX": 4,
+   "regions": {
+    "result-actions": {
+     "top": 480.8,
+     "bottom": 524.8,
+     "h": 44,
+     "l": 141.5,
+     "r": 525.5
+    },
+    "daily-optional-entry": {
+     "top": 104,
+     "bottom": 564.8,
+     "h": 460.8,
+     "l": 16,
+     "r": 651
+    }
+   },
+   "primary": {
+    "top": 480.8,
+    "bottom": 524.8,
+    "h": 44,
+    "l": 141.5,
+    "r": 328.5
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 187
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 189
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 278.8,
+    "bottom": 322.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "optional-entry",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 529,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 139,
+   "overflowX": 0,
+   "regions": {
+    "result-actions": {
+     "top": 432.6,
+     "bottom": 476.6,
+     "h": 44,
+     "l": 230,
+     "r": 614
+    },
+    "daily-optional-entry": {
+     "top": 104,
+     "bottom": 516.6,
+     "h": 412.6,
+     "l": 32,
+     "r": 812
+    }
+   },
+   "primary": {
+    "top": 432.6,
+    "bottom": 476.6,
+    "h": 44,
+    "l": 230,
+    "r": 417
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-optional-continue",
+     "h": 44,
+     "w": 187
+    },
+    {
+     "id": "daily-done-for-now",
+     "h": 44,
+     "w": 189
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 293.6,
+    "bottom": 337.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 798,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 230,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 785.8,
+     "h": 689.8,
+     "l": 16,
+     "r": 304
+    },
+    "daily-run-recap": {
+     "top": 290.7,
+     "bottom": 704.2,
+     "h": 413.5,
+     "l": 32,
+     "r": 288
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 220.9,
+     "h": 58.8,
+     "l": 32,
+     "r": 288
+    }
+   },
+   "primary": {
+    "top": 725.8,
+    "bottom": 745.8,
+    "h": 20,
+    "l": 161.4,
+    "r": 282.7
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 495.8,
+    "bottom": 515.8,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 799,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 159,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 787.4,
+     "h": 691.4,
+     "l": 16,
+     "r": 344
+    },
+    "daily-run-recap": {
+     "top": 292.3,
+     "bottom": 705.8,
+     "h": 413.5,
+     "l": 32,
+     "r": 328
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 222.6,
+     "h": 60.5,
+     "l": 32,
+     "r": 328
+    }
+   },
+   "primary": {
+    "top": 727.4,
+    "bottom": 747.4,
+    "h": 20,
+    "l": 181.4,
+    "r": 302.7
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 568.4,
+    "bottom": 588.4,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 802,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 135,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 790,
+     "h": 694,
+     "l": 16,
+     "r": 359
+    },
+    "daily-run-recap": {
+     "top": 294.9,
+     "bottom": 708.4,
+     "h": 413.5,
+     "l": 32,
+     "r": 343
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 225.1,
+     "h": 63,
+     "l": 32,
+     "r": 343
+    }
+   },
+   "primary": {
+    "top": 730,
+    "bottom": 750,
+    "h": 20,
+    "l": 188.9,
+    "r": 310.2
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 595,
+    "bottom": 615,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 844,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 792.5,
+     "h": 696.5,
+     "l": 16,
+     "r": 374
+    },
+    "daily-run-recap": {
+     "top": 297.4,
+     "bottom": 710.9,
+     "h": 413.5,
+     "l": 32,
+     "r": 358
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 227.6,
+     "h": 65.5,
+     "l": 32,
+     "r": 358
+    }
+   },
+   "primary": {
+    "top": 732.5,
+    "bottom": 752.5,
+    "h": 20,
+    "l": 196.4,
+    "r": 317.7
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 732.5,
+    "bottom": 752.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "daily-run-complete": {
+     "top": 68.5,
+     "bottom": 755.5,
+     "h": 687.1,
+     "l": 48,
+     "r": 1232
+    },
+    "daily-run-recap": {
+     "top": 256.4,
+     "bottom": 669.9,
+     "h": 413.5,
+     "l": 352,
+     "r": 928
+    },
+    "daily-run-complete-title": {
+     "top": 140.1,
+     "bottom": 194.7,
+     "h": 54.6,
+     "l": 256.7,
+     "r": 1023.3
+    }
+   },
+   "primary": {
+    "top": 695.5,
+    "bottom": 715.5,
+    "h": 20,
+    "l": 641.4,
+    "r": 762.7
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 695.5,
+    "bottom": 715.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 782,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 407,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 104,
+     "bottom": 770.1,
+     "h": 666.1,
+     "l": 16,
+     "r": 651
+    },
+    "daily-run-recap": {
+     "top": 271,
+     "bottom": 684.5,
+     "h": 413.5,
+     "l": 45.5,
+     "r": 621.5
+    },
+    "daily-run-complete-title": {
+     "top": 175.6,
+     "bottom": 209.2,
+     "h": 33.6,
+     "l": 97.6,
+     "r": 569.4
+    }
+   },
+   "primary": {
+    "top": 710.1,
+    "bottom": 730.1,
+    "h": 20,
+    "l": 334.9,
+    "r": 456.2
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 303.1,
+    "bottom": 323.1,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 787,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 397,
+   "overflowX": 0,
+   "regions": {
+    "daily-run-complete": {
+     "top": 104,
+     "bottom": 775.5,
+     "h": 671.5,
+     "l": 32,
+     "r": 812
+    },
+    "daily-run-recap": {
+     "top": 276.4,
+     "bottom": 689.9,
+     "h": 413.5,
+     "l": 134,
+     "r": 710
+    },
+    "daily-run-complete-title": {
+     "top": 175.6,
+     "bottom": 214.6,
+     "h": 39,
+     "l": 148.3,
+     "r": 695.7
+    }
+   },
+   "primary": {
+    "top": 715.5,
+    "bottom": 735.5,
+    "h": 20,
+    "l": 423.4,
+    "r": 544.7
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 318.5,
+    "bottom": 338.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 857,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 289,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 845.3,
+     "h": 749.3,
+     "l": 16,
+     "r": 304
+    },
+    "daily-run-recap": {
+     "top": 350.3,
+     "bottom": 763.8,
+     "h": 413.5,
+     "l": 32,
+     "r": 288
+    },
+    "daily-run-perfect": {
+     "top": 290.7,
+     "bottom": 340.7,
+     "h": 50,
+     "l": 32,
+     "r": 288
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 220.9,
+     "h": 58.8,
+     "l": 32,
+     "r": 288
+    }
+   },
+   "primary": {
+    "top": 785.3,
+    "bottom": 805.3,
+    "h": 20,
+    "l": 161.4,
+    "r": 282.7
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 496.3,
+    "bottom": 516.3,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 859,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 219,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 847,
+     "h": 751,
+     "l": 16,
+     "r": 344
+    },
+    "daily-run-recap": {
+     "top": 351.9,
+     "bottom": 765.4,
+     "h": 413.5,
+     "l": 32,
+     "r": 328
+    },
+    "daily-run-perfect": {
+     "top": 292.3,
+     "bottom": 342.3,
+     "h": 50,
+     "l": 32,
+     "r": 328
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 222.6,
+     "h": 60.5,
+     "l": 32,
+     "r": 328
+    }
+   },
+   "primary": {
+    "top": 787,
+    "bottom": 807,
+    "h": 20,
+    "l": 181.4,
+    "r": 302.7
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 568,
+    "bottom": 588,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 862,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 195,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 849.6,
+     "h": 753.6,
+     "l": 16,
+     "r": 359
+    },
+    "daily-run-recap": {
+     "top": 354.5,
+     "bottom": 768,
+     "h": 413.5,
+     "l": 32,
+     "r": 343
+    },
+    "daily-run-perfect": {
+     "top": 294.9,
+     "bottom": 344.9,
+     "h": 50,
+     "l": 32,
+     "r": 343
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 225.1,
+     "h": 63,
+     "l": 32,
+     "r": 343
+    }
+   },
+   "primary": {
+    "top": 789.6,
+    "bottom": 809.6,
+    "h": 20,
+    "l": 188.9,
+    "r": 310.2
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 594.6,
+    "bottom": 614.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 864,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 20,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 852.1,
+     "h": 756.1,
+     "l": 16,
+     "r": 374
+    },
+    "daily-run-recap": {
+     "top": 357,
+     "bottom": 770.5,
+     "h": 413.5,
+     "l": 32,
+     "r": 358
+    },
+    "daily-run-perfect": {
+     "top": 297.4,
+     "bottom": 347.4,
+     "h": 50,
+     "l": 32,
+     "r": 358
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 227.6,
+     "h": 65.5,
+     "l": 32,
+     "r": 358
+    }
+   },
+   "primary": {
+    "top": 792.1,
+    "bottom": 812.1,
+    "h": 20,
+    "l": 196.4,
+    "r": 317.7
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 772.1,
+    "bottom": 792.1,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "daily-run-complete": {
+     "top": 46.7,
+     "bottom": 777.3,
+     "h": 730.7,
+     "l": 48,
+     "r": 1232
+    },
+    "daily-run-recap": {
+     "top": 278.2,
+     "bottom": 691.7,
+     "h": 413.5,
+     "l": 352,
+     "r": 928
+    },
+    "daily-run-perfect": {
+     "top": 234.6,
+     "bottom": 264.6,
+     "h": 30,
+     "l": 460.9,
+     "r": 819.1
+    },
+    "daily-run-complete-title": {
+     "top": 118.3,
+     "bottom": 172.9,
+     "h": 54.6,
+     "l": 256.7,
+     "r": 1023.3
+    }
+   },
+   "primary": {
+    "top": 717.3,
+    "bottom": 737.3,
+    "h": 20,
+    "l": 641.4,
+    "r": 762.7
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 717.3,
+    "bottom": 737.3,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 826,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 451,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 104,
+     "bottom": 813.7,
+     "h": 709.7,
+     "l": 16,
+     "r": 651
+    },
+    "daily-run-recap": {
+     "top": 314.6,
+     "bottom": 728.1,
+     "h": 413.5,
+     "l": 45.5,
+     "r": 621.5
+    },
+    "daily-run-perfect": {
+     "top": 271,
+     "bottom": 301,
+     "h": 30,
+     "l": 154.4,
+     "r": 512.6
+    },
+    "daily-run-complete-title": {
+     "top": 175.6,
+     "bottom": 209.2,
+     "h": 33.6,
+     "l": 97.6,
+     "r": 569.4
+    }
+   },
+   "primary": {
+    "top": 753.7,
+    "bottom": 773.7,
+    "h": 20,
+    "l": 334.9,
+    "r": 456.2
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 302.7,
+    "bottom": 322.7,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-perfect",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 831,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 441,
+   "overflowX": 0,
+   "regions": {
+    "daily-run-complete": {
+     "top": 104,
+     "bottom": 819,
+     "h": 715,
+     "l": 32,
+     "r": 812
+    },
+    "daily-run-recap": {
+     "top": 320,
+     "bottom": 733.5,
+     "h": 413.5,
+     "l": 134,
+     "r": 710
+    },
+    "daily-run-perfect": {
+     "top": 276.4,
+     "bottom": 306.4,
+     "h": 30,
+     "l": 242.9,
+     "r": 601.1
+    },
+    "daily-run-complete-title": {
+     "top": 175.6,
+     "bottom": 214.6,
+     "h": 39,
+     "l": 148.3,
+     "r": 695.7
+    }
+   },
+   "primary": {
+    "top": 759,
+    "bottom": 779,
+    "h": 20,
+    "l": 423.4,
+    "r": 544.7
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-more-challenges",
+     "h": 20,
+     "w": 104
+    },
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 318,
+    "bottom": 338,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "320x568",
+   "vw": 320,
+   "vh": 568,
+   "docH": 638,
+   "docW": 324,
+   "clientW": 320,
+   "scrollY": 0,
+   "travel": 70,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 626,
+     "h": 530,
+     "l": 16,
+     "r": 304
+    },
+    "daily-run-recap": {
+     "top": 270.5,
+     "bottom": 544.5,
+     "h": 274,
+     "l": 32,
+     "r": 288
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 250.3,
+     "h": 88.2,
+     "l": 32,
+     "r": 288
+    }
+   },
+   "primary": {
+    "top": 566,
+    "bottom": 586,
+    "h": 20,
+    "l": 99.3,
+    "r": 220.6
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 496,
+    "bottom": 516,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "360x640",
+   "vw": 360,
+   "vh": 640,
+   "docH": 641,
+   "docW": 364,
+   "clientW": 360,
+   "scrollY": 0,
+   "travel": 1,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 628.6,
+     "h": 532.6,
+     "l": 16,
+     "r": 344
+    },
+    "daily-run-recap": {
+     "top": 273,
+     "bottom": 547,
+     "h": 274,
+     "l": 32,
+     "r": 328
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 252.8,
+     "h": 90.7,
+     "l": 32,
+     "r": 328
+    }
+   },
+   "primary": {
+    "top": 568.6,
+    "bottom": 588.6,
+    "h": 20,
+    "l": 119.3,
+    "r": 240.6
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 567.6,
+    "bottom": 587.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "375x667",
+   "vw": 375,
+   "vh": 667,
+   "docH": 667,
+   "docW": 379,
+   "clientW": 375,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 632.4,
+     "h": 536.4,
+     "l": 16,
+     "r": 359
+    },
+    "daily-run-recap": {
+     "top": 276.8,
+     "bottom": 550.8,
+     "h": 274,
+     "l": 32,
+     "r": 343
+    },
+    "daily-run-complete-title": {
+     "top": 162.1,
+     "bottom": 256.6,
+     "h": 94.5,
+     "l": 32,
+     "r": 343
+    }
+   },
+   "primary": {
+    "top": 572.4,
+    "bottom": 592.4,
+    "h": 20,
+    "l": 126.8,
+    "r": 248.1
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 572.4,
+    "bottom": 592.4,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "390x844",
+   "vw": 390,
+   "vh": 844,
+   "docH": 844,
+   "docW": 394,
+   "clientW": 390,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 96,
+     "bottom": 686.8,
+     "h": 590.8,
+     "l": 16,
+     "r": 374
+    },
+    "daily-run-recap": {
+     "top": 305.9,
+     "bottom": 579.9,
+     "h": 274,
+     "l": 32,
+     "r": 358
+    },
+    "daily-run-complete-title": {
+     "top": 187.4,
+     "bottom": 285.7,
+     "h": 98.3,
+     "l": 32,
+     "r": 358
+    }
+   },
+   "primary": {
+    "top": 601.5,
+    "bottom": 621.5,
+    "h": 20,
+    "l": 134.3,
+    "r": 255.6
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 601.5,
+    "bottom": 621.5,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "1280x800",
+   "vw": 1280,
+   "vh": 800,
+   "docH": 800,
+   "docW": 1280,
+   "clientW": 1280,
+   "scrollY": 0,
+   "travel": 0,
+   "overflowX": 0,
+   "regions": {
+    "daily-run-complete": {
+     "top": 132,
+     "bottom": 692,
+     "h": 560,
+     "l": 48,
+     "r": 1232
+    },
+    "daily-run-recap": {
+     "top": 309.4,
+     "bottom": 583.4,
+     "h": 274,
+     "l": 352,
+     "r": 928
+    },
+    "daily-run-complete-title": {
+     "top": 226.6,
+     "bottom": 281.2,
+     "h": 54.6,
+     "l": 113.7,
+     "r": 1166.3
+    }
+   },
+   "primary": {
+    "top": 609,
+    "bottom": 629,
+    "h": 20,
+    "l": 579.3,
+    "r": 700.6
+   },
+   "primaryInView": true,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 609,
+    "bottom": 629,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "667x375-land",
+   "vw": 667,
+   "vh": 375,
+   "docH": 643,
+   "docW": 671,
+   "clientW": 667,
+   "scrollY": 0,
+   "travel": 268,
+   "overflowX": 4,
+   "regions": {
+    "daily-run-complete": {
+     "top": 104,
+     "bottom": 630.6,
+     "h": 526.6,
+     "l": 16,
+     "r": 651
+    },
+    "daily-run-recap": {
+     "top": 271,
+     "bottom": 545,
+     "h": 274,
+     "l": 45.5,
+     "r": 621.5
+    },
+    "daily-run-complete-title": {
+     "top": 175.6,
+     "bottom": 242.8,
+     "h": 67.2,
+     "l": 32,
+     "r": 635
+    }
+   },
+   "primary": {
+    "top": 570.6,
+    "bottom": 590.6,
+    "h": 20,
+    "l": 272.8,
+    "r": 394.1
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 302.6,
+    "bottom": 322.6,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  },
+  {
+   "state": "completion-legacy",
+   "vp": "844x390-land",
+   "vw": 844,
+   "vh": 390,
+   "docH": 653,
+   "docW": 844,
+   "clientW": 844,
+   "scrollY": 0,
+   "travel": 263,
+   "overflowX": 0,
+   "regions": {
+    "daily-run-complete": {
+     "top": 104,
+     "bottom": 641.3,
+     "h": 537.3,
+     "l": 32,
+     "r": 812
+    },
+    "daily-run-recap": {
+     "top": 281.8,
+     "bottom": 555.8,
+     "h": 274,
+     "l": 134,
+     "r": 710
+    },
+    "daily-run-complete-title": {
+     "top": 175.6,
+     "bottom": 253.6,
+     "h": 78,
+     "l": 48,
+     "r": 796
+    }
+   },
+   "primary": {
+    "top": 581.3,
+    "bottom": 601.3,
+    "h": 20,
+    "l": 361.3,
+    "r": 482.6
+   },
+   "primaryInView": false,
+   "controls": [
+    {
+     "id": "daily-run-home",
+     "h": 20,
+     "w": 121.3
+    }
+   ],
+   "scoreBottom": null,
+   "scoreEl": null,
+   "atBottom": {
+    "top": 318.3,
+    "bottom": 338.3,
+    "inView": true
+   },
+   "cls": 0,
+   "pageErrors": []
+  }
+ ]
+}
