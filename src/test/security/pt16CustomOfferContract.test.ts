@@ -50,12 +50,14 @@ describe("existing subscriptions and gifting are preserved", () => {
     const body = code(webhook);
     const completed = body.indexOf('case "checkout.session.completed"');
     const custom = body.indexOf("isCustomOfferSession(session)", completed);
-    const gift = body.indexOf("if (session.metadata?.gift_id) break;", completed);
+    const gift = body.indexOf("if (session.metadata?.gift_id) {", completed);
     const subOnly = body.indexOf('if (session.mode !== "subscription") break;', completed);
     expect(completed).toBeGreaterThan(-1);
     expect(custom).toBeGreaterThan(completed);
     expect(gift).toBeGreaterThan(custom);
     expect(subOnly).toBeGreaterThan(gift);
+    // PT1.7: gift sessions are verified (never granted) by the gift handler, then break.
+    expect(body.slice(gift, subOnly)).toContain("await handleGiftEvent(event, giftDeps);");
     expect(body).toContain("await syncProStatus(supabase, userId, true);");
     expect(body).toContain('case "customer.subscription.deleted":');
   });
@@ -68,9 +70,10 @@ describe("existing subscriptions and gifting are preserved", () => {
 
 describe("migration 0003 bookkeeping and hygiene", () => {
   it("is journaled after 0002, which is left as applied", () => {
-    const tags = journal.entries.map((e: { tag: string }) => e.tag);
-    expect(tags.slice(-2)).toEqual(["0002_pt1_6_custom_offer_one_time", "0003_pt1_6b_custom_offer_completion"]);
-    expect(journal.entries.at(-1).when).toBeGreaterThan(journal.entries.at(-2).when);
+    const tags: string[] = journal.entries.map((e: { tag: string }) => e.tag);
+    const i = tags.indexOf("0003_pt1_6b_custom_offer_completion");
+    expect(tags[i - 1]).toBe("0002_pt1_6_custom_offer_one_time");
+    expect(journal.entries[i].when).toBeGreaterThan(journal.entries[i - 1].when);
   });
 
   it("writes no admin_audit_log row (its actor column is NOT NULL — defect D1)", () => {
