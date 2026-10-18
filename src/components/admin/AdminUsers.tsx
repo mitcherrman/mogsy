@@ -1011,6 +1011,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         <AdminAccountJourney
           email={emailMap[selectedUser.user_id] ?? null}
           loading={accountActivityLoading}
+          browserLoading={accountBrowsersLoading}
           error={accountActivityError || authError}
           input={{
             profileCreatedAt: selectedUser.created_at,
