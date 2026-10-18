@@ -121,7 +121,7 @@ export function AccountOperationsPulse({ values, loading }:{
  const entries=[
   {label:"Permanent accounts",value:values.registered,icon:UserRoundCheck,caption:"Excludes anonymous + bot"},
   {label:"Active in 7 days",value:values.active7d,icon:Activity,caption:"Profile last-seen signal"},
-  {label:"Confirmed emails",value:values.verifiedEmails,icon:BadgeCheck,caption:`Of ${values.emailCoverage} known email statuses`},
+  {label:"Confirmed emails",value:values.emailCoverage ? values.verifiedEmails : "—",icon:BadgeCheck,caption:values.emailCoverage ? `Of ${values.emailCoverage} known email statuses` : "Owner auth status unavailable"},
   {label:"Discord connected",value:values.discord,icon:MessageCircle,caption:"Verified identity links"},
   {label:"Riot connected",value:values.riot,icon:Gamepad2,caption:"Verified identity links"},
   {label:"Premium access",value:values.premium,icon:Crown,caption:"Includes legitimate grants"},
