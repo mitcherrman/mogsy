@@ -74,6 +74,15 @@ const sfxPlay = vi.fn();
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: sfxPlay, stop: vi.fn(), preload: vi.fn() }) }));
 const prefetchRoute = vi.fn();
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: (p: string) => prefetchRoute(p) }));
+// ACADEMY STARTUP RC1: which images the page asks for, and how urgently (jsdom never loads them).
+const prepared = vi.hoisted(() => ({ calls: [] as Array<{ url: string; priority?: string }> }));
+vi.mock("@/lib/ranked-core/media/prepareImage", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ranked-core/media/prepareImage")>()),
+  prepareImage: (url: string, opts: { priority?: string } = {}) => {
+    prepared.calls.push({ url, priority: opts.priority });
+    return Promise.resolve("ok");
+  },
+}));
 const reduced = { current: false };
 vi.mock("@/hooks/useReducedMotionPreference", () => ({ useReducedMotionPreference: () => reduced.current }));
 
@@ -133,6 +142,7 @@ beforeEach(() => {
   prefetchRoute.mockReset();
   warm.mockClear();
   settledGate.promise = Promise.resolve();
+  prepared.calls = [];
   feed.current = INITIAL_BROADCAST_FEED;
   reduced.current = false;
   auth.user = { id: "test-user" };
@@ -760,5 +770,54 @@ describe("what nobody sees on arrival waits (ACADEMY STARTUP S3)", () => {
     ));
     expect(container.querySelector("[data-testid='academy-core-mogzy']")).toHaveAttribute("data-reactions", "ready");
     expect(container.querySelector("[data-testid='academy-core-v35-lux-portrait']")).not.toBeNull();
+  });
+});
+
+describe("an engaged book does not wait for the deferral (ACADEMY STARTUP RC1)", () => {
+  // On a slow link the first screen can take many seconds to settle; the
+  // deferral must never leave an interaction looking broken in the meantime.
+  const holdSettle = () => { settledGate.promise = new Promise<void>(() => {}); };
+  const lux = (c: HTMLElement) => c.querySelector("[data-testid='academy-core-v35-lux-portrait']");
+  const flush = async () => {
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
+  };
+
+  it("hovering Leaguecraft shows Lux at once, asks for her at high priority, and wakes Mogzy's reactions", async () => {
+    holdSettle();
+    const { container } = mount();
+    await flush();
+    expect(lux(container)).toBeNull();
+    fireEvent.pointerEnter(slot("leaguecraft"), { pointerType: "mouse" });
+    await act(async () => { await Promise.resolve(); });
+    expect(lux(container)?.getAttribute("href")).toContain("assets/champions/Lux/icon.png");
+    expect(prepared.calls).toContainEqual({ url: expect.stringContaining("assets/champions/Lux/icon.png"), priority: "high" });
+    expect(container.querySelector("[data-testid='academy-core-mogzy']")).toHaveAttribute("data-reactions", "ready");
+    // only what was engaged: the 5 v 5 still waits, and so do the destination pages' idle warm
+    expect(container.querySelectorAll(".o35-team-icon")).toHaveLength(0);
+    expect(prefetchRoute.mock.calls.map((c) => c[0])).not.toEqual(expect.arrayContaining(["/combat-lab", "/lol/docs"]));
+    // the hovered book's own page is still fetched at once (intent)
+    expect(prefetchRoute.mock.calls.map((c) => c[0])).toContain("/quiz");
+  });
+
+  it("the arrows or the crystal reaching Pro Play bring its 5 v 5 lineup and Rift at once", async () => {
+    holdSettle();
+    const { container } = mount();
+    await flush();
+    fireEvent.click(screen.getByTestId("academy-core-arrow-left")); // Pro Play from rest
+    await act(async () => { await Promise.resolve(); });
+    const pp = container.querySelector(".acore-mode-pro-play")!;
+    expect(pp.querySelectorAll(".o35-team-icon")).toHaveLength(10);
+    expect(prepared.calls.filter((c) => c.priority === "high" && /icon\.png|rift-lane-turret/.test(c.url))).toHaveLength(11);
+    expect(lux(container)).toBeNull(); // Leaguecraft was not engaged
+  });
+
+  it("keyboard focus counts as engagement too", async () => {
+    holdSettle();
+    const { container } = mount();
+    await flush();
+    act(() => { book("leaguecraft").focus(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(lux(container)).not.toBeNull();
   });
 });

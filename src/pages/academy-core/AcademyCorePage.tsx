@@ -68,6 +68,7 @@ import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallenge
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { prepareImage } from "@/lib/ranked-core/media/prepareImage";
 import { useSfx } from "@/lib/audio/useSfx";
 
 import type { CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
@@ -90,6 +91,7 @@ import {
   coreBayDescriptionId,
   destinationById,
   type CoreDestination,
+  type CoreFocus,
 } from "@/pages/academy-core/academy-core-destinations";
 import "@/pages/academy-core/academy-core.css";
 import "./orrery/academy-core-v35.css";
@@ -245,17 +247,41 @@ function AcademyCoreOrrery() {
     observeRoles: warmed ? CORE_OBSERVE_ROLES : [],
   }), [warmed, splashes, brief]);
 
+  // ACADEMY STARTUP RC1 — the deferral above is for what nobody has asked to
+  // see. The first time a book is engaged (hover, keyboard focus, a press, the
+  // arrows or the crystal), its projection art and Mogzy's reactions are wanted
+  // NOW: on a slow link the first screen can take many seconds to settle, and
+  // Leaguecraft's iris must not open onto empty glass meanwhile. Engaged art is
+  // requested at high priority; the rest still waits.
+  const [engaged, setEngaged] = useState<ReadonlySet<Exclude<CoreFocus, "idle">>>(() => new Set());
+  useEffect(() => {
+    if (focus === "idle") return;
+    setEngaged((prev) => (prev.has(focus) ? prev : new Set(prev).add(focus)));
+  }, [focus]);
+  const deferredShown = warmed && deferredReady;
+  const matchupShown = deferredShown || engaged.has("pro-play");
+  const mysteryShown = deferredShown || engaged.has("leaguecraft");
+  const reactionsShown = deferredShown || engaged.size > 0;
+
   // Pro Play's 5 v 5: manifest icons for the lineup and the Rift image, after the critical art (as the other projections)
-  const matchup = useMemo<MatchupMedia | null>(() => (warmed && deferredReady ? {
+  const matchup = useMemo<MatchupMedia | null>(() => (matchupShown ? {
     blue: MATCHUP_LINEUP.blue.map((n) => getChampionIcon(manifest, n)),
     red: MATCHUP_LINEUP.red.map((n) => getChampionIcon(manifest, n)),
     rift: RIFT_CENTRE_ART,
-  } : null), [warmed, deferredReady, manifest]);
+  } : null), [matchupShown, manifest]);
   // Leaguecraft's mystery portrait: the manifest's square Lux icon, on the same schedule
   const mystery = useMemo(
-    () => (warmed && deferredReady ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null),
-    [warmed, deferredReady, manifest],
+    () => (mysteryShown ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null),
+    [mysteryShown, manifest],
   );
+  useEffect(() => {
+    if (deferredShown) return;
+    const urls = [
+      ...(engaged.has("leaguecraft") ? [mystery] : []),
+      ...(engaged.has("pro-play") && matchup ? [...matchup.blue, ...matchup.red, matchup.rift] : []),
+    ];
+    for (const url of urls) if (url) void prepareImage(url, { priority: "high" });
+  }, [deferredShown, engaged, mystery, matchup]);
 
   /* ---------------- the orbit engine ---------------- */
   const mode = fullLayout ? "orbit" : "composed";
@@ -662,7 +688,7 @@ function AcademyCoreOrrery() {
                 ambient={ambient}
                 reduced={reduced}
                 facing="left"
-                reactionsReady={warmed && deferredReady}
+                reactionsReady={reactionsShown}
               />
             </div>
           </div>
