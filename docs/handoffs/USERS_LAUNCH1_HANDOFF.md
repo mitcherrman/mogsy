@@ -11,7 +11,7 @@ Branch `feature/users-launch-pulse-20261018`. Draft PR; NOT merged or deployed.
 - `src/lib/admin/analytics/metrics.ts`: computeDaily uses the UNION of browser events and sessions for active visitors per UTC day, then counts new visitors only within that day's active set. Keeps Railway starts as separate unlinked server facts.
 - `src/lib/admin/analytics/metrics.test.ts`: regression scenarios for missing session rows / orphan first-touch and returning visitors.
 - `src/components/admin/users/AudiencePulse.tsx`: launch KPIs (classified human vs unknown, recorded signup events, browser returning), openly unavailable first-time players; 12-row recent browser visitor feed and click into existing visitor details.
-- `src/pages/admin/areas/AdminUsersPage.tsx`: pulse before existing Visitors drilldown, legacy reports in `<details>`; existing Accounts/Moderation and traffic controls untouched.
+- `src/pages/admin/areas/AdminUsersPage.tsx`: pulse first; all visitors and diagnostic sections collapsed by default, visitor detail opens directly from recent-feed selection; Accounts/Moderation and traffic controls untouched.
 
 ## Reliability constraints
 - Human is an input signal; unknown is explicitly separate; neither is proof of person identity.
@@ -23,10 +23,12 @@ Branch `feature/users-launch-pulse-20261018`. Draft PR; NOT merged or deployed.
 ## Potential merge conflicts
 Frontend draft PR #69 touches `DailyMainResult.tsx` and `DailyCompletion.tsx` (mobile result); this branch does not touch them. #68 touches Play CSS. Other open PRs do not own these four updated files as of 2026-10-18.
 
-## Verification state
-- Pure source review and GitHub comparison only. Local environment cannot clone Github (DNS unavailable); no Vitest/TypeScript/build/browser tests run. PR must remain draft until executor runs focused + existing tests and mobile inspection.
-- Confirm `src/lib/admin/analytics/metrics.test.ts` passes, `tsc` and frontend build, and visitor click flow.
-- Additional fixtures needed: day-range boundaries, same-day event without session, mixed session-classes/overrides, truncated data, direct signup event-only account.
+## Verification state (updated 2026-10-18)
+- GitHub Actions `Launch Audience Pulse Verification`: 116 focused tests passed; Vite production compilation passed on commit `42993a0b` (run `39112112956`).
+- TypeScript's only diagnostics are two pre-existing TS2345 errors in `OnboardingProfile.tsx` and `identity/connections.ts`; both files were byte-identical to main. The new `scripts/ci/check-audience-typecheck.mjs` CI gate fails for ANY new diagnostics, or if either baseline source diverges. It does not silently skip type errors.
+- Subsequent UI refinement `0b4d52db` keeps the full visitor list collapsed unless a visitor/population is selected; acceptance workflow run `39112435874` is pending at handoff update.
+- This is not yet a browser-certified admin screenshot or a production deployment. Before merge, visually inspect pulse and its full-list disclosure on desktop and 320px mobile, visitor-detail clicks, traffic filter switches, empty/truncated cases.
+- Existing backend first-play and signup conversion instrumentation remains incomplete: issue #73.
 
 ## Next work
 1. Fresh Claude instance: read this handoff, `MOGZY_LAUNCH_ANALYTICS_SIGNUP_AUDIT_HANDOFF.md` (in ChatGPT artifact), USERS1/USERS2 handoffs and latest PRs. Inspect and test changes, fix all deficiencies in branch.
