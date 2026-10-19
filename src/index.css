@@ -7577,7 +7577,7 @@ html.worlds-viewport-locked body {
 
   .lc-daily-panel {
     display: grid;
-    grid-template-columns: minmax(0, 0.5fr) minmax(0, 1.5fr) auto;
+    grid-template-columns: minmax(0, 0.5fr) minmax(0, 1.5fr) 6.5rem;
     grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "title  title  cta"
@@ -7625,12 +7625,30 @@ html.worlds-viewport-locked body {
   .lc-daily-panel .lc-seal {
     --lc-seal-size: 5.75rem;
   }
+  /* A finished day has no seal: its plain results button takes the same
+     column instead of the width of its sentence. */
+  .lc-daily-panel .lc-daily-panel__results {
+    width: 100%;
+    margin: 0;
+    padding: 0.5rem 0.375rem;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+  }
   .lc-daily-panel .lc-daily-panel__caption {
     max-width: 6.5rem;
     text-align: center;
     font-size: 10px;
     letter-spacing: 0.1em;
     line-height: 1.15;
+  }
+}
+
+/* The shortest landscape phones (568×320): the seal and its two-line caption
+   have to share ~106px with nothing else in their column. */
+@media (max-width: 1023px) and (orientation: landscape) and (max-height: 340px) {
+  .lc-daily-panel .lc-seal {
+    --lc-seal-size: 5rem;
   }
 }
 

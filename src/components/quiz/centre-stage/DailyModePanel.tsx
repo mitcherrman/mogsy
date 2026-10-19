@@ -178,7 +178,7 @@ export default function DailyModePanel({
             type="button"
             onClick={onPlay}
             disabled={!onPlay}
-            className="mb-1 rounded-lg px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-sm disabled:opacity-50"
+            className="lc-daily-panel__results mb-1 rounded-lg px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-sm disabled:opacity-50"
             style={{ background: "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)", border: "1px solid #2a1a04" }}
             data-testid="daily-results-button"
           >
