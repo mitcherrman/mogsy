@@ -22,6 +22,7 @@ import {
   type FeedbackEntryIntent,
   type FeedbackSeverity,
 } from "@/lib/feedback/contract";
+import { questionReportReasonLabel } from "@/lib/feedback/report-context";
 import {
   capturedFields,
   diagnosticFields,
@@ -542,6 +543,8 @@ export default function AdminFeedback() {
                         <div><dt className="text-muted-foreground">When?</dt><dd className="font-medium">{new Date(fb.created_at).toLocaleString()}</dd></div>
                         <div><dt className="text-muted-foreground">Where?</dt><dd className="font-medium">{origin.kind === "question" ? "In a game question" : origin.kind === "page" ? "On a website page" : "Feedback Center"}{fb.page_url ? ` · ${fb.page_url}` : ""}</dd></div>
                         <div><dt className="text-muted-foreground">What did they report?</dt><dd className="font-medium whitespace-pre-wrap">{fb.body?.trim() || "No explanation provided"}</dd></div>
+                        {origin.kind === "question" && <div><dt className="text-muted-foreground">Problem category selected</dt><dd className="font-medium">{questionReportReasonLabel((fb.report_context && typeof fb.report_context === "object" && !Array.isArray(fb.report_context) ? (fb.report_context as Record<string, unknown>).reason : null))}</dd></div>}
+                        <div><dt className="text-muted-foreground">Device information</dt><dd className="font-medium">{diagnosticFields(fb.client_meta).find(field => field.key === "viewport")?.value ? `Screen ${diagnosticFields(fb.client_meta).find(field => field.key === "viewport")?.value}` : "Not recorded"} · {diagnosticFields(fb.client_meta).find(field => field.key === "ua")?.value?.includes("Android") ? "Android" : diagnosticFields(fb.client_meta).find(field => field.key === "ua")?.value?.includes("iPhone") ? "iPhone" : "Device not confirmed"}</dd></div>
                       </dl>
                       {origin.kind === "question" && (() => {
                         const fields = capturedFields(fb);
