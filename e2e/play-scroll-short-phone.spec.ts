@@ -188,34 +188,18 @@ test.describe("Play selector reduced motion", () => {
     expect(names).toEqual({ overlay: "none", sheet: "none" });
   });
 
-  test("DIAG reduced motion", async ({ page }) => {
+  test("DIAG reduced motion", async ({ page, browserName }, testInfo) => {
     await page.goto("/dev/play-scroll");
     await page.waitForSelector('[data-testid="play-scroll"]');
-    const diag = await page.evaluate(() => {
-      const rules: string[] = [];
-      const walk = (list: CSSRuleList, ctx: string) => {
-        for (const r of Array.from(list)) {
-          const g = r as CSSGroupingRule;
-          const text = r.cssText;
-          if (/play-scroll-overlay|lc-scroll__sheet/.test(text) && /animation/.test(text) && !text.startsWith("@")) {
-            rules.push(`${ctx} :: ${text.slice(0, 160)}`);
-          }
-          if (g.cssRules) walk(g.cssRules, `${ctx}>${(r as CSSMediaRule).conditionText ?? r.constructor.name}`);
-        }
-      };
-      for (const s of Array.from(document.styleSheets)) {
-        try { walk(s.cssRules, s.href ?? "inline"); } catch { /* cross-origin */ }
-      }
-      const ov = document.querySelector(".play-scroll-overlay")!;
-      return {
-        mq: matchMedia("(prefers-reduced-motion: reduce)").matches,
-        htmlClass: document.documentElement.className,
-        overlayClass: ov.className,
-        overlayStyle: ov.getAttribute("style"),
-        anim: getComputedStyle(ov).animation,
-        rules,
-      };
-    });
-    console.log("DIAG " + JSON.stringify(diag, null, 1));
+    const q = () => page.evaluate(() => ({
+      mq: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      bare: matchMedia("(prefers-reduced-motion)").matches,
+      nopref: matchMedia("(prefers-reduced-motion: no-preference)").matches,
+      anim: getComputedStyle(document.querySelector(".play-scroll-overlay")!).animationName,
+    }));
+    const before = await q();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const after = await q();
+    console.log("DIAG " + JSON.stringify({ browserName, ver: page.context().browser()?.version(), projUse: testInfo.project.use.reducedMotion, before, after }));
   });
 });
