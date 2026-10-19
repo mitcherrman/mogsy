@@ -44,6 +44,7 @@ import { prefetchRoute } from "@/lib/route-prefetch";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { baseBackgroundForPath } from "@/lib/startup-shell";
 import { ENTRANCE_VEIL_GRADIENT } from "@/lib/academy-startup/veil-gradient";
+import { warmAcademyFonts } from "@/lib/academy-startup/font-warm";
 import "./academy-veil.css";
 
 export default function AcademyVeil() {
@@ -61,6 +62,7 @@ export default function AcademyVeil() {
     holdAcademyVeil("direct");
     prefetchRoute(LEAGUE_HOME_ROUTE, { intent: true });
     prefetchAppSettings();
+    warmAcademyFonts();
     // Imported on demand: this component is in every page's entry chunk, the
     // warm (and the Patch feed it fills) belongs to the Academy's.
     void import("@/pages/academy-core/academy-core-warm")

@@ -11,6 +11,8 @@ vi.mock("@/pages/academy-core/academy-core-warm", () => ({ warmAcademyCore: (...
 const prefetchRoute = vi.fn();
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: (...a: unknown[]) => prefetchRoute(...a) }));
 const settings = vi.fn();
+const fonts = vi.fn();
+vi.mock("@/lib/academy-startup/font-warm", () => ({ warmAcademyFonts: () => fonts() }));
 vi.mock("@/hooks/useAppSettings", () => ({ prefetchAppSettings: () => settings() }));
 
 import AcademyVeil from "./AcademyVeil";
@@ -31,7 +33,7 @@ const veil = () => screen.queryByTestId("academy-veil");
 beforeEach(() => {
   vi.useFakeTimers();
   __resetAcademyStartupForTests();
-  warm.mockReset(); prefetchRoute.mockReset(); settings.mockReset();
+  warm.mockReset(); prefetchRoute.mockReset(); settings.mockReset(); fonts.mockReset();
   document.documentElement.classList.remove("reduce-motion");
   window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
 });
@@ -46,6 +48,7 @@ describe("direct /lol visits", () => {
     expect(veil()!.querySelector(".academy-veil-flash")).toBeNull();
     expect(prefetchRoute).toHaveBeenCalledWith("/lol", { intent: true });
     expect(settings).toHaveBeenCalledTimes(1);
+    expect(fonts).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(warm).toHaveBeenCalledTimes(1)); // imported on demand
   });
 

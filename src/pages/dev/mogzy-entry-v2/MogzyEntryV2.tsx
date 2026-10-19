@@ -18,6 +18,7 @@ import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { prefetchAppSettings } from "@/hooks/useAppSettings";
 import { holdAcademyVeil } from "@/lib/academy-startup/veil-store";
+import { warmAcademyFonts } from "@/lib/academy-startup/font-warm";
 import { ENTRANCE_VEIL_GRADIENT } from "@/lib/academy-startup/veil-gradient";
 import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
 import { championAssetsQuery } from "@/hooks/useChampionAssets";
@@ -333,6 +334,10 @@ export default function MogzyEntryV2({
     // until the app settings are known. Read them now, during the hold, so the
     // hand-off does not pay that round trip after the veil has gone.
     prefetchAppSettings();
+    // ACADEMY STARTUP RC2.2 — the Orrery's speech-bubble and marking faces:
+    // nothing here uses them, so without this their files start only when the
+    // Orrery mounts, and its held veil waits for them.
+    warmAcademyFonts();
     const hold = prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS;
     // PERF1 — then the Hub's own art, but only once THIS screen's art is in
     // (or the hold is over and the visitor is about to leave anyway), so the

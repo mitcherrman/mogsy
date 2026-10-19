@@ -54,6 +54,8 @@ vi.mock("@/pages/academy-core/academy-core-warm", () => ({
   warmAcademyCore: mocks.warmAcademyCore,
 }));
 vi.mock("@/lib/ranked-core/media/prepareImage", () => ({ prepareImages: mocks.prepareImages }));
+const fontWarm = vi.hoisted(() => ({ calls: 0 }));
+vi.mock("@/lib/academy-startup/font-warm", () => ({ warmAcademyFonts: () => { fontWarm.calls += 1; } }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("@/components/mascot/MogzyMascot", () => ({ MogzyMascot: () => null }));
 vi.mock("./AcademyFacade", () => ({ default: () => null }));
@@ -378,6 +380,14 @@ describe("MogzyEntryV2 — the veil hand-off (ACADEMY STARTUP RC2)", () => {
     render(<MogzyEntryV2 seo="root" autoEnter />);
     act(() => { vi.advanceTimersByTime(AUTO_HOLD_REDUCED_MS + ENTRY_DURATION_REDUCED_MS); });
     expect(phaseAtNavigate).toBe("held");
+  });
+
+  it("asks for the Orrery's late display faces during the hold, not at the hand-off (RC2.2)", () => {
+    fontWarm.calls = 0;
+    render(<MogzyEntryV2 seo="root" autoEnter />);
+    expect(fontWarm.calls).toBe(1);
+    act(() => { vi.advanceTimersByTime(AUTO_HOLD_MS + ENTRY_DURATION_MS); });
+    expect(fontWarm.calls).toBe(1);
   });
 
   it("leaving before the hand-off takes no hold", () => {
