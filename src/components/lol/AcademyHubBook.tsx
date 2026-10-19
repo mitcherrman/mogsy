@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeatureRibbon from "@/components/FeatureRibbon";
 import { Link } from "react-router-dom";
 import { ACADEMY_BOOK_FRAME as closedBookFrame } from "@/academy/hub/hub-art";
 import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
@@ -205,6 +206,8 @@ export default function AcademyHubBook({
             ))}
           </h3>
         </div>
+
+        {to === "/combat-lab" && <FeatureRibbon label="BETA" size="book" />}
 
         {/* 4 — interaction layer. Gold rim response on hover/focus, scoped to
                the art window so it reads as light catching the inlay rather
