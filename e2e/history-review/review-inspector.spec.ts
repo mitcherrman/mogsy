@@ -49,8 +49,20 @@ async function openHarness(page: Page, state: string, pos = "middle") {
     route.request().url().endsWith("/art/ok.png")
       ? route.fulfill({ status: 200, contentType: "image/png", body: PNG })
       : route.fulfill({ status: 404, body: "" }));
-  await page.goto(`/e2e/history-review/harness.html?state=${state}&pos=${pos}`);
-  await expect(page.getByTestId("history-trigger")).toBeVisible();
+  const errors: string[] = [];
+  const failures: string[] = [];
+  page.on("pageerror", (err) => errors.push(err.stack ?? err.message));
+  page.on("console", (msg) => { if (msg.type() === "error") errors.push(msg.text()); });
+  page.on("requestfailed", (req) => failures.push(`${req.method()} ${req.url()}: ${req.failure()?.errorText}`));
+  const response = await page.goto(`/e2e/history-review/harness.html?state=${state}&pos=${pos}`);
+  try {
+    await expect(page.getByTestId("history-trigger")).toBeVisible({ timeout: 6000 });
+  } catch {
+    const documentState = await page.evaluate(() => ({
+      title: document.title, url: location.href, html: document.body.outerHTML.slice(0, 3000),
+    }));
+    throw new Error(`History harness failed to mount: HTTP ${response?.status()} state=${state} position=${pos} errors=${JSON.stringify(errors)} failedRequests=${JSON.stringify(failures)} document=${JSON.stringify(documentState)}`);
+  }
   await page.evaluate(() => document.fonts.ready);
 }
 
