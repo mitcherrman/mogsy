@@ -37,6 +37,8 @@ describe("creator replay admin entry", () => {
     mount();
     expect(fetchMock).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByTestId("creator-journey-picker")).not.toHaveProperty("disabled", true));
+    expect(screen.getByRole("button", { name: "Record a new take" })).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByTestId("creator-journey-picker"), { target: { value: "__auto__" } });
     fireEvent.click(screen.getByRole("button", { name: "Record a new take" }));
     await waitFor(() => expect(screen.getByTestId("replay-route")).toBeTruthy());
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -56,6 +58,7 @@ describe("creator replay admin entry", () => {
     vi.stubGlobal("fetch", fetchMock);
     mount();
     await waitFor(() => expect(screen.getByTestId("creator-journey-picker")).not.toHaveProperty("disabled", true));
+    fireEvent.change(screen.getByTestId("creator-journey-picker"), { target: { value: "__auto__" } });
     fireEvent.click(screen.getByRole("button", { name: "Record a new take" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent)
       .toContain("invalid run"));
