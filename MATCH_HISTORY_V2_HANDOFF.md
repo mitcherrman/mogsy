@@ -50,3 +50,31 @@ Integration — same command center after receiving A/B/C reports. Resolve findi
 
 ## Current state / next task
 Branch and handoff created. Start A/B/C from the *same main commit* in separate isolated worktrees or cloud environments; tell every instance to read this file first. Collect each report, then coordinate integration. No implementation has started yet.
+
+## Track B/C evidence received (2026-10-19; read-only agents)
+
+### Track B: structured explanation evidence (source: agent report, NOT yet independently backend-verified)
+- ReviewMasteryChallenge parser and fields: src/lib/ranked-public/contracts.ts lines 3774-3798, 3910-3956 on base. Contains promptSemantics and comparisonSemantics; correctAnswer/explanation/combatWorking/comparisonValues gated by reveal. An unrevealed record with reveal-only data must be refused.
+- Pantheon E scenario in pantheon.standard.json: promptSemantics.template='ability_damage_under_state', metric, ability ref/name, scenario key/value pairs with levels, target, items, armor, AD, lethality and percent pen. Typed combat_working.v1 can describe damage math. Existing JourneyCombatWorking supports rows layout.
+- Existing review card currently prints serialized combat prompt and inline chain; candidate improvements: reuse semantic formatting from JourneyCombatQuestion.tsx and JourneyCombatWorking rows, preserve original frozen explanation, never compute/reconstruct numeric results.
+- Raw damage and haste cooldown working variants reportedly dropped by the review parser. DO NOT expand reader union casually; separate proof/test/approval required.
+- Mastery review row does NOT carry proven per-ability presentation.assets, nor structured unrounded Leona armor; do not infer per-ability icons or parse explanation prose for numbers.
+- ComparisonValues appears to carry operator/deltaDisplay, currently underused.
+- Agent did NOT confirm backend production review rows actually include working for older/frozen runs. Preserve fallback; verify backend before wire-contract claims.
+- Scope decision: NO backend changes for V2 initially. Read-only B report accepted as preliminary frontend evidence; implementation must verify specific typed fields in source.
+
+### Track C: acceptance audit (test names/YAML ONLY, not assertion bodies)
+- Existing tests cover Mastery slice counts, sealed state, combat working, quiz timeline, some icon fallback, host focus and touch, Daily->Stage->Question; quality of each assertion was not audited.
+- Deficiencies: mixed subchallenge row visuals, duplicate answer labels, unsubmitted/timeouts, long layouts, actual browser geometry at 320/360/390, desktop 1280x800/1280x560, fallback image, real keyboard focus, other family render consistency.
+- Recommend isolated GitHub Actions acceptance workflow based on .github/workflows/daily-result-compact-acceptance.yml with a dedicated history-review harness and playwright config. Test real geometry, 44px touch targets, bounded 24rem desktop popover, 85dvh sheet, no horizontal spill, state screenshots. Respect AGENTS.md; no local browser launch.
+- Caveat: existing workflow lockfile status not verified; C did not run tests. Check npm ci; do not assume.
+- Beware test ask 'correct/wrong values appear exactly once' may conflict with preserving answers: distinguish semantic summary duplication from the single value's legitimate occurrence in full options or explanation. Preserve pedagogically useful options and accessible labels.
+
+### Updated integration decisions
+1. Track A keeps sole ownership of QuestionReviewCard.tsx, tests. Share Track B evidence before finalizing UI. Only change family-specific code after inspecting actual source/fixtures; don't generalize beyond reviewed families.
+2. New Track D — CI browser acceptance (Sonnet 5.5 medium, fresh): own ONLY e2e/history-review/**, playwright.history-review.config.ts and .github/workflows/history-review-acceptance.yml. This is implementation work after evidence audit; keep independent from A and avoid component modifications. Prefer existing permitted harness patterns. CI only; no local browsers.
+3. Integration after Track A/D deliver: compare against base and confirm no overlapping files, test, screenshot inspect, merge only with owner approval.
+4. Never claim verified production working payload without backend evidence; source audit is not deployment truth.
+
+## Next action
+Get Track A state/diff; send narrowed B conclusions above. Start D in separate isolated instance only if user wants parallel CI test work now. No production change or deployment.
