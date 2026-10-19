@@ -7531,11 +7531,19 @@ html.worlds-viewport-locked body {
   .lc-daily-panel .lc-daily-panel__stats {
     grid-template-columns: repeat(3, auto);
     justify-content: space-between;
-    width: calc(100% + 1rem);
-    margin-inline: -0.5rem;
+    width: calc(100% + 1.25rem);
+    margin-inline: -0.625rem;
   }
   .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
     padding-inline: 0.125rem;
+  }
+  /* "In progress" is the longest Today value; 14px bold holds it in a cell
+     sized to its own width, and the labels tighten their tracking a notch. */
+  .lc-daily-panel .lc-daily-panel__stats dd {
+    font-size: 14px;
+  }
+  .lc-daily-panel .lc-daily-panel__stats dt {
+    letter-spacing: 0.12em;
   }
 }
 
@@ -7595,7 +7603,7 @@ html.worlds-viewport-locked body {
 
   .lc-daily-panel {
     display: grid;
-    grid-template-columns: minmax(0, 0.45fr) minmax(0, 1.55fr) 6rem;
+    grid-template-columns: minmax(0, 0.4fr) minmax(0, 1.6fr) 6rem;
     grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "title  title  cta"
@@ -7638,6 +7646,12 @@ html.worlds-viewport-locked body {
   }
   .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
     padding-inline: 0.125rem;
+  }
+  .lc-daily-panel .lc-daily-panel__stats dd {
+    font-size: 14px;
+  }
+  .lc-daily-panel .lc-daily-panel__stats dt {
+    letter-spacing: 0.12em;
   }
   /* The Complete pill is wider than the mascot's cell here; the Today figure
      and the status line already say it. */
