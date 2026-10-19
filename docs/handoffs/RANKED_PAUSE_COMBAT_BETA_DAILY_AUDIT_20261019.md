@@ -27,3 +27,21 @@ Temporarily disable public Ranked entry in the Quiz Hub while keeping existing r
 
 ## Next task
 Run tests/CI, fix visual or test regressions, complete read-only production Daily rotation audit, then seek owner approval before merge/deploy.
+
+
+## 2026-10-19 deeper investigation: three consecutive Pantheon vs Leona days
+The owner reports three consecutive days of the Pantheon vs Leona Mastery Journey.
+
+- Railway `sweet-analysis` production `web` service is running backend `e53364ee` (deployed 2026-10-18). Historical backend deployments 2026-10-16/17/18 have **identical blob SHA** for the Journey catalog, `content_sets/products.py` and `daily_challenge/run/plan.py`.
+- Reconstructed the catalog semantic SHA-256 digest and exact `journey_rotation` ordering using the current backend and JSON catalog. Current catalog digest: `jrecipe_b734f6d0d389499dec1ca168`; 5 featured entries.
+- Calculated Standard first-choice ordering (UTC, plan v5), assuming candidates compose:
+  - 2026-10-17: Lucian/Caitlyn → Zed/Ahri → Olaf/Sett → Volibear/Lee Sin → **Pantheon/Leona (5th)**.
+  - 2026-10-18: Volibear/Lee Sin → Lucian/Caitlyn → Olaf/Sett → **Pantheon/Leona (4th)** → Zed/Ahri.
+  - 2026-10-19: **Pantheon/Leona (1st)** → Zed/Ahri → Olaf/Sett → Lucian/Caitlyn → Volibear/Lee Sin.
+- Thus if the owner observed Pantheon on 17–19 and these were v5 Standard runs, the first four 17th candidates and first three 18th candidates **must have failed the live composition gate**, or the serving path/frozen plan did not follow this algorithm. Do NOT dismiss as mere small-pool coincidence.
+- `JOURNEY4_CATALOG_HANDOFF.md` reported all five READY on the *Sept 25 canonical DB*, which is not proof that all five remain READY with the current production SQLite.
+- Railway deployment logs include no structured readiness verdicts or selected recipe ids; direct production SQLite execution is not exposed by currently connected Railway tool actions. Do not claim live readiness verified.
+- Built-in read-only operator script exists in backend: `daily_standard_readiness_report.py [db_path] [plan_date]`. It prints each candidate's READY/blocked reason and selected module 10. Run on live canonical `/data/lol_calc.db`, with `LOL_CALC_DB_PATH=/data/lol_calc.db`, for 17, 18 and 19. Script only selects / computes; no mutations intended. Ensure no other environment than production web is targeted.
+- Verified official Railway CLI syntax from docs: `railway ssh -p <project> -s web -e production -- env ... python /app/daily_standard_readiness_report.py /data/lol_calc.db <date>`. Actual Railway project id: `78e5414c-a771-4df7-9e98-9185c461c9aa`.
+
+**Decision gate:** Do NOT force another recipe until its live readiness is confirmed. If other recipes are READY, investigate plan version/frozen snapshot and code before adding anti-repeat/round-robin constraints. If only Pantheon is READY, fix blocked recipe inputs first; hard-coding a different matchup risks a Daily launch 503. Any change must preserve existing frozen day runs and date-wide reproducibility; stage an owner-reviewed backend PR, never mutate production silently.
