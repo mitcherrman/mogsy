@@ -26,7 +26,7 @@ function mount() {
 }
 
 describe("creator replay admin entry", () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => { vi.restoreAllMocks(); localStorage.removeItem("mogzy.creator-replay.journey-choice.v1"); });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("creates exactly one new take on click, with the owner bearer header", async () => {
