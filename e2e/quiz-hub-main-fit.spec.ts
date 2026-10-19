@@ -191,6 +191,8 @@ interface Geometry {
   statTexts: string[];
   /** scrollWidth − clientWidth of each figure and label: > 0 means truncated. */
   statOverflow: number[];
+  /** Each figure's own box (the clip box of a truncating value). */
+  statValueRects: Box[];
   badge: Box | null;
   /** Text ranges (not boxes) for text that can overflow its element. */
   titleText: Box | null;
@@ -269,6 +271,7 @@ const MEASURE_SOURCE = `(() => {
     statLabelFontPx: statCells[0] ? px(statCells[0].querySelector('dt'), 'fontSize') : null,
     statTexts: statCells.map((c) => (c.textContent || '').trim()),
     statOverflow: statCells.flatMap((c) => [c.querySelector('dt'), c.querySelector('dd')]).map((e) => (e ? e.scrollWidth - e.clientWidth : 0)),
+    statValueRects: statCells.map((c) => box(c.querySelector('dd').getBoundingClientRect())),
     badge: (() => { const b = el('[data-testid="daily-mode-complete"]'); if (!b) return null; const r = b.getBoundingClientRect(); return r.width > 0 ? box(r) : null; })(),
     titleText: textBox(titleEl),
     statusText: textBox(statusEl),
@@ -362,6 +365,9 @@ function assertDailyFits(g: Geometry, label: string) {
     for (const tb of [g.statTextBoxes[2 * i], g.statTextBoxes[2 * i + 1]]) {
       expect(within(tb, cell, 1), `${label}: figure ${i} text inside its cell`).toBe(true);
     }
+    // A centred value wider than its box overflows BOTH sides, where
+    // scrollWidth cannot see the left one: compare the text with the clip box.
+    expect(within(g.statTextBoxes[2 * i + 1], g.statValueRects[i], 0.5), `${label}: figure ${i} value ${JSON.stringify(g.statTextBoxes[2 * i + 1])} fits its box ${JSON.stringify(g.statValueRects[i])}`).toBe(true);
   });
   if (g.badge) expect(within(g.badge, writing, 1), `${label}: Complete pill ${JSON.stringify(g.badge)} inside writing area`).toBe(true);
   expect(g.statTexts.join("|"), `${label}: figure labels`).toMatch(/Today.*\|Score.*\|Correct/);

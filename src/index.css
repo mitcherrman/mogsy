@@ -7525,11 +7525,12 @@ html.worlds-viewport-locked body {
    Three equal cells of a 178px writing area are 59px each, which cannot hold
    "Complete" at 16px: the value truncated to "Co…" — the completion state
    itself, clipped. Below 17rem of writing width the cells size to their
-   content instead and the row borrows 0.5rem either side from the sheet's
+   content (`max-content`: the values are `truncate`d, so `auto` would let them
+   collapse to nothing) instead and the row borrows 0.5rem either side from the sheet's
    margin (still well inside the drawn paper edge, which is 13.1% in). */
 @container lc-scroll (max-width: 17rem) {
   .lc-daily-panel .lc-daily-panel__stats {
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: repeat(3, max-content);
     justify-content: space-between;
     width: calc(100% + 1.25rem);
     margin-inline: -0.625rem;
@@ -7641,7 +7642,7 @@ html.worlds-viewport-locked body {
   .lc-daily-panel .lc-daily-panel__stats {
     grid-area: stats;
     padding-block: 0.125rem;
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: repeat(3, max-content);
     justify-content: space-between;
   }
   .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
