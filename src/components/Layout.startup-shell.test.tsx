@@ -9,6 +9,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Layout from "./Layout";
 import { LOL_BASE_BG } from "@/lib/startup-shell";
+import { __resetAcademyStartupForTests, holdAcademyVeil } from "@/lib/academy-startup/veil-store";
 
 const state = vi.hoisted(() => ({ authLoading: false, settingsLoading: false }));
 const prefetched = vi.hoisted(() => ({ calls: [] as string[][] }));
@@ -136,5 +137,23 @@ describe("startup prefetching", () => {
   it("still warms routes that remain reachable", () => {
     renderAt("/lol");
     expect(prefetched.calls.flat()).toContain("/profile");
+  });
+});
+
+describe("the shell's fade-in under the Academy's held veil (ACADEMY STARTUP RC2)", () => {
+  afterEach(() => { __resetAcademyStartupForTests(); });
+  const shell = () => screen.getByText("page content").closest(".min-h-dvh");
+
+  it("an ordinary arrival keeps the 300 ms fade", () => {
+    __resetAcademyStartupForTests();
+    renderAt("/lol");
+    expect(shell()).toHaveClass("animate-page-fade-in");
+  });
+
+  it("arriving under the held veil, the veil's fade is the transition: no second fade beneath it", () => {
+    __resetAcademyStartupForTests();
+    holdAcademyVeil("entrance");
+    renderAt("/lol");
+    expect(shell()).not.toHaveClass("animate-page-fade-in");
   });
 });

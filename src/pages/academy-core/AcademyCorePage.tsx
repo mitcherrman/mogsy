@@ -69,6 +69,7 @@ import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { prepareImage } from "@/lib/ranked-core/media/prepareImage";
+import { useAcademyStartupGate } from "@/pages/academy-core/useAcademyStartupGate";
 import { useSfx } from "@/lib/audio/useSfx";
 
 import type { CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
@@ -200,7 +201,6 @@ function AcademyCoreOrrery() {
   // The home surface: the funnel's `hub_entered` (once per session — the same
   // boundary the Hall uses) and the Hall's own arrival cue, as on the V3 home.
   useSurfaceEvent("hub_entered");
-  useEffect(() => { sfx.play("hub.application.enter"); }, [sfx]);
 
   /* ---------------- warm, then the covers ---------------- */
   const [warmed, setWarmed] = useState(false);
@@ -238,6 +238,23 @@ function AcademyCoreOrrery() {
   const dailyResume = daily.known && daily.resumable && !daily.completed;
   const broadcastFeed = usePatchBriefFeed();
   const brief = broadcastFeed.status === "ready" ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null : null;
+
+  /* ---------------- the held entrance veil (ACADEMY STARTUP RC2) ---------------- */
+  // Arriving from the Landing (or directly), the app-level veil stays up until
+  // this page's first screen is really drawn; `shown` is false only meanwhile.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const startupCovers = useMemo(
+    () => (manifest === undefined ? {} : splashes) as Record<string, string | null | undefined>,
+    [manifest, splashes],
+  );
+  const startup = useAcademyStartupGate(rootRef, { fullLayout, covers: startupCovers, feedStatus: broadcastFeed.status });
+  // The Hall's arrival cue, as on the V3 home — at the reveal, not under the veil.
+  const cuePlayed = useRef(false);
+  useEffect(() => {
+    if (!startup.shown || cuePlayed.current) return;
+    cuePlayed.current = true;
+    sfx.play("hub.application.enter");
+  }, [startup.shown, sfx]);
 
   const media = useMemo<CoreMedia>(() => ({
     art: warmed ? splashes : {},
@@ -582,7 +599,9 @@ function AcademyCoreOrrery() {
 
   return (
     <div
+      ref={rootRef}
       className="acore-root o35-root"
+      data-startup={startup.mark}
       data-layout={fullLayout ? "full" : "stacked"}
       data-ambient={ambient ? "on" : "off"}
       data-reduced={reduced ? "true" : "false"}

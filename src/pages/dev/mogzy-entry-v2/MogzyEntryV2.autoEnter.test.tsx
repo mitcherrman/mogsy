@@ -17,6 +17,7 @@ import MogzyEntryV2 from "./MogzyEntryV2";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
 import { installLocalStorageStub } from "@/test/localStorageStub";
+import { __resetAcademyStartupForTests, getAcademyStartup } from "@/lib/academy-startup/veil-store";
 
 // PERF1: 1800 -> 1100, the title's own 1.1s entrance.
 const AUTO_HOLD_MS = 1100;
@@ -339,5 +340,59 @@ describe("MogzyEntryV2 without autoEnter — the interactive /dev preview", () =
     render(<MogzyEntryV2 />);
     fireEvent.click(screen.getByRole("button", { name: "Enter Mogzy" }));
     expect(mocks.playLaunchChime).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+/* ACADEMY STARTUP RC2 — the Landing hands its veil to the app at navigate(). */
+describe("MogzyEntryV2 — the veil hand-off (ACADEMY STARTUP RC2)", () => {
+  let phaseAtNavigate: string | null = null;
+  beforeEach(() => {
+    __resetAcademyStartupForTests();
+    phaseAtNavigate = null;
+    mocks.navigate.mockImplementation(() => { phaseAtNavigate = getAcademyStartup().phase; });
+  });
+  afterEach(() => { __resetAcademyStartupForTests(); });
+
+  it("takes the hold at the very moment it navigates to the Academy (veil at its peak), not before", () => {
+    render(<MogzyEntryV2 seo="root" autoEnter />);
+    act(() => { vi.advanceTimersByTime(AUTO_HOLD_MS + ENTRY_DURATION_MS - 1); });
+    expect(getAcademyStartup().phase).toBe("idle"); // the Landing's own veil is still on screen
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(phaseAtNavigate).toBe("held"); // held BEFORE the route changes
+    expect(getAcademyStartup()).toMatchObject({ phase: "held", source: "entrance" });
+  });
+
+  it("an early click (user-initiated entry) hands over at its own navigate, once", () => {
+    render(<MogzyEntryV2 seo="root" autoEnter />);
+    act(() => { vi.advanceTimersByTime(300); });
+    fireEvent.click(screen.getByRole("button", { name: "Enter Mogzy" }));
+    act(() => { vi.advanceTimersByTime(ENTRY_DURATION_MS); });
+    expect(phaseAtNavigate).toBe("held");
+    act(() => { vi.advanceTimersByTime(AUTO_HOLD_MS * 2); });
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("reduced motion: the same hand-off on the shortened schedule", () => {
+    mocks.reducedMotion = true;
+    render(<MogzyEntryV2 seo="root" autoEnter />);
+    act(() => { vi.advanceTimersByTime(AUTO_HOLD_REDUCED_MS + ENTRY_DURATION_REDUCED_MS); });
+    expect(phaseAtNavigate).toBe("held");
+  });
+
+  it("leaving before the hand-off takes no hold", () => {
+    const { unmount } = render(<MogzyEntryV2 seo="root" autoEnter />);
+    act(() => { vi.advanceTimersByTime(AUTO_HOLD_MS + 100); });
+    unmount();
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(getAcademyStartup().phase).toBe("idle");
+  });
+
+  it("the /dev preview sending a first-time visitor to /welcome holds nothing (only the Academy home is gated)", () => {
+    render(<MogzyEntryV2 />);
+    fireEvent.click(screen.getByRole("button", { name: "Enter Mogzy" }));
+    act(() => { vi.advanceTimersByTime(ENTRY_DURATION_MS); });
+    expect(mocks.navigate).toHaveBeenCalledWith(ACADEMY_WELCOME_ROUTE, { replace: true });
+    expect(getAcademyStartup().phase).toBe("idle");
   });
 });

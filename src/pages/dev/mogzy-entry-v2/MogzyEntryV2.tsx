@@ -17,6 +17,8 @@ import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { prefetchAppSettings } from "@/hooks/useAppSettings";
+import { holdAcademyVeil } from "@/lib/academy-startup/veil-store";
+import { ENTRANCE_VEIL_GRADIENT } from "@/lib/academy-startup/veil-gradient";
 import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
 import { championAssetsQuery } from "@/hooks/useChampionAssets";
 import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
@@ -297,7 +299,13 @@ export default function MogzyEntryV2({
       void warmAcademyCore(queryClient);
     }
     navigateTimerRef.current = window.setTimeout(
-      () => navigate(destination, { replace: true }),
+      () => {
+        // ACADEMY STARTUP RC2 — this screen's veil is at its peak now and
+        // unmounts with it; the app-level veil takes over at identical pixels
+        // and stays until the Orrery's first screen is ready (or its cap).
+        if (destination === LEAGUE_HOME_ROUTE) holdAcademyVeil("entrance");
+        navigate(destination, { replace: true });
+      },
       prefersReducedMotion ? ENTRY_DURATION_REDUCED_MS : ENTRY_DURATION_MS,
     );
   }, [autoEnter, navigate, playLaunchChime, prefersReducedMotion, queryClient]);
@@ -761,10 +769,8 @@ export default function MogzyEntryV2({
       <motion.div
         className="pointer-events-none fixed inset-0 z-50"
         aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 50%, rgba(240,215,140,0.95) 0%, rgba(127,214,239,0.5) 35%, rgba(4,7,15,1) 78%)",
-        }}
+        // the app-level veil (AcademyVeil) takes over at this exact gradient
+        style={{ background: ENTRANCE_VEIL_GRADIENT }}
         initial={{ opacity: 0 }}
         animate={{ opacity: entering ? 1 : 0 }}
         transition={{

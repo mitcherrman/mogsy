@@ -51,9 +51,11 @@ const MANIFEST = { champions: Object.fromEntries(["Ryze", "Ahri", "Akali", "Vikt
   "Lux"].map((n) => [n, {
   icon: `assets/champions/${n}/icon.png`, splash: `assets/champions/${n}/splash/0_default.jpg`, loading: "", cutout: "",
 }])) };
+// RC2: undefined = still loading, null = the manifest failed
+const assets: { current: unknown } = { current: MANIFEST };
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks/useChampionAssets")>();
-  return { ...actual, useChampionAssets: () => ({ data: MANIFEST }) };
+  return { ...actual, useChampionAssets: () => ({ data: assets.current }) };
 });
 
 const warm = vi.fn(() => Promise.resolve({ leaguecraft: null, "pro-play": null, "combat-lab": null, archives: null }));
@@ -84,12 +86,19 @@ vi.mock("@/lib/ranked-core/media/prepareImage", async (importOriginal) => ({
   },
 }));
 const reduced = { current: false };
-vi.mock("@/hooks/useReducedMotionPreference", () => ({ useReducedMotionPreference: () => reduced.current }));
+vi.mock("@/hooks/useReducedMotionPreference", () => ({
+  useReducedMotionPreference: () => reduced.current,
+  readReducedMotionPreference: () => reduced.current,
+}));
 
 const matchMediaMatches: { current: (q: string) => boolean } = { current: () => false };
 
 import AcademyCorePage from "./AcademyCorePage";
 import { BOOK_ACTIVATION_MS, CORE_DESTINATIONS } from "@/pages/academy-core/academy-core-destinations";
+import { FLOW_FRAMES } from "@/lib/academy-startup/readiness";
+import {
+  DIRECT_CAP_AFTER_MOUNT_MS, ENTRANCE_CAP_MS, __resetAcademyStartupForTests, getAcademyStartup, holdAcademyVeil,
+} from "@/lib/academy-startup/veil-store";
 
 function Probe({ name }: { name: string }) {
   const location = useLocation();
@@ -143,6 +152,7 @@ beforeEach(() => {
   warm.mockClear();
   settledGate.promise = Promise.resolve();
   prepared.calls = [];
+  assets.current = MANIFEST;
   feed.current = INITIAL_BROADCAST_FEED;
   reduced.current = false;
   auth.user = { id: "test-user" };
@@ -819,5 +829,283 @@ describe("an engaged book does not wait for the deferral (ACADEMY STARTUP RC1)",
     act(() => { book("leaguecraft").focus(); });
     await act(async () => { await Promise.resolve(); });
     expect(lux(container)).not.toBeNull();
+  });
+});
+
+
+/* ------------------------------------------------------------------------ */
+/* ACADEMY STARTUP RC2 — the held veil: the page lifts it on REAL readiness   */
+/* ------------------------------------------------------------------------ */
+describe("the held entrance veil (ACADEMY STARTUP RC2)", () => {
+  // jsdom never loads an image: each test says which srcs are loaded, failed, and
+  // whether decode() is still running.
+  const img = {
+    loaded: (_src: string) => false,
+    failed: (_src: string) => false,
+    decode: null as Promise<void> | null,
+  };
+  const srcOf = (el: HTMLImageElement) => el.getAttribute("src") ?? "";
+  const saved: Record<string, PropertyDescriptor | undefined> = {};
+  const store = () => getAcademyStartup();
+  const root = () => screen.getByTestId("academy-core-v35");
+  const frames = async (n: number) => {
+    for (let i = 0; i < n; i++) await act(async () => { vi.advanceTimersByTime(16); });
+  };
+  /** The network answers: fire load / error on every <img> now settled. */
+  const network = async () => {
+    await act(async () => {
+      for (const el of Array.from(document.querySelectorAll("img"))) {
+        if (img.failed(srcOf(el))) el.dispatchEvent(new Event("error"));
+        else if (img.loaded(srcOf(el))) el.dispatchEvent(new Event("load"));
+      }
+    });
+  };
+  const everything = () => true;
+  const READY_FEED = { status: "unavailable" } as BroadcastFeed;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "clearTimeout"] });
+    __resetAcademyStartupForTests();
+    for (const k of ["complete", "naturalWidth", "decode"]) saved[k] = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, k);
+    Object.defineProperty(HTMLImageElement.prototype, "complete", {
+      configurable: true, get(this: HTMLImageElement) { const s = srcOf(this); return img.loaded(s) || img.failed(s); },
+    });
+    Object.defineProperty(HTMLImageElement.prototype, "naturalWidth", {
+      configurable: true, get(this: HTMLImageElement) { return img.loaded(srcOf(this)) && !img.failed(srcOf(this)) ? 100 : 0; },
+    });
+    Object.defineProperty(HTMLImageElement.prototype, "decode", {
+      configurable: true, writable: true, value() { return img.decode ?? Promise.resolve(); },
+    });
+    img.loaded = () => false;
+    img.failed = () => false;
+    img.decode = null;
+    feed.current = READY_FEED;
+  });
+  afterEach(() => {
+    for (const [k, d] of Object.entries(saved)) {
+      if (d) Object.defineProperty(HTMLImageElement.prototype, k, d);
+      else delete (HTMLImageElement.prototype as unknown as Record<string, unknown>)[k];
+    }
+    __resetAcademyStartupForTests();
+  });
+
+  it("an in-app visit (nothing held) behaves as before: no gate, the arrival cue at mount", async () => {
+    mount();
+    await frames(2);
+    expect(root()).toHaveAttribute("data-startup", "none");
+    expect(sfxPlay).toHaveBeenCalledWith("hub.application.enter");
+  });
+
+  it("resources ready before the hand-off: revealed as soon as frames flow (no extra wait), cue at the reveal", async () => {
+    img.loaded = everything;
+    holdAcademyVeil("entrance");
+    mount();
+    expect(root()).toHaveAttribute("data-startup", "pending");
+    expect(sfxPlay).not.toHaveBeenCalledWith("hub.application.enter");
+    await frames(FLOW_FRAMES + 2);
+    expect(store()).toMatchObject({ phase: "revealing", reason: "ready", degraded: [] });
+    expect(root()).toHaveAttribute("data-startup", "ready");
+    expect(sfxPlay).toHaveBeenCalledWith("hub.application.enter");
+    expect(store().revealedAt! - store().heldAt!).toBeLessThan(200);
+  });
+
+  it("resources completing after the normal entrance: the veil holds, then lifts the moment they are in", async () => {
+    holdAcademyVeil("entrance");
+    mount();
+    await frames(30); // ~0.5 s, still downloading
+    expect(store().phase).toBe("held");
+    img.loaded = everything;
+    await network();
+    await frames(FLOW_FRAMES + 2);
+    expect(store()).toMatchObject({ phase: "revealing", reason: "ready" });
+  });
+
+  it("slow image decoding: loaded bytes are not enough, the veil waits for decode()", async () => {
+    let decoded!: () => void;
+    img.decode = new Promise<void>((r) => { decoded = r; });
+    img.loaded = everything;
+    holdAcademyVeil("entrance");
+    mount();
+    await frames(20);
+    expect(store().phase).toBe("held");
+    await act(async () => { decoded(); });
+    await frames(FLOW_FRAMES + 2);
+    expect(store().reason).toBe("ready");
+  });
+
+  it("a failed image settles as degraded (bare leather) and never holds the veil", async () => {
+    img.loaded = (s) => !/Akali/.test(s);
+    img.failed = (s) => /Akali/.test(s);
+    holdAcademyVeil("entrance");
+    mount();
+    await network();
+    await frames(FLOW_FRAMES + 3);
+    expect(store()).toMatchObject({ phase: "revealing", reason: "degraded" });
+    expect(store().degraded).toContain("cover:combat-lab");
+    expect(root()).toHaveAttribute("data-startup", "degraded");
+  });
+
+  it("a failed manifest: covers settle as errors at once (bare leather); the rest still has to be drawn", async () => {
+    assets.current = null;
+    img.loaded = everything;
+    holdAcademyVeil("entrance");
+    mount();
+    await frames(FLOW_FRAMES + 2);
+    expect(store().reason).toBe("degraded");
+    expect(store().degraded).toEqual(expect.arrayContaining(["cover:leaguecraft", "cover:pro-play", "cover:combat-lab", "cover:archives"]));
+    expect(store().degraded).not.toContain("frame:leaguecraft");
+  });
+
+  it("a manifest still loading keeps the covers pending (no bare-leather flash), and the cap still releases", async () => {
+    assets.current = undefined;
+    img.loaded = everything;
+    holdAcademyVeil("entrance");
+    mount();
+    await frames(20);
+    expect(store().phase).toBe("held");
+    await act(async () => { vi.advanceTimersByTime(ENTRANCE_CAP_MS); });
+    expect(store()).toMatchObject({ reason: "timeout" });
+    expect(store().pending).toEqual(expect.arrayContaining(["cover:leaguecraft", "cover:archives"]));
+  });
+
+  it("timeout recovery: nothing arrives, the cap lifts the veil and the Orrery is fully usable", async () => {
+    holdAcademyVeil("entrance");
+    mount();
+    await act(async () => { vi.advanceTimersByTime(ENTRANCE_CAP_MS); });
+    expect(store()).toMatchObject({ phase: "revealing", reason: "timeout" });
+    expect(store().pending).toEqual(expect.arrayContaining(["frame:leaguecraft", "mogzy"]));
+    expect(root()).toHaveAttribute("data-startup", "timeout");
+    expect(sfxPlay).toHaveBeenCalledWith("hub.application.enter");
+    fireEvent.click(book("leaguecraft"));
+    await act(async () => { vi.advanceTimersByTime(BOOK_ACTIVATION_MS + 50); });
+    expect(screen.getByTestId("probe").textContent).toMatch(/^quiz\|\/quiz\|/);
+  });
+
+  it("the Patch Report is on the desktop first screen: a loading feed holds the veil", async () => {
+    feed.current = { status: "loading" };
+    img.loaded = everything;
+    holdAcademyVeil("entrance");
+    mount();
+    await frames(20);
+    expect(store().phase).toBe("held");
+  });
+
+  it("phones: the Patch Report is below the fold, so a loading feed does not hold the veil", async () => {
+    setLayout(false);
+    feed.current = { status: "loading" };
+    img.loaded = everything;
+    holdAcademyVeil("entrance");
+    mount();
+    await frames(FLOW_FRAMES + 2);
+    expect(store().reason).toBe("ready");
+  });
+
+  it("display faces still loading hold the veil, so no font swap reflows the revealed scene", async () => {
+    let fontsIn = false;
+    const faces = ["Cinzel", "Space Mono", "Lora", "Inter"].map((family) => ({ family, status: "loading" }));
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { check: () => fontsIn, load: () => Promise.resolve([]), forEach: (cb: (f: unknown) => void) => faces.forEach(cb) },
+    });
+    try {
+      img.loaded = everything;
+      holdAcademyVeil("entrance");
+      mount();
+      await frames(20);
+      expect(store().phase).toBe("held");
+      fontsIn = true;
+      await frames(FLOW_FRAMES + 2);
+      expect(store().reason).toBe("ready");
+    } finally {
+      delete (document as unknown as Record<string, unknown>).fonts;
+    }
+  });
+
+  it("a face that registers late and that nothing has used yet is asked for, not waited on until the cap", async () => {
+    // Lora's stylesheet arrives after the gate started (its own first request found no face)
+    const faces: { family: string; status: string }[] = ["Cinzel", "Space Mono", "Inter"].map((family) => ({ family, status: "loaded" }));
+    const lora = () => faces.find((f) => f.family === "Lora");
+    const asked: string[] = [];
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: {
+        check: (spec: string) => !/Lora/.test(spec) || lora()?.status === "loaded",
+        load: (spec: string) => {
+          asked.push(spec);
+          const f = /Lora/.test(spec) ? lora() : undefined;
+          if (f) f.status = "loaded";
+          return Promise.resolve([]);
+        },
+        forEach: (cb: (f: unknown) => void) => faces.forEach(cb),
+      },
+    });
+    try {
+      img.loaded = everything;
+      holdAcademyVeil("entrance");
+      mount();
+      await frames(5);
+      expect(store().phase).toBe("held"); // no Lora face yet
+      faces.push({ family: "Lora", status: "unloaded" });
+      await frames(FLOW_FRAMES + 3);
+      expect(store().reason).toBe("ready");
+      expect(asked.filter((s) => /Lora/.test(s)).length).toBeGreaterThan(1);
+    } finally {
+      delete (document as unknown as Record<string, unknown>).fonts;
+    }
+  });
+
+  it("direct /lol: the cap counts 1.8 s from the Orrery's mount", async () => {
+    holdAcademyVeil("direct");
+    await act(async () => { vi.advanceTimersByTime(3000); }); // the chunk took a while
+    mount();
+    await act(async () => { vi.advanceTimersByTime(DIRECT_CAP_AFTER_MOUNT_MS - 20); });
+    expect(store().phase).toBe("held");
+    await act(async () => { vi.advanceTimersByTime(40); });
+    expect(store().reason).toBe("timeout");
+  });
+
+  it("direct /lol with everything ready: revealed on frames, like the entrance", async () => {
+    img.loaded = everything;
+    holdAcademyVeil("direct");
+    mount();
+    await frames(FLOW_FRAMES + 2);
+    expect(store()).toMatchObject({ source: "direct", reason: "ready" });
+  });
+
+  it("rapid navigation: the page going away while held drops the veil (and stops probing)", async () => {
+    holdAcademyVeil("entrance");
+    const view = mount();
+    await frames(3);
+    view.unmount();
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(store()).toMatchObject({ phase: "idle", reason: "cancelled" });
+  });
+
+  it("reduced motion: the same contract, revealed without a fade", async () => {
+    reduced.current = true;
+    document.documentElement.classList.add("reduce-motion");
+    try {
+      img.loaded = everything;
+      holdAcademyVeil("entrance");
+      mount();
+      await frames(FLOW_FRAMES + 2);
+      expect(store()).toMatchObject({ phase: "revealed", reason: "ready" });
+    } finally {
+      document.documentElement.classList.remove("reduce-motion");
+    }
+  });
+
+  it("an early Lux hover under the veil still brings her art at once, and keyboard focus works while held", async () => {
+    holdAcademyVeil("entrance");
+    const { container } = mount();
+    await frames(2);
+    fireEvent.pointerEnter(slot("leaguecraft"), { pointerType: "mouse" });
+    await act(async () => { await Promise.resolve(); });
+    expect(container.querySelector("[data-testid='academy-core-v35-lux-portrait']")).not.toBeNull();
+    fireEvent.pointerLeave(slot("leaguecraft"));
+    act(() => { book("archives").focus(); });
+    await frames(2);
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "archives");
+    expect(store().phase).toBe("held");
   });
 });
