@@ -78,3 +78,11 @@ Branch and handoff created. Start A/B/C from the *same main commit* in separate 
 
 ## Next action
 Get Track A state/diff; send narrowed B conclusions above. Start D in separate isolated instance only if user wants parallel CI test work now. No production change or deployment.
+
+## Track A reported complete locally (2026-10-19, NOT verified independently)
+- Isolated local branch history-v2/a-ui-20261019 at a3a0c481f858c9df723440231ba7ce2a305f6c65, based on 19ef674e. GitHub remote ref does not exist (confirmed via API 404).
+- Claimed edits: QuestionReviewCard.tsx, new QuestionReviewCard.hierarchy.test.tsx, new MATCH_HISTORY_V2_TRACK_A_HANDOFF.md.
+- Claimed 27 new tests pass, 50 related files / 778 tests pass, 19 failures in 9 unrelated CSS/source-structure files reproduce against original card; 2 inherited TS errors; lint clean. None verified by command center until branch pushed.
+- UI: answer pair mine/right, compact options strip, outcome chip, proven icon header, tidier working, folded 'Full explanation' prose when structured working present. User approved folded prose. Other family bodies only changed common header.
+- NEXT: tell SAME Track A instance to read updated command-center handoff, assess B findings and explicitly report whether semantic Combat prompt + row-format working are implemented. Make only targeted corrections to owned files, rerun relevant tests, push remote branch, provide remote SHA and test evidence. No merge or deploy.
+- Keep Track D independently on CI harness and acceptance. Do not rely on claimed browser results until remote CI actually runs.
