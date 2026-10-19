@@ -44,7 +44,7 @@ jobs:
       - name: Install bundled Chromium
         run: npx playwright install --with-deps chromium
       - name: Question inspector browser acceptance
-        run: npx playwright test -c playwright.history-review.config.ts
+        run: npx playwright test -c playwright.history-review.config.ts --max-failures=1 --retries=0
       - name: Upload screenshots and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
