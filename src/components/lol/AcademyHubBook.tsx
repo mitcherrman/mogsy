@@ -137,6 +137,9 @@ export default function AcademyHubBook({
       <div
         className="academy-hub-book-body relative"
         style={{ aspectRatio: `1 / ${CLOSED_BOOK_HEIGHT_RATIO}` }}
+        // The cover's state for readers that cannot see the removed <img>
+        // (the Academy's startup veil): art | failed | none.
+        data-cover={splashUrl ? (imgFailed ? "failed" : "art") : "none"}
       >
         {/* 1 — champion splash, filling the frame's transparent art window.
                Sits UNDER the shell so the gold trim overlaps its edges and

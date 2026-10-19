@@ -1,0 +1,56 @@
+{
+ "scenario": {
+  "reps": 2,
+  "net": "slow4g",
+  "mode": "hover",
+  "hoverAt": 800,
+  "clickAfter": 400,
+  "w": 1366,
+  "h": 768,
+  "ms": 25000,
+  "label": "hover-rc",
+  "base": "https://127.0.0.1:4432"
+ },
+ "results": [
+  {
+   "rep": 0,
+   "mode": "hover",
+   "net": "slow4g",
+   "stalled": 0,
+   "errors": [],
+   "root": 5945,
+   "hoverAfterMount": 803,
+   "focusMs": 167,
+   "luxHrefMs": 167,
+   "luxLoadMs": 4872,
+   "luxRes": [
+    [
+     81,
+     4872
+    ]
+   ],
+   "clickToQuizPath": 313,
+   "clickToQuizUi": 313
+  },
+  {
+   "rep": 1,
+   "mode": "hover",
+   "net": "slow4g",
+   "stalled": 0,
+   "errors": [],
+   "root": 5875,
+   "hoverAfterMount": 814,
+   "focusMs": 187,
+   "luxHrefMs": 187,
+   "luxLoadMs": 4881,
+   "luxRes": [
+    [
+     107,
+     4880
+    ]
+   ],
+   "clickToQuizPath": 299,
+   "clickToQuizUi": 299
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "scenario": {
+  "reps": 1,
+  "net": "none",
+  "mode": "stall-frame",
+  "hoverAt": 800,
+  "clickAfter": 400,
+  "w": 1366,
+  "h": 768,
+  "ms": 24000,
+  "label": "stallframe-rc",
+  "base": "https://127.0.0.1:4432"
+ },
+ "results": [
+  {
+   "rep": 0,
+   "mode": "stall-frame",
+   "net": "none",
+   "stalled": 1,
+   "errors": [],
+   "root": 2251,
+   "stageReady": "true",
+   "reactions": "ready",
+   "luxInDom": true,
+   "books": 4,
+   "covers": 4,
+   "patchText": "Patch 26.20BuffsRead full reportNerfsAdjustmentsExperimental",
+   "surface": false,
+   "quizChunkRequestedAt": 20326,
+   "poseRequestedAt": 20225,
+   "rootFromFirstReq": 2251,
+   "observedMs": 24011
+  }
+ ]
+}

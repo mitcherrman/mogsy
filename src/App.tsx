@@ -1,4 +1,5 @@
 import AcademyRadioController from "./components/audio/EntryMusicController";
+import AcademyVeil from "./components/startup/AcademyVeil";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -447,6 +448,10 @@ export function AppRouterRoot() {
     <>
       <AcademyRadioController />
       <Outlet />
+      {/* ACADEMY STARTUP RC2: the entrance veil outlives the Landing -> /lol
+          route change here, above the router outlet, until the Orrery's first
+          screen is ready (or its cap). Renders nothing unless a hold is up. */}
+      <AcademyVeil />
     </>
   );
 }

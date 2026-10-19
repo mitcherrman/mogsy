@@ -95,6 +95,8 @@ async function open(page: Page, width: number, height: number) {
   await page.goto(ROUTE);
   await expect(page.getByTestId(HOME)).toBeVisible();
   await expect(page.getByTestId("academy-core-daily")).toBeVisible();
+  // ACADEMY STARTUP RC2: the direct-visit startup veil lifts first (cap 1.8 s after mount).
+  await expect(page.getByTestId("academy-veil")).toHaveCount(0);
   // Fonts, the covers and the first spring settle.
   await page.waitForTimeout(1400);
 }
