@@ -534,6 +534,29 @@ export default function AdminFeedback() {
                     animate={{ height: "auto", opacity: 1 }}
                     className="border-t border-border px-4 py-3 space-y-3 bg-muted/20"
                   >
+                    {/* Owner-first summary: separate the player's words from facts captured by the app. */}
+                    <section className="rounded-lg border border-primary/25 bg-card p-4 space-y-3" data-testid="feedback-plain-summary">
+                      <h4 className="text-sm font-bold">What happened — at a glance</h4>
+                      <dl className="grid gap-3 text-xs sm:grid-cols-2">
+                        <div><dt className="text-muted-foreground">Who reported this?</dt><dd className="font-medium">{fb.display_name || "Identity unavailable"}{fb.display_name === "Unknown" ? " (account not identified)" : ""}</dd></div>
+                        <div><dt className="text-muted-foreground">When?</dt><dd className="font-medium">{new Date(fb.created_at).toLocaleString()}</dd></div>
+                        <div><dt className="text-muted-foreground">Where?</dt><dd className="font-medium">{origin.kind === "question" ? "In a game question" : origin.kind === "page" ? "On a website page" : "Feedback Center"}{fb.page_url ? ` · ${fb.page_url}` : ""}</dd></div>
+                        <div><dt className="text-muted-foreground">What did they report?</dt><dd className="font-medium whitespace-pre-wrap">{fb.body?.trim() || "No explanation provided"}</dd></div>
+                      </dl>
+                      {origin.kind === "question" && (() => {
+                        const fields = capturedFields(fb);
+                        const value = (key: string) => fields.find(field => field.key === key)?.value;
+                        return <div className="space-y-2 border-t border-border pt-3">
+                          <p className="text-xs font-semibold">Question the player was viewing</p>
+                          <p className="rounded-md bg-muted/40 p-3 text-sm whitespace-pre-wrap">{value("prompt") || "Question text was not captured"}</p>
+                          <p className="text-xs text-muted-foreground">{[value("mode") || value("game_mode_id"), value("round_number") ? `Round ${value("round_number")}` : null].filter(Boolean).join(" · ") || "Game details unavailable"}</p>
+                          {value("selected_answer") && <p className="text-xs">Player selected: <strong>{value("selected_answer")}</strong></p>}
+                          {value("canonical_answer") && <p className="text-xs">Recorded correct answer: <strong>{value("canonical_answer")}</strong> (not independently checked)</p>}
+                        </div>;
+                      })()}
+                      <p className="text-xs text-muted-foreground">This report records what the player submitted and what was on screen. It does not establish whether the answer was wrong, an error appeared, or the game broke. Investigate before marking resolved.</p>
+                    </section>
+
                     {/* The submitter's own words, always first and always
                         labelled as theirs — the captured context below is the
                         client's observation, and the two must never read as
@@ -545,10 +568,13 @@ export default function AdminFeedback() {
                       <p className="text-sm text-foreground whitespace-pre-wrap">{fb.body}</p>
                     </div>
 
-                    <CapturedBlock
-                      title={origin.kind === "page" ? "Captured page" : "Captured question"}
-                      fields={capturedFields(fb)}
-                    />
+                    <details className="rounded-lg border border-border p-3">
+                      <summary className="cursor-pointer text-xs font-semibold">Full captured question and answers</summary>
+                      <div className="mt-3"><CapturedBlock
+                        title={origin.kind === "page" ? "Captured page" : "Captured question"}
+                        fields={capturedFields(fb)}
+                      /></div>
+                    </details>
 
                     {/* Feedback Center extras. Absent on in-product reports by
                         construction — neither reporter asks for a severity or
@@ -578,7 +604,9 @@ export default function AdminFeedback() {
                       />
                     )}
 
-                    <CapturedBlock
+                    <details className="rounded-lg border border-border p-3">
+                      <summary className="cursor-pointer text-xs font-semibold">Technical details (for investigating)</summary>
+                      <div className="mt-3"><CapturedBlock
                       title="Diagnostics"
                       fields={[
                         ...diagnosticFields(fb.client_meta),
@@ -592,7 +620,8 @@ export default function AdminFeedback() {
                           ? [{ key: "legacy_category", label: "Legacy category", value: fb.legacy_category }] : []),
                         { key: "created", label: "Created", value: new Date(fb.created_at).toLocaleString() },
                       ]}
-                    />
+                    /></div>
+                    </details>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
