@@ -5,7 +5,7 @@ Owner session: Claude Code, Sonnet 5.5, high effort · Date 2026-10-17
 
 ## Status
 
-**Implemented, measured before and after, tested in Edge and Firefox. Draft PR only: not merged, not deployed.** CSS-only change plus tests. No change to matchmaking, auth, routing, close callbacks, queue logic or audio. No Daily result component, countdown file, Friends trigger or audio runtime was touched. No backend, no Docker, no production write.
+**Implemented, measured before and after, tested in Edge and Firefox, and green on the hosted GitHub Actions acceptance run (42/42). Ready for review: not merged, not deployed.** CSS-only change plus tests. No change to matchmaking, auth, routing, close callbacks, queue logic or audio. No Daily result component, countdown file, Friends trigger or audio runtime was touched. No backend, no Docker, no production write.
 
 | | SHA |
 |---|---|
@@ -20,7 +20,8 @@ Files changed:
 |---|---|
 | `src/index.css` | the one real fix, plus compact head and 44px hit areas (about 170 lines, mostly comments) |
 | `src/components/quiz/play-scroll/playScroll.shortViewport.styles.test.ts` | new, pins the declarations the fix depends on |
-| `e2e/play-scroll-short-phone.spec.ts` | new, 40 browser tests |
+| `e2e/play-scroll-short-phone.spec.ts` | new, 42 browser tests (39 geometry/reachability + 3 reduced-motion) |
+| `.github/workflows/play-scroll-short-phone-acceptance.yml`, `playwright.play-scroll-short-phone.config.ts` | hosted acceptance workflow (GitHub Actions, bundled headless Chromium) |
 | `docs/handoffs/misc-w3b/` | this evidence: harness, scripts, JSON, five screenshot pairs |
 
 ## The defect, measured
@@ -83,7 +84,7 @@ In **landscape phones** a full fit is not possible. The sheet's width is capped 
 - **Touch targets.** Close 44px (32px visible), role arrows 44px (40px visible), mode cards 56px+ tall, Practice link 30px tall (meets the 24px minimum; not raised to 44px, which would cost 14px of height on the screen that now just fits).
 - **Keyboard / Escape.** Escape closes (new test, 6 viewports). Tab walks arrows → modes → Practice and each stop lands inside the scroll region (new test).
 - **Scroll lock.** Scrolling the region, by script and by wheel, never moves the page behind it. Radix's dialog scroll lock and `overscroll-behavior: contain` are unchanged.
-- **Reduced motion.** `prefers-reduced-motion` still turns the veil and unfurl animation off (`animation-name: none`, tested). No animation was added. The new block adds no transitions.
+- **Reduced motion.** `prefers-reduced-motion: reduce` and the in-app `html.reduce-motion` setting both turn the veil, the unfurl and the content fade-in off (`animation-name: none`), and the sheet is left fully open. Both paths are asserted in the browser, and a third test asserts the default entrance still animates. No animation was added. The new block adds no transitions. See "Hosted CI acceptance" for the one failing test and what it turned out to be.
 - **Focus return, close callbacks, Escape rules while a queue is live** (`closeIsSafe`) are untouched TSX, covered by the existing `RankedPlayScroll.test.tsx`.
 - **Screen readers.** The hidden mascot is decorative art (the role is written out beside it) and the role is still named by the live-region name beside the arrows. Nothing focusable is hidden.
 - **Horizontal overflow.** None at any viewport on any view (`documentElement.scrollWidth <= innerWidth`, asserted at six sizes).
@@ -94,7 +95,8 @@ Known small cost: at heights of 620px or less the mascot `<img>` is `display: no
 
 | Suite | Result |
 |---|---|
-| `e2e/play-scroll-short-phone.spec.ts` (new), Edge-class Chromium, fixed code | **40/40** |
+| `e2e/play-scroll-short-phone.spec.ts` (new), hosted headless Chromium 149 on GitHub Actions, fixed code | **42/42** (see "Hosted CI acceptance") |
+| Same spec, local Edge-class Chromium, at code `79420f77` (before the 3 reduced-motion tests existed in their final form) | 40/40 |
 | Same spec, Firefox, fixed code | **40/40** |
 | Same spec against the unfixed base | **15 fail**, proving it detects the defect (`evidence/e2e-against-base.txt`) |
 | `playScroll.shortViewport.styles.test.ts` (new) | passes |
@@ -124,6 +126,26 @@ Edge (Chromium, `channel: msedge`, `isMobile` + touch) and Firefox 1555 (viewpor
 - **A real phone with a live toolbar.** Headless Edge/Firefox cannot show the toolbar-resize case that motivates replacing `vh` with a percentage. The change is correct by construction (the frame is the visible area) but I could not observe it. Worth a check on a real Android or iOS device.
 - **A signed-in live hub.** The live `/quiz?play=1` run is a guest (no rating, no streak line, no bot toggle), so its cards are shorter than a ranked player's. The fixture view carries the full rating and streak lines, which is the tighter case and is the one the tests assert.
 - **iOS Safari / WebKit** was not run (Playwright WebKit is not installed here).
+
+## Hosted CI acceptance (reduced-motion failure resolved)
+
+The workflow `Play Selector Short Phone Acceptance` runs the vitest style pins, installs bundled Chromium on an `ubuntu-latest` runner, runs the whole spec with one worker, then `vite build`. It is the only browser run for this PR from the CI side; nothing was launched on the owner's desktop.
+
+**Failure.** Run on `d63b9d46`: 39 passed, 1 failed, `Play selector reduced motion > the veil and the unfurl do not animate`, expected `none` / `none`, received `play-scroll-veil-in` / `lc-scroll-unfurl`.
+
+**Diagnosis: a test-harness defect, not an accessibility defect.** Two temporary diagnostic runs on the runner (commits `60aba307`, `82a457ff`, since removed) showed:
+
+1. The stylesheet in the page contains the `@media (prefers-reduced-motion: reduce)` rules with `animation: none` for `.play-scroll-overlay`, `.play-scroll .lc-scroll__sheet` and `.play-scroll .lc-scroll__content`, plus the `html.reduce-motion` equivalents, all after the base rules, so nothing overrides them.
+2. `matchMedia("(prefers-reduced-motion: reduce)").matches` was **false** at the time of the check, although the describe block used `test.use({ reducedMotion: "reduce" })`. The preference was never in effect, so the browser was correctly animating.
+3. Calling `page.emulateMedia({ reducedMotion: "reduce" })` on the same page flipped `matchMedia` to true and the overlay's `animationName` to `none`.
+
+So the production CSS already did the right thing (the `@media` block predates this PR; `d63b9d46` extended it to the content fade-in and the in-app setting). The assertion was checking animation names, which is the right thing to check for a CSS animation (a `none` name means no movement at all), but it ran with the preference off. This is not a case of the test checking names where it should check perceptible movement.
+
+**Fix (test only, `5fb04716`).** The reduced-motion tests set the preference with `page.emulateMedia` before navigation and **assert `matchMedia(...).matches` is true** alongside the animation names, so the test can no longer pass or fail vacuously. Coverage was widened, not weakened: (a) `prefers-reduced-motion`, (b) the in-app `mogsy-reduce-motion` setting with the OS preference off, (c) a control that the default entrance still animates (`play-scroll-veil-in` / `lc-scroll-unfurl`), so the check can tell "off" from "never animated". No CSS change was needed in this pass; the CSS from `d63b9d46` stays (it is what makes (b) and the content fade-in correct).
+
+**Result on `5fb04716`** (run 39326397767): style pins 9/9; Playwright **42 passed, 0 failed** (2.6 min); `vite build` succeeded. The other workflows on that SHA (`mobile-arena-visibility`, `Journey Mobile Space Experiment`, `Mobile Recording Fit`) are green.
+
+**Compatibility.** GitHub reports the PR `mergeable: true`, `clean`. `origin/main` moved during the session (`19ef674e` then `133dbc04`); `git merge-tree` of the branch against it is clean and main did not touch `src/index.css` or `play-scroll/`. Draft PR #81 (`ui/ranked-coming-soon-combat-beta-20261019`, head `1b5ab284`) changes `LeaguecraftHub.tsx`, `RankedLobbyHero`, `FeatureRibbon`, the Academy book components and tests, none of which this PR touches; a trial merge of this branch with #81 is clean, and the one `LeaguecraftHub.tsx` hunk concerning the Play popup is `useState(!rankedComingSoon && playScrollOpenOnMount)`, which does not interact with the CSS. The Ranked-pause view inside the popup is that PR's concern; if it changes the popup's height at 320x568, rerun this workflow after #81 lands.
 
 ## Reproduce
 
