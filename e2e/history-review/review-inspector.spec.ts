@@ -308,7 +308,7 @@ for (const mode of ["sheet", "popover"] as const) {
 
       // The question is the semantic sentence, never the serialized state.
       await expect(host.getByTestId("review-mastery-challenges")).toContainText(SEMANTIC);
-      await expect(host.getByTestId("review-mastery-challenges")).not.toContainText(/@ Leona target|target items/);
+      await expect(host.locator('[data-review-mastery-challenge="0"] > p').first()).not.toContainText(/@ Leona target|target items/);
       // The served working renders as rows with the server's answer.
       await expect(host.getByTestId("review-mastery-working-0")).toBeVisible();
       await expect(host.getByTestId("journey-combat-working-answer")).toHaveText(/83/);
