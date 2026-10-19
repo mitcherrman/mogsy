@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import { AdminIdentityLines } from "@/components/admin/AdminUserCard";
+import { AccountOperationsPulse, AdminAccountJourney } from "@/components/admin/users/AdminAccountJourney";
+import { acquisitionSource, countAccountMilestones, isKnownQaEmail, type AccountActivityEvent, type AccountLinkedBrowser } from "@/lib/admin/account-journey";
 import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
 import { BotStateToggle } from "@/components/admin/BotStateToggle";
 import { notifyFriendsChanged } from "@/lib/community/friends-refresh";
@@ -185,6 +187,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [accountActivity, setAccountActivity] = useState<AccountActivityEvent[]>([]);
+  const [accountActivityLoading, setAccountActivityLoading] = useState(false);
+  const [accountActivityError, setAccountActivityError] = useState(false);
+  const [accountBrowsers, setAccountBrowsers] = useState<AccountLinkedBrowser[]>([]);
+  const [accountBrowsersLoading, setAccountBrowsersLoading] = useState(false);
+  const [accountBrowsersError, setAccountBrowsersError] = useState(false);
+  const accountActivityRequest = useRef(0);
+  const accountAuthRequest = useRef(0);
   const [allLeagues, setAllLeagues] = useState<{ id: string; name: string; type: string }[]>([]);
 
   const [editForm, setEditForm] = useState<Partial<Profile>>({});
@@ -196,6 +206,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+  const [emailConfirmations, setEmailConfirmations] = useState<Record<string, { confirmed: boolean; confirmed_at: string | null }>>({});
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
 
   const [noteEntries, setNoteEntries] = useState<{ id: string; text: string; created_at: string; updated_at?: string }[]>([]);
@@ -281,6 +292,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       const userIds = nonAnonUsers.map((p) => p.user_id);
       const BATCH_SIZE = 50;
       const allEmails: Record<string, string> = {};
+      const allConfirmations: Record<string, { confirmed: boolean; confirmed_at: string | null }> = {};
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
         const batch = userIds.slice(i, i + BATCH_SIZE);
         // OWN1.1: routine owner read; recovers a lapsed device attestation once.
@@ -294,8 +306,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         if (emailData?.emails) {
           Object.assign(allEmails, emailData.emails);
         }
+        // The Edge response extends the existing protected lookup. If the
+        // deployment still returns only emails, do not claim verification.
+        if (emailData?.email_confirmations) {
+          Object.assign(allConfirmations, emailData.email_confirmations);
+        }
       }
       setEmailMap(allEmails);
+      setEmailConfirmations(allConfirmations);
     }
 
     // Verified Discord / Riot identities, keyed by public profile id. A failure
@@ -368,6 +386,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const anonymousUsers = useMemo(() => profiles.filter(p => p.is_anonymous), [profiles]);
   const registered = useMemo(() => profiles.filter(p => !p.is_anonymous), [profiles]);
   const botCount = useMemo(() => registered.filter(p => p.is_bot).length, [registered]);
+  const communityTotals = useMemo(() => countAccountMilestones(
+    profiles, identities, (id) => {
+      const profile = profiles.find((p) => p.id === id);
+      return profile ? isEffectivePro(profile) : false;
+    }, Date.now(), emailMap, id => profiles.find(p=>p.id===id)?.user_id ?? id,
+  ), [profiles, identities, emailMap]);
 
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
@@ -398,8 +422,72 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setDetailErrors([]);
     setFeedback([]);
     setFeedbackError(false);
+    ++accountAuthRequest.current; // invalidate an outstanding read for a different account
     setAuthInfo(null);
     setAuthError(false);
+    setAccountActivity([]);
+    setAccountActivityError(false);
+    setAccountActivityLoading(true);
+    setAccountBrowsers([]);
+    setAccountBrowsersError(false);
+    setAccountBrowsersLoading(true);
+    const request = ++accountActivityRequest.current;
+    // Existing owner-authorized Edge action; do not expose auth.users via
+    // a browser-level anon query or promote email lookup to a public RPC.
+    if (!profile.is_anonymous) void loadAuthInfo(profile.user_id);
+    // Analytics rows are account-associated by exact server-observed UID.
+    // Do not infer per-person history from a browser ID or IP address.
+    void supabase.from("analytics_events")
+      .select("event_name,received_at,source_system,route")
+      .eq("user_id", profile.user_id)
+      .order("received_at", { ascending: false })
+      .limit(120)
+      .then(({ data, error }) => {
+        if (request !== accountActivityRequest.current) return;
+        setAccountActivity(error ? [] : (data ?? []) as AccountActivityEvent[]);
+        setAccountActivityError(!!error);
+        setAccountActivityLoading(false);
+      });
+
+    // Exact uid→visitor links ONLY, under existing admin RLS. A linked browser
+    // is NOT necessarily an exclusive physical person or their gameplay.
+    void (async () => {
+      const { data: links, error: linkError } = await supabase
+        .from("analytics_visitor_user_links")
+        .select("visitor_id,first_observed_at")
+        .eq("user_id", profile.user_id)
+        .order("first_observed_at", { ascending: false })
+        .limit(12);
+      if (request !== accountActivityRequest.current) return;
+      if (linkError) {
+        setAccountBrowsersError(true);
+        setAccountBrowsersLoading(false);
+        return;
+      }
+      if (!links?.length) {
+        setAccountBrowsersLoading(false);
+        return;
+      }
+      const { data: sources, error: sourceError } = await supabase
+        .from("analytics_visitors")
+        .select("visitor_id,first_seen_at,first_landing_path,first_referrer,first_utm_source,first_utm_campaign")
+        .in("visitor_id", links.map(l => l.visitor_id));
+      if (request !== accountActivityRequest.current) return;
+      const byId = new Map((sources ?? []).map(v => [v.visitor_id, v]));
+      setAccountBrowsers(links.map(link => {
+        const browser = byId.get(link.visitor_id);
+        return {
+          visitorId: link.visitor_id,
+          firstObservedAt: link.first_observed_at,
+          firstSeenAt: browser?.first_seen_at ?? null,
+          landing: browser?.first_landing_path ?? null,
+          source: acquisitionSource(browser?.first_utm_source ?? null, browser?.first_referrer ?? null),
+          campaign: browser?.first_utm_campaign ?? null,
+        };
+      }));
+      setAccountBrowsersError(!!sourceError);
+      setAccountBrowsersLoading(false);
+    })();
 
     const [membRes, matchRes, purchRes, commRes, feedbackRes] = await Promise.all([
       supabase.from("league_memberships").select("*").eq("profile_id", profile.id),
@@ -529,6 +617,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   };
 
   const loadAuthInfo = async (userId: string) => {
+    const request = ++accountAuthRequest.current;
     setAuthInfo(null);
     setAuthError(false);
     setGeneratedLink(null);
@@ -539,6 +628,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         body: { action: "get_auth_info", target_user_id: userId },
       }),
     );
+    if (request !== accountAuthRequest.current) return;
     if (outcome.status !== "done") {
       setAuthError(true);
       return;
@@ -869,6 +959,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   };
 
   if (selectedUser) {
+    const accountIdentity = identities.get(selectedUser.id) ?? EMPTY_IDENTITIES;
     const selectedRoles = userRoles[selectedUser.user_id] || [];
     const isSelectedAdmin = selectedRoles.includes("admin");
     const isSelectedMaster = selectedRoles.includes("master_admin");
@@ -877,7 +968,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={() => {
+          ++accountAuthRequest.current;
+          ++accountActivityRequest.current;
+          setSelectedUser(null);
+        }} className="text-muted-foreground">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Users
         </Button>
 
@@ -918,6 +1013,48 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
         </div>
+
+        {/* Compact verified milestones + timeline come before operational tabs,
+            so repeated owner checks don't require hunting across nine tabs. */}
+        <AdminAccountJourney
+          key={selectedUser.user_id}
+          email={emailMap[selectedUser.user_id] ?? null}
+          loading={accountActivityLoading}
+          browserLoading={accountBrowsersLoading}
+          error={accountActivityError}
+          input={{
+            profileCreatedAt: selectedUser.created_at,
+            lastSeenAt: selectedUser.last_seen_at,
+            auth: authInfo,
+            discord: accountIdentity.discord ? {
+              provider: "discord",
+              verifiedAt: accountIdentity.discord.verifiedAt,
+              label: accountIdentity.discord.displayName || accountIdentity.discord.username,
+            } : null,
+            riot: accountIdentity.riot ? {
+              provider: "riot",
+              verifiedAt: accountIdentity.riot.verifiedAt,
+              label: riotIdLabel(accountIdentity.riot),
+            } : null,
+            effectivePremium: premium.effectivePremium,
+            premiumSource: premium.sourceLabel,
+            premiumGrantedAt: selectedUser.pro_grant_granted_at,
+            premiumAcquiredAt: selectedUser.pro_offer_acquired_at,
+            stripeStatus: selectedUser.stripe_subscription_status,
+            stripeSubscriptionId: selectedUser.stripe_subscription_id,
+            events: accountActivity,
+            matches,
+            purchases,
+            linkedBrowsers: accountBrowsersLoading ? undefined : accountBrowsers,
+            linkedBrowserError: accountBrowsersError,
+          }}
+        />
+
+        {authError && (
+          <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-400">
+            The owner-authorized authentication read did not succeed. Email confirmation status is unavailable; other activity may still be complete.
+          </p>
+        )}
 
         {/* Per-user actions that used to live in the separate directories. */}
         <div className="flex flex-wrap items-start gap-2" data-testid="detail-quick-actions">
@@ -1738,10 +1875,15 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   return (
     <div className="space-y-4">
+      <AccountOperationsPulse values={{
+        ...communityTotals,
+        verifiedEmails: profiles.filter(p => !p.is_bot && !p.is_anonymous && emailConfirmations[p.user_id]?.confirmed === true).length,
+        emailCoverage: profiles.filter(p => !p.is_bot && !p.is_anonymous && emailConfirmations[p.user_id] !== undefined).length,
+      }} loading={loading} />
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search users by name, email, or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search email, username, Discord, Riot ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Button
           variant="outline"
@@ -1876,7 +2018,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
               <button
                 key={p.id}
                 onClick={() => openUserDetail(p)}
-                className="w-full flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/50 transition-colors text-left"
+                className="group w-full flex items-center gap-3 rounded-xl border border-border/80 bg-card p-3.5 text-left transition-all hover:border-primary/40 hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
                   {p.avatar_url ? (
@@ -1886,10 +2028,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
                     {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
                     {p.is_bot && <RowTag>{p.is_disabled ? "Bot · disabled" : "Bot"}</RowTag>}
+                    {isKnownQaEmail(emailMap[p.user_id]) && <RowTag tone="warning">QA test account</RowTag>}
                     {p.is_anonymous && <RowTag>Anonymous</RowTag>}
                     {isEffectivePro(p) && <RowTag tone="primary">Premium</RowTag>}
                     {roles.includes("master_admin") && <RowTag tone="primary">Master admin</RowTag>}
@@ -1901,8 +2044,20 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                       <ImageOff className="h-3 w-3 text-destructive shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-primary truncate">{emailMap[p.user_id] || ""}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <p className="text-xs text-primary truncate">{emailMap[p.user_id] || (p.is_anonymous ? "Guest — no email" : "Email unavailable")}</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5" data-testid="account-status-strip">
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${emailConfirmations[p.user_id]?.confirmed ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : emailConfirmations[p.user_id]?.confirmed === false ? "border-amber-500/25 bg-amber-500/10 text-amber-400" : "border-border text-muted-foreground"}`}
+                      title={emailConfirmations[p.user_id]?.confirmed_at || undefined}>
+                      {emailConfirmations[p.user_id]?.confirmed ? "Email confirmed" : emailConfirmations[p.user_id]?.confirmed === false ? "Email pending" : emailMap[p.user_id] ? "Email status unknown" : "No email shown"}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${identities.get(p.id)?.discord?.verifiedAt ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-border text-muted-foreground"}`}>
+                      Discord {identities.get(p.id)?.discord?.verifiedAt ? "verified" : identities.get(p.id)?.discord ? "unverified" : "—"}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${identities.get(p.id)?.riot?.verifiedAt ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-border text-muted-foreground"}`}>
+                      Riot {identities.get(p.id)?.riot?.verifiedAt ? "verified" : identities.get(p.id)?.riot ? "unverified" : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                     {p.location && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.location}</span>}
                     <span>Joined {new Date(p.created_at).toLocaleDateString()}</span>
                     <span>· Last seen {timeAgo(p.last_seen_at)}</span>
@@ -1917,7 +2072,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                       <title>{`Premium — ${describePremiumProvenance(p).sourceLabel}`}</title>
                     </Crown>
                   )}
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
                 </div>
               </button>
             );

@@ -244,3 +244,47 @@ describe("AdminUsers Phase 1 safety", () => {
     if (normalRpc) supabase.rpc.mockImplementation(normalRpc);
   });
 });
+
+
+describe("owner-only email confirmation directory",()=>{
+  const uid="22222222-2222-4222-8222-222222222222";
+  beforeEach(()=>{invoke.mockReset();});
+  it("shows a verified email only when the trusted auth lookup reports it",async ()=>{
+    invoke.mockImplementation((name:string)=>Promise.resolve(name==="admin-get-emails"
+      ? {data:{emails:{[uid]:"user@example.com"},email_confirmations:{[uid]:{confirmed:true,confirmed_at:"2026-10-18T09:00:00Z"}}},error:null}
+      : {data:{auth_info:{email:"user@example.com",email_confirmed:true,email_confirmed_at:"2026-10-18T09:00:00Z",
+        created_at:"2026-10-15T12:00:00Z",last_sign_in_at:null,is_anonymous:false,provider:"email",banned_until:null}},error:null}));
+    mount(<AdminUsers isMasterAdmin/>);
+    expect(await screen.findByText("Email confirmed")).toBeInTheDocument();
+    expect(invoke).toHaveBeenCalledWith("admin-get-emails",expect.objectContaining({body:{user_ids:[uid]}}));
+  });
+  it("does not mislabel older Edge responses as unconfirmed",async ()=>{
+    invoke.mockImplementation((name:string)=>Promise.resolve(name==="admin-get-emails"
+      ? {data:{emails:{[uid]:"user@example.com"}},error:null}
+      : {data:{auth_info:null},error:null}));
+    mount(<AdminUsers isMasterAdmin/>);
+    expect(await screen.findByText("Email status unknown")).toBeInTheDocument();
+    expect(screen.queryByText("Email pending")).toBeNull();
+  });
+  it("opens the real account-detail component and loads owner-authorized confirmation history",async ()=>{
+    invoke.mockImplementation((name:string)=>Promise.resolve(name==="admin-get-emails"
+      ? {data:{emails:{[uid]:"user@example.com"},email_confirmations:{[uid]:{confirmed:true,confirmed_at:"2026-10-18T09:00:00Z"}}},error:null}
+      : {data:{auth_info:{email:"user@example.com",email_confirmed:true,email_confirmed_at:"2026-10-18T09:00:00Z",
+        created_at:"2026-10-15T12:00:00Z",last_sign_in_at:null,is_anonymous:false,provider:"email",banned_until:null}},error:null}));
+    mount(<AdminUsers isMasterAdmin/>);
+    fireEvent.click(await screen.findByText("Mogzy Owner"));
+    const journey=await screen.findByTestId("admin-account-journey");
+    await waitFor(()=>expect(journey).toHaveTextContent("Email confirmed"));
+    expect(journey).toHaveTextContent("Oct 18");
+    expect(screen.getByTestId("account-timeline")).toHaveTextContent("Auth identity created");
+    expect(invoke).toHaveBeenCalledWith("admin-user-actions",
+      expect.objectContaining({body:{action:"get_auth_info",target_user_id:uid}}));
+  });
+  it("labels explicitly unconfirmed emails as pending",async ()=>{
+    invoke.mockImplementation((name:string)=>Promise.resolve(name==="admin-get-emails"
+      ? {data:{emails:{[uid]:"unconfirmed@example.com"},email_confirmations:{[uid]:{confirmed:false,confirmed_at:null}}},error:null}
+      : {data:{auth_info:null},error:null}));
+    mount(<AdminUsers isMasterAdmin/>);
+    expect(await screen.findByText("Email pending")).toBeInTheDocument();
+  });
+});

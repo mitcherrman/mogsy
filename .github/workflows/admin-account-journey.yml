@@ -1,0 +1,40 @@
+name: Admin Account Journey Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/components/admin/AdminUsers.tsx'
+      - 'src/components/admin/AdminUsers.phase1.test.tsx'
+      - 'supabase/functions/admin-get-emails/index.ts'
+      - 'src/components/admin/users/AdminAccountJourney*'
+      - 'src/lib/admin/account-journey*'
+      - 'e2e/admin-account-journey/**'
+      - '.github/workflows/admin-account-journey.yml'
+permissions:
+  contents: read
+jobs:
+  journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Account milestone, security and existing Admin regressions
+        run: npm test -- src/lib/admin/account-journey.test.ts src/components/admin/users/AdminAccountJourney.test.tsx src/components/admin/AdminUsers.phase1.test.tsx src/components/admin/AdminUsers.entitlement.test.tsx src/lib/admin/admin-users.test.ts src/lib/admin/admin-users.identity.test.ts
+      - name: Validate owner-only email lookup gate remains in place
+        run: |
+          grep -Fq 'requireOwner(req, "trusted")' supabase/functions/admin-get-emails/index.ts
+          grep -Fq 'auditOwnerAction(ctx, "admin_get_emails", "ok"' supabase/functions/admin-get-emails/index.ts
+      - name: Vite production build
+        run: npx vite build
+      - name: No additional TS diagnostics beyond the current main baseline
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          node scripts/ci/check-audience-typecheck.mjs
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Desktop and narrow phone UI
+        run: npx playwright test -c playwright.admin-account-journey.config.ts
