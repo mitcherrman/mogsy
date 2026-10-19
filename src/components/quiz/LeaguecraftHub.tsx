@@ -168,6 +168,9 @@ const SMOOTH_SCROLL_CHECK_MS = 350;
  *  serves it. Falls back to the first catalog set so the action is never dead. */
 const PRIMARY_PRACTICE_SET = "All Current Questions";
 
+/** Temporary public matchmaking pause. Remove with a reviewed Ranked relaunch. */
+const PUBLIC_RANKED_COMING_SOON = true;
+
 export default function LeaguecraftHub({
   progress,
   ranked,
@@ -388,7 +391,7 @@ export default function LeaguecraftHub({
   const canonicalSfx = useSfx();
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
 
-  const [playOpen, setPlayOpen] = useState(playScrollOpenOnMount);
+  const [playOpen, setPlayOpen] = useState(!PUBLIC_RANKED_COMING_SOON && playScrollOpenOnMount);
   useEffect(() => {
     onPlayScrollOpenChange?.(playOpen);
   }, [onPlayScrollOpenChange, playOpen]);
@@ -504,6 +507,7 @@ export default function LeaguecraftHub({
   const sfx = usePlaySfx();
 
   const openPlay = useCallback(async () => {
+    if (PUBLIC_RANKED_COMING_SOON) return;
     if (!rankedAvailabilityOpen) {
       onPlayDailyChallenge();
       return;
@@ -627,6 +631,7 @@ export default function LeaguecraftHub({
           hasAccount={hasAccount}
           onRequireAccount={onRequireAccount}
           rankedAvailable={rankedAvailabilityOpen}
+          rankedComingSoon={PUBLIC_RANKED_COMING_SOON}
           playDisabled={playDisabled}
           playButtonRef={playSealRef}
           rankedRole={rankedRole}
