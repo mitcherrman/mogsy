@@ -269,15 +269,104 @@ test.describe("art", () => {
   });
 });
 
-// ── combat: the server's structured working is printed, not recomputed ──────────
-test.describe("combat working", () => {
-  test.use({ viewport: { width: 360, height: 640 }, hasTouch: true, isMobile: true });
-  test("the served numbers render inside the sheet", async ({ page }) => {
-    await openHarness(page, "mastery-combat", "bottom");
-    await page.getByTestId("history-trigger").click();
-    const working = page.getByTestId("review-mastery-working-0");
-    await expect(working).toBeVisible();
-    await expect(working).toContainText("Leona");
-    await expect(page.getByTestId("journey-combat-working-answer")).toHaveText(/83/);
+// ── Combat: semantic prompt, folded prose, option strip and working rows ───────
+const SEMANTIC = "How much physical damage does Pantheon's Rank 1 Aegis Assault deal to Leona?";
+
+/** Open every native disclosure, as a reader would. */
+async function openFolds(host: Locator) {
+  await host.evaluate((el) => el.querySelectorAll("details").forEach((d) => { d.open = true; }));
+}
+const isOpen = (d: Locator) => d.evaluate((el) => (el as HTMLDetailsElement).open);
+
+for (const mode of ["sheet", "popover"] as const) {
+  test.describe(`combat ${mode}`, () => {
+    test.use(mode === "sheet"
+      ? { viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true }
+      : { viewport: { width: 1280, height: 560 } });
+    const hostId = mode === "sheet" ? "question-review-sheet" : "question-review-popover";
+
+    test("working: semantic question, rows, options; prose and serialized prompt folded", async ({ page }, testInfo) => {
+      await openHarness(page, "mastery-combat", "bottom");
+      await page.getByTestId("history-trigger").click();
+      const host = page.getByTestId(hostId);
+      await expect(host).toBeVisible();
+
+      // The question is the semantic sentence, never the serialized state.
+      await expect(host.getByTestId("review-mastery-challenges")).toContainText(SEMANTIC);
+      await expect(host.getByTestId("review-mastery-challenges")).not.toContainText(/@ Leona target|target items/);
+      // The served working renders as rows with the server's answer.
+      await expect(host.getByTestId("review-mastery-working-0")).toBeVisible();
+      await expect(host.getByTestId("journey-combat-working-answer")).toHaveText(/83/);
+      // Every frozen option is still printed.
+      const options = (await host.locator("[data-review-option]").allTextContents()).join("|");
+      for (const option of ["72", "83", "91", "123"]) expect(options, `option ${option}`).toContain(option);
+      // Prose and the serialized prompt are kept, folded and CLOSED.
+      const recorded = host.getByTestId("review-mastery-recorded-0");
+      const full = host.getByTestId("review-mastery-explanation-0").locator("details");
+      expect(await isOpen(recorded)).toBe(false);
+      expect(await isOpen(full)).toBe(false);
+      await expect(full.locator("summary")).toHaveText(/Full explanation/i);
+      await expect(recorded.locator("summary")).toHaveText(/Recorded question/i);
+
+      expectClean(await measure(host));
+      await shot(page, testInfo, `combat-${mode}-closed`);
+
+      // The disclosure is keyboard-operable, and everything open stays bounded.
+      await full.locator("summary").focus();
+      await page.keyboard.press("Enter");
+      expect(await isOpen(full)).toBe(true);
+      await openFolds(host);
+      const m = await measure(host);
+      expectClean(m);
+      if (mode === "popover") expect(m.box.height).toBeLessThanOrEqual(REM_24 + 1);
+      else expect(m.box.height).toBeLessThanOrEqual(m.innerH * 0.85 + 1);
+      await shot(page, testInfo, `combat-${mode}-folds-open`);
+    });
+
+    test("record without working: prose stays visible, no explanation fold", async ({ page }) => {
+      await openHarness(page, "mastery-combat-legacy", "bottom");
+      await page.getByTestId("history-trigger").click();
+      const host = page.getByTestId(hostId);
+      await expect(host.getByTestId("review-mastery-challenges")).toContainText(SEMANTIC);
+      await expect(host.getByTestId("review-mastery-working-0")).toHaveCount(0);
+      const expl = host.getByTestId("review-mastery-explanation-0");
+      await expect(expl).toBeVisible();
+      await expect(expl).toContainText("82.5343 rounds to 83");
+      await expect(expl.locator("details")).toHaveCount(0);
+      expectClean(await measure(host));
+    });
   });
+}
+
+// ── every phone with all disclosures open ───────────────────────────────────────
+for (const vp of PHONES) {
+  test.describe(`folds open ${vp.id}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h }, hasTouch: true, isMobile: true });
+    test("mastery-combat with every fold open", async ({ page }) => {
+      await openHarness(page, "mastery-combat", "bottom");
+      await page.getByTestId("history-trigger").click();
+      const sheet = page.getByTestId("question-review-sheet");
+      await expect(sheet).toBeVisible();
+      await openFolds(sheet);
+      const m = await measure(sheet);
+      expectClean(m);
+      expect(m.box.height).toBeLessThanOrEqual(m.innerH * 0.85 + 1);
+    });
+  });
+}
+
+// ── Track A's verdict chip ────────────────────────────────────────────────────
+test.describe("verdict chip", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  const EXPECT: Record<string, RegExp> = {
+    "quiz-correct": /^correct/i, "quiz-incorrect": /^incorrect/i, "quiz-unanswered": /unanswered/i,
+    "quiz-sealed": /not played/i, "mastery-mixed": /partial/i,
+  };
+  for (const [id, re] of Object.entries(EXPECT)) {
+    test(`${id}`, async ({ page }) => {
+      await openHarness(page, id);
+      await page.getByTestId("history-trigger").click();
+      await expect(page.getByTestId("review-outcome")).toHaveText(re);
+    });
+  }
 });

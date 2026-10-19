@@ -56,8 +56,13 @@ export interface Fixture {
   total: number;
   /** A round whose answers the backend withheld: nothing revealed may be present. */
   sealed?: boolean;
-  /** The harness attaches the backend's real combat_working.v1 example. */
-  combat?: boolean;
+  /**
+   * Journey Combat row. The harness swaps in the backend's REAL captured child
+   * (prompt + prompt_semantics, pantheon.standard.json child4-live) so the
+   * card's semantic sentence is exercised; "working" also attaches the real
+   * combat_working.v1 example, "semantic-only" is an old record without it.
+   */
+  combat?: "working" | "semantic-only";
   round: ReviewRound;
 }
 
@@ -142,7 +147,7 @@ export const FIXTURES: Record<string, Fixture> = {
     }),
   },
   "mastery-combat": {
-    label: "Mastery, Combat with structured working", total: 6, combat: true,
+    label: "Mastery, Combat with structured working", total: 6, combat: "working",
     round: base({
       kind: "mastery_slice", moduleId: "mastery_slice", category: null,
       masteryChallenges: [mc(0, {
@@ -152,6 +157,19 @@ export const FIXTURES: Record<string, Fixture> = {
       })],
       viewerSubmission: { ...NO_SUBMISSION, correctCount: 0, answeredCount: 1, challengeCount: 1 },
     }),
+  },
+};
+
+FIXTURES["mastery-combat-legacy"] = {
+  label: "Mastery, Combat record without structured working", total: 6, combat: "semantic-only",
+  round: {
+    ...FIXTURES["mastery-combat"].round,
+    masteryChallenges: [mc(0, {
+      prompt: "placeholder, replaced by the harness",
+      answerOptions: ["72", "83", "91", "123"], correctAnswer: "83", viewerAnswer: "83", isCorrect: true,
+      explanation: "Frozen prose: 123.8675 raw, 50.08 armor, 0.6663 multiplier, 82.5343 rounds to 83.",
+    })],
+    viewerSubmission: { ...NO_SUBMISSION, correctCount: 1, answeredCount: 1, challengeCount: 1 },
   },
 };
 

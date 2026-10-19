@@ -13,6 +13,7 @@ import "@/index.css";
 import QuestionInspector from "@/components/quiz/workspace/QuestionInspector";
 import { readCombatWorking } from "@/lib/journey/combatWorking";
 import { PANTHEON_E_WORKING_RECALLED } from "@/lib/journey/__fixtures__/j5/finalWindow";
+import pantheon from "@/lib/journey/__fixtures__/j4/pantheon.standard.json";
 import { FIXTURES } from "./fixtures";
 
 const q = new URLSearchParams(location.search);
@@ -21,7 +22,16 @@ const pos = q.get("pos") ?? "middle";
 
 const round = structuredClone(fx.round);
 if (fx.combat && round.masteryChallenges) {
-  round.masteryChallenges[0].combatWorking = readCombatWorking(structuredClone(PANTHEON_E_WORKING_RECALLED));
+  // The backend's real captured Pantheon E child: serialized prompt + prompt_semantics.
+  type Capture = { label: string; envelope: { payload: { segment_state: { challenges: { challenges: Record<string, unknown>[] } } } } };
+  const live = (pantheon as unknown as Capture[])
+    .find((x) => x.label === "child4-live")!.envelope.payload.segment_state.challenges.challenges[2];
+  const challenge = round.masteryChallenges[0];
+  challenge.prompt = live.prompt as string;
+  challenge.promptSemantics = live.prompt_semantics as Record<string, unknown>;
+  if (fx.combat === "working") {
+    challenge.combatWorking = readCombatWorking(structuredClone(PANTHEON_E_WORKING_RECALLED));
+  }
 }
 
 const PLACE: Record<string, string> = {
