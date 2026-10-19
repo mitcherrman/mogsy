@@ -176,6 +176,7 @@ export default function LeaguecraftHub({
   ranked,
   onPlayRanked,
   playDisabled = false,
+  rankedComingSoon = PUBLIC_RANKED_COMING_SOON,
   onCommitRole,
   hasAccount = true,
   onRequireAccount,
@@ -275,6 +276,8 @@ export default function LeaguecraftHub({
    *  seal is the lobby's one commit point, so a second press during that
    *  write would start a second write and a second record. */
   playDisabled?: boolean;
+  /** Show ranked launch messaging and prevent public queue entry in the Quiz Hub. */
+  rankedComingSoon?: boolean;
   /**
    * PLAY1: hand the player into the live-match host at `/quiz/ranked` once
    * the Ranked queue has a match. The hub never navigates itself.
@@ -391,7 +394,7 @@ export default function LeaguecraftHub({
   const canonicalSfx = useSfx();
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
 
-  const [playOpen, setPlayOpen] = useState(!PUBLIC_RANKED_COMING_SOON && playScrollOpenOnMount);
+  const [playOpen, setPlayOpen] = useState(!rankedComingSoon && playScrollOpenOnMount);
   useEffect(() => {
     onPlayScrollOpenChange?.(playOpen);
   }, [onPlayScrollOpenChange, playOpen]);
@@ -507,7 +510,7 @@ export default function LeaguecraftHub({
   const sfx = usePlaySfx();
 
   const openPlay = useCallback(async () => {
-    if (PUBLIC_RANKED_COMING_SOON) return;
+    if (rankedComingSoon) return;
     if (!rankedAvailabilityOpen) {
       onPlayDailyChallenge();
       return;
@@ -525,7 +528,7 @@ export default function LeaguecraftHub({
     if (!committed) return;
     sfx.play("scrollOpen");
     setPlayOpen(true);
-  }, [onPlayDailyChallenge, onPlayRanked, rankedAvailabilityOpen, sfx]);
+  }, [onPlayDailyChallenge, onPlayRanked, rankedAvailabilityOpen, rankedComingSoon, sfx]);
   // Focus is restored by the record itself, on its own unmount — see
   // `returnFocusTo`. Doing it here would race Radix's own restore.
   const closePlay = useCallback(() => setPlayOpen(false), []);
@@ -631,7 +634,7 @@ export default function LeaguecraftHub({
           hasAccount={hasAccount}
           onRequireAccount={onRequireAccount}
           rankedAvailable={rankedAvailabilityOpen}
-          rankedComingSoon={PUBLIC_RANKED_COMING_SOON}
+          rankedComingSoon={rankedComingSoon}
           playDisabled={playDisabled}
           playButtonRef={playSealRef}
           rankedRole={rankedRole}
