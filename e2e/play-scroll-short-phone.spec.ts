@@ -176,30 +176,51 @@ test.describe("Play selector touch targets", () => {
 });
 
 test.describe("Play selector reduced motion", () => {
-  test.use({ viewport: { width: 320, height: 568 }, reducedMotion: "reduce" });
+  test.use({ viewport: { width: 320, height: 568 } });
 
-  test("the veil and the unfurl do not animate", async ({ page }) => {
-    await page.goto("/dev/play-scroll");
-    await page.waitForSelector('[data-testid="play-scroll"]');
-    const names = await page.evaluate(() => ({
+  // `test.use({ reducedMotion })` was not applied before the first navigation on
+  // the hosted Chromium (matchMedia stayed false), so the preference is set on
+  // the page explicitly and asserted before the animation names are read.
+  const animationNames = (page: Page) =>
+    page.evaluate(() => ({
+      prefersReduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
       overlay: getComputedStyle(document.querySelector(".play-scroll-overlay")!).animationName,
       sheet: getComputedStyle(document.querySelector(".play-scroll .lc-scroll__sheet")!).animationName,
+      content: getComputedStyle(document.querySelector(".play-scroll .lc-scroll__content")!).animationName,
     }));
-    expect(names).toEqual({ overlay: "none", sheet: "none" });
-  });
 
-  test("DIAG reduced motion", async ({ page, browserName }, testInfo) => {
+  test("the veil and the unfurl do not animate under prefers-reduced-motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/dev/play-scroll");
     await page.waitForSelector('[data-testid="play-scroll"]');
-    const q = () => page.evaluate(() => ({
-      mq: matchMedia("(prefers-reduced-motion: reduce)").matches,
-      bare: matchMedia("(prefers-reduced-motion)").matches,
-      nopref: matchMedia("(prefers-reduced-motion: no-preference)").matches,
-      anim: getComputedStyle(document.querySelector(".play-scroll-overlay")!).animationName,
-    }));
-    const before = await q();
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    const after = await q();
-    console.log("DIAG " + JSON.stringify({ browserName, ver: page.context().browser()?.version(), projUse: testInfo.project.use.reducedMotion, before, after }));
+    expect(await animationNames(page)).toEqual({
+      prefersReduced: true,
+      overlay: "none",
+      sheet: "none",
+      content: "none",
+    });
+  });
+
+  test("the veil and the unfurl do not animate under the in-app reduce-motion setting", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.addInitScript(() => localStorage.setItem("mogsy-reduce-motion", "1"));
+    await page.goto("/dev/play-scroll");
+    await page.waitForSelector('[data-testid="play-scroll"]');
+    expect(await page.evaluate(() => document.documentElement.classList.contains("reduce-motion"))).toBe(true);
+    expect(await animationNames(page)).toEqual({
+      prefersReduced: false,
+      overlay: "none",
+      sheet: "none",
+      content: "none",
+    });
+  });
+
+  test("the entrance still animates when no reduction is requested", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/dev/play-scroll");
+    await page.waitForSelector('[data-testid="play-scroll"]');
+    const names = await animationNames(page);
+    expect(names.overlay).toBe("play-scroll-veil-in");
+    expect(names.sheet).toBe("lc-scroll-unfurl");
   });
 });
