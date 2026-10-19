@@ -13,6 +13,19 @@
  * rather than narrow and tall, and everything that is not one of those five
  * things has been cut.
  *
+ * THE ANSWER HIERARCHY (Match History V2)
+ * ──────────────────────────────────────
+ * Top to bottom, in the order a reader's eye needs them:
+ *   1. the heading line — position, proven subject mark, subject, verdict word;
+ *   2. the question;
+ *   3. the ANSWER PAIR — mine beside right, each stated once, as a figure;
+ *   4. the CHOICES — the frozen options, kept, as a quiet reference strip
+ *      (chips for short figures, rows for sentences) that marks the same two
+ *      choices among their neighbours rather than repeating them in words;
+ *   5. why — working first, then the explanation.
+ * A pick on a round that never resolved is "pending", not graded: green and
+ * red are only ever printed against an answer the backend revealed.
+ *
  * WHAT IS DELIBERATELY NOT SHOWN
  * ──────────────────────────────
  * The frozen explanation is the candidate pipeline's own review material, and
@@ -41,13 +54,15 @@
  * out — rather than rendering an empty "Correct answer" with a dash, which
  * reads as missing data instead of as a decision.
  */
-import { Check, Minus, X } from "lucide-react";
+import { Check, ChevronRight, Minus, X, Zap } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import {
   prettyCategory,
   questionOutcome,
   resolveQuestionIcon,
+  type QuestionOutcome,
 } from "@/components/quiz/workspace/questionIcons";
+import ModuleSigil, { hasModuleSigil } from "@/components/quiz/workspace/ModuleSigil";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
 import type { ReviewChallenge, ReviewMasteryChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
@@ -62,10 +77,13 @@ import {
   contextFor as assemblyContextFor, noteFor as assemblyNoteFor,
 } from "@/lib/ranked-core/modules/assemblyAdapter";
 
-/** The three marks, printed rather than lit — the row's own palette. */
+/** The marks, printed rather than lit — the row's own palette. `pending` is a
+ *  pick nobody judged (a sealed round): committed, but neither jade nor red. */
 const TONE = {
   correct: { ink: "#1f5c3c", edge: "rgba(31,92,60,0.45)", fill: "rgba(31,92,60,0.09)" },
   incorrect: { ink: LEAGUECRAFT_INK.rubric, edge: "rgba(122,40,32,0.45)", fill: "rgba(122,40,32,0.08)" },
+  partial: { ink: "#6b4a0c", edge: "rgba(107,74,12,0.45)", fill: "rgba(107,74,12,0.09)" },
+  pending: { ink: LEAGUECRAFT_INK.strong, edge: "rgba(96,68,28,0.5)", fill: "rgba(112,82,36,0.12)" },
   idle: { ink: LEAGUECRAFT_INK.body, edge: "rgba(96,68,28,0.22)", fill: "transparent" },
 } as const;
 
@@ -106,13 +124,31 @@ function stepText(v: unknown): { text: string; figure: string | null } {
 function Working({ steps }: { steps: unknown[] }) {
   const rows = steps.map(stepText).filter((r) => r.text || r.figure !== null);
   if (rows.length === 0) return null;
+  // The last row is the worked total ("total gold spent 2400"): it is the
+  // result of the rows above it, so it is ruled off and set a shade heavier.
+  const last = rows.length - 1;
+  const closing = (i: number) => i === last && rows.length > 1;
   return (
     <div className="space-y-0.5" data-testid="review-working">
       <SectionLabel>Working</SectionLabel>
-      <ol className="space-y-px text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+      <ol
+        className="rounded border px-2 py-1 text-[11.5px] leading-snug"
+        style={{ color: LEAGUECRAFT_INK.body, borderColor: TONE.idle.edge, background: LEAGUECRAFT_INK.inset }}
+      >
         {rows.map((r, i) => (
-          <li key={i} className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1">{r.text}</span>
+          <li
+            key={i}
+            className="flex items-baseline gap-2 py-px"
+            style={closing(i)
+              ? { borderTop: `1px solid ${TONE.idle.edge}`, marginTop: 2, paddingTop: 3 }
+              : undefined}
+          >
+            <span
+              className={`min-w-0 flex-1 break-words ${closing(i) ? "font-semibold" : ""}`}
+              style={closing(i) ? { color: LEAGUECRAFT_INK.strong } : undefined}
+            >
+              {r.text}
+            </span>
             {r.figure !== null && (
               <span
                 className="shrink-0 tabular-nums font-semibold"
@@ -154,30 +190,160 @@ function ownDerivationFor(
   return typeof hit === "string" && hit.trim() ? hit.trim() : null;
 }
 
-/** The one-line answer summary. Labels in the sheet's brass, values in ink. */
-function AnswerLine({
-  label, value, ink, note, testId,
+type AnswerState = "right" | "wrong" | "pending" | "none";
+
+/**
+ * One side of the answer pair: a labelled figure the eye can land on.
+ *
+ * The VALUE is the largest thing in the card after the question, because
+ * "what did I pick, what was right" is why the reader opened it. The mark is
+ * an icon plus the tile's own label — colour is never the only signal — and
+ * a screen reader also gets the verdict as a word.
+ */
+function AnswerTile({
+  label, value, state, note, testId, spoken,
 }: {
   label: string;
   value: string;
-  ink: string;
+  state: AnswerState;
   note?: string | null;
   testId: string;
+  /** The verdict a screen reader hears after the value; omitted when the
+   *  label already says it. */
+  spoken?: string;
 }) {
+  const tone = state === "right" ? TONE.correct
+    : state === "wrong" ? TONE.incorrect
+      : state === "pending" ? TONE.pending : TONE.idle;
+  const Icon = state === "right" ? Check : state === "wrong" ? X : Minus;
   return (
-    <div className="flex items-baseline gap-2 text-[11.5px]" data-testid={testId}>
-      <span
-        className="w-[5.4rem] shrink-0 text-[9px] font-bold uppercase tracking-[0.14em]"
+    <div
+      className="min-w-0 rounded border px-2 py-1"
+      style={{ borderColor: tone.edge, background: tone.fill }}
+      data-testid={testId}
+      data-answer-state={state}
+    >
+      <div
+        className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.14em]"
         style={{ color: LEAGUECRAFT_INK.brass }}
       >
-        {label}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="font-semibold" style={{ color: ink }}>{value}</span>
-        {note && (
-          <span style={{ color: LEAGUECRAFT_INK.faint }}> — {note}</span>
-        )}
-      </span>
+        <Icon className="h-3 w-3 shrink-0" style={{ color: tone.ink }} aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+      <div
+        className="break-words text-[13px] font-semibold leading-snug"
+        style={{ color: state === "none" ? LEAGUECRAFT_INK.faint : tone.ink }}
+      >
+        {value}
+        {spoken && <span className="sr-only">{`, ${spoken}`}</span>}
+      </div>
+      {note && (
+        <div className="mt-0.5 break-words text-[10.5px] leading-snug" style={{ color: LEAGUECRAFT_INK.faint }}>
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The answer pair — YOURS beside RIGHT — in place of two stacked label rows.
+ *
+ * Side by side so the contrast ("57" against "50") is one glance, and wrapping
+ * to a single column only when the container cannot give each tile ~9.5rem
+ * (a 320px sheet), never by viewport width. A round that never resolved has no
+ * canonical answer to print; it says so in the second slot instead of showing
+ * an empty tile that reads as missing data.
+ */
+function AnswerPair({
+  mine, mineTestId, mineNote, mineState, right, rightTestId, unresolvedTestId,
+}: {
+  mine: string;
+  mineTestId: string;
+  mineNote?: string | null;
+  mineState: AnswerState;
+  /** `null` when the round is sealed. */
+  right: string | null;
+  rightTestId: string;
+  unresolvedTestId: string;
+}) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-1.5">
+      <AnswerTile
+        testId={mineTestId} label="Your answer" value={mine} state={mineState} note={mineNote}
+        spoken={mineState === "right" ? "correct" : mineState === "wrong" ? "incorrect" : undefined}
+      />
+      {right !== null ? (
+        <AnswerTile testId={rightTestId} label="Correct answer" value={right} state="right" />
+      ) : (
+        <p
+          className="min-w-0 rounded border border-dashed px-2 py-1 text-[11px] leading-snug"
+          data-testid={unresolvedTestId}
+          style={{ color: LEAGUECRAFT_INK.faint, borderColor: TONE.idle.edge }}
+        >
+          This round was never played out, so its answer stays sealed.
+        </p>
+      )}
+    </div>
+  );
+}
+
+interface ChoiceView {
+  text: string;
+  state: "correct" | "chosen" | "idle";
+  /** A pick on a round that never resolved: the reader's, but not judged. */
+  pending?: boolean;
+  /** The reader's pick — "yours" is said even when it was the right one. */
+  yours: boolean;
+}
+
+/**
+ * The frozen options, kept — they are the distractors the reader weighed —
+ * but demoted to a reference strip under the answer pair.
+ *
+ * Short options (item costs, levels, stat values) sit in a wrapping grid so
+ * four of them are one line, not four rows. Anything longer than a figure or a
+ * short name keeps a row each, because a wrapped sentence in a narrow chip is
+ * harder to read than a tall list. Each option carries its own icon and, for
+ * the reader's pick, the word "yours"; list semantics, `data-review-option`
+ * and `data-option-state` are unchanged.
+ */
+function Choices({ choices, testId }: { choices: ChoiceView[]; testId?: string }) {
+  if (choices.length === 0) return null;
+  const compact = choices.every((c) => c.text.length <= 14);
+  return (
+    <div className="space-y-0.5">
+      <SectionLabel>Choices</SectionLabel>
+      <ul
+        className={compact
+          ? "grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-1"
+          : "space-y-1"}
+        data-testid={testId}
+        data-layout={compact ? "chips" : "rows"}
+      >
+        {choices.map((c, i) => {
+          const tone = c.state === "correct" ? TONE.correct
+            : c.state === "chosen" ? (c.pending ? TONE.pending : TONE.incorrect) : TONE.idle;
+          const Icon = c.state === "correct" ? Check : c.state === "chosen" && !c.pending ? X : Minus;
+          return (
+            <li
+              key={i}
+              data-review-option={i}
+              data-option-state={c.state}
+              className="flex min-w-0 items-start gap-1 rounded border px-1.5 py-0.5 text-[11.5px] leading-snug"
+              style={{ borderColor: tone.edge, background: tone.fill, color: tone.ink }}
+            >
+              <Icon className="mt-[3px] h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1 break-words">{c.text}</span>
+              {c.yours && (
+                <span className="shrink-0 self-center text-[8.5px] font-bold uppercase tracking-[0.14em] opacity-80">
+                  yours
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -188,79 +354,51 @@ function QuizBody({ round }: { round: ReviewRound }) {
   const chosen = round.viewerSubmission.answerIndex;
   const correct = q.correctOptionIndex;
   const expl = q.explanation ?? {};
+  // A pick can only be judged against an answer the round actually resolved.
+  const judged = round.revealed && correct !== null;
   const ownDerivation =
     chosen !== null && chosen !== correct ? ownDerivationFor(expl, q.options[chosen]) : null;
   const note = typeof expl.scenario_note === "string" ? expl.scenario_note.trim() : "";
   const steps = Array.isArray(expl.calculation_steps) ? expl.calculation_steps : null;
+  const picked = chosen !== null && q.options[chosen] !== undefined;
 
   return (
     <>
-      <p className="text-[12.5px] leading-relaxed" style={{ color: LEAGUECRAFT_INK.strong }}>
+      <p className="break-words text-[12.5px] leading-relaxed" style={{ color: LEAGUECRAFT_INK.strong }}>
         {q.prompt}
       </p>
 
-      <ul className="space-y-1" data-testid="review-options">
-        {q.options.map((opt, i) => {
+      {/* What I picked against what was right, stated once and large. The
+          option strip below marks the same two choices among their
+          neighbours; it does not repeat them in words. */}
+      <AnswerPair
+        mineTestId="review-your-answer"
+        mine={picked ? q.options[chosen!] : "Not answered"}
+        mineState={!picked ? "none" : !judged ? "pending" : chosen === correct ? "right" : "wrong"}
+        mineNote={ownDerivation}
+        right={judged && q.options[correct!] !== undefined ? q.options[correct!] : null}
+        rightTestId="review-correct-answer"
+        unresolvedTestId="review-unresolved"
+      />
+
+      <Choices
+        testId="review-options"
+        choices={q.options.map((opt, i) => {
           const isCorrect = correct !== null && i === correct;
           const isChosen = chosen === i;
-          const tone = isCorrect ? TONE.correct : isChosen ? TONE.incorrect : TONE.idle;
-          const Icon = isCorrect ? Check : isChosen ? X : Minus;
-          return (
-            <li
-              key={i}
-              data-review-option={i}
-              data-option-state={isCorrect ? "correct" : isChosen ? "chosen" : "idle"}
-              className="flex items-start gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
-              style={{ borderColor: tone.edge, background: tone.fill, color: tone.ink }}
-            >
-              <Icon className="mt-[3px] h-3 w-3 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1 break-words">{opt}</span>
-              {isChosen && (
-                <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-[0.14em] opacity-80">
-                  yours
-                </span>
-              )}
-            </li>
-          );
+          return {
+            text: opt,
+            state: isCorrect ? "correct" : isChosen ? "chosen" : "idle",
+            pending: isChosen && !isCorrect && !judged,
+            yours: isChosen,
+          };
         })}
-      </ul>
-
-      {/* Stated in words as well as marked in the list. A reader glancing at
-          one question should not have to decode two icons to learn what they
-          picked and what was right. */}
-      <div className="space-y-0.5">
-        <AnswerLine
-          testId="review-your-answer"
-          label="Your answer"
-          value={chosen !== null && q.options[chosen] !== undefined ? q.options[chosen] : "Not answered"}
-          ink={
-            chosen === null ? LEAGUECRAFT_INK.faint
-              : chosen === correct ? TONE.correct.ink : TONE.incorrect.ink
-          }
-          note={ownDerivation}
-        />
-        {round.revealed && correct !== null && q.options[correct] !== undefined ? (
-          <AnswerLine
-            testId="review-correct-answer"
-            label="Correct answer"
-            value={q.options[correct]}
-            ink={TONE.correct.ink}
-          />
-        ) : (
-          <p
-            className="text-[11px]"
-            data-testid="review-unresolved"
-            style={{ color: LEAGUECRAFT_INK.faint }}
-          >
-            This round was never played out, so its answer stays sealed.
-          </p>
-        )}
-      </div>
+      />
 
       {note && (
         <div className="space-y-0.5" data-testid="review-explanation">
           <SectionLabel>Explanation</SectionLabel>
-          <p className="text-[11.5px] leading-relaxed" style={{ color: LEAGUECRAFT_INK.body }}>
+          <p className="break-words text-[11.5px] leading-relaxed" style={{ color: LEAGUECRAFT_INK.body }}>
             {note}
           </p>
         </div>
@@ -279,6 +417,7 @@ function CardSide({
   const isChosen = card.viewerSide === side;
   const tone = isCorrect ? TONE.correct : isChosen ? TONE.incorrect : TONE.idle;
   const src = data.icon ? resolveQuizAssetUrl(data.icon) : undefined;
+  const Icon = isCorrect ? Check : isChosen ? X : null;
   return (
     <div
       data-review-card-side={side}
@@ -290,7 +429,9 @@ function CardSide({
         <img src={src} alt="" aria-hidden="true" className="h-6 w-6 shrink-0 rounded-sm" loading="lazy" />
       )}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[11px] font-medium" style={{ color: tone.ink }}>
+        {/* Two lines before it clips: a long item name should not be cut to
+            "Abyssal Ma…" in the one place the reader is told what it was. */}
+        <div className="line-clamp-2 break-words text-[11.5px] font-medium leading-snug" style={{ color: tone.ink }}>
           {/* Reveal-only: a recognition card's label IS its answer, so an
               unresolved block has none to print. */}
           {data.label ?? (revealed ? "—" : "sealed")}
@@ -301,6 +442,14 @@ function CardSide({
           </div>
         )}
       </div>
+      {/* The pick and the answer are marked by shape as well as by tint. */}
+      {Icon && (
+        <Icon
+          className="h-3 w-3 shrink-0"
+          style={{ color: tone.ink }}
+          aria-label={isCorrect ? (isChosen ? "Your pick, correct" : "Correct card") : "Your pick"}
+        />
+      )}
     </div>
   );
 }
@@ -340,40 +489,88 @@ function comparisonValuesLine(challenge: ReviewMasteryChallenge): string | null 
   return cv.sides.map((side) => `${labelOf(side.token)} ${withUnitLabel(side.display, cv)}`).join(" · ");
 }
 
+/** One dot per answered challenge — jade right, rubric wrong, hollow unanswered. */
+function Pips({ results }: { results: (boolean | null)[] }) {
+  return (
+    <span className="inline-flex items-center gap-[3px] align-middle" aria-hidden="true" data-testid="review-pips">
+      {results.map((ok, i) => (
+        <span
+          key={i}
+          className="inline-block h-[7px] w-[7px] rounded-full border"
+          style={ok === null
+            ? { borderColor: TONE.idle.edge }
+            : { borderColor: ok ? TONE.correct.ink : TONE.incorrect.ink, background: ok ? TONE.correct.ink : TONE.incorrect.ink }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The reader's own answer: green or red only when the round resolved and
+ * graded it. A pick on a sealed round is committed but unjudged.
+ */
+function masteryState(
+  chosen: string | number | boolean | null, isCorrect: boolean | null, judged: boolean,
+): AnswerState {
+  if (chosen === null) return "none";
+  if (!judged || isCorrect === null) return "pending";
+  return isCorrect ? "right" : "wrong";
+}
+
 function MasterySliceBody({ round }: { round: ReviewRound }) {
   const challenges = round.masteryChallenges ?? [];
   // RQ1: per-challenge emblems only when the challenges' frozen role sets
   // differ — when they agree, the card header already shows the one set.
   const perChallengeRoles = masteryChallengeRolesDiffer(round);
   const sub = round.viewerSubmission;
+  const several = challenges.length > 1;
   return (
     <>
       {sub.correctCount !== null && sub.challengeCount !== null && (
-        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
-          <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-            {sub.correctCount}
-          </span>{" "}
-          of{" "}
-          <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-            {sub.challengeCount}
-          </span>{" "}
-          right.
+        <p className="flex items-center gap-2 text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          <span>
+            <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+              {sub.correctCount}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+              {sub.challengeCount}
+            </span>{" "}
+            right.
+          </span>
+          {several && round.revealed && <Pips results={challenges.map((c) => c.isCorrect)} />}
         </p>
       )}
-      <ul className="space-y-2.5" data-testid="review-mastery-challenges">
-        {challenges.map((challenge) => {
+      <ul className="space-y-2" data-testid="review-mastery-challenges">
+        {challenges.map((challenge, position) => {
           const chosen = challenge.viewerAnswer;
           const correct = challenge.correctAnswer;
+          const judged = round.revealed && correct !== null;
+          const values = round.revealed ? comparisonValuesLine(challenge) : null;
+          const working = round.revealed ? challenge.combatWorking : null;
           return (
             <li
               key={challenge.challengeIndex}
-              className="space-y-1"
+              className="space-y-1.5"
               data-review-mastery-challenge={challenge.challengeIndex}
+              style={several && position > 0
+                ? { borderTop: `1px solid ${TONE.idle.edge}`, paddingTop: 8 }
+                : undefined}
             >
               <p
-                className="text-[12px] leading-relaxed"
+                className="break-words text-[12.5px] leading-relaxed"
                 style={{ color: LEAGUECRAFT_INK.strong }}
               >
+                {several && (
+                  <span
+                    className="mr-1.5 inline-block text-[9.5px] font-extrabold uppercase tracking-[0.14em] align-[1px]"
+                    style={{ color: LEAGUECRAFT_INK.brass }}
+                    data-testid={`review-mastery-ordinal-${challenge.challengeIndex}`}
+                  >
+                    {position + 1}/{challenges.length}
+                  </span>
+                )}
                 {perChallengeRoles && (
                   <QuestionRoleEmblems roles={challenge.roles} size="sm" backed
                     className="mr-1.5 align-[-2px]"
@@ -382,84 +579,59 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                 {challenge.prompt}
               </p>
 
-              {challenge.answerOptions.length > 0 && (
-                <ul className="space-y-1">
-                  {challenge.answerOptions.map((opt, i) => {
-                    const isCorrect = correct !== null && String(correct) === opt;
-                    const isChosen = chosen !== null && String(chosen) === opt;
-                    const tone = isCorrect ? TONE.correct : isChosen ? TONE.incorrect : TONE.idle;
-                    const Icon = isCorrect ? Check : isChosen ? X : Minus;
-                    return (
-                      <li
-                        key={i}
-                        data-review-option={i}
-                        data-option-state={isCorrect ? "correct" : isChosen ? "chosen" : "idle"}
-                        className="flex items-start gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
-                        style={{ borderColor: tone.edge, background: tone.fill, color: tone.ink }}
-                      >
-                        <Icon className="mt-[3px] h-3 w-3 shrink-0" aria-hidden="true" />
-                        <span className="min-w-0 flex-1 break-words">{opt}</span>
-                        {isChosen && (
-                          <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-[0.14em] opacity-80">
-                            yours
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              <AnswerPair
+                mineTestId={`review-mastery-your-answer-${challenge.challengeIndex}`}
+                mine={chosen === null ? "Not answered" : String(chosen)}
+                mineState={masteryState(chosen, challenge.isCorrect, judged)}
+                right={judged ? String(correct) : null}
+                rightTestId={`review-mastery-correct-answer-${challenge.challengeIndex}`}
+                unresolvedTestId={`review-mastery-unresolved-${challenge.challengeIndex}`}
+              />
 
-              <div className="space-y-0.5">
-                <AnswerLine
-                  testId={`review-mastery-your-answer-${challenge.challengeIndex}`}
-                  label="Your answer"
-                  value={chosen === null ? "Not answered" : String(chosen)}
-                  ink={
-                    chosen === null ? LEAGUECRAFT_INK.faint
-                      : challenge.isCorrect ? TONE.correct.ink : TONE.incorrect.ink
-                  }
-                />
-                {round.revealed && correct !== null ? (
-                  <AnswerLine
-                    testId={`review-mastery-correct-answer-${challenge.challengeIndex}`}
-                    label="Correct answer"
-                    value={String(correct)}
-                    ink={TONE.correct.ink}
-                  />
-                ) : (
-                  <p
-                    className="text-[11px]"
-                    data-testid={`review-mastery-unresolved-${challenge.challengeIndex}`}
-                    style={{ color: LEAGUECRAFT_INK.faint }}
-                  >
-                    This round was never played out, so its answer stays sealed.
-                  </p>
-                )}
-              </div>
+              <Choices
+                testId={`review-mastery-options-${challenge.challengeIndex}`}
+                choices={challenge.answerOptions.map((opt) => {
+                  const isCorrect = judged && String(correct) === opt;
+                  const isChosen = chosen !== null && String(chosen) === opt;
+                  return {
+                    text: opt,
+                    state: isCorrect ? "correct" : isChosen ? "chosen" : "idle",
+                    pending: isChosen && !isCorrect && !judged,
+                    yours: isChosen,
+                  };
+                })}
+              />
 
-              {round.revealed && comparisonValuesLine(challenge) && (
+              {values && (
                 <div
                   className="space-y-0.5"
                   data-testid={`review-mastery-values-${challenge.challengeIndex}`}
                 >
                   <SectionLabel>Values</SectionLabel>
-                  <p className="text-[11.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
-                    {comparisonValuesLine(challenge)}
+                  <p className="break-words text-[11.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
+                    {values}
                   </p>
                 </div>
               )}
 
               {/* JOURNEY5 — a Journey Combat child's served working, verbatim,
-                  above the prose (kept, as on the live reveal). */}
-              {round.revealed && challenge.combatWorking && (
+                  above the prose (kept, as on the live reveal). Laid out in
+                  the Journey reveal's own three-line `rows` form inside an
+                  inset, so the chain of reasoning reads as lines of a sum
+                  rather than one run-on sentence. */}
+              {working && (
                 <div
                   className="space-y-0.5"
                   data-testid={`review-mastery-working-${challenge.challengeIndex}`}
                   style={{ color: LEAGUECRAFT_INK.body }}
                 >
                   <SectionLabel>Working</SectionLabel>
-                  <JourneyCombatWorking working={challenge.combatWorking} />
+                  <div
+                    className="rounded border px-2 py-1 text-[11.5px] leading-snug"
+                    style={{ borderColor: TONE.idle.edge, background: LEAGUECRAFT_INK.inset }}
+                  >
+                    <JourneyCombatWorking working={working} rows className="gap-y-0.5" />
+                  </div>
                 </div>
               )}
 
@@ -468,13 +640,38 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                   className="space-y-0.5"
                   data-testid={`review-mastery-explanation-${challenge.challengeIndex}`}
                 >
-                  <SectionLabel>Explanation</SectionLabel>
-                  <p
-                    className="text-[11.5px] leading-relaxed"
-                    style={{ color: LEAGUECRAFT_INK.body }}
-                  >
-                    {challenge.explanation}
-                  </p>
+                  {working ? (
+                    /* The served sentence restates the same inputs the working
+                       above already lays out ("…at Leona target, 4 target level,
+                       Cloth Armor target items…"). It stays — it is the frozen
+                       record — but folds away behind a native disclosure so the
+                       working leads. */
+                    <details className="group">
+                      <summary
+                        className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-[9px] font-bold uppercase tracking-[0.18em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
+                        style={{ color: LEAGUECRAFT_INK.brass, outlineColor: LEAGUECRAFT_INK.accent }}
+                      >
+                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden="true" />
+                        Full explanation
+                      </summary>
+                      <p
+                        className="mt-0.5 break-words text-[11px] leading-relaxed"
+                        style={{ color: LEAGUECRAFT_INK.body }}
+                      >
+                        {challenge.explanation}
+                      </p>
+                    </details>
+                  ) : (
+                    <>
+                      <SectionLabel>Explanation</SectionLabel>
+                      <p
+                        className="break-words text-[11.5px] leading-relaxed"
+                        style={{ color: LEAGUECRAFT_INK.body }}
+                      >
+                        {challenge.explanation}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </li>
@@ -855,15 +1052,18 @@ function MetaReflexBody({ round }: { round: ReviewRound }) {
   return (
     <>
       {sub.correctCount !== null && sub.challengeCount !== null && (
-        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
-          <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-            {sub.correctCount}
-          </span>{" "}
-          of{" "}
-          <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-            {sub.challengeCount}
-          </span>{" "}
-          cards right.
+        <p className="flex items-center gap-2 text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          <span>
+            <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+              {sub.correctCount}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+              {sub.challengeCount}
+            </span>{" "}
+            cards right.
+          </span>
+          {cards.length > 1 && round.revealed && <Pips results={cards.map((c) => c.isCorrect)} />}
         </p>
       )}
       <ul className="space-y-1.5" data-testid="review-cards">
@@ -926,6 +1126,76 @@ function OwnershipFootnote({ canonicalQuestionRef }: { canonicalQuestionRef: str
   );
 }
 
+/**
+ * The verdict, as one word in the heading line.
+ *
+ * It restates what `data-outcome` already says on the card, where a reader
+ * scanning down a stack of cards can find it without reading the body. A
+ * counted round (a Mastery slice, a Meta Reflex block) is `correct` only on a
+ * clean sweep and `incorrect` on a clean miss; anything between is "Partial",
+ * which is neither — the timeline's tint (`questionOutcome`) stays as it was.
+ */
+function OutcomeChip({ round, outcome }: { round: ReviewRound; outcome: QuestionOutcome }) {
+  const sub = round.viewerSubmission;
+  const counted = sub.challengeCount !== null && sub.isCorrect === null;
+  const partial = counted && outcome === "incorrect"
+    && (sub.correctCount ?? 0) > 0 && (sub.correctCount ?? 0) < (sub.challengeCount ?? 0);
+  const state = !round.revealed ? "sealed" : partial ? "partial" : outcome;
+  const label = state === "sealed" ? "Not played out"
+    : state === "partial" ? "Partial"
+      : state === "correct" ? "Correct"
+        : state === "incorrect" ? "Incorrect" : "Unanswered";
+  const tone = state === "correct" ? TONE.correct
+    : state === "incorrect" ? TONE.incorrect
+      : state === "partial" ? TONE.partial : TONE.idle;
+  const Icon = state === "correct" ? Check : state === "incorrect" ? X : Minus;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[8.5px] font-bold uppercase leading-snug tracking-[0.12em]"
+      style={{ color: tone.ink, borderColor: tone.edge, background: tone.fill }}
+      data-testid="review-outcome"
+      data-state={state}
+    >
+      <Icon className="h-2.5 w-2.5" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * The subject's mark, from the SAME proven hint the timeline icon draws.
+ *
+ * Nothing is chosen here: `resolveQuestionIcon` is the timeline's own
+ * resolver, so the card and the icon that opened it cannot disagree. Backend-
+ * verified entity art prints as it is; a category tile is muted the way the
+ * timeline mutes it, so "Items" never reads as "this was about Infinity Edge".
+ * A module with no entity wears its drawn sigil, Meta Reflex its bolt, and a
+ * subject with neither prints no mark at all rather than a placeholder.
+ */
+function SubjectMark({ round }: { round: ReviewRound }) {
+  const icon = resolveQuestionIcon(round.iconHint);
+  const box = "h-[18px] w-[18px] shrink-0 self-center rounded-[3px]";
+  if (icon.glyph === "meta_reflex") {
+    return <Zap className="h-4 w-4 shrink-0 self-center" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />;
+  }
+  if (icon.src) {
+    return (
+      <img
+        src={icon.src}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        data-testid="review-subject-mark"
+        data-specific={icon.specific ? "true" : "false"}
+        className={`${box} object-cover`}
+        style={icon.specific ? undefined : { opacity: 0.88, filter: "sepia(0.18) saturate(0.92) brightness(0.97)" }}
+      />
+    );
+  }
+  if (hasModuleSigil(round)) return <ModuleSigil kind={round.kind} className="h-4 w-4 shrink-0 self-center" />;
+  return null;
+}
+
 export default function QuestionReviewCard({
   round, position, total,
 }: { round: ReviewRound; position: number; total: number }) {
@@ -953,7 +1223,8 @@ export default function QuestionReviewCard({
   return (
     <div className="space-y-2" data-testid="question-review-card" data-outcome={outcome}>
       {/* The heading line: where you are, and what it was about. */}
-      <div className="flex items-baseline gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <SubjectMark round={round} />
         <span
           className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.18em]"
           style={{ color: LEAGUECRAFT_INK.heading, textShadow: LEAGUECRAFT_INK.press }}
@@ -973,6 +1244,7 @@ export default function QuestionReviewCard({
         >
           · {subject}
         </span>
+        <OutcomeChip round={round} outcome={outcome} />
       </div>
 
       <div className="h-px w-full" style={{ background: LEAGUECRAFT_INK.rule }} aria-hidden="true" />
