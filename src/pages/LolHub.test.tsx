@@ -163,6 +163,19 @@ const RETIRED_PRIMARY_DESTINATIONS = [
   { title: "Patch Reports", to: "/lol/patch-reports" },
 ];
 
+describe("Combat Simulation ribbon", () => {
+  it("labels both desktop and mobile entries BETA without disabling navigation", () => {
+    const { container } = renderHub();
+    const hall = container.querySelector('[data-hub-screen="hall"]')!;
+    const links = hall.querySelectorAll('a[href="/combat-lab"]');
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link.querySelector('[data-testid="feature-ribbon-beta"]')).not.toBeNull();
+      expect(link.getAttribute("aria-disabled")).toBeNull();
+    }
+  });
+});
+
 describe("LolHub — navigation structure", () => {
   it("renders every hub destination as a link with the correct route", () => {
     renderHub();

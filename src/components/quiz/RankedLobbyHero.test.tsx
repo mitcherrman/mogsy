@@ -108,6 +108,22 @@ function renderHero(
   return { ...utils, onPlayRanked };
 }
 
+describe("Ranked public pause", () => {
+  it("marks Ranked coming soon and disables only its Play seal", () => {
+    const onPlayRanked = vi.fn();
+    renderHero({ rankedComingSoon: true, onPlayRanked }, "daily");
+    const ranked = screen.getByRole("tab", { name: "Ranked" });
+    expect(ranked.querySelector('[data-testid="feature-ribbon-coming-soon"]')).not.toBeNull();
+    fireEvent.click(ranked);
+    const seal = screen.getByTestId("ranked-play-gem") as HTMLButtonElement;
+    expect(seal.disabled).toBe(true);
+    fireEvent.click(seal);
+    expect(onPlayRanked).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("tab", { name: "Daily Challenge" }));
+    expect(screen.getByTestId("daily-mode-panel")).toBeTruthy();
+  });
+});
+
 describe("RC7 three-mode landing", () => {
   it("opens Daily by default with the other two modes still selectable", () => {
     const onPlayDailyChallenge = vi.fn();
