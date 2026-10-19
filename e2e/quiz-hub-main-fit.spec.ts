@@ -230,13 +230,13 @@ const MEASURE_SOURCE = `(() => {
   };
   // An ancestor that clips (overflow hidden/auto/scroll/clip) cuts anything
   // outside its box: report a rect that pokes out of one.
-  const clippedBy = (node, r, slack) => {
+  const clippedBy = (node, r, slack, slackX) => {
     for (let p = node.parentElement; p && p !== document.documentElement; p = p.parentElement) {
       const cs = getComputedStyle(p);
       if ([cs.overflowX, cs.overflowY].every((o) => o === 'visible')) continue;
       const b = p.getBoundingClientRect();
       const clipX = cs.overflowX !== 'visible', clipY = cs.overflowY !== 'visible';
-      if ((clipX && (r.left < b.left - 0.5 || r.right > b.right + 0.5)) || (clipY && (r.top < b.top - slack || r.bottom > b.bottom + slack))) {
+      if ((clipX && (r.left < b.left - slackX || r.right > b.right + slackX)) || (clipY && (r.top < b.top - slack || r.bottom > b.bottom + slack))) {
         return p.tagName.toLowerCase() + '.' + String(p.className).split(' ').slice(0, 2).join('.') + '[' + [b.left, b.top, b.right, b.bottom].map(Math.round).join(',') + ' vs ' + [r.left, r.top, r.right, r.bottom].map(Math.round).join(',') + ']';
       }
     }
@@ -244,13 +244,13 @@ const MEASURE_SOURCE = `(() => {
   };
   const clipped = [];
   // Text boxes are the font's content area, taller than a leading-none line
-  // box, and the mascot breathes by a few px: allow a small vertical slack
+  // box, and the mascot breathes (scale 1.012 and a 3px lift): allow a small vertical slack
   // for those two and none for anything else.
-  const probe = (name, node, useText, slack = 0.5) => {
+  const probe = (name, node, useText, slack = 0.5, slackX = 0.5) => {
     if (!node) return;
     const r = useText ? textBox(node) : box(node.getBoundingClientRect());
     if (!r || !(r.width > 0)) return;
-    const by = clippedBy(node, r, useText ? Math.max(slack, 4) : slack);
+    const by = clippedBy(node, r, useText ? Math.max(slack, 4) : slack, slackX);
     if (by) clipped.push(name + ' <- ' + by);
   };
   const sheetEl = el('[data-order="centre"]');
@@ -273,7 +273,7 @@ const MEASURE_SOURCE = `(() => {
     play = { ...box(r), kind: playEl.getAttribute('data-testid'), label: (playEl.textContent || '').trim() };
   }
   probe('title', titleEl, true); probe('status', statusEl, true);
-  probe('hero', el('[data-testid="daily-mode-hero"]'), false); probe('mascot', el('[data-testid="daily-mode-mascot"]'), false, 8);
+  probe('hero', el('[data-testid="daily-mode-hero"]'), false); probe('mascot', el('[data-testid="daily-mode-mascot"]'), false, 8, 4);
   probe('stats', el('[data-testid="daily-mode-stats"]'), false);
   statCells.forEach((c, i) => { probe('stat dt ' + i, c.querySelector('dt'), true); probe('stat dd ' + i, c.querySelector('dd'), true); });
   probe('play', playEl, false); probe('caption', el('.lc-daily-panel__caption'), true);
