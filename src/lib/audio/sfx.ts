@@ -359,6 +359,7 @@ function play(event: SfxEvent, options: SfxPlayOptions = {}): void {
     const context = ensureContext(s);
     if (!context) return;
     if (context.state !== "running") {
+      if (options.dropIfNotRunning) return;
       if (context.state === "suspended") {
         void context.resume().then(() => {
           if (context.state === "running") play(event, options);

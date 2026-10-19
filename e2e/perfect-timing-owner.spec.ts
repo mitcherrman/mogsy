@@ -28,6 +28,11 @@
  * (Rank up, Item equipped) — its own state, nothing armed, no clock — and Continue
  * (or Space/Enter once it has settled) arms the next stage; every state still fits.
  *
+ * PT5.2: the seal's face is the Arcane Chronometer, a visible stopwatch. The only
+ * digits it adds are its own reading: 0.00 armed, counting up while running,
+ * frozen on exactly the submitted `elapsed_ms`; its pulses move nothing; nothing
+ * loops; reduced motion keeps the digits and drops every effect.
+ *
  *   npx playwright test -c playwright.arena.config.ts perfect-timing-owner
  */
 import { mkdirSync, readFileSync } from "node:fs";
@@ -185,11 +190,14 @@ async function assertNothingScrolls(page: Page, label: string) {
   expect(pos, `${label}: scrolled`).toEqual({ x: 0, y: 0, root: 0, inner: [] });
 }
 
-/** While the clock runs: no digit on the stage, no answer in the DOM, nothing looping. */
+/** While the clock runs: no digit on the stage but the chronometer's own reading, no answer in the DOM, nothing looping. */
 async function assertSilentWhileRunning(page: Page, roundId: string) {
   const probe = await page.evaluate((cooldownRaw: string) => {
-    const stage = document.querySelector('[data-testid="pt-stage"]') as HTMLElement;
-    const rank = document.querySelector('[data-testid="pt-rank"]')?.textContent ?? "";
+    const stage = (document.querySelector('[data-testid="pt-stage"]') as HTMLElement).cloneNode(true) as HTMLElement;
+    const reading = stage.querySelector('[data-testid="pt-chrono-digits"]');
+    if (!reading || !/^\d+\.\d\d$/.test(reading.textContent ?? "")) return { digits: true, answer: true, timer: -1, looping: ["chronometer missing"] };
+    reading.remove();
+    const rank = stage.querySelector('[data-testid="pt-rank"]')?.textContent ?? "";
     const text = (stage.textContent ?? "").replace(rank, "");
     const looping = document.getAnimations().filter((a) => {
       const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
@@ -328,7 +336,14 @@ test.describe("PT4.4 the screen fits and cannot scroll", () => {
       await assertFits(page, `${tag} running`);
       await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-running.png`) });
       await page.waitForTimeout(1100);
+      // PT5.2: a second into the cooldown (past the first pulse) it still fits, and it holds still once locked.
+      await assertFits(page, `${tag} running 1s`);
+      await assertNothingScrolls(page, `${tag} running 1s`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-running-1s.png`) });
       await page.keyboard.press("Space");
+      await expect(seal).toHaveAttribute("data-phase", /stopped|submitting/);
+      await assertFits(page, `${tag} locked`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-${tag}-locked.png`) });
       await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
       await page.waitForTimeout(2000);
       await assertFits(page, `${tag} revealed`);
@@ -691,7 +706,9 @@ async function standInSlices(page: Page, opts: { dealStatus?: number; dealDelayM
 /** While a slice stage runs: only public inputs as digits, no truth in the DOM, nothing looping. */
 async function assertSliceSilentWhileRunning(page: Page, stage: number) {
   const probe = await page.evaluate((s: number) => {
-    const stageEl = document.querySelector('[data-testid="pt-stage"]') as HTMLElement;
+    // PT5.2: the chronometer's reading is the elapsed time, not an input; set it aside.
+    const stageEl = (document.querySelector('[data-testid="pt-stage"]') as HTMLElement).cloneNode(true) as HTMLElement;
+    stageEl.querySelector('[data-testid="pt-chrono-digits"]')?.remove();
     const digits = [...new Set((stageEl.textContent ?? "").match(/\d+/g) ?? [])].sort();
     const html = document.body.innerHTML;
     const looping = document.getAnimations().filter((a) => {
@@ -1088,5 +1105,160 @@ test.describe("PT5.1 touch", () => {
     await page.touchscreen.tap(sb.x + sb.width / 2, sb.y + sb.height / 2);
     await page.waitForTimeout(100);
     await expect(seal).toHaveAttribute("data-phase", "armed");
+  });
+});
+
+// ── PT5.2: the Arcane Chronometer ─────────────────────────────────────────
+
+/** The chronometer's reading, as seconds (NaN when absent). */
+async function chronoReading(page: Page): Promise<number> {
+  return Number(await page.getByTestId("pt-chrono-digits").textContent());
+}
+
+/** Layout boxes that must not move while the clock runs: the instrument and everything around it. */
+async function layoutBoxes(page: Page) {
+  return page.evaluate(() => {
+    const ids = ["pt-press-surface", "pt-chrono-digits", "pt-seal-icon", "pt-seal-word", "pt-status", "pt-hint", "pt-round-plate"];
+    return ids.map((id) => {
+      const r = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+      return r ? `${id}:${r.left.toFixed(2)},${r.top.toFixed(2)},${r.width.toFixed(2)},${r.height.toFixed(2)}` : `${id}:none`;
+    });
+  });
+}
+
+/**
+ * Counts the chronometer's tick voices as they are rendered by Web Audio: the
+ * tick and the mark are the only voices with a 1,480 Hz body. Installed before
+ * the page loads; it only observes.
+ */
+async function countTickVoices(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __ptTicks: number[]; __ptVoices: number };
+    w.__ptTicks = [];
+    w.__ptVoices = 0;
+    const set = AudioParam.prototype.setValueAtTime;
+    AudioParam.prototype.setValueAtTime = function (value: number, time: number) {
+      if (value === 1480) w.__ptTicks.push(performance.now());
+      return set.call(this, value, time);
+    };
+    const osc = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () { w.__ptVoices += 1; return osc.call(this); };
+  });
+}
+
+for (const vp of [{ name: "1440x900", width: 1440, height: 900, touch: false }, { name: "390x844", width: 390, height: 844, touch: true }] as const) {
+  test.describe(`PT5.2 chronometer ${vp.name}`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch });
+
+    test("0.00 armed → counts up from the cast → freezes on the submitted value → 0.00 next round; nothing moves", async ({ page }) => {
+      const be = await standInBackend(page);
+      await page.goto(RANDOM_RUN);
+      const seal = page.getByTestId("pt-press-surface");
+      await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+      await page.waitForTimeout(400);
+      await expect(page.getByTestId("pt-chrono-digits")).toHaveText("0.00");
+      await expect(page.getByTestId("pt-seal-word")).toHaveText(/cast/i);
+      const press = async () => { if (vp.touch) await seal.tap(); else { await seal.focus(); await page.keyboard.press("Space"); } };
+      await press();
+      await expect(seal).toHaveAttribute("data-phase", "running");
+      await expect(page.getByTestId("pt-seal-word")).toHaveText(/press to stop/i);
+      // Sample the layout across two whole-second pulses: nothing may move by a pixel.
+      await page.waitForTimeout(400); // past the cast's ignition
+      const first = await layoutBoxes(page);
+      const readings: number[] = [];
+      for (let i = 0; i < 26; i++) {
+        expect(await layoutBoxes(page), `layout at sample ${i}`).toEqual(first);
+        readings.push(await chronoReading(page));
+        await page.waitForTimeout(100);
+      }
+      // It counts up, monotonically, and roughly in real time.
+      for (let i = 1; i < readings.length; i++) expect(readings[i]).toBeGreaterThanOrEqual(readings[i - 1]);
+      expect(readings.at(-1)! - readings[0]).toBeGreaterThan(2.0);
+      expect(readings.at(-1)! - readings[0]).toBeLessThan(4.5);
+      await page.screenshot({ path: path.join(SHOTS, `pt52-${vp.name}-running.png`) });
+      await press();
+      // Frozen at once, on exactly the value the lock carries.
+      await expect.poll(() => be.locks.length).toBe(1);
+      const sent = be.locks[0].body.elapsed_ms as number;
+      await expect(page.getByTestId("pt-chrono-digits")).toHaveText((sent / 1000).toFixed(2));
+      await expect(page.getByTestId("pt-status")).toContainText(`Locked at ${(sent / 1000).toFixed(2)} s`);
+      await page.screenshot({ path: path.join(SHOTS, `pt52-${vp.name}-locked.png`) });
+      // The reveal keeps the server's result; its "You" is the same stop.
+      await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByTestId("pt-you-time")).toHaveText(`${(sent / 1000).toFixed(2)} s`);
+      await page.waitForTimeout(1900);
+      const next = page.getByRole("button", { name: /next round/i });
+      if (vp.touch) await next.tap(); else { await next.focus(); await page.keyboard.press("Enter"); }
+      await expect(seal).toHaveAttribute("data-phase", "armed");
+      await expect(page.getByTestId("pt-chrono-digits")).toHaveText("0.00");
+    });
+  });
+}
+
+test.describe("PT5.2 chronometer: motion, interruption, sound", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("reduced motion: the digits still count; nothing animates and the sweep is hidden", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await standInBackend(page);
+    await page.goto(RANDOM_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await expect(page.getByTestId("pt-chrono")).toHaveAttribute("data-animate", "false");
+    await seal.focus();
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(1300);
+    const probe = await page.evaluate(() => ({
+      animations: document.getAnimations().filter((a) => ((a.effect as KeyframeEffect | null)?.target as Element | null)?.closest?.('[data-testid="pt-chrono"]')).length,
+      sweep: getComputedStyle(document.querySelector(".pt-chrono-sweep")!).display,
+    }));
+    expect(probe).toEqual({ animations: 0, sweep: "none" });
+    expect(await chronoReading(page)).toBeGreaterThan(1.0);
+    await page.screenshot({ path: path.join(SHOTS, "pt52-1440x900-reduced-running.png") });
+  });
+
+  test("an interrupted round stops the reading where it was, struck through, and it stays still", async ({ page }) => {
+    await standInBackend(page);
+    await page.goto(RANDOM_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await seal.focus();
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    });
+    await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided");
+    await expect(page.getByTestId("pt-chrono")).toHaveAttribute("data-readout", "halted");
+    await expect(page.getByTestId("pt-seal-word")).toHaveText(/voided/i);
+    const at = await chronoReading(page);
+    expect(at).toBeGreaterThan(1.0);
+    await page.waitForTimeout(800);
+    expect(await chronoReading(page)).toBe(at);
+    await page.screenshot({ path: path.join(SHOTS, "pt52-1440x900-voided.png") });
+  });
+
+  test("the browser renders one tick voice per elapsed second, and none after the stop", async ({ page }) => {
+    await countTickVoices(page);
+    await standInBackend(page);
+    await page.goto(RANDOM_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "armed", { timeout: 30_000 });
+    await seal.focus();
+    await page.keyboard.press("Space"); // a trusted gesture: unlocks audio, casts
+    await page.waitForTimeout(3_550);
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(1_200);
+    const r = await page.evaluate(() => {
+      const w = window as unknown as { __ptTicks: number[]; __ptVoices: number };
+      return { ticks: w.__ptTicks.length, voices: w.__ptVoices, gaps: w.__ptTicks.slice(1).map((t, i) => Math.round(t - w.__ptTicks[i])) };
+    });
+    // The SFX engine stays silent until Audio Studio's config is known (it loads from Supabase);
+    // with no voice at all, there is nothing to count on this machine.
+    test.skip(r.voices === 0, "SFX engine silent here (Audio Studio config unavailable)");
+    expect(r.ticks, JSON.stringify(r)).toBe(3);
+    for (const g of r.gaps) { expect(g).toBeGreaterThan(850); expect(g).toBeLessThan(1150); }
   });
 });

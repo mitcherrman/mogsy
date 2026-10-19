@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import capture from "@/lib/perfect-timing/__fixtures__/sliceCaptureV1.json";
 import v1capture from "@/lib/perfect-timing/__fixtures__/captureV1.json";
 import { perfectTimingApi } from "@/lib/perfect-timing/api";
+import { formatLocked } from "@/lib/perfect-timing/chronometer";
 import { formatSliceSeconds } from "@/components/perfect-timing/presentation";
 import { ADVANCE_KEY_GUARD_MS } from "./runShared";
 
@@ -249,13 +250,31 @@ describe("Mastery Slice — the integrated run", () => {
       await armed();
       key(seal(), (clock += 5_000));
       expect(seal()).toHaveAttribute("data-phase", "running");
-      const digits = (screen.getByTestId("pt-stage").textContent ?? "").match(/\d+/g) ?? [];
+      // PT5.2: the chronometer's readout is the elapsed time, not an input; set it aside.
+      const stageEl = screen.getByTestId("pt-stage").cloneNode(true) as HTMLElement;
+      stageEl.querySelector('[data-testid="pt-chrono-digits"]')?.remove();
+      const digits = (stageEl.textContent ?? "").match(/\d+/g) ?? [];
       // Public inputs only: rank, rank count, the previous rank ("from 1"), the item's haste.
       expect(new Set(digits)).toEqual(new Set([["1", "5"], ["3", "5", "1"], ["3", "5", "10"]][i]));
       key(seal(), clock + ELAPSED[i]);
       await screen.findByTestId("pt-reveal-stage");
       await leave(i);
     }
+  });
+
+  it("PT5.2: every stage's chronometer starts at 0.00 and freezes on that stage's own engine stop", async () => {
+    const be = standIn();
+    mount(be, "slice");
+    for (let i = 0; i < 3; i++) {
+      await armed();
+      const digits = () => screen.getByTestId("pt-chrono-digits").textContent;
+      expect(digits(), `stage ${i + 1} armed`).toBe("0.00");
+      time(ELAPSED[i]);
+      expect(digits(), `stage ${i + 1} locked`).toBe(formatLocked(ELAPSED[i]));
+      await screen.findByTestId("pt-reveal-stage");
+      await leave(i);
+    }
+    expect(be.locks().map((c) => c.body.elapsed_ms)).toEqual(ELAPSED.slice(0, 3));
   });
 
   it("Enter anywhere on the page casts and stops; a repeated stop never locks twice", async () => {

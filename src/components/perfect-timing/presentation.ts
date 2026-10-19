@@ -86,8 +86,8 @@ export function dataLabelText(patchLabel: string | null, patchSource: string): s
 
 /**
  * What the seal and the status line say in each phase. No word here carries a
- * digit, so the stage stays digit-free while the clock is running; the only
- * number on the stage is the rank, which the round plate prints itself.
+ * digit. PT5.2: the chronometer prints the elapsed time itself; `word` is its
+ * state plate (CAST / PRESS TO STOP / LOCKED / VOIDED).
  */
 export interface PhaseFace {
   /** The seal's word. */
@@ -102,8 +102,8 @@ export interface PhaseFace {
 
 export const PHASE_FACE: Record<PtPhase, PhaseFace> = {
   loading: { word: "Dealing", sub: "the archive is choosing", status: "Dealing the next ability.", tone: "plain" },
-  armed: { word: "Cast", sub: "press to cast", status: "Press to cast. Then feel the cooldown run.", tone: "plain" },
-  running: { word: "Cooldown", sub: "press when it is back", status: "Press the moment the ability is back up.", tone: "plain" },
+  armed: { word: "Cast", sub: "press to cast", status: "Press to cast. Stop the clock when the ability is back up.", tone: "plain" },
+  running: { word: "Press to stop", sub: "press when it is back", status: "Press the moment the ability is back up.", tone: "plain" },
   stopped: { word: "Locked", sub: "your stop is in", status: "Locked. Checking the archive.", tone: "plain" },
   submitting: { word: "Locked", sub: "checking the archive", status: "Locked. Checking the archive.", tone: "plain" },
   revealed: { word: "Revealed", sub: "the archive has spoken", status: "", tone: "plain" },
@@ -111,6 +111,21 @@ export const PHASE_FACE: Record<PtPhase, PhaseFace> = {
   error: { word: "Halted", sub: "something went wrong", status: "The round could not be recorded.", tone: "warn" },
   complete: { word: "Complete", sub: "the run is over", status: "Run complete.", tone: "plain" },
 };
+
+/**
+ * PT5.2: the status line once stopped, with the time the player locked (the
+ * engine's submitted integer, printed exactly as the reveal's "You" is). The
+ * same text while stopped and submitting, so it is announced once.
+ */
+export function lockedStatusText(elapsedMs: number): string {
+  return `Locked at ${formatSeconds(elapsedMs)}. Checking the archive.`;
+}
+
+/**
+ * PT5.2: the frozen chronometer stays on screen at least this long after the
+ * stop before the reveal replaces it, so the lock reads. Presentation only.
+ */
+export const LOCK_HOLD_MS = 420;
 
 /** The press surface accepts input only in these phases. Presentation only: PT2's hook is the authority. */
 export const PRESS_LIVE_PHASES: ReadonlySet<PtPhase> = new Set<PtPhase>(["armed", "running"]);

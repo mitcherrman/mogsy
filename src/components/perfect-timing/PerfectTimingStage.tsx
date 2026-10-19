@@ -6,13 +6,15 @@
  * number on it is a duration: the only digits the stage ever prints are the
  * rank. Progress through the run lives in the top bar, not here.
  *
- * THE SEAL IS THE ONE INPUT. A brass-rimmed stone disc with the ability's own
+ * THE SEAL IS THE ONE INPUT. A brass-rimmed instrument with the ability's own
  * icon set in it, sized for a thumb, and it is the single element that
  * receives PT2's press-surface props. Pressing it casts; the icon goes dark the
- * way an in-game slot does; pressing again says "it is back". Between those
- * two presses the seal is STILL: no digit, no bar, no pulse, no breathing
- * glow, no cadence of any kind. The one motion the running state owns is a
- * finite flash at the instant of the cast.
+ * way an in-game slot does; pressing again says "it is back".
+ *
+ * PT5.2 (owner-approved): the seal's face is now the ARCANE CHRONOMETER, a
+ * visible stopwatch that counts UP from the cast (`ArcaneChronometer`). It is
+ * drawn from the timing engine's own readings and never measures anything; it
+ * knows nothing of the target, so it cannot count down to it or hint at it.
  *
  * NOTHING HERE MEASURES OR GRADES. The phase, the handlers and the status
  * line arrive through props; this component draws them.
@@ -29,7 +31,9 @@ import { SubjectArt } from "@/components/interaction-grammar/shared";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type { PtPhase, PtPressSurfaceProps, PtRoundView, PtSliceItemView, PtSliceStageView } from "@/lib/perfect-timing/viewModel";
-import { PHASE_FACE, SLICE_STAGE_WORD, hasteText, rankText } from "./presentation";
+import type { PtClockReading, SecondBeat } from "@/lib/perfect-timing/chronometer";
+import { ArcaneChronometer } from "./ArcaneChronometer";
+import { PHASE_FACE, SLICE_STAGE_WORD, hasteText, lockedStatusText, rankText } from "./presentation";
 import "./perfectTiming.css";
 
 export interface PerfectTimingStageProps {
@@ -48,6 +52,10 @@ export interface PerfectTimingStageProps {
    * player, so the same key that advanced the reveal casts the next round.
    */
   autoFocusSeal?: boolean;
+  /** PT5.2: the engine's readings, drawn by the chronometer. */
+  clock?: PtClockReading | null;
+  /** PT5.2: each whole elapsed second (the host plays the tick). */
+  onClockBeat?: (beat: SecondBeat) => void;
 }
 
 /** The champion's splash, cropped to the hero; a failure leaves the dark card. */
@@ -164,7 +172,7 @@ export function PerfectTimingHero({ round, compact = false }: { round: PtRoundVi
   );
 }
 
-export function PerfectTimingStage({ round, phase, press, statusText, actions, autoFocusSeal = false }: PerfectTimingStageProps) {
+export function PerfectTimingStage({ round, phase, press, statusText, actions, autoFocusSeal = false, clock = null, onClockBeat }: PerfectTimingStageProps) {
   const reducedMotion = useReducedMotionPreference();
   const coarse = useCoarsePointer();
   const sealRef = useRef<HTMLDivElement>(null);
@@ -172,7 +180,10 @@ export function PerfectTimingStage({ round, phase, press, statusText, actions, a
     if (autoFocusSeal) sealRef.current?.focus({ preventScroll: true });
   }, [autoFocusSeal]);
   const face = PHASE_FACE[phase];
-  const status = statusText ?? face.status;
+  // The lock is announced once, at the phase edge, with the time the player
+  // stopped on (the engine's submitted value); the running digits never are.
+  const lockedAt = (phase === "stopped" || phase === "submitting") && clock?.elapsedMs != null ? clock.elapsedMs : null;
+  const status = statusText ?? (lockedAt !== null ? lockedStatusText(lockedAt) : face.status);
   const monogram = round?.slot ?? "?";
 
   return (
@@ -195,12 +206,10 @@ export function PerfectTimingStage({ round, phase, press, statusText, actions, a
           >
             <span aria-hidden className="pt-seal-ring" />
             <span aria-hidden className="pt-seal-face">
-              <span className="pt-seal-icon" data-testid="pt-seal-icon">
-                <SubjectArt media={round?.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={monogram}
-                  className="h-full w-full" />
-              </span>
-              <span className="pt-seal-word" data-testid="pt-seal-word">{face.word}</span>
-              <span className="pt-seal-sub">{face.sub}</span>
+              <ArcaneChronometer phase={phase} roundId={round?.roundId ?? null} clock={clock}
+                reducedMotion={reducedMotion} word={face.word} onBeat={onClockBeat}
+                icon={<SubjectArt media={round?.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={monogram}
+                  className="h-full w-full" />} />
             </span>
           </div>
         </div>
@@ -215,7 +224,7 @@ export function PerfectTimingStage({ round, phase, press, statusText, actions, a
           <kbd className="pt-kbd">Space</kbd>
           <span>or</span>
           <kbd className="pt-kbd">Enter</kbd>
-          <span>{coarse ? "· or tap the seal" : "· or click the seal"}</span>
+          <span>{coarse ? "· or tap the clock" : "· or click the clock"}</span>
         </p>
       </div>
     </div>

@@ -13,6 +13,7 @@
  * required, and every absent field renders nothing.
  */
 import type React from "react";
+import type { PtClockReading } from "./chronometer";
 
 // ---------------------------------------------------------------------------
 // §1 — agreed contracts (handoff §4.2). Do not change without updating the
@@ -131,7 +132,15 @@ export interface PtStageModel {
   onNext: (source?: "key") => void;
   /** Flank and round-rail content; absent flanks draw the quiet defaults. */
   hud?: PtRunHud | null;
+  /**
+   * PT5.2: the timing engine's own readings (`t0` while running, the submitted
+   * `elapsedMs` once stopped), for the visible stopwatch to DRAW. Display only:
+   * nothing reads a value back out of the stopwatch. Absent = it shows 0.00.
+   */
+  clock?: PtClockReading | null;
 }
+
+export type { PtClockReading };
 
 // ---------------------------------------------------------------------------
 // §3 — PT5 Mastery Slice extras (additive; absent in a Random Run).
