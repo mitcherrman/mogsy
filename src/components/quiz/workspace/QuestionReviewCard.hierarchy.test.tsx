@@ -407,3 +407,126 @@ describe("mastery slice — Journey Combat working leads, prose folds away", () 
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
   });
 });
+
+// ------------------------------------------- semantic combat question / margin
+
+describe("mastery slice — a Journey Combat question is phrased from its served premise", () => {
+  // The REAL captured child (pantheon.standard › child4-live, index 2): the
+  // backend's serialized prompt and its structured prompt_semantics.
+  async function pantheon() {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const all = JSON.parse(readFileSync(
+      join(process.cwd(), "src/lib/journey/__fixtures__/j4/pantheon.standard.json"), "utf8")) as
+      { label: string; envelope: { payload: { segment_state: { challenges: { challenges: Record<string, unknown>[] } } } } }[];
+    const c = all.find((x) => x.label === "child4-live")!
+      .envelope.payload.segment_state.challenges.challenges[2];
+    return { prompt: c.prompt as string, semantics: c.prompt_semantics as Record<string, unknown> };
+  }
+
+  it("shows the semantic sentence, not the serialized state", async () => {
+    const { prompt, semantics } = await pantheon();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { prompt, promptSemantics: semantics, answerOptions: ["53", "83", "63", "73"],
+        correctAnswer: "83", viewerAnswer: "83" }),
+    ])} />);
+    const item = card().querySelector("[data-review-mastery-challenge='0']")!;
+    const shown = item.querySelector("p")!;
+    expect(shown).toHaveTextContent("How much physical damage does Pantheon's Rank 1 Aegis Assault deal to Leona?");
+    expect(shown.textContent).not.toMatch(/@ Leona target|target items|armor penetration percent/);
+  });
+
+  it("keeps the recorded serialized prompt verbatim, folded and closed", async () => {
+    const { prompt, semantics } = await pantheon();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { prompt, promptSemantics: semantics }),
+    ])} />);
+    const fold = screen.getByTestId("review-mastery-recorded-0") as HTMLDetailsElement;
+    expect(fold.open).toBe(false);
+    expect(fold.querySelector("summary")).toHaveTextContent("Recorded question");
+    expect(fold.textContent).toContain(prompt);
+  });
+
+  it("an old record WITHOUT working still reads: semantic question, prose stays visible", async () => {
+    const { prompt, semantics } = await pantheon();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { prompt, promptSemantics: semantics, explanation: "Frozen prose with 89.698 damage." }),
+    ])} />);
+    const expl = screen.getByTestId("review-mastery-explanation-0");
+    expect(expl.querySelector("details")).toBeNull();
+    expect(expl).toHaveTextContent("Explanation");
+    expect(expl).toHaveTextContent("Frozen prose with 89.698 damage.");
+  });
+
+  it("phrases the raw (before-armor) template as before armor", async () => {
+    const { prompt, semantics } = await pantheon();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { prompt, promptSemantics: { ...semantics, template: "ability_raw_damage_under_state" } }),
+    ])} />);
+    expect(card()).toHaveTextContent("deal before armor?");
+  });
+
+  it("falls back to the recorded prompt for other families and thin premises", async () => {
+    const { prompt, semantics } = await pantheon();
+    const cases: Record<string, unknown>[] = [
+      { ...semantics, template: "atomic_recall_stat" },        // not Combat
+      { ...semantics, champion_display: "" },                  // cannot name the attacker
+      { ...semantics, ability_name: "", subject_ref: "" },     // cannot name the ability
+      { ...semantics, scenario: [["target"]] },                // malformed pairs
+    ];
+    for (const promptSemantics of cases) {
+      const { unmount } = render(<QuestionReviewCard position={3} total={6} round={slice([
+        challenge(0, { prompt, promptSemantics }),
+      ])} />);
+      const item = card().querySelector("[data-review-mastery-challenge='0']")!;
+      expect(item.querySelector("p")).toHaveTextContent(prompt);
+      expect(screen.queryByTestId("review-mastery-recorded-0")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("serves the sentence on a sealed round too — the question is not the answer", async () => {
+    const { prompt, semantics } = await pantheon();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { prompt, promptSemantics: semantics, correctAnswer: null, explanation: null,
+        viewerAnswer: null, isCorrect: null }),
+    ], { revealed: false })} />);
+    expect(card()).toHaveTextContent("deal to Leona?");
+    expect(screen.getByTestId("review-mastery-unresolved-0")).toBeInTheDocument();
+  });
+});
+
+describe("mastery slice — comparison values are the backend's, verbatim", () => {
+  const values = async () => {
+    const { readComparisonValues } = await import("@/features/mastery/contracts/comparisonValues");
+    return readComparisonValues({
+      contract: "comparison_values.v1",
+      sides: [{ token: "Leona", value: 90, display: "90" }, { token: "Pantheon", value: 180, display: "180" }],
+      unit: "seconds", unit_label: "seconds", operator: "greater", delta: 90, delta_display: "90",
+    })!;
+  };
+
+  it("prints both served values and the served margin, computing nothing", async () => {
+    const cv = await values();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { comparisonValues: cv, answerOptions: ["Leona", "Pantheon"], correctAnswer: "Pantheon", viewerAnswer: "Pantheon" }),
+    ])} />);
+    expect(screen.getByTestId("review-mastery-values-0")).toHaveTextContent("Leona 90 seconds · Pantheon 180 seconds");
+    expect(screen.getByTestId("review-mastery-margin-0")).toHaveTextContent("Margin 90 seconds");
+  });
+
+  it("prints no margin when the block carries none, and no values on a sealed round", async () => {
+    const cv = { ...(await values()), delta: null, deltaDisplay: null };
+    const { unmount } = render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { comparisonValues: cv }),
+    ])} />);
+    expect(screen.getByTestId("review-mastery-values-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-mastery-margin-0")).toBeNull();
+    unmount();
+    render(<QuestionReviewCard position={3} total={6} round={slice([
+      challenge(0, { comparisonValues: await values(), correctAnswer: null, explanation: null, viewerAnswer: null, isCorrect: null }),
+    ], { revealed: false })} />);
+    expect(screen.queryByTestId("review-mastery-values-0")).toBeNull();
+    expect(screen.queryByTestId("review-mastery-margin-0")).toBeNull();
+  });
+});

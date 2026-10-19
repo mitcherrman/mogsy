@@ -14,6 +14,12 @@ Scope: `src/components/quiz/workspace/QuestionReviewCard.tsx` + focused tests on
 8. **Subject mark** (18px) in the heading: `resolveQuestionIcon(round.iconHint)` — the *same* resolver as the timeline icon. Proven entity art as-is; category tile muted like the timeline; module sigil / Meta Reflex bolt; **nothing** when art is unproven. No new imagery, no champion/ability inferred.
 9. Meta Reflex card sides: check/cross icons for correct/picked; label clamps at 2 lines instead of truncating at 1.
 
+## Follow-up (after Track B findings)
+- **Semantic Combat question.** `combatPremiseOf` + `combatQuestionSentence` (JourneyCombatQuestion, imported, not edited) phrase the question from `promptSemantics` ("How much physical damage does Pantheon's Rank 1 Aegis Assault deal to Leona?"). Works for old records too (promptSemantics is pre-reveal data). Falls back to the recorded prompt for non-Combat templates or a premise missing attacker/ability, or malformed scenario pairs. The serialized prompt is kept verbatim under a closed "Recorded question" disclosure (`review-mastery-recorded-N`).
+- **Prose fold** unchanged and owner-approved: "Full explanation" only when typed `combatWorking` is shown; old records without working keep the visible "Explanation".
+- **comparisonValues**: both values stay `withUnitLabel(display)`; added the backend's `deltaDisplay` verbatim as "Margin …" (reveal-gated; nothing computed; `operator` not printed).
+- Not touched (per instruction): raw-damage / cooldown working parsers, backend contracts, per-ability icons (review rows carry none).
+
 ## Preserved contracts
 All existing test IDs and data attributes (`question-review-card`, `review-position`, `review-your-answer`, `review-correct-answer`, `review-unresolved`, `review-options`, `review-working`, `review-explanation`, `review-mastery-*`, `review-cards`, family bodies untouched). Fixed `Q{n} of {total}` text. Sealed text unchanged. No answerable control (no button/radio/input; `<summary>` is the only focusable addition). Popover/sheet sizing is host-owned and untouched; the card is shorter, not taller.
 

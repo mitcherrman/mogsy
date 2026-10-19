@@ -65,9 +65,12 @@ import {
 import ModuleSigil, { hasModuleSigil } from "@/components/quiz/workspace/ModuleSigil";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
-import type { ReviewChallenge, ReviewMasteryChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
+import type {
+  MasterySliceChallengeView, ReviewChallenge, ReviewMasteryChallenge, ReviewRound,
+} from "@/lib/ranked-public/contracts";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import { JourneyCombatWorking } from "@/components/journey/JourneyCombatWorking";
+import { combatPremiseOf, combatQuestionSentence } from "@/components/journey/JourneyCombatQuestion";
 import { withUnitLabel } from "@/features/mastery/contracts/comparisonValues";
 import {
   masteryChallengeRolesDiffer, reviewRoundRoles,
@@ -518,6 +521,57 @@ function masteryState(
   return isCorrect ? "right" : "wrong";
 }
 
+/**
+ * The backend's own margin for a comparison row ("90 seconds"), verbatim with
+ * its unit. Only from the reveal-gated `comparison_values` block; nothing is
+ * subtracted, compared or inferred here, and `operator` (which direction wins)
+ * is informational on the wire and not printed.
+ */
+function comparisonMarginLine(challenge: ReviewMasteryChallenge): string | null {
+  const cv = challenge.comparisonValues;
+  return cv?.deltaDisplay ? withUnitLabel(cv.deltaDisplay, cv) : null;
+}
+
+/**
+ * A Journey Combat challenge's question, phrased from its SERVED premise.
+ *
+ * The frozen `prompt` of these rows is the backend's serialized state ("…ability
+ * physical damage after armor @ Leona target, 3 target level, none target
+ * items…"). The structured `prompt_semantics` beside it names the same
+ * question, and the Journey already phrases it ("How much physical damage does
+ * Pantheon's Rank 1 Aegis Assault deal to Leona?") — this reuses that helper
+ * verbatim. Null for every other family, and for a premise too thin to name
+ * its attacker and ability: those keep the recorded prompt, never a guess.
+ */
+function combatQuestion(challenge: ReviewMasteryChallenge): string | null {
+  const premise = combatPremiseOf(
+    { promptSemantics: challenge.promptSemantics } as MasterySliceChallengeView,
+  );
+  if (!premise || !premise.champion || !(premise.ability || premise.slot)) return null;
+  return combatQuestionSentence(premise);
+}
+
+/**
+ * A native disclosure for recorded text that is kept but not led with. A
+ * `<summary>` is focusable and keyboard-operable, and is not an answer control.
+ */
+function Fold({ label, testId, children }: { label: string; testId?: string; children: React.ReactNode }) {
+  return (
+    <details className="group" data-testid={testId}>
+      <summary
+        className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-[9px] font-bold uppercase tracking-[0.18em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
+        style={{ color: LEAGUECRAFT_INK.brass, outlineColor: LEAGUECRAFT_INK.accent }}
+      >
+        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden="true" />
+        {label}
+      </summary>
+      <p className="mt-0.5 break-words text-[11px] leading-relaxed" style={{ color: LEAGUECRAFT_INK.body }}>
+        {children}
+      </p>
+    </details>
+  );
+}
+
 function MasterySliceBody({ round }: { round: ReviewRound }) {
   const challenges = round.masteryChallenges ?? [];
   // RQ1: per-challenge emblems only when the challenges' frozen role sets
@@ -549,6 +603,8 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
           const judged = round.revealed && correct !== null;
           const values = round.revealed ? comparisonValuesLine(challenge) : null;
           const working = round.revealed ? challenge.combatWorking : null;
+          const semanticQuestion = combatQuestion(challenge);
+          const margin = round.revealed ? comparisonMarginLine(challenge) : null;
           return (
             <li
               key={challenge.challengeIndex}
@@ -576,8 +632,16 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                     className="mr-1.5 align-[-2px]"
                     testId={`review-mastery-roles-${challenge.challengeIndex}`} />
                 )}
-                {challenge.prompt}
+                {semanticQuestion ?? challenge.prompt}
               </p>
+              {/* The serialized wording the match was frozen with stays, one
+                  tap away, whenever the question above was phrased from the
+                  served premise instead. */}
+              {semanticQuestion && (
+                <Fold label="Recorded question" testId={`review-mastery-recorded-${challenge.challengeIndex}`}>
+                  {challenge.prompt}
+                </Fold>
+              )}
 
               <AnswerPair
                 mineTestId={`review-mastery-your-answer-${challenge.challengeIndex}`}
@@ -611,6 +675,15 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                   <p className="break-words text-[11.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
                     {values}
                   </p>
+                  {margin && (
+                    <p
+                      className="break-words text-[11px] tabular-nums"
+                      style={{ color: LEAGUECRAFT_INK.faint }}
+                      data-testid={`review-mastery-margin-${challenge.challengeIndex}`}
+                    >
+                      Margin {margin}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -646,21 +719,7 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                        Cloth Armor target items…"). It stays — it is the frozen
                        record — but folds away behind a native disclosure so the
                        working leads. */
-                    <details className="group">
-                      <summary
-                        className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-[9px] font-bold uppercase tracking-[0.18em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
-                        style={{ color: LEAGUECRAFT_INK.brass, outlineColor: LEAGUECRAFT_INK.accent }}
-                      >
-                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden="true" />
-                        Full explanation
-                      </summary>
-                      <p
-                        className="mt-0.5 break-words text-[11px] leading-relaxed"
-                        style={{ color: LEAGUECRAFT_INK.body }}
-                      >
-                        {challenge.explanation}
-                      </p>
-                    </details>
+                    <Fold label="Full explanation">{challenge.explanation}</Fold>
                   ) : (
                     <>
                       <SectionLabel>Explanation</SectionLabel>
