@@ -220,19 +220,20 @@ export function useAcademyStartupGate(rootRef: RefObject<HTMLElement>, inputs: S
       if (!books) signals.stage = "pending";
       const verdict = evaluateReadiness(signals);
       reportAcademyReadiness(verdict);
-      if (verdict.settled) {
-        if (flow.push(t)) {
-          done = true;
-          revealAcademy(verdict.degraded.length ? "degraded" : "ready", verdict);
-          return;
-        }
-      } else {
-        flow.reset();
+      // What it is still waiting for, on the page root (diagnostics: the harness reads it).
+      const pendingNames = verdict.pending.join(" ");
+      if (root.dataset.startupPending !== pendingNames) root.dataset.startupPending = pendingNames;
+      // Every frame feeds the rhythm; only settled frames count towards the reveal.
+      if (flow.push(t, verdict.settled)) {
+        done = true;
+        delete root.dataset.startupPending;
+        revealAcademy(verdict.degraded.length ? "degraded" : "ready", verdict);
+        return;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => { done = true; cancelAnimationFrame(raf); };
+    return () => { done = true; cancelAnimationFrame(raf); delete root.dataset.startupPending; };
   }, [s.phase, rootRef]);
 
   const shown = !arrivedHeld.current || s.phase === "revealing" || s.phase === "revealed" || s.phase === "idle";

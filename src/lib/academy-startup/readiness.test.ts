@@ -51,9 +51,31 @@ describe("FrameFlow — frames are flowing", () => {
     expect(feed(flow, [0, 33, 50, 83, 100]).at(-1)).toBe(true);
   });
 
-  it("steady 20 fps (50 ms frames) never flows", () => {
+  it("a slow but steady device (~100 ms frames: software rendering, measured headless) flows in its own rhythm", () => {
     const flow = new FrameFlow();
-    expect(feed(flow, Array.from({ length: 20 }, (_, i) => i * 50)).some(Boolean)).toBe(false);
+    const out = feed(flow, Array.from({ length: 10 }, (_, i) => i * 100));
+    expect(out.slice(0, 7).some(Boolean)).toBe(false); // the rhythm is learnt first
+    expect(out[7]).toBe(true);
+  });
+
+  it("on that slow device, a stall well outside its rhythm (300 ms) still restarts the count", () => {
+    const flow = new FrameFlow();
+    feed(flow, [0, 100, 200, 300, 400, 500]);
+    expect(flow.push(800)).toBe(false);
+    expect(feed(flow, [900, 1000, 1100])).toEqual([false, false, false]);
+    expect(flow.push(1200)).toBe(true);
+  });
+
+  it("nothing over 250 ms ever counts", () => {
+    const flow = new FrameFlow();
+    expect(feed(flow, Array.from({ length: 20 }, (_, i) => i * 260)).some(Boolean)).toBe(false);
+  });
+
+  it("frames before the signals settle teach the rhythm but never count", () => {
+    const flow = new FrameFlow();
+    for (let i = 0; i < 10; i++) expect(flow.push(i * 100, false)).toBe(false);
+    expect([1000, 1100, 1200].map((t) => flow.push(t))).toEqual([false, false, false]);
+    expect(flow.push(1300)).toBe(true);
   });
 
   it("reset() forgets the run", () => {
