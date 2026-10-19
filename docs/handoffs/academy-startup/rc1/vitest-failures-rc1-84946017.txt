@@ -1,0 +1,115 @@
+× src/App.routeGuards.test.ts > admin platform-policies route > inherits the gate rather than losing it — the shell is never ungated
+× src/App.routing-contract.test.ts > retired legacy multiplayer routes > redirects the in-game route instead of rendering it
+× src/App.routing-contract.test.ts > retired legacy multiplayer routes > redirects the lobby instead of rendering it
+× src/components/mogzy-guide/MogzyGuide.test.tsx > MogzyGuide > PERF1: requests the encode named by `scale` for every pose, falling back to the source
+× src/components/profile/LeagueProfileStats.test.tsx > LeagueProfileStats — activity states > guest with real device-local activity keeps the truthful full progress view
+× src/components/question-surface/QuestionMotifLayer.qf1.test.tsx > QuestionMotifLayer > Champion/Combat is unchanged by the Rift art
+× src/components/quiz/QuizCategoryRail.test.tsx > QuizCategoryRail > gives the pointer cursor only to the subjects that open something
+× src/components/quiz/QuizCategoryRail.test.tsx > QuizCategoryRail > marks Vision unavailable without removing it, and never navigates from it
+× src/components/quiz/QuizCategoryRail.test.tsx > QuizCategoryRail > opens every content-backed subject, and only those
+× src/components/quiz/play-scroll/playModeCard.styles.test.ts > CHOOSE MODE holds one line > steps DOWN on the narrowest sheet rather than wrapping
+× src/components/quiz/play-scroll/playModeCard.styles.test.ts > the streak's glint > moves nothing but light, so it can never shift the layout
+× src/components/ranked-arena/AnswerGrid.elimination.test.tsx > there is exactly one answer-rendering path > no second INTERACTIVE component is named as an answer grid
+× src/components/ranked-arena/AnswerGrid.elimination.test.tsx > there is exactly one answer-rendering path > only the canonical grid emits answer tablets
+× src/components/ranked-arena/CanonicalArena.boundary.test.tsx > the .ranked-academy context is owned by the arena's shell > is applied by ArenaShell, and nowhere a mode could forget it
+× src/components/ranked-arena/DailyOnCanonicalArena.boundary.test.tsx > the Daily owns no game surface of its own > names no manual progression control anywhere in its source
+× src/components/ranked-arena/DailyOnCanonicalArena.boundary.test.tsx > the Daily owns no game surface of its own > the parent run is the ONLY Daily runtime
+× src/components/ranked-arena/QuestionStageGeometry.test.tsx > answering begins at the server's boundary > keeps the boundary the SERVER's, never a local constant's
+× src/components/ranked-arena/QuestionStageGeometry.test.tsx > nothing inside the card was made smaller to fit it > keeps the answer tablet's own box
+× src/components/ranked-arena/QuestionStageGeometry.test.tsx > the Match Header says three things on the left and one on the right > stacks mode, opponent and progress as the left block
+× src/components/ranked-arena/QuestionStageGeometry.test.tsx > the arena owns the footprint, and it owns it once > is applied by the arena alone — no mode carries the class
+× src/lib/admin/admin-registry.routes.test.ts > authorization is unchanged by the reorganization > keeps /admin/knowledge master-admin only
+× src/lib/admin/admin-registry.routes.test.ts > registry ⇄ router agreement > keeps the Premium Trends Preview master-admin only at its new path
+× src/lib/feedback/contract.test.ts > entry intent to type mapping > mirrors normalize_feedback_submission()
+× src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > entry intents match feedback_entry_intent_check
+× src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > reproducibilities match feedback_reproducibility_check
+× src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > severities match feedback_severity_check
+× src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > types match feedback_type_check
+× src/lib/identity/username.contract.test.ts > the reserved list matches on both sides > names the same words
+× src/lib/navigation/useSafeTemporalBack.test.tsx > structural navigation remains structural > keeps audited parent links fixed instead of adopting temporal Back
+× src/lib/quiz-screenshot/command.parser.test.ts > the copyable string survives a real shell > default single: /bin/sh splits it back into exactly the emitted args
+× src/lib/quiz-screenshot/command.parser.test.ts > the copyable string survives a real shell > default single: the shell-split string is accepted by the parser
+× src/lib/quiz-screenshot/command.parser.test.ts > the copyable string survives a real shell > multi + run id: /bin/sh splits it back into exactly the emitted args
+× src/lib/quiz-screenshot/command.parser.test.ts > the copyable string survives a real shell > multi + run id: the shell-split string is accepted by the parser
+× src/lib/quiz-screenshot/command.parser.test.ts > the copyable string survives a real shell > post + difficulty: /bin/sh splits it back into exactly the emitted args
+× src/lib/quiz-screenshot/command.parser.test.ts > the copyable string survives a real shell > post + difficulty: the shell-split string is accepted by the parser
+× src/lib/quiz-screenshot/command.reviewKey.test.ts > --review-key command > round-trips through the REAL parser, and through a real shell first
+× src/lib/ranked-core/media/rankedAssets.rfx1b2.test.ts > RFX1 2B2 — the preloaded URL is the rendered URL > resolves a compact pose to its derivative and falls back for the rest
+× src/lib/ranked-core/modules/masterySliceModule.jp5.test.tsx > the fixed stage: nothing here moves a region (JP2) > the reveal is still the prompt box's own layer; JP5 sets no stage reserve and no region size
+× src/lib/ranked-core/modules/masterySliceModule.visualLanguage.test.tsx > JP5 — the board fills its band (stylesheet) > one container-derived unit sizes the band board's objects; tiers only set floors; nothing reads a step or a state
+× src/lib/ranked-core/modules/masterySliceModule.visualLanguage.test.tsx > the board's champion art > JP5 — one scene: each art's fade starts at the face line and reaches zero exactly at the picture's own edge, eased
+× src/lib/ranked-core/modules/masterySliceModule.visualLanguage.test.tsx > the host and the parchment (stylesheet) > the answer tablets' polish changes no geometry (no padding, border-width or size in the JP3 tablet rules)
+× src/lib/ranked-core/modules/orderForgeModule.test.tsx > order_forge module renderer — OF4 scene > is tinted art on parchment, not a grey veil: multiplied, no F1 scrim, no blur-and-desaturate
+× src/pages/ProPlayHub.test.tsx > HUB-NEXT1 · an explicit ?next= is never replaced by another match > draws the verified fixture from the tournament schedule: identity, stage, time, TBD sides, state, source
+× src/pages/Quiz.guide.test.tsx > Leaguecraft — signup conversion keeps the existing policy > Create Account is the existing auth round trip, returning to /quiz
+× src/pages/Quiz.guide.test.tsx > Leaguecraft — signup conversion keeps the existing policy > Keep Playing as Guest dismisses it and leaves the results, with no second prompt
+× src/pages/Quiz.guide.test.tsx > Leaguecraft — signup conversion keeps the existing policy > arms at 5 but shows the prompt only AFTER completion, voiced by Mogzy
+× src/pages/Quiz.hub.test.tsx > Leaguecraft hub — category rail > is a menu of six in-page controls, and links to nowhere
+× src/pages/Quiz.hub.test.tsx > Leaguecraft hub — hierarchy > HUB7: reads QUICK STUDY then HISTORY, with no Practice Packs or Builder
+× src/pages/Quiz.hub.test.tsx > Leaguecraft hub — top chrome > keeps exactly one h1 — the centre scroll's wordmark
+× src/pages/Quiz.rankedRole.test.tsx > the lobby and the record share one role selection > commits NOTHING for Practice after a role change
+× src/pages/admin/AdminPlatformPolicies.test.tsx > Phase 1 boundary: the navbar policy is stored, not consumed > no file outside the policy module and admin panel mentions the key
+× src/pages/admin/AdminQuizReview.proPlay.test.tsx > Admin — current Pro Play specimens > emits a --review-key command and no credential
+× src/pages/dev/interaction-lab/InteractionLab.test.tsx > Interaction Lab — isolation from production > has no production entry point: nothing outside the lab links to or imports it
+× src/pages/dev/lobby-preview/LobbyPreviewPage.premiumAnalytics.test.tsx > Review and Weak Areas rooms > no Review donut (HUB6.3G owner decision): the three-step links are the whole Review room
+× src/pages/dev/lobby-preview/syntheticRankedHistory.test.ts > every question's icon agrees with its own subject > Meta Reflex gets its own mark and no borrowed entity art
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > flag OFF (default) > Back after a redirect leaves the Worlds page rather than looping
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > flag OFF (default) > does not loop on the canonical URL and keeps unknown paths as 404s
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > flag OFF (default) > draws nothing of the experience, loading state included
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > flag OFF (default) > redirects every shared screen link to the canonical Worlds page (replace, query dropped)
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > flag OFF (default) > renders the published Worlds page at the Worlds URL, with its own metadata
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > the production gate > is not controlled by the URL
+× src/pages/pro-play/ProPlayTournamentExperience.test.tsx > the production gate > is off unless the build sets an explicit true value
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Knockout: progression and champion > Swiss → Knockout interval names the qualifiers and leads with the bracket
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Knockout: progression and champion > complete: the champion leads, every stage is complete, and the event stays as an archive
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Knockout: progression and champion > mid-knockout: losers out, winners placed into the semifinal, champion not yet named
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Play-In complete, between stages > explains the transition, the Play-In result and the Swiss preview leads
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Play-In: double elimination > draws upper and lower brackets and a final from upstream cells, with slot origins
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Play-In: double elimination > during the Play-In: today and the stage lead; scores, placed teams and the live match show
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Swiss: advanced and eliminated, exactly as served > does not promote a 2–0 team the backend calls active
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Swiss: advanced and eliminated, exactly as served > marks status from the backend's records only
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Swiss: tiers, draws and records > before Swiss: seeding tiers with the unresolved Play-In slot, no 0–0 table, unpaired rounds summarised
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Swiss: tiers, draws and records > drawn Round 1 lists its pairings; later rounds stay TBD
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Swiss: tiers, draws and records > during Swiss: records grouped by W–L in the backend's order, rounds focus the one in play
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Worlds pre-event (real production body) > leads with the Play-In and the 19-team field, then Swiss, Knockout, schedule
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Worlds pre-event (real production body) > lists the field by region with entry stage and tier, links to team profiles, and no rosters
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > Worlds pre-event (real production body) > shows the next match with its stage and slot, and stage tiles with venues
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > degraded sources > browser-side refresh failure: keeps the last good data, says so, clears on the next success (PW4-B1)
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > degraded sources > partial schedule: says so once, and draws only the matches it has
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > degraded sources > stale schedule: flags the recent copy and recovers on the next good read
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > degraded sources > standings unavailable: no bracket layout, no routing, no outcomes; times and results remain
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > degraded sources > unknown phase: 'Schedule unavailable', never a pre-event page
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > navigation into the match centre and profiles > the schedule covers the whole event, filterable by stage, in local days
+× src/pages/pro-play/ProPlayTournamentWorlds.test.tsx > navigation into the match centre and profiles > uses the existing ?next= and ?game= links, and none for an all-TBD slot
+× src/pages/pro-play/featuredSwitchUx3a.test.tsx > Featured switch with the experience flag off > the featured Worlds pill opens the Worlds page in the presentation the flag selects
+× src/pages/welcome/tomeGeometry.test.ts > WE1 — the painted spread compacts by its own width > asks the tome, not the viewport, how much room the dense pages have
+× src/pages/welcome/tomeGeometry.test.ts > WE1 — the painted spread compacts by its own width > brings the finale graph's floor down with the book
+× src/pages/welcome/tomeGeometry.test.ts > WE1 — the painted spread compacts by its own width > takes nothing away from the register but its air
+× src/pages/welcome/tomeGeometry.test.ts > WE1 — the phone sheet is a budget, not a suggestion > never sets a body font-size in the short-height blocks
+× src/pages/welcome/tomeGeometry.test.ts > the control rows reserve their height > keeps both rows out of the column's own flexing
+× src/pages/welcome/tomeGeometry.test.ts > the turning sheet is the book's own paper > cuts both faces out of the painting rather than inventing a beige
+× src/test/guards/noStaticLeagueFacts.test.ts > no static League facts in production frontend source > declares no non-empty correct_answer literal outside tests and fixtures
+× src/test/guards/users1AudienceIdentity.test.ts > USERS1 guard · classification is metadata, never authorization > is read by no gate, entitlement or rate limiter
+× src/test/guards/users1AudienceIdentity.test.ts > USERS1 guard · classification is metadata, never authorization > promotes to human from exactly one module, through the RPC
+× src/test/security/adminNotificationReadSemantics.test.ts > admin read state comes from receipts, never from is_read > counts unread through the per-admin RPC everywhere a badge exists
+× src/test/security/adminNotificationReadSemantics.test.ts > admin read state comes from receipts, never from is_read > does not write is_read even in the disposition owner — that goes through the RPC
+× src/test/security/adminNotificationReadSemantics.test.ts > admin read state comes from receipts, never from is_read > scopes every receipt read and write to a single admin
+× src/test/security/adminNotificationReadSemantics.test.ts > admin read state comes from receipts, never from is_read > selects is_read only where it means disposition
+× src/test/security/adminNotificationReadsMigration.test.ts > applied migrations stay byte-identical to what production ran > leaves the already-applied 20260802120000 migration byte-identical
+× src/test/security/adminNotificationReadsMigration.test.ts > applied migrations stay byte-identical to what production ran > pins the Phase 2 migration itself
+× src/test/security/feedbackFoundation.test.ts > FB1 migration — anonymous submitter retention > does not touch the anonymous purge system
+× src/test/security/feedbackFoundation.test.ts > FB1 migration — anonymous submitter retention > retains no personal data about a purged submitter
+× src/test/security/feedbackFoundation.test.ts > FB1 migration — privacy model > leaves the admin RPC and the notification trigger untouched
+× src/test/security/feedbackPrivileges.test.ts > RLS stays as the independent boundary > does not rewrite the project's default privileges
+× src/test/security/feedbackPrivileges.test.ts > RLS stays as the independent boundary > leaves feedback_upvotes alone
+× src/test/security/feedbackPrivileges.test.ts > RLS stays as the independent boundary > leaves the notification trigger intact
+× src/test/security/feedbackPrivileges.test.ts > direct table reads are closed > does not fall back on column-level REVOKE, which is a no-op here
+× src/test/security/feedbackPrivileges.test.ts > shipped operations still work > does not touch service_role
+× src/test/security/pt14EntitlementSources.test.ts > no product surface gates on the raw Stripe column > only admin tooling, the entitlement lib and tests mention is_pro
+× src/test/security/pt14EntitlementSources.test.ts > writer invariant: every executable is_pro write is Stripe-owned > only the two Stripe edge functions write is_pro at runtime
+× src/test/security/pt2eProfileThemeAuthority.test.ts > PT2E — profile theme server authority > the fence catches its own removal > deleting the theme check aborts the migration
+× src/test/security/pt2eProfileThemeAuthority.test.ts > PT2E — profile theme server authority > the fence catches its own removal > dropping Global Premium Access from the decision aborts the migration
+× src/test/security/pt2eProfileThemeAuthority.test.ts > PT2E — profile theme server authority > the fence catches its own removal > dropping PT2C's frame check aborts the migration
+× src/test/security/pt2eProfileThemeAuthority.test.ts > PT2E — profile theme server authority > the fence catches its own removal > dropping custom_theme from the League contract aborts the migration
+× src/test/security/pt2eProfileThemeAuthority.test.ts > PT2E — profile theme server authority > the fence catches its own removal > dropping the canonical entitlement rule from the decision aborts the migration
+× src/test/security/pt2eProfileThemeAuthority.test.ts > PT2E — profile theme server authority > the fence catches its own removal > publishing user_id on the League contract aborts the migration

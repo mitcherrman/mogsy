@@ -1,0 +1,35 @@
+{
+ "scenario": {
+  "reps": 1,
+  "net": "none",
+  "mode": "stall-manifest",
+  "hoverAt": 800,
+  "clickAfter": 400,
+  "w": 1366,
+  "h": 768,
+  "ms": 24000,
+  "label": "stallman-rc",
+  "base": "https://127.0.0.1:4432"
+ },
+ "results": [
+  {
+   "rep": 0,
+   "mode": "stall-manifest",
+   "net": "none",
+   "stalled": 1,
+   "errors": [],
+   "root": 2289,
+   "stageReady": "true",
+   "reactions": "ready",
+   "luxInDom": false,
+   "books": 4,
+   "covers": 0,
+   "patchText": "Academy BroadcastReceiving transmission…TidecallerLive15%Onl",
+   "surface": false,
+   "quizChunkRequestedAt": 20368,
+   "poseRequestedAt": 20227,
+   "rootFromFirstReq": 2289,
+   "observedMs": 24499
+  }
+ ]
+}
