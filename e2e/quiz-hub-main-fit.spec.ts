@@ -189,6 +189,9 @@ interface Geometry {
   statValueFontPx: number | null;
   statLabelFontPx: number | null;
   statTexts: string[];
+  /** scrollWidth − clientWidth of each figure and label: > 0 means truncated. */
+  statOverflow: number[];
+  badge: Box | null;
   /** Text ranges (not boxes) for text that can overflow its element. */
   titleText: Box | null;
   statusText: Box | null;
@@ -265,6 +268,8 @@ const MEASURE_SOURCE = `(() => {
     statValueFontPx: statCells[0] ? px(statCells[0].querySelector('dd'), 'fontSize') : null,
     statLabelFontPx: statCells[0] ? px(statCells[0].querySelector('dt'), 'fontSize') : null,
     statTexts: statCells.map((c) => (c.textContent || '').trim()),
+    statOverflow: statCells.flatMap((c) => [c.querySelector('dt'), c.querySelector('dd')]).map((e) => (e ? e.scrollWidth - e.clientWidth : 0)),
+    badge: (() => { const b = el('[data-testid="daily-mode-complete"]'); if (!b) return null; const r = b.getBoundingClientRect(); return r.width > 0 ? box(r) : null; })(),
     titleText: textBox(titleEl),
     statusText: textBox(statusEl),
     statTextBoxes: statCells.flatMap((c) => [textBox(c.querySelector('dt')), textBox(c.querySelector('dd'))]).filter(Boolean),
@@ -350,6 +355,15 @@ function assertDailyFits(g: Geometry, label: string) {
     expect(within(b!, writing, 1), `${label}: ${name} ${JSON.stringify(b)} inside writing ${JSON.stringify(writing)}`).toBe(true);
   }
   expect(g.statCells, `${label}: three figures`).toHaveLength(3);
+  // The figures say what they say: no value or label cut off or ellipsised.
+  expect(g.statOverflow.filter((o) => o > 0.5), `${label}: a figure is truncated (${g.statTexts.join('|')})`).toEqual([]);
+  // Each figure's text sits inside its own cell.
+  g.statCells.forEach((cell, i) => {
+    for (const tb of [g.statTextBoxes[2 * i], g.statTextBoxes[2 * i + 1]]) {
+      expect(within(tb, cell, 1), `${label}: figure ${i} text inside its cell`).toBe(true);
+    }
+  });
+  if (g.badge) expect(within(g.badge, writing, 1), `${label}: Complete pill ${JSON.stringify(g.badge)} inside writing area`).toBe(true);
   expect(g.statTexts.join("|"), `${label}: figure labels`).toMatch(/Today.*\|Score.*\|Correct/);
   expect(within(play, writing, 1), `${label}: play inside the writing area`).toBe(true);
   if (g.caption) expect(within(g.caption, writing, 1), `${label}: caption inside writing area`).toBe(true);

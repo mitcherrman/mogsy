@@ -31,6 +31,7 @@ const block = css.slice(css.indexOf(START), css.indexOf(END));
 function parse(fragment: string) {
   const stripped = fragment.replace(/\/\*[\s\S]*?\*\//g, "");
   const media: { query: string; body: string }[] = [];
+  const containers: { query: string; body: string }[] = [];
   const plain: string[] = [];
   let i = 0;
   while (i < stripped.length) {
@@ -46,10 +47,11 @@ function parse(fragment: string) {
     }
     const body = stripped.slice(open + 1, j - 1);
     if (head.startsWith("@media")) media.push({ query: head.replace("@media", "").trim(), body });
+    else if (head.startsWith("@container")) containers.push({ query: head.replace("@container", "").trim(), body });
     else plain.push(`${head} {${body}}`);
     i = j;
   }
-  return { media, plain };
+  return { media, containers, plain };
 }
 
 const parsed = parse(block);
@@ -72,8 +74,14 @@ describe("the Quiz Hub fit stylesheet", () => {
     for (const m of parsed.media) expect(m.query, m.query).toMatch(/^\(max-width: 1023px\)/);
   });
 
+  it("keeps the narrow-sheet record rule to a container query on Daily's own markup", () => {
+    expect(parsed.containers).toHaveLength(1);
+    expect(parsed.containers[0].query).toMatch(/^lc-scroll \(max-width: 17rem\)/);
+    expect(parsed.containers[0].body).toContain(".lc-daily-panel .lc-daily-panel__stats");
+  });
+
   it("keys every rule to the Daily mode or to Daily's own markup", () => {
-    for (const m of parsed.media) {
+    for (const m of [...parsed.media, ...parsed.containers]) {
       const selectors = [...m.body.matchAll(/(?:^|})\s*([^{}]+)\{/g)].map((x) => x[1].trim());
       expect(selectors.length).toBeGreaterThan(0);
       for (const sel of selectors) {

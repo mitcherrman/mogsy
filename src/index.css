@@ -7521,6 +7521,24 @@ html.worlds-viewport-locked body {
   }
 }
 
+/* ── The record on a narrow sheet ────────────────────────────────────────
+   Three equal cells of a 178px writing area are 59px each, which cannot hold
+   "Complete" at 16px: the value truncated to "Co…" — the completion state
+   itself, clipped. Below 17rem of writing width the cells size to their
+   content instead and the row borrows 0.5rem either side from the sheet's
+   margin (still well inside the drawn paper edge, which is 13.1% in). */
+@container lc-scroll (max-width: 17rem) {
+  .lc-daily-panel .lc-daily-panel__stats {
+    grid-template-columns: repeat(3, auto);
+    justify-content: space-between;
+    width: calc(100% + 1rem);
+    margin-inline: -0.5rem;
+  }
+  .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
+    padding-inline: 0.125rem;
+  }
+}
+
 /* ── Landscape phones ────────────────────────────────────────────────────
    A landscape phone offers ~250–300px of height under the header band. The
    stacked sheet's frame alone (percentage padding of a 30rem column) costs
@@ -7577,7 +7595,7 @@ html.worlds-viewport-locked body {
 
   .lc-daily-panel {
     display: grid;
-    grid-template-columns: minmax(0, 0.5fr) minmax(0, 1.5fr) 6.5rem;
+    grid-template-columns: minmax(0, 0.45fr) minmax(0, 1.55fr) 6rem;
     grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "title  title  cta"
@@ -7615,6 +7633,16 @@ html.worlds-viewport-locked body {
   .lc-daily-panel .lc-daily-panel__stats {
     grid-area: stats;
     padding-block: 0.125rem;
+    grid-template-columns: repeat(3, auto);
+    justify-content: space-between;
+  }
+  .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
+    padding-inline: 0.125rem;
+  }
+  /* The Complete pill is wider than the mascot's cell here; the Today figure
+     and the status line already say it. */
+  .lc-daily-panel [data-testid="daily-mode-complete"] {
+    display: none;
   }
   .lc-daily-panel .lc-daily-panel__cta {
     grid-area: cta;
@@ -7636,7 +7664,7 @@ html.worlds-viewport-locked body {
     line-height: 1.2;
   }
   .lc-daily-panel .lc-daily-panel__caption {
-    max-width: 6.5rem;
+    max-width: 6rem;
     text-align: center;
     font-size: 10px;
     letter-spacing: 0.1em;
