@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateAppSettings } from "@/hooks/useAppSettings";
 import {
   DEFAULT_PLATFORM_POLICY,
   POLICY_KEYS,
@@ -252,6 +253,8 @@ export default function AdminPlatformPolicies() {
       });
       return;
     }
+    // Every consumer reads these rows through the session-cached app settings.
+    invalidateAppSettings();
 
     // Re-read so the displayed state is the server's, not our assumption.
     const { data, error: readError } = await supabase

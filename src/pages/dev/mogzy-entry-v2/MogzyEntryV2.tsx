@@ -16,7 +16,12 @@ import { useSurfaceEvent } from "@/lib/analytics";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { prefetchAppSettings } from "@/hooks/useAppSettings";
+import { holdAcademyVeil } from "@/lib/academy-startup/veil-store";
+import { warmAcademyFonts } from "@/lib/academy-startup/font-warm";
+import { ENTRANCE_VEIL_GRADIENT } from "@/lib/academy-startup/veil-gradient";
 import { CORE_MOGZY_REST_SRC, warmAcademyCore } from "@/pages/academy-core/academy-core-warm";
+import { championAssetsQuery } from "@/hooks/useChampionAssets";
 import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
@@ -277,6 +282,9 @@ export default function MogzyEntryV2({
     //    a first visit, otherwise the hub — resolved here rather than at render
     //    time so it reflects storage as of the click.
     const destination = autoEnter ? LEAGUE_HOME_ROUTE : resolveEntryDestination();
+    // 5a. the destination renders inside the shell, which waits for the app
+    //     settings: a no-op when the hold already started the read.
+    prefetchAppSettings();
     // 5b. the veil below runs for 780ms whatever happens, and a first-time
     //     visitor is about to land on a scene made of a ~530KB painting, a
     //     display face and a mascot (HI1-C4). Spending that window fetching
@@ -292,7 +300,13 @@ export default function MogzyEntryV2({
       void warmAcademyCore(queryClient);
     }
     navigateTimerRef.current = window.setTimeout(
-      () => navigate(destination, { replace: true }),
+      () => {
+        // ACADEMY STARTUP RC2 — this screen's veil is at its peak now and
+        // unmounts with it; the app-level veil takes over at identical pixels
+        // and stays until the Orrery's first screen is ready (or its cap).
+        if (destination === LEAGUE_HOME_ROUTE) holdAcademyVeil("entrance");
+        navigate(destination, { replace: true });
+      },
       prefersReducedMotion ? ENTRY_DURATION_REDUCED_MS : ENTRY_DURATION_MS,
     );
   }, [autoEnter, navigate, playLaunchChime, prefersReducedMotion, queryClient]);
@@ -308,9 +322,22 @@ export default function MogzyEntryV2({
 
   useEffect(() => {
     if (!autoEnter) return;
-    // The hub chunk (and Quiz/CombatLab, which it links to) loads during the
-    // hold rather than after the navigation. Idle-scheduled and deduped.
-    prefetchRoute(LEAGUE_HOME_ROUTE);
+    // The hub chunk loads during the hold rather than after the navigation.
+    // ACADEMY STARTUP S3: requested now (`intent`), not at idle — it is the
+    // one chunk this screen is certain to need, and an idle slot can come late
+    // on a busy device. Its destinations are no longer part of this warm.
+    prefetchRoute(LEAGUE_HOME_ROUTE, { intent: true });
+    // The champion manifest names the four cover splashes. It is small and its
+    // cost is latency, so it starts now rather than after this screen's art.
+    void queryClientRef.current?.prefetchQuery(championAssetsQuery);
+    // ACADEMY STARTUP S1 — the shell (`Layout`) shows only its startup surface
+    // until the app settings are known. Read them now, during the hold, so the
+    // hand-off does not pay that round trip after the veil has gone.
+    prefetchAppSettings();
+    // ACADEMY STARTUP RC2.2 — the Orrery's speech-bubble and marking faces:
+    // nothing here uses them, so without this their files start only when the
+    // Orrery mounts, and its held veil waits for them.
+    warmAcademyFonts();
     const hold = prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS;
     // PERF1 — then the Hub's own art, but only once THIS screen's art is in
     // (or the hold is over and the visitor is about to leave anyway), so the
@@ -747,10 +774,8 @@ export default function MogzyEntryV2({
       <motion.div
         className="pointer-events-none fixed inset-0 z-50"
         aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 50%, rgba(240,215,140,0.95) 0%, rgba(127,214,239,0.5) 35%, rgba(4,7,15,1) 78%)",
-        }}
+        // the app-level veil (AcademyVeil) takes over at this exact gradient
+        style={{ background: ENTRANCE_VEIL_GRADIENT }}
         initial={{ opacity: 0 }}
         animate={{ opacity: entering ? 1 : 0 }}
         transition={{

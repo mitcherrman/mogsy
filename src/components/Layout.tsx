@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { Suspense, useEffect, useLayoutEffect } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import GlobalHud from "./hud/GlobalHud";
 import { MogzyDockProvider, useMogzyDockOccupied, useMogzyDockTabsHosted } from "./mogzy-dock/MogzyDock";
 import { QuestionReportScroll } from "./report/QuestionReportScroll";
@@ -17,6 +17,7 @@ import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
 import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
 import { StartupSurface } from "@/components/startup/StartupShells";
+import { getAcademyStartup } from "@/lib/academy-startup/veil-store";
 
 export default function Layout() {
   useTrackActivity();
@@ -31,6 +32,11 @@ export default function Layout() {
   const { loading } = useAuth();
   const { loading: settingsLoading } = useAppSettings();
   const { pathname } = useLocation();
+  // ACADEMY STARTUP RC2 — decided once, when the shell first renders: arriving
+  // under the Academy's held veil, the veil's own fade is the transition, so
+  // the shell does not also fade in from nothing beneath it (a double fade at
+  // the reveal). Every other arrival keeps the 300 ms fade.
+  const fadeIn = useRef<boolean | null>(null);
 
   // League of Legends section uses its own LoLdle-inspired theme.
   const isLolSection = isLolSectionPath(pathname);
@@ -161,6 +167,7 @@ export default function Layout() {
   if (loading || settingsLoading) {
     return <StartupSurface pathname={pathname} />;
   }
+  if (fadeIn.current === null) fadeIn.current = getAcademyStartup().phase !== "held";
 
   // The header offset lives on the SAME box as min-h-dvh below, not on <main>.
   // Under border-box sizing that makes the shell's content area exactly
@@ -182,7 +189,7 @@ export default function Layout() {
     <ReportableQuestionProvider>
     <MogzyDockProvider>
     <div
-      className="min-h-dvh relative animate-page-fade-in pt-[var(--app-header-h)] pb-bottom-nav"
+      className={`min-h-dvh relative ${fadeIn.current ? "animate-page-fade-in " : ""}pt-[var(--app-header-h)] pb-bottom-nav`}
       style={{ background: baseBackgroundForPath(pathname) }}
     >
       {/* Stage: paints the app background only behind the centered column,

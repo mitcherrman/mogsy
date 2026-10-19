@@ -97,6 +97,9 @@ async function open(page: Page, width: number, height: number, opts: { real?: bo
   await expect(page.getByTestId("academy-core-v35")).toBeVisible();
   await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("academy-core-daily")).toBeVisible();
+  // ACADEMY STARTUP RC2: a direct visit holds the startup veil until the first
+  // screen is ready (cap 1.8 s after mount); coordinate clicks need it gone.
+  await expect(page.getByTestId("academy-veil")).toHaveCount(0);
   if (opts.real) {
     // the real splash art comes from the asset host: wait for every cover to draw
     await page.waitForFunction(() => {
