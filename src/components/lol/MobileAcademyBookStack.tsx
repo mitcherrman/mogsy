@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import FeatureRibbon from "@/components/FeatureRibbon";
 
 import { ACADEMY_BOOK_SPINE as bookSpine } from "@/academy/hub/hub-art";
 
@@ -73,6 +74,7 @@ export default function MobileAcademyBookStack({
           >
             {book.title}
           </span>
+          {book.to === "/combat-lab" && <FeatureRibbon label="BETA" size="mobile" />}
         </Link>
       ))}
     </nav>
