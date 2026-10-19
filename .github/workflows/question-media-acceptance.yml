@@ -1,0 +1,46 @@
+name: question-media-acceptance
+
+# QMEDIA1 — premise media (Dragon glyph, Vision item) and missing-asset text
+# fallback through the production Ranked/Daily card path, desktop + 390x844.
+on:
+  pull_request:
+    paths:
+      - "src/components/quiz-broadcast/**"
+      - "src/components/question-surface/**"
+      - "src/lib/quiz/api.ts"
+      - "src/pages/dev/ranked-shell-probe/**"
+      - "e2e/question-media-qmedia1.spec.ts"
+      - "e2e/fixtures/qmedia1/**"
+      - "playwright.arena.config.ts"
+      - ".github/workflows/question-media-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  question-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Question media acceptance
+        run: npx playwright test -c playwright.arena.config.ts e2e/question-media-qmedia1.spec.ts --workers=1
+      - name: Upload screenshots and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: question-media-evidence
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
