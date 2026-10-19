@@ -49,7 +49,7 @@ export default function CreatorReplayPage() {
   }, []);
 
   const roles = ["top", "jungle", "mid", "bot", "support"];
-  const validSelection = selection === "" || journeys.some((j) => j.recipe_id === selection);
+  const validSelection = selection === "__auto__" || journeys.some((j) => j.recipe_id === selection);
 
   async function createRun() {
     if (loading || !validSelection || !journeys.length) return;
@@ -60,7 +60,7 @@ export default function CreatorReplayPage() {
       const response = await fetch(url, {
         method: "POST",
         headers: { ...(await buildAdminHeaders(url)), "Content-Type": "application/json" },
-        body: JSON.stringify({ journey_recipe_id: selection || null }),
+        body: JSON.stringify({ journey_recipe_id: selection === "__auto__" ? null : selection }),
       });
       if (!response.ok) {
         let message = `Creator replay request failed (${response.status})`;
@@ -95,7 +95,7 @@ export default function CreatorReplayPage() {
     <div className="space-y-4 rounded-lg border p-5">
       <div>
         <h2 className="text-lg font-semibold">Choose your Mastery Journey</h2>
-        <p className="text-sm text-muted-foreground">Select the exact matchup for module 10, or use today's official selection. Your choice is remembered for your next filming session.</p>
+        <p className="text-sm text-muted-foreground">Choose which matchup to film in module 10. You can explicitly use today’s official selection, or pick any approved Journey. We remember your choice next time.</p>
       </div>
       <label htmlFor="creator-journey" className="text-sm font-semibold">Matchup</label>
       <select
@@ -109,7 +109,8 @@ export default function CreatorReplayPage() {
           try { localStorage.setItem(LAST_CHOICE, event.target.value); } catch { /* optional preference */ }
         }}
       >
-        <option value="">Today's official matchup (automatic)</option>
+        <option value="" disabled>Select a matchup to film…</option>
+        <option value="__auto__">Today’s official matchup (repeat today’s Daily)</option>
         {roles.map((role) => <optgroup key={role} label={role === "bot" ? "Bot" : role.charAt(0).toUpperCase() + role.slice(1)}>
           {journeys.filter((j) => j.role === role).map((journey) =>
             <option key={journey.recipe_id} value={journey.recipe_id}>
@@ -118,7 +119,7 @@ export default function CreatorReplayPage() {
         </optgroup>)}
       </select>
       {loading && <p className="text-sm text-muted-foreground">Loading approved matchups…</p>}
-      {!validSelection && !loading && <p className="text-sm text-destructive">Previously chosen matchup is no longer available. Select another.</p>}
+      {!validSelection && !loading && <p className="text-sm text-muted-foreground">{selection ? "Your previous matchup is no longer available. Select another." : "Choose a matchup above to enable recording."}</p>}
       <p className="text-xs text-muted-foreground">Starting a fresh take ends only your previous unfinished filming match. It cannot reset your official Daily or Ranked games.</p>
       <Button onClick={createRun} disabled={busy || loading || !validSelection || !journeys.length} data-testid="creator-replay-new">
         {busy ? "Creating take…" : "Record a new take"}
