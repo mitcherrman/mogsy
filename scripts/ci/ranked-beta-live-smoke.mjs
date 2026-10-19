@@ -16,10 +16,12 @@ try {
     try {
       await page.goto(root + "/lol", { waitUntil: "domcontentloaded", timeout: 60000 });
       await expect(page.locator('a[href="/combat-lab"] [data-testid="feature-ribbon-beta"]').first()).toBeVisible({ timeout: 30000 });
+      // Capture only after the Academy startup veil and book entrance settle.
+      await page.waitForTimeout(4500);
       await page.screenshot({ path: out + "/" + vp.name + "-academy.png", fullPage: true });
       const combat = page.locator('a[href="/combat-lab"]').filter({ has: page.locator('[data-testid="feature-ribbon-beta"]') }).first();
       await expect(combat).toBeVisible();
-      await combat.evaluate((el) => el.click());
+      await combat.click({ timeout: 20000 });
       await expect(page).toHaveURL(/\/combat-lab(?:[?#]|$)/, { timeout: 30000 });
       console.log(vp.name, "BETA ribbon visible; Combat Simulator link navigated");
     } catch (error) {
