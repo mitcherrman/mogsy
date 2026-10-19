@@ -95,6 +95,21 @@ serve(async (req) => {
         },
       },
     );
+    // Owner-only diagnostic for private gift availability. Only reports the failing
+    // gate and boolean eligibility; never return secret contents or user IDs.
+    // Other accounts retain the original response exactly.
+    if (body?.action === "availability" && result.available !== true &&
+        user.id === Deno.env.get("OWNER_USER_ID")) {
+      return json({
+        ...result,
+        diagnostic: {
+          config_reason: config.reason ?? "buyer_not_allowlisted",
+          buyer_allowlisted: config.buyerIds.includes(user.id.toLowerCase()),
+          email_verified: !!user.email_confirmed_at,
+          stripe_mode: config.stripeMode,
+        },
+      }, 200);
+    }
     return json(result, 200);
   } catch (error) {
     console.error("gift-checkout error:", error);
