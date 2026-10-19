@@ -352,6 +352,8 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     reveal: stage.kind === "revealed" ? slot?.reveal ?? null : null,
     onNext: onReveal,
     hud,
+    // PT5.2: the visible stopwatch draws the engine's own readings; it never measures.
+    clock: { t0: engine.state.t0, elapsedMs: engine.state.elapsedMs },
   };
 
   const summary: PtRunSummary | null = run && stage.kind === "complete" ? {

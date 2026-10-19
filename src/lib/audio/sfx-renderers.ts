@@ -393,6 +393,34 @@ const renderers = {
     tone(context, output, startAt, { at: 0.15, dur: 0.34, peak: 0.075, freq: 440, slideTo: 349.2, type: "triangle" });
     tone(context, output, startAt, { at: 0.15, dur: 0.3, peak: 0.026, freq: 220, slideTo: 174.6 });
   },
+  // PT5.2 — THE ARCANE CHRONOMETER. A brass instrument with a little magic in
+  // it: the cast is a short rising shimmer over a soft mechanical engage; each
+  // second is a small escapement tick (a dry high click with a faint brass
+  // body), every fifth a touch brighter; the stop is a clean latch with a
+  // gold ring. Every tick ends inside 120 ms, so seconds never overlap, and
+  // none of them is louder than the quiz's countdown tick.
+  perfectTimingCast(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.05, peak: 0.03, from: 1800, to: 900, q: 1.6, attack: 0.05 });
+    tone(context, output, startAt, { dur: 0.09, peak: 0.03, freq: 196, slideTo: 247, type: "triangle" });
+    noise(context, output, startAt, { at: 0.02, dur: 0.24, peak: 0.016, from: 900, to: 4200, q: 1.2, attack: 0.4 });
+    tone(context, output, startAt, { at: 0.03, dur: 0.16, peak: 0.03, freq: 659.3, slideTo: 987.8, type: "triangle" });
+    tone(context, output, startAt, { at: 0.11, dur: 0.26, peak: 0.022, freq: 1318.5 });
+  },
+  perfectTimingTick(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.018, peak: 0.032, from: 4200, to: 3000, q: 3, attack: 0.04 });
+    tone(context, output, startAt, { dur: 0.05, peak: 0.016, freq: 1480, slideTo: 1400, type: "triangle", attack: 0.03 });
+  },
+  perfectTimingMark(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.02, peak: 0.036, from: 4400, to: 3100, q: 3, attack: 0.04 });
+    tone(context, output, startAt, { dur: 0.06, peak: 0.02, freq: 1480, slideTo: 1400, type: "triangle", attack: 0.03 });
+    tone(context, output, startAt, { at: 0.01, dur: 0.11, peak: 0.009, freq: 2217 });
+  },
+  perfectTimingLock(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.026, peak: 0.05, from: 3600, to: 1300, q: 2.2, attack: 0.04 });
+    tone(context, output, startAt, { dur: 0.07, peak: 0.034, freq: 247, slideTo: 196, type: "triangle", attack: 0.03 });
+    tone(context, output, startAt, { at: 0.035, dur: 0.22, peak: 0.026, freq: 1174.7, type: "triangle" });
+    tone(context, output, startAt, { at: 0.035, dur: 0.28, peak: 0.01, freq: 2349.3 });
+  },
   scribble(context, output, startAt, options) {
     const duration = Math.min(MAX_SCRIBBLE_MS, Math.max(0, options.durationMs ?? 0)) / 1000;
     if (duration <= 0) return;
@@ -493,6 +521,10 @@ export const SFX_GENERATORS = {
   "sfx.quiz.countdown-urgent": renderers.quizCountdownUrgent,
   "sfx.quiz.countdown-final": renderers.quizCountdownFinal,
   "sfx.quiz.answer-timeout": renderers.quizAnswerTimeout,
+  "sfx.perfect-timing.cast": renderers.perfectTimingCast,
+  "sfx.perfect-timing.tick": renderers.perfectTimingTick,
+  "sfx.perfect-timing.mark": renderers.perfectTimingMark,
+  "sfx.perfect-timing.lock": renderers.perfectTimingLock,
   "sfx.legacy.welcome-scribble": renderers.scribble,
   "sfx.legacy.welcome-page-turn": renderers.pageTurn,
 } as const satisfies Record<string, SfxSynthRenderer>;

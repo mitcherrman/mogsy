@@ -339,6 +339,8 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
     reveal: stage.kind === "revealed" ? slot?.reveal ?? null : null,
     onNext: onReveal,
     hud,
+    // PT5.2: the visible stopwatch draws the engine's own readings; it never measures.
+    clock: { t0: engine.state.t0, elapsedMs: engine.state.elapsedMs },
   };
 
   // PGM2 — tell a public host which round is on screen (and its reveal), so

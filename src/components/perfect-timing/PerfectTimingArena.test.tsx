@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PtStageModel } from "@/lib/perfect-timing/viewModel";
 import { DEMO_HUD, DEMO_REVEALS, DEMO_ROUNDS, demoPress } from "./__stories__/demoViewModels";
@@ -9,6 +9,10 @@ vi.mock("@/lib/audio/useSfx", () => ({
 }));
 
 import { PerfectTimingArena } from "./PerfectTimingArena";
+import { LOCK_HOLD_MS } from "./presentation";
+
+/** Let the PT5.2 lock hold run out. */
+const pastHold = () => act(() => new Promise<void>((r) => { setTimeout(r, LOCK_HOLD_MS + 40); }));
 
 const model = (over: Partial<PtStageModel> = {}): PtStageModel => ({
   round: DEMO_ROUNDS[1],
@@ -40,7 +44,7 @@ describe("PerfectTimingArena — the stage and the reveal, no Ranked chrome", ()
     expect(screen.queryByTestId("ranked-round-transition")).toBeNull();
   });
 
-  it("shows no clock anywhere and nothing periodic while running", () => {
+  it("shows no Ranked timer and nothing looping while running (PT5.2: the chronometer is the only clock)", () => {
     const { rerender } = render(<PerfectTimingArena model={model({ phase: "armed" })} />);
     expect(screen.queryByTestId("timer-value")).toBeNull();
     rerender(<PerfectTimingArena model={model({ phase: "running", press: demoPress("The ability is back up") })} />);
@@ -85,26 +89,50 @@ describe("PerfectTimingArena — the stage and the reveal, no Ranked chrome", ()
 });
 
 describe("PerfectTimingArena — sound", () => {
-  it("plays the existing cues on the phase edges and nothing while running", () => {
+  it("plays the phase-edge cues: start, cast (PT5.2), lock (PT5.2), verdict — once each", async () => {
     const { rerender } = render(<PerfectTimingArena model={model({ phase: "loading", round: null })} />);
     expect(play).not.toHaveBeenCalled();
     rerender(<PerfectTimingArena model={model({ phase: "armed" })} />);
     expect(play).toHaveBeenLastCalledWith("ranked.module.start", expect.objectContaining({ eventId: expect.stringContaining("pt_demo_02") }));
     rerender(<PerfectTimingArena model={model({ phase: "running" })} />);
-    expect(play).toHaveBeenCalledTimes(1);
-    rerender(<PerfectTimingArena model={model({ phase: "stopped" })} />);
-    expect(play).toHaveBeenLastCalledWith("ranked.answer.lock", expect.anything());
-    rerender(<PerfectTimingArena model={model({ phase: "submitting" })} />);
+    expect(play).toHaveBeenLastCalledWith("perfect-timing.cast", { eventId: "perfect-timing:pt_demo_02:cast" });
     expect(play).toHaveBeenCalledTimes(2);
-    rerender(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.early })} />);
-    expect(play).toHaveBeenLastCalledWith("ranked.answer.correct", expect.anything());
+    rerender(<PerfectTimingArena model={model({ phase: "stopped" })} />);
+    expect(play).toHaveBeenLastCalledWith("perfect-timing.lock", { eventId: "perfect-timing:pt_demo_02:lock" });
+    rerender(<PerfectTimingArena model={model({ phase: "submitting" })} />);
     expect(play).toHaveBeenCalledTimes(3);
+    rerender(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.early })} />);
+    await pastHold();
+    expect(play).toHaveBeenLastCalledWith("ranked.answer.correct", expect.anything());
+    expect(play).toHaveBeenCalledTimes(4);
+    // The old Ranked lock cue is replaced, never played on top.
+    expect(play.mock.calls.map((c) => c[0])).not.toContain("ranked.answer.lock");
   });
 
-  it("plays the incorrect cue for a miss", () => {
+  it("plays the incorrect cue for a miss", async () => {
     const { rerender } = render(<PerfectTimingArena model={model({ phase: "submitting" })} />);
     rerender(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.miss })} />);
+    await pastHold();
     expect(play).toHaveBeenLastCalledWith("ranked.answer.incorrect", expect.anything());
+  });
+
+  it("PT5.2: holds the frozen chronometer briefly after the stop, then the reveal and its verdict arrive together", async () => {
+    const clock = { t0: 1_000, elapsedMs: 4_210 };
+    const { rerender } = render(<PerfectTimingArena model={model({ phase: "stopped", clock })} />);
+    rerender(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.early, clock })} />);
+    // Still the locked instrument, frozen on the engine's stop; no verdict yet.
+    expect(screen.queryByTestId("pt-reveal-stage")).toBeNull();
+    expect(screen.getByTestId("pt-chrono-digits")).toHaveTextContent("4.21");
+    expect(screen.getByTestId("pt-press-surface")).toHaveAttribute("data-phase", "submitting");
+    expect(play.mock.calls.map((c) => c[0])).not.toContain("ranked.answer.correct");
+    await pastHold();
+    expect(screen.getByTestId("pt-reveal-stage")).toBeInTheDocument();
+    expect(play).toHaveBeenLastCalledWith("ranked.answer.correct", expect.anything());
+  });
+
+  it("PT5.2: a round first drawn already revealed is not held", () => {
+    render(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.early })} />);
+    expect(screen.getByTestId("pt-reveal-stage")).toBeInTheDocument();
   });
 
   it("re-arms with the start cue for a NEW round, not for a re-render of the same one", () => {

@@ -14,6 +14,8 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import capture from "@/lib/perfect-timing/__fixtures__/captureV1.json";
 import { perfectTimingApi } from "@/lib/perfect-timing/api";
+import { formatLocked } from "@/lib/perfect-timing/chronometer";
+import { MIN_RUN_MS } from "@/lib/perfect-timing/timingEngine";
 
 vi.mock("@/lib/admin-auth/adminCredentials", () => ({
   ADMIN_API_BASE_URL: "http://backend.test",
@@ -137,10 +139,12 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     expect(be.locks().map((c) => [c.path, c.body])).toEqual(
       LOCKS.map((l) => [`/rounds/${l.round_id}/lock`, { elapsed_ms: l.request.elapsed_ms }]),
     );
-    // PT1 owns the cues: one start, one lock, one verdict per round; the page adds none.
+    // PT1 owns the cues: one start, one cast, one lock, one verdict per round; the page adds none.
     const cues = play.mock.calls.map((c) => c[0]);
     expect(cues.filter((c) => c === "ranked.module.start")).toHaveLength(5);
-    expect(cues.filter((c) => c === "ranked.answer.lock")).toHaveLength(5);
+    expect(cues.filter((c) => c === "perfect-timing.cast")).toHaveLength(5);
+    expect(cues.filter((c) => c === "perfect-timing.lock")).toHaveLength(5);
+    expect(cues.filter((c) => c === "ranked.answer.lock")).toHaveLength(0);
     expect(cues.filter((c) => c === "ranked.answer.correct")).toHaveLength(4);
     expect(cues.filter((c) => c === "ranked.answer.incorrect")).toHaveLength(1);
   });
@@ -159,14 +163,16 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     expect(be.locks()).toHaveLength(1);
   });
 
-  it("shows no digits on the stage and no timer while the clock runs", async () => {
+  it("PT5.2: while the clock runs the only digits on the stage are the chronometer's own; no Ranked timer", async () => {
     mount(standIn());
     await armed();
     key(seal(), (clock += 5_000));
     expect(seal()).toHaveAttribute("data-phase", "running");
-    const stageText = screen.getByTestId("pt-stage").textContent ?? "";
-    // Round 1 is rank-invariant ("any rank"), so the stage may print no digit at all.
-    expect(stageText).not.toMatch(/\d/);
+    const stage = screen.getByTestId("pt-stage").cloneNode(true) as HTMLElement;
+    expect(stage.querySelector('[data-testid="pt-chrono-digits"]')?.textContent).toMatch(/^\d+\.\d\d$/);
+    stage.querySelector('[data-testid="pt-chrono-digits"]')?.remove();
+    // Round 1 is rank-invariant ("any rank"), so the rest of the stage prints no digit at all.
+    expect(stage.textContent ?? "").not.toMatch(/\d/);
     expect(screen.queryByTestId("timer-value")).toBeNull();
     expect(screen.getByTestId("pt-stage").querySelectorAll(".animate-pulse")).toHaveLength(0);
   });
@@ -191,6 +197,31 @@ describe("PerfectTimingPage — the integrated owner run", () => {
     expect(currentChampionText()).toContain("Lucent Singularity");
     expect(screen.getByTestId("pt-pips").querySelector('[data-tier="voided"]')).not.toBeNull();
     expect(be.locks()).toHaveLength(0);
+  });
+
+  it("PT5.2: the chronometer reads 0.00 armed, ignores a double-tap, freezes on the engine's stop, and the lock carries the engine's interval", async () => {
+    const be = standIn();
+    mount(be);
+    await armed();
+    const digits = () => screen.getByTestId("pt-chrono-digits").textContent;
+    expect(digits()).toBe("0.00");
+    const elapsed = LOCKS[0].request.elapsed_ms as number;
+    const t0 = (clock += 5_000);
+    key(seal(), t0);
+    expect(seal()).toHaveAttribute("data-phase", "running");
+    // A second press inside the minimum run is a double-tap: still running, nothing frozen, nothing sent.
+    key(seal(), t0 + MIN_RUN_MS - 1);
+    expect(seal()).toHaveAttribute("data-phase", "running");
+    expect(screen.getByTestId("pt-chrono")).toHaveAttribute("data-readout", "running");
+    key(seal(), t0 + elapsed);
+    // Frozen at once on the engine's measurement (jsdom's frame clock is nowhere near these stamps).
+    expect(digits()).toBe(formatLocked(elapsed));
+    expect(screen.getByTestId("pt-status")).toHaveTextContent(`Locked at ${formatLocked(elapsed)} s.`);
+    await screen.findByTestId("pt-reveal-stage");
+    expect(be.locks().map((c) => c.body)).toEqual([{ elapsed_ms: elapsed }]);
+    fireEvent.click(screen.getByRole("button", { name: /next round/i }), { detail: 1 });
+    await armed();
+    expect(digits()).toBe("0.00");
   });
 
   it("deals a fresh round when the lock answers 404 (expired), at the same position", async () => {

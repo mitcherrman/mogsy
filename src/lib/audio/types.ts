@@ -65,6 +65,11 @@ export interface SfxPlayOptions {
   eventId?: string;
   /** Optional authored window for continuous semantic effects such as writing. */
   durationMs?: number;
+  /**
+   * PT5.2: a beat that only makes sense NOW (a stopwatch tick). When the audio
+   * context is not running, drop it instead of resuming and rendering it late.
+   */
+  dropIfNotRunning?: boolean;
   /** Admin preview only; product callers must use persisted compatibility policy. */
   bypassLegacySetting?: boolean;
   /**
