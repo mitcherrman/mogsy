@@ -19943,3 +19943,24 @@ html.reduce-motion .journey-know-host--portrait[data-arrival="true"] .journey-po
 html.reduce-motion .journey-items > [data-arrival="true"] {
   box-shadow: 0 0 0 2px rgb(var(--jattn-flash) / 0.95), 0 0 8px 2px rgb(var(--jattn-ring) / 0.6);
 }
+
+/* F06: Honor system/app reduced-motion settings for the Play selector.
+   Keep the unfurl fully open without animation and preserve its static layout. */
+@media (prefers-reduced-motion: reduce) {
+  .play-scroll-overlay,
+  .play-scroll .lc-scroll__sheet,
+  .play-scroll .lc-scroll__content {
+    animation: none;
+  }
+  .play-scroll .lc-scroll__sheet {
+    --lc-unfurl: 0%;
+  }
+}
+html.reduce-motion .play-scroll-overlay,
+html.reduce-motion .play-scroll .lc-scroll__sheet,
+html.reduce-motion .play-scroll .lc-scroll__content {
+  animation: none;
+}
+html.reduce-motion .play-scroll .lc-scroll__sheet {
+  --lc-unfurl: 0%;
+}
