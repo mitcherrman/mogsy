@@ -55,6 +55,7 @@ describe("creator replay admin entry", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
     mount();
+    await waitFor(() => expect(screen.getByTestId("creator-journey-picker")).not.toHaveProperty("disabled", true));
     fireEvent.click(screen.getByRole("button", { name: "Record a new take" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent)
       .toContain("invalid run"));
