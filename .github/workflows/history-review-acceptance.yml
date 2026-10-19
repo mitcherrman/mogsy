@@ -1,0 +1,57 @@
+name: History Review Acceptance
+
+# Match History V2 (Track D). Real-browser geometry, keyboard and screenshot
+# acceptance of the question inspector (popover on a fine pointer, bottom sheet
+# on touch). Bundled Chromium on the GitHub runner only - AGENTS.md forbids
+# browser automation on the owner's PC.
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/quiz/workspace/QuestionReviewCard*'
+      - 'src/components/quiz/workspace/QuestionReviewHost*'
+      - 'src/components/quiz/workspace/QuestionInspector*'
+      - 'src/components/quiz/workspace/questionTimelineParts*'
+      - 'src/components/quiz/workspace/questionIcons*'
+      - 'src/components/journey/JourneyCombatWorking*'
+      - 'src/index.css'
+      - 'e2e/history-review/**'
+      - 'playwright.history-review.config.ts'
+      - '.github/workflows/history-review-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: history-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  history-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Install bundled Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Question inspector browser acceptance
+        run: npx playwright test -c playwright.history-review.config.ts
+      - name: Upload screenshots and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: history-review-evidence
+          path: |
+            test-results/history-review/
+            playwright-report/history-review/
+          if-no-files-found: ignore
+          retention-days: 14

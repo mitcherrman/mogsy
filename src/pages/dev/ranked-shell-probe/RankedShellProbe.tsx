@@ -28,7 +28,9 @@
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
  *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
  *   presentation blob) | matchup (VISCONT1: a two-champion Matchup card) |
- *   twoChamp (VISCONT1: the RCP1 two-option champion duel, option media only)
+ *   twoChamp (VISCONT1: the RCP1 two-option champion duel, option media only) |
+ *   dragonRespawn | visionWard (QMEDIA1: the exact blobs the backend renders
+ *   for `camp_respawn:v2:dragon_pit` and Vision `VISION-015`)
  * `?seq=a,b,c,d` (VISCONT1) — with `?sfx=1`, serves probe state `a` for round
  *   1, `b` for round 2 and so on, and settles each round with a correct option
  *   and an evidence note. Advancing the SFX fixture therefore plays a real
@@ -150,7 +152,7 @@ export const PROBE_STATES = [
   "spellCooldown", "matchup", "twoChamp", "shape",
   "ssm212", "ssm218", "ssm224", "ssm228", "ssm248",
   "f1Ionian", "f1IonianText", "f1Chempunk", "f1ChempunkText", "f1Locket",
-  "scrub",
+  "scrub", "dragonRespawn", "visionWard",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -583,6 +585,24 @@ function baseQuestionFor(state: ProbeState) {
         options: ["20", "21", "22", "23"], category: "Minion Waves",
         presentation: { assets: { subject: { type: "minion", id: "melee",
           name: "Melee Minion", icon: "assets/minions/melee.png" } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
+    // QMEDIA1 — the 2026-10-19 Standard Daily row `camp_respawn:v2:dragon_pit`,
+    // with the blob the backend renderer now produces (the element-neutral
+    // Elemental Drakes glyph). The answer is a time; the card names the Dragon.
+    case "dragonRespawn":
+      return { question_id: "qq-138777#r1",
+        prompt: "How long does Dragon take to respawn?",
+        options: ["2:30", "2:15", "5:00", "6:00"], category: "Objective Timers",
+        presentation: { assets: { subject: { type: "objective", id: "dragon_pit",
+          name: "Dragon", icon: "assets/objectives/dragon_pit.png" } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
+    // QMEDIA1 — a Vision row (VISION-015) and its reviewed premise item.
+    case "visionWard":
+      return { question_id: "qq-139511#r1",
+        prompt: "How much does a Control Ward normally cost?",
+        options: ["40 gold", "75 gold", "50 gold", "100 gold"], category: "Vision",
+        presentation: { assets: { subject: { type: "item", id: 2055,
+          name: "Control Ward", icon: "assets/items_wiki/2055.png" } },
           presentation: { role: "context", timing: "question", spoiler: false } } };
     // QF1 Rift/Jungle — long-prompt stress for a media-less jungle rule.
     case "jungleLong":
