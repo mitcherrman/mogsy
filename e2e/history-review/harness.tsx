@@ -12,7 +12,7 @@ import { createRoot } from "react-dom/client";
 import "@/index.css";
 import QuestionInspector from "@/components/quiz/workspace/QuestionInspector";
 import { readCombatWorking } from "@/lib/journey/combatWorking";
-import { PANTHEON_E_WORKING_RECALLED } from "@/lib/journey/__fixtures__/j5/finalWindow";
+import { PANTHEON_E_WORKING_RECALLED } from "./working.fixture";
 import pantheon from "@/lib/journey/__fixtures__/j4/pantheon.standard.json";
 import { FIXTURES } from "./fixtures";
 
