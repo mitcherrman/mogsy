@@ -191,6 +191,8 @@ interface Geometry {
   statTexts: string[];
   /** scrollWidth − clientWidth of each figure and label: > 0 means truncated. */
   statOverflow: number[];
+  /** Names of key boxes/text that an ancestor with overflow != visible cuts off. */
+  clipped: string[];
   /** Each figure's own box (the clip box of a truncating value). */
   statValueRects: Box[];
   badge: Box | null;
@@ -226,6 +228,24 @@ const MEASURE_SOURCE = `(() => {
       get width() { return this.right - this.left; }, get height() { return this.bottom - this.top; },
     });
   };
+  // An ancestor that clips (overflow hidden/auto/scroll/clip) cuts anything
+  // outside its box: report a rect that pokes out of one.
+  const clippedBy = (node, r) => {
+    for (let p = node.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if ([cs.overflowX, cs.overflowY].every((o) => o === 'visible')) continue;
+      const b = p.getBoundingClientRect();
+      const clipX = cs.overflowX !== 'visible', clipY = cs.overflowY !== 'visible';
+      if ((clipX && (r.left < b.left - 0.5 || r.right > b.right + 0.5)) || (clipY && (r.top < b.top - 0.5 || r.bottom > b.bottom + 0.5))) return true;
+    }
+    return false;
+  };
+  const clipped = [];
+  const probe = (name, node, useText) => {
+    if (!node) return;
+    const r = useText ? textBox(node) : box(node.getBoundingClientRect());
+    if (r && r.width > 0 && clippedBy(node, r)) clipped.push(name);
+  };
   const sheetEl = el('[data-order="centre"]');
   const panel = el('[data-testid="daily-mode-panel"]');
   const playEl = el('[data-testid="daily-play-seal"]') || el('[data-testid="daily-results-button"]');
@@ -245,6 +265,13 @@ const MEASURE_SOURCE = `(() => {
     });
     play = { ...box(r), kind: playEl.getAttribute('data-testid'), label: (playEl.textContent || '').trim() };
   }
+  probe('title', titleEl, true); probe('status', statusEl, true);
+  probe('hero', el('[data-testid="daily-mode-hero"]'), false); probe('mascot', el('[data-testid="daily-mode-mascot"]'), false);
+  probe('stats', el('[data-testid="daily-mode-stats"]'), false);
+  statCells.forEach((c, i) => { probe('stat dt ' + i, c.querySelector('dt'), true); probe('stat dd ' + i, c.querySelector('dd'), true); });
+  probe('play', playEl, false); probe('caption', el('.lc-daily-panel__caption'), true);
+  probe('badge', el('[data-testid="daily-mode-complete"]'), false);
+  document.querySelectorAll('[data-testid="challenge-mode-switcher"] [role="tab"]').forEach((t, i) => probe('tab ' + i, t, false));
   const pane = el('[data-mode-pane="daily"]');
   const stageEl = el('[data-testid="centre-mode-stage"]');
   const sealEl = el('[data-testid="daily-play-seal"]');
@@ -270,6 +297,7 @@ const MEASURE_SOURCE = `(() => {
     statValueFontPx: statCells[0] ? px(statCells[0].querySelector('dd'), 'fontSize') : null,
     statLabelFontPx: statCells[0] ? px(statCells[0].querySelector('dt'), 'fontSize') : null,
     statTexts: statCells.map((c) => (c.textContent || '').trim()),
+    clipped,
     statOverflow: statCells.flatMap((c) => [c.querySelector('dt'), c.querySelector('dd')]).map((e) => (e ? e.scrollWidth - e.clientWidth : 0)),
     statValueRects: statCells.map((c) => box(c.querySelector('dd').getBoundingClientRect())),
     badge: (() => { const b = el('[data-testid="daily-mode-complete"]'); if (!b) return null; const r = b.getBoundingClientRect(); return r.width > 0 ? box(r) : null; })(),
@@ -358,6 +386,8 @@ function assertDailyFits(g: Geometry, label: string) {
     expect(within(b!, writing, 1), `${label}: ${name} ${JSON.stringify(b)} inside writing ${JSON.stringify(writing)}`).toBe(true);
   }
   expect(g.statCells, `${label}: three figures`).toHaveLength(3);
+  // Nothing is cut off by a clipping ancestor (the pane, the stage, a tablist).
+  expect(g.clipped, `${label}: clipped by an ancestor`).toEqual([]);
   // The figures say what they say: no value or label cut off or ellipsised.
   expect(g.statOverflow.filter((o) => o > 0.5), `${label}: a figure is truncated (${g.statTexts.join('|')})`).toEqual([]);
   // Each figure's text sits inside its own cell.

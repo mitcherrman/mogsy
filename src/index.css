@@ -7526,17 +7526,16 @@ html.worlds-viewport-locked body {
    "Complete" at 16px: the value truncated to "Co…" — the completion state
    itself, clipped. Below 17rem of writing width the cells size to their
    content (`max-content`: the values are `truncate`d, so `auto` would let them
-   collapse to nothing) instead and the row borrows 0.5rem either side from the sheet's
-   margin (still well inside the drawn paper edge, which is 13.1% in). */
+   collapse to nothing), spread across the row. The Daily pane clips its own
+   overflow (it is a scrolling last resort), so the row has to fit INSIDE the
+   writing area: nothing here may borrow from the sheet's margin. */
 @container lc-scroll (max-width: 17rem) {
   .lc-daily-panel .lc-daily-panel__stats {
     grid-template-columns: repeat(3, max-content);
     justify-content: space-between;
-    width: calc(100% + 1.25rem);
-    margin-inline: -0.625rem;
   }
   .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
-    padding-inline: 0.125rem;
+    padding-inline: 1px;
   }
   /* "In progress" is the longest Today value; 14px bold holds it in a cell
      sized to its own width, and the labels tighten their tracking a notch. */
@@ -7544,7 +7543,7 @@ html.worlds-viewport-locked body {
     font-size: 14px;
   }
   .lc-daily-panel .lc-daily-panel__stats dt {
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
   }
 }
 
@@ -7646,13 +7645,13 @@ html.worlds-viewport-locked body {
     justify-content: space-between;
   }
   .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
-    padding-inline: 0.125rem;
+    padding-inline: 1px;
   }
   .lc-daily-panel .lc-daily-panel__stats dd {
     font-size: 14px;
   }
   .lc-daily-panel .lc-daily-panel__stats dt {
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
   }
   /* The Complete pill is wider than the mascot's cell here; the Today figure
      and the status line already say it. */
