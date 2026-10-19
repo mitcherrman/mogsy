@@ -7461,6 +7461,179 @@ html.worlds-viewport-locked body {
   }
 }
 
+/* ── QUIZ HUB — THE MAIN SCREEN FITS THE PHONE ───────────────────────────
+   Stacked (below `lg`), the centre sheet used to be exactly as tall as the
+   RANKED composition — the sizer — whichever mode was showing. Ranked is a
+   carousel, a seal and two queue records, so on a short phone the Daily pane
+   was laid into a ~560px stage, the PLAY seal landed under the fold and the
+   reader had to scroll the page to find the hub's one action.
+
+   DAILY MODE ONLY. When Daily is the mode on the sheet, the sheet is capped to
+   the height the viewport actually offers: the dynamic viewport minus the
+   shell's header band and the hub's own top padding (`--lc-hub-above`), and a
+   small bottom breath plus the device's safe area (`--lc-hub-below`). The
+   sheet is a flex column, so the stage — the only flexible child — gives up
+   the difference; the Daily pane fills the stage and its mascot is the one
+   region that flexes. The hidden Ranked sizer is left in flow, so a viewport
+   that offers MORE than Ranked needs still gets exactly the sheet it always
+   had (a cap, never a target). Role and Ranked are not touched: they keep the
+   natural height they always had.
+
+   Written against `svh`, the SMALL viewport (browser chrome showing): the
+   sheet never needs to re-lay itself out as a mobile address bar collapses and
+   returns, and when the bar is hidden the fit simply has a little slack. `vh`
+   is the fallback for engines without the unit.
+
+   The floor keeps a viewport too short for the composition from squeezing the
+   panel below what its fixed rows need: past it the page scrolls, which is the
+   only honest answer to a 480px-tall phone. */
+:root {
+  --lc-hub-above: calc(var(--app-header-h) + 0.75rem);
+  --lc-hub-below: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 1023px) {
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) {
+    max-height: max(26rem, calc(100vh - var(--lc-hub-above) - var(--lc-hub-below)));
+    max-height: max(26rem, calc(100svh - var(--lc-hub-above) - var(--lc-hub-below)));
+  }
+}
+
+/* The seal is 8–9rem by default. On a short phone it steps down in two stages
+   so Mogzy keeps a usable figure; it stays far above the 44px target floor at
+   every step. Taller stacked screens (tablets included) are untouched. */
+
+@media (max-width: 1023px) and (max-height: 700px) {
+  .lc-daily-panel .lc-seal {
+    --lc-seal-size: 6.5rem;
+  }
+  .lc-daily-panel .lc-daily-panel__cta {
+    margin-top: 0.375rem;
+  }
+}
+
+@media (max-width: 1023px) and (max-height: 600px) {
+  .lc-daily-panel .lc-seal {
+    --lc-seal-size: 6rem;
+  }
+  .lc-daily-panel .lc-daily-panel__stats {
+    padding-block: 0.25rem;
+  }
+}
+
+/* ── Landscape phones ────────────────────────────────────────────────────
+   A landscape phone offers ~250–300px of height under the header band. The
+   stacked sheet's frame alone (percentage padding of a 30rem column) costs
+   170px of it, so the frame is re-proportioned for this one case:
+
+     · the two rolls keep their ARTWORK but are drawn in a fixed, short height
+       (the same slice of the same image, scaled to the new box), so they read
+       as slimmer rods instead of taking a third of the screen;
+     · the column opens out to 40rem and the writing area to its full width,
+       because the width a landscape phone has to spare is exactly what the
+       height lacks;
+     · the Daily pane re-composes into a row — mascot beside the title, status
+       and record, with the seal in its own column at the right.
+
+   Image slices: the head roll is rows 0–145 and the foot roll rows 1283–1448
+   of the 1086×1448 art, so the full-image height at a roll height `h` is
+   `h * 1448/145` for the head and `h * 1448/165` for the foot. */
+@media (max-width: 1023px) and (orientation: landscape) and (max-height: 600px) {
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) {
+    --lc-cap-top-h: 2.25rem;
+    --lc-cap-foot-h: 2.5rem;
+    max-width: min(40rem, 100%);
+    max-height: max(11rem, calc(100vh - var(--lc-hub-above) - var(--lc-hub-below)));
+    max-height: max(11rem, calc(100svh - var(--lc-hub-above) - var(--lc-hub-below)));
+    padding: calc(var(--lc-cap-top-h) + 0.25rem) 15.5% calc(var(--lc-cap-foot-h) + 0.25rem);
+  }
+
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) .lc-scroll__cap--top {
+    aspect-ratio: auto;
+    height: var(--lc-cap-top-h);
+    background-size: 100% calc(var(--lc-cap-top-h) * 9.986);
+  }
+
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) .lc-scroll__cap--top::after {
+    -webkit-mask-size: 100% calc(var(--lc-cap-top-h) * 9.986);
+    mask-size: 100% calc(var(--lc-cap-top-h) * 9.986);
+  }
+
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) .lc-scroll__cap--foot {
+    aspect-ratio: auto;
+    height: var(--lc-cap-foot-h);
+    background-size: 100% calc(var(--lc-cap-foot-h) * 8.776);
+  }
+
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) .lc-scroll__cap--foot::after {
+    -webkit-mask-size: 100% calc(var(--lc-cap-foot-h) * 8.776);
+    mask-size: 100% calc(var(--lc-cap-foot-h) * 8.776);
+  }
+
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) .lc-scroll__foot-space {
+    aspect-ratio: auto;
+    height: var(--lc-cap-foot-h);
+  }
+
+  .lc-daily-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title  title  cta"
+      "hero   status cta"
+      "hero   stats  cta";
+    column-gap: 0.75rem;
+    row-gap: 0.125rem;
+    align-items: stretch;
+    text-align: left;
+  }
+
+  /* The header block dissolves so its title and status take their own cells. */
+  .lc-daily-panel .lc-daily-panel__head {
+    display: contents;
+  }
+  .lc-daily-panel .lc-daily-panel__title {
+    grid-area: title;
+    font-size: 14px;
+    text-align: center;
+  }
+  .lc-daily-panel .lc-daily-panel__status {
+    grid-area: status;
+    align-self: center;
+    margin: 0;
+    max-width: none;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: left;
+  }
+  .lc-daily-panel .lc-daily-hero {
+    grid-area: hero;
+    margin-top: 0;
+    min-height: 3.5rem;
+  }
+  .lc-daily-panel .lc-daily-panel__stats {
+    grid-area: stats;
+    padding-block: 0.125rem;
+  }
+  .lc-daily-panel .lc-daily-panel__cta {
+    grid-area: cta;
+    align-self: center;
+    margin-top: 0;
+    width: auto;
+  }
+  .lc-daily-panel .lc-seal {
+    --lc-seal-size: 5.75rem;
+  }
+  .lc-daily-panel .lc-daily-panel__caption {
+    max-width: 6.5rem;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    line-height: 1.15;
+  }
+}
+
 /* ── The unfurl ──────────────────────────────────────────────────────────
    The scroll opens downward in ~560ms: it starts wound near the top with the
    two rolls almost touching, the sheet runs out from under the head roll, the
