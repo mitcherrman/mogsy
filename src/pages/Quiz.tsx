@@ -1967,6 +1967,7 @@ export default function Quiz() {
                               alt={championName || "Champion"}
                               className="h-32 w-32 md:h-40 md:w-40 object-cover block"
                               loading="lazy"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                             <div
                               aria-hidden
@@ -2021,6 +2022,7 @@ export default function Quiz() {
                               alt={itemName || "Item"}
                               className="h-28 w-28 md:h-36 md:w-36 object-cover block"
                               loading="lazy"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                           </div>
                         </motion.div>
@@ -2055,6 +2057,7 @@ export default function Quiz() {
                               alt={runeName || "Rune"}
                               className="h-28 w-28 md:h-32 md:w-32 object-cover block rounded-full"
                               loading="lazy"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                           </div>
                         </motion.div>
@@ -2089,6 +2092,7 @@ export default function Quiz() {
                               alt={summonerName || "Summoner spell"}
                               className="h-24 w-24 md:h-28 md:w-28 object-cover block"
                               loading="lazy"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                           </div>
                         </motion.div>
@@ -2104,6 +2108,7 @@ export default function Quiz() {
                         alt="Question visual"
                         className="w-full max-h-56 object-contain"
                         loading="lazy"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                       />
                     )}
                   </div>
