@@ -90,6 +90,9 @@ async function measure(host: Locator) {
         overflowing.push(`${label} ${Math.round(r.left)}..${Math.round(r.right)} vs host ${Math.round(hostBox.left)}..${Math.round(hostBox.right)}`);
       }
       const cs = getComputedStyle(node);
+      // Tailwind sr-only deliberately clips accessible text to a 1px box.
+      // This is not a visible-text truncation and must not fail visual geometry.
+      if (node.closest(".sr-only")) continue;
       const ownText = Array.from(node.childNodes).some((c) => c.nodeType === 3 && (c.textContent ?? "").trim());
       if (ownText) {
         const size = parseFloat(cs.fontSize);
