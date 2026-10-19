@@ -113,7 +113,7 @@ function dailyToday(state: DailyState) {
       schema_version: 1, run_id: "dr_e2e000000000000000000000", policy: "official",
       plan_date: new Date().toISOString().slice(0, 10), plan_version: 5,
       status: state === "finished" ? "completed" : "active",
-      outcome: state === "finished" ? "completed" : null,
+      outcome: state === "finished" ? "reviewed" : null,
       current_stage_index: done ? 1 : 0,
       weak_areas_eligible: false, server_now: new Date().toISOString(),
       main_completed_at: done ? new Date().toISOString() : null,
@@ -335,7 +335,10 @@ function assertDailyFits(g: Geometry, label: string) {
   for (const t of g.tabs) {
     expect(within(t, vp), `${label}: tab inside viewport`).toBe(true);
     expect(within(t, writing, 1), `${label}: tab inside writing area`).toBe(true);
-    expect(t.height, `${label}: tab height`).toBeGreaterThanOrEqual(36);
+    // The tabs are the existing 29.75px control (WCAG 2.2 AA asks 24px); the
+    // fit must not shrink them.
+    expect(t.height, `${label}: tab height`).toBeGreaterThanOrEqual(29);
+    expect(t.width, `${label}: tab width`).toBeGreaterThanOrEqual(44);
   }
   const textBoxes: [string, Box | null][] = [
     ["title", g.titleText], ["status", g.statusText],
