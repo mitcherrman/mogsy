@@ -7537,13 +7537,18 @@ html.worlds-viewport-locked body {
   .lc-daily-panel .lc-daily-panel__stats > [data-testid="daily-mode-stat"] {
     padding-inline: 1px;
   }
-  /* "In progress" is the longest Today value; 14px bold holds it in a cell
-     sized to its own width, and the labels tighten their tracking a notch. */
-  .lc-daily-panel .lc-daily-panel__stats dd {
-    font-size: 14px;
-  }
+  /* The labels tighten their tracking a notch so the three cells fit. */
   .lc-daily-panel .lc-daily-panel__stats dt {
     letter-spacing: 0.08em;
+  }
+}
+
+/* "In progress" is the longest Today value. At 16px the three cells fit a
+   writing area of ~13rem and up (375 and 390 px phones); below that (320 and
+   360 px phones) it steps to 14px bold. */
+@container lc-scroll (max-width: 13rem) {
+  .lc-daily-panel .lc-daily-panel__stats dd {
+    font-size: 14px;
   }
 }
 

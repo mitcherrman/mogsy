@@ -75,9 +75,9 @@ describe("the Quiz Hub fit stylesheet", () => {
   });
 
   it("keeps the narrow-sheet record rule to a container query on Daily's own markup", () => {
-    expect(parsed.containers).toHaveLength(1);
-    expect(parsed.containers[0].query).toMatch(/^lc-scroll \(max-width: 17rem\)/);
-    expect(parsed.containers[0].body).toContain(".lc-daily-panel .lc-daily-panel__stats");
+    expect(parsed.containers).toHaveLength(2);
+    expect(parsed.containers.map((c) => c.query)).toEqual(["lc-scroll (max-width: 17rem)", "lc-scroll (max-width: 13rem)"]);
+    for (const c of parsed.containers) expect(c.body).toContain(".lc-daily-panel .lc-daily-panel__stats");
   });
 
   it("keys every rule to the Daily mode or to Daily's own markup", () => {

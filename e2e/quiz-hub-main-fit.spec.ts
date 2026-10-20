@@ -468,8 +468,8 @@ for (const phone of PHONES) {
           await openHub(page, { ...phone, daily: state, identity });
           const g = await measure(page);
           record(`${phone.name}__daily-${state}__${authName}`, g);
-          if (OUT && authName === "account") {
-            await page.screenshot({ path: join(OUT, `${phone.name}__daily-${state}.png`) });
+          if (OUT) {
+            await page.screenshot({ path: join(OUT, `${phone.name}__daily-${state}${authName === "account" ? "" : `__${authName}`}.png`) });
           }
           check(() => {
             assertDailyFits(g, `${phone.name} ${state} ${authName}`);
