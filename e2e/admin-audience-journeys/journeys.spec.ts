@@ -14,7 +14,7 @@ for (const width of [320, 390, 1280]) {
     // event carries explicit parent evidence.
     await root.getByRole("button", { name: /^Registered · 1/ }).click();
     await root.locator("details > summary").first().click();
-    await expect(root).toContainText("Daily Challenge child round · stage 2");
+    await expect(root).toContainText("Daily Challenge stage 2 started");
     await expect(root).toContainText("Exit and drop-off unknown");
 
     // An account with no profile is not presented as guest or registered.
