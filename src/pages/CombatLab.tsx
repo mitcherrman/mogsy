@@ -2796,6 +2796,8 @@ function InteractiveSandbox({
         }
         payload = {
           champion_name: config.champion,
+          item_names: config.items,
+          rune_names: config.runes,
           attacker_stats,
           target_stats,
           state: safeState,
@@ -3674,6 +3676,26 @@ function InteractiveSandbox({
               disabled={!!busy || offline}
               onClick={() => sendStep("basic-attack")}
             />
+            {config.items.includes("Hextech Gunblade") && (
+              <div className="border-t border-border/25 pt-2">
+                <ActionButton
+                  label="Gunblade · Lightning Bolt"
+                  hint={
+                    targetSetup.targetMode === "target_champion"
+                      ? "Single-target magic damage, 25% slow · 60s cooldown"
+                      : "Select an enemy champion to use Lightning Bolt"
+                  }
+                  icon={Zap}
+                  tone="accent"
+                  busy={busy === "item_hextech_gunblade"}
+                  disabled={
+                    !!busy || offline || !config.champion ||
+                    targetSetup.targetMode !== "target_champion"
+                  }
+                  onClick={() => sendStep("active", "item_hextech_gunblade")}
+                />
+              </div>
+            )}
             {visibleActions.length > 0 && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/25 pt-2">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
