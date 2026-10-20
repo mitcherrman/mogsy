@@ -31,7 +31,7 @@ export type ChampionConfidenceResponse = {
 };
 
 export type Champion = { id?: string; name: string; icon?: string };
-export type Item = { id?: string; name: string; type?: string; gold?: number; icon?: string };
+export type Item = { id?: string; name: string; type?: string; gold?: number; icon?: string; simulation_warnings?: string[] };
 export type Rune = { id?: string; name: string; tree?: string; icon?: string };
 export type TargetProfile = { id?: string; name: string; description?: string };
 export type Summoner = { id?: string; name: string; icon?: string };
