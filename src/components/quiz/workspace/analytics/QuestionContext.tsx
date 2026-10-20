@@ -130,7 +130,7 @@ export default function QuestionContext({
   const heading = `In your History${multi && round.unit ? ` · ${unitName(round.unit)}, ${round.occurrences.length} questions` : ""}`;
   const summary = multi ? null : contextSummary(ctxs[0], kind);
   const list = (
-    <div ref={listRef} className="grid gap-2">
+    <div ref={listRef} className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-x-4 gap-y-2">
       {round.occurrences.map((o, i) => (
         <OneQuestion
           key={o.occurrenceId}
@@ -152,31 +152,35 @@ export default function QuestionContext({
       </section>
     );
   }
-  /* Fine pointer: the Popover is capped at 24rem, so a long question pushes
-     the context below its fold. Its heading is a DIRECT child of the
-     Popover's scroll box (a sticky element cannot leave its parent), sticky
-     to the box's BOTTOM edge: in sight — with the question's key fact —
-     while the section is below, and back in place above it once the reader
-     scrolls there. Selecting it scrolls the section in. */
+  /* Fine pointer: the Popover is capped by the viewport (85dvh), so a long
+     question can still push the context below its fold. Its heading is a
+     DIRECT child of the Popover's scroll box (a sticky element cannot leave
+     its parent), sticky to the box's BOTTOM edge: in sight — with the
+     question's key fact — while the section is below, and back in place above
+     it once the reader scrolls there. Selecting it scrolls the section in.
+     V2.1: one quiet line, not a bar. A hairline instead of a drop shadow,
+     smaller type and lighter weight, so it reads as a footnote to the
+     question instead of competing with it. The Popover pads 1rem, which is
+     what the negative offsets undo. */
   return (
     <>
       <button
         type="button"
         onClick={() => listRef.current?.scrollIntoView?.({ block: "nearest" })}
-        className="sticky bottom-[-0.875rem] z-[1] -mx-3.5 mt-3 flex w-[calc(100%+1.75rem)] min-w-0 items-center gap-2 border-t px-3.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        style={{ borderColor: LEAGUECRAFT_INK.rule, background: "rgb(241,229,200)", boxShadow: "0 -6px 10px -8px rgba(58,39,8,0.45)" }}
+        className="sticky bottom-[-1rem] z-[1] -mx-4 mt-2 flex w-[calc(100%+2rem)] min-w-0 items-center gap-2 border-t px-4 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        style={{ borderColor: "rgba(96,68,28,0.28)", background: "rgb(241,229,200)" }}
         aria-label={`${heading}${summary ? `: ${summary}` : ""}. Show the details.`}
         data-testid="question-context-summary"
       >
-        <span className="shrink-0 text-[9.5px] font-black uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
+        <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
           {heading}
         </span>
         {summary && (
-          <span className="min-w-0 truncate text-[11px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }} aria-hidden="true">
+          <span className="min-w-0 truncate text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }} aria-hidden="true">
             · {summary}
           </span>
         )}
-        <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
+        <ChevronDown className="ml-auto h-3 w-3 shrink-0 opacity-70" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
       </button>
       <section aria-label="In your History" className="pt-1.5" data-testid="question-context">
         {list}
