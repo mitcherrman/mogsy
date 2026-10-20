@@ -524,6 +524,36 @@ describe("useRankedQueue — a closed Ranked cannot be started", () => {
     expect(result.current.unavailableReason).toContain("Existing matches may continue");
   });
 
+  it.each(["RANKED_QUEUE_DISABLED", "RANKED_QUEUE_PAUSED"])(
+    "a %s join refusal settles in unavailable with no error and no retry",
+    async (code) => {
+      const { result } = renderHook(() => useRankedQueue());
+      await flush();
+      state.joinError = new FakeApiError(code, 503);
+      act(() => result.current.joinAs("tank"));
+      await flush();
+      expect(result.current.state).toBe("unavailable");
+      expect(result.current.error).toBeNull();
+      expect(result.current.unavailableReason).not.toContain(code);
+      // Unavailable is terminal for this page: no backoff re-join, and a
+      // second press is blocked rather than sent.
+      await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+      act(() => result.current.joinAs("tank"));
+      await flush();
+      expect(joinQueue).toHaveBeenCalledTimes(1);
+      expect(result.current.state).toBe("unavailable");
+    },
+  );
+
+  it("a RANKED_QUEUE_PAUSED status read on mount is unavailable, like RANKED_QUEUE_DISABLED", async () => {
+    state.statusError = new FakeApiError("RANKED_QUEUE_PAUSED", 503);
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    expect(result.current.state).toBe("unavailable");
+    expect(result.current.error).toBeNull();
+    expect(result.current.unavailableReason).toContain("temporarily unavailable");
+  });
+
   it("a closed host still recovers existing queue state on mount; only STARTING is withheld", async () => {
     const { result } = renderHook(() => useRankedQueue({ startAllowed: false }));
     await flush();

@@ -117,6 +117,20 @@ describe("public Ranked client", () => {
   });
 });
 
+describe("the owner's Ranked pause", () => {
+  it("surfaces a 503 RANKED_QUEUE_PAUSED join as a typed backend error, not fatal or rate-limited", async () => {
+    stub(() => json({ detail: {
+      code: "RANKED_QUEUE_PAUSED", message: "Ranked is paused",
+    } }, 503));
+    const err = await api.joinQueue("tank").then(() => null, (e: unknown) => e);
+    expect(err).toBeInstanceOf(RankedApiError);
+    expect(err).toMatchObject({ kind: "backend", status: 503, code: "RANKED_QUEUE_PAUSED" });
+    expect(api.isFatal(err)).toBe(false);
+    expect(api.isRateLimited(err)).toBe(false);
+    expect(api.isContractError(err)).toBe(false);
+  });
+});
+
 describe("R1 — the role endpoints and the class-free join", () => {
   it("GET /role reads the caller's own role, with no body and no user id", async () => {
     stub(() => json({ role: "jungle", selected_at: null, updated_at: null }));
