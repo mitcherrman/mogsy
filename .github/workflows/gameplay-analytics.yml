@@ -1,0 +1,35 @@
+name: Gameplay Analytics Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/lib/analytics/**'
+      - 'src/lib/admin/analytics/**'
+      - 'src/components/admin/users/**'
+      - 'src/components/quiz/LeaguecraftHub.tsx'
+      - 'src/components/quiz/play-scroll/**'
+      - 'src/pages/academy-core/AcademyCorePage*'
+      - 'src/pages/quiz-ranked/useRankedQueue*'
+      - 'src/pages/admin/areas/AdminShell.areas.test.tsx'
+      - 'src/test/guards/rankedStartSurfaces.test.ts'
+      - '.github/workflows/gameplay-analytics.yml'
+permissions:
+  contents: read
+jobs:
+  analytics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Daily entry, round attribution, after-Daily, Ranked start guard
+        run: npm test -- src/lib/analytics src/lib/admin/analytics src/components/admin/users src/pages/quiz-ranked/useRankedQueue.test.tsx src/test/guards/rankedStartSurfaces.test.ts src/pages/academy-core/AcademyCorePage.test.tsx src/pages/admin/areas/AdminShell.areas.test.tsx
+      - name: Vite production build
+        run: npx vite build
+      - name: No additional TS diagnostics beyond the current main baseline
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          node scripts/ci/check-audience-typecheck.mjs

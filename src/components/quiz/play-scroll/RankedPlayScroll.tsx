@@ -106,7 +106,7 @@ function GuardedRankedPlayScroll({
 export default function RankedPlayScroll(
   props: RankedPlayScrollProps,
 ) {
-  const queue = useRankedQueue();
+  const queue = useRankedQueue({ startAllowed: props.modes.ranked });
   const dataRouter = useContext(UNSAFE_DataRouterContext);
   /**
    * Whether to OFFER the Match-with-Bot control: staff admin OR effectively

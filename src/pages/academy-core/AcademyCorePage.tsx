@@ -67,6 +67,7 @@ import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
+import { trackDailyEntry } from "@/lib/analytics/dailyEntry";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { prepareImage } from "@/lib/ranked-core/media/prepareImage";
 import { useAcademyStartupGate } from "@/pages/academy-core/useAcademyStartupGate";
@@ -540,6 +541,7 @@ function AcademyCoreOrrery() {
         state={DAILY_START_STATE}
         className="acore-cta acore-cta-primary"
         data-testid="academy-core-daily"
+        onClick={() => trackDailyEntry("academy_core_daily_button")}
         onPointerEnter={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
         onFocus={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
       >

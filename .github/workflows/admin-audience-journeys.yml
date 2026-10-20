@@ -1,0 +1,36 @@
+name: Admin Audience Journeys Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/components/admin/AdminFeedback*'
+      - 'src/components/admin/users/OverviewVisitorJourneys*'
+      - 'src/lib/admin/analytics/visitorJourney*'
+      - 'src/lib/feedback/adminReportView*'
+      - 'src/pages/admin/areas/AdminOverviewPage.tsx'
+      - 'src/pages/admin/areas/AdminShell.areas.test.tsx'
+      - 'e2e/admin-audience-journeys/**'
+      - 'playwright.admin-audience-journeys.config.ts'
+      - '.github/workflows/admin-audience-journeys.yml'
+permissions:
+  contents: read
+jobs:
+  journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # own1OwnerControlPlane.test.ts is excluded: its staged-source comparison already
+      # fails on main (admin-get-emails drift since fb6d5be8); see the handoff.
+      - name: Journeys, feedback, owner-access and Admin shell regressions
+        run: npm test -- src/lib/admin/analytics src/components/admin/users src/components/admin/AdminFeedback.rfb.test.tsx src/lib/feedback src/pages/admin/areas src/test/security/own1OwnerDecision.test.ts src/test/security/own11OwnerUsability.test.ts src/test/security/own1OwnerDecision.test.ts src/test/security/own11OwnerUsability.test.ts
+      - name: Vite production build
+        run: npx vite build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Overview journeys and Feedback report in Chromium
+        run: npx playwright test -c playwright.admin-audience-journeys.config.ts

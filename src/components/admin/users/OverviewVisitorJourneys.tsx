@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadAnalytics } from "@/lib/admin/analytics/loadAnalytics";
 import { resolveRange } from "@/lib/admin/analytics/range";
 import { filterDatasetByTraffic } from "@/lib/admin/analytics/traffic";
-import { buildVisitorJourneys, type JourneyProfile, type VisitorJourney } from "@/lib/admin/analytics/visitorJourney";
+import { computeAfterDaily, NEXT_PLAY_LABELS, type AfterDailySummary, type NextPlayId } from "@/lib/admin/analytics/afterDaily";
+import { ACTION_KIND_LABELS,buildVisitorJourneys, type JourneyProfile, type VisitorJourney } from "@/lib/admin/analytics/visitorJourney";
 
 const stamp = (at: string | null) => at ? new Date(at).toLocaleString() : "Unavailable";
 
@@ -24,11 +25,12 @@ export function VisitorJourneyTimeline({ journey }: { journey: VisitorJourney })
     {actions.length === 0 ? <p className="text-sm">No activity events or sessions recorded in this range.</p> : <ol className="space-y-0">
       {actions.map((a,index)=><li key={`${a.at}-${index}`} className="relative border-l border-border pb-4 pl-4 last:pb-0">
         <span aria-hidden className="absolute -left-1 top-1 h-2 w-2 rounded-full bg-primary" />
-        <div className="flex flex-wrap justify-between gap-1"><p className="text-sm font-medium">{a.title}</p><time dateTime={a.at} className="text-xs tabular-nums text-muted-foreground">{stamp(a.at)}</time></div>
+        <div className="flex flex-wrap justify-between gap-1"><p className="text-sm font-medium">{a.title}{a.kind && <span data-testid="action-kind" className="ml-2 rounded border border-border px-1.5 py-0.5 align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground">{ACTION_KIND_LABELS[a.kind]}</span>}</p><time dateTime={a.at} className="text-xs tabular-nums text-muted-foreground">{stamp(a.at)}</time></div>
         <p className="mt-1 break-all text-xs text-muted-foreground">{a.where} · {a.evidence}</p>
         {a.event && <details className="mt-1 text-xs text-muted-foreground"><summary className="cursor-pointer">Technical evidence</summary><dl className="mt-2 space-y-1 break-all">
           <div><dt>Event / recorded route</dt><dd>{a.event.event_name} / {a.event.route || "unavailable"}</dd></div><div><dt>Source / entity</dt><dd>{a.event.source_system} / {a.event.source_entity_type || "unknown"} / {a.event.source_entity_id || "unavailable"}</dd></div>
           <div><dt>Host / preset / parent / stage kind</dt><dd>{["host","session_preset","parent_activity_type","parent_activity_id","parent_stage_kind"].map(key=>typeof a.event?.metadata?.[key] === "string" ? String(a.event.metadata[key]) : "unavailable").join(" / ")}</dd></div>
+          <div><dt>Opponent / bot match / creation source / completion reason</dt><dd>{["opponent_type","is_bot_match","creation_source","completion_reason"].map(key=>{const v=a.event?.metadata?.[key];return typeof v === "string" || typeof v === "boolean" ? String(v) : "unavailable";}).join(" / ")}</dd></div>
         </dl></details>}
       </li>)}
     </ol>}
@@ -39,16 +41,31 @@ export function VisitorJourneyTimeline({ journey }: { journey: VisitorJourney })
   </div>;
 }
 
-export function VisitorJourneysView({ journeys }: { journeys: VisitorJourney[] }) {
+export function AfterDailyCard({ summary }: { summary: AfterDailySummary }) {
+  const rows = (Object.keys(NEXT_PLAY_LABELS) as NextPlayId[]).filter(id=>summary.next[id]>0);
+  return <section className="rounded-lg border border-border bg-card p-4" aria-label="After the Daily Challenge" data-testid="after-daily">
+    <h3 className="text-sm font-semibold">After the Daily Challenge</h3>
+    {summary.dailyBrowsers===0 ? <p className="mt-2 text-sm text-muted-foreground">No Daily Challenge stage was recorded for a human-signal browser in this range.</p> : <>
+      <p className="mt-1 text-xs text-muted-foreground">{summary.dailyBrowsers} browsers with a recorded Daily stage. Counted from each browser's last recorded Daily stage activity; there is no whole-Daily completion record.</p>
+      <ul className="mt-3 space-y-1 text-sm">{rows.map(id=><li key={id} className="flex justify-between gap-3"><span>First game after: {NEXT_PLAY_LABELS[id]}</span><span className="tabular-nums">{summary.next[id]}</span></li>)}</ul>
+      <p className="mt-3 text-sm" data-testid="after-daily-return">{summary.followUpEligible===0 ? "Return: not enough follow-up time in this range to tell." : `Returned on a later day: ${summary.returned} of ${summary.followUpEligible} browsers with at least a full day of follow-up.`}</p>
+      <p className="mt-1 text-xs text-muted-foreground">Browser-based: another device, cleared storage or a private window counts as a different browser. No later game recorded means none was observed, not that the visitor left.</p>
+    </>}
+  </section>;
+}
+
+export function VisitorJourneysView({ journeys, rangeEnd }: { journeys: VisitorJourney[]; rangeEnd?: number }) {
   const [filter,setFilter] = useState("human");
   const [limit,setLimit] = useState(12);
-  const humans=journeys.filter(j=>j.human);
+  const humans=useMemo(()=>journeys.filter(j=>j.human),[journeys]);
+  const afterDaily=useMemo(()=>computeAfterDaily(humans,rangeEnd ?? Date.now()),[humans,rangeEnd]);
   const visible=journeys.filter(j=>filter === "human" ? j.human : (filter === "traffic_unknown" ? !j.human : j.human && j.kind === filter));
   const tiles=[{label:"Human-signal visitors",value:humans.length,definition:"Distinct browsers with human input evidence; not verified people.",Icon:Users},
     {label:"Returning browsers",value:humans.filter(j=>j.returning).length,definition:"Human-signal browsers with a later recorded session in this range.",Icon:Activity},
     {label:"Game rounds started",value:humans.reduce((n,j)=>n+j.games,0),definition:"Distinct server-confirmed participant rounds linked to human-signal browsers; not Daily runs.",Icon:Gamepad2}];
   return <div className="space-y-4">
     <dl className="grid gap-3 sm:grid-cols-3">{tiles.map(t=><div key={t.label} className="rounded-lg border border-border bg-card p-4"><dt className="flex items-center gap-2 text-xs text-muted-foreground"><t.Icon className="h-4 w-4 text-primary" aria-hidden />{t.label}</dt><dd className="mt-2 text-3xl font-semibold tabular-nums">{t.value}</dd><dd className="mt-2 text-xs text-muted-foreground">{t.definition}</dd></div>)}</dl>
+    <AfterDailyCard summary={afterDaily} />
     <div className="flex flex-wrap gap-2" aria-label="Visitor account segments">
       {[{id:"human",label:"Human visitors",count:humans.length},{id:"guest",label:"Guest",count:humans.filter(j=>j.kind==="guest").length},{id:"registered",label:"Registered",count:humans.filter(j=>j.kind==="registered").length},{id:"unknown",label:"Account unknown",count:humans.filter(j=>j.kind==="unknown").length},{id:"traffic_unknown",label:"Human signal unknown",count:journeys.length-humans.length}].map(f=><Button key={f.id} variant={filter===f.id ? "secondary" : "outline"} size="sm" aria-pressed={filter===f.id} onClick={()=>{setFilter(f.id);setLimit(12);}} className="text-xs">{f.label} · {f.count}</Button>)}
     </div>
@@ -83,7 +100,7 @@ export function OverviewVisitorJourneys() {
       {profiles.isPending && <p role="status" className="text-xs text-muted-foreground">Checking current account status…</p>}
       {profiles.isError && <p role="alert" className="text-xs text-muted-foreground">Current profiles unavailable. Reported account identities remain unverified.</p>}
       {query.data && Object.values(query.data.truncated).some(Boolean) && <p role="alert" className="text-sm text-destructive">Partial analytics read: counts and journeys are incomplete.</p>}
-      <VisitorJourneysView journeys={journeys} />
+      <VisitorJourneysView journeys={journeys} rangeEnd={range.end} />
     </>}
   </section>;
 }
