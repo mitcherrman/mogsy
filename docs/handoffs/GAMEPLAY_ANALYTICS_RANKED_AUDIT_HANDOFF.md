@@ -33,6 +33,12 @@ Frontend: `/quiz/ranked` (`QuizRankedPage.tsx`) only discovers existing matches 
 - Because of that Quiz-suite state the Leaguecraft click wiring (`play_seal_ranked_closed`, `play_scroll_*`, `centre_stage_daily_panel`) is covered by code review and type check, **not** by a rendering test; only the Home Hub click is test-covered. Worth a follow-up once those suites are date-pinned.
 - CI: `.github/workflows/gameplay-analytics.yml` (Linux: focused tests, build, TS baseline). No browser run was added; the owner Overview route needs an MFA session and was not rendered.
 
+## CI evidence (PR #103)
+- Run 39368745634 failed only in the **Admin Audience Journeys** Chromium step, at 320, 390 and 1280px, on one stale assertion in `e2e/admin-audience-journeys/journeys.spec.ts:17`: it expected "Daily Challenge child round · stage 2" (the pre-attribution wording from PR #94) but the timeline correctly renders "Daily Challenge stage 2 started". Fix: that single assertion now expects the shipped wording. No other assertion and no production code changed.
+- `origin/main` (including PR #94 at 9beb340d) was merged into the branch with no conflicts before the fix; the `AdminShell.areas.test.tsx` change was identical on both sides.
+- Head `ea1cad5f`, all 7 checks green: Admin Audience Journeys Acceptance (run 39369747428: tests, build, Chromium install, Chromium acceptance), Gameplay Analytics Acceptance (39369747420: focused tests, build, TS baseline), Launch Audience Pulse Verification (39369747405: tests, compile, Chromium, TS baseline), plus role-challenge-review, Daily Save Offer, Signup Moments V1, practice-modernization-acceptance. Step conclusions read from the public Actions API; job logs need GitHub auth, so per-test counts were not retrieved.
+- Still not covered by any browser run: the signed-in `/admin` Overview route and the new After-Daily card on it (owner MFA required); the harness renders `VisitorJourneysView` and the real `AdminFeedback` only.
+
 ## Read-only queries for the owner (NOT run by me)
 ```sql
 -- What kind of Ranked rounds exist (as of now)
