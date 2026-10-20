@@ -309,8 +309,20 @@ test.describe("keyboard, focus and reduced motion", () => {
     }
     expect(ring, "a deck control shows a visible focus outline").not.toBe("");
 
-    const duration = await page.evaluate(() => getComputedStyle(document.querySelector(".dk-layout-switch__item")!).transitionDuration);
-    expect(duration.split(",").every((d) => parseFloat(d) <= 0.001)).toBe(true);
+    // The deck's reduced-motion override collapses every CSS transition to 1ms.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const motion = await page.evaluate(() => ({
+      matches: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      durations: [".dk-layout-switch__item", ".dk-chapter", ".dk-tickmark"].map((sel) => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el).transitionDuration : "missing";
+      }),
+    }));
+    info.annotations.push({ type: "reduced-motion", description: JSON.stringify(motion) });
+    expect(motion.matches).toBe(true);
+    for (const d of motion.durations) {
+      expect(d.split(",").every((part) => parseFloat(part) * (part.trim().endsWith("ms") ? 0.001 : 1) <= 0.001), d).toBe(true);
+    }
     await shot(page, info, "1440-reduced-motion-cover");
     await expectNoErrors(w, info);
   });
