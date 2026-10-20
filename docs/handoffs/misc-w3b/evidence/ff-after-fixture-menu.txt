@@ -1,0 +1,8 @@
+320x568            sheet 304x546        body 356/356             hOver:false unreachable w/o scroll: [] err:0/0
+360x640            sheet 344x618.5      body 325/325             hOver:false unreachable w/o scroll: [] err:0/0
+375x667            sheet 359x609        body 311/311             hOver:false unreachable w/o scroll: [] err:0/0
+390x844            sheet 374x623.9      body 311/311             hOver:false unreachable w/o scroll: [] err:0/0
+568x320-landscape  sheet 268.8x304      body 126/430 SCROLLS     hOver:false unreachable w/o scroll: [mode-ranked,mode-daily,mode-invite,practice] err:0/0
+667x375-landscape  sheet 315x359        body 160/357 SCROLLS     hOver:false unreachable w/o scroll: [mode-daily,mode-invite,practice] err:0/0
+844x390-landscape  sheet 327.6x374      body 170/309 SCROLLS     hOver:false unreachable w/o scroll: [mode-daily,mode-invite,practice] err:0/0
+1440x900           sheet 752x786.8      body 288/288             hOver:false unreachable w/o scroll: [] err:0/0

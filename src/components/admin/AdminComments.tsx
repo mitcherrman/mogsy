@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
+import { focusHighlight, readFocusParam, useFocusRecord } from "@/lib/notifications/focus";
+import RecordFocusNotice from "@/components/admin/RecordFocusNotice";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,17 @@ export default function AdminComments() {
   const [showHidden, setShowHidden] = useState(false);
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Notification deep link: `&focus=<comments.id>` loads that comment by id —
+  // even when it is hidden (auto-hidden after reports) or older than the 300
+  // most recent — highlights it, and clears a search that would filter it out.
+  const focusParam = readFocusParam();
+  const { focusId, status: focusStatus, fromNotification } = useFocusRecord({
+    ready: !loading,
+    data: comments,
+    has: id => comments.some(c => c.id === id),
+    onFocus: () => setSearch(""),
+  });
+  const focusedComment = comments.find(c => c.id === focusId);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -52,7 +65,17 @@ export default function AdminComments() {
     if (scopeFilter === "league") query = query.not("league_id", "is", null);
     if (scopeFilter === "blog") query = query.not("blog_post_id", "is", null);
 
-    const { data: commentsData } = await query;
+    const { data: listed } = await query;
+    let commentsData = listed ?? [];
+    const focus = readFocusParam();
+    if (focus && !commentsData.some((c) => c.id === focus)) {
+      const { data: one } = await supabase
+        .from("comments")
+        .select("id, profile_id, league_id, blog_post_id, content, is_hidden, hidden_by_admin, created_at")
+        .eq("id", focus)
+        .maybeSingle();
+      if (one) commentsData = [one, ...commentsData];
+    }
 
     if (!commentsData || commentsData.length === 0) {
       setComments([]);
@@ -125,7 +148,7 @@ export default function AdminComments() {
     setComments(mapped);
     setSelected(new Set());
     setLoading(false);
-  }, [showHidden, scopeFilter]);
+  }, [showHidden, scopeFilter, focusParam]);
 
   useEffect(() => {
     fetchComments();
@@ -212,6 +235,12 @@ export default function AdminComments() {
 
   return (
     <div className="space-y-4">
+      <RecordFocusNotice
+        kind="comment"
+        status={focusStatus}
+        fromNotification={fromNotification}
+        resolvedLabel={focusedComment?.hidden_by_admin ? "Comment hidden" : null}
+      />
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -283,7 +312,7 @@ export default function AdminComments() {
             </TableHeader>
             <TableBody>
               {filtered.map((comment) => (
-                <TableRow key={comment.id} className={comment.is_hidden ? "opacity-50" : ""}>
+                <TableRow key={comment.id} data-focus-id={comment.id} className={`${comment.is_hidden ? "opacity-50" : ""} ${focusId === comment.id ? focusHighlight : ""}`}>
                   <TableCell>
                     <Checkbox
                       checked={selected.has(comment.id)}

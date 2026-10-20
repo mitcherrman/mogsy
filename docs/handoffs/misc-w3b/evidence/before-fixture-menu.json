@@ -1,0 +1,1305 @@
+{
+  "label": "before",
+  "base": "http://localhost:5366",
+  "surface": "fixture",
+  "view": "menu",
+  "browser": "msedge",
+  "viewports": {
+    "320x568": {
+      "viewport": {
+        "vw": 320,
+        "vh": 568
+      },
+      "sheet": {
+        "x": 8,
+        "y": 8,
+        "w": 304,
+        "h": 663,
+        "b": 671,
+        "r": 312
+      },
+      "sizer": {
+        "x": 8,
+        "y": 8,
+        "w": 304,
+        "h": 663,
+        "b": 671,
+        "r": 312
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 320,
+        "h": 568,
+        "b": 568,
+        "r": 320
+      },
+      "body": {
+        "x": 52.1,
+        "y": 236.7,
+        "w": 215.8,
+        "h": 382.6,
+        "b": 619.3,
+        "r": 267.9
+      },
+      "bodyScroll": {
+        "scrollHeight": 383,
+        "clientHeight": 383,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 663,
+        "clientHeight": 663
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 320,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1681,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 55.1,
+          "bottom": 87.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 114.1,
+          "bottom": 154.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 114.1,
+          "bottom": 154.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 84,
+          "h": 64,
+          "top": 102.1,
+          "bottom": 166.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 211.8,
+          "h": 115.1,
+          "top": 236.7,
+          "bottom": 351.8,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 211.8,
+          "h": 129.7,
+          "top": 359.8,
+          "bottom": 489.5,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-invite": {
+          "w": 211.8,
+          "h": 78.1,
+          "top": 497.5,
+          "bottom": 575.5,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 589.3,
+          "bottom": 619.3,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 970.8,
+          "bottom": 1002.8,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "360x640": {
+      "viewport": {
+        "vw": 360,
+        "vh": 640
+      },
+      "sheet": {
+        "x": 8,
+        "y": 10.8,
+        "w": 344,
+        "h": 618.3,
+        "b": 629.2,
+        "r": 352
+      },
+      "sizer": {
+        "x": 8,
+        "y": 10.8,
+        "w": 344,
+        "h": 618.3,
+        "b": 629.2,
+        "r": 352
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 360,
+        "h": 640,
+        "b": 640,
+        "r": 360
+      },
+      "body": {
+        "x": 57.9,
+        "y": 245.8,
+        "w": 244.3,
+        "h": 324.9,
+        "b": 570.7,
+        "r": 302.1
+      },
+      "bodyScroll": {
+        "scrollHeight": 325,
+        "clientHeight": 325,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 618,
+        "clientHeight": 618
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 360,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1594,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 64.2,
+          "bottom": 96.2,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 123.2,
+          "bottom": 163.2,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 123.2,
+          "bottom": 163.2,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 84,
+          "h": 64,
+          "top": 111.2,
+          "bottom": 175.2,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 240.3,
+          "h": 98.6,
+          "top": 245.8,
+          "bottom": 344.3,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 240.3,
+          "h": 98.6,
+          "top": 352.3,
+          "bottom": 450.9,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-invite": {
+          "w": 240.3,
+          "h": 68,
+          "top": 458.9,
+          "bottom": 526.9,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 540.7,
+          "bottom": 570.7,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 921.8,
+          "bottom": 953.8,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "375x667": {
+      "viewport": {
+        "vw": 375,
+        "vh": 667
+      },
+      "sheet": {
+        "x": 8,
+        "y": 29,
+        "w": 359,
+        "h": 608.9,
+        "b": 637.9,
+        "r": 367
+      },
+      "sizer": {
+        "x": 8,
+        "y": 29,
+        "w": 359,
+        "h": 608.9,
+        "b": 637.9,
+        "r": 367
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 375,
+        "h": 667,
+        "b": 667,
+        "r": 375
+      },
+      "body": {
+        "x": 60,
+        "y": 266.3,
+        "w": 254.9,
+        "h": 310.6,
+        "b": 576.9,
+        "r": 315
+      },
+      "bodyScroll": {
+        "scrollHeight": 311,
+        "clientHeight": 311,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 609,
+        "clientHeight": 609
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 375,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1574,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 84.7,
+          "bottom": 116.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 143.7,
+          "bottom": 183.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 143.7,
+          "bottom": 183.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 84,
+          "h": 64,
+          "top": 131.7,
+          "bottom": 195.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 250.9,
+          "h": 84.3,
+          "top": 266.3,
+          "bottom": 350.6,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 250.9,
+          "h": 98.6,
+          "top": 358.6,
+          "bottom": 457.1,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-invite": {
+          "w": 250.9,
+          "h": 68,
+          "top": 465.1,
+          "bottom": 533.1,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 546.9,
+          "bottom": 576.9,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 901.8,
+          "bottom": 933.8,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "390x844": {
+      "viewport": {
+        "vw": 390,
+        "vh": 844
+      },
+      "sheet": {
+        "x": 8,
+        "y": 110.1,
+        "w": 374,
+        "h": 623.8,
+        "b": 733.9,
+        "r": 382
+      },
+      "sizer": {
+        "x": 8,
+        "y": 110.1,
+        "w": 374,
+        "h": 623.8,
+        "b": 733.9,
+        "r": 382
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 844,
+        "b": 844,
+        "r": 390
+      },
+      "body": {
+        "x": 62.2,
+        "y": 359.7,
+        "w": 265.6,
+        "h": 310.6,
+        "b": 670.3,
+        "r": 327.8
+      },
+      "bodyScroll": {
+        "scrollHeight": 311,
+        "clientHeight": 311,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 624,
+        "clientHeight": 624
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 390,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1574,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 168.1,
+          "bottom": 200.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 232.1,
+          "bottom": 272.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 232.1,
+          "bottom": 272.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 94,
+          "h": 74,
+          "top": 215.1,
+          "bottom": 289.1,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 261.6,
+          "h": 84.3,
+          "top": 359.7,
+          "bottom": 444,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 261.6,
+          "h": 98.6,
+          "top": 452,
+          "bottom": 550.5,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-invite": {
+          "w": 261.6,
+          "h": 68,
+          "top": 558.5,
+          "bottom": 626.5,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 640.3,
+          "bottom": 670.3,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 901.8,
+          "bottom": 933.8,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "568x320-landscape": {
+      "viewport": {
+        "vw": 568,
+        "vh": 320
+      },
+      "sheet": {
+        "x": 149.6,
+        "y": 8,
+        "w": 268.8,
+        "h": 725.5,
+        "b": 733.5,
+        "r": 418.4
+      },
+      "sizer": {
+        "x": 149.6,
+        "y": 8,
+        "w": 268.8,
+        "h": 725.5,
+        "b": 733.5,
+        "r": 418.4
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 568,
+        "h": 320,
+        "b": 320,
+        "r": 568
+      },
+      "body": {
+        "x": 188.6,
+        "y": 231.3,
+        "w": 190.9,
+        "h": 456.6,
+        "b": 687.8,
+        "r": 379.4
+      },
+      "bodyScroll": {
+        "scrollHeight": 457,
+        "clientHeight": 457,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 726,
+        "clientHeight": 726
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 568,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1463,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 49.7,
+          "bottom": 81.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 108.7,
+          "bottom": 148.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 108.7,
+          "bottom": 148.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 84,
+          "h": 64,
+          "top": 96.7,
+          "bottom": 160.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 186.9,
+          "h": 146.2,
+          "top": 231.3,
+          "bottom": 377.4,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "mode-daily": {
+          "w": 186.9,
+          "h": 158.3,
+          "top": 385.4,
+          "bottom": 543.7,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "mode-invite": {
+          "w": 186.9,
+          "h": 92.4,
+          "top": 551.7,
+          "bottom": 644.1,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 657.8,
+          "bottom": 687.8,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 808.3,
+          "bottom": 840.3,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "667x375-landscape": {
+      "viewport": {
+        "vw": 667,
+        "vh": 375
+      },
+      "sheet": {
+        "x": 176,
+        "y": 8,
+        "w": 315,
+        "h": 689.7,
+        "b": 697.7,
+        "r": 491
+      },
+      "sizer": {
+        "x": 176,
+        "y": 8,
+        "w": 315,
+        "h": 689.7,
+        "b": 697.7,
+        "r": 491
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 667,
+        "h": 375,
+        "b": 375,
+        "r": 667
+      },
+      "body": {
+        "x": 226.4,
+        "y": 241.6,
+        "w": 214.2,
+        "h": 399.4,
+        "b": 641,
+        "r": 440.6
+      },
+      "bodyScroll": {
+        "scrollHeight": 399,
+        "clientHeight": 399,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 690,
+        "clientHeight": 690
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 667,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1332,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 60,
+          "bottom": 92,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 119,
+          "bottom": 159,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 119,
+          "bottom": 159,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 84,
+          "h": 64,
+          "top": 107,
+          "bottom": 171,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 210.2,
+          "h": 131.9,
+          "top": 241.6,
+          "bottom": 373.5,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 210.2,
+          "h": 129.7,
+          "top": 381.5,
+          "bottom": 511.1,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "mode-invite": {
+          "w": 210.2,
+          "h": 78.1,
+          "top": 519.1,
+          "bottom": 597.2,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 611,
+          "bottom": 641,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 759.3,
+          "bottom": 791.3,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "844x390-landscape": {
+      "viewport": {
+        "vw": 844,
+        "vh": 390
+      },
+      "sheet": {
+        "x": 258.2,
+        "y": 8,
+        "w": 327.6,
+        "h": 660.7,
+        "b": 668.7,
+        "r": 585.8
+      },
+      "sizer": {
+        "x": 258.2,
+        "y": 8,
+        "w": 327.6,
+        "h": 660.7,
+        "b": 668.7,
+        "r": 585.8
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 844,
+        "h": 390,
+        "b": 390,
+        "r": 844
+      },
+      "body": {
+        "x": 310.6,
+        "y": 243.6,
+        "w": 222.8,
+        "h": 366.1,
+        "b": 609.7,
+        "r": 533.4
+      },
+      "bodyScroll": {
+        "scrollHeight": 366,
+        "clientHeight": 366,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 661,
+        "clientHeight": 661
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 844,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1244,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 62,
+          "bottom": 94,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 121,
+          "bottom": 161,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 121,
+          "bottom": 161,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 84,
+          "h": 64,
+          "top": 109,
+          "bottom": 173,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 218.8,
+          "h": 98.6,
+          "top": 243.6,
+          "bottom": 342.2,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 218.8,
+          "h": 129.7,
+          "top": 350.2,
+          "bottom": 479.9,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "mode-invite": {
+          "w": 218.8,
+          "h": 78.1,
+          "top": 487.9,
+          "bottom": 566,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 579.7,
+          "bottom": 609.7,
+          "inViewport": false,
+          "inScroller": true,
+          "visibleWithoutScrolling": false
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 759.3,
+          "bottom": 791.3,
+          "inViewport": false,
+          "inScroller": false,
+          "visibleWithoutScrolling": false
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "1440x900": {
+      "viewport": {
+        "vw": 1440,
+        "vh": 900
+      },
+      "sheet": {
+        "x": 344,
+        "y": 56.6,
+        "w": 752,
+        "h": 786.8,
+        "b": 843.4,
+        "r": 1096
+      },
+      "sizer": {
+        "x": 344,
+        "y": 56.6,
+        "w": 752,
+        "h": 786.8,
+        "b": 843.4,
+        "r": 1096
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 900,
+        "b": 900,
+        "r": 1440
+      },
+      "body": {
+        "x": 464.3,
+        "y": 420.3,
+        "w": 511.4,
+        "h": 287.8,
+        "b": 708,
+        "r": 975.7
+      },
+      "bodyScroll": {
+        "scrollHeight": 288,
+        "clientHeight": 288,
+        "overflowY": "auto",
+        "scrolls": false
+      },
+      "sheetOverflow": {
+        "scrollHeight": 787,
+        "clientHeight": 787
+      },
+      "horizontalOverflow": {
+        "document": false,
+        "docScrollWidth": 1440,
+        "sheet": false,
+        "body": false
+      },
+      "pageScroll": {
+        "docScrollHeight": 1306,
+        "scrollY": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "hidden",
+        "bodyPosition": "relative",
+        "bodyPaddingRight": "0px",
+        "bodyDataScrollLocked": "1"
+      },
+      "controls": {
+        "close": {
+          "w": 32,
+          "h": 32,
+          "top": 180.7,
+          "bottom": 212.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "rolePrev": {
+          "w": 40,
+          "h": 40,
+          "top": 257.7,
+          "bottom": 297.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "roleNext": {
+          "w": 40,
+          "h": 40,
+          "top": 257.7,
+          "bottom": 297.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mascot": {
+          "w": 132,
+          "h": 100,
+          "top": 227.7,
+          "bottom": 327.7,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "mode-ranked": {
+          "w": 507.4,
+          "h": 76,
+          "top": 420.3,
+          "bottom": 496.3,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-daily": {
+          "w": 507.4,
+          "h": 76,
+          "top": 504.3,
+          "bottom": 580.3,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "mode-invite": {
+          "w": 507.4,
+          "h": 76,
+          "top": 588.3,
+          "bottom": 664.3,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "practice": {
+          "w": 174.3,
+          "h": 30,
+          "top": 678,
+          "bottom": 708,
+          "inViewport": true,
+          "inScroller": true,
+          "visibleWithoutScrolling": true
+        },
+        "back": {
+          "w": 55,
+          "h": 32,
+          "top": 726.8,
+          "bottom": 758.8,
+          "inViewport": true,
+          "inScroller": false,
+          "visibleWithoutScrolling": true
+        },
+        "cancel": null
+      },
+      "hasAny": true,
+      "scrollProbe": {
+        "before": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "after": {
+          "bodyTop": 0,
+          "winY": 0
+        },
+        "maxScrollTop": 0,
+        "lastControlReachableAtEnd": true
+      },
+      "pageErrors": [],
+      "consoleErrors": []
+    }
+  }
+}
