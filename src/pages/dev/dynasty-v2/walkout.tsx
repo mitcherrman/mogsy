@@ -22,7 +22,7 @@ import { Btn } from "./parts";
 
 const ROLE_SHORT: Record<Role, string> = { top: "TOP", jng: "JNG", mid: "MID", bot: "BOT", sup: "SUP" };
 
-export function WalkoutSequence({ env, picks, gameLabel, onDone, className }: { env: EnvState; picks: Partial<Record<Role, string>>; gameLabel: string; onDone: () => void; className?: string }) {
+export function WalkoutSequence({ env, picks, gameLabel, onDone, className, champNames }: { env: EnvState; picks: Partial<Record<Role, string>>; gameLabel: string; onDone: () => void; className?: string; /** UX-3: resolved champion names (server lineups), used instead of the prototype catalog */ champNames?: Partial<Record<Role, string>> }) {
   const motion = useMotionAllowed();
   const [beat, setBeat] = useState<"tunnel" | "stage">(motion ? "tunnel" : "stage");
   const done = useRef(false);
@@ -53,7 +53,7 @@ export function WalkoutSequence({ env, picks, gameLabel, onDone, className }: { 
             <ol className="dyn-walkout-names mt-1 flex flex-col gap-0.5" data-testid="walkout-names">
               {ROLES.map((r, i) => {
                 const p = env.roster?.find((x) => x.role === r);
-                const c = CHAMPS_BY_ROLE[r].find((x) => x.id === picks[r]);
+                const c = champNames ? (champNames[r] ? { name: champNames[r]! } : undefined) : CHAMPS_BY_ROLE[r].find((x) => x.id === picks[r]);
                 return <li key={r} style={{ "--i": i } as React.CSSProperties} className="flex items-baseline gap-2 text-[12px] leading-tight text-white/90 sm:text-[13px]"><span className="w-7 text-[9px] font-bold tracking-[0.18em] text-white/45">{ROLE_SHORT[r]}</span><span className="dyn-title truncate font-semibold">{(p?.name ?? "—").replace(/^SYN-/, "")}</span>{c ? <span className="truncate text-[10.5px] text-white/50">{c.name.replace(/^SYN /, "")}</span> : null}</li>;
               })}
             </ol>
