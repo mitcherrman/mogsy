@@ -1,5 +1,6 @@
 import { Link, type To } from "react-router-dom";
 import type { MouseEvent } from "react";
+import { GalleryHorizontalEnd, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PatchHubView = "report" | "catchup";
@@ -13,6 +14,11 @@ type Props = {
   catchUpState?: unknown;
   /** Called on a plain click that switches views (focus management). */
   onSwitch?: (view: PatchHubView) => void;
+  /**
+   * PHD: the Patch Report's second presentation. When given (report view
+   * only), a "List | Deck" switch sits beside the views; List is this page.
+   */
+  deckTo?: To;
 };
 
 const ITEM =
@@ -23,7 +29,15 @@ const ITEM =
  * links, not tabs: each changes the URL and creates a history entry, so Back
  * returns to the previous view. The active one carries aria-current="page".
  */
-export const PatchHubViewSwitch = ({ current, reportTo, catchUpTo, reportState, catchUpState, onSwitch }: Props) => {
+export const PatchHubViewSwitch = ({
+  current,
+  reportTo,
+  catchUpTo,
+  reportState,
+  catchUpState,
+  onSwitch,
+  deckTo,
+}: Props) => {
   const item = (view: PatchHubView, label: string, to: To, state: unknown) => {
     const active = current === view;
     const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -59,6 +73,31 @@ export const PatchHubViewSwitch = ({ current, reportTo, catchUpTo, reportState, 
         <span aria-hidden className="w-px self-stretch bg-[#c9a84c]/40" />
         {item("catchup", "Catch Up", catchUpTo, catchUpState)}
       </div>
+      {current === "report" && deckTo !== undefined && (
+        <div
+          role="group"
+          aria-label="Patch Report layout"
+          data-testid="patch-hub-layout-switch"
+          className="inline-flex overflow-hidden rounded-full border border-[#c9a84c]/50"
+        >
+          <span aria-current="page" data-testid="patch-hub-layout-list" className={cn(ITEM, "gap-1.5 bg-[#c9a84c]/15 text-[#c9a84c]")}>
+            <List aria-hidden className="h-4 w-4" />
+            List
+          </span>
+          <span aria-hidden className="w-px self-stretch bg-[#c9a84c]/40" />
+          <Link
+            to={deckTo}
+            data-testid="patch-hub-layout-deck"
+            className={cn(ITEM, "gap-1.5 text-foreground hover:bg-[#c9a84c]/10 hover:text-[#e8d08a]")}
+          >
+            <GalleryHorizontalEnd aria-hidden className="h-4 w-4 text-[#c9a84c]" />
+            Deck
+            <span className="rounded-full bg-[#c9a84c] px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-[#0a0e18]">
+              New
+            </span>
+          </Link>
+        </div>
+      )}
       {current === "report" && (
         <span className="hidden text-xs text-muted-foreground sm:inline">
           Missed a few patches? Pick the last one you know.

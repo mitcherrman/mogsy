@@ -1,0 +1,49 @@
+name: pm1-production-verify
+
+# PM1 — after the merge deploys: the live hub and the Practice arena on
+# https://mogzy.lol at desktop and phone, read-only (every non-GET request is
+# answered locally), bundled Chromium on the GitHub runner (AGENTS.md).
+on:
+  push:
+    branches:
+      - "practice-modernization/**"
+    paths:
+      - "e2e/pm1-prod/**"
+      - "playwright.pm1-prod.config.ts"
+      - ".github/workflows/pm1-production-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Production verification
+        shell: bash
+        run: |
+          mkdir -p test-results/pm1
+          set -o pipefail
+          npx playwright test -c playwright.pm1-prod.config.ts 2>&1 | tee test-results/pm1/run.log
+      - name: Annotate
+        if: always()
+        run: node scripts/ci/pm1-annotate.mjs
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pm1-production-evidence
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14

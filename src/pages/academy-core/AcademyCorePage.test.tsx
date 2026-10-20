@@ -397,6 +397,15 @@ describe("navigation contracts (carried over from V3)", () => {
     expect(screen.getByTestId("probe")).toHaveTextContent("daily|/quiz/daily-challenge||daily-intent");
   });
 
+  it("pressing Daily records which Home Hub control opened it, and nothing about a run", () => {
+    mount();
+    track.mockClear();
+    fireEvent.click(screen.getByTestId("academy-core-daily"));
+    expect(track).toHaveBeenCalledWith("daily_challenge_entry_clicked", {
+      metadata: { entry_surface: "home_hub", control: "academy_core_daily_button" },
+    });
+  });
+
   it("Ranked opens mode selection", () => {
     mount();
     fireEvent.click(screen.getByTestId("academy-core-ranked"));

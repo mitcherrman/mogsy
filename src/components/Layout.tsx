@@ -134,7 +134,10 @@ export default function Layout() {
     // GM-M1 — the Match Grid lab brings its own max-width and gutters.
     || pathname === "/dev/match-grid"
     || pathname === "/dev/rangefinder"
-    || pathname === "/dev/word-puzzle";
+    || pathname === "/dev/word-puzzle"
+    // PHD — the Patch Hub Deck View is a full-width stage with its own
+    // gutters; the List View at /lol/patch-reports keeps the reading column.
+    || pathname === "/lol/patch-deck";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

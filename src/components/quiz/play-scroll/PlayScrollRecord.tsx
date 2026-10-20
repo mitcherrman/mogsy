@@ -54,6 +54,7 @@ import { visiblePlayModes, type PlayModeId, type PlayModeVisibility } from "@/li
 import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import type { DailyStatusView } from "@/lib/daily-challenge/status";
+import { trackDailyEntry } from "@/lib/analytics/dailyEntry";
 import PlayScrollRoleSelector, {
   DEFAULT_PREVIEW_ROLE,
 } from "./PlayScrollRoleSelector";
@@ -476,6 +477,7 @@ export default function PlayScrollRecord({
     handingOffRef.current = true;
     setBusyMode("daily");
     onClose();
+    trackDailyEntry("play_scroll_resume_optional");
     onPlayDailyChallenge();
   }, [busyMode, onClose, onPlayDailyChallenge, sfx]);
 
@@ -487,6 +489,9 @@ export default function PlayScrollRecord({
       // over is a fact about the DAY, and the one thing that must never
       // happen is starting a set with nothing in it.
       if (id === "daily" && dailyComplete) return;
+      // The policy hides a closed mode; this makes a hidden Ranked entry inert
+      // even if something still calls it (the server refuses it as well).
+      if (!modes[id]) return;
       /*
        * THE SEAL. Past every guard, so the selection is ACCEPTED and is
        * sounded exactly once here, for all three clauses.
@@ -583,10 +588,11 @@ export default function PlayScrollRecord({
       // an open dialog over a page that no longer exists is a trap.
       setBusyMode("daily");
       onClose();
+      trackDailyEntry("play_scroll_daily_clause");
       onPlayDailyChallenge();
     },
     [
-      busyMode, dailyComplete, onClose, onCommitRole, onPlayDailyChallenge,
+      busyMode, dailyComplete, modes, onClose, onCommitRole, onPlayDailyChallenge,
       displayRole, sfx, hasAccount, onRequireAccount,
     ],
   );

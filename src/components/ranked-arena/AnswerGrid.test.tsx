@@ -160,4 +160,23 @@ describe("QuestionPanel", () => {
     expect(region).toHaveTextContent("abilities");
     expect(screen.getByTestId("child-slot")).toBeInTheDocument();
   });
+
+  it("PM1: draws picture options as pictures, and reports the picked option by id", () => {
+    const onSelect = vi.fn();
+    const pictures: AnswerOptionView[] = [
+      { id: "0", index: 0, label: "Lux", imagePath: "assets/champions/Lux/icon.png" },
+      { id: "1", index: 1, label: "Ahri", imagePath: "assets/champions/Ahri/icon.png" },
+    ];
+    render(
+      <AnswerGrid options={pictures} selectedOptionId={null} permissions={OPEN} onSelectOption={onSelect} />,
+    );
+    expect(screen.getByRole("img", { name: "Lux" }).getAttribute("src")).toContain("assets/champions/Lux/icon.png");
+    fireEvent.click(screen.getByRole("button", { name: /Ahri/ }));
+    expect(onSelect).toHaveBeenCalledWith(pictures[1]);
+  });
+
+  it("PM1: an option with no imagePath renders exactly as before (no picture)", () => {
+    render(<AnswerGrid options={OPTIONS} selectedOptionId={null} permissions={OPEN} onSelectOption={vi.fn()} />);
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
+  });
 });
