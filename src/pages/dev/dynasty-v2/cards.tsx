@@ -16,6 +16,18 @@ import { useMotionAllowed } from "@/lib/motion/useReveal";
 import { cn } from "@/lib/utils";
 import { ROLE_LABEL, STAGE_LABEL, TAG_LABEL, type Champion, type Player, type Stage } from "./fixtures";
 import { ConfidenceDiamonds, FatigueBars, KindRibbon, Monogram, PLATE, PhaseBars, RANKED_ROLE } from "./parts";
+import { SimTag } from "./broadcast";
+import { PortraitSlot } from "./portraits";
+
+/** A simulated trait or mood chip. Carries the Generated in-run mark (media slot `player.trait_chip`), outside the portrait frame. */
+export function TraitChip({ label, tone = "plain", title }: { label: string; tone?: "plain" | "amber" | "gold"; title?: string }) {
+  const cls = tone === "amber" ? "border-amber-400/50 bg-amber-400/12 text-amber-200" : tone === "gold" ? "border-[#e3c66f]/40 bg-[#e3c66f]/10 text-[#f2dc98]" : "border-white/20 text-white/70";
+  return (
+    <span data-testid="trait-chip" data-slot="player.trait_chip" title={title} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider", cls)}>
+      {label}<span aria-hidden className="ml-0.5 border-l border-current/40 pl-1 text-[8px] font-black tracking-normal opacity-75">GEN</span><span className="sr-only"> (generated in-run)</span>
+    </span>
+  );
+}
 
 // ───────────────────────────────────────────────────────────── class glyphs
 
@@ -70,7 +82,7 @@ export function PlayerCard({ p, size = "regular", selected, testId, children, hi
       {sz === "star" ? <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(227,198,111,0.22),rgba(227,198,111,0))]" /> : null}
       {/* portrait plate */}
       <div className={cn("relative flex shrink-0 flex-col items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(7,17,31,0.6))] ring-2", formTone, sz === "star" ? "h-[76px] w-[64px]" : sz === "bench" ? "h-[56px] w-[48px]" : "h-[64px] w-[56px]")} data-slot="player.portrait">
-        <Monogram p={p} size={sz === "star" ? 44 : sz === "bench" ? 32 : 38} />
+        <PortraitSlot p={p} size={sz} fallback={<Monogram p={p} size={sz === "star" ? 44 : sz === "bench" ? 32 : 38} />} />
         <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-sm border border-white/15 bg-[#07111f] px-1"><RoleEmblem role={RANKED_ROLE[p.role]} size="xs" decorative /></span>
         {tilt ? <span aria-hidden className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-[0_0_10px_rgba(244,63,94,0.8)]" title="Under pressure">!</span> : null}
       </div>
@@ -81,9 +93,9 @@ export function PlayerCard({ p, size = "regular", selected, testId, children, hi
             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/50">{ROLE_LABEL[p.role]} <KindRibbon kind={p.kind} /></p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            {over ? <span className="rounded-full border border-amber-400/50 bg-amber-400/12 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-amber-200" title="Early and Late weaker next game">⚡ Overconfident</span> : null}
-            {honey ? <span className="rounded-full border border-[#e3c66f]/40 bg-[#e3c66f]/10 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-[#f2dc98]">♥ Honeymoon</span> : null}
-            {p.traits.filter((t) => t !== "Overconfident" && t !== "Honeymoon").map((t) => <span key={t} className="rounded-full border border-white/20 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-white/70">{t}</span>)}
+            {over ? <TraitChip label="⚡ Overconfident" tone="amber" title="Early and Late weaker next game · generated in-run" /> : null}
+            {honey ? <TraitChip label="♥ Honeymoon" tone="gold" title="Generated in-run" /> : null}
+            {p.traits.filter((t) => t !== "Overconfident" && t !== "Honeymoon").map((t) => <TraitChip key={t} label={t} title="Generated in-run" />)}
           </div>
         </div>
         {compactMeta ? null : <div className="mt-2"><PhaseBars phase={p.phase} /></div>}
@@ -91,6 +103,7 @@ export function PlayerCard({ p, size = "regular", selected, testId, children, hi
           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] uppercase tracking-wider text-white/55">
             <span className="inline-flex items-center gap-1.5">Confidence <ConfidenceDiamonds n={p.conf} /></span>
             <span className="inline-flex items-center gap-1.5">Fatigue <FatigueBars n={p.fatigue} /></span>
+            <SimTag className="normal-case tracking-[0.1em]">Generated in-run</SimTag>
           </div>
         ) : null}
         {children}

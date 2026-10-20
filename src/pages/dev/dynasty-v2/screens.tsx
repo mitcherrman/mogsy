@@ -24,6 +24,7 @@ import { EventCard } from "./GameView";
 import { CasterPop, ChatBurst } from "./broadcast";
 import { ChampionCard, PlayerCard } from "./cards";
 import { PanelArt, StoryBeat } from "./story";
+import { CineFrame } from "./cinematics";
 import {
   Btn, ConfidenceDiamonds, Crest, Delta, Eyebrow, FatigueBars, KindRibbon, Monogram, ORG_ACCENT, PLATE, Pips, Plate, PlayerRow, ProtoBanner,
   RANKED_ROLE, RolePill, Rule, Screen, SourceChip, StateLabel, accentStyle,
@@ -273,10 +274,7 @@ export function PrepScreen({ run, picks, onToggle, onTarget, onConfirm }: {
         const signed = ROLES.map((r) => run.starters[r]).find((x) => x.traits.includes("Honeymoon"));
         return signed ? (
           <>
-            <StoryBeat id="player.sign" title={`Signed: ${signed.name.replace(/^SYN-/, "")}`} holdMs={3200} panels={[
-              { art: <PanelArt kind="handshake" accent={ORG_ACCENT[run.org.id]?.hex} />, kicker: "Transfer window.", caption: `${signed.name.replace(/^SYN-/, "")} signs for ${run.org.name.replace(/^SYN /, "")}.` },
-              { art: <PanelArt kind="house" accent={ORG_ACCENT[run.org.id]?.hex} />, caption: "New pairings need time: cohesion dips, the honeymoon lifts confidence for one series." },
-            ]} />
+            <CineFrame kind="signing" accent={ORG_ACCENT[run.org.id]?.hex} kicker="Transfer window" title={`${signed.name.replace(/^SYN-/, "")} signs for ${run.org.name.replace(/^SYN /, "")}`} caption="New pairings need time: cohesion dips, the honeymoon lifts confidence for one series." />
             <CasterPop moment="player.sign" k={`${run.seed}|${run.nodeIdx}|sign`} ctx={{ player: signed.name.replace(/^SYN-/, "") }} compact />
           </>
         ) : null;
@@ -393,7 +391,7 @@ export function DraftScreen({ run, picks, onPick, onLock }: { run: Run; picks: P
           const avail = new Set(availableChamps(run, r).map((c) => c.id));
           const locked = picks[r];
           return (
-            <fieldset key={r} data-testid={`draft-row-${r}`} className={cn(PLATE, "flex flex-col gap-2 p-3", locked && "border-[#e3c66f]/30")} style={{ "--i": ri } as CSSProperties}>
+            <fieldset key={r} data-testid={`draft-row-${r}`} className={cn(PLATE, "flex min-w-0 flex-col gap-2 p-3", locked && "border-[#e3c66f]/30")} style={{ "--i": ri } as CSSProperties}>
               <legend className="sr-only">{ROLE_LABEL[r]} pick for {p.name}</legend>
               <div className="flex items-center gap-2">
                 <Monogram p={p} size={30} />
@@ -455,6 +453,9 @@ export function GameResultScreen({ run, game, summary, onNext }: { run: Run; gam
   return (
     <Screen testId="screen-result" eyebrow={`Game ${game.idx} · ${SEASON[run.nodeIdx].label} · vs ${SEASON[run.nodeIdx].opp.name.replace(/^SYN /, "")}`} title={summary.won ? "Game won" : "Game lost"}
       actions={<Btn primary beckon testId="result-continue" onClick={onNext}>{summary.seriesOver ? "Series result" : "Between-game decision"}</Btn>}>
+      {summary.won && (s.losses === 2 || SEASON[run.nodeIdx].kind === "worlds") ? (
+        <CineFrame kind="elim_victory" accent={ORG_ACCENT[run.org.id]?.hex} kicker={s.losses === 2 ? "Facing elimination" : SEASON[run.nodeIdx].label} title={`Victory · ${s.wins}–${s.losses}`} caption={s.wins >= 3 ? "Series won." : "Still alive. One more."} />
+      ) : null}
       <Plate ornate testId="game-timeline" data-won={summary.won} data-ended={summary.endedAt}
         className={cn("dyn-hero flex flex-col gap-3 p-4", summary.won ? "dyn-hero--victory border-[#e3c66f]/50" : "dyn-hero--defeat border-rose-400/35")}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

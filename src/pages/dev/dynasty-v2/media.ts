@@ -22,6 +22,8 @@ export interface MediaSlot {
   src: string | null;
   /** How the current fill was made. */
   fill: "mogzy-asset" | "css-svg";
+  /** VIS-F3: who made the current fill. `code` = drawn in this repo for Dynasty (original); `mogzy` = an existing Mogzy asset (rights per 05 §3). */
+  provenance?: "code" | "mogzy";
   /** The art brief for a future production asset. */
   brief: string;
 }
@@ -46,6 +48,30 @@ export const MEDIA_SLOTS: Record<string, MediaSlot> = {
   "champion.class": { id: "champion.class", purpose: "Class glyphs on champion cards (6 classes)", src: null, fill: "css-svg", brief: "Six class glyphs: Tank, Fighter, Assassin, Marksman, Mage, Enchanter, in gold line art." },
   "player.portrait": { id: "player.portrait", purpose: "Player portrait slot on player cards", src: null, fill: "css-svg", brief: "Painted portraits per synthetic player (monogram fallback stays)." },
   "trophy.cup": { id: "trophy.cup", purpose: "The championship trophy on the champions ending", src: null, fill: "css-svg", brief: "The Worlds Dynasty cup, gold, on a navy plinth." },
+  // ── VIS-F3 additions (ids from vis_f2_support/02; frames from 06) ──
+  "player.trait_chip": { id: "player.trait_chip", purpose: "Simulated trait / mood chips on player cards, with the Generated in-run source mark", src: null, fill: "css-svg", provenance: "code", brief: "Chip set with the source glyph; never a caption on a real portrait." },
+  "org.card_crest": { id: "org.card_crest", purpose: "Org crest on org cards, run bar and the finals vs plate", src: null, fill: "css-svg", provenance: "code", brief: "Hex crest per fictional org; real orgs need a rights row each." },
+  "season.segment_banner": { id: "season.segment_banner", purpose: "PLAYOFFS / WORLDS banner on segment transitions", src: null, fill: "css-svg", provenance: "code", brief: "Type banner with segment light." },
+  "season.worlds_mark": { id: "season.worlds_mark", purpose: "Original Worlds mark on Worlds nodes, the finals card and the stadium board", src: null, fill: "css-svg", provenance: "code", brief: "An original laurel-and-star mark, never the real Worlds logo or cup." },
+  "finals.intro_card": { id: "finals.intro_card", purpose: "W3 Worlds Final intro, full frame, ≤ 3 s, skippable", src: null, fill: "css-svg", provenance: "code", brief: "Two crests face off under a spotlight, WORLDS FINAL in Cinzel." },
+  "finals.vs_plate": { id: "finals.vs_plate", purpose: "The VS plate inside the finals intro", src: null, fill: "css-svg", provenance: "code", brief: "Gold VS between two crests." },
+  "end.trophy": { id: "end.trophy", purpose: "The Dynasty trophy in the championship frame", src: null, fill: "css-svg", provenance: "code", brief: "Original cup silhouette, not a Summoner's Cup likeness." },
+  "end.confetti": { id: "end.confetti", purpose: "One gold confetti burst in the championship frame", src: null, fill: "css-svg", provenance: "code", brief: "Gold flecks, one burst, not a loop." },
+  "end.champion_banner": { id: "end.champion_banner", purpose: "CHAMPIONS banner in the W3 championship frame", src: null, fill: "css-svg", provenance: "code", brief: "Type banner over the trophy." },
+  "meta.unlock_reveal": { id: "meta.unlock_reveal", purpose: "New option unlocked motif on the run end", src: null, fill: "css-svg", provenance: "code", brief: "Key-and-lock reveal; unused until meta unlocks exist." },
+  "draft.champion_splash_strip": { id: "draft.champion_splash_strip", purpose: "Lineup strip at draft lock: five champion tiles slide in", src: null, fill: "css-svg", provenance: "code", brief: "Synthetic champions use class glyph tiles; real champions would use verified Mogzy champion art." },
+  "draft.lock_stamp": { id: "draft.lock_stamp", purpose: "LOCKED stamp on the draft lock frame", src: null, fill: "css-svg", provenance: "code", brief: "Ink stamp in the org accent." },
+  "draft.comp_identity_badge": { id: "draft.comp_identity_badge", purpose: "Composition identity badge (Front-to-back, Pick, Siege…) on the lineup strip", src: null, fill: "css-svg", provenance: "code", brief: "Badge derived from the five classes." },
+  "game.rare_event_frame": { id: "game.rare_event_frame", purpose: "Comic frame for a rare outplay event", src: null, fill: "css-svg", provenance: "code", brief: "Gold-sheen frame with a lane silhouette." },
+  "obj.baron.pit_backdrop": { id: "obj.baron.pit_backdrop", purpose: "Baron pit spectacle behind the encounter banner", src: null, fill: "css-svg", provenance: "code", brief: "Pit walls, violet mist, the eye in the dark; original, not Riot art." },
+  "obj.baron.hero_art": { id: "obj.baron.hero_art", purpose: "Baron silhouette in the pit", src: null, fill: "css-svg", provenance: "code", brief: "Original silhouette; a commissioned illustration needs owner approval." },
+  "obj.dragon.pit_backdrop": { id: "obj.dragon.pit_backdrop", purpose: "Dragon pit spectacle (PROTOTYPE-ONLY question variant)", src: null, fill: "css-svg", provenance: "code", brief: "Ember light from below, drake silhouette rising." },
+  "obj.elder.pit_backdrop": { id: "obj.elder.pit_backdrop", purpose: "Elder pit spectacle (PROTOTYPE-ONLY)", src: null, fill: "css-svg", provenance: "code", brief: "Ice light, frost, a crowned silhouette." },
+  "frame.signing": { id: "frame.signing", purpose: "Comic frame: the signing (S2)", src: null, fill: "css-svg", provenance: "code", brief: "Contract, two crests, a pen; SIGNED stamp." },
+  "frame.tunnel": { id: "frame.tunnel", purpose: "Comic frame: the tunnel walk (S4)", src: null, fill: "css-svg", provenance: "code", brief: "Five silhouettes toward the light." },
+  "frame.draft_lock": { id: "frame.draft_lock", purpose: "Comic frame: draft locked (S3)", src: null, fill: "css-svg", provenance: "code", brief: "Lineup strip and lock stamp." },
+  "frame.elim_victory": { id: "frame.elim_victory", purpose: "Comic frame: elimination-game victory", src: null, fill: "css-svg", provenance: "code", brief: "Red-to-gold stage, the score large." },
+  "frame.championship": { id: "frame.championship", purpose: "W3 championship frame, full screen, ≤ 3 s, skippable (S7)", src: null, fill: "css-svg", provenance: "code", brief: "Trophy rise, confetti, CHAMPIONS." },
 };
 
 export const SCENE_META: Record<SceneId, { name: string; caption: string }> = {

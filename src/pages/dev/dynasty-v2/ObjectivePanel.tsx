@@ -17,10 +17,12 @@ import { draw } from "./engine";
 import { SYN_QUESTIONS } from "./fixtures";
 import { OBJECTIVES, ladderFor, objectiveOutcome, type ObjectiveKind, type ObjectiveOutcome } from "./objectives";
 import { Btn, EffectChip, Eyebrow, PLATE, SIGIL_COLOR, Sigil, SourceChip } from "./parts";
-import { CasterPop, ChatBurst, useStinger } from "./broadcast";
+import { CasterPop, ChatBurst, SimTag, ambientQuestionOpen, useStinger } from "./broadcast";
+import { playCue, setTension, type DynCue } from "./audio";
+import { ObjectiveSpectacle, PIT_PLACE } from "./spectacle";
 
-const PIT_LIGHT: Record<ObjectiveKind, string> = { dragon: "22 90% 56%", baron: "262 70% 64%", elder: "190 85% 62%" };
 const TONE_STINGER: Record<ObjectiveOutcome["tone"], "gold" | "ice" | "ember" | "red"> = { great: "gold", good: "ice", mixed: "ember", bad: "red" };
+const OUTCOME_CUE: Record<ObjectiveOutcome["tone"], DynCue> = { great: "dynasty.obj.outcome_exceptional", good: "dynasty.obj.outcome_success", mixed: "dynasty.obj.outcome_partial", bad: "dynasty.obj.outcome_disaster" };
 
 const TONE: Record<ObjectiveOutcome["tone"], string> = {
   great: "border-[#e3c66f]/70 bg-[radial-gradient(80%_70%_at_50%_0%,rgba(227,198,111,0.22),rgba(227,198,111,0.02)),linear-gradient(180deg,hsl(213_48%_11%/0.94),hsl(214_52%_7%/0.94))]",
@@ -88,9 +90,14 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
   useEffect(() => { window.scrollTo?.({ top: 0 }); }, [phase, i]);
   useEffect(() => {
     if (!outcome) return;
-    sting({ id: "objective.result", kicker: `${def.title} · ${outcome.correct} of ${outcome.total}`, title: outcome.title, tone: TONE_STINGER[outcome.tone], ms: 2000, cue: outcome.tone === "bad" ? "ui.feedback.error" : "ranked.points.awarded" });
+    sting({ id: "objective.result", kicker: `${def.title} · ${outcome.correct} of ${outcome.total}`, title: outcome.title, tone: TONE_STINGER[outcome.tone], ms: 2000, cue: OUTCOME_CUE[outcome.tone] });
+    if (outcome.tone === "great") window.setTimeout(() => playCue("dynasty.crowd.roar"), 350);
+    else if (outcome.tone === "bad") window.setTimeout(() => playCue("dynasty.crowd.gasp"), 250);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
+  // Ambient text yields to an open question (04 rule 6); the tension loop holds from stakes to outcome (04 loop 5).
+  useEffect(() => { ambientQuestionOpen(phase === "ask"); return () => ambientQuestionOpen(false); }, [phase]);
+  useEffect(() => { setTension(phase !== "outcome"); return () => setTension(false); }, [phase]);
 
   const answer = (n: number) => {
     if (picked !== null) return;
@@ -110,19 +117,17 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
     <div data-testid="objective-panel" data-kind={kind} data-phase={phase}
       className={cn(PLATE, "dyn-plate--ornate flex flex-col gap-3 p-4", motion && "dyn-enter-fast")}
       style={{ borderColor: `${color}55`, boxShadow: `inset 0 1px 0 ${color}33, 0 0 48px -18px ${color}66, 0 24px 48px -32px rgba(0,0,0,0.95)` } as CSSProperties}>
-      {/* Encounter banner: the pit, a map moment */}
-      <div className={cn("dyn-pit -mx-4 -mt-4 mb-1 px-4 pb-3 pt-4", motion && "dyn-pit--motion")} style={{ "--dyn-light": PIT_LIGHT[kind] } as CSSProperties} data-testid="objective-pit">
-        <span aria-hidden className="dyn-pit-sky" /><span aria-hidden className="dyn-pit-ring" /><span aria-hidden className="dyn-pit-mist" />
-        {outcome ? <span aria-hidden className={cn("absolute inset-0", `dyn-pit-wash--${outcome.tone}`)} /> : null}
+      {/* Encounter banner: the pit as a place on the map (VIS-F3 spectacle) */}
+      <ObjectiveSpectacle kind={kind} phase={phase} tone={outcome?.tone ?? null}>
       <div className="relative flex items-center gap-3">
-        <Sigil kind={kind} size={phase === "stakes" ? 48 : 40} breathe={phase !== "outcome"} className="sm:h-14 sm:w-14" />
+        <Sigil kind={kind} size={phase === "stakes" ? 44 : 34} breathe={phase !== "outcome"} className="sm:h-12 sm:w-12" />
         <div className="min-w-0 flex-1">
-          <Eyebrow>{phase === "stakes" ? "Objective encounter" : phase === "ask" ? `Question ${i + 1} of ${def.questions}` : "Outcome"}</Eyebrow>
+          <div className="flex flex-wrap items-center gap-1.5"><Eyebrow>{phase === "stakes" ? "Objective encounter" : phase === "ask" ? `Question ${i + 1} of ${def.questions}` : "Outcome"}</Eyebrow><span data-testid="objective-contract" data-contract={kind === "baron" ? "e1" : "prototype"}>{kind === "baron" ? <SimTag className="border-violet-300/40 bg-violet-300/10 text-violet-100/90">E1 contract · 3Q</SimTag> : <SimTag>Prototype-only</SimTag>}</span></div>
           <h3 className="dyn-title mt-0.5 truncate text-[20px] font-semibold leading-tight sm:text-[24px]">{def.title}</h3>
         </div>
-        <span className="hidden text-right text-[10px] uppercase leading-tight tracking-[0.16em] text-white/45 sm:block">Optional boost<br />knowledge decides this</span>
+        <span className="hidden text-right text-[10px] uppercase leading-tight tracking-[0.16em] text-white/55 sm:block">{PIT_PLACE[kind]}<br /><span className="text-white/40">Optional boost · knowledge decides this</span></span>
       </div>
-      </div>
+      </ObjectiveSpectacle>
 
 
       {phase === "stakes" ? (
@@ -134,7 +139,7 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
               const top = row.correct === def.questions, bottom = row.correct === 0;
               return (
                 <li key={row.correct} style={{ "--i": idx } as CSSProperties}
-                  className={cn("flex items-center gap-2.5 rounded-xl border px-2.5 py-1.5 text-[12.5px] leading-snug sm:px-3 sm:py-2 sm:text-[13px]",
+                  className={cn("flex items-center gap-2.5 rounded-xl border px-2.5 py-1 text-[12.5px] leading-snug sm:px-3 sm:py-2 sm:text-[13px]",
                     top ? "border-[#e3c66f]/45 bg-[#e3c66f]/[0.08]" : bottom ? "border-rose-400/35 bg-rose-400/[0.06]" : "border-white/10 bg-white/[0.03]")}>
                   <span className={cn("dyn-num flex h-7 w-10 shrink-0 items-center justify-center rounded-lg border text-[11.5px] font-bold sm:h-8 sm:w-11", top ? "border-[#e3c66f]/60 text-[#f2dc98]" : bottom ? "border-rose-400/50 text-rose-200" : "border-white/20 text-white/80")}>{row.correct}/{def.questions}</span>
                   <span className="min-w-0 text-white/85"><strong className="font-semibold text-white">{row.tier}.</strong> {row.summary}</span>

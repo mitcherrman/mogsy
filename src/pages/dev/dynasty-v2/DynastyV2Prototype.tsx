@@ -18,7 +18,10 @@ import { useSearchParams } from "react-router-dom";
 import { Users } from "lucide-react";
 import "./vis.css";
 import "./vis-f2.css";
-import { useSfx } from "@/lib/audio/useSfx";
+import "./vis-f3.css";
+import { installDynastyAudioUnlock, playMoment } from "./audio";
+import { AmbienceButton } from "./ambience";
+import { FullFrame, type FullFrameKind } from "./cinematics";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   applyPrep, applyTactic, finishGame, finishSeries, newRun, signPlayer, startSeries,
@@ -28,7 +31,7 @@ import { SEASON, type Org, type Player, type Role } from "./fixtures";
 import { GameView, type GameMood } from "./GameView";
 import { ObjectiveGallery } from "./ObjectiveGallery";
 import { Showcase } from "./Showcase";
-import { StingerHost, useStinger } from "./broadcast";
+import { StingerHost, ambientNewGame, useStinger } from "./broadcast";
 import { Scene } from "./scenes";
 import type { SceneId } from "./media";
 import { Crest, Pips, ProtoBanner, accentStyle } from "./parts";
@@ -57,7 +60,6 @@ const SCENE_FOR: Record<Exclude<ScreenId, "game">, SceneId> = {
 };
 
 function Flow({ initialSeed }: { initialSeed: string }) {
-  const sfx = useSfx();
   const [screen, setScreen] = useState<ScreenId>("home");
   const [seed, setSeed] = useState(initialSeed);
   const [org, setOrg] = useState<Org | null>(null);
@@ -70,15 +72,21 @@ function Flow({ initialSeed }: { initialSeed: string }) {
   const [summary, setSummary] = useState<GameSummary | null>(null);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [gameMood, setGameMood] = useState<GameMood>("early");
+  // W3 full-frame cinematics: the Worlds Final intro and the championship (≤ 3 s, skippable).
+  const [cine, setCine] = useState<FullFrameKind | null>(null);
+  const closeCine = useCallback(() => setCine(null), []);
   const mainRef = useRef<HTMLElement>(null);
   const sting = useStinger();
 
+  useEffect(() => installDynastyAudioUnlock(), []);
   useEffect(() => {
     window.scrollTo?.(0, 0);
     mainRef.current?.querySelector<HTMLElement>("h2[tabindex]")?.focus({ preventScroll: true });
+    if (screen !== "game") ambientNewGame(`${screen}|${run?.nodeIdx ?? 0}|${run?.series?.games.length ?? 0}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by screen on purpose
   }, [screen]);
 
-  const go = useCallback((s: ScreenId) => { sfx.play("ui.button.press"); setScreen(s); }, [sfx]);
+  const go = useCallback((s: ScreenId) => { playMoment("dyn.ui.advance"); setScreen(s); }, []);
 
   const beginSeries = () => {
     if (!run) return;
@@ -90,12 +98,13 @@ function Flow({ initialSeed }: { initialSeed: string }) {
   const finishCurrentGame = (g: Game) => {
     const out = finishGame(run!, g);
     setRun(out.run); setGame(g); setSummary(out.summary);
-    sfx.play(out.summary.won ? "ranked.match.victory" : "ranked.match.defeat");
+    playMoment(out.summary.won ? "dyn.result.game_win" : "dyn.result.game_loss");
+    if (out.summary.won && SEASON[out.run.nodeIdx].kind !== "regular") playMoment("dyn.crowd.roar");
     const s = out.run.series!;
     const seriesWon = s.wins >= 3, seriesLost = s.losses >= 3;
     const score = `${s.wins}–${s.losses}`;
-    if (seriesWon || seriesLost) sting({ id: seriesWon ? "series.won" : "series.lost", kicker: "Series", title: seriesWon ? `Series won ${score}` : `Series lost ${score}`, tone: seriesWon ? "gold" : "red", ms: 2200 });
-    else if (s.wins === 2 || s.losses === 2) sting({ id: "series.point", kicker: s.wins === 2 ? "Match point" : "They have match point", title: out.summary.won ? `Victory · ${score}` : `Defeat · ${score}`, tone: s.wins === 2 ? "gold" : "red", ms: 2200, cue: "ranked.round.final" });
+    if (seriesWon || seriesLost) sting({ id: seriesWon ? "series.won" : "series.lost", kicker: "Series", title: seriesWon ? `Series won ${score}` : `Series lost ${score}`, tone: seriesWon ? "gold" : "red", ms: 2200, cue: "dynasty.series.point" });
+    else if (s.wins === 2 || s.losses === 2) sting({ id: "series.point", kicker: s.wins === 2 ? "Match point" : "They have match point", title: out.summary.won ? `Victory · ${score}` : `Defeat · ${score}`, tone: s.wins === 2 ? "gold" : "red", ms: 2200, cue: "dynasty.series.match_point" });
     else sting({ id: out.summary.won ? "game.win" : "game.loss", kicker: `Game ${g.idx}`, title: out.summary.won ? "Victory" : "Defeat", sub: `Series ${score}`, tone: out.summary.won ? "gold" : "red" });
     setScreen("result");
   };
@@ -103,7 +112,8 @@ function Flow({ initialSeed }: { initialSeed: string }) {
   const afterSeries = () => {
     const r = finishSeries(run!);
     setRun(r);
-    if (r.finished) sting({ id: r.alive && r.results[SEASON.length - 1] === "W" ? "championship" : "run.defeat", kicker: r.alive && r.results[SEASON.length - 1] === "W" ? "Worlds Dynasty" : "Run complete", title: r.alive && r.results[SEASON.length - 1] === "W" ? "Champions" : "The run ends here", tone: r.alive && r.results[SEASON.length - 1] === "W" ? "gold" : "neutral", ms: 2600, cue: r.alive && r.results[SEASON.length - 1] === "W" ? "ranked.match.victory" : undefined });
+    if (r.finished && r.alive && r.results[SEASON.length - 1] === "W") setCine("championship");
+    if (r.finished) sting({ id: r.alive && r.results[SEASON.length - 1] === "W" ? "championship" : "run.defeat", kicker: r.alive && r.results[SEASON.length - 1] === "W" ? "Worlds Dynasty" : "Run complete", title: r.alive && r.results[SEASON.length - 1] === "W" ? "Champions" : "The run ends here", tone: r.alive && r.results[SEASON.length - 1] === "W" ? "gold" : "neutral", ms: 2600, cue: r.alive && r.results[SEASON.length - 1] === "W" ? "dynasty.end.championship" : "dynasty.end.defeat" });
     go(r.finished && !r.alive ? "end" : r.finished ? "end" : "season");
   };
 
@@ -113,11 +123,11 @@ function Flow({ initialSeed }: { initialSeed: string }) {
       body = <HomeScreen run={run} seed={seed} onSeed={setSeed} onNew={() => { setRun(null); go("org"); }} onResume={() => go(run!.series ? "season" : run!.finished ? "end" : "season")} />;
       break;
     case "org":
-      body = <OrgScreen onChoose={(o) => { setOrg(o); setStars([]); sting({ id: "org.choose", kicker: "Your organization", title: o.name.replace(/^SYN /, ""), sub: o.trait, tone: "gold", cue: "ranked.mode.confirm" }); go("stars"); }} />;
+      body = <OrgScreen onChoose={(o) => { setOrg(o); setStars([]); sting({ id: "org.choose", kicker: "Your organization", title: o.name.replace(/^SYN /, ""), sub: o.trait, tone: "gold", cue: "dynasty.org.choose" }); go("stars"); }} />;
       break;
     case "stars":
       body = <StarsScreen org={org!} selected={stars} onToggle={(id) => setStars((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < 2 ? [...s, id] : s))}
-        onConfirm={() => { setRun(newRun(seed, org!, stars)); sting({ id: "run.start", kicker: "New campaign", title: "Welcome to the house", sub: `${org!.name.replace(/^SYN /, "")} · season one`, tone: "gold", ms: 2200, cue: "ranked.opponent.found" }); go("roster"); }} />;
+        onConfirm={() => { setRun(newRun(seed, org!, stars)); sting({ id: "run.start", kicker: "New campaign", title: "Welcome to the house", sub: `${org!.name.replace(/^SYN /, "")} · season one`, tone: "gold", ms: 2200, cue: "dynasty.season.segment" }); go("roster"); }} />;
       break;
     case "roster":
       body = <RosterScreen run={run!} onNext={() => go("season")} />;
@@ -126,7 +136,7 @@ function Flow({ initialSeed }: { initialSeed: string }) {
       body = <SeasonScreen run={run!} onBegin={beginSeries} />;
       break;
     case "recruit":
-      body = <RecruitScreen run={run!} picked={offer} onPick={setOffer} onSign={(p: Player) => { setRun(signPlayer(run!, p)); sting({ id: "player.sign", kicker: "Signed", title: p.name.replace(/^SYN-/, ""), sub: `${p.role.toUpperCase()} · honeymoon on`, tone: "gold", cue: "ranked.points.awarded" }); go("prep"); }} onSkip={() => go("prep")} />;
+      body = <RecruitScreen run={run!} picked={offer} onPick={setOffer} onSign={(p: Player) => { setRun(signPlayer(run!, p)); sting({ id: "player.sign", kicker: "Signed", title: p.name.replace(/^SYN-/, ""), sub: `${p.role.toUpperCase()} · honeymoon on`, tone: "gold", cue: "dynasty.recruit.sign" }); go("prep"); }} onSkip={() => go("prep")} />;
       break;
     case "prep":
       body = <PrepScreen run={run!} picks={prep}
@@ -139,7 +149,7 @@ function Flow({ initialSeed }: { initialSeed: string }) {
       break;
     case "draft":
       body = <DraftScreen run={run!} picks={picks} onPick={(r, id) => setPicks((p) => ({ ...p, [r]: id }))}
-        onLock={() => { setGame(null); sting({ id: "draft.lock", kicker: `Game ${run!.series!.games.length + 1} · vs ${SEASON[run!.nodeIdx].opp.name.replace(/^SYN /, "")}`, title: "Draft locked", sub: "Walk out.", tone: "gold", cue: "ranked.answer.lock" }); go("game"); }} />;
+        onLock={() => { setGame(null); sting({ id: "draft.lock", kicker: `Game ${run!.series!.games.length + 1} · vs ${SEASON[run!.nodeIdx].opp.name.replace(/^SYN /, "")}`, title: "Draft locked", sub: "Walk out.", tone: "gold", cue: "dynasty.draft.lock_all" }); if (run!.nodeIdx === SEASON.length - 1 && run!.series!.games.length === 0) setCine("finals_intro"); go("game"); }} />;
       break;
     case "game":
       body = <GameView key={`${run!.nodeIdx}-${run!.series!.games.length}`} run={run!} picks={picks as Record<Role, string>} onDone={finishCurrentGame} onMood={setGameMood} />;
@@ -178,6 +188,7 @@ function Flow({ initialSeed }: { initialSeed: string }) {
             <span className="hidden text-white/50 sm:inline">{SEASON[Math.min(run!.nodeIdx, SEASON.length - 1)].label}</span>
             {run!.series ? <span data-testid="run-bar-series" className="whitespace-nowrap text-white/70">Series <b className="dyn-num text-white">{run!.series.wins}–{run!.series.losses}</b></span> : null}
             <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-white/55">Cohesion <Pips n={run!.cohesion} max={5} label="Cohesion" /></span>
+            <AmbienceButton />
             <Sheet open={rosterOpen} onOpenChange={setRosterOpen}>
               <SheetTrigger asChild><button type="button" data-testid="roster-open" aria-label="Open roster" className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 text-white/80 transition-colors hover:border-[#e3c66f]/50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]"><Users className="h-4 w-4" aria-hidden /></button></SheetTrigger>
               <SheetContent side="right" className="dyn-scroll w-full overflow-y-auto border-white/10 bg-[#0b1727] text-white sm:max-w-md" data-testid="roster-sheet" style={accentStyle(activeOrg?.id)}>
@@ -187,11 +198,12 @@ function Flow({ initialSeed }: { initialSeed: string }) {
             </Sheet>
           </div>
         </div>
-      ) : null}
+      ) : <div className="fixed right-3 top-[3.25rem] z-20"><AmbienceButton /></div>}
       <main ref={mainRef} className="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-8 pt-4" data-testid="dynasty-v2-main">
         {screen !== "home" ? <ProtoBanner compact={screen === "game"} /> : null}
         {screen === "game" ? body : <Scene id={SCENE_FOR[screen]} caption={screen !== "home"}>{body}</Scene>}
       </main>
+      {cine && run ? <FullFrame kind={cine} org={run.org} opp={SEASON[Math.min(run.nodeIdx, SEASON.length - 1)].opp.name} team={run.org.name.replace(/^SYN /, "")} onDone={closeCine} cue={cine === "finals_intro" ? "dyn.series.finals_intro" : undefined} /> : null}
     </div>
   );
 }

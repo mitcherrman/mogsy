@@ -4,13 +4,21 @@
  */
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const motion = vi.hoisted(() => ({ allowed: false }));
 vi.mock("@/lib/motion/useReveal", async (orig) => ({ ...(await orig<typeof import("@/lib/motion/useReveal")>()), useMotionAllowed: () => motion.allowed }));
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: () => undefined, stop: () => undefined, preload: () => undefined }) }));
 
 import DynastyV2Prototype from "./DynastyV2Prototype";
+import { CasterPop, ChatBurst, ambience, ambientNewGame, ambientQuestionOpen, ambientResetForTests } from "./broadcast";
+import { FullFrame } from "./cinematics";
+import { ORGS } from "./fixtures";
+import { MEDIA_SLOTS } from "./media";
+import { MOMENT_CUES } from "./audio";
+
+// VIS-F3: the ambient budget and settings are module state; start every test clean.
+beforeEach(() => { ambientResetForTests(); ambience.resetForTests(); try { localStorage.clear(); } catch { /* jsdom */ } });
 
 const click = (id: string) => fireEvent.click(screen.getByTestId(id));
 const has = (id: string) => screen.queryByTestId(id) !== null;
@@ -434,5 +442,108 @@ describe("VIS-F2 cinematic layer", () => {
     const sizes = within(sheet).getAllByTestId(/^roster-/).map((el) => el.getAttribute("data-size"));
     expect(sizes.filter((s) => s === "star").length).toBe(2);
     expect(sizes.filter((s) => s === "bench").length).toBe(3);
+  });
+});
+
+// ───────────────────────────────────────────────────────────── VIS-F3
+
+describe("VIS-F3 living worlds and cinematic media", () => {
+  it("routes every stinger and moment through a Dynasty cue (no silent ranked.round.final left)", () => {
+    expect(MOMENT_CUES["dyn.series.match_point"]).toBe("dynasty.series.match_point");
+    expect(MOMENT_CUES["dyn.obj.elder_start"]).toBe("dynasty.obj.elder_start");
+    expect(MOMENT_CUES["dyn.game.stage_open"]).toBe("dynasty.game.stage_open");
+    expect(MOMENT_CUES["dyn.game.contests.tile"]).toBe("dynasty.game.tile");
+    // media slots VIS-F3 draws exist in the registry with provenance
+    for (const id of ["player.trait_chip", "finals.intro_card", "end.trophy", "obj.baron.pit_backdrop", "frame.championship", "draft.champion_splash_strip"]) {
+      expect(MEDIA_SLOTS[id]?.provenance).toBe("code");
+    }
+  });
+
+  it("rate-limits ambient text: one item per 8 s, nothing during an open question, settings switch layers off", () => {
+    ambientNewGame("t1");
+    const { rerender } = render(<div><CasterPop moment="stage.open" k="a" /><ChatBurst moment="game.win" k="b" /></div>);
+    expect(screen.getAllByTestId("caster-pop").length).toBe(1);
+    expect(screen.queryByTestId("chat-burst")).toBeNull(); // second item inside the 8 s gap is dropped, not queued
+    expect(screen.getByTestId("caster-pop").textContent).toMatch(/Simulated/);
+    ambientResetForTests(); ambientNewGame("t2"); ambientQuestionOpen(true);
+    rerender(<div><CasterPop moment="stage.open" k="c" /></div>);
+    expect(screen.queryByTestId("caster-pop")).toBeNull();
+    ambientQuestionOpen(false); ambientResetForTests(); ambientNewGame("t3");
+    rerender(<div><CasterPop moment="stage.open" k="d" exempt /><ChatBurst moment="game.win" k="e" exempt /></div>);
+    expect(screen.getByTestId("chat-burst").textContent).toMatch(/Simulated chat/);
+    act(() => ambience.set({ master: false }));
+    expect(screen.queryByTestId("caster-pop")).toBeNull();
+    expect(screen.queryByTestId("chat-burst")).toBeNull();
+  });
+
+  it("labels simulated state: trait chips and condition rows carry Generated in-run, portraits run the placeholder tier", () => {
+    mount();
+    click("home-new"); click("org-choose-ember");
+    const stars = screen.getAllByTestId(/^star-/);
+    fireEvent.click(stars[0]); fireEvent.click(stars[1]);
+    click("stars-confirm"); // roster screen: five starter cards
+    expect(screen.getAllByText("Generated in-run").length).toBeGreaterThanOrEqual(5);
+    const tiers = document.querySelectorAll('[data-tier="placeholder"]');
+    expect(tiers.length).toBeGreaterThanOrEqual(5);
+    expect(document.querySelectorAll('[data-tier="real"]').length).toBe(0); // no licensed real-player imagery in the prototype
+    // the Ambience & sound sheet opens from the run bar and switches the caster desk off
+    click("roster-continue");
+    click("ambience-open");
+    expect(screen.getByTestId("ambience-sheet")).toBeInTheDocument();
+    expect(screen.getByTestId("snd-test")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("amb-master"));
+    expect(ambience.get().master).toBe(false);
+    fireEvent.click(screen.getByTestId("amb-master"));
+    expect(ambience.get().master).toBe(true);
+  });
+
+  it("walks out with the lineup strip and tunnel frame, marks the stadium variant, and labels Dragon questions prototype-only", () => {
+    mount();
+    setup(); enterSeries(); draftAndLock();
+    const gv = screen.getByTestId("game-view");
+    expect(gv.getAttribute("data-scene")).toBe("tunnel");
+    expect(gv.getAttribute("data-variant")).toBe("normal");
+    expect(screen.getByTestId("lineup-strip").getAttribute("data-comp")).not.toBe("");
+    expect(screen.getAllByTestId("lineup-tile").length).toBe(5);
+    expect(screen.getByTestId("comic-frame").getAttribute("data-kind")).toBe("tunnel");
+    click("events-continue");
+    if (has("objective-panel")) {
+      const kind = screen.getByTestId("objective-panel").getAttribute("data-kind");
+      const pit = screen.getByTestId("objective-pit");
+      expect(pit.getAttribute("data-spectacle")).toBe(kind);
+      expect(pit.getAttribute("data-phase")).toBe("stakes");
+      expect(screen.getByTestId("objective-contract").getAttribute("data-contract")).toBe(kind === "baron" ? "e1" : "prototype");
+      click("objective-start");
+      expect(screen.getByTestId("objective-pit").getAttribute("data-phase")).toBe("ask");
+    }
+  });
+
+  it("gives the Baron the E1 contract label in the objective gallery", () => {
+    mount("/dev/dynasty-v2?view=objectives");
+    const panel = screen.getByTestId("objective-panel");
+    expect(panel.getAttribute("data-kind")).toBe("baron");
+    expect(screen.getByTestId("objective-contract").getAttribute("data-contract")).toBe("e1");
+    expect(screen.getByTestId("objective-pit").getAttribute("data-spectacle")).toBe("baron");
+  });
+
+  it("shows a W3 full frame for at most 3 s and lets the player skip it", () => {
+    vi.useFakeTimers();
+    try {
+      const done = vi.fn();
+      render(<FullFrame kind="championship" org={ORGS[0]} team="Ember Wing" onDone={done} />);
+      expect(screen.getByTestId("cine-full").getAttribute("data-kind")).toBe("championship");
+      act(() => { vi.advanceTimersByTime(3001); });
+      expect(done).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId("cine-full")).toBeNull();
+      cleanup();
+      const done2 = vi.fn();
+      render(<FullFrame kind="finals_intro" org={ORGS[1]} opp="SYN Crown of Ash" team="Tide Front" onDone={done2} />);
+      expect(screen.getByText("Worlds Final")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("cine-skip"));
+      expect(done2).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId("cine-full")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

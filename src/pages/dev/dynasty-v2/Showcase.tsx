@@ -18,7 +18,11 @@ import { EndScreen, GameResultScreen, SeriesScreen } from "./screens";
 import { CasterPop, ChatBurst, CrowdMeter, StingerHost, useStinger, type StingerSpec } from "./broadcast";
 import { ChampionCard, PlayerCard } from "./cards";
 import { MEDIA_SLOTS, SCENE_META, type SceneId } from "./media";
-import { Scene } from "./scenes";
+import { Scene, type StadiumVariant } from "./scenes";
+import { CineFrame, FullFrame, type FullFrameKind } from "./cinematics";
+import { ObjectiveSpectacle } from "./spectacle";
+import { AmbiencePanel } from "./ambience";
+import "./vis-f3.css";
 import { PanelArt, StoryBeat } from "./story";
 
 interface Fixture { won: { run: Run; game: Game; summary: GameSummary }; lost: { run: Run; game: Game; summary: GameSummary } | null; seriesWon: Run; seriesLost: Run | null; champion: Run; over: Run }
@@ -84,17 +88,20 @@ export function Showcase() {
   const fx = useMemo(build, []);
   const [take, setTake] = useState(0);
   const [scene, setScene] = useState<SceneId>("stadium");
+  const [variant, setVariant] = useState<StadiumVariant>("normal");
+  const [full, setFull] = useState<FullFrameKind | null>(null);
   const noop = () => undefined;
   const roster = ROLES.map((r) => fx.won.run.starters[r]);
   return (
     <StingerHost>
       <div className="dyn min-h-screen pt-11" data-mood="victory" data-testid="showcase">
-        <Scene id={scene} caption={false}>
+        {full ? <FullFrame kind={full} org={fx.won.run.org} opp="SYN Crown of Ash" team={fx.won.run.org.name.replace(/^SYN /, "")} onDone={() => setFull(null)} /> : null}
+        <Scene id={scene} caption={false} variant={variant}>
           <main className="mx-auto flex max-w-4xl flex-col gap-8 px-4 pb-12 pt-4" key={take}>
             <ProtoBanner />
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <Eyebrow>VIS-F2 · Showcase</Eyebrow>
+                <Eyebrow>VIS-F2 / F3 · Showcase</Eyebrow>
                 <h1 tabIndex={-1} className="dyn-title dyn-title--gold text-[30px] font-bold leading-tight outline-none sm:text-[36px]">The big moments</h1>
                 <p className="text-[13px] text-white/60">Rare and high-stakes states, side by side. Synthetic data; buttons here do nothing but replay motion.</p>
               </div>
@@ -105,7 +112,47 @@ export function Showcase() {
               <div className="flex flex-wrap gap-2" role="group" aria-label="Scene">
                 {(Object.keys(SCENE_META) as SceneId[]).map((id) => <Btn key={id} testId={`scene-${id}`} primary={id === scene} className="min-h-[36px] px-3 py-1 text-[12px]" onClick={() => setScene(id)}>{SCENE_META[id].name}</Btn>)}
               </div>
+              {scene === "stadium" ? (
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Stadium variant">
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-white/45">Variant</span>
+                  {(["normal", "elimination", "finals"] as StadiumVariant[]).map((v) => <Btn key={v} testId={`scene-variant-${v}`} primary={v === variant} className="min-h-[32px] px-3 py-1 text-[12px] capitalize" onClick={() => setVariant(v)}>{v}</Btn>)}
+                </div>
+              ) : null}
               <p className="text-[12px] text-white/55">Slot <code className="text-white/75">scene.{scene}</code>: {MEDIA_SLOTS[`scene.${scene}`].fill === "mogzy-asset" ? `Mogzy asset ${MEDIA_SLOTS[`scene.${scene}`].src}` : "painted in CSS / SVG"} · brief: {MEDIA_SLOTS[`scene.${scene}`].brief}</p>
+            </Section>
+
+            <Section title="W3 full frames · ≤ 3 s, skippable, static under reduced motion">
+              <div className="flex flex-wrap gap-2">
+                <Btn testId="fire-frame-finals_intro" onClick={() => setFull("finals_intro")}>Worlds Final intro</Btn>
+                <Btn testId="fire-frame-championship" onClick={() => setFull("championship")}>Championship</Btn>
+              </div>
+              <p className="text-[12px] text-white/55">In the run these fire once: the Final intro at draft lock of game 1 of the Worlds Final, the championship when the series is won.</p>
+            </Section>
+
+            <Section title="Objective spectacles · the pit as a place on the map">
+              <div className="grid gap-3 sm:grid-cols-3">
+                {(["baron", "dragon", "elder"] as const).map((k) => (
+                  <div key={k} className="dyn-plate dyn-plate--ornate overflow-hidden p-4" data-testid={`showcase-spectacle-${k}`}>
+                    <ObjectiveSpectacle kind={k} phase="stakes"><p className="dyn-title text-[16px] font-semibold capitalize text-white">{k === "baron" ? "Baron Nashor · E1 contract" : `${k} · prototype-only`}</p></ObjectiveSpectacle>
+                  </div>
+                ))}
+                <div className="dyn-plate overflow-hidden p-4"><ObjectiveSpectacle kind="baron" phase="outcome" tone="great"><p className="dyn-title text-[14px] text-[#f2dc98]">Baron · 3 of 3 · exceptional</p></ObjectiveSpectacle></div>
+                <div className="dyn-plate overflow-hidden p-4"><ObjectiveSpectacle kind="baron" phase="outcome" tone="bad"><p className="dyn-title text-[14px] text-rose-200">Baron · 0 of 3 · disaster</p></ObjectiveSpectacle></div>
+                <div className="dyn-plate overflow-hidden p-4"><ObjectiveSpectacle kind="elder" phase="ask"><p className="dyn-title text-[14px] text-white">Elder · questions open (compact)</p></ObjectiveSpectacle></div>
+              </div>
+            </Section>
+
+            <Section title="Comic frames · W2, in the flow, never blocking">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <CineFrame kind="signing" kicker="Transfer window" title="Rex Dunmore signs for Ember Wing" caption="Cohesion dips, the honeymoon lifts confidence for one series." />
+                <CineFrame kind="tunnel" kicker="Game 1 · Worlds Final" title="Walking out" caption="Ember Wing vs Crown of Ash" />
+                <CineFrame kind="outplay" kicker="Rare event · generated in-run" title="Top turns a 1v2 into a turret" caption="A 1v2 turned into a turret." />
+                <CineFrame kind="elim_victory" kicker="Facing elimination" title="Victory · 2–2" caption="Still alive. One more." />
+              </div>
+            </Section>
+
+            <Section title="Ambience & sound · the controls (04 rule 5)">
+              <div className="dyn-plate p-4"><AmbiencePanel /></div>
             </Section>
 
             <Section title="Stingers · one per signature moment">
@@ -122,9 +169,9 @@ export function Showcase() {
 
             <Section title="Broadcast layer · casters, chat, crowd">
               <div className="grid gap-3 sm:grid-cols-2">
-                <CasterPop moment="objective.offer" k="showcase" ctx={{ objective: "Baron Nashor" }} />
-                <CasterPop moment="championship" k="showcase" ctx={{ team: "Ember Wing" }} />
-                <ChatBurst moment="objective.result" k="showcase" n={4} />
+                <CasterPop moment="objective.offer" k="showcase" ctx={{ objective: "Baron Nashor" }} exempt />
+                <CasterPop moment="championship" k="showcase" ctx={{ team: "Ember Wing" }} exempt />
+                <ChatBurst moment="objective.result" k="showcase" n={4} exempt />
                 <div className="flex flex-col gap-3"><CrowdMeter level={0.35} label="Crowd · even" /><CrowdMeter level={0.7} label="Crowd · Baron" /><CrowdMeter level={1} label="Crowd · title" /></div>
               </div>
             </Section>
