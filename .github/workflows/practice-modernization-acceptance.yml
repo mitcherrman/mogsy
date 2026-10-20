@@ -5,6 +5,9 @@ name: practice-modernization-acceptance
 # 360x640, 844x390), plus loading/error, keyboard, reduced motion and the
 # leave guard. Bundled Chromium on the GitHub runner, one worker (AGENTS.md).
 on:
+  push:
+    branches:
+      - "practice-modernization/**"
   pull_request:
     paths:
       - "src/pages/Quiz.tsx"
