@@ -133,7 +133,10 @@ R2 adds `src/lib/patch-deck/focal.ts` (+ test) and `src/components/patch-deck/De
 
 ### 11.6 Merge, publish, live check
 
-Filled in after the merge (see the follow-up commit on main).
+- **Acceptance run:** Patch Deck Acceptance run `39363781461` on `49bc5d61` — 11/11 passed, no retries (https://github.com/mitcherrman/mogsy/actions/runs/39363781461). The PR head `1989cb4b` adds only this handoff.
+- **Merged** 2026-10-20 ~03:40Z: PR #96 → `main` **`4dfd8211944f3d0362db3930e1ada3b17f699a2c`** (merge commit; parents `332f9df6` main, `1989cb4b` release head). Its tree is the verified head plus PM1's five docs/workflow files (`332f9df6`), no overlap. No force, no protection bypass.
+- **Publish: pending, owner action.** At merge time mogzy.lol served entry `assets/index-TGeIurJl.js`, which has no `patch-deck` route. Lovable publishing has no API or tool here and AGENTS.md rules out driving a local browser, so the owner publishes: Lovable → the Mogzy project → confirm it has synced `main` ≥ `4dfd8211` → **Publish** (Update). If the published entry does not change, Lovable has not synced from GitHub; past releases needed a re-sync (or a no-op commit to `main`) and a second Publish.
+- **Live check after publish:** Actions → *Patch Deck Acceptance* → *Run workflow* on `main` with `base_url` = `https://mogzy.lol` (same 11 checks against the published site). Quick markers: `https://mogzy.lol/lol/patch-deck` shows "PATCH HUB · Deck View"; the entry JS contains `patch-deck`; `/lol/patch-reports` shows the List | Deck switch.
 
 ### 11.7 Rollback
 
