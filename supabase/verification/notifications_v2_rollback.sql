@@ -32,6 +32,7 @@ DROP FUNCTION IF EXISTS public.admin_reopen_notification(uuid);
 DROP FUNCTION IF EXISTS public.get_my_notifications(text, integer, timestamptz, uuid);
 DROP FUNCTION IF EXISTS public.get_my_notification_summary();
 DROP FUNCTION IF EXISTS public.set_my_notification_state(uuid[], text);
+DROP FUNCTION IF EXISTS public.set_my_notification_preferences(text[]);
 
 -- admin_unread_notification_count() back to its 20260803121000 body BEFORE
 -- the row source it now reads is dropped.

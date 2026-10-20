@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { focusHighlight, useFocusRecord } from "@/lib/notifications/focus";
 import { Flag, CheckCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,7 @@ interface UserReport {
 export default function AdminUserReports() {
   const [reports, setReports] = useState<UserReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const focusId = useFocusRecord(!loading);
 
   useEffect(() => {
     loadReports();
@@ -81,7 +83,7 @@ export default function AdminUserReports() {
         <p className="text-sm text-muted-foreground text-center py-6">No reports</p>
       ) : (
         reports.map(r => (
-          <div key={r.id} className={`p-3 rounded-xl border ${r.status === "pending" ? "border-destructive/30 bg-destructive/5" : "border-border bg-card opacity-60"}`}>
+          <div key={r.id} data-focus-id={r.id} className={`p-3 rounded-xl border ${r.status === "pending" ? "border-destructive/30 bg-destructive/5" : "border-border bg-card opacity-60"} ${focusId === r.id ? focusHighlight : ""}`}>
             <div className="flex items-start gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">

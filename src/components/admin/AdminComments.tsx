@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { focusHighlight, useFocusRecord } from "@/lib/notifications/focus";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,8 @@ export default function AdminComments() {
   const [showHidden, setShowHidden] = useState(false);
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // A reported comment may already be auto-hidden, so a deep link shows hidden ones too.
+  const focusId = useFocusRecord(!loading, () => setShowHidden(true));
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -283,7 +286,7 @@ export default function AdminComments() {
             </TableHeader>
             <TableBody>
               {filtered.map((comment) => (
-                <TableRow key={comment.id} className={comment.is_hidden ? "opacity-50" : ""}>
+                <TableRow key={comment.id} data-focus-id={comment.id} className={`${comment.is_hidden ? "opacity-50" : ""} ${focusId === comment.id ? focusHighlight : ""}`}>
                   <TableCell>
                     <Checkbox
                       checked={selected.has(comment.id)}

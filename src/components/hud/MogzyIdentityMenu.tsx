@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Bell,
   ChevronDown,
+  ChevronRight,
   Flag,
   Info,
   Megaphone,
@@ -21,7 +22,6 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -44,109 +44,31 @@ import { signupHrefFor } from "@/lib/hud/identity";
 import { authHref } from "@/lib/auth/auth-destination";
 import { queryClient } from "@/lib/query-client";
 import { hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
+import type { AdminInboxItem, PlayerInboxItem } from "@/lib/notifications/api";
+import { adminRecordLink, formatRelative } from "@/lib/notifications/policy";
+import { useAdminInbox } from "@/lib/notifications/useAdminInbox";
+import { usePlayerInbox } from "@/lib/notifications/usePlayerInbox";
 
 /**
- * Types the bell is allowed to render, stated explicitly.
- *
- * This replaces the previous league-mode-derived allowlist, which was
- * opaque about *why* a type was hidden and — because it listed only LoL product
- * types — silently discarded every automatically generated notification. All
- * four database triggers write into user_notifications, and none of the four
- * types they produce was on that list, so the rows accumulated unread and
- * unseen. The bell showed "No notifications yet" no matter what happened.
- *
- * The list is now a deny-by-default allowlist with a documented reason per
- * group. Anything absent — including a type introduced later by a migration the
- * client has not caught up with — is suppressed rather than rendered blind.
+ * Notifications 2.0 (#92). What the bell lists is decided by the SERVER:
+ * get_my_notifications() returns only this account's ACTIVE inbox — addressed
+ * to them, not done, not expired (unless saved), not resolved, not muted, and
+ * only categories a player may see (comment notifications, the retired Mogsy
+ * types and any unknown type never render). The badge comes from
+ * get_my_notification_summary(), so it can never count a suppressed, expired
+ * or done row. src/lib/notifications/policy.ts states the same policy and a
+ * test pins it to the SQL.
  */
-const SUPPORTED_NOTIFICATION_TYPES = new Set([
-  // Social, produced by notify_on_friendship_change() (20260523081658).
-  "friend_request",
-  "friend_accepted",
-  // Admin-authored announcements. `general` is the historical default type and
-  // is a legitimate site-wide announcement.
-  "general",
-  "update",
-  "warning",
-  "lol_quiz",
-  "quiz_broadcast",
-  "combat_lab",
-  "lol_patch",
-  "esports_quiz",
-  "lol_site_notice",
-]);
-
-/**
- * Suppressed on purpose, so an unrecognised type and a deliberately hidden one
- * stay distinguishable when debugging. Kept as documentation — behaviour comes
- * from SUPPORTED_NOTIFICATION_TYPES alone, so nothing breaks if a type appears
- * in neither set.
- *
- *   comment_reply / comment_reaction — comment notifications are not activated
- *     yet; the triggers keep writing rows for when they are.
- *   new_item / elo_milestone / new_league / promotion / spotlight — legacy
- *     Mogsy social product, not part of the League experience.
- */
-const INTENTIONALLY_SUPPRESSED_TYPES = new Set([
-  "comment_reply",
-  "comment_reaction",
-  "new_item",
-  "elo_milestone",
-  "new_league",
-  "promotion",
-  "spotlight",
-]);
-
-export const isSupportedNotificationType = (type: string | null | undefined): boolean =>
-  typeof type === "string" && SUPPORTED_NOTIFICATION_TYPES.has(type);
-
-export const isIntentionallySuppressedType = (type: string | null | undefined): boolean =>
-  typeof type === "string" && INTENTIONALLY_SUPPRESSED_TYPES.has(type);
-
-/**
- * The columns the bell reads, stated explicitly.
- *
- * COM1-1 / P0-1A. This was `select("*")`, which pulled `sent_by_user_id` — the
- * OTHER account's Supabase auth id on every trigger-generated social row — into
- * the recipient's browser. Migration 20260823120000 stops that id being written
- * at all, which is the actual fix; this list is the second half of it, and the
- * durable half: a `*` re-publishes whatever column is added to the table next,
- * to whoever can read the row. An allow-list cannot.
- *
- * Every name here backs a field of `UserNotification` below. Adding one means
- * deciding, deliberately, that a recipient may see it.
- */
-const NOTIFICATION_COLUMNS =
-  "id, title, message, type, image_url, created_at, target_type, profile_id, metadata, action_url";
-
-interface UserNotification {
-  id: string;
-  title: string;
-  message: string | null;
-  type: string;
-  image_url: string | null;
-  created_at: string;
-  target_type: string;
-  profile_id: string | null;
-  metadata: any;
-  action_url: string | null;
-}
-
-interface AdminNotif {
-  id: string;
-  type: string;
-  title: string;
-  message: string | null;
-  created_at: string;
-  metadata: any;
-}
-
 const typeIcons: Record<string, typeof Bell> = {
   general: Bell,
   update: Zap,
   warning: AlertTriangle,
+  security_notice: ShieldAlert,
   friend_request: UserPlus,
   friend_accepted: UserCheck,
+  feedback_update: MessageSquare,
+  achievement_unlocked: Trophy,
+  progression_milestone: Trophy,
   lol_quiz: Star,
   quiz_broadcast: Megaphone,
   combat_lab: Zap,
@@ -163,6 +85,19 @@ const adminTypeIcons: Record<string, typeof Bell> = {
   feedback: MessageSquare,
   mod_delete_request: ShieldAlert,
 };
+
+const ADMIN_NOTIFICATIONS_PATH = "/admin/operations?section=notifications";
+
+/**
+ * Interrupt only for what is personal or important. Routine announcements wait
+ * quietly in the inbox instead of toasting every visitor at once.
+ */
+const shouldToast = (item: PlayerInboxItem): boolean =>
+  item.category === "social" ||
+  item.category === "feedback" ||
+  item.category === "account" ||
+  item.category === "security" ||
+  (item.category === "announcement" && (item.priority === "high" || item.priority === "urgent"));
 
 /** One row of the panel's utility footer — same target size and focus
  *  treatment whether it is a link or a button. */
@@ -234,17 +169,7 @@ export default function MogzyIdentityMenu() {
   // chosen on the Profile page, which this menu already links to directly.
   const signupHref = signupHrefFor(pathname);
 
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
-  const [adminNotifs, setAdminNotifs] = useState<AdminNotif[]>([]);
-  const [readAdminIds, setReadAdminIds] = useState<Set<string>>(new Set());
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  // OWN1.1: the owner feed loads on its own effect, so its failure is kept
-  // apart from the inbox load — a later inbox success must not paper over it.
-  const [adminFeedFailed, setAdminFeedFailed] = useState(false);
-  const panelStatus = status === "ready" && adminFeedFailed ? "error" : status;
-  const myProfileIdRef = useRef<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -275,221 +200,37 @@ export default function MogzyIdentityMenu() {
     { invite: ChampionCardDuelInvite; mode: "empty" | "occupied" | "blocked"; message: string } | null
   >(null);
 
-  const loadNotifications = useCallback(async () => {
-    if (!user) return;
+  const player = usePlayerInbox({
+    enabled: isAccount,
+    userId: user?.id ?? null,
+    signupAt: user?.created_at ?? null,
+    pageSize: 20,
+    onArrival: item => {
+      if (!shouldToast(item)) return;
+      toast(item.title, { description: item.message || undefined, icon: item.imageUrl ? undefined : "🔔" });
+    },
+  });
 
-    // Only notifications created at or after the user's signup time.
-    const signupCutoff = user.created_at ?? new Date(0).toISOString();
+  // OWN1.1: the owner feed loads when (and only when) the owner session is
+  // authorized — its RLS needs a trusted session. The bell shows the top of
+  // Action Required plus the counters; the full inbox is the admin page, and
+  // both read the same per-admin state, so they agree without a reload.
+  const admin = useAdminInbox({
+    enabled: isAdmin,
+    userId: user?.id ?? null,
+    tab: "action",
+    pageSize: 3,
+    onArrival: n => toast(n.title, { description: n.message || undefined, icon: "🛡️" }),
+  });
 
-    const [notifRes, readRes] = await Promise.all([
-      supabase
-        .from("user_notifications")
-        .select(NOTIFICATION_COLUMNS)
-        .gte("created_at", signupCutoff)
-        .order("created_at", { ascending: false })
-        .limit(30),
-      supabase.from("user_notification_reads").select("notification_id").eq("user_id", user.id),
-    ]);
-
-    // A failed read of either table means we genuinely do not know the state.
-    // Surfacing that beats rendering a confidently empty bell.
-    if (notifRes.error) throw notifRes.error;
-    if (readRes.error) throw readRes.error;
-
-    const myProfileId = myProfileIdRef.current;
-    const rows = ((notifRes.data as UserNotification[]) || []).filter(n => {
-      if (!isSupportedNotificationType(n.type)) return false;
-      // The RLS policy grants admins every row, including other users' targeted
-      // notifications. Without this the admin bell listed strangers' friend
-      // requests. Recipient scoping belongs in the client too, not only in RLS.
-      return n.target_type === "all" || (n.profile_id != null && n.profile_id === myProfileId);
-    });
-
-    setNotifications(rows);
-    setReadIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
-  }, [user]);
-
-  /**
-   * Admin read state is per admin, and comes from admin_notification_reads.
-   *
-   * It used to come from admin_notifications.is_read, which is a single global
-   * boolean: whichever admin opened a row first marked it read for every other
-   * admin. `is_read` survives, but it now means only "this moderator delete
-   * request has been approved or denied" and is deliberately not selected here.
-   */
-  const loadAdminNotifs = useCallback(async () => {
-    if (!user) return;
-    const [notifRes, readRes] = await Promise.all([
-      supabase
-        .from("admin_notifications")
-        .select("id, type, title, message, created_at, metadata")
-        .order("created_at", { ascending: false })
-        .limit(30),
-      supabase
-        .from("admin_notification_reads")
-        .select("notification_id")
-        .eq("admin_user_id", user.id),
-    ]);
-    // A failed read of either table means the read state is genuinely unknown,
-    // and the caller turns that into the panel's error state — the same
-    // contract loadNotifications already keeps for the user-side inbox.
-    if (notifRes.error) throw notifRes.error;
-    if (readRes.error) throw readRes.error;
-    setAdminNotifs((notifRes.data || []) as AdminNotif[]);
-    setReadAdminIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
-  }, [user]);
-
-  useEffect(() => {
-    if (!isAccount || !user) {
-      setStatus("loading");
-      return;
-    }
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const { data: profile } = await supabase
-          .from("profiles").select("id").eq("user_id", user.id).maybeSingle();
-        if (cancelled) return;
-        myProfileIdRef.current = profile?.id ?? null;
-
-        await loadNotifications();
-        if (!cancelled) setStatus("ready");
-      } catch {
-        // Never leave the bell stuck in "loading" — that is what made a failed
-        // query indistinguishable from a slow one and hid the bell entirely.
-        if (!cancelled) setStatus("error");
-      }
-    })();
-
-    const channel = supabase
-      .channel("user-notifications")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "user_notifications" },
-        (payload) => {
-          const notif = payload.new as UserNotification;
-          const isForMe =
-            notif.target_type === "all" ||
-            (notif.profile_id != null && notif.profile_id === myProfileIdRef.current);
-          if (!isForMe) return;
-          if (!isSupportedNotificationType(notif.type)) return;
-          const signedUpAt = user.created_at ? new Date(user.created_at).getTime() : 0;
-          if (signedUpAt && new Date(notif.created_at).getTime() < signedUpAt) return;
-          setNotifications(prev =>
-            prev.some(n => n.id === notif.id) ? prev : [notif, ...prev]
-          );
-          toast(notif.title, {
-            description: notif.message || undefined,
-            icon: notif.image_url ? undefined : "🔔",
-          });
-        }
-      )
-      /**
-       * COM1-2B — close the reconnect gap.
-       *
-       * A websocket that drops (tab suspended, network flap, server restart)
-       * re-subscribes silently, and Realtime does NOT replay what was missed
-       * while it was down. Anything that arrived in that window stayed invisible
-       * until a full page reload — which is exactly the class of "the bell is
-       * stale" the phase is closing. Re-reading on every SUBSCRIBED transition
-       * (the first one included, harmlessly) covers it.
-       *
-       * This cannot duplicate a row: `loadNotifications` REPLACES the list from
-       * a server read, and the streaming handler above keys on `notif.id`. A
-       * notification already read stays read — `readIds` comes from
-       * user_notification_reads in the same load, not from local memory.
-       */
-      .subscribe((subscriptionStatus) => {
-        if (subscriptionStatus !== "SUBSCRIBED") return;
-        void loadNotifications().catch(() => {
-          // A failed catch-up is not worth destroying a rendered inbox over;
-          // the next reconnect or the next open tries again.
-        });
-      });
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [isAccount, user, loadNotifications]);
-
-  // Owner feed: loaded when (and only when) the owner session is authorized.
-  // OWN1.1 replaced the legacy user_roles admin/master_admin read here — those
-  // rows were retired by OWN1, which silently emptied the owner's bell.
-  useEffect(() => {
-    if (!isAdmin) {
-      setAdminNotifs([]);
-      setAdminFeedFailed(false);
-      return;
-    }
-    let cancelled = false;
-    loadAdminNotifs().then(
-      () => { if (!cancelled) setAdminFeedFailed(false); },
-      () => { if (!cancelled) setAdminFeedFailed(true); },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, loadAdminNotifs]);
-
-  // Admin-only realtime stream of admin_notifications.
-  //
-  // A newly arrived notification carries no receipt for anyone, so it starts
-  // unread for every admin independently — there is nothing to seed into
-  // readAdminIds here.
-  useEffect(() => {
-    if (!isAdmin) return;
-    const channel = supabase
-      .channel("bell-admin-notifs")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "admin_notifications" },
-        (payload) => {
-          const n = payload.new as AdminNotif;
-          setAdminNotifs(prev =>
-            prev.some(x => x.id === n.id) ? prev : [n, ...prev].slice(0, 30)
-          );
-          toast(n.title, { description: n.message || undefined, icon: "🛡️" });
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [isAdmin]);
-
-  /**
-   * Own receipts, streamed. Reading something in one tab has to settle in the
-   * others, and the admin notifications page writes the same receipts — without
-   * this the two surfaces disagree until a reload.
-   *
-   * The filter is belt and braces: the SELECT policy on admin_notification_reads
-   * is `auth.uid() = admin_user_id`, and realtime applies it, so another admin's
-   * receipt can never arrive here and can never clear this admin's badge.
-   */
-  useEffect(() => {
-    if (!isAdmin || !user) return;
-    const channel = supabase
-      .channel("hud-admin-notif-reads")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "admin_notification_reads",
-          filter: `admin_user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const receipt = payload.new as { notification_id: string };
-          setReadAdminIds(prev =>
-            prev.has(receipt.notification_id)
-              ? prev
-              : new Set(prev).add(receipt.notification_id)
-          );
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [isAdmin, user]);
+  // A failed read of either feed means the state is genuinely unknown; an
+  // error with a retry beats a confidently empty bell.
+  const panelStatus: "loading" | "ready" | "error" =
+    player.status === "error" || (isAdmin && admin.status === "error")
+      ? "error"
+      : player.status === "loading"
+        ? "loading"
+        : "ready";
 
   const closePanel = useCallback(() => {
     setOpen(false);
@@ -522,126 +263,38 @@ export default function MogzyIdentityMenu() {
     return () => document.removeEventListener("keydown", handler);
   }, [open, closePanel]);
 
-  /**
-   * Persist read state, then reconcile. The previous version committed the
-   * optimistic update and discarded the Supabase response entirely, so a failed
-   * write left the row looking read until the next reload silently undid it.
-   *
-   * `ignoreDuplicates` makes this safe against the mark-one / mark-all race:
-   * the table has UNIQUE(notification_id, user_id), and a plain insert raised
-   * 23505 when both paths touched the same row.
-   */
-  const persistReads = async (ids: string[]): Promise<boolean> => {
-    if (!user || ids.length === 0) return true;
-    const { error } = await supabase
-      .from("user_notification_reads")
-      .upsert(
-        ids.map(id => ({ notification_id: id, user_id: user.id })),
-        { onConflict: "notification_id,user_id", ignoreDuplicates: true },
-      );
-    return !error;
-  };
-
-  /**
-   * The admin equivalent of persistReads, against the per-admin receipt table.
-   *
-   * `admin_user_id` is always the current session's uid. It is sent because
-   * PostgREST needs the column value, not because the client chooses it — the
-   * INSERT policy independently requires `auth.uid() = admin_user_id`, so a
-   * forged id is rejected by the database rather than trusted.
-   *
-   * `ignoreDuplicates` covers the same race the user-side table has, plus one
-   * more: the admin notifications page and this panel can both record a read
-   * for the same row, and the moderator approve/deny RPC writes a receipt too.
-   */
-  const persistAdminReads = async (ids: string[]): Promise<boolean> => {
-    if (!user || ids.length === 0) return true;
-    const { error } = await supabase
-      .from("admin_notification_reads")
-      .upsert(
-        ids.map(id => ({ notification_id: id, admin_user_id: user.id })),
-        { onConflict: "notification_id,admin_user_id", ignoreDuplicates: true },
-      );
-    return !error;
-  };
-
-  const markAdminRead = async (id: string) => {
-    if (!user || readAdminIds.has(id)) return;
-    setReadAdminIds(prev => new Set(prev).add(id));
-    const ok = await persistAdminReads([id]);
-    if (!ok) {
-      // Roll back rather than leave a row looking read to this admin when
-      // nothing was written.
-      setReadAdminIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }
-  };
-
-  const markRead = async (id: string) => {
-    if (!user || readIds.has(id)) return;
-    setReadIds(prev => new Set(prev).add(id));
-    const ok = await persistReads([id]);
-    if (!ok) {
-      // Roll back so the badge keeps telling the truth.
-      setReadIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+  const actSafely = async (work: () => Promise<unknown>, failure: string) => {
+    try {
+      await work();
+    } catch {
+      toast.error(failure);
     }
   };
 
   /**
-   * Clears both sections the badge counts. It used to clear only the user
-   * notifications, so an admin with an unread admin row could press "Mark all
-   * read" and watch the badge refuse to reach zero.
-   *
-   * The two writes go to different tables and are rolled back independently:
-   * a failure on one must not resurrect rows the other successfully cleared.
-   * Both are scoped to this admin — the admin half writes receipts for
-   * auth.uid() only, so nothing here can touch another admin's read state.
+   * Clears unread in both sections the badge counts, for THIS account only:
+   * the admin half writes receipts for auth.uid() on the server, so nothing
+   * here can touch another admin's read state. Read is not resolved — an
+   * unresolved report stays in Action Required.
    */
-  const markAllRead = async () => {
-    if (!user) return;
-    const unread = notifications.filter(n => !readIds.has(n.id)).map(n => n.id);
-    const unreadAdmin = isAdmin
-      ? adminNotifs.filter(n => !readAdminIds.has(n.id)).map(n => n.id)
-      : [];
-    if (unread.length === 0 && unreadAdmin.length === 0) return;
+  const markAllRead = () =>
+    actSafely(
+      () =>
+        Promise.all([
+          player.summary.unread > 0 ? player.act(null, "read_all") : null,
+          isAdmin && (admin.counts?.unread_total ?? 0) > 0 ? admin.act(null, "read", "all") : null,
+        ]),
+      "Could not mark those as read",
+    );
 
-    const previous = readIds;
-    const previousAdmin = readAdminIds;
-    if (unread.length > 0) {
-      setReadIds(prev => {
-        const next = new Set(prev);
-        unread.forEach(id => next.add(id));
-        return next;
-      });
-    }
-    if (unreadAdmin.length > 0) {
-      setReadAdminIds(prev => {
-        const next = new Set(prev);
-        unreadAdmin.forEach(id => next.add(id));
-        return next;
-      });
-    }
-
-    const [ok, adminOk] = await Promise.all([
-      persistReads(unread),
-      persistAdminReads(unreadAdmin),
-    ]);
-    if (!ok) setReadIds(previous);
-    if (!adminOk) setReadAdminIds(previousAdmin);
-    if (!ok || !adminOk) toast.error("Could not mark those as read");
-  };
+  /** Done: leaves this player's inbox (never deleted for anyone else). */
+  const clearAll = () => actSafely(() => player.act(null, "done_all"), "Could not clear your notifications");
+  const dismiss = (n: PlayerInboxItem) => actSafely(() => player.act([n.id], "done"), "Could not dismiss that");
 
   /** Where a notification should take the user. Trigger-generated social rows
    *  carry no action_url, so their destination comes from the type. */
-  const openNotification = (n: UserNotification) => {
-    void markRead(n.id);
+  const openNotification = (n: PlayerInboxItem) => {
+    if (!n.isRead) void actSafely(() => player.act([n.id], "read"), "Could not mark that as read");
     if (n.type === "friend_request") {
       closePanel();
       window.dispatchEvent(new Event("open-friends-panel"));
@@ -657,10 +310,17 @@ export default function MogzyIdentityMenu() {
     }
     // Only in-app paths are navigable; an absolute URL would be treated as a
     // route and dead-end the user.
-    if (n.action_url && n.action_url.startsWith("/")) {
+    if (n.actionUrl && n.actionUrl.startsWith("/")) {
       closePanel();
-      navigate(n.action_url);
+      navigate(n.actionUrl);
     }
+  };
+
+  /** Admin rows open the record they are about, not a bare /admin. */
+  const openAdminItem = (item: AdminInboxItem) => {
+    if (!item.isRead) void actSafely(() => admin.act([item.id], "read"), "Could not mark that as read");
+    closePanel();
+    navigate(adminRecordLink(item)?.href ?? ADMIN_NOTIFICATIONS_PATH);
   };
 
   const handleAcceptOutcome = (
@@ -708,15 +368,16 @@ export default function MogzyIdentityMenu() {
   /**
    * Two counts, deliberately not merged.
    *
-   * `unreadCount` is informational and is what "Mark all read" clears.
+   * `unreadCount` is informational and is what "Mark all read" clears. It is
+   * the server's count of unread ACTIVE items — done, expired, muted and
+   * resolved rows never hold it up.
    * `actionableCount` is pending Champion Card Duel invites, which are resolved by
    * accepting or declining — never by reading. Folding invites into the unread
    * total made "Mark all read" look broken, because the badge could not reach
    * zero while an invite was still open.
    */
-  const unreadCount =
-    notifications.filter(n => !readIds.has(n.id)).length +
-    adminNotifs.filter(n => !readAdminIds.has(n.id)).length;
+  const adminUnread = isAdmin ? admin.counts?.unread_total ?? 0 : 0;
+  const unreadCount = player.summary.unread + adminUnread;
   const actionableCount = liveInvites.length;
   const badgeCount = unreadCount + actionableCount;
 
@@ -1036,15 +697,27 @@ export default function MogzyIdentityMenu() {
           role="dialog"
           aria-label="Notifications"
           data-testid="notification-panel"
-          className="absolute right-0 top-full z-50 mt-1 flex max-h-96 w-[calc(100vw-1.5rem)] max-w-80 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+          className="absolute right-0 top-full z-50 mt-1 flex max-h-[min(34rem,calc(100dvh-5rem))] w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
         >
-          <div className="shrink-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
+          <div className="shrink-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between gap-2">
             <p className="text-xs font-bold text-foreground">Notifications</p>
-            {unreadCount > 0 && (
-              <button type="button" onClick={markAllRead} className="text-[10px] text-primary hover:underline">
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button type="button" onClick={() => void markAllRead()} className="text-[10px] text-primary hover:underline">
+                  Mark all read
+                </button>
+              )}
+              {player.mode === "v2" && player.items.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="notification-clear-all"
+                  onClick={() => void clearAll()}
+                  className="text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Only the inbox scrolls. The footer below is a sibling, so Settings
@@ -1062,14 +735,9 @@ export default function MogzyIdentityMenu() {
               <button
                 type="button"
                 onClick={() => {
-                  setStatus("loading");
-                  setAdminFeedFailed(false);
-                  // Admin rows and their receipts are part of what failed, so
-                  // the retry has to reload them too — otherwise a receipts
-                  // failure resolves to "ready" with every admin row unread.
-                  Promise.all([loadNotifications(), isAdmin ? loadAdminNotifs() : null])
-                    .then(() => setStatus("ready"))
-                    .catch(() => setStatus("error"));
+                  // Both feeds are part of what failed, so the retry reloads both.
+                  void player.refresh();
+                  if (isAdmin) void admin.refresh();
                 }}
                 className="mt-1 text-[10px] text-primary hover:underline"
               >
@@ -1078,58 +746,73 @@ export default function MogzyIdentityMenu() {
             </div>
           )}
 
-          {panelStatus === "ready" &&
-          notifications.length === 0 && adminNotifs.length === 0 && liveInvites.length === 0 ? (
-            <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
-          ) : (
+          {panelStatus === "ready" && (
             <>
-              {/* Admin notifications (admins only) */}
-              {isAdmin && adminNotifs.map(an => {
-                const Icon = adminTypeIcons[an.type] || ShieldAlert;
-                const isRead = readAdminIds.has(an.id);
-                return (
-                  <button
-                    type="button"
-                    key={`adm-${an.id}`}
-                    data-testid={`hud-admin-notification-${an.id}`}
-                    data-read={isRead ? "true" : "false"}
-                    onClick={async () => {
-                      // Records a receipt for THIS admin only. The old version
-                      // flipped admin_notifications.is_read, which marked the
-                      // row read for every admin at once.
-                      await markAdminRead(an.id);
-                      closePanel();
-                      navigate("/admin");
-                    }}
-                    className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
-                      isRead ? "bg-card" : "bg-destructive/5"
-                    } hover:bg-secondary`}
+              {/* Admin: the top of Action Required and the counters, linked to
+                  the full inbox. Owner session only. */}
+              {isAdmin && admin.counts && (
+                <div data-testid="hud-admin-section" className="border-b border-border">
+                  <Link
+                    to={ADMIN_NOTIFICATIONS_PATH}
+                    data-testid="hud-admin-summary"
+                    {...footerLinkProps(ADMIN_NOTIFICATIONS_PATH)}
+                    className="flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:bg-secondary"
                   >
-                    <div className="flex items-start gap-2">
-                      <Icon className="h-4 w-4 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
-                          <span className="text-[9px] uppercase tracking-wider mr-1.5 px-1 py-0.5 rounded bg-destructive/15 text-destructive font-bold">Admin</span>
-                          {an.title}
-                        </p>
-                        {an.message && (
-                          <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{an.message}</p>
-                        )}
-                        <p className="text-[9px] text-muted-foreground mt-0.5">
-                          {new Date(an.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      {!isRead && <span className="h-2 w-2 rounded-full bg-destructive shrink-0 mt-1" aria-hidden="true" />}
-                    </div>
-                  </button>
-                );
-              })}
+                    <Shield className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+                    <span className="flex-1 text-[11px] text-foreground">
+                      <span className="font-semibold">Admin inbox</span>
+                      {" · "}
+                      {admin.counts.action_unresolved} need{admin.counts.action_unresolved === 1 ? "s" : ""} action
+                      {admin.counts.action_critical > 0 && (
+                        <span className="font-semibold text-destructive"> · {admin.counts.action_critical} critical</span>
+                      )}
+                      {adminUnread > 0 && <span className="text-muted-foreground"> · {adminUnread} unread</span>}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                  </Link>
+                  {admin.items.map(an => {
+                    const Icon = adminTypeIcons[an.type] || ShieldAlert;
+                    return (
+                      <button
+                        type="button"
+                        key={`adm-${an.id}`}
+                        data-testid={`hud-admin-notification-${an.id}`}
+                        data-read={an.isRead ? "true" : "false"}
+                        onClick={() => openAdminItem(an)}
+                        className={`w-full text-left px-3 py-2 border-t border-border transition-colors ${
+                          an.isRead ? "bg-card" : "bg-destructive/5"
+                        } hover:bg-secondary`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Icon className="h-4 w-4 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium ${an.isRead ? "text-muted-foreground" : "text-foreground"}`}>
+                              {an.priority === "critical" && (
+                                <span className="text-[9px] uppercase tracking-wider mr-1.5 px-1 py-0.5 rounded bg-destructive/15 text-destructive font-bold">
+                                  Critical
+                                </span>
+                              )}
+                              {an.title}
+                              {an.occurrenceCount > 1 && <span className="text-muted-foreground"> ×{an.occurrenceCount}</span>}
+                            </p>
+                            <p className="text-[9px] text-muted-foreground mt-0.5" title={new Date(an.activityAt).toLocaleString()}>
+                              {formatRelative(an.activityAt)}
+                            </p>
+                          </div>
+                          {!an.isRead && <span className="h-2 w-2 rounded-full bg-destructive shrink-0 mt-1" aria-hidden="true" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/*
                 * Champion Card Duel invites — the actionable section. Backend-owned and
                 * resolved by accepting or declining, never by being read, so they
                 * are labelled as requiring action and are excluded from the
-                * unread count that "Mark all read" clears.
+                * unread count that "Mark all read" clears. Expired invites are
+                * filtered out above and are never actionable.
                 */}
               {liveInvites.map(invite => {
                 const busy = busyToken === invite.inviteToken;
@@ -1186,50 +869,86 @@ export default function MogzyIdentityMenu() {
               })}
 
               {/*
-                * System + social notifications. Friend requests and acceptances
-                * are rendered from their persisted user_notifications rows. The
-                * bell used to ALSO query `friendships` directly and render a
-                * second copy of the same event; that duplicate section is gone.
-                * The friends drawer still reads friendships directly and is
-                * unchanged.
+                * The player's own inbox. Friend requests and acceptances render
+                * from their persisted rows (the friends drawer still reads
+                * friendships directly); a friend request that was accepted,
+                * declined or withdrawn is resolved on the server and leaves.
                 */}
-              {notifications.map(n => {
+              {player.items.map(n => {
                 const Icon = typeIcons[n.type] || Bell;
-                const isRead = readIds.has(n.id);
+                const needsResponse = n.type === "friend_request";
                 return (
-                  <button
-                    type="button"
+                  <div
                     key={n.id}
-                    onClick={() => openNotification(n)}
-                    className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
-                      isRead ? "bg-card" : "bg-primary/5"
+                    data-testid={`hud-notification-${n.id}`}
+                    data-read={n.isRead ? "true" : "false"}
+                    className={`group relative flex border-b border-border last:border-0 transition-colors ${
+                      n.isRead ? "bg-card" : "bg-primary/5"
                     } hover:bg-secondary`}
                   >
-                    <div className="flex items-start gap-2">
-                      {n.image_url ? (
-                        <img src={n.image_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-                      ) : (
-                        <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
-                          {n.title}
-                        </p>
-                        {n.message && (
-                          <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                    <button
+                      type="button"
+                      onClick={() => openNotification(n)}
+                      className="min-w-0 flex-1 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:bg-secondary"
+                    >
+                      <div className="flex items-start gap-2">
+                        {n.imageUrl ? (
+                          <img src={n.imageUrl} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
                         )}
-                        <p className="text-[9px] text-muted-foreground mt-0.5">
-                          {new Date(n.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          {needsResponse && (
+                            <p className="text-[9px] uppercase tracking-wider font-bold text-primary">Needs your response</p>
+                          )}
+                          <p className={`text-xs font-medium ${n.isRead ? "text-muted-foreground" : "text-foreground"}`}>
+                            {n.title}
+                          </p>
+                          {n.message && (
+                            <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                          )}
+                          <p className="text-[9px] text-muted-foreground mt-0.5" title={new Date(n.activityAt).toLocaleString()}>
+                            {formatRelative(n.activityAt)}
+                          </p>
+                        </div>
+                        {!n.isRead && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" aria-hidden="true" />}
                       </div>
-                      {!isRead && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" aria-hidden="true" />}
-                    </div>
-                  </button>
+                    </button>
+                    {player.mode === "v2" && (
+                      <button
+                        type="button"
+                        data-testid="notification-dismiss"
+                        aria-label={`Dismiss: ${n.title}`}
+                        title="Dismiss"
+                        onClick={() => void dismiss(n)}
+                        className="flex w-9 shrink-0 items-start justify-center pt-2.5 text-muted-foreground opacity-70 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
+
+              {player.items.length === 0 &&
+                liveInvites.length === 0 &&
+                !(isAdmin && (admin.counts?.action_unresolved ?? 0) > 0) && (
+                  <p data-testid="notification-empty" className="text-center text-muted-foreground text-xs py-6">
+                    You’re all caught up
+                  </p>
+                )}
             </>
           )}
           </div>
+
+          <Link
+            to="/notifications"
+            data-testid="hud-notification-history"
+            {...footerLinkProps("/notifications")}
+            className="shrink-0 border-t border-border bg-card px-3 py-2 text-center text-[11px] font-medium text-primary hover:bg-secondary focus-visible:outline-none focus-visible:bg-secondary"
+          >
+            History, saved & notification settings
+          </Link>
 
           {utilityFooter}
           {authAction}

@@ -46,6 +46,7 @@ export const Routes = {
   SecretRoom: lazyWithRetry(() => import("@/pages/SecretRoom")),
   CustomLink: lazyWithRetry(() => import("@/pages/CustomLink")),
   Feedback: lazyWithRetry(() => import("@/pages/Feedback")),
+  Notifications: lazyWithRetry(() => import("@/pages/Notifications")),
   BlogIndex: lazyWithRetry(() => import("@/pages/blog/BlogIndex")),
   BlogPost: lazyWithRetry(() => import("@/pages/blog/BlogPost")),
   AdminBlog: lazyWithRetry(() => import("@/pages/admin/AdminBlog")),
@@ -170,6 +171,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },
   { test: (p) => p.startsWith("/blog/"), keys: ["BlogPost"] },
   { test: (p) => p === "/feedback", keys: ["Feedback"] },
+  { test: (p) => p === "/notifications", keys: ["Notifications"] },
 ];
 
 /**

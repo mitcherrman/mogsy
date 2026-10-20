@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 /**
  * Static guard over the split NOT1 Phase 2 made in `admin_notifications`.
@@ -28,7 +28,10 @@ const SRC_DIR = join(process.cwd(), "src");
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) sourceFiles(full, out);
+    // src/test holds test doubles (the fake inbox server), not product code.
+    if (entry.isDirectory()) {
+      if (full !== join(SRC_DIR, "test")) sourceFiles(full, out);
+    }
     else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) out.push(full);
   }
   return out;
@@ -39,7 +42,8 @@ const stripComments = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 
 const files = sourceFiles(SRC_DIR).map(f => ({
-  path: relative(process.cwd(), f),
+  // Forward slashes on every OS, so the expectations below hold on Windows too.
+  path: relative(process.cwd(), f).split(sep).join("/"),
   code: stripComments(readFileSync(f, "utf8")),
 }));
 
@@ -71,15 +75,19 @@ describe("admin read state comes from receipts, never from is_read", () => {
 
   it("selects is_read only where it means disposition", () => {
     const readers = files.filter(
-      f => f.path !== GENERATED_TYPES && /["'][^"']*\bis_read\b[^"']*["']/.test(f.code),
+      // A string literal on one line (a select list), not a span between two
+      // unrelated quotes that happens to contain an `r.is_read` field access.
+      f => f.path !== GENERATED_TYPES && /["'][^"'\n]*\bis_read\b[^"'\n]*["']/.test(f.code),
     );
     expect(readers.map(f => f.path)).toEqual([DISPOSITION_OWNER]);
   });
 
   it("counts unread through the per-admin RPC everywhere a badge exists", () => {
+    // src/pages/Admin.tsx was deleted by FUNNEL1C/ADMIN2 (9635c826); its badge
+    // moved into useAdminAttention. The HUD bell and the admin inbox read the
+    // same per-admin figure from admin_notification_counts() (unread_total).
     const badgeSurfaces = [
       "src/lib/admin/useAdminAttention.ts",
-      "src/pages/Admin.tsx",
       "src/pages/AdminDiagnostics.tsx",
     ];
     for (const path of badgeSurfaces) {
@@ -102,12 +110,17 @@ describe("admin read state comes from receipts, never from is_read", () => {
     // types.ts only declares the table, so it does not count as a consumer —
     // without this the assertion would pass on a tree where no surface reads
     // receipts at all, which is exactly the pre-phase state.
+    //
+    // Notifications 2.0: both surfaces (the bell and the admin page) go through
+    // one client module. Its v2 path never touches the receipt table directly
+    // (the server RPCs write receipts for auth.uid()); its pre-migration
+    // fallback and the realtime subscription do, scoped by admin_user_id.
     const touchers = files.filter(
       f => f.path !== GENERATED_TYPES && f.code.includes("admin_notification_reads"),
     );
     expect(touchers.map(f => f.path).sort()).toEqual([
-      "src/components/admin/AdminNotifications.tsx",
-      "src/components/hud/MogzyIdentityMenu.tsx",
+      "src/lib/notifications/api.ts",
+      "src/lib/notifications/useAdminInbox.ts",
     ]);
     for (const f of touchers) {
       expect(f.code, `${f.path} touches receipts without an admin_user_id scope`)
@@ -122,5 +135,25 @@ describe("admin read state comes from receipts, never from is_read", () => {
     expect(existsSync(join(SRC_DIR, "components", "UserNotificationBell.tsx"))).toBe(false);
     const importers = files.filter(f => /UserNotificationBell/.test(f.code));
     expect(importers.map(f => f.path)).toEqual([]);
+  });
+
+  it("never names an admin in a v2 lifecycle RPC — the subject is always the session", () => {
+    const api = files.find(f => f.path === "src/lib/notifications/api.ts")!;
+    const calls = [...api.code.matchAll(/rpc\("(admin_[a-z_]+)"(?:,\s*(\{[^}]*\}))?/g)];
+    expect(calls.map(c => c[1]).sort()).toEqual([
+      "admin_get_notifications",
+      "admin_notification_counts",
+      "admin_reopen_notification",
+      "admin_resolve_notifications",
+      "admin_set_notification_state",
+    ]);
+    for (const [, name, args] of calls) {
+      expect(args ?? "", name).not.toMatch(/admin_user_id|userId|_admin|_uid/);
+    }
+  });
+
+  it("writes per-admin done/saved state only through the RPC, never by table", () => {
+    const writers = files.filter(f => /from\(["']admin_notification_states["']\)/.test(f.code));
+    expect(writers.map(f => f.path)).toEqual([]);
   });
 });

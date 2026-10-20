@@ -573,6 +573,33 @@ REVOKE ALL ON public.notification_preferences FROM anon, authenticated;
 GRANT SELECT, INSERT ON public.notification_preferences TO authenticated;
 GRANT UPDATE (muted_categories, updated_at) ON public.notification_preferences TO authenticated;
 
+-- The one write path the client uses: always the caller's own row, and only
+-- the mutable column. (A PostgREST upsert would also rewrite user_id, which
+-- the column grant above deliberately refuses.)
+CREATE OR REPLACE FUNCTION public.set_my_notification_preferences(_muted text[])
+RETURNS text[]
+LANGUAGE plpgsql
+VOLATILE
+SET search_path = public
+AS $$
+DECLARE
+  _out text[];
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'authentication required' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  INSERT INTO public.notification_preferences (user_id, muted_categories)
+  VALUES (auth.uid(), COALESCE(_muted, '{}'::text[]))
+  ON CONFLICT (user_id) DO UPDATE
+    SET muted_categories = EXCLUDED.muted_categories, updated_at = now()
+  RETURNING muted_categories INTO _out;
+  RETURN _out;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.set_my_notification_preferences(text[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_my_notification_preferences(text[]) TO authenticated;
+
 
 -- ---------------------------------------------------------------------------
 -- 6. Resolution sync — the owning workflow decides "handled", never a read.

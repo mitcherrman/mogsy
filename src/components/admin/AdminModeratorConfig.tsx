@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { focusHighlight, useFocusRecord } from "@/lib/notifications/focus";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export default function AdminModeratorConfig() {
   const [notifications, setNotifications] = useState<ModNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const focusId = useFocusRecord(!loading);
 
   const fetchData = async () => {
     setLoading(true);
@@ -227,7 +229,8 @@ export default function AdminModeratorConfig() {
               return (
                 <div
                   key={notif.id}
-                  className={`rounded-xl border p-4 space-y-2 ${
+                  data-focus-id={notif.id}
+                  className={`rounded-xl border p-4 space-y-2 ${focusId === notif.id ? focusHighlight : ""} ${
                     isHandled
                       ? "border-border/50 bg-muted/30 opacity-60"
                       : "border-primary/30 bg-primary/5"

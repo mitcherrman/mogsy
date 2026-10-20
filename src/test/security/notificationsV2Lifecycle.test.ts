@@ -378,14 +378,22 @@ describe("player lifecycle", () => {
 
   it("muting announcements hides them, but account notices cannot be muted", async () => {
     await db.query(`INSERT INTO public.user_notifications (title, type, sent_by_user_id) VALUES ('Account notice', 'warning', $1)`, [ADMIN_A]);
-    await as(db, PLAYER_B, () => db.query(
-      `INSERT INTO public.notification_preferences (user_id, muted_categories) VALUES ($1, '{announcement}')`, [PLAYER_B]));
+    await as(db, PLAYER_B, () => db.query(`SELECT public.set_my_notification_preferences('{social}')`));
+    await as(db, PLAYER_B, () => db.query(`SELECT public.set_my_notification_preferences('{announcement}')`));
+    // The RPC writes only the caller's row; a direct write to another player's row is refused.
+    const msg0 = await rejected(() => as(db, PLAYER_A, () => db.query(
+      `INSERT INTO public.notification_preferences (user_id, muted_categories) VALUES ($1, '{}')`, [PLAYER_B])));
+    expect(msg0).toMatch(/row-level security|duplicate key/);
+    expect((await one<{ m: string[] }>(`SELECT muted_categories AS m FROM public.notification_preferences WHERE user_id = $1`, [PLAYER_B])).m)
+      .toEqual(["announcement"]);
     const inbox = await myInbox(PLAYER_B);
     expect(inbox.some(x => x.category === "announcement")).toBe(false);
     expect(inbox.some(x => x.category === "account")).toBe(true);
     const msg = await rejected(() => as(db, PLAYER_B, () => db.query(
       `UPDATE public.notification_preferences SET muted_categories = '{account}' WHERE user_id = $1`, [PLAYER_B])));
     expect(msg).toMatch(/notification_preferences_mutable_only/);
+    expect(await rejected(() => as(db, PLAYER_B, () => db.query(
+      `SELECT public.set_my_notification_preferences('{security}')`)))).toMatch(/notification_preferences_mutable_only/);
   });
 
   it("a new friend request is actionable until the friendship row changes", async () => {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { focusHighlight, useFocusRecord } from "@/lib/notifications/focus";
 import { motion } from "framer-motion";
 import {
   MessageSquare, Check, Clock, Tag, X, ChevronDown, ChevronUp,
@@ -170,6 +171,8 @@ export default function AdminFeedback() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  // A notification deep link (`&focus=<feedback id>`) opens that record.
+  const focusId = useFocusRecord(!loading, id => setExpandedId(id));
   /**
    * The fallback used only until app_settings.feedback_config loads.
    *
@@ -488,7 +491,8 @@ export default function AdminFeedback() {
               <motion.div
                 key={fb.id}
                 layout
-                className="rounded-xl border border-border bg-card overflow-hidden"
+                data-focus-id={fb.id}
+                className={`rounded-xl border border-border bg-card overflow-hidden ${focusId === fb.id ? focusHighlight : ""}`}
               >
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : fb.id)}
