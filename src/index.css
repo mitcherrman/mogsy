@@ -7555,8 +7555,9 @@ html.worlds-viewport-locked body {
 /* ── The Complete pill clears Mogzy ──────────────────────────────────────
    The pill sits in the figure's top-right corner and, on a phone, Mogzy's hat
    reaches into it. On narrow sheets the figure gives the pill its own band:
-   the pill is a notch smaller and the art is drawn 1.75rem shorter, so the
-   two never share pixels. (Landscape hides the pill altogether.) */
+   the pill is a notch smaller and the art is drawn 2.25rem shorter, so the
+   two never share pixels (the art breathes by ~5px, so the band is 2.25rem).
+   (Landscape hides the pill altogether.) */
 @container lc-scroll (max-width: 17rem) {
   .lc-daily-panel [data-testid="daily-mode-complete"] {
     top: 0;
@@ -7564,7 +7565,7 @@ html.worlds-viewport-locked body {
     font-size: 9.5px;
   }
   .lc-daily-panel .lc-daily-hero--complete .lc-daily-hero__art {
-    height: min(calc(100% - 1.75rem), 19rem);
+    height: min(calc(100% - 2.25rem), 19rem);
   }
 }
 
@@ -7744,6 +7745,18 @@ html.worlds-viewport-locked body {
 @media (max-width: 1023px) and (orientation: landscape) and (max-height: 340px) {
   .lc-daily-panel .lc-seal {
     --lc-seal-size: 5rem;
+  }
+  /* The 568px-wide sheet is "wide" (full tab names) yet its tabs are only
+     ~117px: the PR #90 ribbon's band still touches the last letter of
+     "RANKED". Same slim tape as on the portrait phones. */
+  .lc-scroll[data-order="centre"]:has(.lc-centre-stage[data-mode="daily"]) .lc-mode-tab [data-testid="feature-ribbon-coming-soon"] {
+    right: -0.75rem;
+    top: 0;
+    width: 2.25rem;
+    height: 7px;
+    padding-block: 0;
+    font-size: 0;
+    line-height: 0;
   }
 }
 
