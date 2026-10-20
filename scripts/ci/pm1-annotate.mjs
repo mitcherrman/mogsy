@@ -2,7 +2,7 @@
 // annotations, which are readable on the public run without signing in.
 // Reads test-results/pm1/report.json (Playwright JSON reporter) and
 // test-results/pm1/run.log (the `[pm1]` measurement lines). Never fails.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 const enc = (s) => String(s).replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A");
 const strip = (s) => String(s).replace(/\u001b\[[0-9;]*m/g, "");
@@ -39,4 +39,14 @@ if (existsSync("test-results/pm1/run.log")) {
   }
   if (cur) chunks.push(cur);
   chunks.slice(0, 9).forEach((c, i) => console.log(`::notice title=pm1 measurements ${i + 1}/${chunks.length}::${enc(c)}`));
+}
+
+// The first-screen measurements, one notice per label (branch / main).
+if (existsSync("test-results/pm1")) {
+  for (const f of readdirSync("test-results/pm1").filter((n) => /^hub-measure-.*\.json$/.test(n))) {
+    const data = JSON.parse(readFileSync(`test-results/pm1/${f}`, "utf8"));
+    const rows = Object.entries(data).map(([vp, m]) =>
+      `${vp}: lobby.bottom=${m.lobby?.bottom} quick=${m.quickStudy?.top}-${m.quickStudy?.bottom} rail=${m.rail?.top}-${m.rail?.bottom} (h${m.rail?.height}) more.top=${m.more?.top} record.top=${m.record?.top}`);
+    console.log(`::notice title=${enc(f)}::${enc(rows.join(" | "))}`);
+  }
 }

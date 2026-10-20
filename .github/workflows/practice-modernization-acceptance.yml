@@ -48,6 +48,20 @@ jobs:
           mkdir -p test-results/pm1
           set -o pipefail
           npx playwright test -c playwright.pm1.config.ts --workers=1 2>&1 | tee test-results/pm1/run.log
+      - name: Measure the same hub geometry on main
+        if: always()
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          git worktree add --detach ../baseline FETCH_HEAD
+          ln -s "$PWD/node_modules" ../baseline/node_modules
+          mkdir -p ../baseline/e2e/pm1
+          cp e2e/pm1/hub-measure.spec.ts ../baseline/e2e/pm1/
+          cp playwright.pm1.config.ts ../baseline/
+          (cd ../baseline && PM1_LABEL=main npx playwright test -c playwright.pm1.config.ts e2e/pm1/hub-measure.spec.ts --workers=1) || true
+          mkdir -p test-results/pm1
+          cp ../baseline/test-results/pm1/hub-measure-main.json test-results/pm1/ || true
+          cp ../baseline/test-results/pm1/measure-main-*.png test-results/pm1/ || true
       - name: Annotate failures and measurements
         if: always()
         run: node scripts/ci/pm1-annotate.mjs
