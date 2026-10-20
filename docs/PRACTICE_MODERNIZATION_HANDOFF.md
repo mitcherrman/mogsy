@@ -101,8 +101,8 @@ to gameplay or persistence:
 - [x] Practice arena adapter and Quiz.tsx integration
 - [x] Unit/regression tests
 - [x] Remote browser acceptance green (run 39358499833; integrated with main at 44afc3ed: run 39359065180, also green)
-- [ ] Screenshots visually reviewed (blocked: artifact download needs a GitHub sign-in)
-- [ ] Merged to `main`
+- [ ] Screenshots visually reviewed — skipped by the owner (artifact download needed a GitHub sign-in this machine did not have)
+- [x] Merged to `main` — `c0fc4292` (merge commit of `practice-modernization/pm1` @ `9afa4669` onto `6fc8c343`), pushed 2026-10-19. Screenshot review skipped at the owner's request; the automated geometry checks stand in for it.
 - [ ] Production verified
 
 ## Tests and screenshots
@@ -161,7 +161,18 @@ lib/feedback and Daily (4,249 tests): no new failures; 3 fixed.
 
 ## Deployment verification
 
-_Filled in after merge._
+Lovable does not deploy on push: the owner must press **Publish** in Lovable
+(see the DCGI1/Assembly handoffs). Before publish, https://mogzy.lol served
+`/assets/index-DH3O7p14.js` (pre-PM1); it was still serving that bundle ~12
+minutes after `c0fc4292` was pushed.
+
+After publish, run `pm1-production-verify` (push any change under
+`e2e/pm1-prod/` to a `practice-modernization/**` branch, or dispatch it). It
+is read-only: GET pages, art and real Practice questions; every non-GET
+(session, attempt, analytics, anonymous sign-in) is answered locally. It checks
+the PM1 markers on the hub, the More Challenges invitation, real questions in
+the canonical arena at 1440x900 and 390x844 (fit, no horizontal scroll), the
+reveal footer and the leave guard.
 
 ## Unresolved issues
 
