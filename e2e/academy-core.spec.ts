@@ -543,9 +543,8 @@ test.describe("mobile", () => {
     await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
     await page.waitForTimeout(300);
     await noHorizontalOverflow(page);
-    for (const text of ["Play Daily Challenge", "Ranked"]) {
-      await expect(page.getByText(text, { exact: true }).first()).toBeVisible();
-    }
+    await expect(page.getByRole("link", { name: "Play Daily Challenge" })).toBeVisible();
+    await expect(page.getByText("Ranked", { exact: true })).toHaveCount(0);
     for (const r of ROOMS) await expect(bookLink(page, r.id)).toBeVisible();
     await page.screenshot({ path: path.join(OUT, "mobile-390x844-text-zoom-200.png"), fullPage: true });
   });
