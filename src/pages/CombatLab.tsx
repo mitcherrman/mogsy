@@ -130,6 +130,10 @@ import {
 } from "@/lib/combat-lab/inputHistory";
 
 const STORAGE_KEY = "combat-lab:last-config";
+// The one item active Combat Lab exposes as its own button (backend registry key).
+const GUNBLADE_ITEM = "Hextech Gunblade";
+const GUNBLADE_ACTIVE_ID = "item_hextech_gunblade";
+const GUNBLADE_ACTIVE_LABEL = "Gunblade · Lightning Bolt";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
 const ALLOWED_CRIT_MODES = CRIT_MODES;
 
@@ -458,7 +462,7 @@ function SearchSelect<T extends { name: string }>({
   );
 }
 
-function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
+function MultiSelect<T extends { name: string; tree?: string; type?: string; simulation_warnings?: string[] }>({
   label,
   placeholder,
   values,
@@ -485,6 +489,16 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   const filtered = useMemo(
     () => options.filter((o) => (o?.name ?? "").toLowerCase().includes(query.toLowerCase())),
     [options, query]
+  );
+  const capabilityWarnings = useMemo(
+    () => values.flatMap((value) =>
+      options
+        .filter((option) => option.name === value)
+        .flatMap((option) => (option.simulation_warnings ?? []).map(
+          (warning) => ({ item: value, warning })
+        ))
+    ),
+    [options, values]
   );
   const groups = useMemo(() => {
     if (!grouped) return null;
@@ -543,6 +557,13 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
           </div>
         )}
       </button>
+      {capabilityWarnings.length > 0 && (
+        <div role="status" className="mt-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-200">
+          {capabilityWarnings.map(({ item, warning }) => (
+            <p key={item + warning}><strong>{item}:</strong> {warning}</p>
+          ))}
+        </div>
+      )}
       {open && (
         <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl">
           <div className="flex items-center gap-2 border-b border-border/60 px-2">
@@ -726,6 +747,29 @@ export default function CombatLab() {
       cancelled = true;
     };
   }, []);
+
+  // Old saved builds may contain descriptive-only runes. When the backend
+  // capability catalog loads, remove those inert selections rather than
+  // silently running a simulation in which the chosen rune does nothing.
+  useEffect(() => {
+    if (metaLoading || runes.length === 0) return;
+    const playable = new Set(runes.map((r) => r.name.toLowerCase()));
+    // A corrupt saved build can hold a non-array or non-string entries.
+    const isPlayable = (name: unknown): name is string =>
+      typeof name === "string" && playable.has(name.toLowerCase());
+    const saved: unknown[] = Array.isArray(config.runes) ? config.runes : [];
+    if (Array.isArray(config.runes) && saved.every(isPlayable)) return;
+    setConfig((current) => ({
+      ...current,
+      runes: (Array.isArray(current.runes) ? current.runes : []).filter(isPlayable),
+    }));
+    const unsupported = saved.filter((name) => !isPlayable(name)).map(String);
+    if (unsupported.length === 0) return;
+    toast({
+      title: "Unsupported runes removed",
+      description: `Not executable in Combat Lab: ${unsupported.join(", ")}.`,
+    });
+  }, [metaLoading, runes, config.runes]);
 
   const critModes = useMemo<readonly CritMode[]>(() => {
     const fromApi = (options?.crit_modes || []).filter((m): m is CritMode =>
@@ -2779,6 +2823,8 @@ function InteractiveSandbox({
         }
         payload = {
           champion_name: config.champion,
+          item_names: config.items,
+          rune_names: config.runes,
           attacker_stats,
           target_stats,
           state: safeState,
@@ -2825,6 +2871,7 @@ function InteractiveSandbox({
           ? "Basic Attack"
           : (() => {
               const a = (typeof action_id === "string" && action_id) || "Active";
+              if (a === GUNBLADE_ACTIVE_ID) return GUNBLADE_ACTIVE_LABEL;
               const found = actions.find((x) => x.id === a);
               return found?.label || found?.name || a;
             })();
@@ -3657,6 +3704,35 @@ function InteractiveSandbox({
               disabled={!!busy || offline}
               onClick={() => sendStep("basic-attack")}
             />
+            {config.items.includes(GUNBLADE_ITEM) && (
+              <div className="border-t border-border/25 pt-2">
+                <ActionButton
+                  label={GUNBLADE_ACTIVE_LABEL}
+                  hint={
+                    targetSetup.targetMode === "target_champion"
+                      ? "Single-target magic damage, 25% slow · 60s cooldown"
+                      : "Select an enemy champion to use Lightning Bolt"
+                  }
+                  icon={Zap}
+                  tone="accent"
+                  busy={busy === GUNBLADE_ACTIVE_ID}
+                  disabled={
+                    !!busy || offline || !config.champion ||
+                    targetSetup.targetMode !== "target_champion"
+                  }
+                  onClick={() => sendStep("active", GUNBLADE_ACTIVE_ID)}
+                />
+                {/* The Items row is collapsed by default, so the backend's
+                    stated limits are repeated beside the cast itself. */}
+                {(items.find((item) => item.name === GUNBLADE_ITEM)?.simulation_warnings ?? []).map(
+                  (warning) => (
+                    <p key={warning} className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                      {warning}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
             {visibleActions.length > 0 && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/25 pt-2">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
