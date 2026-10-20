@@ -16,10 +16,11 @@
  * Contracts kept from the previous header: the level-1 heading "Mogzy
  * Academy" (#acore-title labels the hero), the Daily link's accessible name
  * ("Play Daily Challenge" / "Resume Daily Challenge"), its router state, its
- * intent prefetch and the `academy-core-daily` / `academy-core-shortcuts` ids.
+ * entry analytics (`academy_core_daily_button`), its intent prefetch and the `academy-core-daily` / `academy-core-shortcuts` ids.
  */
 import { Link } from "react-router-dom";
 
+import { trackDailyEntry } from "@/lib/analytics/dailyEntry";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { DAILY_ROUTE } from "@/pages/academy-core/academy-core-destinations";
@@ -49,6 +50,7 @@ export default function AcademyMasthead({ dailyResume }: { dailyResume: boolean 
           className="o35-seal"
           data-resume={dailyResume ? "true" : "false"}
           data-testid="academy-core-daily"
+          onClick={() => trackDailyEntry("academy_core_daily_button")}
           onPointerEnter={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
           onFocus={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
         >

@@ -34,6 +34,7 @@ import { authHref } from "@/lib/auth/auth-destination";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { DailyStatusView } from "@/lib/daily-challenge/status";
+import { trackDailyEntry } from "@/lib/analytics/dailyEntry";
 import type { PlayModeVisibility } from "@/lib/quiz/playModes";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import type { ChampionKnowledgeSource } from "@/lib/quiz/championKnowledge";
@@ -512,6 +513,7 @@ export default function LeaguecraftHub({
   const openPlay = useCallback(async () => {
     if (rankedComingSoon) return;
     if (!rankedAvailabilityOpen) {
+      trackDailyEntry("play_seal_ranked_closed");
       onPlayDailyChallenge();
       return;
     }
@@ -626,7 +628,10 @@ export default function LeaguecraftHub({
           progress={progress}
           ranked={ranked}
           onPlayRanked={openPlay}
-          onPlayDailyChallenge={onPlayDailyChallenge}
+          onPlayDailyChallenge={() => {
+            trackDailyEntry("centre_stage_daily_panel");
+            onPlayDailyChallenge();
+          }}
           dailyChallenge={dailyChallenge}
           queueModes={queueModes}
           onEnterRoleChallenge={onEnterRoleChallenge}
