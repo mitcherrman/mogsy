@@ -89,4 +89,15 @@ describe("Worlds 2026 Quiz CTA (W26Q)", () => {
       cleanup();
     }
   });
+
+  it("desktop phase chip: short wording below 1280 px, the full label from 1280 px (room for the quiz control at 1024)", () => {
+    renderAt({ desktop: true, landscape: false }, BASE, knockoutMid());
+    const chip = screen.getByTestId("phase-chip");
+    const [short, long] = [...chip.querySelectorAll("span")].filter((s) => /xl:/.test(s.className));
+    expect(short.className.split(" ")).toContain("xl:hidden");
+    expect(long.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "xl:inline"]));
+    expect(short.textContent).toMatch(/now$|live$/);
+    expect(long.textContent).toMatch(/in progress$|live$/);
+    expect(short.textContent).not.toMatch(/^KO /); // the desktop keeps the stage's name
+  });
 });

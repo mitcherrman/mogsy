@@ -132,30 +132,40 @@ function PrimaryNav({ compact }: { compact: boolean }) {
 function PhaseChip({ compact = false }: { compact?: boolean }) {
   const { ctx, state } = useKit();
   const live = state.matches.some((m) => m.state === "live");
+  // `short` is the phone bar's wording; `label` the desktop's. W26Q: the
+  // desktop bar uses the short wording (with the stage's full name) below
+  // 1280 px, where the five-tab nav, the Worlds Quiz control and a long
+  // label ("Knockouts in progress") no longer fit one row at 1024 px.
   let label: string;
+  let short: string;
   let tone: "live" | "gold" | "muted" = "gold";
   switch (state.phase) {
     case "pre_event":
-      label = `Starts ${calendarDay(ctx.starts)}`;
+      label = short = `Starts ${calendarDay(ctx.starts)}`;
       break;
     case "between_stages": {
       const done = stageOf(ctx, state.phase_detail?.completed_stage);
-      label = done ? `${stageLabel(done)} ${compact ? "done" : "complete"}` : "Between stages";
+      label = done ? `${stageLabel(done)} complete` : "Between stages";
+      short = done ? `${stageLabel(done)} done` : "Between stages";
       break;
     }
     case "complete":
-      label = compact ? "Complete" : "Event complete";
+      label = "Event complete";
+      short = "Complete";
       tone = "muted";
       break;
     case "unknown":
-      label = compact ? "No schedule" : "Schedule unavailable";
+      label = "Schedule unavailable";
+      short = "No schedule";
       tone = "muted";
       break;
     default: {
       const stage = stageOf(ctx, state.phase);
+      const name = stage ? stageLabel(stage) : "Stage";
       // A phone's bar has room for a short stage name only ("KO live").
-      const name = stage ? (compact && stage.key === "knockout" ? "KO" : stageLabel(stage)) : "Stage";
-      label = `${name} ${live ? "live" : compact ? "now" : "in progress"}`;
+      const phoneName = stage && stage.key === "knockout" ? "KO" : name;
+      label = `${name} ${live ? "live" : "in progress"}`;
+      short = `${compact ? phoneName : name} ${live ? "live" : "now"}`;
       if (live) tone = "live";
     }
   }
@@ -171,7 +181,12 @@ function PhaseChip({ compact = false }: { compact?: boolean }) {
       )}
     >
       {tone === "live" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 motion-reduce:animate-none" aria-hidden="true" />}
-      {label}
+      {compact ? short : (
+        <>
+          <span className="xl:hidden">{short}</span>
+          <span className="hidden xl:inline">{label}</span>
+        </>
+      )}
     </span>
   );
 }
