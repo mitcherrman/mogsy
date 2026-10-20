@@ -7,9 +7,8 @@
 
 /* ------------------------------------------------------------ the column */
 
-/* desktop: a narrower identity column gives the Orrery more of the screen */
-.o35-root .o35-hero { --o35-col: clamp(288px, 24.5vw, 404px); }
-
+/* desktop: the left column and the Orrery's geometry are unchanged (the orbit,
+   the Patch Report and their tests depend on them); only its head shrinks */
 .o35-masthead { display: flex; flex-direction: column; align-items: flex-start; gap: 0.95rem; min-width: 0; }
 
 /* ------------------------------------------------------------- the crest */

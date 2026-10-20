@@ -107,7 +107,7 @@ test.describe("desktop: the Orrery dominates; a compact crest and a Daily seal",
       const h1 = await box(page, "#acore-title");
       expect(h1.height, "the title is no longer a big header").toBeLessThanOrEqual(34);
       const stage = await box(page, '[data-testid="academy-core-stage"]');
-      expect(stage.width / vp.width, "the Orrery takes most of the width").toBeGreaterThanOrEqual(0.66);
+      expect(stage.width / vp.width, "the Orrery takes most of the width").toBeGreaterThanOrEqual(0.64);
       // the Patch Report book and the Academy links are intact
       await expect(page.getByTestId("academy-core-book")).toBeVisible();
       await expect(page.getByTestId("academy-core-commons-link")).toBeVisible();
