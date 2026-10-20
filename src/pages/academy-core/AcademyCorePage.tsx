@@ -64,7 +64,6 @@ import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroad
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
 import { getChampionIcon, getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import { prefetchRoute } from "@/lib/route-prefetch";
@@ -74,6 +73,7 @@ import { useSfx } from "@/lib/audio/useSfx";
 
 import type { CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
 import MogzyOperator from "@/pages/academy-core/MogzyOperator";
+import AcademyMasthead from "./orrery/AcademyMasthead";
 import {
   CORE_FULL_LAYOUT_MEDIA,
   CORE_MEASURE_SHARDS,
@@ -87,7 +87,6 @@ import {
   ACADEMY_COMMONS_HREF,
   ACADEMY_HALL_ROUTE,
   CORE_DESTINATIONS,
-  DAILY_ROUTE,
   coreBayDescriptionId,
   destinationById,
   type CoreDestination,
@@ -533,22 +532,6 @@ function AcademyCoreOrrery() {
     );
   };
 
-  const shortcuts = (
-    <div className="acore-shortcuts o35-shortcuts" data-testid="academy-core-shortcuts">
-      <Link
-        to={DAILY_ROUTE}
-        state={DAILY_START_STATE}
-        className="acore-cta acore-cta-primary"
-        data-testid="academy-core-daily"
-        onPointerEnter={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
-        onFocus={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
-      >
-        <span className="acore-cta-key" aria-hidden>▶</span>
-        <span className="acore-cta-label">{dailyResume ? "Resume Daily Challenge" : "Play Daily Challenge"}</span>
-      </Link>
-    </div>
-  );
-
   const secondScreen = (
     <nav className="acore-second-screen o35-second-screen" aria-label="Academy rooms beyond the Core">
       <Link
@@ -623,13 +606,9 @@ function AcademyCoreOrrery() {
       <section ref={heroRef} className="o35-hero" aria-labelledby="acore-title">
         <OrreryEnvironment composed={!fullLayout} />
 
-        {/* ---------------- brand, Daily, the floating Patch Report ---------------- */}
+        {/* ---------- the compact crest, the Daily seal, the floating Patch Report ---------- */}
         <div className="o35-island">
-          <header className="o35-brand">
-            <p className="acore-eyebrow">Mogzy&rsquo;s Hextech Workshop</p>
-            <h1 id="acore-title" className="o35-title">Mogzy Academy</h1>
-          </header>
-          {shortcuts}
+          <AcademyMasthead dailyResume={dailyResume} />
           {fullLayout && (
             <div className="o35-patch" data-testid="academy-core-book">
               <div className="o35-patch-halo" aria-hidden />

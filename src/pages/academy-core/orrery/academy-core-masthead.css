@@ -1,0 +1,171 @@
+/* ==========================================================================
+   Academy masthead — the compact crest and the Daily Challenge seal.
+   Loaded after academy-core-v35.css (AcademyMasthead imports it). Every rule is
+   scoped under `.o35-root`; the Orrery stylesheet is not edited, so this file
+   rebases cleanly onto other Orrery work (see the handoff).
+   ========================================================================== */
+
+/* ------------------------------------------------------------ the column */
+
+/* desktop: a narrower identity column gives the Orrery more of the screen */
+.o35-root .o35-hero { --o35-col: clamp(288px, 24.5vw, 404px); }
+
+.o35-masthead { display: flex; flex-direction: column; align-items: flex-start; gap: 0.95rem; min-width: 0; }
+
+/* ------------------------------------------------------------- the crest */
+
+.o35-root .o35-crest { flex-direction: row; align-items: center; gap: 0.7rem; min-width: 0; }
+.o35-crest-mark {
+  flex: none; width: 34px; height: 37px; overflow: visible;
+  filter: drop-shadow(0 0 10px rgba(201, 162, 76, 0.4));
+}
+.o35-crest-hex { fill: rgba(9, 18, 38, 0.85); stroke: #e2c478; stroke-width: 1.6; stroke-linejoin: round; }
+.o35-crest-hex-in { fill: none; stroke: rgba(226, 196, 120, 0.45); stroke-width: 0.9; stroke-linejoin: round; }
+.o35-crest-gem { fill: #7fb4ff; stroke: #f3dfa6; stroke-width: 0.9; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(127, 180, 255, 0.9)); }
+.o35-crest-glint { fill: rgba(220, 238, 255, 0.55); stroke: none; }
+.o35-crest-text { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; position: relative; padding-bottom: 0.4rem; }
+/* an engraved hairline instead of a header bar */
+.o35-crest-text::after {
+  content: ""; position: absolute; left: 0; right: -1.5rem; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, rgba(243, 223, 166, 0.75), rgba(201, 162, 76, 0.25) 60%, transparent);
+}
+.o35-root .o35-crest-eyebrow { font-size: 0.56rem; letter-spacing: 0.32em; opacity: 0.78; }
+.o35-root .o35-title {
+  font-size: clamp(1.1rem, 1.45vw, 1.5rem);
+  letter-spacing: 0.16em; text-transform: uppercase; line-height: 1.1;
+  filter: drop-shadow(0 0 12px rgba(201, 162, 76, 0.3)) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.55));
+}
+.o35-title-pre, .o35-title-main { display: inline; }
+
+/* ------------------------------------------------------------- the seal */
+
+.o35-root .o35-shortcuts { display: flex; min-width: 0; }
+.o35-seal {
+  --seal-d: 62px;
+  --plate-h: 44px;
+  position: relative; isolation: isolate;
+  display: inline-flex; align-items: center; min-width: 0; min-height: max(48px, var(--seal-d));
+  text-decoration: none; color: #f6e8c4;
+  -webkit-tap-highlight-color: transparent;
+}
+/* the engraved plate behind the medallion: a gold hairline (::before) around
+   dark Hextech glass (::after), with a chevron end */
+.o35-seal::before, .o35-seal::after {
+  content: ""; position: absolute; z-index: -1; top: 50%;
+  left: calc(var(--seal-d) * 0.5); right: 0; height: var(--plate-h); translate: 0 -50%;
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%);
+}
+.o35-seal::before {
+  background: linear-gradient(90deg, #f3dfa6, #c9a24c 55%, rgba(201, 162, 76, 0.55));
+  transition: filter 220ms ease;
+}
+.o35-seal::after {
+  margin: 1.25px 1.25px 1.25px 0; height: calc(var(--plate-h) - 2.5px);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 46%),
+    radial-gradient(120% 140% at 0% 50%, rgba(127, 180, 255, 0.22), transparent 62%),
+    linear-gradient(90deg, #0d1b38, #0a1530 70%, #0b1934);
+  transition: background-color 220ms ease;
+}
+.o35-seal-mark {
+  position: relative; flex: none; width: var(--seal-d); height: var(--seal-d); overflow: visible;
+  filter: drop-shadow(0 0 16px rgba(243, 223, 166, 0.42)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+  transition: transform 180ms ease, filter 220ms ease;
+}
+.o35-seal-disc { fill: #a37f36; stroke: #f3dfa6; stroke-width: 1.4; }
+.o35-seal-ticks {
+  fill: none; stroke: #1b1306; stroke-width: 2; stroke-dasharray: 1 3; opacity: 0.55;
+  transform-box: fill-box; transform-origin: center;
+  animation: o35-seal-turn 48s linear infinite;
+}
+.o35-seal-hex {
+  fill: #f0d892; stroke: #fff4cf; stroke-width: 1; stroke-linejoin: round;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+}
+.o35-seal-play { fill: #1b1306; stroke: #1b1306; stroke-width: 1.4; stroke-linejoin: round; }
+.o35-seal-text {
+  display: flex; flex-direction: column; justify-content: center; gap: 0.12rem; min-width: 0;
+  padding: 0 1.55rem 0 0.7rem; line-height: 1.05;
+}
+.o35-seal-kicker {
+  font-family: "Space Mono", ui-monospace, monospace; font-size: 0.58rem; font-weight: 400;
+  letter-spacing: 0.26em; text-transform: uppercase; color: #9fc4ff;
+}
+.o35-seal[data-resume="true"] .o35-seal-kicker { color: #f3dfa6; }
+.o35-seal-label {
+  font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: 0.9rem;
+  letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  color: #f8ebc6; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(243, 223, 166, 0.25);
+}
+.o35-seal:hover .o35-seal-mark { transform: scale(1.05); filter: drop-shadow(0 0 22px rgba(243, 223, 166, 0.65)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); }
+.o35-seal:hover::before { filter: brightness(1.15); }
+.o35-seal:active .o35-seal-mark { transform: scale(0.95); }
+.o35-seal:focus-visible { outline: none; }
+.o35-seal:focus-visible .o35-seal-mark { outline: 2px solid #f3dfa6; outline-offset: 3px; border-radius: 50%; }
+.o35-seal:focus-visible::before { filter: brightness(1.3); }
+
+@keyframes o35-seal-turn { to { transform: rotate(360deg); } }
+.o35-root[data-reduced="true"] .o35-seal-ticks { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .o35-seal-ticks { animation: none; }
+  .o35-seal-mark { transition: none; }
+}
+html.reduce-motion .o35-seal-ticks { animation: none; }
+
+/* ------------------------------------------- stacked: one row, then the Orrery */
+
+.o35-root[data-layout="stacked"] .o35-hero { padding-top: 0.5rem; gap: 0.25rem; }
+.o35-root[data-layout="stacked"] .o35-island { container-type: inline-size; }
+.o35-root[data-layout="stacked"] .o35-masthead {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 0.6rem;
+  width: min(100%, 520px); margin-inline: auto;
+}
+.o35-root[data-layout="stacked"] .o35-crest { gap: 0.5rem; flex: 0 1 auto; }
+.o35-root[data-layout="stacked"] .o35-crest-mark { width: 28px; height: 31px; }
+.o35-root[data-layout="stacked"] .o35-crest-eyebrow { display: none; }
+.o35-root[data-layout="stacked"] .o35-crest-text { padding-bottom: 0.3rem; gap: 0; }
+.o35-root[data-layout="stacked"] .o35-crest-text::after { right: -0.4rem; }
+/* a two-line wordmark: "Mogzy" engraved small above "Academy" */
+.o35-root[data-layout="stacked"] .o35-title { font-size: 1rem; letter-spacing: 0.14em; white-space: nowrap; }
+.o35-root[data-layout="stacked"] .o35-title-pre {
+  display: block; font-family: "Space Mono", ui-monospace, monospace; font-weight: 400;
+  font-size: 0.5rem; letter-spacing: 0.42em; margin-bottom: 0.1rem;
+}
+.o35-root[data-layout="stacked"] .o35-title-main { display: block; }
+.o35-root[data-layout="stacked"] .o35-shortcuts { flex: 0 1 auto; justify-content: flex-end; }
+.o35-root[data-layout="stacked"] .o35-seal { --seal-d: 52px; --plate-h: 40px; min-height: 52px; }
+.o35-root[data-layout="stacked"] .o35-seal-text { padding: 0 1.3rem 0 0.5rem; }
+.o35-root[data-layout="stacked"] .o35-seal-label { font-size: 0.76rem; letter-spacing: 0.06em; }
+/* the narrowest phones: the label may break ("Daily / Challenge") rather than
+   push the crest or the page sideways */
+@container (max-width: 359px) {
+  .o35-root[data-layout="stacked"] .o35-seal-label { white-space: normal; font-size: 0.72rem; }
+  .o35-root[data-layout="stacked"] .o35-seal { --plate-h: 46px; }
+}
+
+/* ------------------------- short landscape: identity beside a fitted Orrery */
+
+@media (max-width: 1023.98px) and (orientation: landscape) and (max-height: 560px) {
+  .o35-root[data-layout="stacked"] .o35-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "island stage" "selector stage" ". stage" "rest rest";
+    column-gap: clamp(0.75rem, 3vw, 2rem); row-gap: 0.75rem;
+    padding: 0.5rem clamp(1rem, 3vw, 2rem) 1.5rem;
+  }
+  .o35-root[data-layout="stacked"] .o35-island { grid-area: island; align-self: start; padding-top: 0.75rem; }
+  .o35-root[data-layout="stacked"] .o35-masthead { flex-direction: column; align-items: flex-start; gap: 1rem; width: auto; margin: 0; }
+  .o35-root[data-layout="stacked"] .o35-crest-eyebrow { display: block; }
+  .o35-root[data-layout="stacked"] .o35-title-pre,
+  .o35-root[data-layout="stacked"] .o35-title-main { display: inline; font: inherit; letter-spacing: inherit; margin: 0; }
+  .o35-root[data-layout="stacked"] .o35-stage[data-mode="composed"] {
+    grid-area: stage;
+    /* the whole instrument in one screen: height from the viewport, width from the 360 x 640 stage */
+    height: calc(var(--app-viewport-h, 100dvh) - 1rem); width: auto; max-width: none; margin: 0;
+    justify-self: center;
+  }
+  .o35-root[data-layout="stacked"] .o35-hero > .o35-selector { grid-area: selector; justify-self: start; margin: 0; gap: 1.25rem; }
+  .o35-root[data-layout="stacked"] .o35-island-mobile { grid-area: rest; width: min(100%, 520px); justify-self: center; }
+}
