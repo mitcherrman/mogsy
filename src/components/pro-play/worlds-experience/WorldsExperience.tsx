@@ -23,13 +23,13 @@
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Info, RefreshCw } from "lucide-react";
+import { ArrowLeft, Brain, Info, RefreshCw } from "lucide-react";
 
 import { EventMark } from "@/components/pro-play/media/EventMark";
 import { TournamentKitProvider, useKit } from "@/components/pro-play/tournament/TournamentParts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useViewportLock } from "@/lib/pro-play/worldsExperience/viewportLock";
-import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
+import { PRO_PLAY_ROUTE, PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 import type { TournamentResponseV2 } from "@/lib/pro-play/tournamentApi";
 import { dateRange } from "@/lib/pro-play/tournamentView";
 import { freshness, stageOf } from "@/lib/pro-play/tournamentV2View";
@@ -352,6 +352,43 @@ function NoticeDetails({ lines }: { lines: Notice[] }) {
 
 /* ── the bar ────────────────────────────────────────────────────────────── */
 
+/**
+ * W26Q — the way into the Worlds 2026 Quiz, one fixed-size control in the
+ * bar's right cluster beside the phase chip. It never changes the bar's height
+ * (desktop 56 px, phone rows 44 px), so no screen loses a pixel of workspace
+ * (UX4 zero-scroll). Icon-only on phones, portrait and landscape: at 360 px
+ * the title, this 36 px target and the short phase chip still fit one row.
+ * No motion of its own, so Reduce Motion has nothing to stop.
+ */
+function QuizChip({ compact }: { compact: boolean }) {
+  if (compact) {
+    return (
+      <Link
+        to={PRO_PLAY_WORLDS_QUIZ_ROUTE}
+        aria-label="Worlds 2026 Quiz"
+        title="Worlds 2026 Quiz"
+        data-testid="worlds-quiz-cta"
+        data-layout="compact"
+        className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-[#e3c66f] outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70"
+      >
+        <Brain className="h-4 w-4" aria-hidden="true" />
+      </Link>
+    );
+  }
+  return (
+    <Link
+      to={PRO_PLAY_WORLDS_QUIZ_ROUTE}
+      aria-label="Worlds 2026 Quiz"
+      data-testid="worlds-quiz-cta"
+      data-layout="wide"
+      className="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c9a84c]/40 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#e3c66f] outline-none transition-colors hover:bg-[#c9a84c]/[0.08] focus-visible:ring-1 focus-visible:ring-[#c9a84c]/70"
+    >
+      <Brain className="h-3.5 w-3.5" aria-hidden="true" />
+      Quiz
+    </Link>
+  );
+}
+
 function Identity({ compact }: { compact: boolean }) {
   const { ctx } = useKit();
   const year = ctx.starts.slice(0, 4);
@@ -396,6 +433,7 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
           <PrimaryNav compact />
         </div>
         {badge}
+        <QuizChip compact />
         <PhaseChip compact />
       </header>
     );
@@ -412,7 +450,8 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Identity compact />
-          <span className="ml-auto flex shrink-0 items-center gap-2">
+          <span className="ml-auto flex shrink-0 items-center gap-1">
+            <QuizChip compact />
             <PhaseChip compact />
           </span>
         </div>
@@ -443,6 +482,7 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
         <FeedChip data={data} refreshFailed={refreshFailed} />
         {tools}
         {badge}
+        <QuizChip compact={false} />
         <PhaseChip />
       </span>
     </header>
