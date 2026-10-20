@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -31,7 +31,7 @@ import {
   writeRememberedBaseline,
 } from "@/components/patch-catchup/remembered-baseline";
 import { combatLabHandoffFor } from "@/lib/patch-hub-combat-lab/handoff";
-import { deckHref, entityAtReadingLine } from "@/lib/patch-deck/route";
+import { deckHref } from "@/lib/patch-deck/route";
 import { usePatchHubShare } from "@/hooks/usePatchHubShare";
 import { resolveLandingTarget } from "@/lib/patch-hub-share/anchors";
 import { reportAnchorUrl } from "@/lib/patch-hub-share/urls";
@@ -238,26 +238,11 @@ const PatchReports = () => {
     heading.focus();
   }, [catchUp, selectedVersion]);
 
-  // PHD: Deck View carries the patch and, where it can, the entity — the one
-  // being read (at the reading line) on a click, else the one the URL names.
-  // The deck resolves a line/group anchor to its entity's card and falls back
-  // to its cover for anything it does not have.
+  // PHD: Deck View carries the patch and the entity the URL names (a
+  // permalink, a share or a Catch Up link sets it). The deck resolves a
+  // line/group anchor to its entity's card and falls back to its cover for
+  // anything it does not have.
   const deckTo = deckHref({ patch: selectedVersion, card: location.hash ? decodeHash(location.hash) : null });
-  const onDeckClick = useCallback(
-    (e: MouseEvent<HTMLAnchorElement>) => {
-      if (!structure || !selectedVersion) return;
-      const anchors = structure.sections.flatMap((s) => s.entities.map((entity) => entity.anchor));
-      const card = entityAtReadingLine(
-        anchors,
-        (id) => document.getElementById(id)?.getBoundingClientRect().top ?? null,
-        window.innerHeight * 0.35,
-      );
-      if (!card) return;
-      e.preventDefault();
-      navigate(deckHref({ patch: selectedVersion, card }));
-    },
-    [structure, selectedVersion, navigate],
-  );
 
   const returnPatch = catchUp ? (locationState.returnPatch ?? null) : searchParams.get("patch");
   const catchUpState: PatchHubLocationState = { returnPatch, fromMemory: remembered !== null };
@@ -269,7 +254,6 @@ const PatchReports = () => {
       catchUpState={catchUpState}
       onSwitch={onSwitch}
       deckTo={deckTo}
-      onDeckClick={onDeckClick}
     />
   );
 

@@ -22,7 +22,6 @@ import PatchDeckPage from "./PatchDeckPage";
 
 const detail = report2620 as unknown as PatchReportDetail;
 const KSANTE = "s-patch-champions__e-champion-k-sante";
-const ENTITY_ID = /^s-[a-z0-9-]+__e-[a-z0-9-]+$/;
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
@@ -67,20 +66,6 @@ function renderHub(entry: string) {
   );
 }
 
-/** Lay the List View's entity cards out in document order, `target` at the reading line. */
-function layOutEntitiesAround(target: string) {
-  const ids = Array.from(document.querySelectorAll("[id]"))
-    .map((el) => el.id)
-    .filter((id) => ENTITY_ID.test(id));
-  const at = ids.indexOf(target);
-  expect(at).toBeGreaterThan(0);
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-    const i = ids.indexOf(this.id);
-    const top = i < 0 ? 0 : (i - at) * 600 + 100;
-    return { top, bottom: top + 500, left: 0, right: 0, width: 0, height: 500, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
-  });
-}
-
 describe("List | Deck switch", () => {
   it("is offered on the Patch Report and carries the patch and the URL's entity", async () => {
     renderHub(`/lol/patch-reports?patch=26.20#${KSANTE}`);
@@ -92,31 +77,26 @@ describe("List | Deck switch", () => {
     );
   });
 
-  it("opens the deck at the entity being read, and the deck's List link and Back return", async () => {
-    renderHub("/lol/patch-reports?patch=26.20");
-    await waitFor(() => expect(document.getElementById(KSANTE)).not.toBeNull());
-    layOutEntitiesAround(KSANTE);
-
-    fireEvent.click(screen.getByTestId("patch-hub-layout-deck"));
+  it("opens the deck at the URL's entity, and the deck's List link and Back return", async () => {
+    renderHub(`/lol/patch-reports?patch=26.20#${KSANTE}`);
+    fireEvent.click(await screen.findByTestId("patch-hub-layout-deck"));
     await waitFor(() => expect(location()).toBe(`/lol/patch-deck?patch=26.20&card=${KSANTE}`));
     const card = await screen.findByTestId("deck-card");
     expect(card).toHaveAttribute("data-card-id", KSANTE);
     expect(screen.getByTestId("deck-layout-current")).toHaveAttribute("aria-current", "page");
 
-    // Deck → List names the same entity on the same patch.
+    // Deck -> List names the same entity on the same patch.
     expect(screen.getByTestId("deck-list-link")).toHaveAttribute("href", `/lol/patch-reports?patch=26.20#${KSANTE}`);
 
     // Card steps replace the entry, so Back leaves the deck for the List View.
     fireEvent.keyDown(window, { key: "ArrowRight" });
     back();
-    await waitFor(() => expect(location()).toBe("/lol/patch-reports?patch=26.20"));
+    await waitFor(() => expect(location()).toBe(`/lol/patch-reports?patch=26.20#${KSANTE}`));
   });
 
-  it("falls back to the URL's entity (or the cover) when the reader is above the first entity", async () => {
+  it("opens the cover when the List View names no entity", async () => {
     renderHub("/lol/patch-reports?patch=26.20");
-    await waitFor(() => expect(document.getElementById(KSANTE)).not.toBeNull());
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ top: 5000 } as DOMRect);
-    fireEvent.click(screen.getByTestId("patch-hub-layout-deck"));
+    fireEvent.click(await screen.findByTestId("patch-hub-layout-deck"));
     await waitFor(() => expect(location()).toBe("/lol/patch-deck?patch=26.20"));
     expect(await screen.findByTestId("deck-card")).toHaveAttribute("data-card-kind", "cover");
   });

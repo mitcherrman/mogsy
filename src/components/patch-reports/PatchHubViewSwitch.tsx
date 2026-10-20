@@ -19,8 +19,6 @@ type Props = {
    * only), a "List | Deck" switch sits beside the views; List is this page.
    */
   deckTo?: To;
-  /** Plain left click on Deck: lets the page carry the entity in view. */
-  onDeckClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 const ITEM =
@@ -39,7 +37,6 @@ export const PatchHubViewSwitch = ({
   catchUpState,
   onSwitch,
   deckTo,
-  onDeckClick,
 }: Props) => {
   const item = (view: PatchHubView, label: string, to: To, state: unknown) => {
     const active = current === view;
@@ -90,9 +87,6 @@ export const PatchHubViewSwitch = ({
           <span aria-hidden className="w-px self-stretch bg-[#c9a84c]/40" />
           <Link
             to={deckTo}
-            onClick={(e) => {
-              if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) onDeckClick?.(e);
-            }}
             data-testid="patch-hub-layout-deck"
             className={cn(ITEM, "gap-1.5 text-foreground hover:bg-[#c9a84c]/10 hover:text-[#e8d08a]")}
           >

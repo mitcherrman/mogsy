@@ -4,7 +4,7 @@
  *
  *   1. COEXIST     /lol/patch-reports (List), /lol/patch-deck (Deck) and
  *                  Catch Up all render for a guest; Catch Up has no layout switch.
- *   2. SWITCH      List → Deck carries the patch and the entity being read;
+ *   2. SWITCH      List → Deck carries the patch and the URL's entity anchor;
  *                  Deck → List lands on that entity; Back returns.
  *   3. VIEWPORTS   1280, 1440, 1920, 375, 320: no sideways scroll, no broken
  *                  images, no console errors; screenshots of every face.
@@ -90,10 +90,31 @@ async function noBrokenImages(page: Page) {
   expect(broken, "broken images").toEqual([]);
 }
 
+/** The current card, once a card change has settled (the outgoing card animates out alongside it). */
+async function deckCard(page: Page) {
+  const cards = page.getByTestId("deck-card");
+  await expect(cards).toHaveCount(1);
+  return cards;
+}
+
 async function openDeck(page: Page, search: string) {
   await page.goto(`/lol/patch-deck${search}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("patch-deck")).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByTestId("deck-card")).toBeVisible();
+  await expect(await deckCard(page)).toBeVisible();
+}
+
+/** A real touch swipe (Chromium touch events → pointer events), right to left. */
+async function swipeLeft(page: Page, box: { x: number; y: number; width: number; height: number }) {
+  const cdp = await page.context().newCDPSession(page);
+  const y = box.y + box.height * 0.5;
+  const xs = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2].map((f) => box.x + box.width * f);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: xs[0], y }] });
+  for (const x of xs.slice(1)) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
 }
 
 async function openFace(page: Page, name: string) {
@@ -101,7 +122,7 @@ async function openFace(page: Page, name: string) {
   await expect(page.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
 }
 
-const cardId = (page: Page) => page.getByTestId("deck-card").getAttribute("data-card-id");
+const cardId = async (page: Page) => (await deckCard(page)).getAttribute("data-card-id");
 
 test.describe("Patch Hub views coexist for a guest", () => {
   test("List View offers List | Deck; Catch Up does not; both routes render logged out", async ({ page }, info) => {
@@ -127,20 +148,18 @@ test.describe("Patch Hub views coexist for a guest", () => {
 
   test("List → Deck carries patch and entity; Deck → List lands on it; Back returns", async ({ page }, info) => {
     const w = watch(page);
-    await page.goto(`/lol/patch-reports?patch=${PATCH}#${KSANTE}`, { waitUntil: "domcontentloaded" });
-    await expect(page.locator(`[id="${KSANTE}"]`)).toBeVisible({ timeout: 90_000 });
-    // Read Swain: bring its top to 30% of the viewport (the reading line is 35%), then switch.
-    await page.locator(`[id="${SWAIN}"]`).evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - innerHeight * 0.3));
-    await page.waitForTimeout(300);
+    // A Swain permalink (the URL's semantic entity anchor) is carried into the deck.
+    await page.goto(`/lol/patch-reports?patch=${PATCH}#${SWAIN}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(`[id="${SWAIN}"]`)).toBeInViewport({ timeout: 90_000 });
     await page.getByTestId("patch-hub-layout-deck").click();
     await expect(page).toHaveURL(new RegExp(`/lol/patch-deck\\?patch=${PATCH.replace(".", "\\.")}&card=${SWAIN}$`));
-    await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-id", SWAIN);
+    await expect(await deckCard(page)).toHaveAttribute("data-card-id", SWAIN);
 
     // Steps through cards replace the entry; Back leaves the deck.
     await page.keyboard.press("ArrowRight");
     await expect.poll(() => cardId(page)).not.toBe(SWAIN);
     await page.keyboard.press("ArrowLeft");
-    await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-id", SWAIN);
+    await expect(await deckCard(page)).toHaveAttribute("data-card-id", SWAIN);
 
     await page.getByTestId("deck-list-link").click();
     await expect(page).toHaveURL(new RegExp(`/lol/patch-reports\\?patch=${PATCH.replace(".", "\\.")}#${SWAIN}$`));
@@ -148,9 +167,9 @@ test.describe("Patch Hub views coexist for a guest", () => {
     await expect(swain).toBeInViewport();
 
     await page.goBack();
-    await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-id", SWAIN);
+    await expect(await deckCard(page)).toHaveAttribute("data-card-id", SWAIN);
     await page.goBack();
-    await expect(page).toHaveURL(/\/lol\/patch-reports\?patch=/);
+    await expect(page).toHaveURL(new RegExp(`/lol/patch-reports\\?patch=${PATCH.replace(".", "\\.")}#${SWAIN}$`));
     await expectNoErrors(w, info);
   });
 });
@@ -162,7 +181,7 @@ for (const vp of VIEWPORTS) {
     test("cover, champion faces, item and system chapters", async ({ page }, info) => {
       const w = watch(page);
       await openDeck(page, `?patch=${PATCH}`);
-      await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-kind", "cover");
+      await expect(await deckCard(page)).toHaveAttribute("data-card-kind", "cover");
       await noBrokenImages(page);
       await noSidewaysScroll(page);
       await shot(page, info, `${vp.id}-cover`);
@@ -170,7 +189,7 @@ for (const vp of VIEWPORTS) {
       // Swain (face at 67%) is mirrored; K'Sante (33%) keeps the art left.
       await openDeck(page, `?patch=${PATCH}&card=${SWAIN}`);
       if (!("phone" in vp)) {
-        await expect(page.getByTestId("deck-card")).toHaveAttribute("data-side", "right");
+        await expect(await deckCard(page)).toHaveAttribute("data-side", "right");
       }
       expect(w.reportReads.filter((v) => v !== PATCH), "a card reads only its own patch").toEqual([]);
       await noBrokenImages(page);
@@ -198,7 +217,7 @@ for (const vp of VIEWPORTS) {
 
       await openDeck(page, `?patch=${PATCH}&card=${KSANTE}`);
       if (!("phone" in vp)) {
-        await expect(page.getByTestId("deck-card")).toHaveAttribute("data-side", "left");
+        await expect(await deckCard(page)).toHaveAttribute("data-side", "left");
       }
       await expect(page.getByTestId("deck-direction").first()).toBeVisible();
       await noBrokenImages(page);
@@ -224,7 +243,7 @@ for (const vp of VIEWPORTS) {
       const n = await pills.count();
       for (let i = 0; i < n; i++) {
         await pills.nth(i).click();
-        const kind = await page.getByTestId("deck-card").getAttribute("data-card-kind");
+        const kind = await (await deckCard(page)).getAttribute("data-card-kind");
         if (kind && !kinds.has(kind)) {
           kinds.add(kind);
           await noBrokenImages(page);
@@ -253,13 +272,8 @@ for (const vp of VIEWPORTS) {
 
         await page.mouse.wheel(0, -2000);
         await page.waitForTimeout(300);
-        const swipe = page.getByTestId("deck-swipe");
-        const box = (await swipe.boundingBox())!;
-        await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.5);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, { steps: 6 });
-        await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.5, { steps: 6 });
-        await page.mouse.up();
+        const box = (await page.getByTestId("deck-swipe").boundingBox())!;
+        await swipeLeft(page, box);
         await expect.poll(() => cardId(page)).not.toBe(SWAIN);
         await noSidewaysScroll(page);
         await expectNoErrors(w, info);
@@ -280,7 +294,7 @@ test.describe("keyboard, focus and reduced motion", () => {
     await page.keyboard.press("]");
     await expect(page.getByTestId("patch-deck")).toHaveAttribute("data-face", "changes");
     await page.keyboard.press("Home");
-    await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-kind", "cover");
+    await expect(await deckCard(page)).toHaveAttribute("data-card-kind", "cover");
 
     // Tab into the deck: the focused control shows the gold ring.
     let ring = "";
@@ -307,11 +321,11 @@ test.describe("fallbacks", () => {
     const w = watch(page);
     await openDeck(page, "?patch=26.15");
     await expect(page.getByTestId("deck-patch-select")).toHaveValue("26.15");
-    await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-kind", "cover");
+    await expect(await deckCard(page)).toHaveAttribute("data-card-kind", "cover");
     await shot(page, info, "archived-26.15-cover");
 
     await openDeck(page, `?patch=${PATCH}&card=s-patch-champions__e-champion-nobody&face=impact`);
-    await expect(page.getByTestId("deck-card")).toHaveAttribute("data-card-kind", "cover");
+    await expect(await deckCard(page)).toHaveAttribute("data-card-kind", "cover");
     await expect(page).toHaveURL(new RegExp(`/lol/patch-deck\\?patch=${PATCH.replace(".", "\\.")}$`));
 
     await page.goto("/lol/patch-deck?patch=9.99", { waitUntil: "domcontentloaded" });
