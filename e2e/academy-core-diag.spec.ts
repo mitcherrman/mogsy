@@ -5,7 +5,11 @@ async function stub(page: Page) {
   await page.route("**/api/patch-reports", (route) => route.fulfill({ status: 200, contentType: "application/json",
     body: JSON.stringify({ patches: [{ patch_version: "26.20", source_url: "", built_at: "2026-10-01T00:00:00Z", section_titles: [], card_count: 41, change_count: 598, cards_by_type: {}, cards_by_status: {} }] }) }));
   await page.route("**/api/patch-reports/**", (route) => route.fulfill({ status: 200, contentType: "application/json",
-    body: JSON.stringify({ patch_version: "26.20", source_url: "", built_at: "2026-10-01T00:00:00Z", sections: [], cards: [] }) }));
+    body: JSON.stringify({ patch_version: "26.20", source_url: "", built_at: "2026-10-01T00:00:00Z", sections: [],
+      cards: ["Ryze", "Ahri", "Akali", "Viktor", "Jinx", "Yasuo"].map((n, i) => ({ section_title: "Champions", status: "analyzed",
+        entity_type: "champion", entity_name: n, entity_slug: n.toLowerCase(), mogzy_entity_ref: null, mogzy_image_path: null, official_image_url: null,
+        editorial_direction: i < 3 ? "buff" : "nerf", editorial_direction_source: "riot_section",
+        changes: [{ group_title: "Base stats", property_name: "Health", change_kind: "numeric", before_raw: "600", after_raw: i < 3 ? "620" : "580" }] })) }) }));
   await page.route("**/api/daily-run/today", (route) => route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
   await page.route("**/rest/v1/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
 }
@@ -46,7 +50,18 @@ test("diag: Read full report after Daily and back", async ({ page }) => {
   await expect(page).toHaveURL(/\/quiz\/daily-challenge$/);
   await page.goBack();
   await expect(page.getByTestId("academy-core-book")).toBeVisible();
-  for (let i = 0; i < 6; i++) {
+  const link = page.getByTestId("academy-core-book").getByRole("link", { name: /Read full report/i });
+  console.log("DIAG count", await link.count());
+  for (let i = 0; i < 3; i++) {
+    const b = await link.boundingBox();
+    const hit = b ? await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.outerHTML.slice(0, 200), [b.x + b.width / 2, b.y + b.height / 2]) : null;
+    console.log("DIAG link", i, JSON.stringify(b), hit);
+    await page.waitForTimeout(400);
+  }
+  try { await link.click({ timeout: 8000 }); console.log("DIAG click ok", page.url()); }
+  catch (e) { console.log("DIAG click failed", String(e).slice(0, 1500).replace(/
+/g, " | ")); }
+  for (let i = 0; i < 0; i++) {
     const info = await page.evaluate(() => {
       const link = [...document.querySelectorAll<HTMLElement>('[data-testid="academy-core-book"] a, [data-testid="academy-core-book"] button')]
         .find((e) => /Read full report/i.test(e.textContent ?? "") || /Read full report/i.test(e.getAttribute("aria-label") ?? ""));
