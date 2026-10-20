@@ -1,6 +1,8 @@
-# PHD1 — Patch Hub Cinematic Deck View (prototype, local only)
+# PHD1 — Patch Hub Cinematic Deck View
 
-Branch `patchhub/phd1-cinematic-deck`, worktree `C:\Users\mlmit\mogzy-wt\phd1`. **Not pushed, not merged, not deployed, not linked from the Patch Hub.**
+Branch `patchhub/phd1-cinematic-deck`, worktree `C:\Users\mlmit\mogzy-wt\phd1`.
+
+**Status: released by PHD-RELEASE (§11) — public at `/lol/patch-deck`, linked from the Patch Report's List | Deck switch.** Sections 1–10 are the prototype record.
 
 | | |
 |---|---|
@@ -81,3 +83,59 @@ R2 adds `src/lib/patch-deck/focal.ts` (+ test) and `src/components/patch-deck/De
 4. A per-entity history endpoint; keep the archive scan as fallback.
 5. Real-device pass (iOS Safari, Android Chrome) and a WebKit run of the page test.
 6. Re-promote K'Sante 26.20 on the backend; the deck shows the corrected classification with no frontend change.
+
+
+## 11. PHD-RELEASE — public release (2026-10-19)
+
+> Sections 1–10 describe the prototype. As of this release the Deck View is public at **`/lol/patch-deck`**; the `/dev/patch-deck` route no longer exists.
+
+| | |
+|---|---|
+| Source | `patchhub/phd1-cinematic-deck` @ `922ceaa5cfa443e25cb658dbe9e7452fc6244e8c` (R2, unchanged visually) |
+| Base | `origin/main` `6fc8c3432167f7fd42d887205c098acdcc0691be`, then main `c0fc429224d20b4792c5b4e1a65c4e9d9851687f` (PM1) merged in, no conflicts |
+| Release branch | `patchhub/phd-release`, worktree `C:\Users\mlmit\mogzy-wt\phd-release` |
+| PR | https://github.com/mitcherrman/mogsy/pull/96 |
+| Merge / deploy | recorded in §11.6 |
+
+### 11.1 Integration
+
+- PHD1-R2 merged with `--no-ff` (only `src/App.tsx` overlapped; auto-merged). Every Patch Hub file PHD1 reads (`report-structure`, `sr-navigation`, `mogzy-status`, `patch-impact/*`, `usePatchImpactLoader`, `PatchReports.tsx`, share/route helpers, `useChampionAssets`) was unchanged on main since `bdf4bbf1`, so no contract drift.
+- Page moved to `src/pages/lol/patch-deck/PatchDeckPage.tsx`; route `/lol/patch-deck` inside `<Layout />`, added to Layout's full-bleed list (one line). The deck's sticky bars sit under the global HUD via `--dk-offset` (`.phd1-deck--shell` sets it to `--app-header-h`); the inner `<main>` became a `<div>` (the shell owns `<main>`).
+- Header is now "PATCH HUB · Deck View" with a **List | Deck** switch (Deck current); the "prototype" label is gone.
+- PHSR6 was not merged; nothing PHSR-owned was restyled. `index.css` untouched; the deck stylesheet stays scoped under `.phd1-deck` and loads only with the deck chunk (66 KB JS / 35 KB CSS).
+
+### 11.2 List | Deck contract
+
+- List View (`/lol/patch-reports`, still the default): a "List | Deck" switch beside "Patch Report | Catch Up", report mode only. Deck href = `/lol/patch-deck?patch=<selected>&card=<URL hash>`. The hash is the List View's semantic entity anchor (set by permalinks, shares, Catch Up links). A reading-position guess was tried and removed: the switch is in the masthead, so reaching it scrolls to the top first.
+- Deck → List: `/lol/patch-reports?patch=<v>#<card id>` (entity anchor), or the patch alone on the cover.
+- `indexOfCard` resolves a line/group anchor (`<entity>__g-…__c-…`) to its entity's card; an unknown card opens the cover and the URL is replaced (face dropped). An unloadable patch shows the error with "Open Patch <latest>".
+- History: card/face steps `replace`; patch change and the switch `push`. Back from the deck returns to the List View.
+- Catch Up has no layout switch and is otherwise unchanged.
+
+### 11.3 Data observed on the live API (2026-10-19)
+
+- 11 listed patches, 26.20 → 26.10; 26.20 detail ≈ 181 KB, reconciliation `RECONCILED_WITH_HELDS` (handled by the existing status copy).
+- **K'Sante 26.20 (Champions) is now `editorial_direction: nerf`, source `riot_patch_highlights`**: the backend re-promotion landed, and the deck shows it with no frontend change. K'Sante ARAM: Mayhem stays `buff` (`riot_text_semantic`).
+- No Railway, Supabase, Patch Ops or database change was made.
+
+### 11.4 Network
+
+- A card reads only its own patch. Impact evidence loads only when the Impact face opens (unchanged).
+- History reads earlier reports only when its face opens, through the shared `["patch-report", v]` cache (30 min stale), and now at most **12** (`HISTORY_WINDOW`), so fan-out no longer grows with the archive. A per-entity history endpoint would still be the cheaper long-term answer.
+
+### 11.5 Verification
+
+- Vitest (local, esbuild-JSX config because of the machine's swc/rollup blocks): deck + switch suites green (`PatchDeckSwitch.test.tsx` new: URL-entity carry, Back, cover fallback, Catch Up has no switch, unknown card → cover, line anchor → entity, unknown patch → latest). Wider set (App routes, Layout, all Patch Hub / Impact / Catch Up): the same 8 failures as main `6fc8c343` (routing-contract ×2, routeGuards ×1, feedback contract ×5), none new.
+- `tsc -p tsconfig.app.json`: 2 errors, identical to main. ESLint `--max-warnings 0` on changed files: clean apart from the pre-existing `App.tsx` react-refresh warning.
+- **Patch Deck Acceptance** (GitHub Actions, bundled Chromium, `vite build` + `vite preview`, live API, logged out; `e2e/patch-deck/patch-deck.spec.ts`): List/Deck/Catch Up coexist; switching carries patch + entity and Back works; 1280/1440/1920/375/320 cover, Swain (mirrored, `data-side=right`) Overview/Changes/History/Explore, K'Sante (`left`), Lucian Impact chart click → level 8, every chapter pill (champion, item, system reached); no sideways scroll, no broken on-screen images, no console or page errors; no history reads before History opens, ≤ 12 after; phone sticky face bar under the deck bar and touch swipe; keyboard ←/→/]/Home, visible focus ring, reduced-motion durations; archived 26.15, unknown card, unknown patch. Screenshots are in the run's `patch-deck-evidence` artifact.
+- `interaction-labs-integration` fails at `interaction-labs-access.spec.ts:84` (`/admin/perfect-timing`) on this PR exactly as on every PR since 2026-10-16: pre-existing, unrelated.
+- Not covered: WebKit/Safari, a real touch device.
+
+### 11.6 Merge, publish, live check
+
+Filled in after the merge (see the follow-up commit on main).
+
+### 11.7 Rollback
+
+- **Frontend only.** Revert the merge commit on `main` (`git revert -m 1 <merge sha>`), push, and publish in Lovable. That removes `/lol/patch-deck` and the switch; List View and Catch Up return to their pre-release code. No data or backend step exists to undo.
+- Narrower: delete the `deckTo` prop in `PatchReports.tsx` to hide the switch while keeping the route, or remove the `/lol/patch-deck` route line in `App.tsx`.
