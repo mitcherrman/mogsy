@@ -292,11 +292,9 @@ test.describe("desktop", () => {
     await page.screenshot({ path: path.join(OUT, "desktop-1366x768-crystal-preview.png") });
   });
 
-  test("Daily, Ranked, the book's own link and the alias behave as before", async ({ page }) => {
+  test("Daily, the book's own link and the alias behave as before; no Ranked shortcut", async ({ page }) => {
     await open(page, 1366, 768);
-    await page.getByTestId("academy-core-ranked").click();
-    await expect(page).toHaveURL(/\/quiz\?play=1$/);
-    await page.goBack();
+    await expect(page.getByTestId("academy-core-ranked")).toHaveCount(0);
     await expect(page.getByTestId("academy-core-daily")).toBeVisible();
     await page.getByTestId("academy-core-daily").click();
     await expect(page).toHaveURL(/\/quiz\/daily-challenge$/);
@@ -495,7 +493,8 @@ test.describe("mobile", () => {
       expect(book.y, "the mobile book follows the lower pair").toBeGreaterThan(lo.y);
       expect(lo.width / up.width).toBeGreaterThanOrEqual(0.8);
       await expect(page.getByTestId("academy-core-book-mobile").getByTestId("academy-broadcast-surface-mobile")).toBeAttached();
-      for (const id of ["academy-core-daily", "academy-core-ranked", "academy-core-slot-leaguecraft", "academy-core-slot-pro-play",
+      await expect(page.getByTestId("academy-core-ranked")).toHaveCount(0);
+      for (const id of ["academy-core-daily", "academy-core-slot-leaguecraft", "academy-core-slot-pro-play",
         "academy-core-slot-combat-lab", "academy-core-slot-archives", "academy-core-crystal", "academy-core-commons-link", "academy-core-hall-link"]) {
         const b = (await page.getByTestId(id).boundingBox())!;
         expect(b.height, `${id} tall enough`).toBeGreaterThanOrEqual(44);
@@ -544,9 +543,8 @@ test.describe("mobile", () => {
     await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
     await page.waitForTimeout(300);
     await noHorizontalOverflow(page);
-    for (const text of ["Play Daily Challenge", "Ranked"]) {
-      await expect(page.getByText(text, { exact: true }).first()).toBeVisible();
-    }
+    await expect(page.getByRole("link", { name: "Play Daily Challenge" })).toBeVisible();
+    await expect(page.getByText("Ranked", { exact: true })).toHaveCount(0);
     for (const r of ROOMS) await expect(bookLink(page, r.id)).toBeVisible();
     await page.screenshot({ path: path.join(OUT, "mobile-390x844-text-zoom-200.png"), fullPage: true });
   });

@@ -31,6 +31,7 @@ import {
   writeRememberedBaseline,
 } from "@/components/patch-catchup/remembered-baseline";
 import { combatLabHandoffFor } from "@/lib/patch-hub-combat-lab/handoff";
+import { deckHref } from "@/lib/patch-deck/route";
 import { usePatchHubShare } from "@/hooks/usePatchHubShare";
 import { resolveLandingTarget } from "@/lib/patch-hub-share/anchors";
 import { reportAnchorUrl } from "@/lib/patch-hub-share/urls";
@@ -237,6 +238,12 @@ const PatchReports = () => {
     heading.focus();
   }, [catchUp, selectedVersion]);
 
+  // PHD: Deck View carries the patch and the entity the URL names (a
+  // permalink, a share or a Catch Up link sets it). The deck resolves a
+  // line/group anchor to its entity's card and falls back to its cover for
+  // anything it does not have.
+  const deckTo = deckHref({ patch: selectedVersion, card: location.hash ? decodeHash(location.hash) : null });
+
   const returnPatch = catchUp ? (locationState.returnPatch ?? null) : searchParams.get("patch");
   const catchUpState: PatchHubLocationState = { returnPatch, fromMemory: remembered !== null };
   const viewSwitch = (
@@ -246,6 +253,7 @@ const PatchReports = () => {
       catchUpTo={{ pathname: "/lol/patch-reports", search: catchUpSearch(remembered) }}
       catchUpState={catchUpState}
       onSwitch={onSwitch}
+      deckTo={deckTo}
     />
   );
 

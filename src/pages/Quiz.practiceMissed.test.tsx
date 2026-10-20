@@ -134,6 +134,11 @@ vi.mock("@/lib/quiz/api", () => ({
 }));
 
 import QuizPage from "./Quiz";
+import {
+  ReportableQuestionProvider,
+  useReportableQuestion,
+} from "@/lib/feedback/reportable-question";
+import type { ReportableQuestionSnapshot } from "@/lib/feedback/report-context";
 
 function LocationProbe() {
   const location = useLocation();
@@ -317,7 +322,13 @@ describe("Practice — NAV1-P1 exit safety", () => {
 
   it("guards header and same-route hash/search departures, but not terminal result", async () => {
     const router = await startActiveDataPractice();
-    fireEvent.click(screen.getByRole("link", { name: "Back to League hub" }));
+    // PM1: the arena carries the way back twice — beside the HUD hat below
+    // `lg`, in the subject panel from `lg` — and CSS shows exactly one. jsdom
+    // applies no CSS, so both are here; both go through the same guard.
+    const backLinks = screen.getAllByRole("link", { name: "Back to League hub" });
+    expect(backLinks).toHaveLength(2);
+    expect(backLinks.every((l) => l.getAttribute("href") === "/lol")).toBe(true);
+    fireEvent.click(backLinks[0]);
     expect(await screen.findAllByRole("alertdialog", { name: "Leave practice?" })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Stay in Practice" }));
 
@@ -361,5 +372,48 @@ describe("Practice — NAV1-P1 exit safety", () => {
     expect(screen.queryByText("Quiz Complete")).toBeNull();
     expect(await screen.findByText("Owned & Missed")).toBeTruthy();
     expect(screen.queryByRole("alertdialog", { name: "Leave practice?" })).toBeNull();
+  });
+
+  it("PM1: runs in the canonical arena and keeps Practice's own report identity", async () => {
+    submitAnswerMock.mockImplementation(async (payload: { question_id: number }) =>
+      payload.question_id === 11
+        ? { is_correct: false, correct_answer: "Beta", explanation: "Beta has more." }
+        : { is_correct: true, correct_answer: "Gamma", explanation: "Gamma is manaless." });
+    let snapshot: ReportableQuestionSnapshot | null = null;
+    function Probe() {
+      snapshot = useReportableQuestion();
+      return null;
+    }
+    render(
+      <ReportableQuestionProvider>
+        <MemoryRouter initialEntries={["/quiz"]}>
+          <QuizPage />
+        </MemoryRouter>
+        <Probe />
+      </ReportableQuestionProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("leaguecraft-workspace")).toBeTruthy());
+    await startSetPractice();
+    await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
+
+    // The modern Ranked presentation, not the legacy card.
+    expect(screen.getByTestId("practice-arena")).toBeTruthy();
+    expect(screen.getByTestId("ranked-question").className).toContain("ranked-question-stage");
+    expect(screen.getByTestId("ranked-header-title").textContent).toContain("Question 1 / 2");
+    // …with no Ranked game state anywhere in it.
+    expect(screen.queryByTestId("timer-value")).toBeNull();
+    expect(screen.queryByText(/opponent|forfeit|matchmaking/i)).toBeNull();
+
+    // The arena publishes nothing; Practice's richer snapshot is the one live.
+    await waitFor(() => expect(snapshot?.staticQuestionId).toBe(11));
+    expect(snapshot?.mode).toBe("Practice");
+    expect(snapshot?.canonicalAnswer ?? null).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await screen.findByRole("button", { name: /Next question/ });
+    expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+    expect(submitAnswerMock.mock.calls[0][0]).toMatchObject({ question_id: 11, selected_answer: "Alpha", session_id: 7 });
+    await waitFor(() => expect(snapshot?.canonicalAnswer).toBe("Beta"));
+    expect(screen.getByTestId("practice-explanation").textContent).toBe("Beta has more.");
   });
 });

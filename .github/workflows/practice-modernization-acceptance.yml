@@ -1,0 +1,105 @@
+name: practice-modernization-acceptance
+
+# PM1 — Quick Study + More Challenges redesign and Practice in the canonical
+# Ranked arena, across six viewports (1920x1080, 1440x900, 1280x800, 390x844,
+# 360x640, 844x390), plus loading/error, keyboard, reduced motion and the
+# leave guard. Bundled Chromium on the GitHub runner, one worker (AGENTS.md).
+on:
+  push:
+    branches:
+      - "practice-modernization/**"
+  pull_request:
+    paths:
+      - "src/pages/Quiz.tsx"
+      - "src/components/quiz/**"
+      - "src/components/ranked-arena/**"
+      - "src/components/question-surface/**"
+      - "src/lib/quiz/**"
+      - "src/lib/ranked-core/**"
+      - "src/index.css"
+      - "e2e/pm1/**"
+      - "playwright.pm1.config.ts"
+      - "scripts/ci/pm1-annotate.mjs"
+      - ".github/workflows/practice-modernization-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pm1-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Practice modernization acceptance
+        shell: bash
+        run: |
+          mkdir -p test-results/pm1
+          set -o pipefail
+          npx playwright test -c playwright.pm1.config.ts --workers=1 2>&1 | tee test-results/pm1/run.log
+      - name: Measure the same hub geometry on main
+        if: always()
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          git worktree add --detach ../baseline FETCH_HEAD
+          ln -s "$PWD/node_modules" ../baseline/node_modules
+          mkdir -p ../baseline/e2e/pm1
+          cp e2e/pm1/hub-measure.spec.ts ../baseline/e2e/pm1/
+          cp playwright.pm1.config.ts ../baseline/
+          (cd ../baseline && PM1_LABEL=main npx playwright test -c playwright.pm1.config.ts e2e/pm1/hub-measure.spec.ts --workers=1) || true
+          mkdir -p test-results/pm1
+          cp ../baseline/test-results/pm1/hub-measure-main.json test-results/pm1/ || true
+          cp ../baseline/test-results/pm1/measure-main-*.png test-results/pm1/ || true
+      - name: Annotate failures and measurements
+        if: always()
+        run: node scripts/ci/pm1-annotate.mjs
+      - name: Upload screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: practice-modernization-evidence
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14
+  unit-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: PM1 unit tests
+        run: >-
+          npx vitest run
+          src/lib/quiz/practiceArena.test.ts
+          src/components/quiz/practice-arena
+          src/components/quiz/QuizCategoryRail.test.tsx
+          src/components/quiz/LeaguecraftHub.moreChallenges.test.tsx
+          src/pages/Quiz.practiceMissed.test.tsx
+          src/components/ranked-arena/AnswerGrid.test.tsx
+          src/components/ranked-arena/AnswerGrid.optionMedia.test.tsx
+          src/components/ranked-arena/CanonicalArena.questionSurface.test.tsx
+          src/components/pro-play/arena-run
+      - name: Typecheck
+        run: npx tsc -p tsconfig.app.json --noEmit
+        continue-on-error: true
+      - name: Production build
+        run: npx vite build

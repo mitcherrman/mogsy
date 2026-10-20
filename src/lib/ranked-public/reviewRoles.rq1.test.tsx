@@ -201,7 +201,9 @@ describe("workspace review card", () => {
       position={2} total={3} />);
     expect(screen.queryByTestId("review-question-roles")).toBeNull();
     expect(emblems(screen.getByTestId("review-mastery-roles-0"))).toEqual(["adc"]);
+    fireEvent.click(screen.getByTestId("review-mastery-select-2"));
     expect(emblems(screen.getByTestId("review-mastery-roles-1"))).toEqual(["jungle", "mid"]);
+    fireEvent.click(screen.getByTestId("review-mastery-select-3"));
     expect(screen.queryByTestId("review-mastery-roles-2")).toBeNull();
   });
 

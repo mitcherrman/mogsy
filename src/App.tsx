@@ -374,6 +374,10 @@ const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
 // Patch Reports — public per-patch change reports with Mogzy data comparison.
 const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
 
+// Patch Hub Deck View (PHD1) — the cinematic card deck over the same Patch
+// Report data; List | Deck switch on both pages. Full-bleed inside <Layout />.
+const PatchDeckPage = lazy(() => import("./pages/lol/patch-deck/PatchDeckPage"));
+
 // Mechanics Explorer — public tools over the canonical mechanics engine
 // (MECH1 Phase 5B1: respawn calculator + wave timeline).
 const MechanicsExplorerPage = lazy(() => import("./pages/lol/mechanics/MechanicsExplorerPage"));
@@ -773,6 +777,7 @@ export const appRouter = createBrowserRouter(
                   <Route path={PRO_PLAY_LIVE_ARCHIVE_ROUTE} element={<Suspense fallback={<RouteFallback />}><EsportsArchivePage /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
+                  <Route path="/lol/patch-deck" element={<Suspense fallback={<RouteFallback />}><PatchDeckPage /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />
                   <Route path="/privacy" element={<Suspense fallback={<RouteFallback />}><Privacy /></Suspense>} />
                   <Route path="/terms" element={<Suspense fallback={<RouteFallback />}><Terms /></Suspense>} />

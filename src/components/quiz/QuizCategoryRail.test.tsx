@@ -10,10 +10,23 @@
  */
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+const availability = vi.hoisted(() => ({ unavailable: new Set<string>() }));
+vi.mock("@/lib/quiz/practiceCategories", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/quiz/practiceCategories")>();
+  return {
+    ...actual,
+    isPracticeCategoryAvailable: (id: string) =>
+      !availability.unavailable.has(id) && actual.isPracticeCategoryAvailable(id),
+  };
+});
+
 import QuizCategoryRail from "./QuizCategoryRail";
 import { QUIZ_CATEGORY_ICONS } from "./QuizCategoryStrip";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  availability.unavailable = new Set();
+});
 
 const APPROVED = [
   "objectives",
@@ -106,65 +119,80 @@ describe("QuizCategoryRail", () => {
 
   // ── PRAC1: the rail is the Practice chooser ──────────────────────────────
 
-  it("opens every content-backed subject, and only those", () => {
+  it("opens all six subjects, Vision included (VISION42)", () => {
     const onSelectCategory = vi.fn();
     render(<QuizCategoryRail onSelectCategory={onSelectCategory} />);
     for (const id of APPROVED) {
       const tile = screen
         .getAllByTestId("quiz-category-rail-tile")
         .find((el) => el.getAttribute("data-category") === id)!;
+      expect(tile.getAttribute("data-available"), id).toBe("true");
       fireEvent.click(within(tile).getByRole("button"));
     }
-    // Five doors. Vision is in the taxonomy and is not one of them.
-    expect(onSelectCategory.mock.calls.map(([id]) => id)).toEqual([
-      "objectives",
-      "wave-management",
-      "summoner-spells",
-      "itemization",
-      "abilities",
-    ]);
+    expect(onSelectCategory.mock.calls.map(([id]) => id)).toEqual(APPROVED);
   });
 
-  it("marks Vision unavailable without removing it, and never navigates from it", () => {
+  it("marks a subject with no live sources unavailable, keeps it a focus stop, and never opens it", () => {
+    availability.unavailable = new Set(["vision"]);
     const onSelectCategory = vi.fn();
     render(<QuizCategoryRail onSelectCategory={onSelectCategory} />);
     const tile = screen
       .getAllByTestId("quiz-category-rail-tile")
       .find((el) => el.getAttribute("data-category") === "vision")!;
-    const button = within(tile).getByRole("button");
+    const button = within(tile).getByRole("button") as HTMLButtonElement;
 
     expect(tile.getAttribute("data-available")).toBe("false");
     expect(button.getAttribute("aria-disabled")).toBe("true");
     expect(tile.getAttribute("title")).toContain("coming soon");
     expect(within(tile).getAllByText("Coming soon").length).toBeGreaterThan(0);
+    // `aria-disabled`, never `disabled`: a removed tab stop would hide the
+    // fact that the subject exists at all.
+    expect(button.disabled).toBe(false);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    expect(button.className.includes("cursor-pointer")).toBe(false);
 
     fireEvent.click(button);
     fireEvent.keyDown(button, { key: "Enter" });
     expect(onSelectCategory).not.toHaveBeenCalled();
   });
 
-  it("keeps Vision a focus stop — a keyboard reader must be able to find it", () => {
-    // `aria-disabled`, never `disabled`: a removed tab stop would hide the
-    // fact that the subject exists at all.
-    render(<QuizCategoryRail onSelectCategory={vi.fn()} />);
-    const tile = screen
-      .getAllByTestId("quiz-category-rail-tile")
-      .find((el) => el.getAttribute("data-category") === "vision")!;
-    const button = within(tile).getByRole("button") as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
-    button.focus();
-    expect(document.activeElement).toBe(button);
+  // ── PM1: the Academy treatment ───────────────────────────────────────────
+
+  it("draws its heading INSIDE the plate when the host supplies one", () => {
+    render(
+      <QuizCategoryRail
+        onSelectCategory={vi.fn()}
+        heading={{ id: "qs-h", title: "Quick Study", hint: "Pick a subject — ten questions, no timer." }}
+      />,
+    );
+    const rail = screen.getByTestId("quiz-category-rail");
+    const heading = within(rail).getByRole("heading", { name: "Quick Study" });
+    expect(heading.id).toBe("qs-h");
+    // Still no counts: the session size is stated in words, never as a figure.
+    expect(rail.textContent).not.toMatch(/\d/);
   });
 
-  it("gives the pointer cursor only to the subjects that open something", () => {
+  it("gives every actionable tile distinct hover, focus and pressed states", () => {
     render(<QuizCategoryRail onSelectCategory={vi.fn()} />);
-    for (const id of APPROVED) {
-      const tile = screen
-        .getAllByTestId("quiz-category-rail-tile")
-        .find((el) => el.getAttribute("data-category") === id)!;
-      const cls = within(tile).getByRole("button").className;
-      expect(cls.includes("cursor-pointer"), id).toBe(id !== "vision");
+    for (const button of within(screen.getByTestId("quiz-category-rail")).getAllByRole("button")) {
+      const cls = button.className;
+      expect(cls).toMatch(/hover:-translate-y-0\.5/);
+      expect(cls).toMatch(/focus-visible:ring-2/);
+      expect(cls).toMatch(/active:scale-\[0\.98\]/);
+      // Reduced motion keeps the light and drops the movement.
+      expect(cls).toMatch(/motion-reduce:hover:translate-y-0/);
+      // Every icon sits in its gilded frame.
+      expect(button.querySelector("[data-rail-frame]")).not.toBeNull();
     }
+  });
+
+  it("never hides a subject behind horizontal scrolling", () => {
+    render(<QuizCategoryRail onSelectCategory={vi.fn()} />);
+    const list = screen.getByTestId("quiz-category-rail").querySelector("ul")!;
+    expect(list.className).toMatch(/grid-cols-3/);
+    expect(list.className).toMatch(/sm:grid-cols-6/);
+    expect(list.className).not.toMatch(/overflow-x-(auto|scroll)/);
   });
 
   it("hands focus back to the tile a session was started from", () => {

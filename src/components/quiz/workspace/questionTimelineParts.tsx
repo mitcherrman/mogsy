@@ -84,6 +84,33 @@ export function IconFace({ round }: { round: ReviewRound | null }) {
   );
 }
 
+/**
+ * The fine-pointer review card's box (Match History V2.1): ~42rem wide and up
+ * to 85dvh tall, each bounded by what the viewport and Radix's measured side
+ * actually leave, so it never overflows near an edge.
+ *
+ * The earlier ~29rem x 24rem box turned a Mastery slice into a cramped
+ * scroller. The width cap is `calc(100vw-2rem)` and the height cap is
+ * `min(85dvh, --radix-popper-available-height)`: the second term is the space
+ * Radix measured on the side it chose, already net of `collisionPadding`, so a
+ * row near an edge shrinks the card (it scrolls inside) rather than overflowing.
+ * Internal scroll is a backstop for a genuinely long question, not the norm.
+ *
+ * `!animate-none` is a CORRECTNESS fix, not a taste one: Radix `Presence` keeps
+ * a closing layer mounted until `animationend`, which a backgrounded tab may
+ * never fire, so every question the reader opened would stack on the page.
+ * It has to be a class (Radix's popper spreads `animation: undefined` after an
+ * inline style and deletes it) and `!important` makes `animationName` read
+ * "none", the condition `Presence` unmounts on. The card opens and closes
+ * instantly, which is also the least motion, so reduced-motion needs no branch.
+ *
+ * `lc-vellum` re-applies the parchment ink INSIDE the portal (this content
+ * renders outside the ledger's subtree); `lc-vellum--card` gives it the
+ * sheet's tone without the torn silhouette, so it is a bounded, scrollable box.
+ */
+export const REVIEW_POPOVER_CLASS =
+  "lc-vellum lc-vellum--card !animate-none max-h-[min(85dvh,var(--radix-popper-available-height))] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded border p-4";
+
 /** One icon's fine-pointer review Popover (the trigger is the icon). */
 export function QuestionPopover({
   open,
@@ -144,32 +171,8 @@ export function QuestionPopover({
            * also the least motion this surface could have, so
            * reduced-motion needs no separate branch.
            */
-          /**
-           * A QUICK INSPECTOR, not a scrolling debug panel.
-           *
-           * Wide (~460px) and short: the earlier 320px column turned
-           * a four-option question into a tall scroller, and the
-           * thing a reader wants here is to glance at one question
-           * and move to the next. The internal scroll is a backstop
-           * for genuinely long content rather than the normal case.
-           *
-           * The height cap is `min(24rem, available)` and the second
-           * term matters: `--radix-popper-available-height` is the
-           * space Radix actually measured on the side it chose,
-           * already net of `collisionPadding`. Capping on `72vh`
-           * instead overflowed the viewport by a few pixels whenever
-           * the row sat closer to an edge than 24rem — measured at
-           * 4px past the fold on a 1280x800 window.
-           *
-           * `lc-vellum` re-applies the parchment ink INSIDE the
-           * portal — this content renders outside the ledger's
-           * subtree, so without it the card would print dark-theme
-           * text on a light sheet. `lc-vellum--card` gives it the
-           * sheet's TONE without the torn silhouette: a floating
-           * card with burnt edges reads as a scrap, and this one has
-           * to be a bounded, scrollable box.
-           */
-          className="lc-vellum lc-vellum--card !animate-none max-h-[min(24rem,var(--radix-popper-available-height))] w-[min(29rem,calc(100vw-2rem))] overflow-y-auto rounded border p-3.5"
+          // Size and ceiling: see REVIEW_POPOVER_CLASS.
+          className={REVIEW_POPOVER_CLASS}
           style={{
             borderColor: LEAGUECRAFT_INK.rule,
             boxShadow: "0 22px 48px -26px rgba(0,0,0,0.7)",

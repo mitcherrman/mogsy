@@ -294,7 +294,8 @@ describe("Leaguecraft hub — hierarchy", () => {
       expect(screen.queryByText(set.name)).toBeNull();
     }
 
-    // History is the next section after Quick Study — nothing between them.
+    // PGM1/PM1: the Academy activity area is Quick Study then More
+    // Challenges, and History follows it — nothing else between them.
     const record = container.querySelector('[data-testid="hub-record-section"]')!;
     expect(quick.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const between = [...container.querySelectorAll("section")].filter(
@@ -303,7 +304,7 @@ describe("Leaguecraft hub — hierarchy", () => {
         el.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING &&
         !quick.contains(el),
     );
-    expect(between).toEqual([]);
+    expect(between.map((el) => el.getAttribute("data-testid"))).toEqual(["hub-more-challenges"]);
 
     // No Builder request and no false builder funnel event from a visit.
     expect(builderCalls).toEqual([]);
@@ -447,9 +448,9 @@ describe("Leaguecraft hub — category rail", () => {
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
     expect(rail.querySelectorAll("button").length).toBe(6);
     expect(rail.querySelectorAll("a, [role='button']").length).toBe(0);
-    // Five doors, one declared-unavailable subject. No tile is silently inert.
-    expect(rail.querySelectorAll('[data-available="true"]').length).toBe(5);
-    expect(rail.querySelectorAll('[data-available="false"]').length).toBe(1);
+    // Six doors since VISION42. No tile is silently inert.
+    expect(rail.querySelectorAll('[data-available="true"]').length).toBe(6);
+    expect(rail.querySelectorAll('[data-available="false"]').length).toBe(0);
   });
 
   // The rack and the rail are ONE first screen, and the workspace begins

@@ -167,6 +167,11 @@ export const PRODUCT_EVENTS = [
   // Metadata is bounded to source / game_mode_id / action.
   "more_challenges_viewed",
   "more_challenges_mode_selected",
+  // The Daily Challenge button that was pressed (see dailyEntry.ts). A browser
+  // click observation only: it never says a Daily run started or finished;
+  // those are the server's `ranked_*` rows with host `daily_challenge`.
+  // Metadata is bounded to entry_surface / control.
+  "daily_challenge_entry_clicked",
 ] as const;
 
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];

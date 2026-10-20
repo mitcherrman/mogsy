@@ -138,6 +138,22 @@ export const FIXTURES: Record<string, Fixture> = {
       viewerSubmission: { ...NO_SUBMISSION, correctCount: 1, answeredCount: 3, challengeCount: 4 },
     }),
   },
+  "mastery-five": {
+    label: "Mastery, five challenges (correct / incorrect / unanswered / correct / incorrect)", total: 6,
+    round: base({
+      kind: "mastery_slice", moduleId: "mastery_slice", category: null,
+      masteryChallenges: [
+        mc(0),
+        mc(1, { viewerAnswer: "57", isCorrect: false }),
+        mc(2, { viewerAnswer: null, isCorrect: null }),
+        mc(3, { prompt: LONG_PROMPT, explanation: LONG_PROMPT }),
+        mc(4, {
+          viewerAnswer: UNBROKEN, isCorrect: false, answerOptions: [UNBROKEN, "50", "57", "63"],
+        }),
+      ],
+      viewerSubmission: { ...NO_SUBMISSION, correctCount: 2, answeredCount: 4, challengeCount: 5 },
+    }),
+  },
   "mastery-sealed": {
     label: "Mastery, sealed", total: 6, sealed: true,
     round: base({

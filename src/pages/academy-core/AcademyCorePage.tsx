@@ -18,7 +18,7 @@
  *     press during activation is ignored (useCoreNavigator).
  *   · Crystal → an accessible button that cycles the four previews without
  *     navigating; the two arrows beneath the Core turn the orbit (never navigate).
- *   · Daily / Ranked shortcuts, Patch book links, radio, Commons and Hall
+ *   · the Daily shortcut, Patch book links, radio, Commons and Hall
  *     links: ordinary, immediate client-side <Link>s. A legacy
  *     `/lol#academy-commons` deep link is forwarded to the Hall's Commons.
  *
@@ -27,8 +27,9 @@
  *
  * ANALYTICS. As the home surface it emits the canonical `hub_entered` (once per
  * session — the Landing → Hub funnel step), as V3 did. The diagnostic
- * `leaguecraft_cta_clicked` marks the doors into /quiz (`academy_core_book`,
- * `academy_core_ranked`); the canonical open event fires on /quiz itself.
+ * `leaguecraft_cta_clicked` marks the door into /quiz (`academy_core_book`);
+ * the canonical open event fires on /quiz itself. (Ranked is disabled, so the
+ * Core offers no Ranked shortcut: no button, placeholder or Coming Soon label.)
  *
  * WHAT IS REUSED UNCHANGED
  *   · destinations, routes, copy:  academy-core-destinations (V3)
@@ -66,7 +67,7 @@ import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
-import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { trackDailyEntry } from "@/lib/analytics/dailyEntry";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { prepareImage } from "@/lib/ranked-core/media/prepareImage";
 import { useAcademyStartupGate } from "@/pages/academy-core/useAcademyStartupGate";
@@ -88,7 +89,6 @@ import {
   ACADEMY_HALL_ROUTE,
   CORE_DESTINATIONS,
   DAILY_ROUTE,
-  RANKED_ROUTE,
   coreBayDescriptionId,
   destinationById,
   type CoreDestination,
@@ -541,22 +541,12 @@ function AcademyCoreOrrery() {
         state={DAILY_START_STATE}
         className="acore-cta acore-cta-primary"
         data-testid="academy-core-daily"
+        onClick={() => trackDailyEntry("academy_core_daily_button")}
         onPointerEnter={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
         onFocus={() => prefetchRoute(DAILY_ROUTE, { intent: true })}
       >
         <span className="acore-cta-key" aria-hidden>▶</span>
         <span className="acore-cta-label">{dailyResume ? "Resume Daily Challenge" : "Play Daily Challenge"}</span>
-      </Link>
-      <Link
-        to={RANKED_ROUTE}
-        className="acore-cta acore-cta-secondary"
-        data-testid="academy-core-ranked"
-        onPointerEnter={() => prefetchRoute("/quiz", { intent: true })}
-        onFocus={() => prefetchRoute("/quiz", { intent: true })}
-        onClick={() => trackFunnelEvent("leaguecraft_cta_clicked", { cta: "academy_core_ranked" })}
-      >
-        <span className="acore-cta-label">Ranked</span>
-        <span className="acore-cta-hint" aria-hidden>opens mode selection</span>
       </Link>
     </div>
   );
