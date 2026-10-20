@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { classifyPlayer } from "@/lib/notifications/policy";
 
 interface League {
   id: string;
@@ -50,15 +51,16 @@ interface SentNotification {
   emoji: string | null;
 }
 
+/**
+ * Only types a player can actually receive. The retired Mogsy types (new_item,
+ * elo_milestone, new_league, promotion, spotlight) were offered here but are
+ * classified `legacy` and never render in any inbox — sending one reached
+ * nobody. They are no longer offered (Notifications 2.0, #92).
+ */
 const NOTIFICATION_TYPES = [
   { value: "general", label: "General", icon: Bell, description: "General announcement" },
-  { value: "new_item", label: "New Item", icon: Star, description: "New item in a league" },
-  { value: "elo_milestone", label: "Elo Milestone", icon: Trophy, description: "User reached an Elo" },
-  { value: "new_league", label: "New League", icon: Megaphone, description: "Announce a new league" },
-  { value: "promotion", label: "Promotion", icon: Gift, description: "Special promotion" },
   { value: "update", label: "App Update", icon: Zap, description: "Feature update" },
-  { value: "warning", label: "Warning", icon: AlertTriangle, description: "Important warning" },
-  { value: "spotlight", label: "Spotlight", icon: Crown, description: "Spotlight user/item" },
+  { value: "warning", label: "Account notice", icon: AlertTriangle, description: "Important notice players cannot mute" },
   // League product types — the user-visible ones besides update/warning.
   // See the MogzyIdentityMenu allowlist.
   { value: "lol_quiz", label: "League Quiz", icon: Star, description: "League quiz updates / new questions" },
@@ -133,7 +135,10 @@ export default function AdminPushNotifications() {
   const loadData = async () => {
     const [leaguesRes, notifRes] = await Promise.all([
       supabase.from("leagues").select("id, name, category, type").order("name"),
-      supabase.from("user_notifications").select("*").order("created_at", { ascending: false }).limit(50),
+      // Sent history is broadcasts only: admins can read every player's
+      // targeted rows too (friend requests, report updates), which are not
+      // things this console sent.
+      supabase.from("user_notifications").select("*").eq("target_type", TARGET_TYPE_ALL).order("created_at", { ascending: false }).limit(50),
     ]);
     setLeagues((leaguesRes.data as League[]) || []);
     setSentNotifications((notifRes.data as SentNotification[]) || []);
@@ -340,6 +345,13 @@ export default function AdminPushNotifications() {
         <div className="space-y-5">
           {/* Notification Type */}
           <Section label="Notification Type">
+            <p className="text-[11px] text-muted-foreground -mt-1 mb-2" data-testid="composer-lifecycle-hint">
+              {classifyPlayer(type) === "account"
+                ? "Account notice: always delivered (players cannot mute it) and kept in the inbox for 90 days."
+                : priority === "low"
+                  ? "Announcement: players can mute announcements. Low priority leaves the inbox after 7 days."
+                  : "Announcement: players can mute announcements. Leaves the inbox after 30 days; only High and Urgent pop up as a toast."}
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {NOTIFICATION_TYPES.map(t => {
                 const Icon = t.icon;

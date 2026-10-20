@@ -22,6 +22,11 @@ const read = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
 
 const MIGRATION = "supabase/migrations/20260823120000_com1_social_notification_identity.sql";
 const HUD = "src/components/hud/MogzyIdentityMenu.tsx";
+// Notifications 2.0 (#92): the bell reads through src/lib/notifications/api.ts.
+// Its v2 path is the get_my_notifications() RPC, whose RETURNS TABLE is the
+// allow-list; its pre-migration fallback keeps the named column constant.
+const API = "src/lib/notifications/api.ts";
+const V2_MIGRATION = "supabase/migrations/20261019120000_notifications_v2_lifecycle.sql";
 
 /** The four types written by a trigger on behalf of one user, to another. */
 const SOCIAL_TYPES = [
@@ -77,29 +82,45 @@ describe("P0-1A · the database stops writing a foreign auth id", () => {
 
 describe("P0-1A · the client stops asking for it", () => {
   const hud = read(HUD);
+  const api = read(API);
 
   it("reads user_notifications through a named column allow-list", () => {
-    expect(hud).toContain("const NOTIFICATION_COLUMNS");
-    expect(hud).toContain(".select(NOTIFICATION_COLUMNS)");
+    expect(api).toContain("const LEGACY_PLAYER_COLUMNS");
+    expect(api).toContain(".select(LEGACY_PLAYER_COLUMNS)");
+    // The bell itself no longer queries the table at all.
+    expect(hud).not.toMatch(/from\(["']user_notifications["']\)/);
+  });
+
+  it("the v2 inbox RPC never returns sent_by_user_id", () => {
+    const sql = read(V2_MIGRATION);
+    for (const fn of ["get_my_notifications", "my_notification_inbox_rows"]) {
+      const body = sql.slice(sql.indexOf(`FUNCTION public.${fn}(`));
+      const returns = body.slice(body.indexOf("RETURNS TABLE"), body.indexOf("LANGUAGE"));
+      expect(returns, fn).not.toContain("sent_by_user_id");
+      expect(returns, fn).toContain("metadata jsonb");
+    }
   });
 
   it("does not reference sent_by_user_id in code", () => {
     // Comments are stripped first: the allow-list constant is DOCUMENTED by a
     // comment that names the leaked column, and that prose is the record of
     // why the list exists. What must not survive is a code reference.
-    const code = hud
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/(^|[^:])\/\/.*$/gm, "$1");
-    expect(code).not.toContain("sent_by_user_id");
+    for (const src of [hud, api]) {
+      const code = src
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/.*$/gm, "$1");
+      expect(code).not.toContain("sent_by_user_id");
+    }
   });
 
   it("no longer star-selects the notification table", () => {
     const star = /from\("user_notifications"\)\s*\n?\s*\.select\("\*"\)/;
     expect(hud).not.toMatch(star);
+    expect(api).not.toMatch(star);
   });
 
   it("the allow-list carries every field the panel renders and nothing more", () => {
-    const match = hud.match(/const NOTIFICATION_COLUMNS\s*=\s*\n?\s*"([^"]+)"/);
+    const match = api.match(/const LEGACY_PLAYER_COLUMNS\s*=\s*\n?\s*"([^"]+)"/);
     expect(match).not.toBeNull();
     const columns = (match![1]).split(",").map(c => c.trim()).sort();
     expect(columns).toEqual([

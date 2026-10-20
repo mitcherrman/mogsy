@@ -69,6 +69,7 @@ const CustomLink = R.CustomLink.Component;
 // the multiplayer_* tables are preserved: this disconnects them, it does not
 // delete them.
 const Feedback = R.Feedback.Component;
+const Notifications = R.Notifications.Component;
 const BlogIndex = R.BlogIndex.Component;
 const BlogPost = R.BlogPost.Component;
 const AdminBlog = R.AdminBlog.Component;
@@ -574,6 +575,7 @@ export const appRouter = createBrowserRouter(
                     <Route path="ranked/generator-lab" element={<Suspense fallback={<RouteFallback />}><MasteryGeneratorLab /></Suspense>} />
                   </Route>
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
+                  <Route path="/notifications" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Notifications /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
                   {/* UGMP — the owner-only lab modes, launched from Ranked → Playtests.

@@ -1,0 +1,60 @@
+name: Notifications 2.0 Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/lib/notifications/**'
+      - 'src/components/hud/MogzyIdentityMenu*'
+      - 'src/components/admin/AdminNotifications*'
+      - 'src/components/admin/AdminPushNotifications*'
+      - 'src/components/admin/AdminFeedback*'
+      - 'src/components/admin/AdminUserReports*'
+      - 'src/components/admin/AdminComments*'
+      - 'src/components/admin/AdminModeratorConfig*'
+      - 'src/components/admin/RecordFocusNotice*'
+      - 'src/components/admin/recordDeepLinks*'
+      - 'src/pages/Notifications*'
+      - 'src/test/notifications/**'
+      - 'src/test/security/adminNotification*'
+      - 'src/test/security/notificationsV2*'
+      - 'supabase/migrations/20261019120000_notifications_v2_lifecycle.sql'
+      - 'supabase/verification/notifications_v2_*'
+      - 'e2e/notifications-v2/**'
+      - 'playwright.notifications-v2.config.ts'
+      - '.github/workflows/notifications-v2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Database lifecycle, RLS, backfill, rollback and policy parity (real Postgres via PGlite)
+        run: npm test -- src/test/security/notificationsV2Lifecycle.test.ts src/test/security/notificationsV2Policy.test.ts src/test/security/adminNotificationReadSemantics.test.ts src/test/security/adminNotificationReadsMigration.test.ts src/test/security/adminNotificationPolicy.test.ts src/test/security/com1SocialNotificationIdentity.test.ts src/test/security/com1LiveSocialRealtime.test.ts
+      - name: Notification surfaces and neighbouring workflows (unit + component)
+        run: npm test -- src/lib/notifications src/components/hud src/components/admin/AdminNotifications.test.tsx src/components/admin/AdminPushNotifications.test.tsx src/components/admin/AdminModeratorConfig.test.tsx src/components/admin/recordDeepLinks.test.tsx src/pages/Notifications.test.tsx src/lib/admin/useAdminAttention.test.ts
+      - name: Typecheck (app and the browser harness)
+        run: |
+          npx tsc --noEmit -p tsconfig.app.json
+          npx tsc --noEmit -p e2e/notifications-v2/tsconfig.json
+      - name: Vite production build
+        run: npx vite build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance — desktop and phone (inbox, bell, player page, exact-record deep links)
+        run: npx playwright test -c playwright.notifications-v2.config.ts
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-v2-acceptance
+          path: |
+            playwright-report/notifications-v2
+            test-results
+          retention-days: 14

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { focusHighlight, readFocusParam, useFocusRecord } from "@/lib/notifications/focus";
+import RecordFocusNotice from "@/components/admin/RecordFocusNotice";
 import { Flag, CheckCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,10 +22,20 @@ interface UserReport {
 export default function AdminUserReports() {
   const [reports, setReports] = useState<UserReport[]>([]);
   const [loading, setLoading] = useState(true);
+  // Notification deep link: `&focus=<user_reports.id>` opens that report even
+  // when it is older than the 50 most recent, and re-runs on Back/Forward.
+  const focusParam = readFocusParam();
+  const { focusId, status: focusStatus, fromNotification } = useFocusRecord({
+    ready: !loading,
+    data: reports,
+    has: id => reports.some(r => r.id === id),
+  });
+  const focused = reports.find(r => r.id === focusId);
 
   useEffect(() => {
     loadReports();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusParam]);
 
   useEffect(() => {
     const channel = supabase
@@ -39,13 +51,19 @@ export default function AdminUserReports() {
 
   const loadReports = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data: recent } = await supabase
       .from("user_reports")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
+    let data = recent ?? [];
+    const focus = readFocusParam();
+    if (focus && !data.some(r => r.id === focus)) {
+      const { data: one } = await supabase.from("user_reports").select("*").eq("id", focus).maybeSingle();
+      if (one) data = [one, ...data];
+    }
 
-    if (data && data.length > 0) {
+    if (data.length > 0) {
       const profileIds = [...new Set(data.flatMap(r => [r.reporter_profile_id, r.reported_profile_id]))];
       const { data: profiles } = await supabase
         .from("public_profiles")
@@ -77,11 +95,17 @@ export default function AdminUserReports() {
       <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
         <Flag className="h-4 w-4" /> User Reports ({reports.filter(r => r.status === "pending").length} pending)
       </h3>
+      <RecordFocusNotice
+        kind="report"
+        status={focusStatus}
+        fromNotification={fromNotification}
+        resolvedLabel={focused && focused.status !== "pending" ? "Report resolved" : null}
+      />
       {reports.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No reports</p>
       ) : (
         reports.map(r => (
-          <div key={r.id} className={`p-3 rounded-xl border ${r.status === "pending" ? "border-destructive/30 bg-destructive/5" : "border-border bg-card opacity-60"}`}>
+          <div key={r.id} data-focus-id={r.id} className={`p-3 rounded-xl border ${r.status === "pending" ? "border-destructive/30 bg-destructive/5" : "border-border bg-card opacity-60"} ${focusId === r.id ? focusHighlight : ""}`}>
             <div className="flex items-start gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">

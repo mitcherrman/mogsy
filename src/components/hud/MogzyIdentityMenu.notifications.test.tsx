@@ -1,18 +1,19 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MogzyIdentityMenu from "./MogzyIdentityMenu";
+import { inbox } from "@/test/notifications/inboxServer";
 
 /**
- * Covers the persistent user-notification path: who sees the bell, which types
- * it renders, and how it behaves when a query or a write fails.
+ * Notifications 2.0 (#92) — the HUD bell, player side.
  *
- * The Champion Card Duel invite section has its own suite
- * (MogzyIdentityMenu.invites.test.tsx) and is stubbed empty here.
+ * The server decides what is in the inbox (active, addressed to me, not done,
+ * not expired, not resolved, not muted) and what the badge counts. The fake
+ * server in inboxServer.ts implements those semantics; the SQL itself is run
+ * for real in src/test/security/notificationsV2Lifecycle.test.ts.
  */
 
 const invitesHook = vi.hoisted(() => ({
   invites: [] as unknown[],
-  disabled: false,
   busyToken: null as string | null,
   accept: vi.fn(),
   acceptSwitch: vi.fn(),
@@ -27,363 +28,275 @@ const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", () => ({
   useNavigate: () => navigate,
   useLocation: () => ({ pathname: "/lol", search: "" }),
-  // jsdom has no navigation, and the real <Link> preventDefaults anyway — so
-  // does this, or every asserted click logs a "navigation not implemented".
-  Link: ({
-    to,
-    children,
-    onClick,
-    ...rest
-  }: Record<string, unknown> & {
-    to: string;
-    children?: unknown;
-    onClick?: (e: { preventDefault: () => void }) => void;
-  }) => (
-    <a
-      href={to}
-      {...rest}
-      onClick={(e) => {
-        e.preventDefault();
-        onClick?.(e);
-      }}
-    >
+  Link: ({ to, children, onClick, ...rest }: Record<string, unknown> & { to: string; children?: unknown; onClick?: (e: unknown) => void }) => (
+    <a href={to} {...rest} onClick={e => { e.preventDefault(); onClick?.(e); }}>
       {children as never}
     </a>
   ),
 }));
 
-// The identity menu's footer carries the admin entry point under the real
-// `useAdminAuth` contract. Default: not an admin — the admin case has its own
-// suite in MogzyIdentityMenu.identity.test.tsx.
-// OWN1.1: the HUD reads the canonical owner session (useOwnerAuth), not the
-// Railway admin gate and not user_roles. isAuthorized = owner on a trusted
-// session; needsMfa = the owner on a session that still needs MFA.
-const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean, needsMfa: false as boolean }));
+const ownerCtx = vi.hoisted(() => ({ authorized: false, needsMfa: false }));
 vi.mock("@/hooks/useOwnerAuth", () => ({
-  useOwnerAuth: () => ({
-    isOwner: adminCtx.isAuthorized || adminCtx.needsMfa,
-    authorized: adminCtx.isAuthorized,
-    loading: false,
-  }),
+  useOwnerAuth: () => ({ isOwner: ownerCtx.authorized || ownerCtx.needsMfa, authorized: ownerCtx.authorized, loading: false }),
 }));
-vi.mock("@/hooks/useAppSettings", () => ({
-  useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
-}));
+vi.mock("@/hooks/useAppSettings", () => ({ useAppSettings: () => ({ settings: {} }) }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: vi.fn() }) }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 
-// Stable object identity: a fresh one per render would re-fire the bell's
-// effect on every state update and spin forever.
 const authState = vi.hoisted(() => ({
   user: null as null | { id: string; is_anonymous?: boolean; created_at?: string },
+  signOut: vi.fn(),
 }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 
-const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
-vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), toasts) }));
+const toastFn = vi.hoisted(() => Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock("sonner", () => ({ toast: toastFn }));
 
-type Row = Record<string, unknown>;
-
-const db = vi.hoisted(() => ({
-  notifications: [] as Record<string, unknown>[],
-  reads: [] as { notification_id: string }[],
-  roles: [] as { role: string }[],
-  profile: { id: "profile-1" } as { id: string } | null,
-  notifError: null as { message: string } | null,
-  readsError: null as { message: string } | null,
-  upsertError: null as { message: string } | null,
-  tablesTouched: [] as string[],
-  upsertCalls: [] as { table: string; rows: unknown; opts: unknown }[],
+vi.mock("@/integrations/supabase/client", async () => ({
+  supabase: (await import("@/test/notifications/inboxServer")).inbox.client,
 }));
 
-vi.mock("@/integrations/supabase/client", () => {
-  const resultFor = (table: string) => {
-    if (table === "user_notifications") return { data: db.notifications, error: db.notifError };
-    if (table === "user_notification_reads") return { data: db.reads, error: db.readsError };
-    if (table === "user_roles") return { data: db.roles, error: null };
-    return { data: [], error: null };
-  };
-  const makeBuilder = (table: string) => {
-    const b: Record<string, unknown> = {};
-    const chain = () => b;
-    Object.assign(b, {
-      select: chain, eq: chain, in: chain, gte: chain, order: chain, update: chain,
-      maybeSingle: () => Promise.resolve({ data: db.profile, error: null }),
-      single: () => Promise.resolve({ data: db.profile, error: null }),
-      limit: () => Promise.resolve(resultFor(table)),
-      insert: () => Promise.resolve({ data: null, error: null }),
-      upsert: (rows: unknown, opts: unknown) => {
-        db.upsertCalls.push({ table, rows, opts });
-        return Promise.resolve({ data: null, error: db.upsertError });
-      },
-      then: (resolve: (v: unknown) => unknown) => resolve(resultFor(table)),
-    });
-    return b;
-  };
-  const channel: Record<string, unknown> = {};
-  Object.assign(channel, { on: () => channel, subscribe: () => channel });
-  return {
-    supabase: {
-      from: (table: string) => { db.tablesTouched.push(table); return makeBuilder(table); },
-      channel: () => channel,
-      removeChannel: vi.fn(),
-    },
-  };
-});
-
-const notif = (over: Row = {}): Row => ({
-  id: "n1",
-  title: "A notification",
-  message: null,
-  type: "general",
-  image_url: null,
-  created_at: new Date().toISOString(),
-  target_type: "all",
-  profile_id: null,
-  metadata: {},
-  action_url: null,
-  ...over,
-});
+const UID = "auth-uid";
 
 beforeEach(() => {
-  authState.user = { id: "auth-uid", is_anonymous: false };
-  db.notifications = [];
-  db.reads = [];
-  db.roles = [];
-  db.profile = { id: "profile-1" };
-  db.notifError = null;
-  db.readsError = null;
-  db.upsertError = null;
-  db.tablesTouched = [];
-  db.upsertCalls = [];
-});
-
-afterEach(() => {
+  inbox.reset();
+  authState.user = { id: UID, is_anonymous: false, created_at: "2026-01-01T00:00:00Z" };
+  ownerCtx.authorized = false;
+  ownerCtx.needsMfa = false;
   invitesHook.invites = [];
-  vi.clearAllMocks();
 });
+afterEach(() => vi.clearAllMocks());
 
-const trigger = () => screen.queryByRole("button", { name: /notifications/i });
+const trigger = () => screen.getByTestId("hud-notifications-trigger");
+const openPanel = async () => {
+  fireEvent.click(trigger());
+  return screen.findByTestId("notification-panel");
+};
+const ready = () => waitFor(() => expect(screen.queryByTestId("notification-loading")).toBeNull());
 
-async function openBell() {
-  render(<MogzyIdentityMenu />);
-  const bell = await screen.findByRole("button", { name: /notifications/i });
-  fireEvent.click(bell);
-  return bell;
-}
-
-describe("MogzyIdentityMenu — visibility", () => {
-  it("gives a signed-out visitor no notifications inbox", async () => {
-    // The cluster itself still renders — the portrait and the guest panel are
-    // how a visitor reaches Profile and Settings. What a guest must never get
-    // is a notifications surface: they cannot receive anything in one.
+describe("visibility", () => {
+  it("gives a signed-out visitor and an anonymous session no inbox, and asks the server nothing", async () => {
     authState.user = null;
-    render(<MogzyIdentityMenu />);
-    await waitFor(() => expect(trigger()).toBeNull());
+    const { unmount } = render(<MogzyIdentityMenu />);
+    fireEvent.click(trigger());
     expect(screen.queryByTestId("notification-panel")).toBeNull();
-    expect(screen.getByTestId("hud-profile")).toBeTruthy();
+    unmount();
+    authState.user = { id: UID, is_anonymous: true };
+    render(<MogzyIdentityMenu />);
+    fireEvent.click(trigger());
+    expect(screen.queryByTestId("notification-panel")).toBeNull();
+    expect(inbox.rpcCalls).toEqual([]);
   });
 
-  it("gives an anonymous session no notifications inbox either", async () => {
-    // Anonymous users are `authenticated` to Supabase, so a bare `!user` check
-    // would let them through to an inbox they can never receive anything in.
-    authState.user = { id: "anon-uid", is_anonymous: true };
+  it("asks only for its own inbox, never naming an account", async () => {
     render(<MogzyIdentityMenu />);
-    await waitFor(() => expect(trigger()).toBeNull());
-    expect(screen.queryByTestId("notification-panel")).toBeNull();
-  });
-
-  it("renders for a normal authenticated account", async () => {
-    render(<MogzyIdentityMenu />);
-    expect(await screen.findByRole("button", { name: /notifications/i })).toBeTruthy();
+    await waitFor(() => expect(inbox.calls("get_my_notifications").length).toBeGreaterThan(0));
+    for (const c of inbox.rpcCalls) {
+      expect(Object.keys(c.args)).not.toEqual(expect.arrayContaining(["_user_id"]));
+      expect(JSON.stringify(c.args)).not.toContain(UID);
+    }
+    expect(inbox.calls("get_my_notifications")[0].args).toMatchObject({ _view: "inbox" });
   });
 });
 
-describe("MogzyIdentityMenu — type eligibility", () => {
-  it("shows a friend_request", async () => {
-    db.notifications = [notif({ id: "fr", type: "friend_request", title: "Ash sent you a friend request", target_type: "user", profile_id: "profile-1" })];
-    await openBell();
-    expect(await screen.findByText("Ash sent you a friend request")).toBeTruthy();
-  });
-
-  it("shows a friend_accepted", async () => {
-    db.notifications = [notif({ id: "fa", type: "friend_accepted", title: "Ash accepted your friend request", target_type: "user", profile_id: "profile-1" })];
-    await openBell();
-    expect(await screen.findByText("Ash accepted your friend request")).toBeTruthy();
-  });
-
-  it("shows a general system announcement", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Patch 26.15 is live" })];
-    await openBell();
-    expect(await screen.findByText("Patch 26.15 is live")).toBeTruthy();
-  });
-
-  it("suppresses comment_reply on purpose", async () => {
-    db.notifications = [notif({ id: "cr", type: "comment_reply", title: "Ash replied to your comment" })];
-    await openBell();
-    await screen.findByText("No notifications yet");
-    expect(screen.queryByText("Ash replied to your comment")).toBeNull();
-  });
-
-  it("suppresses comment_reaction on purpose", async () => {
-    db.notifications = [notif({ id: "cx", type: "comment_reaction", title: "Ash reacted to your comment" })];
-    await openBell();
-    await screen.findByText("No notifications yet");
-    expect(screen.queryByText("Ash reacted to your comment")).toBeNull();
-  });
-
-  it("drops an unknown type without crashing, and still renders known ones", async () => {
-    db.notifications = [
-      notif({ id: "u", type: "some_future_type_from_a_newer_migration", title: "From the future" }),
-      notif({ id: "g", type: "general", title: "Known announcement" }),
+describe("inbox and badge", () => {
+  it("renders the server's inbox and badges only unread active items", async () => {
+    inbox.player = [
+      { id: "a", type: "friend_request", title: "Ana sent you a friend request", metadata: { requester_profile_id: "p-ana" } },
+      { id: "b", type: "update", title: "Patch 26.20 is live", is_read: true },
+      { id: "c", type: "general", title: "Old news", done: true },
+      { id: "d", type: "general", title: "Expired", state: "expired" },
     ];
-    await openBell();
-    expect(await screen.findByText("Known announcement")).toBeTruthy();
-    expect(screen.queryByText("From the future")).toBeNull();
-  });
-
-  it("hides another user's targeted notification even when RLS returned it", async () => {
-    // Admins can read every row. Recipient scoping has to exist client-side too.
-    db.notifications = [notif({ id: "other", type: "friend_request", title: "Someone else's request", target_type: "user", profile_id: "not-my-profile" })];
-    await openBell();
-    await screen.findByText("No notifications yet");
-    expect(screen.queryByText("Someone else's request")).toBeNull();
-  });
-});
-
-describe("MogzyIdentityMenu — single source of truth for friendships", () => {
-  it("never queries the friendships table, and renders one row per event", async () => {
-    db.notifications = [notif({ id: "fr", type: "friend_request", title: "Ash sent you a friend request", target_type: "user", profile_id: "profile-1" })];
-    await openBell();
-    await screen.findByText("Ash sent you a friend request");
-    // The bell used to render a second copy of the same event from a direct
-    // `friendships` query alongside the persisted notification row.
-    expect(db.tablesTouched).not.toContain("friendships");
-    expect(screen.getAllByText("Ash sent you a friend request")).toHaveLength(1);
-  });
-});
-
-describe("MogzyIdentityMenu — failure handling", () => {
-  it("leaves the loading state and offers a retry when the load fails", async () => {
-    db.notifError = { message: "network down" };
-    await openBell();
-    expect(await screen.findByTestId("notification-error")).toBeTruthy();
-    expect(screen.queryByTestId("notification-loading")).toBeNull();
-  });
-
-  it("does not leave a row looking read when the write failed", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Read me" })];
-    const bell = await openBell();
-    const row = await screen.findByText("Read me");
-    expect(bell.getAttribute("aria-label")).toContain("1 unread");
-
-    db.upsertError = { message: "write rejected" };
-    fireEvent.click(row);
-
-    // Optimistically marked, then rolled back once the write came back failed.
-    await waitFor(() => expect(bell.getAttribute("aria-label")).toContain("1 unread"));
-    expect(db.upsertCalls.length).toBe(1);
-  });
-
-  it("keeps a row read when the write succeeds", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Read me" })];
-    const bell = await openBell();
-    fireEvent.click(await screen.findByText("Read me"));
-    await waitFor(() => expect(bell.getAttribute("aria-label")).toBe("Open notifications"));
-  });
-
-  it("uses a conflict-tolerant upsert so mark-one and mark-all cannot collide", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Read me" })];
-    await openBell();
-    fireEvent.click(await screen.findByText("Read me"));
-    await waitFor(() => expect(db.upsertCalls.length).toBe(1));
-    expect(db.upsertCalls[0].opts).toMatchObject({
-      onConflict: "notification_id,user_id",
-      ignoreDuplicates: true,
-    });
-  });
-});
-
-describe("MogzyIdentityMenu — accessibility", () => {
-  it("exposes a labelled, expandable popup trigger", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Hello" })];
     render(<MogzyIdentityMenu />);
-    const bell = await screen.findByRole("button", { name: /notifications/i });
-
-    expect(bell.getAttribute("aria-haspopup")).toBe("dialog");
-    expect(bell.getAttribute("aria-expanded")).toBe("false");
-    await waitFor(() => expect(bell.getAttribute("aria-label")).toContain("1 unread"));
-
-    fireEvent.click(bell);
-    expect(bell.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByTestId("notification-panel").getAttribute("role")).toBe("dialog");
+    await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("1"));
+    expect(trigger().getAttribute("aria-label")).toBe("Open notifications: 1 unread");
+    const panel = await openPanel();
+    await ready();
+    expect(within(panel).getByText("Ana sent you a friend request")).toBeTruthy();
+    expect(within(panel).getByText("Needs your response")).toBeTruthy();
+    expect(within(panel).getByText("Patch 26.20 is live")).toBeTruthy();
+    expect(within(panel).queryByText("Old news")).toBeNull();
+    expect(within(panel).queryByText("Expired")).toBeNull();
   });
 
+  it("does not count a muted category in the inbox or the badge", async () => {
+    inbox.player = [
+      { id: "a", type: "update", title: "Muted news" },
+      { id: "b", type: "warning", title: "Account notice" },
+    ];
+    inbox.muted = ["announcement"];
+    render(<MogzyIdentityMenu />);
+    await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("1"));
+    const panel = await openPanel();
+    expect(within(panel).queryByText("Muted news")).toBeNull();
+    expect(within(panel).getByText("Account notice")).toBeTruthy();
+  });
+
+  it("shows an empty state and links to history and settings", async () => {
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await ready();
+    expect(within(panel).getByTestId("notification-empty").textContent).toMatch(/all caught up/i);
+    expect(within(panel).getByTestId("hud-notification-history").getAttribute("href")).toBe("/notifications");
+  });
+});
+
+describe("lifecycle actions", () => {
+  it("Dismiss removes a row, and a refetch does not bring it back", async () => {
+    inbox.player = [{ id: "a", type: "update", title: "Dismiss me" }, { id: "b", type: "update", title: "Keep me" }];
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await within(panel).findByText("Dismiss me");
+    fireEvent.click(within(panel).getByRole("button", { name: "Dismiss: Dismiss me" }));
+    await waitFor(() => expect(within(panel).queryByText("Dismiss me")).toBeNull());
+    expect(inbox.calls("set_my_notification_state")[0].args).toEqual({ _ids: ["a"], _action: "done" });
+    act(() => inbox.emitStatus("SUBSCRIBED")); // reconnect → re-read from the server
+    await waitFor(() => expect(inbox.calls("get_my_notifications").length).toBeGreaterThan(2));
+    expect(within(panel).queryByText("Dismiss me")).toBeNull();
+    expect(within(panel).getByText("Keep me")).toBeTruthy();
+  });
+
+  it("Mark all read clears unread but leaves a pending invitation actionable", async () => {
+    inbox.player = [{ id: "a", type: "update", title: "One" }, { id: "b", type: "update", title: "Two" }];
+    invitesHook.invites = [{ inviteToken: "t1", displayName: "Kai", avatarUrl: null, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString() }];
+    render(<MogzyIdentityMenu />);
+    await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("3"));
+    const panel = await openPanel();
+    fireEvent.click(within(panel).getByText("Mark all read"));
+    await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("1"));
+    expect(inbox.calls("set_my_notification_state")[0].args).toMatchObject({ _action: "read_all" });
+    expect(within(panel).getByTestId("ccd-invite-notification")).toBeTruthy();
+    expect(trigger().getAttribute("aria-label")).toBe("Open notifications: 1 pending invitation");
+  });
+
+  it("Clear all empties the inbox for this player only", async () => {
+    inbox.player = [{ id: "a", type: "update", title: "One" }];
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await within(panel).findByText("One");
+    fireEvent.click(within(panel).getByTestId("notification-clear-all"));
+    await waitFor(() => expect(within(panel).getByTestId("notification-empty")).toBeTruthy());
+    expect(inbox.calls("set_my_notification_state")[0].args).toMatchObject({ _action: "done_all" });
+  });
+
+  it("does not leave a row dismissed when the write failed", async () => {
+    inbox.player = [{ id: "a", type: "update", title: "Sticky" }];
+    inbox.errors.set_my_notification_state = { message: "network" };
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await within(panel).findByText("Sticky");
+    fireEvent.click(within(panel).getByRole("button", { name: "Dismiss: Sticky" }));
+    await waitFor(() => expect(toastFn.error).toHaveBeenCalled());
+    expect(within(panel).getByText("Sticky")).toBeTruthy();
+  });
+
+  it("opening a row marks it read and routes by type", async () => {
+    inbox.player = [
+      { id: "r", type: "friend_request", title: "Request", metadata: { requester_profile_id: "p1" } },
+      { id: "a", type: "friend_accepted", title: "Accepted", metadata: { addressee_profile_id: "p2" } },
+      { id: "f", type: "feedback_update", title: "Update on your report", action_url: "/feedback" },
+    ];
+    const opened = vi.fn();
+    window.addEventListener("open-friends-panel", opened);
+    render(<MogzyIdentityMenu />);
+    let panel = await openPanel();
+    fireEvent.click(await within(panel).findByText("Request"));
+    expect(opened).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(inbox.calls("set_my_notification_state")[0].args).toEqual({ _ids: ["r"], _action: "read" }));
+    panel = await openPanel();
+    fireEvent.click(await within(panel).findByText("Accepted"));
+    expect(navigate).toHaveBeenCalledWith("/user/p2");
+    panel = await openPanel();
+    fireEvent.click(await within(panel).findByText("Update on your report"));
+    expect(navigate).toHaveBeenCalledWith("/feedback");
+    window.removeEventListener("open-friends-panel", opened);
+  });
+});
+
+describe("live updates", () => {
+  it("refetches on a realtime change and toasts only personal or important arrivals", async () => {
+    render(<MogzyIdentityMenu />);
+    await waitFor(() => expect(inbox.calls("get_my_notifications").length).toBe(1));
+    inbox.player.push({ id: "n1", type: "update", title: "Routine news" });
+    inbox.player.push({ id: "n2", type: "friend_request", title: "Bo sent you a friend request" });
+    act(() => inbox.emit("user_notifications", "INSERT", { id: "n2" }));
+    await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("2"));
+    expect(toastFn).toHaveBeenCalledWith("Bo sent you a friend request", expect.anything());
+    expect(toastFn).not.toHaveBeenCalledWith("Routine news", expect.anything());
+  });
+
+  it("converges when another tab or device changes this player's state", async () => {
+    inbox.player = [{ id: "a", type: "update", title: "Seen elsewhere" }];
+    render(<MogzyIdentityMenu />);
+    await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("1"));
+    inbox.player[0].done = true; // written by another device
+    act(() => inbox.emit("user_notification_states", "INSERT", { user_id: UID }));
+    await waitFor(() => expect(screen.queryByTestId("hud-unread-badge")).toBeNull());
+    const filters = inbox.listeners.filter(l => l.table !== "user_notifications").map(l => l.filter);
+    expect(filters.every(f => f === `user_id=eq.${UID}`)).toBe(true);
+  });
+
+  it("surfaces a failed load as an error with a retry, never a confident empty bell", async () => {
+    inbox.errors.get_my_notifications = { message: "boom" };
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await within(panel).findByTestId("notification-error");
+    delete inbox.errors.get_my_notifications;
+    inbox.player = [{ id: "a", type: "update", title: "Back" }];
+    fireEvent.click(within(panel).getByText("Try again"));
+    expect(await within(panel).findByText("Back")).toBeTruthy();
+  });
+});
+
+describe("invitations", () => {
+  it("never shows an expired invitation as actionable", async () => {
+    invitesHook.invites = [{ inviteToken: "old", displayName: "Old", avatarUrl: null, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() - 1000).toISOString() }];
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await ready();
+    expect(within(panel).queryByTestId("ccd-invite-notification")).toBeNull();
+    expect(screen.queryByTestId("hud-unread-badge")).toBeNull();
+  });
+});
+
+describe("before the migration (legacy fallback)", () => {
+  it("falls back to the legacy tables, keeps recipient scoping, and hides lifecycle actions", async () => {
+    inbox.legacy = true;
+    inbox.player = [
+      { id: "mine", type: "friend_request", title: "For me", target_type: "user", profile_id: "profile-1" },
+      { id: "theirs", type: "friend_request", title: "For someone else", target_type: "user", profile_id: "profile-2" },
+      { id: "bcast", type: "update", title: "Broadcast" },
+      { id: "legacy", type: "promotion", title: "Retired type" },
+      { id: "comment", type: "comment_reply", title: "Not activated" },
+    ];
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    await within(panel).findByText("For me");
+    expect(within(panel).getByText("Broadcast")).toBeTruthy();
+    expect(within(panel).queryByText("For someone else")).toBeNull();
+    expect(within(panel).queryByText("Retired type")).toBeNull();
+    expect(within(panel).queryByText("Not activated")).toBeNull();
+    expect(within(panel).queryByTestId("notification-dismiss")).toBeNull();
+    expect(within(panel).queryByTestId("notification-clear-all")).toBeNull();
+    // Explicit columns only — never `*`, which would expose sent_by_user_id.
+    const cols = inbox.fromCalls.find(c => c.table === "user_notifications" && c.op === "select")?.payload as string;
+    expect(cols).not.toContain("*");
+    expect(cols).not.toContain("sent_by_user_id");
+
+    fireEvent.click(within(panel).getByText("Mark all read"));
+    await waitFor(() => expect(inbox.fromCalls.some(c => c.table === "user_notification_reads" && c.op === "upsert")).toBe(true));
+    const upsert = inbox.fromCalls.find(c => c.table === "user_notification_reads" && c.op === "upsert")!;
+    expect(upsert.opts).toEqual({ onConflict: "notification_id,user_id", ignoreDuplicates: true });
+  });
+});
+
+describe("accessibility", () => {
   it("closes on Escape and returns focus to the trigger", async () => {
-    const bell = await openBell();
-    expect(screen.getByTestId("notification-panel")).toBeTruthy();
-
-    fireEvent.keyDown(document, { key: "Escape" });
-
-    await waitFor(() => expect(screen.queryByTestId("notification-panel")).toBeNull());
-    expect(document.activeElement).toBe(bell);
-    expect(bell.getAttribute("aria-expanded")).toBe("false");
-  });
-
-  it("describes pending invitations separately from unread items", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Hello" })];
-    invitesHook.invites = [{
-      inviteToken: "tok",
-      senderProfileId: "p2",
-      displayName: "Rivals",
-      avatarUrl: null,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
-    }];
     render(<MogzyIdentityMenu />);
-    const bell = await screen.findByRole("button", { name: /notifications/i });
-    await waitFor(() =>
-      expect(bell.getAttribute("aria-label")).toBe("Open notifications: 1 unread, 1 pending invitation"),
-    );
-  });
-});
-
-describe("MogzyIdentityMenu — Mark all read vs actionable invites", () => {
-  it("clears unread items but leaves a pending invitation actionable", async () => {
-    db.notifications = [notif({ id: "g", type: "general", title: "Hello" })];
-    invitesHook.invites = [{
-      inviteToken: "tok",
-      senderProfileId: "p2",
-      displayName: "Rivals",
-      avatarUrl: null,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
-    }];
-    const bell = await openBell();
-
-    fireEvent.click(await screen.findByText("Mark all read"));
-
-    // The informational item is cleared; the invite is not, and the label says so
-    // rather than leaving a badge that "Mark all read" appears unable to clear.
-    await waitFor(() =>
-      expect(bell.getAttribute("aria-label")).toBe("Open notifications: 1 pending invitation"),
-    );
-    expect(screen.getByTestId("ccd-invite-notification")).toBeTruthy();
-    expect(screen.queryByText("Mark all read")).toBeNull();
-  });
-
-  it("hides an invitation whose expiry has already passed", async () => {
-    invitesHook.invites = [{
-      inviteToken: "tok_dead",
-      senderProfileId: "p2",
-      displayName: "Rivals",
-      avatarUrl: null,
-      createdAt: new Date(Date.now() - 20 * 60_000).toISOString(),
-      expiresAt: new Date(Date.now() - 60_000).toISOString(),
-    }];
-    await openBell();
-    await screen.findByText("No notifications yet");
-    expect(screen.queryByTestId("ccd-invite-notification")).toBeNull();
+    await openPanel();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("notification-panel")).toBeNull());
+    expect(document.activeElement).toBe(trigger());
   });
 });
