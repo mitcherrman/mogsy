@@ -117,7 +117,11 @@ export function AnswerGrid({
       className="m-0 border-0 p-0"
     >
       <QuizAnswerOptions
-        choices={options.map((o) => o.label)}
+        // PM1 — a picture choice travels as the grid's own choice object, so
+        // the picture-choice layout QuizAnswerOptions already owns draws it.
+        // Every option without `imagePath` is the plain label, as before.
+        choices={options.map((o) =>
+          o.imagePath ? { label: o.label, image_path: o.imagePath } : o.label)}
         selectedAnswer={selected?.label ?? null}
         answerResult={revealed ? { correct_answer: revealed.label } : null}
         onSelect={handleSelect}

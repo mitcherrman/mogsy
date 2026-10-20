@@ -187,6 +187,14 @@ export interface AnswerOptionView {
    * options are quantities or free text, and on every round frozen before RA6.
    */
   media?: OptionMediaView | null;
+  /**
+   * PM1 — the option IS a picture (the classic picture-choice question: a
+   * champion splash or item to pick out), as a backend-relative asset path.
+   * Absent on every Ranked, Daily and Pro Play option. Pre-answer data, part
+   * of the choice itself, so it carries no correctness. When any option has
+   * one the canonical grid draws its picture-choice layout.
+   */
+  imagePath?: string | null;
 }
 
 export interface QuestionView {
