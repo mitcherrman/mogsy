@@ -689,6 +689,8 @@ test.describe("phase 2: quality tiers and pausing", () => {
     await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "full");
     await page.goto(`${ROUTE}?quality=lite`);
     await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    // count the scene, not the startup veil's own glow (a direct load holds it up to 1.8 s)
+    await expect(page.getByTestId("academy-veil")).toHaveCount(0);
     await page.waitForTimeout(1500);
     await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-quality", "lite");
     const lite = await countAnims(page);

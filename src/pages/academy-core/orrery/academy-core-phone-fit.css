@@ -1,0 +1,62 @@
+/* ==========================================================================
+   Phone fit — the composed (stacked) Orrery sized by the screen's HEIGHT.
+   Imported by AcademyCorePage after academy-core-masthead.css (order matters).
+
+   Before: the stage was `width: min(100%, 520px); aspect-ratio: 360 / 640`,
+   so its height came from the width alone and short phones lost the lower
+   tier below the fold.
+
+   Now:
+   1. HEIGHT BUDGET. The stage is as tall as the viewport can spare:
+        --app-viewport-h  (100dvh minus the app header)
+        − above   the hero's top padding + the masthead row + one gap
+        − below   the arrow row, on screens ≥ 600 px tall; on shorter ones
+                  only a breath (there the arrows follow just below the fold,
+                  and the books and crystal, which also navigate, stay whole)
+      never taller than the approved 360 x 640 aspect at full width, and never
+      less than ~86 % of the compact arrangement at full width.
+   2. REBALANCED COMPOSITION. The page reads the box's aspect into `--fit`
+      (0 tall .. 1 compact, composed-fit.ts). The engine places the books for
+      that fit; below, the Core, the instrument and Mogzy follow the same fit.
+   ========================================================================== */
+
+.o35-root[data-layout="stacked"] {
+  --o35-phone-w: min(100vw - 2rem, 520px);
+  --o35-above-h: 4.4rem;
+  --o35-below-h: 3.6rem;
+}
+@media (max-height: 599.98px) {
+  .o35-root[data-layout="stacked"] { --o35-below-h: 0.6rem; }
+}
+
+.o35-root[data-layout="stacked"] .o35-stage[data-mode="composed"] {
+  aspect-ratio: auto;
+  width: min(100%, 520px);
+  height: clamp(
+    calc(var(--o35-phone-w) * 520 / 360 * 0.86),
+    calc(var(--app-viewport-h, 100dvh) - var(--o35-above-h) - var(--o35-below-h)),
+    calc(var(--o35-phone-w) * 640 / 360)
+  );
+}
+
+/* the Core, the instrument and Mogzy follow the fit (tall → compact) */
+.o35-root .o35-stage[data-mode="composed"] .o35-scene {
+  --core-d: calc(330 - 40 * var(--fit, 0));
+  --core-y: calc(322 - 60 * var(--fit, 0));
+  --inst-w: calc(232 - 28 * var(--fit, 0));
+}
+.o35-root .o35-stage[data-mode="composed"] .o35-mogzy {
+  left: calc(var(--u) * (258 - 4 * var(--fit, 0)));
+  top: calc(var(--u) * (262 - 54 * var(--fit, 0)));
+  width: calc(var(--u) * (98 - 12 * var(--fit, 0)));
+  height: calc(var(--u) * (140 - 17 * var(--fit, 0)));
+}
+
+/* short landscape: the compact composition, fitted to the screen height */
+@media (max-width: 1023.98px) and (orientation: landscape) and (max-height: 560px) {
+  .o35-root[data-layout="stacked"] .o35-stage[data-mode="composed"] {
+    aspect-ratio: 360 / 520;
+    height: calc(var(--app-viewport-h, 100dvh) - 1rem);
+    width: auto; max-width: none; margin: 0;
+  }
+}
