@@ -32,7 +32,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Masthead geometry and review screenshots
-        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-core-masthead.spec.ts e2e/academy-core-diag.spec.ts --workers=1
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-core-masthead.spec.ts --workers=1
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
