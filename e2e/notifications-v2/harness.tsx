@@ -18,6 +18,7 @@ import { BrowserRouter } from "react-router-dom";
 import "@/index.css";
 import { supabase } from "@/integrations/supabase/client";
 import { createInboxServer, type FakeAdminRow, type FakePlayerRow } from "@/test/notifications/inboxServer";
+import { attachPersistence } from "@/test/notifications/persistentInbox";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import MogzyIdentityMenu from "@/components/hud/MogzyIdentityMenu";
@@ -73,22 +74,12 @@ server.tables.preset_item_images = [{
   image_url: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='80' height='80' fill='%23c9a84c'/></svg>",
 }];
 server.tables.preset_items = [{ id: "item-1", name: "Infinity Edge" }];
-type Persisted = { admin: FakeAdminRow[]; player: FakePlayerRow[]; muted: string[] };
-const load = (): Persisted | null => {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "null");
-  } catch {
-    return null;
-  }
-};
-const save = () => localStorage.setItem(KEY, JSON.stringify({ admin: server.admin, player: server.player, muted: server.muted }));
-const restore = (state: Persisted | null) => {
-  server.admin = state?.admin ?? seedAdmin();
-  server.player = state?.player ?? seedPlayer();
-  server.muted = state?.muted ?? [];
-};
-restore(params.get("seed") === "reset" ? null : load());
-save();
+const persisted = attachPersistence(server, {
+  storage: localStorage,
+  key: KEY,
+  seed: () => ({ admin: seedAdmin(), player: seedPlayer(), muted: [] }),
+  reset: params.get("seed") === "reset",
+});
 // Seeding is a one-off: drop `seed=reset` from the address so a reload is a
 // true reload against the persisted state, exactly like a reload in production.
 if (params.has("seed")) {
@@ -97,19 +88,10 @@ if (params.has("seed")) {
   window.history.replaceState(null, "", `${window.location.pathname}?${clean.toString()}`);
 }
 
-// Writes persist; every RPC re-reads persisted state first so another tab's
-// writes are honoured exactly like rows in a shared database.
-const rpc = server.client.rpc;
-server.client.rpc = async (name: string, args?: Record<string, unknown>) => {
-  restore(load());
-  const result = await rpc(name, args);
-  save();
-  return result;
-};
 // Another tab wrote: deliver it as realtime would.
 window.addEventListener("storage", e => {
   if (e.key !== KEY) return;
-  restore(load());
+  persisted.reload();
   server.emit("admin_notification_states", "UPDATE", {});
   server.emit("user_notification_states", "UPDATE", {});
 });
