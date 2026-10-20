@@ -270,5 +270,30 @@ describe("the module bonus belongs to the block, not to a card", () => {
     // this viewport does not own; see `cardBeat.test.ts`.
     expect(screen.getByTestId("mr-settled-card")).toBeInTheDocument();
     expect(screen.queryByTestId("mr-card-beat")).toBeNull();
+    expect(screen.getByTestId("mr-final-verdict")).toHaveTextContent("CORRECT");
+  });
+
+  it.each([
+    ["correct", "CORRECT", "text-emerald-400"],
+    ["incorrect", "INCORRECT", "text-red-400"],
+    ["timeout", "TIMED OUT", "text-amber-400"],
+  ])("shows the server's final %s verdict during waiting", (outcome, verdict, tone) => {
+    const state = parse(metaReflexState(5, {
+      own_card_reveals: [
+        ...Array.from({ length: 4 }, (_, i) => settledCardReveal(i)),
+        settledCardReveal(4, {
+          outcome,
+          selected_card_id: outcome === "timeout" ? null : "c4:left",
+          correct_card_id: outcome === "incorrect" ? "c4:right" : "c4:left",
+        }),
+      ],
+      own_revealing_card_index: null,
+      own_reveal_until: null,
+    }));
+    renderBlock(state);
+    const notice = screen.getByTestId("mr-final-verdict");
+    expect(notice).toHaveTextContent(verdict);
+    expect(notice.querySelector("span")).toHaveClass(tone);
+    expect(screen.getByTestId("mr-settled-card")).toBeInTheDocument();
   });
 });
