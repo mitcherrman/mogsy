@@ -381,10 +381,14 @@ function QuizChip({ compact }: { compact: boolean }) {
       aria-label="Worlds 2026 Quiz"
       data-testid="worlds-quiz-cta"
       data-layout="wide"
-      className="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c9a84c]/40 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#e3c66f] outline-none transition-colors hover:bg-[#c9a84c]/[0.08] focus-visible:ring-1 focus-visible:ring-[#c9a84c]/70"
+      title="Worlds 2026 Quiz"
+      // Below 1280 px the five-tab nav (shrink-0) and a long phase label
+      // ("Knockouts in progress") leave no room for a word: icon-only there
+      // (measured: the labelled chip met "Discover" at 1024 × 768).
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[#c9a84c]/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#e3c66f] outline-none transition-colors hover:bg-[#c9a84c]/[0.08] focus-visible:ring-1 focus-visible:ring-[#c9a84c]/70 xl:w-auto xl:px-2.5"
     >
       <Brain className="h-3.5 w-3.5" aria-hidden="true" />
-      Quiz
+      <span className="hidden xl:inline">Quiz</span>
     </Link>
   );
 }
