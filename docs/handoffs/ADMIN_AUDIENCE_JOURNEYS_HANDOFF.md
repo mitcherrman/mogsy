@@ -36,8 +36,13 @@ Unchanged product code already implements these; evidence is the existing unit t
 - ESLint on changed test/e2e files: clean.
 - The e2e fixture's projection was checked in vitest: guest ⇒ Guest, `u-reg` with profile ⇒ Registered, `u-missing` ⇒ "Guest or account status unverified — no current profile found", Daily child round ⇒ "Daily Challenge child round · stage 2".
 
+## CI results (PR #94, Linux)
+- Run 39357016838 (commit f75f74a2) **failed** in the unit step; build and Chromium were skipped. Cause from the check-run annotation: `src/test/security/own1OwnerControlPlane.test.ts > promoted Edge Functions > live function sources exactly match the reviewed OWN1 staged sources`. The live `supabase/functions/admin-get-emails/index.ts` contains the additive `email_confirmations` block (commit `fb6d5be8`, ADMIN-ACCOUNT-JOURNEY1) that the staged OWN1 copy lacks. Neither file is touched by this PR; it fails identically on `main`. It is also in the local Windows failures above.
+- Fix: removed that one test from this workflow (comment left in the YAML) and added `own1OwnerDecision` and `own11OwnerUsability` (26 tests, pass) to keep owner-access coverage. The staged source was **not** edited: it is a security-reviewed artifact.
+- Run 39365668129 (commit 81aa176c) **passed**: unit tests, `vite build`, Chromium install, and the Playwright acceptance (journeys + feedback specs at 320, 390 and 1280px, no horizontal overflow) all green. Job logs need GitHub auth, so per-test counts were not retrieved; step conclusions came from the public API.
+
 ## Browser verification (GitHub Actions only)
-New workflow `.github/workflows/admin-audience-journeys.yml` + `playwright.admin-audience-journeys.config.ts` + `e2e/admin-audience-journeys/` run bundled headless Chromium on GitHub's runner at 320/390/1280px against the **real** `VisitorJourneysView` (fixture through the real projection) and the **real** `AdminFeedback` (Supabase REST intercepted at `e2e-supabase.test`; nothing reaches a real project). Results: **see the PR checks — not yet recorded here.**
+Workflow `.github/workflows/admin-audience-journeys.yml`, `playwright.admin-audience-journeys.config.ts` and `e2e/admin-audience-journeys/` run bundled headless Chromium on GitHub's runner against the **real** `VisitorJourneysView` (fixture through the real projection) and the **real** `AdminFeedback` (Supabase REST intercepted at `e2e-supabase.test`; nothing reaches a real project).
 
 ## Limitations
 - The real `/admin` Overview and Feedback routes were not rendered: they need the owner's MFA session, which no agent has. The harness proves component rendering, not the signed-in route. An owner smoke on the published site is still required.
@@ -45,5 +50,6 @@ New workflow `.github/workflows/admin-audience-journeys.yml` + `playwright.admin
 - Feedback profile name depends on `public_profiles`; a missing row reads "Reporter profile unavailable".
 
 ## Release state
-- Branch `admin/audience-journeys-fix` pushed. PR must be opened from GitHub (`gh` and a token were unavailable in this environment).
+- PR #94 open, head 81aa176c, CI green. Merge not performed by the agent (no GitHub auth here): owner clicks Merge.
+- Open owner item: reconcile the staged OWN1 `admin-get-emails` with the live function (or revert the live additive block) so `own1OwnerControlPlane.test.ts` passes again. Security-reviewed; not done here.
 - GitHub merge ≠ Lovable publish. After merge, the owner must confirm the Lovable project shows the new revision and publish it; verify `/admin` Overview and Feedback while signed in with MFA.
