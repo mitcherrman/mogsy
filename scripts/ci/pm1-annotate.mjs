@@ -28,8 +28,8 @@ for (const f of failures.slice(0, 9)) {
   console.log(`::error title=${enc(f.title.slice(0, 200))}::${enc(f.err.slice(0, 3500))}`);
 }
 if (existsSync("test-results/pm1/run.log")) {
-  const lines = strip(readFileSync("test-results/pm1/run.log", "utf8")).split("\n").filter((l) => l.includes("[pm1]"))
-    .map((l) => l.slice(l.indexOf("[pm1]")));
+  const lines = strip(readFileSync("test-results/pm1/run.log", "utf8")).split("\n").filter((l) => l.includes("[pm1"))
+    .map((l) => l.slice(l.indexOf("[pm1")));
   // GitHub keeps 10 notices per step: pack the measurements into chunks.
   const chunks = [];
   let cur = "";
