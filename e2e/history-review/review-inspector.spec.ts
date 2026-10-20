@@ -52,7 +52,10 @@ const POPOVER_MAX_W = 42 * 16;
 const popoverMaxH = (innerH: number) => innerH * 0.85 + 1;
 
 async function openHarness(page: Page, state: string, pos = "middle") {
-  await page.route("http://127.0.0.1:8000/**", (route) =>
+  // Art is requested from VITE_COMBAT_API_URL (the tracked .env points it at the
+  // production API), not from 127.0.0.1:8000, so match the path on ANY host:
+  // the harness must never reach a real server for its images.
+  await page.route("**/art/*.png", (route) =>
     route.request().url().endsWith("/art/ok.png")
       ? route.fulfill({ status: 200, contentType: "image/png", body: PNG })
       : route.fulfill({ status: 404, body: "" }));
@@ -442,17 +445,27 @@ for (const vp of PHONES) {
         if (n === 2 || n === 3) await shot(page, testInfo, `mastery-sheet-${vp.id}-q${n}`);
       }
 
-      // Previous / Next walk back and stop at the ends.
-      await sheet.getByTestId("review-mastery-next").click();
+      // Previous / Next: the loop above ended on question 5, so Next is at its
+      // end. Walk back to 1 with Previous, then forward to 5 with Next. At each
+      // end the control is aria-disabled (Playwright will not click a disabled
+      // control, correctly), and a forced activation must change nothing.
+      const next = sheet.getByTestId("review-mastery-next");
+      const prev = sheet.getByTestId("review-mastery-prev");
+      await expect(next).toHaveAttribute("aria-disabled", "true");
+      await next.click({ force: true });
       await expect(positionOf(sheet)).toHaveText("Question 5 of 5");
-      await expect(sheet.getByTestId("review-mastery-next")).toHaveAttribute("aria-disabled", "true");
       for (let n = 4; n >= 1; n--) {
-        await sheet.getByTestId("review-mastery-prev").click();
+        await prev.click();
         await expect(positionOf(sheet)).toHaveText(`Question ${n} of 5`);
       }
-      await sheet.getByTestId("review-mastery-prev").click();
+      await expect(prev).toHaveAttribute("aria-disabled", "true");
+      await prev.click({ force: true });
       await expect(positionOf(sheet)).toHaveText("Question 1 of 5");
-      await expect(sheet.getByTestId("review-mastery-prev")).toHaveAttribute("aria-disabled", "true");
+      for (let n = 2; n <= 5; n++) {
+        await next.click();
+        await expect(positionOf(sheet)).toHaveText(`Question ${n} of 5`);
+      }
+      await expect(next).toHaveAttribute("aria-disabled", "true");
     });
 
     test("keyboard: arrows move and select, focus stays inside the sheet, Escape restores the opener", async ({ page }) => {

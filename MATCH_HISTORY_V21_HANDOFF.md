@@ -40,7 +40,10 @@ Replace the cramped, scrolling 29rem popover that stacked every Mastery challeng
 - Not run locally by design: Playwright. Browser acceptance is the GitHub Actions workflow "History Review Acceptance".
 
 ## CI evidence
-_(filled in after the first run — see PR)_
+Run 1 (39352448750, tip 495d6ecc): 146 passed, 5 failed. Fixes in the next commit:
+1. **Mobile selector x3 (spec line ~446)** — test-ordering bug. The per-question loop ends on question 5, so `Next` is correctly `aria-disabled` and Playwright (correctly) will not click it. UI unchanged; the spec now asserts the disabled end state, proves a forced activation changes nothing, then walks back with Previous and forward with Next.
+2. **200% text at 320px** — the answer pair grid used `minmax(9.5rem,1fr)`; at a 32px root that is 304px, wider than the 256px content box (tiles at x=33..337 in a 320 host). Now `minmax(min(9.5rem,100%),1fr)` (same for the Choices chip grid): identical at 100% text, one wrapping column when the container is narrower than a tile. Pre-existing Track A sizing, newly exposed by this PR's 200% test.
+3. **Missing-art test** — two causes. (a) The spec routed art only for `http://127.0.0.1:8000/**`, but the tracked `.env` has `VITE_COMBAT_API_URL=https://web-production-83e53.up.railway.app` (since 2026-05-22), so in CI the image went to the real production host and the interception never applied; the spec now routes `**/art/*.png` on any host. (b) A proven image that fails to load left a broken-image glyph in the card header; `SubjectMark` now drops a failed image (no substitute picture; the module sigil/none rules are unchanged). Unit test added.
 
 ## Not covered by the browser harness
 The real History footer (`QuestionContext`) needs a `DailyHistoryRecord`; the harness renders `QuestionInspector` only. The footer restyle is covered by the existing `QuestionContext`/DailyHistory unit tests (all pass) but has no screenshot.

@@ -275,7 +275,7 @@ function AnswerPair({
   unresolvedTestId: string;
 }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-1.5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(9.5rem,100%),1fr))] gap-1.5">
       <AnswerTile
         testId={mineTestId} label="Your answer" value={mine} state={mineState} note={mineNote}
         spoken={mineState === "right" ? "correct" : mineState === "wrong" ? "incorrect" : undefined}
@@ -323,7 +323,7 @@ function Choices({ choices, testId }: { choices: ChoiceView[]; testId?: string }
       <SectionLabel>Choices</SectionLabel>
       <ul
         className={compact
-          ? "grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-1"
+          ? "grid grid-cols-[repeat(auto-fill,minmax(min(5.25rem,100%),1fr))] gap-1"
           : "space-y-1"}
         data-testid={testId}
         data-layout={compact ? "chips" : "rows"}
@@ -1328,17 +1328,21 @@ function OutcomeChip({ round, outcome }: { round: ReviewRound; outcome: Question
  */
 function SubjectMark({ round }: { round: ReviewRound }) {
   const icon = resolveQuestionIcon(round.iconHint);
+  // A proven image that fails to load is simply absent (never a broken-image
+  // glyph, never a substitute picture). Reset when the source changes.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const box = "h-[18px] w-[18px] shrink-0 self-center rounded-[3px]";
   if (icon.glyph === "meta_reflex") {
     return <Zap className="h-4 w-4 shrink-0 self-center" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />;
   }
-  if (icon.src) {
+  if (icon.src && icon.src !== failedSrc) {
     return (
       <img
         src={icon.src}
         alt=""
         aria-hidden="true"
         loading="lazy"
+        onError={() => setFailedSrc(icon.src ?? null)}
         data-testid="review-subject-mark"
         data-specific={icon.specific ? "true" : "false"}
         className={`${box} object-cover`}

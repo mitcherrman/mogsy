@@ -175,7 +175,7 @@ describe("long text", () => {
   it("sizes the answer pair by container width, never by viewport", () => {
     render(<QuestionReviewCard round={long()} position={1} total={4} />);
     const grid = screen.getByTestId("review-your-answer").parentElement!;
-    expect(grid.className).toContain("grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))]");
+    expect(grid.className).toContain("grid-cols-[repeat(auto-fit,minmax(min(9.5rem,100%),1fr))]");
     expect(card().innerHTML).not.toMatch(/\bw-\[\d{3,}px\]|\bmin-w-\[\d{3,}px\]/);
   });
 });
@@ -216,6 +216,17 @@ describe("the subject mark uses only proven art", () => {
     expect(mark).toHaveAttribute("data-specific", "true");
     expect(mark.getAttribute("src")).toContain("assets/items/1055.png");
     expect(mark).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("drops proven art that fails to load, leaving no broken image and no substitute", () => {
+    render(<QuestionReviewCard position={1} total={4} round={quiz({
+      iconHint: { kind: "ability", key: "Aegis Assault", icon: "art/missing.png" },
+    })} />);
+    fireEvent.error(screen.getByTestId("review-subject-mark"));
+    expect(screen.queryByTestId("review-subject-mark")).toBeNull();
+    expect(card().querySelector("img")).toBeNull();
+    // The rest of the card is intact.
+    expect(screen.getByTestId("review-position")).toHaveTextContent("Q1 of 4");
   });
 
   it("mutes a category stand-in so it does not claim a subject", () => {
