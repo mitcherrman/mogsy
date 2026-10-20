@@ -7,8 +7,9 @@
  * fixture state in `fixtures.ts` × every viewport this asserts:
  *
  *   1. HOST       the popover (fine) or sheet (coarse) is the host that opened.
- *   2. BOUNDED    popover <= 24rem tall and fully inside the viewport (opened
- *                 from top, middle, bottom and bottom-right); sheet <= 85dvh.
+ *   2. BOUNDED    popover <= 85dvh tall, <= 42rem (672px) wide and fully inside
+ *                 the viewport (opened from top, middle, bottom and
+ *                 bottom-right); sheet <= 85dvh.
  *   3. NO SPILL   no sideways page scroll, and nothing inside the card is wider
  *                 than the host that holds it.
  *   4. NO CLIPPING no text box is silently cut by overflow:hidden (a deliberate
@@ -20,6 +21,10 @@
  *   8. SEALED     a sealed fixture carries no revealed field, and its open card
  *                 shows no "correct answer" and no correct marker.
  *   9. SCREENSHOT every state × viewport is captured and attached.
+ *  10. MASTERY    (V2.1) a frozen slice shows ONE challenge at a time behind a
+ *                 numbered selector: initial/switch/Previous/Next/keyboard,
+ *                 44px touch targets, no sealed leak, no jump of the popover,
+ *                 and no overflow at 320/360/390 and at 200% text size.
  *
  * CI only (see playwright.history-review.config.ts). Images the card asks for are
  * answered by this spec: art/ok.png is a real PNG, art/missing.png is a 404.
@@ -42,7 +47,9 @@ const DESKTOPS = [
   { id: "1280x800", w: 1280, h: 800 },
   { id: "1280x560", w: 1280, h: 560 },
 ];
-const REM_24 = 24 * 16;
+const POPOVER_MAX_W = 42 * 16;
+/** The popover ceiling is 85dvh (Radix's measured space can only make it smaller). */
+const popoverMaxH = (innerH: number) => innerH * 0.85 + 1;
 
 async function openHarness(page: Page, state: string, pos = "middle") {
   await page.route("http://127.0.0.1:8000/**", (route) =>
@@ -223,8 +230,8 @@ for (const vp of DESKTOPS) {
 
           const m = await measure(pop);
           expectClean(m);
-          expect(m.box.height, "popover taller than 24rem").toBeLessThanOrEqual(REM_24 + 1);
-          expect(m.box.width, "popover wider than ~29rem").toBeLessThanOrEqual(29 * 16 + 1);
+          expect(m.box.height, "popover taller than 85dvh").toBeLessThanOrEqual(popoverMaxH(m.innerH));
+          expect(m.box.width, "popover wider than 42rem").toBeLessThanOrEqual(POPOVER_MAX_W + 1);
           expect(m.box.left, "popover left of viewport").toBeGreaterThanOrEqual(-0.5);
           expect(m.box.top, "popover above viewport").toBeGreaterThanOrEqual(-0.5);
           expect(m.box.right, "popover right of viewport").toBeLessThanOrEqual(m.innerW + 0.5);
@@ -255,6 +262,7 @@ for (const vp of DESKTOPS) {
     });
 
     test("long content scrolls inside the popover instead of growing it", async ({ page }) => {
+      await page.setViewportSize({ width: vp.w, height: 480 });
       await openHarness(page, "quiz-long", "middle");
       await page.getByTestId("history-trigger").click();
       const pop = page.getByTestId("question-review-popover");
@@ -333,7 +341,7 @@ for (const mode of ["sheet", "popover"] as const) {
       await openFolds(host);
       const m = await measure(host);
       expectClean(m);
-      if (mode === "popover") expect(m.box.height).toBeLessThanOrEqual(REM_24 + 1);
+      if (mode === "popover") expect(m.box.height).toBeLessThanOrEqual(popoverMaxH(m.innerH));
       else expect(m.box.height).toBeLessThanOrEqual(m.innerH * 0.85 + 1);
       await shot(page, testInfo, `combat-${mode}-folds-open`);
     });
@@ -384,4 +392,234 @@ test.describe("verdict chip", () => {
       await expect(page.getByTestId("review-outcome")).toHaveText(re);
     });
   }
+});
+
+// ── V2.1: the Mastery selector ─────────────────────────────────────────────────
+const tabs = (host: Locator) => host.getByRole("tab");
+const positionOf = (host: Locator) => host.getByTestId("review-mastery-position");
+const visibleChallenges = (host: Locator) => host.locator("[data-review-mastery-challenge]");
+
+/** Every selector control must be a real target and must not leave the host. */
+async function expectTargets(host: Locator, min: number) {
+  const hostBox = (await host.boundingBox())!;
+  const controls = [...(await tabs(host).all()), host.getByTestId("review-mastery-prev"), host.getByTestId("review-mastery-next")];
+  for (const control of controls) {
+    const box = (await control.boundingBox())!;
+    const name = (await control.getAttribute("data-testid")) ?? "control";
+    expect(box.height, `${name} height`).toBeGreaterThanOrEqual(min);
+    expect(box.width, `${name} width`).toBeGreaterThanOrEqual(min);
+    expect(box.x, `${name} left of host`).toBeGreaterThanOrEqual(hostBox.x - 0.5);
+    expect(box.x + box.width, `${name} right of host`).toBeLessThanOrEqual(hostBox.x + hostBox.width + 0.5);
+  }
+}
+
+for (const vp of PHONES) {
+  test.describe(`mastery selector, sheet ${vp.id}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+
+    test("one question at a time; every number, Previous and Next; 44px targets; clean at each step", async ({ page }, testInfo) => {
+      await openHarness(page, "mastery-five", "bottom");
+      await page.getByTestId("history-trigger").click();
+      const sheet = page.getByTestId("question-review-sheet");
+      await expect(sheet).toBeVisible();
+
+      await expect(positionOf(sheet)).toHaveText("Question 1 of 5");
+      await expect(visibleChallenges(sheet)).toHaveCount(1);
+      await expect(tabs(sheet)).toHaveCount(5);
+      await expectTargets(sheet, 44);
+
+      const statuses = await tabs(sheet).evaluateAll((els) => els.map((el) => el.getAttribute("data-status")));
+      expect(statuses).toEqual(["correct", "incorrect", "unanswered", "correct", "incorrect"]);
+
+      for (let n = 1; n <= 5; n++) {
+        await sheet.getByTestId(`review-mastery-select-${n}`).click();
+        await expect(positionOf(sheet)).toHaveText(`Question ${n} of 5`);
+        await expect(visibleChallenges(sheet)).toHaveCount(1);
+        await expect(visibleChallenges(sheet)).toHaveAttribute("data-review-mastery-challenge", String(n - 1));
+        const m = await measure(sheet);
+        expectClean(m);
+        expect(m.box.height, "sheet taller than 85dvh").toBeLessThanOrEqual(m.innerH * 0.85 + 1);
+        if (n === 2 || n === 3) await shot(page, testInfo, `mastery-sheet-${vp.id}-q${n}`);
+      }
+
+      // Previous / Next walk back and stop at the ends.
+      await sheet.getByTestId("review-mastery-next").click();
+      await expect(positionOf(sheet)).toHaveText("Question 5 of 5");
+      await expect(sheet.getByTestId("review-mastery-next")).toHaveAttribute("aria-disabled", "true");
+      for (let n = 4; n >= 1; n--) {
+        await sheet.getByTestId("review-mastery-prev").click();
+        await expect(positionOf(sheet)).toHaveText(`Question ${n} of 5`);
+      }
+      await sheet.getByTestId("review-mastery-prev").click();
+      await expect(positionOf(sheet)).toHaveText("Question 1 of 5");
+      await expect(sheet.getByTestId("review-mastery-prev")).toHaveAttribute("aria-disabled", "true");
+    });
+
+    test("keyboard: arrows move and select, focus stays inside the sheet, Escape restores the opener", async ({ page }) => {
+      await openHarness(page, "mastery-five", "bottom");
+      const trigger = page.getByTestId("history-trigger");
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      const sheet = page.getByTestId("question-review-sheet");
+      await expect(sheet).toBeVisible();
+      await sheet.getByTestId("review-mastery-select-1").focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(positionOf(sheet)).toHaveText("Question 2 of 5");
+      await expect(sheet.getByTestId("review-mastery-select-2")).toBeFocused();
+      await page.keyboard.press("End");
+      await expect(positionOf(sheet)).toHaveText("Question 5 of 5");
+      await page.keyboard.press("Home");
+      await expect(positionOf(sheet)).toHaveText("Question 1 of 5");
+      for (let i = 0; i < 6; i++) {
+        await page.keyboard.press("Tab");
+        expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="question-review-sheet"]')),
+          "focus escaped the open sheet").toBe(true);
+      }
+      await page.keyboard.press("Escape");
+      await expect(sheet).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    });
+
+    test("a sealed slice's selector says nothing about the answers", async ({ page }, testInfo) => {
+      await openHarness(page, "mastery-sealed", "bottom");
+      await page.getByTestId("history-trigger").click();
+      const sheet = page.getByTestId("question-review-sheet");
+      const nav = sheet.getByTestId("review-mastery-nav");
+      await expect(nav).toBeVisible();
+      const html = await nav.evaluate((el) => el.outerHTML);
+      expect(html).not.toMatch(/correct|incorrect|unanswered|wrong/i);
+      await expect(tabs(sheet).first()).toHaveAttribute("data-status", "sealed");
+      await expect(tabs(sheet).first()).toHaveAttribute("aria-label", "Question 1 of 2");
+      expectClean(await measure(sheet));
+      await shot(page, testInfo, `mastery-sheet-${vp.id}-sealed`);
+    });
+
+    test("200% text size: no sideways scroll, nothing clipped, still operable", async ({ page }, testInfo) => {
+      await openHarness(page, "mastery-five", "bottom");
+      await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+      await page.getByTestId("history-trigger").click();
+      const sheet = page.getByTestId("question-review-sheet");
+      await expect(sheet).toBeVisible();
+      for (const n of [1, 3, 5]) {
+        await sheet.getByTestId(`review-mastery-select-${n}`).click();
+        await expect(positionOf(sheet)).toHaveText(`Question ${n} of 5`);
+        const m = await measure(sheet);
+        expectClean(m);
+        expect(m.box.height).toBeLessThanOrEqual(m.innerH * 0.85 + 1);
+        const body = page.getByTestId("question-review-sheet-body");
+        const bm = await body.evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+        expect(bm.sw, "sheet body scrolls sideways").toBeLessThanOrEqual(bm.cw + 1);
+      }
+      await shot(page, testInfo, `mastery-sheet-${vp.id}-text200`);
+    });
+
+    test("a single-challenge slice has no selector", async ({ page }) => {
+      await openHarness(page, "mastery-combat", "bottom");
+      await page.getByTestId("history-trigger").click();
+      const sheet = page.getByTestId("question-review-sheet");
+      await expect(sheet.getByTestId("review-mastery-challenges")).toBeVisible();
+      await expect(sheet.getByTestId("review-mastery-nav")).toHaveCount(0);
+    });
+  });
+}
+
+for (const vp of DESKTOPS) {
+  test.describe(`mastery selector, popover ${vp.id}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h } });
+
+    for (const pos of ["middle", "bottom", "top", "right-bottom"] as const) {
+      test(`from ${pos}: one question at a time, bounded and inside the viewport at every step`, async ({ page }, testInfo) => {
+        await openHarness(page, "mastery-five", pos);
+        await page.getByTestId("history-trigger").click();
+        const pop = page.getByTestId("question-review-popover");
+        await expect(pop).toBeVisible();
+        await expect(positionOf(pop)).toHaveText("Question 1 of 5");
+        await expect(visibleChallenges(pop)).toHaveCount(1);
+        await expectTargets(pop, 28);
+
+        for (const n of [1, 2, 3, 4, 5, 1]) {
+          await pop.getByTestId(`review-mastery-select-${n}`).click();
+          await expect(positionOf(pop)).toHaveText(`Question ${n} of 5`);
+          await expect(visibleChallenges(pop)).toHaveCount(1);
+          const m = await measure(pop);
+          expectClean(m);
+          expect(m.box.height, "popover taller than 85dvh").toBeLessThanOrEqual(popoverMaxH(m.innerH));
+          expect(m.box.width, "popover wider than 42rem").toBeLessThanOrEqual(POPOVER_MAX_W + 1);
+          expect(m.box.left).toBeGreaterThanOrEqual(-0.5);
+          expect(m.box.top).toBeGreaterThanOrEqual(-0.5);
+          expect(m.box.right).toBeLessThanOrEqual(m.innerW + 0.5);
+          expect(m.box.bottom).toBeLessThanOrEqual(m.innerH + 0.5);
+          // The selector itself is never scrolled out of reach by switching.
+          const nav = (await pop.getByTestId("review-mastery-nav").boundingBox())!;
+          expect(nav.y + nav.height, "selector below the popover top").toBeGreaterThan(m.box.top);
+        }
+        if (pos === "middle") await shot(page, testInfo, `mastery-popover-${vp.id}-five`);
+      });
+    }
+
+    test("is wide on a desktop (~42rem), and the box does not shrink as the reader steps", async ({ page }, testInfo) => {
+      await openHarness(page, "mastery-five", "middle");
+      await page.getByTestId("history-trigger").click();
+      const pop = page.getByTestId("question-review-popover");
+      await expect(pop).toBeVisible();
+      const heights: number[] = [];
+      for (const n of [1, 2, 3, 4, 5, 1, 2]) {
+        await pop.getByTestId(`review-mastery-select-${n}`).click();
+        await expect(positionOf(pop)).toHaveText(`Question ${n} of 5`);
+        const box = (await pop.boundingBox())!;
+        heights.push(Math.round(box.height));
+        expect(box.width, "wide enough for the redesign").toBeGreaterThan(560);
+        expect(box.width).toBeLessThanOrEqual(POPOVER_MAX_W + 1);
+      }
+      // Never shrinks (1px for rounding): the selector does not move under the pointer.
+      for (let i = 1; i < heights.length; i++) {
+        expect(heights[i], `height after step ${i}: ${JSON.stringify(heights)}`).toBeGreaterThanOrEqual(heights[i - 1] - 1);
+      }
+      await shot(page, testInfo, `mastery-popover-${vp.id}-wide`);
+    });
+
+    test("keyboard: Enter opens, arrows select, Escape closes and restores focus", async ({ page }) => {
+      await openHarness(page, "mastery-five", "bottom");
+      const trigger = page.getByTestId("history-trigger");
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      const pop = page.getByTestId("question-review-popover");
+      await expect(pop).toBeVisible();
+      await pop.getByTestId("review-mastery-select-1").focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      await expect(positionOf(pop)).toHaveText("Question 3 of 5");
+      await expect(pop.getByTestId("review-mastery-select-3")).toBeFocused();
+      await expect(visibleChallenges(pop)).toHaveAttribute("data-review-mastery-challenge", "2");
+      await page.keyboard.press("Escape");
+      await expect(pop).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    });
+
+    test("a sealed slice shows no correct answer through the selector", async ({ page }) => {
+      await openHarness(page, "mastery-sealed", "middle");
+      await page.getByTestId("history-trigger").click();
+      const pop = page.getByTestId("question-review-popover");
+      const html = await pop.getByTestId("review-mastery-nav").evaluate((el) => el.outerHTML);
+      expect(html).not.toMatch(/correct|incorrect|unanswered|wrong/i);
+      const m = await measure(pop);
+      expect(m.correctMarkers).toBe(0);
+      expect(m.text).not.toMatch(/correct answer/i);
+    });
+  });
+}
+
+test.describe("popover width follows a narrow window", () => {
+  test.use({ viewport: { width: 640, height: 700 } });
+  test("never wider than the viewport minus the 1rem gutters", async ({ page }) => {
+    await openHarness(page, "mastery-five", "middle");
+    await page.getByTestId("history-trigger").click();
+    const pop = page.getByTestId("question-review-popover");
+    await expect(pop).toBeVisible();
+    const m = await measure(pop);
+    expectClean(m);
+    expect(m.box.width).toBeLessThanOrEqual(640 - 32 + 1);
+    expect(m.box.left).toBeGreaterThanOrEqual(-0.5);
+    expect(m.box.right).toBeLessThanOrEqual(m.innerW + 0.5);
+  });
 });

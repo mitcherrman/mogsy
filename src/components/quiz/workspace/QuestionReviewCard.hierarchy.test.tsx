@@ -8,7 +8,7 @@
 // sealed, no answerable control, and art only where the data proves it.
 // ---------------------------------------------------------------------------
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { ReviewRound } from "@/lib/ranked-public/contracts";
@@ -315,18 +315,19 @@ describe("mastery slice — one answer pair per challenge", () => {
   it("grades each challenge's own tiles", () => {
     render(<QuestionReviewCard round={mixed()} position={3} total={6} />);
     expect(screen.getByTestId("review-mastery-your-answer-0")).toHaveAttribute("data-answer-state", "right");
+    fireEvent.click(screen.getByTestId("review-mastery-select-2"));
     expect(screen.getByTestId("review-mastery-your-answer-1")).toHaveAttribute("data-answer-state", "wrong");
     expect(screen.getByTestId("review-mastery-correct-answer-1")).toHaveTextContent("168");
   });
 
-  it("numbers several challenges and separates them; a lone one needs neither", () => {
+  it("numbers several challenges with the selector; a lone one needs no selector", () => {
     const { unmount } = render(<QuestionReviewCard round={mixed()} position={3} total={6} />);
-    expect(screen.getByTestId("review-mastery-ordinal-0")).toHaveTextContent("1/2");
-    expect(screen.getByTestId("review-mastery-ordinal-1")).toHaveTextContent("2/2");
-    expect(screen.getByTestId("review-pips").children).toHaveLength(2);
+    expect(screen.getByTestId("review-mastery-position")).toHaveTextContent("Question 1 of 2");
+    expect(screen.getByTestId("review-mastery-select-1")).toHaveAttribute("data-status", "correct");
+    expect(screen.getByTestId("review-mastery-select-2")).toHaveAttribute("data-status", "incorrect");
     unmount();
     render(<QuestionReviewCard round={slice([challenge(0)])} position={3} total={6} />);
-    expect(screen.queryByTestId("review-mastery-ordinal-0")).toBeNull();
+    expect(screen.queryByTestId("review-mastery-nav")).toBeNull();
     expect(screen.queryByTestId("review-pips")).toBeNull();
   });
 

@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionReviewCard from "@/components/quiz/workspace/QuestionReviewCard";
 import { QuestionReviewSheet, useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
+import { REVIEW_POPOVER_CLASS } from "@/components/quiz/workspace/questionTimelineParts";
 import { questionIconLabel } from "@/components/quiz/workspace/questionIcons";
 import type { ReviewRound } from "@/lib/ranked-public/contracts";
 
@@ -97,7 +98,7 @@ export default function QuestionInspector({
           // The timeline's popover, exactly: see `QuestionTimeline` for why
           // it is instant (`!animate-none`), capped by the measured height,
           // and re-inked with `lc-vellum` inside the portal.
-          className="lc-vellum lc-vellum--card !animate-none max-h-[min(24rem,var(--radix-popper-available-height))] w-[min(29rem,calc(100vw-2rem))] overflow-y-auto rounded border p-3.5"
+          className={REVIEW_POPOVER_CLASS}
           style={{ borderColor: LEAGUECRAFT_INK.rule, boxShadow: "0 22px 48px -26px rgba(0,0,0,0.7)" }}
           data-testid="question-review-popover"
         >

@@ -54,6 +54,7 @@
  * out — rather than rendering an empty "Correct answer" with a dash, which
  * reads as missing data instead of as a decision.
  */
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Check, ChevronRight, Minus, X, Zap } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import {
@@ -63,6 +64,9 @@ import {
   type QuestionOutcome,
 } from "@/components/quiz/workspace/questionIcons";
 import ModuleSigil, { hasModuleSigil } from "@/components/quiz/workspace/ModuleSigil";
+import {
+  MasteryQuestionNavigator, type MasteryNavStatus,
+} from "@/components/quiz/workspace/MasteryQuestionNavigator";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
 import type {
@@ -572,6 +576,180 @@ function Fold({ label, testId, children }: { label: string; testId?: string; chi
   );
 }
 
+/** The scrollable ancestor of `el`, if any (the Popover or the Sheet body). */
+function scrollParentOf(el: HTMLElement | null): HTMLElement | null {
+  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
+    const overflowY = getComputedStyle(node).overflowY;
+    if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) return node;
+  }
+  return null;
+}
+
+/**
+ * What a selector tab may say about one challenge. Derived from the same
+ * reveal-gated facts the card prints, so a sealed round yields `sealed` for
+ * every challenge (no word, no tint, no glyph) and nothing about correctness
+ * can reach the selector's styling, data attributes or accessible names.
+ */
+function masteryNavStatus(round: ReviewRound, challenge: ReviewMasteryChallenge): MasteryNavStatus {
+  const judged = round.revealed && challenge.correctAnswer !== null;
+  if (!judged) return "sealed";
+  if (challenge.viewerAnswer === null) return "unanswered";
+  if (challenge.isCorrect === true) return "correct";
+  if (challenge.isCorrect === false) return "incorrect";
+  return "sealed";
+}
+
+/**
+ * ONE frozen challenge, reviewed: the question, then the answer pair, the
+ * choices, and why. Everything is read from the frozen record exactly as
+ * before the selector existed; only how many are on screen at once changed.
+ */
+function MasteryChallenge({
+  round, challenge, perChallengeRoles,
+}: { round: ReviewRound; challenge: ReviewMasteryChallenge; perChallengeRoles: boolean }) {
+  const chosen = challenge.viewerAnswer;
+  const correct = challenge.correctAnswer;
+  const judged = round.revealed && correct !== null;
+  const values = round.revealed ? comparisonValuesLine(challenge) : null;
+  const working = round.revealed ? challenge.combatWorking : null;
+  const semanticQuestion = combatQuestion(challenge);
+  const margin = round.revealed ? comparisonMarginLine(challenge) : null;
+  return (
+    <li
+      className="space-y-2"
+      data-review-mastery-challenge={challenge.challengeIndex}
+    >
+      <p
+        className="break-words text-[14px] font-medium leading-relaxed"
+        style={{ color: LEAGUECRAFT_INK.strong }}
+      >
+        {perChallengeRoles && (
+          <QuestionRoleEmblems roles={challenge.roles} size="sm" backed
+            className="mr-1.5 align-[-2px]"
+            testId={`review-mastery-roles-${challenge.challengeIndex}`} />
+        )}
+        {semanticQuestion ?? challenge.prompt}
+      </p>
+      {/* The serialized wording the match was frozen with stays, one
+          tap away, whenever the question above was phrased from the
+          served premise instead. */}
+      {semanticQuestion && (
+        <Fold label="Recorded question" testId={`review-mastery-recorded-${challenge.challengeIndex}`}>
+          {challenge.prompt}
+        </Fold>
+      )}
+
+      <AnswerPair
+        mineTestId={`review-mastery-your-answer-${challenge.challengeIndex}`}
+        mine={chosen === null ? "Not answered" : String(chosen)}
+        mineState={masteryState(chosen, challenge.isCorrect, judged)}
+        right={judged ? String(correct) : null}
+        rightTestId={`review-mastery-correct-answer-${challenge.challengeIndex}`}
+        unresolvedTestId={`review-mastery-unresolved-${challenge.challengeIndex}`}
+      />
+
+      <Choices
+        testId={`review-mastery-options-${challenge.challengeIndex}`}
+        choices={challenge.answerOptions.map((opt) => {
+          const isCorrect = judged && String(correct) === opt;
+          const isChosen = chosen !== null && String(chosen) === opt;
+          return {
+            text: opt,
+            state: isCorrect ? "correct" : isChosen ? "chosen" : "idle",
+            pending: isChosen && !isCorrect && !judged,
+            yours: isChosen,
+          };
+        })}
+      />
+
+      {values && (
+        <div
+          className="space-y-0.5"
+          data-testid={`review-mastery-values-${challenge.challengeIndex}`}
+        >
+          <SectionLabel>Values</SectionLabel>
+          <p className="break-words text-[11.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
+            {values}
+          </p>
+          {margin && (
+            <p
+              className="break-words text-[11px] tabular-nums"
+              style={{ color: LEAGUECRAFT_INK.faint }}
+              data-testid={`review-mastery-margin-${challenge.challengeIndex}`}
+            >
+              Margin {margin}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* JOURNEY5 — a Journey Combat child's served working, verbatim,
+          above the prose (kept, as on the live reveal). Laid out in
+          the Journey reveal's own three-line `rows` form inside an
+          inset, so the chain of reasoning reads as lines of a sum
+          rather than one run-on sentence. */}
+      {working && (
+        <div
+          className="space-y-0.5"
+          data-testid={`review-mastery-working-${challenge.challengeIndex}`}
+          style={{ color: LEAGUECRAFT_INK.body }}
+        >
+          <SectionLabel>Working</SectionLabel>
+          <div
+            className="rounded border px-2.5 py-1.5 text-[12px] leading-snug"
+            style={{ borderColor: TONE.idle.edge, background: LEAGUECRAFT_INK.inset }}
+          >
+            <JourneyCombatWorking working={working} rows className="gap-y-0.5" />
+          </div>
+        </div>
+      )}
+
+      {challenge.explanation && (
+        <div
+          className="space-y-0.5"
+          data-testid={`review-mastery-explanation-${challenge.challengeIndex}`}
+        >
+          {working ? (
+            /* The served sentence restates the same inputs the working
+               above already lays out ("…at Leona target, 4 target level,
+               Cloth Armor target items…"). It stays — it is the frozen
+               record — but folds away behind a native disclosure so the
+               working leads. */
+            <Fold label="Full explanation">{challenge.explanation}</Fold>
+          ) : (
+            <>
+              <SectionLabel>Explanation</SectionLabel>
+              <p
+                className="break-words text-[12px] leading-relaxed"
+                style={{ color: LEAGUECRAFT_INK.body }}
+              >
+                {challenge.explanation}
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/**
+ * One `mastery_slice` segment, reviewed — ONE challenge at a time.
+ *
+ * A slice answers several questions in one segment, so the reader picks which
+ * to read from a numbered selector (`MasteryQuestionNavigator`) rather than
+ * scrolling through all of them. The selection is this body's own state and
+ * the body is keyed by its round in the card, so both hosts (Popover and
+ * Sheet) behave identically and opening another round always starts at the
+ * first challenge. A slice with a single challenge shows no selector.
+ *
+ * Two small things keep the surface calm while the reader steps through:
+ *  - the question area never SHRINKS below the tallest challenge seen so far
+ *    (capped), so an anchored popover does not jump under the pointer; and
+ *  - changing question returns an internally scrolled host to its top, where
+ *    the selector is.
+ */
 function MasterySliceBody({ round }: { round: ReviewRound }) {
   const challenges = round.masteryChallenges ?? [];
   // RQ1: per-challenge emblems only when the challenges' frozen role sets
@@ -579,10 +757,37 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
   const perChallengeRoles = masteryChallengeRolesDiffer(round);
   const sub = round.viewerSubmission;
   const several = challenges.length > 1;
+  const [pick, setPick] = useState(0);
+  const selected = Math.min(pick, Math.max(0, challenges.length - 1));
+  const challenge = challenges[selected] ?? null;
+  const panelId = useId();
+  const tabIdPrefix = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [floor, setFloor] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const grow = () => setFloor((f) => Math.max(f, Math.ceil(el.getBoundingClientRect().height)));
+    grow();
+    const observer = new ResizeObserver(grow);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [several]);
+
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    scrollParentOf(panelRef.current)?.scrollTo?.({ top: 0 });
+  }, [selected]);
+
   return (
     <>
       {sub.correctCount !== null && sub.challengeCount !== null && (
-        <p className="flex items-center gap-2 text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+        <p className="flex items-center gap-2 text-[12px]" style={{ color: LEAGUECRAFT_INK.body }}>
           <span>
             <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
               {sub.correctCount}
@@ -593,150 +798,40 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
             </span>{" "}
             right.
           </span>
-          {several && round.revealed && <Pips results={challenges.map((c) => c.isCorrect)} />}
         </p>
       )}
-      <ul className="space-y-2" data-testid="review-mastery-challenges">
-        {challenges.map((challenge, position) => {
-          const chosen = challenge.viewerAnswer;
-          const correct = challenge.correctAnswer;
-          const judged = round.revealed && correct !== null;
-          const values = round.revealed ? comparisonValuesLine(challenge) : null;
-          const working = round.revealed ? challenge.combatWorking : null;
-          const semanticQuestion = combatQuestion(challenge);
-          const margin = round.revealed ? comparisonMarginLine(challenge) : null;
-          return (
-            <li
+      {several && (
+        <MasteryQuestionNavigator
+          statuses={challenges.map((c) => masteryNavStatus(round, c))}
+          selected={selected}
+          onSelect={setPick}
+          panelId={panelId}
+          tabIdPrefix={tabIdPrefix}
+        />
+      )}
+      <div
+        ref={panelRef}
+        id={panelId}
+        role={several ? "tabpanel" : undefined}
+        aria-labelledby={several ? `${tabIdPrefix}-tab-${selected}` : undefined}
+        className={several ? "border-t pt-2.5" : undefined}
+        style={several
+          ? { borderColor: TONE.idle.edge, minHeight: floor > 0 ? `min(${floor}px, 24rem, 45dvh)` : undefined }
+          : undefined}
+        data-testid="review-mastery-panel"
+        data-selected-index={selected}
+      >
+        <ul data-testid="review-mastery-challenges">
+          {challenge && (
+            <MasteryChallenge
               key={challenge.challengeIndex}
-              className="space-y-1.5"
-              data-review-mastery-challenge={challenge.challengeIndex}
-              style={several && position > 0
-                ? { borderTop: `1px solid ${TONE.idle.edge}`, paddingTop: 8 }
-                : undefined}
-            >
-              <p
-                className="break-words text-[12.5px] leading-relaxed"
-                style={{ color: LEAGUECRAFT_INK.strong }}
-              >
-                {several && (
-                  <span
-                    className="mr-1.5 inline-block text-[9.5px] font-extrabold uppercase tracking-[0.14em] align-[1px]"
-                    style={{ color: LEAGUECRAFT_INK.brass }}
-                    data-testid={`review-mastery-ordinal-${challenge.challengeIndex}`}
-                  >
-                    {position + 1}/{challenges.length}
-                  </span>
-                )}
-                {perChallengeRoles && (
-                  <QuestionRoleEmblems roles={challenge.roles} size="sm" backed
-                    className="mr-1.5 align-[-2px]"
-                    testId={`review-mastery-roles-${challenge.challengeIndex}`} />
-                )}
-                {semanticQuestion ?? challenge.prompt}
-              </p>
-              {/* The serialized wording the match was frozen with stays, one
-                  tap away, whenever the question above was phrased from the
-                  served premise instead. */}
-              {semanticQuestion && (
-                <Fold label="Recorded question" testId={`review-mastery-recorded-${challenge.challengeIndex}`}>
-                  {challenge.prompt}
-                </Fold>
-              )}
-
-              <AnswerPair
-                mineTestId={`review-mastery-your-answer-${challenge.challengeIndex}`}
-                mine={chosen === null ? "Not answered" : String(chosen)}
-                mineState={masteryState(chosen, challenge.isCorrect, judged)}
-                right={judged ? String(correct) : null}
-                rightTestId={`review-mastery-correct-answer-${challenge.challengeIndex}`}
-                unresolvedTestId={`review-mastery-unresolved-${challenge.challengeIndex}`}
-              />
-
-              <Choices
-                testId={`review-mastery-options-${challenge.challengeIndex}`}
-                choices={challenge.answerOptions.map((opt) => {
-                  const isCorrect = judged && String(correct) === opt;
-                  const isChosen = chosen !== null && String(chosen) === opt;
-                  return {
-                    text: opt,
-                    state: isCorrect ? "correct" : isChosen ? "chosen" : "idle",
-                    pending: isChosen && !isCorrect && !judged,
-                    yours: isChosen,
-                  };
-                })}
-              />
-
-              {values && (
-                <div
-                  className="space-y-0.5"
-                  data-testid={`review-mastery-values-${challenge.challengeIndex}`}
-                >
-                  <SectionLabel>Values</SectionLabel>
-                  <p className="break-words text-[11.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
-                    {values}
-                  </p>
-                  {margin && (
-                    <p
-                      className="break-words text-[11px] tabular-nums"
-                      style={{ color: LEAGUECRAFT_INK.faint }}
-                      data-testid={`review-mastery-margin-${challenge.challengeIndex}`}
-                    >
-                      Margin {margin}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* JOURNEY5 — a Journey Combat child's served working, verbatim,
-                  above the prose (kept, as on the live reveal). Laid out in
-                  the Journey reveal's own three-line `rows` form inside an
-                  inset, so the chain of reasoning reads as lines of a sum
-                  rather than one run-on sentence. */}
-              {working && (
-                <div
-                  className="space-y-0.5"
-                  data-testid={`review-mastery-working-${challenge.challengeIndex}`}
-                  style={{ color: LEAGUECRAFT_INK.body }}
-                >
-                  <SectionLabel>Working</SectionLabel>
-                  <div
-                    className="rounded border px-2 py-1 text-[11.5px] leading-snug"
-                    style={{ borderColor: TONE.idle.edge, background: LEAGUECRAFT_INK.inset }}
-                  >
-                    <JourneyCombatWorking working={working} rows className="gap-y-0.5" />
-                  </div>
-                </div>
-              )}
-
-              {challenge.explanation && (
-                <div
-                  className="space-y-0.5"
-                  data-testid={`review-mastery-explanation-${challenge.challengeIndex}`}
-                >
-                  {working ? (
-                    /* The served sentence restates the same inputs the working
-                       above already lays out ("…at Leona target, 4 target level,
-                       Cloth Armor target items…"). It stays — it is the frozen
-                       record — but folds away behind a native disclosure so the
-                       working leads. */
-                    <Fold label="Full explanation">{challenge.explanation}</Fold>
-                  ) : (
-                    <>
-                      <SectionLabel>Explanation</SectionLabel>
-                      <p
-                        className="break-words text-[11.5px] leading-relaxed"
-                        style={{ color: LEAGUECRAFT_INK.body }}
-                      >
-                        {challenge.explanation}
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              round={round}
+              challenge={challenge}
+              perChallengeRoles={perChallengeRoles}
+            />
+          )}
+        </ul>
+      </div>
     </>
   );
 }
@@ -1260,6 +1355,8 @@ export default function QuestionReviewCard({
 }: { round: ReviewRound; position: number; total: number }) {
   const icon = resolveQuestionIcon(round.iconHint);
   const outcome = questionOutcome(round);
+  // A Mastery body keeps its own selected challenge: a different round starts at the first.
+  const masteryKey = `${position}:${round.roundNumber}:${(round.masteryChallenges ?? []).map((c) => c.challengeIndex).join(",")}`;
   const subject =
     round.kind === "meta_reflex"
       ? META_REFLEX_LABEL
@@ -1311,7 +1408,7 @@ export default function QuestionReviewCard({
       {round.kind === "meta_reflex" ? (
         <MetaReflexBody round={round} />
       ) : round.kind === "mastery_slice" ? (
-        <MasterySliceBody round={round} />
+        <MasterySliceBody key={masteryKey} round={round} />
       ) : round.kind === "order_forge" ? (
         <OrderForgeBody round={round} />
       ) : round.kind === "reconstruct" ? (
