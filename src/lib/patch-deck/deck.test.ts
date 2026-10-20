@@ -69,6 +69,9 @@ describe("buildDeckModel on the real 26.20 report", () => {
     expect(bucketOf(model, i)?.label).toBe("Nerfs");
     expect(indexOfCard(model, "nope")).toBe(0);
     expect(indexOfCard(model, null)).toBe(0);
+    // A List View line anchor lands on its entity's card; a lookalike prefix does not.
+    expect(indexOfCard(model, `${swain.id}__g-q-nevermove__c-damage`)).toBe(i);
+    expect(indexOfCard(model, `${swain.id}-extra`)).toBe(0);
   });
 
   it("summarises chapters for the cover", () => {

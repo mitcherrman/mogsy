@@ -40,6 +40,8 @@
   --dk-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --dk-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --dk-top-h: 3.75rem;
+  /* Height of app chrome above the deck (0 standalone; the HUD in the shell). */
+  --dk-offset: 0px;
   --dk-art-w: 78%;
   --dk-panel-w: 50%;
 
@@ -55,7 +57,7 @@
   --input: 40 18% 24%;
   --ring: 43 56% 54%;
 
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--dk-offset));
   color: var(--dk-ink);
   background:
     radial-gradient(1200px 600px at 50% -10%, rgba(201, 168, 76, 0.07), transparent 60%),
@@ -105,7 +107,7 @@
 
 .dk-top {
   position: sticky;
-  top: 0;
+  top: var(--dk-offset);
   z-index: 30;
   display: flex;
   align-items: center;
@@ -141,11 +143,24 @@
 .dk-select option { background: var(--dk-bg-2); color: var(--dk-ink); }
 .dk-toplink { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0 0.9rem; border-radius: 999px; border: 1px solid transparent; color: var(--dk-ink-2); font-size: 0.8125rem; font-weight: 600; transition: color 160ms var(--dk-ease), border-color 160ms var(--dk-ease); }
 .dk-toplink:hover { color: var(--dk-ink); border-color: var(--dk-line-2); }
+
+/* Inside the app shell: the fixed global HUD sits above the deck. */
+.phd1-deck--shell { --dk-offset: var(--app-header-h, 0px); }
+
+/* List | Deck: the Patch Report's two layouts. Deck is this page. */
+.dk-layout-switch { display: inline-flex; border: 1px solid rgba(201, 168, 76, 0.5); border-radius: 999px; overflow: hidden; }
+.dk-layout-switch__item { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0 0.9rem; font-size: 0.8125rem; font-weight: 600; color: var(--dk-ink-2); transition: color 160ms var(--dk-ease), background-color 160ms var(--dk-ease); }
+.dk-layout-switch__item + .dk-layout-switch__item { border-left: 1px solid rgba(201, 168, 76, 0.4); }
+a.dk-layout-switch__item:hover { color: var(--dk-ink); background: rgba(201, 168, 76, 0.08); }
+.dk-layout-switch__item[aria-current="page"] { color: var(--dk-gold-2); background: var(--dk-gold-dim); }
+.dk-layout-switch__item:focus-visible { outline-offset: -3px; }
 @media (max-width: 420px) {
   .dk-top .dk-wordmark small { display: none; }
   .dk-top .dk-wordmark { font-size: 0.85rem; }
   .dk-top .dk-select { padding: 0.45rem 1.7rem 0.45rem 0.65rem; font-size: 0.75rem; }
   .dk-top .dk-toplink { padding: 0 0.55rem; min-width: 2.75rem; }
+  .dk-top .dk-layout-switch__item { padding: 0 0.6rem; }
+  .dk-top .dk-layout-switch__word { display: none; }
   .dk-top > * { min-width: 0; }
 }
 
@@ -165,7 +180,7 @@
 }
 .dk-card-slot { position: relative; min-width: 0; }
 @media (min-width: 1024px) {
-  .dk-card-slot { height: clamp(560px, calc(100dvh - 15rem), 860px); }
+  .dk-card-slot { height: clamp(560px, calc(100dvh - 15rem - var(--dk-offset)), 860px); }
 }
 
 /* Neighbouring cards: dimmed portrait slivers, each the prev/next control. */
@@ -332,7 +347,7 @@
 
 /* Face tabs. On a phone the row sticks under the top bar and names the
    champion, so the reader always knows whose card they are reading. */
-.dk-tabs-bar { position: sticky; top: var(--dk-top-h); z-index: 5; margin: 0 -1.25rem; padding: 0 1.25rem; background: linear-gradient(180deg, var(--dk-panel) 80%, transparent); }
+.dk-tabs-bar { position: sticky; top: calc(var(--dk-offset) + var(--dk-top-h)); z-index: 5; margin: 0 -1.25rem; padding: 0 1.25rem; background: linear-gradient(180deg, var(--dk-panel) 80%, transparent); }
 @media (min-width: 1024px) { .dk-tabs-bar { position: static; margin: 0; padding: 0; background: none; } }
 .dk-tabs-identity { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0 0; font-family: var(--dk-display); font-size: 0.95rem; color: var(--dk-gold-2); }
 .dk-tabs-identity img { width: 1.6rem; height: 1.6rem; border-radius: 999px; object-fit: cover; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.5); }

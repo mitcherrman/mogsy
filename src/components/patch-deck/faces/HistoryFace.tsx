@@ -20,7 +20,12 @@ import { DirectionLabel, FaceLabel, Values } from "../shared";
  * Earlier reports are read through the same `["patch-report", v]` cache keys
  * the Patch Report page and the Impact loader use, only once this face opens.
  * An SR champion never matches its own Arena/Mayhem cards.
+ *
+ * Opening the face reads at most HISTORY_WINDOW earlier reports (in parallel,
+ * once per session thanks to the shared cache), so the request count stays
+ * fixed as the archive grows; the heading names the window it covers.
  */
+const HISTORY_WINDOW = 12;
 export const HistoryFace = ({
   card,
   patchVersion,
@@ -33,7 +38,10 @@ export const HistoryFace = ({
   versions: readonly string[];
   active: boolean;
 }) => {
-  const earlier = useMemo(() => earlierVersions(versions, patchVersion), [versions, patchVersion]);
+  const earlier = useMemo(
+    () => earlierVersions(versions, patchVersion).slice(0, HISTORY_WINDOW),
+    [versions, patchVersion],
+  );
   const queries = useQueries({
     queries: earlier.map((version) => ({
       queryKey: ["patch-report", version] as const,

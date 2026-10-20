@@ -51,10 +51,10 @@ async function renderDeck(search = "") {
   const client = new QueryClient({ defaultOptions: appQueryClient.getDefaultOptions() });
   const utils = render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/dev/patch-deck${search}`]}>
+      <MemoryRouter initialEntries={[`/lol/patch-deck${search}`]}>
         <Routes>
           <Route
-            path="/dev/patch-deck"
+            path="/lol/patch-deck"
             element={
               <>
                 <PatchDeckPage />
@@ -85,7 +85,7 @@ describe("Patch Deck page on the real 26.20 report", () => {
     expect(chapters[0]).toContain("13 nerfs");
     // PUBLISHED_NOT_RECONCILED is stated, never dressed up.
     expect(screen.getByTestId("deck-cover-status")).toHaveTextContent("No full Mogzy data update is recorded for this patch");
-    expect(location()).toBe("/dev/patch-deck");
+    expect(location()).toBe("/lol/patch-deck");
   });
 
   it("advances with the arrow keys, writes the card into the URL and announces it", async () => {
@@ -93,7 +93,7 @@ describe("Patch Deck page on the real 26.20 report", () => {
     fireEvent.keyDown(window, { key: "ArrowRight" });
     await waitFor(() => expect(currentCard()).toHaveAttribute("data-card-kind", "champion"));
     expect(within(currentCard()).getByRole("heading", { level: 2 })).toHaveTextContent("Diana");
-    expect(location()).toBe("/dev/patch-deck?patch=26.20&card=s-patch-champions__e-champion-diana");
+    expect(location()).toBe("/lol/patch-deck?patch=26.20&card=s-patch-champions__e-champion-diana");
     expect(screen.getByTestId("deck-live")).toHaveTextContent("Card 1 of 41: Diana. Champions, Buffs.");
     expect(within(currentCard()).getByTestId("deck-direction")).toHaveTextContent("Buff");
     fireEvent.keyDown(window, { key: "ArrowLeft" });
@@ -202,7 +202,7 @@ describe("Patch Deck page on the real 26.20 report", () => {
     await renderDeck("?patch=26.20&card=s-patch-champions__e-champion-diana");
     fireEvent.change(screen.getByTestId("deck-patch-select"), { target: { value: "26.19" } });
     await waitFor(() => expect(screen.getByRole("heading", { name: "26.19" })).toBeInTheDocument());
-    expect(location()).toBe("/dev/patch-deck?patch=26.19");
+    expect(location()).toBe("/lol/patch-deck?patch=26.19");
     expect(currentCard()).toHaveAttribute("data-card-kind", "cover");
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Patch Deck URL state (PHD1). Pure.
  *
- *   /dev/patch-deck?patch=26.20&card=<deck card id>&face=impact
+ *   /lol/patch-deck?patch=26.20&card=<deck card id>&face=impact
  *
  * `card` is the deck card id (the report entity anchor for an entity card,
  * "cover" for the opening card), so a link names a champion, never a position
@@ -60,6 +60,29 @@ export function deckSearch(route: Partial<DeckRoute>): string {
   return text ? `?${text}` : "";
 }
 
-export const DECK_PATH = "/dev/patch-deck";
+export const DECK_PATH = "/lol/patch-deck";
 
 export const deckHref = (route: Partial<DeckRoute>): string => `${DECK_PATH}${deckSearch(route)}`;
+
+/**
+ * The List View entity being read: of those whose top has reached `line` px
+ * from the viewport top, the lowest one. By position, not report order (the
+ * List View renders Summoner's Rift sections first). Null above the first
+ * entity (the reader is still on the masthead) or when none is on the page
+ * (filtered out, not rendered yet). `topOf` returns null for a missing id.
+ */
+export function entityAtReadingLine(
+  anchors: readonly string[],
+  topOf: (id: string) => number | null,
+  line: number,
+): string | null {
+  let current: string | null = null;
+  let best = -Infinity;
+  for (const anchor of anchors) {
+    const top = topOf(anchor);
+    if (top === null || top > line || top <= best) continue;
+    best = top;
+    current = anchor;
+  }
+  return current;
+}

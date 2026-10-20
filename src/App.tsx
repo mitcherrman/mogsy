@@ -374,10 +374,9 @@ const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
 // Patch Reports — public per-patch change reports with Mogzy data comparison.
 const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
 
-// PHD1 — Patch Hub Deck View prototype (cinematic card deck over the same
-// Patch Report data). Dev surface only; sits outside <Layout /> so the stage
-// owns the viewport. Not yet linked from the Patch Hub.
-const PatchDeckPage = lazy(() => import("./pages/dev/patch-deck/PatchDeckPage"));
+// Patch Hub Deck View (PHD1) — the cinematic card deck over the same Patch
+// Report data; List | Deck switch on both pages. Full-bleed inside <Layout />.
+const PatchDeckPage = lazy(() => import("./pages/lol/patch-deck/PatchDeckPage"));
 
 // Mechanics Explorer — public tools over the canonical mechanics engine
 // (MECH1 Phase 5B1: respawn calculator + wave timeline).
@@ -489,8 +488,6 @@ export const appRouter = createBrowserRouter(
                 {/* Dev-only V2 entrance concept. Full-screen and layout-free like the
                     original, so it sits outside <Layout /> alongside the legacy route. */}
                 <Route path="/dev/mogzy-entry-v2" element={<Suspense fallback={<StartupSurface pathname="/dev/mogzy-entry-v2" />}><MogzyEntryV2 /></Suspense>} />
-                {/* PHD1 Patch Deck prototype: full-viewport, layout-free like the entrance above. */}
-                <Route path="/dev/patch-deck" element={<Suspense fallback={<RouteFallback />}><PatchDeckPage /></Suspense>} />
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
                 <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
@@ -780,6 +777,7 @@ export const appRouter = createBrowserRouter(
                   <Route path={PRO_PLAY_LIVE_ARCHIVE_ROUTE} element={<Suspense fallback={<RouteFallback />}><EsportsArchivePage /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
+                  <Route path="/lol/patch-deck" element={<Suspense fallback={<RouteFallback />}><PatchDeckPage /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />
                   <Route path="/privacy" element={<Suspense fallback={<RouteFallback />}><Privacy /></Suspense>} />
                   <Route path="/terms" element={<Suspense fallback={<RouteFallback />}><Terms /></Suspense>} />

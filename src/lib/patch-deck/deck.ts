@@ -162,10 +162,19 @@ export function bucketOf(model: DeckModel, index: number): DeckBucketSpan | null
   return chapter.buckets.find((b) => index >= b.from && index < b.to) ?? null;
 }
 
-/** Index of `id`, else the cover. */
+/**
+ * Index of `id`, else the card a List View group/change anchor
+ * ("<entity>__g-…__c-…") belongs to, else the cover (a card this patch no
+ * longer has).
+ */
 export function indexOfCard(model: DeckModel, id: string | null | undefined): number {
   if (!id) return 0;
-  return model.indexById.get(id) ?? 0;
+  const exact = model.indexById.get(id);
+  if (exact !== undefined) return exact;
+  for (const [cardId, index] of model.indexById) {
+    if (cardId !== "cover" && id.startsWith(`${cardId}__`)) return index;
+  }
+  return 0;
 }
 
 export const clampIndex = (model: DeckModel, index: number): number =>
