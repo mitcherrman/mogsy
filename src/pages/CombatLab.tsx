@@ -744,6 +744,24 @@ export default function CombatLab() {
     };
   }, []);
 
+  // Old saved builds may contain descriptive-only runes. When the backend
+  // capability catalog loads, remove those inert selections rather than
+  // silently running a simulation in which the chosen rune does nothing.
+  useEffect(() => {
+    if (metaLoading || runes.length === 0 || !Array.isArray(config.runes)) return;
+    const playable = new Set(runes.map((r) => r.name.toLowerCase()));
+    const unsupported = config.runes.filter((name) => !playable.has(name.toLowerCase()));
+    if (unsupported.length === 0) return;
+    setConfig((current) => ({
+      ...current,
+      runes: current.runes.filter((name) => playable.has(name.toLowerCase())),
+    }));
+    toast({
+      title: "Unsupported runes removed",
+      description: unsupported.join(", ") + " are not executable in Combat Lab.",
+    });
+  }, [metaLoading, runes, config.runes]);
+
   const critModes = useMemo<readonly CritMode[]>(() => {
     const fromApi = (options?.crit_modes || []).filter((m): m is CritMode =>
       (ALLOWED_CRIT_MODES as readonly string[]).includes(m)
