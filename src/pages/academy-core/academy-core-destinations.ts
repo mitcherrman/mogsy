@@ -130,15 +130,6 @@ export function destinationById(id: CoreFocus): CoreDestination | null {
 export const DAILY_ROUTE = "/quiz/daily-challenge";
 
 /**
- * Secondary shortcut — Ranked. `/quiz?play=1` asks the Leaguecraft lobby to
- * open its Play record (mode selection) on mount; the record applies every
- * account / role / availability gate itself. `/quiz/ranked` is the live-match
- * host and is deliberately NOT linked. The label says what it does: it opens
- * mode selection, it does not enter a queue.
- */
-export const RANKED_ROUTE = "/quiz?play=1";
-
-/**
  * The Home Hub (the retired `/lol` page, kept whole). Academy Commons is the
  * Hall's second screen; the Hall honours the `#academy-commons` fragment on
  * mount. The Core itself forwards a legacy `/lol#academy-commons` link here
