@@ -13,6 +13,8 @@ export interface VisitorJourney {
 
 /** Only explicit browser/session correlation. Never join a server row by account UID. */
 export function correlatedVisitor(e: AnalyticsEventRecord, sessions: Map<string, string>): string | null {
+  if (e.visitor_id && typeof e.metadata?.visitor_id === "string" && e.visitor_id !== e.metadata.visitor_id) return null;
+  if (e.session_id && typeof e.metadata?.session_id === "string" && e.session_id !== e.metadata.session_id) return null;
   const visitor = e.visitor_id ?? (typeof e.metadata?.visitor_id === "string" ? e.metadata.visitor_id : null);
   const session = e.session_id ?? (typeof e.metadata?.session_id === "string" ? e.metadata.session_id : null);
   const owner = session ? sessions.get(session) : undefined;
@@ -21,7 +23,11 @@ export function correlatedVisitor(e: AnalyticsEventRecord, sessions: Map<string,
 }
 
 export function accountStatus(events: AnalyticsEventRecord[], profiles: JourneyProfile[] | null): {kind: AccountKind; label: string} {
-  const ids = new Set(events.map(e => e.user_id).filter((id): id is string => Boolean(id)));
+  // Current status follows the latest observed identity, not every identity
+  // this shared browser has ever used. It is never a signup chronology.
+  const latestIdentity = [...events].filter(e => e.user_id)
+    .sort((a,b) => Date.parse(b.received_at) - Date.parse(a.received_at))[0];
+  const ids = new Set(latestIdentity?.user_id ? [latestIdentity.user_id] : []);
   if (ids.size && profiles !== null) {
     const found = profiles.filter(p => ids.has(p.user_id));
     if (found.length !== ids.size) return { kind: "unknown", label: "Guest or account status unverified — no current profile found" };
@@ -29,10 +35,10 @@ export function accountStatus(events: AnalyticsEventRecord[], profiles: JourneyP
     if (found.every(p => p.is_anonymous === true)) return { kind: "guest", label: "Guest — current anonymous profile evidence" };
     return { kind: "unknown", label: "Account status mixed or unverified" };
   }
-  const latest = [...events].filter(e => e.source_system === "web" && e.is_guest !== null)
+  if (ids.size) return { kind: "unknown", label: "Guest or account status unverified — current profile lookup unavailable" };
+  const latest = [...events].filter(e => e.source_system === "web" && typeof e.is_guest === "boolean")
     .sort((a,b) => Date.parse(b.received_at) - Date.parse(a.received_at))[0];
   if (latest?.is_guest === true) return { kind: "guest", label: "Guest — browser reported; current account unverified" };
-  if (latest?.is_guest === false) return { kind: "registered", label: "Registered — browser reported; current account unverified" };
   return { kind: "unknown", label: "Guest or account status unverified" };
 }
 
@@ -44,7 +50,26 @@ const labels: Record<string,string> = {
   signup_offer_shown: "Saw a signup invitation", signup_offer_clicked: "Clicked a signup invitation", signup_offer_dismissed: "Dismissed a signup invitation",
   quiz_question_answered: "Answered a quiz question", quiz_completed: "Browser reported quiz results",
   quiz_guest_continue_clicked: "Chose to continue as guest", playtest_scene_viewed: "Viewed a playtest scene",
+  leaguecraft_cta_clicked: "Selected a game entry", signup_failed: "Browser reported signup failure",
+  login_completed: "Browser reported sign-in", quiz_question_viewed: "Viewed a quiz question",
 };
+
+/** Route names are location evidence, never proof of a game's host. */
+export function journeyLocation(route: string | null | undefined): string {
+  const path = route?.split(/[?#]/)[0];
+  if (!path) return "Location unavailable";
+  if (path === "/") return "Entrance";
+  if (path === "/lol") return "Academy";
+  if (path === "/quiz") return "Games hub";
+  if (path.startsWith("/quiz/daily-challenge")) return "Daily Challenge page";
+  if (path.startsWith("/quiz/role-challenge")) return "Role Challenge page";
+  if (path.startsWith("/quiz/ranked")) return "Ranked game page";
+  if (path.startsWith("/quiz/")) return "Game page";
+  if (path.startsWith("/lol/pro-play")) return "Pro Play page";
+  if (path.startsWith("/combat-lab")) return "Combat Lab";
+  if (path.startsWith("/auth")) return "Account page";
+  return "Website page";
+}
 
 export function describeJourneyEvent(e: AnalyticsEventRecord): JourneyAction {
   const server = e.source_system === "railway";
@@ -55,7 +80,7 @@ export function describeJourneyEvent(e: AnalyticsEventRecord): JourneyAction {
     let mode = "mode unknown";
     if (server && e.source_entity_type === "ranked_participant" && e.source_entity_id) {
       const host = e.metadata?.host;
-      if (host === "direct") mode = "Ranked";
+      if (host === "direct" && (e.metadata?.opponent_type === "human" || e.metadata?.opponent_type === "bot")) mode = "Ranked";
       if (host === "bonus_game") mode = "More Challenges";
       if (host === "role_challenge") mode = "Role Challenge";
       if (host === "daily_challenge" && e.metadata?.parent_activity_type === "daily_challenge"
@@ -72,7 +97,7 @@ export function describeJourneyEvent(e: AnalyticsEventRecord): JourneyAction {
     if (e.event_name === "practice_quiz_started") title = "Practice Quiz started";
     if (e.event_name === "practice_quiz_completed") title = "Practice Quiz completed";
   }
-  return { at: e.received_at, title, where: e.route || "Location unavailable",
+  return { at: e.received_at, title, where: journeyLocation(e.route),
     evidence: server && e.source_entity_id ? "Server record · received timestamp" : e.source_system === "web" ? "Browser observation · received timestamp" : "Recorded signal · authority unverified", event: e, stage };
 }
 
@@ -95,10 +120,11 @@ export function buildVisitorJourneys(ds: AnalyticsDataset, range: AnalyticsRange
     if (cls !== "human" && cls !== "unknown") continue;
     const events = indexed.get(id) ?? [];
     const history = [...(visits.get(id) ?? [])].filter(s => Date.parse(s.started_at) <= range.end).sort((a,b)=>Date.parse(a.started_at)-Date.parse(b.started_at));
-    const active = history.filter(s => inRange(Date.parse(s.started_at),range));
+    const eventSessions = new Set(events.map(e => e.session_id ?? e.metadata?.session_id));
+    const active = history.filter(s => inRange(Date.parse(s.started_at),range) || eventSessions.has(s.session_id));
     const v = first.get(id);
     if (!events.length && !active.length && !(v && inRange(Date.parse(v.first_seen_at),range))) continue;
-    const actions: JourneyAction[] = active.map(s => ({ at:s.started_at, title:history.indexOf(s)>0 ? "Returned in a new browser session" : "Started a browser session", where:s.landing_path || "Location unavailable", evidence:"Browser session record" }));
+    const actions: JourneyAction[] = active.filter(s => inRange(Date.parse(s.started_at),range)).map(s => ({ at:s.started_at, title:history.indexOf(s)>0 ? "Returned in a new browser session" : "Started a browser session", where:journeyLocation(s.landing_path), evidence:"Browser session record" }));
     actions.push(...events.map(describeJourneyEvent));
     actions.sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
     const account = accountStatus(events,profiles);
@@ -106,7 +132,7 @@ export function buildVisitorJourneys(ds: AnalyticsDataset, range: AnalyticsRange
     let source = v?.first_utm_source || "Direct / source unknown";
     if (!v?.first_utm_source && v?.first_referrer) { try { source = new URL(v.first_referrer).hostname; } catch { source="Source unknown"; } }
     out.push({ id, kind:account.kind, accountLabel:account.label, human:cls === "human", firstAt:v?.first_seen_at ?? history[0]?.started_at ?? null,
-      lastAt:actions[0]?.at ?? v?.first_seen_at ?? null, landing:v?.first_landing_path || "Landing unavailable", source,
+      lastAt:actions[0]?.at ?? v?.first_seen_at ?? null, landing:journeyLocation(v?.first_landing_path), source,
       sessions:active.length, returning:active.some(s=>history.indexOf(s)>0), games:games.size, actions });
   }
   return out.sort((a,b)=>Date.parse(b.lastAt ?? "")-Date.parse(a.lastAt ?? ""));
