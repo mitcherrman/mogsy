@@ -14,6 +14,7 @@ import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { AdminAuthContextValue } from "@/lib/admin-auth/types";
 
 // --- mocks -----------------------------------------------------------------
@@ -97,7 +98,11 @@ const authorized: AdminAuthContextValue = {
 
 /** Mirrors the shell route block in App.tsx (which routes.test certifies). */
 function renderAdmin(path: string) {
+  // Overview mounts OverviewVisitorJourneys, which reads through react-query
+  // exactly as the app's root QueryClientProvider (App.tsx) allows it to.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
+    <QueryClientProvider client={queryClient}>
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/admin" element={<AdminShell />}>
@@ -125,7 +130,8 @@ function renderAdmin(path: string) {
           <Route path="people" element={<Navigate to="/admin/users?section=accounts" replace />} />
         </Route>
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
