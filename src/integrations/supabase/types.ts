@@ -1825,18 +1825,34 @@ export type Database = {
           amount_cents: number | null
           created_at: string
           diamond_amount: number | null
+          disputed_at: string | null
           gift_type: string
+          grant_applied: boolean
+          grant_ends_at: string | null
+          grant_starts_at: string | null
           id: string
           message: string | null
           metadata: Json | null
+          offer_id: string | null
           paid_at: string | null
+          payment_checked_at: string | null
+          payment_note: string | null
+          prior_grant_expires_at: string | null
+          prior_grant_granted_at: string | null
+          prior_grant_granted_by: string | null
+          prior_grant_kind: string | null
+          prior_grant_reason: string | null
           recipient_email: string | null
           recipient_user_id: string | null
           redeem_code: string
           redeemed_at: string | null
+          refunded_at: string | null
+          revoke_note: string | null
+          revoked_at: string | null
           sender_email: string | null
           sender_user_id: string | null
           status: string
+          stripe_payment_intent_id: string | null
           stripe_price_id: string | null
           stripe_session_id: string | null
           updated_at: string
@@ -1845,18 +1861,34 @@ export type Database = {
           amount_cents?: number | null
           created_at?: string
           diamond_amount?: number | null
+          disputed_at?: string | null
           gift_type: string
+          grant_applied?: boolean
+          grant_ends_at?: string | null
+          grant_starts_at?: string | null
           id?: string
           message?: string | null
           metadata?: Json | null
+          offer_id?: string | null
           paid_at?: string | null
+          payment_checked_at?: string | null
+          payment_note?: string | null
+          prior_grant_expires_at?: string | null
+          prior_grant_granted_at?: string | null
+          prior_grant_granted_by?: string | null
+          prior_grant_kind?: string | null
+          prior_grant_reason?: string | null
           recipient_email?: string | null
           recipient_user_id?: string | null
           redeem_code?: string
           redeemed_at?: string | null
+          refunded_at?: string | null
+          revoke_note?: string | null
+          revoked_at?: string | null
           sender_email?: string | null
           sender_user_id?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
           stripe_price_id?: string | null
           stripe_session_id?: string | null
           updated_at?: string
@@ -1865,18 +1897,34 @@ export type Database = {
           amount_cents?: number | null
           created_at?: string
           diamond_amount?: number | null
+          disputed_at?: string | null
           gift_type?: string
+          grant_applied?: boolean
+          grant_ends_at?: string | null
+          grant_starts_at?: string | null
           id?: string
           message?: string | null
           metadata?: Json | null
+          offer_id?: string | null
           paid_at?: string | null
+          payment_checked_at?: string | null
+          payment_note?: string | null
+          prior_grant_expires_at?: string | null
+          prior_grant_granted_at?: string | null
+          prior_grant_granted_by?: string | null
+          prior_grant_kind?: string | null
+          prior_grant_reason?: string | null
           recipient_email?: string | null
           recipient_user_id?: string | null
           redeem_code?: string
           redeemed_at?: string | null
+          refunded_at?: string | null
+          revoke_note?: string | null
+          revoked_at?: string | null
           sender_email?: string | null
           sender_user_id?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
           stripe_price_id?: string | null
           stripe_session_id?: string | null
           updated_at?: string
@@ -4493,6 +4541,37 @@ export type Database = {
         Args: { _target_profile_id: string }
         Returns: Json
       }
+      gift_attach_session: {
+        Args: {
+          _gift_id: string
+          _price_id: string
+          _sender: string
+          _session_id: string
+        }
+        Returns: Json
+      }
+      gift_list_for_recipient: { Args: { _user_id: string }; Returns: Json }
+      gift_private_abandon: {
+        Args: { _gift_id: string; _sender: string; _session_id: string }
+        Returns: boolean
+      }
+      gift_private_prepare: {
+        Args: { _message: string; _recipient_email: string; _sender: string }
+        Returns: Json
+      }
+      gift_record_payment: {
+        Args: {
+          _amount: number
+          _currency: string
+          _gift_id: string
+          _note: string
+          _payment_intent: string
+          _session_id: string
+          _state: string
+        }
+        Returns: Json
+      }
+      gift_redeem: { Args: { _code: string; _user_id: string }; Returns: Json }
       global_premium_access: { Args: never; Returns: boolean }
       has_role: {
         Args: {
@@ -4785,6 +4864,7 @@ export type Database = {
         }
         Returns: Json
       }
+      private_gift_terms: { Args: never; Returns: Json }
       pro_entitlement_is_effective: {
         Args: {
           _grant_expires_at: string
@@ -4892,7 +4972,6 @@ export type Database = {
         }
         Returns: Json
       }
-      redeem_gift_code: { Args: { _code: string }; Returns: Json }
       redeem_invite_link: {
         Args: { _code: string; _user_id: string }
         Returns: Json

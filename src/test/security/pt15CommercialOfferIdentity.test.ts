@@ -262,9 +262,14 @@ describe("Stripe reconciliation records commercial state without touching entitl
 
 describe("gift and invite entitlement paths are untouched by PT1.5", () => {
   it("still grants a gift as an expiring pro_grant, never is_pro", () => {
+    // PT1.7: the grant is made by public.gift_redeem (kind 'gift', real expiry),
+    // atomically with consuming the gift; the Edge Function writes no
+    // entitlement column at all.
     const src = code(readFn("redeem-gift"));
-    expect(src).toContain('pro_grant_kind: "gift"');
+    const m0004 = readFileSync(join(process.cwd(), "drizzle/migrations/0004_pt1_7_annual_gift.sql"), "utf8");
+    expect(m0004).toContain("public.apply_pro_grant(_p.id, 'gift', _end,");
     expect(src).not.toMatch(/\bis_pro\s*:/);
+    expect(src).not.toMatch(/pro_grant_\w+\s*:/);
     expect(src).not.toContain("record_pro_commercial_state");
   });
 

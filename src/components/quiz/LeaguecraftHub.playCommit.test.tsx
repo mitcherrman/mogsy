@@ -83,6 +83,7 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
     <MemoryRouter>
       <LeaguecraftHub
         initialCentreMode="ranked"
+        rankedComingSoon={false}
         progress={{ rank_name: "Bronze", next_rank_name: "Silver", progress_percent: 10 }}
         ranked={PLACED}
         onPlayRanked={onPlayRanked}

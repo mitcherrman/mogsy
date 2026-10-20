@@ -22,10 +22,12 @@ import {
   type FeedbackEntryIntent,
   type FeedbackSeverity,
 } from "@/lib/feedback/contract";
+import { questionReportReasonLabel } from "@/lib/feedback/report-context";
 import {
   capturedFields,
   diagnosticFields,
   reportOrigin,
+  plainReportContext,
   type CapturedField,
 } from "@/lib/feedback/adminReportView";
 
@@ -162,6 +164,7 @@ function CapturedBlock({ title, fields }: { title: string; fields: CapturedField
 export default function AdminFeedback() {
   const [items, setItems] = useState<FeedbackRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [originFilter, setOriginFilter] = useState<string>("all");
@@ -208,6 +211,8 @@ export default function AdminFeedback() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(false);
+    try {
 
     // Config
     const { data: cfgData } = await supabase
@@ -218,9 +223,10 @@ export default function AdminFeedback() {
     if (cfgData?.value) setConfig(cfgData.value as unknown as FeedbackConfig);
 
     // Feedback (admin-only RPC returns admin_notes too)
-    const { data: fbData } = await supabase.rpc("admin_list_feedback", {
+    const { data: fbData, error: fbError } = await supabase.rpc("admin_list_feedback", {
       _show_archived: showArchived,
     });
+    if (fbError || !Array.isArray(fbData)) throw new Error("Feedback read unavailable");
 
     if (fbData && fbData.length > 0) {
       const profileIds = [...new Set(fbData.map(f => f.profile_id))];
@@ -239,13 +245,17 @@ export default function AdminFeedback() {
          mapping so that clean-up is a one-line edit. */
       setItems(fbData.map(f => ({
         ...(f as unknown as FeedbackRow),
-        display_name: profileMap.get(f.profile_id)?.display_name || "Unknown",
+        display_name: profileMap.get(f.profile_id)?.display_name || "Reporter profile unavailable",
         avatar_url: profileMap.get(f.profile_id)?.avatar_url || null,
       })));
     } else {
       setItems([]);
     }
-    setLoading(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   /** The four columns the admin surface is allowed to write. Narrowing the
@@ -314,6 +324,7 @@ export default function AdminFeedback() {
   if (loading) {
     return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}</div>;
   }
+  if (loadError) return <div role="alert" className="space-y-3 py-4 text-sm"><p>Feedback reports could not be read. This is not evidence of an empty inbox.</p><Button variant="outline" onClick={() => { void loadData(); }}>Retry</Button></div>;
 
   return (
     <div className="space-y-6">
@@ -483,15 +494,17 @@ export default function AdminFeedback() {
           {filtered.map(fb => {
             const isExpanded = expandedId === fb.id;
             const origin = reportOrigin(fb);
+            const plain = plainReportContext(fb, fb.client_meta);
             return (
               <motion.div
                 key={fb.id}
                 layout
                 className="rounded-xl border border-border bg-card overflow-hidden"
               >
-                <button
+                <Button variant="ghost"
                   onClick={() => setExpandedId(isExpanded ? null : fb.id)}
-                  className="w-full p-3 text-left flex items-start gap-3"
+                  aria-expanded={isExpanded}
+                  className="h-auto w-full whitespace-normal p-3 text-left flex items-start justify-start gap-3"
                 >
                   <UserAvatar src={fb.avatar_url || null} name={fb.display_name || ""} size="sm" />
                   <div className="flex-1 min-w-0">
@@ -526,7 +539,7 @@ export default function AdminFeedback() {
                     <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs font-bold">{fb.upvotes}</span>
                   </div>
-                </button>
+                </Button>
 
                 {isExpanded && (
                   <motion.div
@@ -534,6 +547,29 @@ export default function AdminFeedback() {
                     animate={{ height: "auto", opacity: 1 }}
                     className="border-t border-border px-4 py-3 space-y-3 bg-muted/20"
                   >
+                    {/* Owner-first summary: separate the player's words from facts captured by the app. */}
+                    <section className="min-w-0 space-y-3 border-b border-border pb-4" data-testid="feedback-plain-summary">
+                      <h4 className="text-sm font-bold">What happened — at a glance</h4>
+                      <dl className="grid gap-3 text-xs sm:grid-cols-2">
+                        <div><dt className="text-muted-foreground">Who reported this?</dt><dd className="font-medium break-words">{fb.display_name || "Reporter profile unavailable"}</dd></div>
+                        <div><dt className="text-muted-foreground">When?</dt><dd className="font-medium">{new Date(fb.created_at).toLocaleString()}</dd></div>
+                        <div><dt className="text-muted-foreground">Where?</dt><dd className="font-medium break-words">{origin.kind === "question" ? "In a game question" : origin.kind === "page" ? "On a website page" : "Feedback Center"}{fb.page_url ? ` · ${fb.page_url}` : ""}</dd></div>
+                        <div><dt className="text-muted-foreground">What did they report?</dt><dd className="font-medium whitespace-pre-wrap break-words">{fb.body?.trim() || "No explanation provided"}</dd></div>
+                        {origin.kind === "question" && <div><dt className="text-muted-foreground">Problem category selected</dt><dd className="font-medium">{plain.reason}</dd></div>}
+                        <div><dt className="text-muted-foreground">Device information</dt><dd className="font-medium break-words">{plain.device}</dd></div>
+                      </dl>
+                      {origin.kind === "question" && <div className="space-y-2 border-t border-border pt-3">
+                          <p className="text-xs font-semibold">Question the player was viewing</p>
+                          <p className="rounded-md bg-muted/40 p-3 text-sm whitespace-pre-wrap break-words">{plain.prompt}</p>
+                          <p className="text-xs text-muted-foreground">Captured mode: {plain.mode}{plain.round ? ` · Round ${plain.round}` : ""}</p>
+                          {plain.choices && <p className="text-xs whitespace-pre-wrap break-words">Choices shown: {plain.choices}</p>}
+                          {plain.selected && <p className="text-xs break-words">Player selected: <strong>{plain.selected}</strong></p>}
+                          {plain.answer && <p className="text-xs break-words">Recorded correct answer: <strong>{plain.answer}</strong> (not independently checked)</p>}
+                          {plain.evidence && <p className="text-xs break-words">Captured answer evidence: {plain.evidence}</p>}
+                        </div>}
+                      <p className="text-xs text-muted-foreground">This report records what the player submitted and what was on screen. It does not establish whether the answer was wrong, an error appeared, or the game broke. Investigate before marking resolved.</p>
+                    </section>
+
                     {/* The submitter's own words, always first and always
                         labelled as theirs — the captured context below is the
                         client's observation, and the two must never read as
@@ -545,10 +581,13 @@ export default function AdminFeedback() {
                       <p className="text-sm text-foreground whitespace-pre-wrap">{fb.body}</p>
                     </div>
 
-                    <CapturedBlock
-                      title={origin.kind === "page" ? "Captured page" : "Captured question"}
-                      fields={capturedFields(fb)}
-                    />
+                    <details className="rounded-lg border border-border p-3">
+                      <summary className="cursor-pointer text-xs font-semibold">Full captured {origin.kind === "question" ? "question and answers" : "page details"}</summary>
+                      <div className="mt-3"><CapturedBlock
+                        title={origin.kind === "page" ? "Captured page" : "Captured question"}
+                        fields={capturedFields(fb)}
+                      /></div>
+                    </details>
 
                     {/* Feedback Center extras. Absent on in-product reports by
                         construction — neither reporter asks for a severity or
@@ -578,7 +617,9 @@ export default function AdminFeedback() {
                       />
                     )}
 
-                    <CapturedBlock
+                    <details className="rounded-lg border border-border p-3">
+                      <summary className="cursor-pointer text-xs font-semibold">Technical details (for investigating)</summary>
+                      <div className="mt-3"><CapturedBlock
                       title="Diagnostics"
                       fields={[
                         ...diagnosticFields(fb.client_meta),
@@ -592,7 +633,8 @@ export default function AdminFeedback() {
                           ? [{ key: "legacy_category", label: "Legacy category", value: fb.legacy_category }] : []),
                         { key: "created", label: "Created", value: new Date(fb.created_at).toLocaleString() },
                       ]}
-                    />
+                    /></div>
+                    </details>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>

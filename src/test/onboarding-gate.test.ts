@@ -7,6 +7,9 @@ import {
   markSoftNudgeSeen,
   markHubVisited,
   hasVisitedHub,
+  hasRecentHardGate,
+  markHardGateShown,
+  HARD_GATE_COOLDOWN_MS,
 } from "@/lib/quiz/onboarding-gate";
 
 beforeEach(() => {
@@ -93,5 +96,29 @@ describe("gate threshold logic", () => {
     // Simulate many actions — nudge should stay suppressed
     for (let i = 0; i < 10; i++) incrementAnonymousActions();
     expect(hasSoftNudgeBeenSeen()).toBe(true);
+  });
+});
+
+describe("completed Practice signup cooldown", () => {
+  const NOW = Date.parse("2026-10-18T12:00:00Z");
+
+  it("shows initially, then suppresses repeat completed-quiz prompts for 24 hours", () => {
+    expect(hasRecentHardGate(NOW)).toBe(false);
+    markHardGateShown(NOW);
+    expect(hasRecentHardGate(NOW + HARD_GATE_COOLDOWN_MS - 1)).toBe(true);
+    expect(hasRecentHardGate(NOW + HARD_GATE_COOLDOWN_MS)).toBe(false);
+  });
+
+  it("never trusts corrupt or future local timestamps", () => {
+    markHardGateShown(NOW);
+    expect(hasRecentHardGate(NOW - 1000)).toBe(false);
+    localStorage.setItem("quiz:gate:last_seen_at", "invalid");
+    expect(hasRecentHardGate(NOW)).toBe(false);
+  });
+
+  it("resets the previous prompt on successful registration", () => {
+    markHardGateShown(NOW);
+    resetGateState();
+    expect(hasRecentHardGate(NOW)).toBe(false);
   });
 });

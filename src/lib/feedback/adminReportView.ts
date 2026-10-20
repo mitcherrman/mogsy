@@ -181,3 +181,22 @@ export function diagnosticFields(clientMeta: unknown): CapturedField[] {
   }
   return fields;
 }
+
+/** Captured claims only: never infer a mode from a route or an engine id. */
+export function plainReportContext(row: AdminFeedbackRowLike, clientMeta: unknown) {
+  const fields = capturedFields(row);
+  const value = (key: string) => fields.find(field => field.key === key)?.value;
+  const question = reportOrigin(row).kind === "question";
+  const viewport = diagnosticFields(clientMeta).find(field => field.key === "viewport")?.value;
+  return {
+    reason: question ? questionReportReasonLabel(contextObject(row.report_context).reason) : null,
+    prompt: question ? value("prompt") ?? "Question text was not captured" : null,
+    mode: question ? value("mode") ?? "Game mode was not captured" : null,
+    round: question ? value("round_number") : undefined,
+    choices: question ? value("choices") : undefined,
+    selected: question ? value("selected_answer") : undefined,
+    answer: question ? value("canonical_answer") : undefined,
+    evidence: question ? value("answer_evidence") : undefined,
+    device: viewport ? `Browser viewport ${viewport} · device not confirmed` : "Device information not recorded",
+  };
+}

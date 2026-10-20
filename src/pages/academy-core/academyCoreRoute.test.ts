@@ -61,8 +61,8 @@ describe("/lol is the Academy Core", () => {
 });
 
 describe("prefetch and warm-up follow the home", () => {
-  it("/lol warms the Core chunk (and its Quiz / Combat Lab destinations), /lol/hall the Hall's", () => {
-    expect(PREFETCH).toMatch(/p === "\/lol", keys: \["AcademyCore", "CombatLab", "Quiz"\]/);
+  it("/lol warms the Core chunk alone (its destinations follow once it is shown), /lol/hall the Hall's", () => {
+    expect(PREFETCH).toMatch(/p === "\/lol", keys: \["AcademyCore"\]/);
     expect(PREFETCH).toMatch(/p === "\/lol\/hall", keys: \["LolHub"\]/);
   });
 

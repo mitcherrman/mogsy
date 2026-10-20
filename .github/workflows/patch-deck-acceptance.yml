@@ -1,0 +1,69 @@
+name: Patch Deck Acceptance
+
+# PHD-RELEASE. Patch Hub List View, Deck View (/lol/patch-deck) and Catch Up in
+# a real browser, logged out, on the live public Patch Report API: viewports
+# 1280/1440/1920/375/320, switching, faces, chapters, keyboard, reduced motion,
+# phone sticky bar and swipe, network and fallbacks. Bundled Chromium on the
+# GitHub runner only - AGENTS.md forbids browser automation on the owner's PC.
+#
+# pull_request: the production bundle (vite build + vite preview).
+# workflow_dispatch with base_url (e.g. https://mogzy.lol): the published site.
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/patch-deck/**'
+      - 'src/lib/patch-deck/**'
+      - 'src/pages/lol/patch-deck/**'
+      - 'src/pages/lol/PatchReports.tsx'
+      - 'src/components/patch-reports/**'
+      - 'src/components/patch-catchup/**'
+      - 'src/components/Layout.tsx'
+      - 'e2e/patch-deck/**'
+      - 'playwright.patch-deck.config.ts'
+      - '.github/workflows/patch-deck-acceptance.yml'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Published site to check instead of the PR build (e.g. https://mogzy.lol)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: patch-deck-${{ github.ref }}-${{ github.event.inputs.base_url }}
+  cancel-in-progress: true
+
+jobs:
+  patch-deck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      PATCH_DECK_BASE_URL: ${{ github.event.inputs.base_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Install bundled Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Patch Deck browser acceptance
+        run: npx playwright test -c playwright.patch-deck.config.ts
+      - name: Upload screenshots and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch-deck-evidence
+          path: |
+            test-results/patch-deck/
+            playwright-report/patch-deck/
+          if-no-files-found: ignore
+          retention-days: 14

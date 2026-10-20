@@ -230,6 +230,17 @@ describe("LolPremium — manage-billing entry point", () => {
   });
 });
 
+describe("PT1.7 — Gift Premium entry", () => {
+  it("always offers Redeem; offers Buy only when the server says so (unknown → hidden)", async () => {
+    getEntitlement.mockRejectedValue(new Error("offline"));
+    entitlementRpc.mockResolvedValue({ data: [], error: null });
+    renderPage();
+    expect(await screen.findByTestId("premium-gift-redeem")).toBeTruthy();
+    // This file's supabase mock has no functions.invoke: availability is unknown.
+    await waitFor(() => expect(screen.queryByTestId("premium-gift-buy")).toBeNull());
+  });
+});
+
 // ─────────────────────────────────────────── PT1.13 — the page reads the matrix
 
 describe("PT1.13 — the comparison is rendered FROM the canonical matrix", () => {

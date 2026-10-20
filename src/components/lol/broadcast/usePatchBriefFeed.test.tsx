@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChampionManifest } from "@/hooks/useChampionAssets";
 import type { PatchReportDetail } from "@/lib/patch-reports/api";
 import { PLACEHOLDER_TRANSMISSION } from "./broadcast-content";
-import { usePatchBriefFeed } from "./usePatchBriefFeed";
+import { patchBriefIconUrls, prefetchPatchBrief, usePatchBriefFeed } from "./usePatchBriefFeed";
 
 const mocks = vi.hoisted(() => ({
   fetchPatchReports: vi.fn(),
@@ -180,5 +180,55 @@ describe("usePatchBriefFeed", () => {
     const { result } = renderFeed();
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expectPlaceholder(result.current);
+  });
+});
+
+
+describe("prefetchPatchBrief (ACADEMY STARTUP S2)", () => {
+  const prefetched = async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 60_000 } } });
+    const brief = await prefetchPatchBrief(qc, Promise.resolve(manifestFixture));
+    return { qc, brief };
+  };
+
+  it("fills the page's own query entries, so the mounted hook is ready on its FIRST render and fetches nothing", async () => {
+    mocks.fetchPatchReports.mockResolvedValue({ patches: [{ patch_version: "25.14" }, { patch_version: "25.13" }] });
+    mocks.fetchPatchReport.mockImplementation(async (v: string) => detailFixture(v));
+    const { qc, brief } = await prefetched();
+    expect(brief?.patchVersion).toBe("25.14");
+    expect(mocks.fetchPatchReports).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchPatchReport).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchPatchReport).toHaveBeenCalledWith("25.14");
+
+    const { result } = renderHook(() => usePatchBriefFeed(), {
+      wrapper: ({ children }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>,
+    });
+    expect(result.current.status).toBe("ready");
+    if (result.current.status !== "ready") throw new Error("unreachable");
+    expect(result.current.transmissions[0].headline).toBe("Patch 25.14");
+    expect(mocks.fetchPatchReports).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchPatchReport).toHaveBeenCalledTimes(1);
+  });
+
+  it("names every icon the book draws", async () => {
+    mocks.fetchPatchReports.mockResolvedValue({ patches: [{ patch_version: "25.14" }] });
+    mocks.fetchPatchReport.mockImplementation(async (v: string) => detailFixture(v));
+    const { brief } = await prefetched();
+    const urls = patchBriefIconUrls(brief);
+    expect(urls).toHaveLength(4);
+    for (const n of NAMES) expect(urls.some((u) => u.includes(`/champions/${n}/icon.png`))).toBe(true);
+    expect(patchBriefIconUrls(null)).toEqual([]);
+  });
+
+  it("never rejects: a failed list, an empty list or a failed detail is null", async () => {
+    mocks.fetchPatchReports.mockRejectedValue(new Error("down"));
+    expect((await prefetched()).brief).toBeNull();
+    mocks.fetchPatchReports.mockReset();
+    mocks.fetchPatchReports.mockResolvedValue({ patches: [] });
+    expect((await prefetched()).brief).toBeNull();
+    expect(mocks.fetchPatchReport).not.toHaveBeenCalled();
+    mocks.fetchPatchReports.mockResolvedValue({ patches: [{ patch_version: "25.14" }] });
+    mocks.fetchPatchReport.mockRejectedValue(new Error("down"));
+    expect((await prefetched()).brief).toBeNull();
   });
 });

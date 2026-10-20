@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward" | "quiz";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward" | "quiz" | "perfect-timing";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -131,6 +131,16 @@ export const SFX_REGISTRY = {
   "quiz.countdown.final": { group: "quiz", minReplayMs: 350, relativeGain: 0.92, builtInGeneratorId: "sfx.quiz.countdown-final" },
   // Only ever for a SERVER-settled timeout (never a local zero).
   "quiz.answer.timeout": { group: "quiz", minReplayMs: 1000, relativeGain: 0.86, builtInGeneratorId: "sfx.quiz.answer-timeout" },
+  // PT5.2 — THE ARCANE CHRONOMETER (Perfect Timing). Built-in voices, quieter
+  // than the quiz's countdown: the tick repeats every second for as long as a
+  // cooldown runs, five rounds in a row, so it must stay restrained. Callers
+  // pass `perfect-timing:<round>:<cast|tick:n|lock>` ids, so the engine's
+  // eventId dedupe is the once-per-round / once-per-second guarantee. The
+  // round's start (`ranked.module.start`) and verdict cues are unchanged.
+  "perfect-timing.cast": { group: "perfect-timing", minReplayMs: 250, relativeGain: 0.8, builtInGeneratorId: "sfx.perfect-timing.cast" },
+  "perfect-timing.clock.tick": { group: "perfect-timing", minReplayMs: 600, relativeGain: 0.62, builtInGeneratorId: "sfx.perfect-timing.tick" },
+  "perfect-timing.clock.mark": { group: "perfect-timing", minReplayMs: 600, relativeGain: 0.7, builtInGeneratorId: "sfx.perfect-timing.mark" },
+  "perfect-timing.lock": { group: "perfect-timing", minReplayMs: 250, relativeGain: 0.86, builtInGeneratorId: "sfx.perfect-timing.lock" },
   // Broadcast remains asset-first and session-configured. These entries give
   // its existing vocabulary canonical policy, unlock, mute, cache and dedupe
   // without inventing fallback sounds when an operator has configured none.

@@ -11,7 +11,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
-import { CombatEstimateArena, labArenaView, type LabStage, type Phase, type StageRound } from "@/components/combat-estimate/CombatEstimateArena";
+import {
+  CombatEstimateArena, labArenaView, type LabStage, type Phase, type StageRoomHook, type StageRound,
+} from "@/components/combat-estimate/CombatEstimateArena";
+import { useOwnerStageRoom } from "@/pages/admin/playtests/ownerArena";
 import {
   gradeEstimate, scenarioFromPublic, secretFromRelease, type CombatEstimateScenario, type CombatEstimateSecret,
   type PublicCapturedScenario,
@@ -24,11 +27,16 @@ import {
 } from "@/lib/public-modes/sessionsApi";
 import type { PublicModeEntry } from "@/lib/public-modes/contracts";
 import {
-  BONUS_GAME_NOTE, GameError, GameLead, GameRail, GameResults, GameState, RoundBar, useBonusRoundReport,
+  BONUS_GAME_NOTE, GameError, GameLead, GameRail, GameResults, GameState, PHONE_DOCK_RESERVE_PX, RoundBar, useBonusRoundReport,
 } from "./publicGame";
 import { percentText } from "./StatDropGame";
 
 const TITLE = "Combat Estimate";
+
+/** This arena's flanks are panels, so below `lg` it stacks and its stage is
+ *  content-sized: the phone room comes from the viewport, as Rangefinder's and
+ *  Glyph Press's do. Measuring the stage there shrank it 2px a frame to nothing. */
+const usePublicStageRoom: StageRoomHook = (ref) => useOwnerStageRoom(ref, PHONE_DOCK_RESERVE_PX);
 
 /** CE1's reveal, worded for players: the authority's working and its items,
  *  never a backend build. */
@@ -177,7 +185,7 @@ export default function CombatEstimateGame({ entry, api: injected }: { entry: Pu
 
   return (
     <div data-testid="combat-estimate-game" data-phase={phase} data-round={index}>
-      <CombatEstimateArena stage={stage} view={view} chrome={chrome} />
+      <CombatEstimateArena stage={stage} view={view} chrome={chrome} useRoom={usePublicStageRoom} />
       {error ? <GameError message={error.message} expired={error.expired} onRestart={restart} /> : null}
     </div>
   );

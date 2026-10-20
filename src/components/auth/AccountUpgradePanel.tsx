@@ -57,6 +57,9 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
   const [username, setUsername] = useState("");
   const [usernameCarried, setUsernameCarried] = useState(false);
   const seeded = useRef(false);
+  // A real user's first keystroke outranks an async profile prefill.
+  // Otherwise a slow profile read can silently erase what they typed.
+  const usernameTouched = useRef(false);
 
   // Seeded once, and only once the profile read has actually resolved —
   // otherwise the first render's `null` name would seed an empty field and
@@ -64,6 +67,7 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
   useEffect(() => {
     if (seeded.current || identity.loading) return;
     seeded.current = true;
+    if (usernameTouched.current) return;
     const preferred = readPreferredUsername({
       profileName: identity.displayName,
       isAnonymous: user?.is_anonymous === true,
@@ -169,7 +173,11 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
         <UsernameField
           id="upgrade-username"
           value={username}
-          onChange={setUsername}
+          onChange={(value) => {
+            usernameTouched.current = true;
+            setUsernameCarried(false);
+            setUsername(value);
+          }}
           submitted={submitted}
           error={upgrade.usernameError}
           carriedForward={usernameCarried}

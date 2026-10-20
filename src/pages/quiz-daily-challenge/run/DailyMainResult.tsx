@@ -42,6 +42,7 @@
  * `OptionalEntryBeat`), so the ceremony is seen once and never replayed.
  */
 import { useEffect, useRef, type CSSProperties } from "react";
+import { track } from "@/lib/analytics";
 import { ResultActions } from "@/components/game-results/ResultActions";
 import { ResultHero, SCORE_REVEAL_BEATS } from "@/components/game-results/ResultHero";
 import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
@@ -51,15 +52,20 @@ import { currentStage, isMainDailyComplete } from "@/lib/daily-challenge/run/con
 import { dailySection, dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyMainResult, optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import { DAILY_DISCOVERY_HOLD_MS, DailyDiscoveries } from "./DailyDiscoveries";
+import {
+  RESULT_FOCUS_CLEARANCE, RESULT_FRAME_GAP, RESULT_HERO_DENSITY, RESULT_SNAPSHOT_3COL, RESULT_TAG_DENSITY,
+  TOUCH_TARGET,
+} from "./dailyResultDensity";
 import type { StageResultPlacement } from "./DailyStageResult";
 import { StageTag } from "./StageTag";
 
 /**
  * The snapshot slot's floor: Standard's (DailyStageResult `SNAPSHOT_FLOOR`).
  * The main snapshot has at most three tiles (Correct, Accuracy, Missed with
- * its hint line): two rows below `sm`, one from it, as Standard's four did.
+ * its hint line): one row of three below `sm` (F05; 86px measured at 320px,
+ * where it was two rows and 10rem), one row from it, as Standard's four did.
  */
-const MAIN_SNAPSHOT_FLOOR = "min-h-[10rem] sm:min-h-[6rem]";
+const MAIN_SNAPSHOT_FLOOR = "min-h-[5.5rem] sm:min-h-[6rem]";
 
 /** MPE-D — the section's beats, in ms after the result settles. */
 export const DAILY_REVEAL_BEATS = {
@@ -80,6 +86,7 @@ function delayStyle(ms: number): CSSProperties {
 
 export function DailyMainResult({
   run, stage, error, onRetry, busy, onProceed, onDone, placement, onMoreChallenges, onReviewDiscoveries,
+  guestSaveEligible = false, onSaveScore,
 }: {
   run: DailyRun;
   /** The MAIN stage (Standard). */
@@ -105,6 +112,10 @@ export function DailyMainResult({
    * "Done for now" is the host's to give.
    */
   onReviewDiscoveries?: () => void;
+  /** True only for a genuine anonymous guest identity; a visitor without auth cannot own a run. */
+  guestSaveEligible?: boolean;
+  /** Enter the existing in-place guest upgrade flow, retaining the Daily return target. */
+  onSaveScore?: () => void;
 }) {
   const settled = isMainDailyComplete(run) && stage.status === "completed";
   const model = buildDailyMainResult(run, stage);
@@ -120,6 +131,15 @@ export function DailyMainResult({
   // standing; the engine's `eventId` dedupe is what makes a second mount silent.
   const sfx = useSfx();
   const cued = useRef(false);
+  const offeredRunId = useRef<string | null>(null);
+  const showSaveOffer = guestSaveEligible && !!onSaveScore;
+  useEffect(() => {
+    if (!settled || !showSaveOffer || offeredRunId.current === run.runId) return;
+    offeredRunId.current = run.runId;
+    track("signup_offer_shown", { metadata: {
+      placement: "daily_main_result", activity: "daily_challenge", run_id: run.runId,
+    } });
+  }, [settled, showSaveOffer, run.runId]);
   useEffect(() => {
     if (!settled || cued.current) return;
     const timer = window.setTimeout(() => {
@@ -137,14 +157,16 @@ export function DailyMainResult({
       data-stage-kind={stage.kind}
       data-pending={settled ? undefined : "true"}
       data-settled={settled ? "true" : undefined}
-      className="ranked-shell mx-auto flex w-full max-w-2xl flex-col gap-4"
+      className={`ranked-shell mx-auto flex w-full max-w-2xl flex-col ${RESULT_FRAME_GAP} ${
+        RESULT_TAG_DENSITY} ${RESULT_HERO_DENSITY} ${RESULT_FOCUS_CLEARANCE}`}
     >
       <div className="flex justify-center">
         <StageTag stage={stage} size="lg" />
       </div>
       <ResultHero model={model} reserveScore revealScore pendingPose="thinking" />
 
-      <div data-testid="daily-main-result-snapshot-slot" className={MAIN_SNAPSHOT_FLOOR}>
+      <div data-testid="daily-main-result-snapshot-slot"
+        className={`${MAIN_SNAPSHOT_FLOOR} ${RESULT_SNAPSHOT_3COL}`}>
         {settled ? (
           <div data-testid="daily-main-result-summary" className="reward-enter"
             style={delayStyle(DAILY_REVEAL_BEATS.snapshot)}>
@@ -156,6 +178,35 @@ export function DailyMainResult({
         )}
       </div>
 
+      {/* A guest may finish and leave after Standard, without ever reaching
+          the final Daily completion gate. Keep the result actions unchanged:
+          this is an optional invitation, never an interstitial or a lock. */}
+      {showSaveOffer && (
+        <div className="min-h-[3.5rem] max-sm:min-h-[3.25rem]" data-testid="daily-main-save-offer-slot">
+          {settled && (
+            <aside data-testid="daily-main-save-offer" aria-label="Save today's score"
+              className="flex min-h-[3.5rem] max-sm:min-h-[3.25rem] flex-wrap items-center justify-between gap-2 rounded-md border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-[#f0d78c]">Keep today's Daily score</p>
+                <p className="text-[11px] text-[var(--ranked-vellum,#f1e6c8)]/80">
+                  Create a free account to save your score and history.
+                </p>
+              </div>
+              <button type="button" data-testid="daily-main-save-score"
+                className="shrink-0 rounded-md border border-[#f0d78c]/65 bg-[#c9a84c] px-3 py-2 text-xs font-bold text-[#1a1530] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]"
+                onClick={() => {
+                  track("signup_offer_clicked", { metadata: {
+                    placement: "daily_main_result", activity: "daily_challenge", run_id: run.runId,
+                  } });
+                  onSaveScore?.();
+                }}>
+                Save score
+              </button>
+            </aside>
+          )}
+        </div>
+      )}
+
       {onReviewDiscoveries && (
         <DailyDiscoveries stage={stage} settled={settled}
           holdMs={DAILY_DISCOVERY_HOLD_MS.mainResult} onReview={onReviewDiscoveries} />
@@ -163,14 +214,15 @@ export function DailyMainResult({
 
       {optional.length > 0 && (
         <section aria-label="Optional" data-testid="daily-main-optional"
-          className="space-y-2 rounded-[0.6rem] border border-white/10 bg-black/20 px-4 py-3">
+          className="space-y-2 rounded-[0.6rem] border border-white/10 bg-black/20 px-4 py-3
+            max-sm:space-y-1.5 max-sm:px-3 max-sm:py-2.5">
           <p className="text-center">
             <span className="ranked-eyebrow">Optional</span>
             <span className="block pt-1 text-xs text-[var(--ranked-muted,#a8a29e)]">
               Keep playing if you like. Nothing here changes your Daily score.
             </span>
           </p>
-          <ul className="flex flex-col items-center gap-2.5 sm:flex-row sm:items-start sm:justify-center sm:gap-8">
+          <ul className="flex flex-col items-center gap-2.5 max-sm:gap-1.5 sm:flex-row sm:items-start sm:justify-center sm:gap-8">
             {optional.map((g) => (
               <li key={g.id} data-testid={`daily-main-optional-${g.id}`} data-section={g.id}
                 className="flex flex-col items-center gap-1">
@@ -195,7 +247,7 @@ export function DailyMainResult({
           <p role="alert" className="text-xs text-rose-300" data-testid="daily-run-error">{error}</p>
           {onRetry && (
             <button type="button" onClick={onRetry} disabled={busy} data-testid="daily-run-retry"
-              className="rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em]">
+              className={`rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em] ${TOUCH_TARGET}`}>
               Try again
             </button>
           )}

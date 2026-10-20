@@ -215,6 +215,11 @@ export function SubjectMediaBackdrop({
   atmosphereSeating?: AtmosphereSeating;
   atmosphereAlt?: string;
 }) {
+  // The decorative echo is a second request for the same subject asset. If it
+  // 404s, the focal icon replaces itself with "?", but the echo must also
+  // disappear: leaving a broken <img> behind fails the text-only fallback.
+  // Track the failed URL so a later question with a different icon can render.
+  const [failedEchoUrl, setFailedEchoUrl] = useState<string | null>(null);
   return (
     <div data-subject-media aria-hidden className="absolute inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(125%_150%_at_46%_36%,#241a12_0%,#150f0a_46%,#070505_100%)]" />
@@ -227,10 +232,11 @@ export function SubjectMediaBackdrop({
           of what it does show. Switching it to `contain` would shrink a tall
           subject's wash to a narrow column and leave the panel's left flat,
           which is the empty-ground problem this layer exists to solve. */}
-      {echoIcon && (
+      {echoIcon && echoIcon !== failedEchoUrl && (
         <motion.img
           src={echoIcon}
           alt=""
+          onError={() => setFailedEchoUrl(echoIcon)}
           className="absolute left-[-12%] top-[-47%] h-[var(--subject-echo)] w-[var(--subject-echo)] max-w-none rounded-[10%] object-cover opacity-[0.22] blur-[3px] saturate-[1.2]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.22, scale: [1, 1.05, 1] }}

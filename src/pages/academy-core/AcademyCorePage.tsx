@@ -68,6 +68,8 @@ import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallenge
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { prepareImage } from "@/lib/ranked-core/media/prepareImage";
+import { useAcademyStartupGate } from "@/pages/academy-core/useAcademyStartupGate";
 import { useSfx } from "@/lib/audio/useSfx";
 
 import type { CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
@@ -76,8 +78,10 @@ import {
   CORE_FULL_LAYOUT_MEDIA,
   CORE_MEASURE_SHARDS,
   CORE_OBSERVE_ROLES,
+  academyCoreSettled,
   warmAcademyCore,
 } from "@/pages/academy-core/academy-core-warm";
+import { HUB_DESTINATION_ROUTES } from "@/lib/hub/academy-hub-warm";
 import {
   ACADEMY_COMMONS_FRAGMENT,
   ACADEMY_COMMONS_HREF,
@@ -88,6 +92,7 @@ import {
   coreBayDescriptionId,
   destinationById,
   type CoreDestination,
+  type CoreFocus,
 } from "@/pages/academy-core/academy-core-destinations";
 import "@/pages/academy-core/academy-core.css";
 import "./orrery/academy-core-v35.css";
@@ -137,6 +142,21 @@ const COMPOSED_RING: BookId[] = ["leaguecraft", "pro-play", "archives", "combat-
 const TEMPO: Record<string, number> = { idle: 1, leaguecraft: 1.6, "pro-play": 1.3, "combat-lab": 2.5, archives: 0.65 };
 const IDLE_LINE = "Pick a book and I'll take a reading.";
 
+type IdleWindow = Window & {
+  requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+  cancelIdleCallback?: (id: number) => void;
+};
+/** Run once the browser is idle (or after a short delay where it cannot say). Returns a cancel. */
+function whenIdle(cb: () => void): () => void {
+  const w = window as IdleWindow;
+  if (w.requestIdleCallback) {
+    const id = w.requestIdleCallback(cb, { timeout: 1500 });
+    return () => w.cancelIdleCallback?.(id);
+  }
+  const id = window.setTimeout(cb, 200);
+  return () => window.clearTimeout(id);
+}
+
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia?.(query)?.matches === true : false,
@@ -181,14 +201,29 @@ function AcademyCoreOrrery() {
   // The home surface: the funnel's `hub_entered` (once per session — the same
   // boundary the Hall uses) and the Hall's own arrival cue, as on the V3 home.
   useSurfaceEvent("hub_entered");
-  useEffect(() => { sfx.play("hub.application.enter"); }, [sfx]);
 
   /* ---------------- warm, then the covers ---------------- */
   const [warmed, setWarmed] = useState(false);
+  // ACADEMY STARTUP S3 — what nobody sees on arrival waits until the first
+  // screen's art has settled AND the browser is idle: the four destination
+  // pages' code (a hover or focus on a book still fetches its page at once),
+  // Mogzy's reaction poses and the projections' champion icons (only shown on
+  // hover / the crystal). They used to start with the page and compete with
+  // the Patch Report and the covers.
+  const [deferredReady, setDeferredReady] = useState(false);
   useEffect(() => {
     let active = true;
+    let cancelIdle = () => {};
     warmAcademyCore(queryClient).then(() => { if (active) setWarmed(true); });
-    return () => { active = false; };
+    academyCoreSettled().then(() => {
+      if (!active) return;
+      cancelIdle = whenIdle(() => {
+        if (!active) return;
+        setDeferredReady(true);
+        for (const to of HUB_DESTINATION_ROUTES) prefetchRoute(to);
+      });
+    });
+    return () => { active = false; cancelIdle(); };
   }, [queryClient]);
   const { data: manifest } = useChampionAssets();
   const splashes = useMemo(() => {
@@ -204,6 +239,23 @@ function AcademyCoreOrrery() {
   const broadcastFeed = usePatchBriefFeed();
   const brief = broadcastFeed.status === "ready" ? broadcastFeed.transmissions[broadcastFeed.index]?.brief ?? null : null;
 
+  /* ---------------- the held entrance veil (ACADEMY STARTUP RC2) ---------------- */
+  // Arriving from the Landing (or directly), the app-level veil stays up until
+  // this page's first screen is really drawn; `shown` is false only meanwhile.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const startupCovers = useMemo(
+    () => (manifest === undefined ? {} : splashes) as Record<string, string | null | undefined>,
+    [manifest, splashes],
+  );
+  const startup = useAcademyStartupGate(rootRef, { fullLayout, covers: startupCovers, feedStatus: broadcastFeed.status });
+  // The Hall's arrival cue, as on the V3 home — at the reveal, not under the veil.
+  const cuePlayed = useRef(false);
+  useEffect(() => {
+    if (!startup.shown || cuePlayed.current) return;
+    cuePlayed.current = true;
+    sfx.play("hub.application.enter");
+  }, [startup.shown, sfx]);
+
   const media = useMemo<CoreMedia>(() => ({
     art: warmed ? splashes : {},
     strataIcons: brief ? brief.sections.flatMap((s) => s.entries).slice(0, 4).map((e) => e.iconUrl) : [],
@@ -212,14 +264,41 @@ function AcademyCoreOrrery() {
     observeRoles: warmed ? CORE_OBSERVE_ROLES : [],
   }), [warmed, splashes, brief]);
 
+  // ACADEMY STARTUP RC1 — the deferral above is for what nobody has asked to
+  // see. The first time a book is engaged (hover, keyboard focus, a press, the
+  // arrows or the crystal), its projection art and Mogzy's reactions are wanted
+  // NOW: on a slow link the first screen can take many seconds to settle, and
+  // Leaguecraft's iris must not open onto empty glass meanwhile. Engaged art is
+  // requested at high priority; the rest still waits.
+  const [engaged, setEngaged] = useState<ReadonlySet<Exclude<CoreFocus, "idle">>>(() => new Set());
+  useEffect(() => {
+    if (focus === "idle") return;
+    setEngaged((prev) => (prev.has(focus) ? prev : new Set(prev).add(focus)));
+  }, [focus]);
+  const deferredShown = warmed && deferredReady;
+  const matchupShown = deferredShown || engaged.has("pro-play");
+  const mysteryShown = deferredShown || engaged.has("leaguecraft");
+  const reactionsShown = deferredShown || engaged.size > 0;
+
   // Pro Play's 5 v 5: manifest icons for the lineup and the Rift image, after the critical art (as the other projections)
-  const matchup = useMemo<MatchupMedia | null>(() => (warmed ? {
+  const matchup = useMemo<MatchupMedia | null>(() => (matchupShown ? {
     blue: MATCHUP_LINEUP.blue.map((n) => getChampionIcon(manifest, n)),
     red: MATCHUP_LINEUP.red.map((n) => getChampionIcon(manifest, n)),
     rift: RIFT_CENTRE_ART,
-  } : null), [warmed, manifest]);
+  } : null), [matchupShown, manifest]);
   // Leaguecraft's mystery portrait: the manifest's square Lux icon, on the same schedule
-  const mystery = useMemo(() => (warmed ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null), [warmed, manifest]);
+  const mystery = useMemo(
+    () => (mysteryShown ? getChampionIcon(manifest, MYSTERY_CHAMPION) : null),
+    [mysteryShown, manifest],
+  );
+  useEffect(() => {
+    if (deferredShown) return;
+    const urls = [
+      ...(engaged.has("leaguecraft") ? [mystery] : []),
+      ...(engaged.has("pro-play") && matchup ? [...matchup.blue, ...matchup.red, matchup.rift] : []),
+    ];
+    for (const url of urls) if (url) void prepareImage(url, { priority: "high" });
+  }, [deferredShown, engaged, mystery, matchup]);
 
   /* ---------------- the orbit engine ---------------- */
   const mode = fullLayout ? "orbit" : "composed";
@@ -520,7 +599,9 @@ function AcademyCoreOrrery() {
 
   return (
     <div
+      ref={rootRef}
       className="acore-root o35-root"
+      data-startup={startup.mark}
       data-layout={fullLayout ? "full" : "stacked"}
       data-ambient={ambient ? "on" : "off"}
       data-reduced={reduced ? "true" : "false"}
@@ -626,7 +707,7 @@ function AcademyCoreOrrery() {
                 ambient={ambient}
                 reduced={reduced}
                 facing="left"
-                reactionsReady={warmed}
+                reactionsReady={reactionsShown}
               />
             </div>
           </div>

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, Library, Trophy } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Library } from "lucide-react";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import type { HubCentreMode } from "@/lib/role-challenge/presentation";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
+import MoreChallengesInvite from "@/components/quiz/MoreChallengesInvite";
 import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
 import LeaguecraftGuide from "@/components/quiz/LeaguecraftGuide";
  
@@ -29,7 +30,6 @@ import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuesti
 import { SectionHeading } from "@/components/quiz/workspace/primitives";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
 import { authHref } from "@/lib/auth/auth-destination";
-import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
 
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
@@ -168,11 +168,15 @@ const SMOOTH_SCROLL_CHECK_MS = 350;
  *  serves it. Falls back to the first catalog set so the action is never dead. */
 const PRIMARY_PRACTICE_SET = "All Current Questions";
 
+/** Temporary public matchmaking pause. Remove with a reviewed Ranked relaunch. */
+const PUBLIC_RANKED_COMING_SOON = true;
+
 export default function LeaguecraftHub({
   progress,
   ranked,
   onPlayRanked,
   playDisabled = false,
+  rankedComingSoon = PUBLIC_RANKED_COMING_SOON,
   onCommitRole,
   hasAccount = true,
   onRequireAccount,
@@ -272,6 +276,8 @@ export default function LeaguecraftHub({
    *  seal is the lobby's one commit point, so a second press during that
    *  write would start a second write and a second record. */
   playDisabled?: boolean;
+  /** Show ranked launch messaging and prevent public queue entry in the Quiz Hub. */
+  rankedComingSoon?: boolean;
   /**
    * PLAY1: hand the player into the live-match host at `/quiz/ranked` once
    * the Ranked queue has a match. The hub never navigates itself.
@@ -388,7 +394,7 @@ export default function LeaguecraftHub({
   const canonicalSfx = useSfx();
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
 
-  const [playOpen, setPlayOpen] = useState(playScrollOpenOnMount);
+  const [playOpen, setPlayOpen] = useState(!rankedComingSoon && playScrollOpenOnMount);
   useEffect(() => {
     onPlayScrollOpenChange?.(playOpen);
   }, [onPlayScrollOpenChange, playOpen]);
@@ -504,6 +510,7 @@ export default function LeaguecraftHub({
   const sfx = usePlaySfx();
 
   const openPlay = useCallback(async () => {
+    if (rankedComingSoon) return;
     if (!rankedAvailabilityOpen) {
       onPlayDailyChallenge();
       return;
@@ -521,7 +528,7 @@ export default function LeaguecraftHub({
     if (!committed) return;
     sfx.play("scrollOpen");
     setPlayOpen(true);
-  }, [onPlayDailyChallenge, onPlayRanked, rankedAvailabilityOpen, sfx]);
+  }, [onPlayDailyChallenge, onPlayRanked, rankedAvailabilityOpen, rankedComingSoon, sfx]);
   // Focus is restored by the record itself, on its own unmount — see
   // `returnFocusTo`. Doing it here would race Radix's own restore.
   const closePlay = useCallback(() => setPlayOpen(false), []);
@@ -627,6 +634,7 @@ export default function LeaguecraftHub({
           hasAccount={hasAccount}
           onRequireAccount={onRequireAccount}
           rankedAvailable={rankedAvailabilityOpen}
+          rankedComingSoon={rankedComingSoon}
           playDisabled={playDisabled}
           playButtonRef={playSealRef}
           rankedRole={rankedRole}
@@ -685,55 +693,43 @@ export default function LeaguecraftHub({
       {/* HUB7 — QUICK STUDY. The same rail, the same six tiles and the same
           in-place Practice start; only its name is new. It is the lower
           page's one fast practice entry, and History follows it directly. */}
+      {/* PM1 — the heading now lives INSIDE the rail's Academy plate (its
+          leading edge from `xl`, its top row below), which is what pays for
+          the plate's larger gilded tiles inside the same first-screen budget:
+          a separate heading row cost ~21px the 1280x800 desktop does not have.
+          It is still this section's label, by id. */}
       <section
-        className="relative z-30 flex flex-col gap-1.5"
+        className="relative z-30 flex flex-col"
         data-testid="hub-quick-study"
+        data-activity-area="study"
         aria-labelledby="hub-quick-study-heading"
       >
-        <SectionHeading
-          id="hub-quick-study-heading"
-          icon={GraduationCap}
-          title="Quick Study"
-          hint="Pick a subject to practise."
-        />
         <QuizCategoryRail
           onSelectCategory={onSelectCategory}
           focusCategoryId={focusCategoryId}
+          heading={{
+            id: "hub-quick-study-heading",
+            title: "Quick Study",
+            hint: "Pick a subject — ten questions, no timer.",
+          }}
         />
       </section>
       </div>
 
-      {/* PGM1 — MORE CHALLENGES. The returning player's way back to the bonus
-              modes (the Daily's result is the other). One quiet row below
-              the first screen, so it never competes with the lobby; it is a
-              plain link and reads nothing, so the lobby load is unchanged. The
-              catalog page owns every mode, status and Play action. */}
+      {/* PGM1/PM1 — MORE CHALLENGES. The returning player's way back to the
+              bonus modes (the Daily's result is the other), directly under
+              Quick Study so the two read as one Academy activity area: study
+              a subject, or go and play. Still below the first screen, so it
+              never competes with the lobby; still ONE link that reads
+              nothing, so the lobby load is unchanged. The catalog page owns
+              every mode, status and Play action. See MoreChallengesInvite. */}
       <section
-        className="flex flex-col gap-1.5"
+        className="flex flex-col"
         data-testid="hub-more-challenges"
+        data-activity-area="play"
         aria-labelledby="hub-more-challenges-heading"
       >
-        <SectionHeading
-          id="hub-more-challenges-heading"
-          icon={Trophy}
-          title="More Challenges"
-          hint="Bonus modes to play after your Daily Challenge."
-        />
-        <div className="ranked-subpanel flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-[color:var(--ranked-muted)]">
-            Time Trial, Survival and the new bonus modes. None of them change your Daily score or Ranked rating.
-          </p>
-          <Link
-            to={MORE_CHALLENGES_ROUTE}
-            state={moreChallengesState("leaguecraft")}
-            data-testid="hub-more-challenges-link"
-            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-[rgba(201,168,76,0.55)]
-              bg-[rgba(201,168,76,0.12)] px-4 text-sm font-semibold text-[#f0d78c] hover:bg-[rgba(201,168,76,0.2)]
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(201,168,76,0.6)]"
-          >
-            Browse More Challenges
-          </Link>
-        </div>
+        <MoreChallengesInvite headingId="hub-more-challenges-heading" />
       </section>
 
       {/* 3 ── (HUB7) THE STUDY ROW IS GONE FROM THE HUB.

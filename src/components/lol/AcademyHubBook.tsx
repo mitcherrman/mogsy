@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeatureRibbon from "@/components/FeatureRibbon";
 import { Link } from "react-router-dom";
 import { ACADEMY_BOOK_FRAME as closedBookFrame } from "@/academy/hub/hub-art";
 import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
@@ -137,6 +138,9 @@ export default function AcademyHubBook({
       <div
         className="academy-hub-book-body relative"
         style={{ aspectRatio: `1 / ${CLOSED_BOOK_HEIGHT_RATIO}` }}
+        // The cover's state for readers that cannot see the removed <img>
+        // (the Academy's startup veil): art | failed | none.
+        data-cover={splashUrl ? (imgFailed ? "failed" : "art") : "none"}
       >
         {/* 1 — champion splash, filling the frame's transparent art window.
                Sits UNDER the shell so the gold trim overlaps its edges and
@@ -205,6 +209,8 @@ export default function AcademyHubBook({
             ))}
           </h3>
         </div>
+
+        {to === "/combat-lab" && <FeatureRibbon label="BETA" size="book" />}
 
         {/* 4 — interaction layer. Gold rim response on hover/focus, scoped to
                the art window so it reads as light catching the inlay rather

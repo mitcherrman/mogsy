@@ -1,0 +1,111 @@
+name: Daily Result Compact Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/quiz-daily-challenge/run/DailyCompletion.tsx'
+      - 'src/pages/quiz-daily-challenge/run/DailyDiscoveries.tsx'
+      - 'src/pages/quiz-daily-challenge/run/DailyMainResult.tsx'
+      - 'src/pages/quiz-daily-challenge/run/DailyStageResult.tsx'
+      - 'src/pages/quiz-daily-challenge/run/dailyResultDensity*'
+      - 'e2e/misc-w3a/**'
+      - 'playwright.daily-result-compact.config.ts'
+      - '.github/workflows/daily-result-compact-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  daily-result-compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Test Daily result density and settled layout contracts
+        run: npx vitest run src/pages/quiz-daily-challenge/run/dailyResultDensity.test.tsx
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser result density and earned discovery regression
+        run: npx playwright test -c playwright.daily-result-compact.config.ts
+      - name: Bundle compilation
+        run: npx vite build
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-result-compact-failures
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Same-environment evidence: the UNTOUCHED original components and this branch
+  # are measured by the same harness, browser and fonts on this runner, so what is
+  # asserted (and what is explained when it fails) is relative and OS-portable.
+  daily-result-compact-relative:
+    # A one-time F05 reduction contract. Follow-up PRs use the absolute
+    # density/browser regression job above; measuring an already-compacted
+    # parent against itself would require the same savings a second time.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'fix/misc-w3a-daily-mobile' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      W3A_CHANNEL: ''
+      W3A_PARALLEL: '3'
+      W3A_BASE: 'http://127.0.0.1:8131'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Find the original components (merge base of the PR)
+        run: |
+          BASE_SHA=$(git merge-base "${{ github.event.pull_request.head.sha }}" "${{ github.event.pull_request.base.sha }}")
+          echo "ORIGINAL_SHA=$BASE_SHA" >> "$GITHUB_ENV"
+          echo "original components from $BASE_SHA"
+      - name: Measure this branch
+        run: |
+          mkdir -p out
+          npx vite --mode e2e --host 127.0.0.1 --port 8131 --strictPort > out/vite-after.log 2>&1 &
+          echo $! > out/vite.pid
+          for i in $(seq 1 90); do curl -sf http://127.0.0.1:8131/ > /dev/null && break; sleep 1; done
+          W3A_FONTS=bundled W3A_OUT=out/after-bundled.json node e2e/misc-w3a/measure.cjs
+          W3A_FONTS=system W3A_OUT=out/after-system.json node e2e/misc-w3a/measure.cjs
+          kill "$(cat out/vite.pid)" || true
+      - name: Measure the untouched original components
+        run: |
+          FILES="src/pages/quiz-daily-challenge/run/DailyCompletion.tsx src/pages/quiz-daily-challenge/run/DailyDiscoveries.tsx src/pages/quiz-daily-challenge/run/DailyMainResult.tsx src/pages/quiz-daily-challenge/run/DailyStageResult.tsx"
+          git checkout "$ORIGINAL_SHA" -- $FILES
+          npx vite --mode e2e --host 127.0.0.1 --port 8131 --strictPort > out/vite-base.log 2>&1 &
+          echo $! > out/vite.pid
+          for i in $(seq 1 90); do curl -sf http://127.0.0.1:8131/ > /dev/null && break; sleep 1; done
+          W3A_FONTS=bundled W3A_OUT=out/base-bundled.json node e2e/misc-w3a/measure.cjs
+          W3A_FONTS=system W3A_OUT=out/base-system.json node e2e/misc-w3a/measure.cjs
+          kill "$(cat out/vite.pid)" || true
+          git checkout HEAD -- $FILES
+      - name: Relative contract (bundled Inter/Cinzel, as production renders)
+        run: node e2e/misc-w3a/compare.cjs out/base-bundled.json out/after-bundled.json
+      - name: Relative contract (OS fallback fonts)
+        run: node e2e/misc-w3a/compare.cjs out/base-system.json out/after-system.json
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-result-compact-measurements
+          path: out/
+          retention-days: 14

@@ -17,12 +17,14 @@ function textWithoutRank(stage: HTMLElement): string {
 
 afterEach(() => { cleanup(); document.documentElement.classList.remove(APP_REDUCE_MOTION_CLASS); });
 
-describe("PerfectTimingStage — the invisible clock", () => {
-  it("prints no digit anywhere while running, besides the rank", () => {
+describe("PerfectTimingStage — the only clock is the chronometer", () => {
+  it("prints no digit while running besides the rank and the chronometer's own readout", () => {
     render(<PerfectTimingStage round={ROUND} phase="running" press={demoPress("The ability is back up")} />);
     const stage = screen.getByTestId("pt-stage");
     expect(stage).toHaveAttribute("data-phase", "running");
-    expect(textWithoutRank(stage)).not.toMatch(/\d/);
+    const clone = stage.cloneNode(true) as HTMLElement;
+    clone.querySelector('[data-testid="pt-chrono-digits"]')?.remove();
+    expect(textWithoutRank(clone)).not.toMatch(/\d/);
     // The rank is the only number on the sheet, and it is the dealt rank.
     expect(screen.getByTestId("pt-rank")).toHaveTextContent("Rank 2 / 3");
   });
@@ -107,7 +109,7 @@ describe("PerfectTimingStage — the press surface", () => {
 
 describe("PerfectTimingStage — faces and copy", () => {
   it.each([
-    ["armed", "Cast"], ["running", "Cooldown"], ["stopped", "Locked"], ["interrupted", "Voided"], ["error", "Halted"],
+    ["armed", "Cast"], ["running", "Press to stop"], ["stopped", "Locked"], ["interrupted", "Voided"], ["error", "Halted"],
   ] as [PtPhase, string][])("%s wears the word %s", (phase, word) => {
     render(<PerfectTimingStage round={ROUND} phase={phase} press={demoPress("seal")} />);
     expect(screen.getByTestId("pt-seal-word")).toHaveTextContent(word);

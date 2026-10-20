@@ -88,6 +88,7 @@ import RankCrown from "@/components/ranked/RankCrown";
 import RankEmblem from "@/components/ranked/RankEmblem";
 import RankedClassCarousel from "@/components/quiz/RankedClassCarousel";
 import RankedPlayGem from "@/components/quiz/RankedPlayGem";
+import FeatureRibbon from "@/components/FeatureRibbon";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
@@ -258,6 +259,7 @@ export default function RankedLobbyHero({
   hasAccount = false,
   onRequireAccount,
   initialMode = "daily",
+  rankedComingSoon = false,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -272,6 +274,8 @@ export default function RankedLobbyHero({
   /** RC8: which centre mode the sheet opens on. Daily unless the URL asked. */
   initialMode?: HubCentreMode;
   rankedAvailable?: boolean;
+  /** Temporarily retire Ranked matchmaking while preserving its presentation. */
+  rankedComingSoon?: boolean;
   /** PLAY1: the seal's own node, so a closing match-entry record can put
    *  focus back where it came from. */
   playButtonRef?: React.RefObject<HTMLButtonElement | null>;
@@ -555,7 +559,7 @@ export default function RankedLobbyHero({
             gives it display size and — deliberately — no rule at all, so it
             reads as the title OF the selection below it rather than as a
             caption with a widget underneath. See `ColumnHeading`. */}
-        <CentreModeSwitcher value={selectedMode} onChange={selectMode} />
+        <CentreModeSwitcher value={selectedMode} onChange={selectMode} rankedComingSoon={rankedComingSoon} />
         {/* PARCHMENT CONTINUITY — one stage, three panes. Ranked is the SIZER:
             always laid out, so the sheet's box is the box Ranked has always
             had, whichever mode is showing. Daily and Role FILL that box and
@@ -612,10 +616,11 @@ export default function RankedLobbyHero({
           <div className="order-1 w-full shrink-0 lg:order-2 lg:w-auto">
             <RankedPlayGem
               onClick={onPlayRanked}
-              disabled={playDisabled || !queueModes.ranked}
+              disabled={rankedComingSoon || playDisabled || !queueModes.ranked}
               buttonRef={playButtonRef}
-              rankedAvailable={rankedAvailable}
+              rankedAvailable={!rankedComingSoon && rankedAvailable}
             />
+            {rankedComingSoon && <span className="mt-1 block text-center text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: INK.body }}>Ranked matchmaking is coming soon</span>}
           </div>
 
           <div className="order-3 min-w-0 flex-1 basis-[38%] lg:basis-0">
@@ -1176,9 +1181,11 @@ const CENTRE_MODES: readonly {
 function CentreModeSwitcher({
   value,
   onChange,
+  rankedComingSoon = false,
 }: {
   value: HubCentreMode;
   onChange: (mode: HubCentreMode) => void;
+  rankedComingSoon?: boolean;
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const move = (from: number, delta: number) => {
@@ -1215,7 +1222,7 @@ function CentreModeSwitcher({
               if (e.key === "ArrowRight") { e.preventDefault(); move(index, 1); }
               if (e.key === "ArrowLeft") { e.preventDefault(); move(index, -1); }
             }}
-            className="lc-mode-tab flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 font-extrabold uppercase leading-tight tracking-[0.06em] transition-colors"
+            className="lc-mode-tab relative flex min-w-0 items-center justify-center gap-1 overflow-hidden rounded-lg px-1 py-2 font-extrabold uppercase leading-tight tracking-[0.06em] transition-colors"
             style={{
               color: active ? "#fff7e6" : INK.body,
               background: active ? "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)" : "transparent",
@@ -1228,6 +1235,7 @@ function CentreModeSwitcher({
             <Icon className="lc-cq-wide h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="lc-cq-narrow min-w-0" aria-hidden="true">{short}</span>
             <span className="lc-cq-wide min-w-0" aria-hidden="true">{label}</span>
+            {id === "ranked" && rankedComingSoon && <FeatureRibbon label="COMING SOON" size="tab" />}
           </button>
         );
       })}

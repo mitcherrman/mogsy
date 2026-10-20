@@ -16,6 +16,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
+import PremiumGiftEntry from "@/components/premium/PremiumGiftEntry";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -403,6 +404,9 @@ export default function LolPremium() {
           </>
         )}
       </div>
+
+      {/* PT1.7 — Gift Premium (buy: allowlisted private offer; redeem: anyone). */}
+      <PremiumGiftEntry signedIn={!isAnonymous} />
 
       {/* ── Lead benefits ──────────────────────────────────────────────
           Four cards, not nine. The full list is directly below in the

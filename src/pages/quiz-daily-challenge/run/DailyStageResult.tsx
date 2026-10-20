@@ -65,16 +65,37 @@
  * tile is 53-72px and the section is the "Performance" label, the rows and
  * 8px gaps. The settled grid fills the slot; when it has fewer tiles than its
  * kind's maximum the slot is simply not full.
+ *
+ * F05 — the PHONE floors (the first value of each pair) are re-measured for the
+ * compact snapshot (`dailyResultDensity`): a Review and a Time Trial / Survival
+ * go to three columns (1 and 2 rows), so their floors fall from 8.75 / 15rem to
+ * 4.25 / 9rem; the four-tile kinds stay two columns, two rows, and keep 10rem.
+ * Measured with every optional tile present at 320px, the narrowest phone:
+ * Review 67px, Standard/Weak Areas 158px, Time Trial/Survival 140px (the
+ * "Out of mistakes" Finish tile wraps to two lines and still fits).
  */
 const SNAPSHOT_FLOOR: Record<DailyStage["kind"], string> = {
-  review: "min-h-[8.75rem] sm:min-h-[4.75rem]",
+  review: "min-h-[4.25rem] sm:min-h-[4.75rem]",
   standard: "min-h-[10rem] sm:min-h-[6rem]",
   weak_areas: "min-h-[10rem] sm:min-h-[6rem]",
   // DV2-P0: the same four tiles a Standard can show (Answered, Accuracy,
   // Points, Missed). Re-measure when the backend actually serves the stage.
   order_forge: "min-h-[10rem] sm:min-h-[6rem]",
-  time_trial: "min-h-[15rem] sm:min-h-[11rem]",
-  survival: "min-h-[15rem] sm:min-h-[11rem]",
+  time_trial: "min-h-[9rem] sm:min-h-[11rem]",
+  survival: "min-h-[9rem] sm:min-h-[11rem]",
+};
+/**
+ * F05 — a phone's snapshot columns, by stage kind (never by tile count, so a
+ * pending slot and its settled grid share one layout). Five- and three-tile
+ * kinds go to three columns (two rows, one row); the four-tile kinds stay 2 x 2.
+ */
+const SNAPSHOT_PHONE_DENSITY: Record<DailyStage["kind"], string> = {
+  review: RESULT_SNAPSHOT_3COL,
+  standard: RESULT_SNAPSHOT_2COL,
+  weak_areas: RESULT_SNAPSHOT_2COL,
+  order_forge: RESULT_SNAPSHOT_2COL,
+  time_trial: RESULT_SNAPSHOT_3COL,
+  survival: RESULT_SNAPSHOT_3COL,
 };
 /** One `text-xs` row holding the "Up next" tag (22px). */
 const NEXT_ROW_FLOOR = "min-h-[1.375rem]";
@@ -87,6 +108,10 @@ import { currentStage, hasMainDaily } from "@/lib/daily-challenge/run/contracts"
 import { dailySection } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyStageResult } from "@/lib/daily-challenge/run/stageResultModel";
 import { DAILY_DISCOVERY_HOLD_MS, DailyDiscoveries } from "./DailyDiscoveries";
+import {
+  RESULT_FOCUS_CLEARANCE, RESULT_FRAME_GAP, RESULT_HERO_DENSITY, RESULT_LADDER_DENSITY,
+  RESULT_SNAPSHOT_2COL, RESULT_SNAPSHOT_3COL, RESULT_TAG_DENSITY, TOUCH_TARGET,
+} from "./dailyResultDensity";
 import { DailyLadder, StageTag } from "./StageTag";
 
 /** What a placement is told. Facts only — nothing it could advance the day with. */
@@ -142,14 +167,16 @@ export function DailyStageResult({
       data-testid="daily-stage-result"
       data-stage-kind={stage.kind}
       data-pending={settled ? undefined : "true"}
-      className="ranked-shell mx-auto flex w-full max-w-2xl flex-col gap-4"
+      className={`ranked-shell mx-auto flex w-full max-w-2xl flex-col ${RESULT_FRAME_GAP} ${
+        RESULT_TAG_DENSITY} ${RESULT_HERO_DENSITY} ${RESULT_LADDER_DENSITY} ${RESULT_FOCUS_CLEARANCE}`}
     >
       <div className="flex justify-center">
         <StageTag stage={stage} size="lg" />
       </div>
       <ResultHero model={model} reserveScore />
 
-      <div data-testid="daily-stage-result-snapshot-slot" className={SNAPSHOT_FLOOR[stage.kind]}>
+      <div data-testid="daily-stage-result-snapshot-slot"
+        className={`${SNAPSHOT_FLOOR[stage.kind]} ${SNAPSHOT_PHONE_DENSITY[stage.kind]}`}>
         {settled ? (
           <div data-testid="daily-stage-result-summary">
             <ResultStatGrid stats={model.snapshot ?? []} />
@@ -186,7 +213,7 @@ export function DailyStageResult({
           <p role="alert" className="text-xs text-rose-300" data-testid="daily-run-error">{error}</p>
           {onRetry && (
             <button type="button" onClick={onRetry} disabled={busy} data-testid="daily-run-retry"
-              className="rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em]">
+              className={`rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em] ${TOUCH_TARGET}`}>
               Try again
             </button>
           )}

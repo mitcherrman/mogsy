@@ -716,6 +716,48 @@ describe("legacy Arena / Match & Rank analytics are excluded", () => {
   });
 });
 
+
+// --- Daily activity population ---------------------------------------------
+
+describe("daily activity population", () => {
+  it("never reports more new visitors than visitors when first-touch writes outnumber sessions", () => {
+    const ds: AnalyticsDataset = {
+      visitors: [
+        vis("active-session", NOW - HOUR),
+        vis("active-event", NOW - HOUR),
+        vis("orphan-first-touch", NOW - HOUR),
+      ],
+      sessions: [sess("active-session-session", "active-session", NOW - HOUR)],
+      events: [
+        web("landing_viewed", NOW - HOUR, "active-event", "missing-session"),
+        railway("ranked_started", NOW - HOUR, "child-a", { user_id: "player-1" }),
+      ],
+    };
+    const rows = computeDaily(ds, r7);
+    const today = rows.find((r) => r.day === new Date(NOW).toISOString().slice(0, 10))!;
+    expect(today).toEqual({
+      day: new Date(NOW).toISOString().slice(0, 10),
+      visitors: 2,
+      // The analytics session index reconstructs an event-only session.
+      sessions: 2,
+      newVisitors: 2,
+      authoritativeStarts: 1,
+    });
+    expect(rows.every((r) => r.newVisitors <= r.visitors)).toBe(true);
+  });
+
+  it("does not count an old visitor as new when they return today", () => {
+    const ds: AnalyticsDataset = {
+      visitors: [vis("returning", NOW - 10 * DAY)],
+      sessions: [sess("earlier", "returning", NOW - 10 * DAY), sess("recent", "returning", NOW - HOUR)],
+      events: [],
+    };
+    const today = computeDaily(ds, r7)[0]!;
+    expect(today.visitors).toBe(1);
+    expect(today.newVisitors).toBe(0);
+  });
+});
+
 // --- Paged reads ---------------------------------------------------------------------------
 
 describe("paged reads", () => {
