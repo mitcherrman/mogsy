@@ -83,8 +83,8 @@
 
 - **Repository:** the Mogzy frontend (`mitcherrman/mogsy`); local checkout `C:\Users\mlmit\OneDrive\Desktop\mogsy`.
 - **Branch:** `vis/vis-f2-support-docs`, local only (**not pushed**), in its own worktree `C:\Users\mlmit\mogzy-wt\vis-f2-support`. It has no `node_modules` because it needs none.
-- **Base:** `3d79759c` (VIS-F1). That is also the tip of Fable's `vis/vis-f2-cinematic-journey` as checked on 2026-10-19.
-- **Docs commit:** `b06d6956d99b227b89bdbd5e9bd2f0031326f687`, which adds the seven files below. This handoff section is a second, docs-only commit on top of it.
+- **Base:** `3d79759c` (VIS-F1), the parent of Fable's branch. Fable's `vis/vis-f2-cinematic-journey` has since moved to `ae8e67fc` (one commit, "Add Worlds Dynasty VIS-F2 cinematic journey over VIS-F1"). `git merge-tree` of that tip with this branch is clean.
+- **Docs commit:** `b06d6956d99b227b89bdbd5e9bd2f0031326f687`, which adds the seven files below. The handoff and the reconciliation are two further docs-only commits on top of it.
 - **Files:** `docs/roguelike/vis_f2_support/` (00_README, 01_MOMENT_MAP, 02_MEDIA_SLOTS, 03_AUDIO_HOOKS, 04_AMBIENT_SYSTEMS, 05_ASSET_INVENTORY, 06_STORYBOARDS).
 - **Not touched:** Fable's worktree `C:\Users\mlmit\mogzy-wt\vis-f2`, the VIS-F1 worktree, any application code, any backend worktree. Nothing was pushed, merged or deployed.
 
@@ -106,11 +106,63 @@ git status --short                       # expect nothing under docs/roguelike/v
 git cherry-pick 3d79759c..vis/vis-f2-support-docs
 ```
 
-- **Why it is conflict-free:** both commits only **add** files under `docs/roguelike/vis_f2_support/`. They cannot conflict unless that folder already exists there.
+- **Why it is conflict-free:** the support commits only touch files they create under `docs/roguelike/vis_f2_support/`. They cannot conflict unless that folder already exists there (it does not on `ae8e67fc`).
 - **The dev server is unaffected:** nothing under `docs/` is imported, so vite / HMR does not react.
 - **Line endings:** `core.autocrlf=true` prints LF→CRLF warnings; they are harmless.
 - **Without the commits:** `git checkout vis/vis-f2-support-docs -- docs/roguelike/vis_f2_support` stages the files only.
 - **To back out:** `git cherry-pick --abort` mid-pick, or afterwards `git revert` the picked commits.
+
+### Reconciliation with VIS-F2 as built (`ae8e67fc`, read via `git show`, not in Fable's worktree)
+
+Where this package and Fable's implementation differ, **the implementation's names win**; this package adapts to them.
+
+**Slot ids.** Fable's `MEDIA_SLOTS` (`src/pages/dev/dynasty-v2/media.ts`) is the registry. The 02 ids are planning aliases:
+
+| VIS-F2 registry id | Covers 02 slot(s) |
+|---|---|
+| `scene.hq` / `.practice` / `.warroom` / `.tunnel` / `.stadium` / `.backstage` / `.trophy` | `home.title_backdrop`, `prep.room_backdrop`, `scout.dossier_texture`, `season.venue_plate`, `obj.baron.pit_backdrop` (stadium), `end.defeat_plate` (trophy) |
+| `objective.dragon` / `.baron` / `.elder` / `.teamfight` | `obj.*.sigil`, `obj.baron.hero_art` |
+| `trophy.cup` | `end.trophy` |
+| `player.portrait` | `player.portrait` (same id; apply the four tiers) |
+| `champion.class` | `draft.champion_tile` (synthetic champions) |
+| `hero.victory` / `hero.defeat` | `result.hero_mascot`, `end.defeat_plate` |
+| `caster.analyst` / `caster.hype` / `chat.avatar` | 04 desk and pop-in avatars |
+
+Slots in 02 with no registry entry yet (add them to `MEDIA_SLOTS` in its naming when built): `player.trait_chip`, `org.card_crest`, `season.segment_banner`, `season.worlds_mark`, `finals.vs_plate`, `end.confetti`, `meta.unlock_reveal`, `draft.champion_splash_strip`.
+
+**Scenes → the five loops (04):**
+
+| Scene | Loop |
+|---|---|
+| `scene.hq` | `loop.hq` |
+| `scene.practice`, `scene.warroom` | `loop.scrim` |
+| `scene.tunnel`, `scene.backstage` | `loop.backstage` |
+| `scene.stadium` | `loop.stage`, plus `loop.tension` in an objective pit |
+| `scene.trophy` | `loop.stage` at its quietest (champions), fading to silence (run defeat) |
+
+**Cues to fix in VIS-F2.** Three call sites use the voiceless `ranked.round.final`, so they are silent:
+
+- the match-point / series-point stinger (`DynastyV2Prototype.tsx:98`);
+- the Elder stinger (`GameView.tsx:221`);
+- the move into Late (`GameView.tsx:237`).
+
+Use `ranked.module.start` (or a registered `dynasty.*` cue) until voiced. The other cues VIS-F2 added (`ranked.answer.lock`, `ranked.mode.confirm`, `ranked.opponent.found`, `ranked.points.awarded`, `ui.feedback.error`) are voiced.
+
+**Attribution and controls (owner decision 4).**
+
+- Already met: the casters are fictional (`SYN-Lyra`, `SYN-Dax`), and the chat's `aria-label` is "Fictional viewer chat".
+- Still to add:
+  - a **visible** "Simulated" mark on the caster pop-in and the chat (not only in `aria-label`);
+  - the Ambience master switch, per-layer switches and density setting;
+  - the global rate limits (04 rules 3, 5, 6). VIS-F2 currently shows one fixed line per moment, with no global cap.
+
+**Cinematics (owner decision 1).**
+
+- VIS-F2 presents the finals intro and the championship as non-modal, skippable `StoryBeat` panels that fold to a caption. That already satisfies the skip and reduced-motion rules.
+- The approved W3 full-frame treatment (06 S6, S7) is an **allowed upgrade, not a requirement**.
+- Stingers that stay on screen, static, under reduced motion are consistent with 01.
+
+**Elder (decision 5).** VIS-F2's Elder stinger and pit are prototype-fixture paths. Keep the PROTOTYPE-ONLY label on them (01).
 
 ### Confirmed facts (verified 2026-10-19)
 
@@ -136,8 +188,9 @@ git cherry-pick 3d79759c..vis/vis-f2-support-docs
 
 ### Next steps
 
-1. The owner or Fable cherry-picks the two commits into `vis/vis-f2-cinematic-journey` when convenient (manifest above).
-2. VIS-F2 wires `playMoment()` with the 03 fallbacks; adds the W3 finals intro and championship with their static alternatives; builds the portrait-tier frame and `player.trait_chip`.
-3. Audio: generate ticks and locks with Web Audio; propose sources for the 12 signature cues and 5 loops (in-house or CC0) for owner approval before anything lands in `public/assets/dynasty/`.
-4. The owner records provenance for existing Mogzy art and decides per-asset rights before any real portrait or crest appears in Dynasty.
-5. Backend: Elder / Dragon Soul support and the Dragon interactivity decision (O-4) before those prototype-only paths leave the fixtures.
+1. The owner or Fable cherry-picks the support commits into `vis/vis-f2-cinematic-journey` when convenient (manifest above).
+2. VIS-F2 fixes the three silent `ranked.round.final` call sites and adds the visible "Simulated" marks, ambience controls and rate limits (Reconciliation).
+3. VIS-F2 wires `playMoment()` with the 03 fallbacks; adds the W3 finals intro and championship with their static alternatives; builds the portrait-tier frame and `player.trait_chip`.
+4. Audio: generate ticks and locks with Web Audio; propose sources for the 12 signature cues and 5 loops (in-house or CC0) for owner approval before anything lands in `public/assets/dynasty/`.
+5. The owner records provenance for existing Mogzy art and decides per-asset rights before any real portrait or crest appears in Dynasty.
+6. Backend: Elder / Dragon Soul support and the Dragon interactivity decision (O-4) before those prototype-only paths leave the fixtures.
