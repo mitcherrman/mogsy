@@ -1,16 +1,22 @@
 /**
- * UX-1 — Worlds Dynasty clickable gameplay prototype (DEV ONLY, SYNTHETIC).
+ * UX-1 / VIS-F1 — Worlds Dynasty clickable gameplay prototype (DEV ONLY, SYNTHETIC).
  *
  * Route: `/dev/dynasty-v2` (registered only under `import.meta.env.DEV`).
  *        `?view=objectives`  objective gallery (Baron 0-3, Dragon, Elder).
+ *        `?view=showcase`    VIS-F1 showcase: closeout, result, series and run-end heroes.
  *        `?seed=abc`          start with a given run seed.
  *
  * This is a flow prototype. It is NOT connected to the authoritative Combat
  * v2 / Event E0 simulator, any backend, auth or real data. See `engine.ts`.
+ *
+ * VIS-F1 adds the visual shell: the `.dyn` atmosphere (one stage light whose
+ * hue follows the game's mood), the org accent, and a run bar with the crest.
+ * Flow, state and every test id are unchanged from UX-1.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Users } from "lucide-react";
+import "./vis.css";
 import { useSfx } from "@/lib/audio/useSfx";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -18,9 +24,10 @@ import {
   type Game, type GameSummary, type PrepPick, type Run,
 } from "./engine";
 import { SEASON, type Org, type Player, type Role } from "./fixtures";
-import { GameView } from "./GameView";
+import { GameView, type GameMood } from "./GameView";
 import { ObjectiveGallery } from "./ObjectiveGallery";
-import { Pips, ProtoBanner } from "./parts";
+import { Showcase } from "./Showcase";
+import { Crest, Pips, ProtoBanner, accentStyle } from "./parts";
 import {
   DraftScreen, EndScreen, GameResultScreen, HomeScreen, OrgScreen, PrepScreen, RecruitScreen, RosterList, RosterScreen,
   ScoutScreen, SeasonScreen, SeriesScreen, StarsScreen, TacticScreen,
@@ -32,6 +39,7 @@ export default function DynastyV2Prototype() {
   const [params] = useSearchParams();
   const view = params.get("view");
   if (view === "objectives") return <ObjectiveGallery />;
+  if (view === "showcase") return <Showcase />;
   return <Flow initialSeed={params.get("seed") ?? "ux1-0001"} />;
 }
 
@@ -48,10 +56,10 @@ function Flow({ initialSeed }: { initialSeed: string }) {
   const [game, setGame] = useState<Game | null>(null);
   const [summary, setSummary] = useState<GameSummary | null>(null);
   const [rosterOpen, setRosterOpen] = useState(false);
+  const [gameMood, setGameMood] = useState<GameMood>("early");
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (screen === "game") return;
     window.scrollTo?.(0, 0);
     mainRef.current?.querySelector<HTMLElement>("h2[tabindex]")?.focus({ preventScroll: true });
   }, [screen]);
@@ -113,7 +121,7 @@ function Flow({ initialSeed }: { initialSeed: string }) {
         onLock={() => { setGame(null); go("game"); }} />;
       break;
     case "game":
-      body = <GameView key={`${run!.nodeIdx}-${run!.series!.games.length}`} run={run!} picks={picks as Record<Role, string>} onDone={finishCurrentGame} />;
+      body = <GameView key={`${run!.nodeIdx}-${run!.series!.games.length}`} run={run!} picks={picks as Record<Role, string>} onDone={finishCurrentGame} onMood={setGameMood} />;
       break;
     case "result":
       body = <GameResultScreen run={run!} game={game!} summary={summary!} onNext={() => go(summary!.seriesOver ? "series" : "tactic")} />;
@@ -130,30 +138,39 @@ function Flow({ initialSeed }: { initialSeed: string }) {
   }
 
   const inRun = !!run && screen !== "home" && screen !== "org" && screen !== "stars";
+  const mood: string =
+    screen === "game" ? gameMood
+      : screen === "result" ? (summary?.won ? "victory" : "defeat")
+      : screen === "series" ? ((run?.series?.wins ?? 0) >= 3 ? "victory" : "defeat")
+      : screen === "end" ? (run?.alive && run.results[SEASON.length - 1] === "W" ? "victory" : "defeat")
+      : screen === "scout" || screen === "draft" ? "early"
+      : "home";
+  const activeOrg = run?.org ?? org;
+
   return (
-    <div className="min-h-screen bg-[#07111f] pt-11 text-[#efe8d6]" data-testid="dynasty-v2" data-screen={screen}>
+    <div className="dyn min-h-screen pt-11" data-testid="dynasty-v2" data-screen={screen} data-mood={mood} style={accentStyle(activeOrg?.id)}>
       {inRun ? (
-        <div className="sticky top-11 z-20 border-b border-white/10 bg-[#07111f]/95 backdrop-blur" data-testid="run-bar">
-          <div className="mx-auto flex h-11 max-w-3xl items-center gap-3 px-4 text-xs">
-            <span className="truncate font-semibold text-white">{run!.org.name}</span>
+        <div className="sticky top-11 z-20 border-b border-white/10 bg-[#07111f]/90 backdrop-blur" data-testid="run-bar">
+          <div className="mx-auto flex h-11 max-w-4xl items-center gap-2.5 px-4 text-xs">
+            <Crest org={run!.org} size={26} />
+            <span className="dyn-title hidden truncate text-[13px] font-semibold text-white sm:inline">{run!.org.name.replace(/^SYN /, "")}</span>
             <span className="hidden text-white/50 sm:inline">{SEASON[Math.min(run!.nodeIdx, SEASON.length - 1)].label}</span>
-            {run!.series ? <span data-testid="run-bar-series" className="whitespace-nowrap text-white/70">Series <b className="text-white">{run!.series.wins}–{run!.series.losses}</b></span> : null}
-            <span className="ml-auto inline-flex items-center gap-1.5 text-white/60">Cohesion <Pips n={run!.cohesion} max={5} label="Cohesion" /></span>
+            {run!.series ? <span data-testid="run-bar-series" className="whitespace-nowrap text-white/70">Series <b className="dyn-num text-white">{run!.series.wins}–{run!.series.losses}</b></span> : null}
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-white/55">Cohesion <Pips n={run!.cohesion} max={5} label="Cohesion" /></span>
             <Sheet open={rosterOpen} onOpenChange={setRosterOpen}>
-              <SheetTrigger asChild><button type="button" data-testid="roster-open" aria-label="Open roster" className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]"><Users className="h-4 w-4" aria-hidden /></button></SheetTrigger>
-              <SheetContent side="right" className="w-full overflow-y-auto border-white/10 bg-[#0b1727] text-white sm:max-w-md" data-testid="roster-sheet">
-                <SheetHeader><SheetTitle className="text-white">Roster</SheetTitle><SheetDescription className="text-white/60">Five starters and two bench slots.</SheetDescription></SheetHeader>
+              <SheetTrigger asChild><button type="button" data-testid="roster-open" aria-label="Open roster" className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 text-white/80 transition-colors hover:border-[#e3c66f]/50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]"><Users className="h-4 w-4" aria-hidden /></button></SheetTrigger>
+              <SheetContent side="right" className="dyn-scroll w-full overflow-y-auto border-white/10 bg-[#0b1727] text-white sm:max-w-md" data-testid="roster-sheet" style={accentStyle(activeOrg?.id)}>
+                <SheetHeader><SheetTitle className="dyn-title text-white">Roster</SheetTitle><SheetDescription className="text-white/60">Five starters and two bench slots.</SheetDescription></SheetHeader>
                 <div className="mt-4"><RosterList run={run!} /></div>
               </SheetContent>
             </Sheet>
           </div>
         </div>
       ) : null}
-      <main ref={mainRef} className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pb-8 pt-4" data-testid="dynasty-v2-main">
-        {screen !== "home" ? <ProtoBanner /> : null}
+      <main ref={mainRef} className="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-8 pt-4" data-testid="dynasty-v2-main">
+        {screen !== "home" ? <ProtoBanner compact={screen === "game"} /> : null}
         {body}
       </main>
     </div>
   );
 }
-

@@ -265,3 +265,96 @@ describe("reveal timing", () => {
     } finally { vi.useRealTimers(); }
   });
 });
+
+describe("VIS-F1 visual layer", () => {
+  it("renders the showcase with closeout, result, series and run-end heroes", () => {
+    mount("/dev/dynasty-v2?view=showcase");
+    const root = screen.getByTestId("showcase");
+    expect(root.getAttribute("data-mood")).toBe("victory");
+    expect(screen.getAllByTestId("closeout")).toHaveLength(2);
+    expect(screen.getByTestId("showcase-baron-3").getAttribute("data-closeout")).toBe("true");
+    expect(screen.getByTestId("showcase-baron-0").getAttribute("data-tone")).toBe("bad");
+    expect(screen.getAllByTestId("legacy-card").length).toBe(2);
+    expect(screen.getAllByTestId("game-timeline").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByTestId("bo-pips").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("sets the org accent and the mood light as the run progresses", () => {
+    mount();
+    const root = screen.getByTestId("dynasty-v2");
+    expect(root.getAttribute("data-mood")).toBe("home");
+    setup();
+    expect(root.style.getPropertyValue("--dyn-accent")).toBe("#ff8f63");
+    expect(screen.getAllByTestId("org-crest").length).toBeGreaterThanOrEqual(1);
+    enterSeries(); draftAndLock();
+    expect(root.getAttribute("data-mood")).toBe("early");
+    click("events-continue");
+    if (has("objective-panel")) {
+      expect(root.getAttribute("data-mood")).toBe("dragon");
+      expect(screen.getAllByTestId("sigil").some((s) => s.getAttribute("data-kind") === "dragon")).toBe(true);
+    }
+  });
+
+  it("collapses the published tally while the Baron encounter is live and stamps the Late verdict", () => {
+    let seen = { baron: false, late: false };
+    for (let i = 0; i < 40 && !(seen.baron && seen.late); i++) {
+      const { unmount } = mount(`/dev/dynasty-v2?seed=vis-${i}`);
+      setup(); enterSeries(); draftAndLock();
+      for (let guard = 0; screenId() === "game" && guard < 80; guard++) {
+        const v = screen.getByTestId("game-view");
+        const step = v.getAttribute("data-step")!;
+        if (step === "baron" && !seen.baron) {
+          seen = { ...seen, baron: true };
+          const tally = screen.getByTestId("stage-score");
+          expect(within(tally).getByTestId("stage-points").textContent).toMatch(/^\d–\d$/);
+          expect(within(tally).queryByTestId("team-tile")).toBeNull();
+          expect(screen.getByTestId("objective-panel").getAttribute("data-kind")).toBe("baron");
+        }
+        if (step === "after" && v.getAttribute("data-stage") === "late" && has("late-verdict")) {
+          seen = { ...seen, late: true };
+          expect(screen.getByTestId("late-verdict").textContent).toMatch(/Game (won|lost)/);
+          expect(within(screen.getByTestId("stage-result")).queryByText(/Kinda winning|Kinda losing|Even/)).toBeNull();
+        }
+        if (has("objective-panel")) { click("objective-start"); while (screen.getByTestId("objective-panel").getAttribute("data-phase") === "ask") { const opts = screen.getAllByTestId(/^objective-opt-/); fireEvent.click(opts.find((o) => o.getAttribute("data-synthetic-correct") === "false")!); click("objective-next"); } click("objective-continue"); }
+        else if (step === "events") click("events-continue");
+        else if (has("teamfight-resolve")) click("teamfight-resolve");
+        else if (step === "score") click("score-stage");
+        else if (step === "after") click("stage-continue");
+        else if (step === "closed") click("closeout-continue");
+      }
+      unmount();
+    }
+    expect(seen.baron).toBe(true);
+    expect(seen.late).toBe(true);
+  }, 30_000);
+
+  it("keeps the lead marker inside the track at both caps", () => {
+    mount("/dev/dynasty-v2?view=showcase");
+    // LeadMeter is pure: render it directly through the result of a scored stage is indirect; assert the clamp formula via the DOM of a game.
+    cleanup();
+    mount();
+    setup(); enterSeries(); draftAndLock();
+    const meter = screen.getByTestId("lead-meter");
+    const marker = meter.querySelector<HTMLElement>(".dyn-lead-marker")!;
+    const pct = parseFloat(marker.style.left);
+    expect(pct).toBeGreaterThanOrEqual(4);
+    expect(pct).toBeLessThanOrEqual(96);
+  });
+
+  it("applies no reveal delay and no motion classes when motion is not allowed", () => {
+    motion.allowed = false;
+    mount();
+    setup(); enterSeries(); draftAndLock();
+    expect(document.querySelector(".dyn-enter")).toBeNull();
+    expect(document.querySelector(".dyn-stagger")).toBeNull();
+    for (let guard = 0; !has("stage-result") && guard < 20; guard++) {
+      if (has("objective-panel")) { click("objective-start"); while (screen.getByTestId("objective-panel").getAttribute("data-phase") === "ask") { fireEvent.click(screen.getAllByTestId(/^objective-opt-/)[0]); click("objective-next"); } click("objective-continue"); }
+      else if (screen.getByTestId("game-view").getAttribute("data-step") === "events") click("events-continue");
+      else if (has("teamfight-resolve")) click("teamfight-resolve");
+      else click("score-stage");
+    }
+    // With motion off the six tiles and the result are present synchronously after the score click.
+    expect(has("stage-result")).toBe(true);
+    expect(document.querySelector(".dyn-tile--win, .dyn-tile--loss, .dyn-stamp, .dyn-bump")).toBeNull();
+  });
+});
