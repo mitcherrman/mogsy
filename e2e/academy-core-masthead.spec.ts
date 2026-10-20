@@ -138,6 +138,9 @@ test.describe("phones: Orrery-first", () => {
       await expect(page.getByTestId("academy-core-v35")).toHaveAttribute("data-layout", "stacked");
       const d = await commonChecks(page, vp);
       const mast = await box(page, '[data-testid="academy-core-masthead"]');
+      const title = await box(page, "#acore-title");
+      const seal = await box(page, '[data-testid="academy-core-daily"] .o35-seal-mark');
+      expect(title.x + title.width, "the seal never covers the title").toBeLessThanOrEqual(seal.x + 1);
       expect(mast.height, "the identity is one compact row").toBeLessThanOrEqual(64);
       const stage = await box(page, '[data-testid="academy-core-stage"]');
       expect(stage.y, "the Orrery starts right under the row").toBeLessThanOrEqual(mast.y + mast.height + 16);

@@ -121,7 +121,8 @@ html.reduce-motion .o35-seal-ticks { animation: none; }
   flex-direction: row; align-items: center; justify-content: space-between; gap: 0.6rem;
   width: min(100%, 520px); margin-inline: auto;
 }
-.o35-root[data-layout="stacked"] .o35-crest { gap: 0.5rem; flex: 0 1 auto; }
+/* the crest never shrinks under the seal; the seal's label wraps instead */
+.o35-root[data-layout="stacked"] .o35-crest { gap: 0.5rem; flex: none; }
 .o35-root[data-layout="stacked"] .o35-crest-mark { width: 26px; height: 29px; }
 .o35-root[data-layout="stacked"] .o35-crest-eyebrow { display: none; }
 .o35-root[data-layout="stacked"] .o35-crest-text { padding-bottom: 0.3rem; gap: 0; }
@@ -142,6 +143,13 @@ html.reduce-motion .o35-seal-ticks { animation: none; }
 @container (max-width: 359px) {
   .o35-root[data-layout="stacked"] .o35-seal-label { white-space: normal; font-size: 0.72rem; }
   .o35-root[data-layout="stacked"] .o35-seal { --plate-h: 46px; }
+}
+@container (max-width: 300px) {
+  .o35-root[data-layout="stacked"] .o35-masthead { gap: 0.4rem; }
+  .o35-root[data-layout="stacked"] .o35-title { font-size: 0.84rem; letter-spacing: 0.1em; }
+  .o35-root[data-layout="stacked"] .o35-seal { --seal-d: 48px; min-height: 48px; }
+  .o35-root[data-layout="stacked"] .o35-seal-text { padding: 0 1.05rem 0 0.35rem; }
+  .o35-root[data-layout="stacked"] .o35-seal-label { font-size: 0.68rem; letter-spacing: 0.04em; }
 }
 
 /* ------------------------- short landscape: identity beside a fitted Orrery */
