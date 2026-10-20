@@ -85,6 +85,13 @@ export function usePlayerInbox({
     }
   }, [enabled, userId, view, pageSize, signupAt]);
 
+  // Post-action reconciliation always refreshes the CURRENT tab/view. An
+  // action's own closure can be one render old (e.g. a permalink that marks
+  // read and switches tab in the same effect); refreshing through it could
+  // land after the new tab's load and overwrite the list with the old tab.
+  const latestRefresh = useRef(refresh);
+  latestRefresh.current = refresh;
+
   useEffect(() => {
     known.current = null;
     if (!enabled || !userId) {
@@ -181,7 +188,7 @@ export function usePlayerInbox({
         throw error;
       } finally {
         announceNotificationsChanged("player", surface);
-        void refresh();
+        void latestRefresh.current();
       }
     },
     [userId, items, summary, view, surface, refresh],

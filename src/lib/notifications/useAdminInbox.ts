@@ -63,6 +63,13 @@ export function useAdminInbox({ enabled, userId, tab, pageSize = 30, onArrival }
     }
   }, [enabled, userId, tab, pageSize]);
 
+  // Post-action reconciliation always refreshes the CURRENT tab/view. An
+  // action's own closure can be one render old (e.g. a permalink that marks
+  // read and switches tab in the same effect); refreshing through it could
+  // land after the new tab's load and overwrite the list with the old tab.
+  const latestRefresh = useRef(refresh);
+  latestRefresh.current = refresh;
+
   useEffect(() => {
     if (!enabled || !userId) {
       setItems([]);
@@ -162,7 +169,7 @@ export function useAdminInbox({ enabled, userId, tab, pageSize = 30, onArrival }
         return await setAdminState(userId, ids, action, bulkTab);
       } finally {
         announceNotificationsChanged("admin", surface);
-        await refresh();
+        await latestRefresh.current();
       }
     },
     [userId, tab, surface, refresh],
@@ -174,7 +181,7 @@ export function useAdminInbox({ enabled, userId, tab, pageSize = 30, onArrival }
         return await resolveAdminItems(ids, resolution);
       } finally {
         announceNotificationsChanged("admin", surface);
-        await refresh();
+        await latestRefresh.current();
       }
     },
     [surface, refresh],
@@ -186,7 +193,7 @@ export function useAdminInbox({ enabled, userId, tab, pageSize = 30, onArrival }
         return await reopenAdminItem(id);
       } finally {
         announceNotificationsChanged("admin", surface);
-        await refresh();
+        await latestRefresh.current();
       }
     },
     [surface, refresh],
