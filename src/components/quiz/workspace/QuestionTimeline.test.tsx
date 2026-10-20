@@ -567,11 +567,12 @@ describe("MALT B1 — the anchored review popover", () => {
     render(<QuestionTimeline matchId="m1" roundCount={2} review={REVIEWED} />);
     open(1);
     const pop = await screen.findByTestId("question-review-popover");
-    // ~460px on a desktop, never wider than the viewport, and height-capped by
-    // the space Radix actually measured on the side it chose — capping on a
-    // fixed `vh` fraction overflowed the fold near an edge.
-    expect(pop.className).toContain("w-[min(29rem,calc(100vw-2rem))]");
-    expect(pop.className).toContain("max-h-[min(24rem,var(--radix-popper-available-height))]");
+    // V2.1: ~672px on a desktop, never wider than the viewport, and
+    // height-capped by BOTH 85dvh and the space Radix actually measured on the
+    // side it chose — capping on a fixed fraction alone overflowed the fold
+    // near an edge.
+    expect(pop.className).toContain("w-[min(42rem,calc(100vw-2rem))]");
+    expect(pop.className).toContain("max-h-[min(85dvh,var(--radix-popper-available-height))]");
     expect(pop.className).toContain("overflow-y-auto");
   });
 
@@ -612,7 +613,7 @@ describe("MALT B1 — the anchored review popover", () => {
     // Everything still renders; the box, not the content, decides the size.
     expect(pop.textContent).toContain("Noonquiver");
     expect(within(pop).getByTestId("review-working").querySelectorAll("li")).toHaveLength(8);
-    expect(pop.className).toContain("max-h-[min(24rem,var(--radix-popper-available-height))]");
+    expect(pop.className).toContain("max-h-[min(85dvh,var(--radix-popper-available-height))]");
     expect(pop.className).toContain("overflow-y-auto");
   });
 

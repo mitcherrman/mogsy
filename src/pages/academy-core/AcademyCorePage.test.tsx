@@ -318,7 +318,7 @@ describe("keyboard focus brings a book toward the viewer", () => {
     // jsdom's :focus-visible: stub matches() for the keyboard case
     const link = book("pro-play");
     const orig = link.matches.bind(link);
-    link.matches = (s: string) => (s === ":focus-visible" ? true : orig(s));
+    vi.spyOn(link, "matches").mockImplementation((s: string) => (s === ":focus-visible" ? true : orig(s)));
     act(() => { link.focus(); });
     act(() => { vi.advanceTimersByTime(2500); });
     expect(slot("pro-play")).toHaveAttribute("data-active", "true");
@@ -565,7 +565,7 @@ describe("phase 2: arrow keys, quality tiers", () => {
     mount();
     const keyboard = (el: HTMLElement) => {
       const orig = el.matches.bind(el);
-      el.matches = (q: string) => (q === ":focus-visible" ? true : orig(q));
+      vi.spyOn(el, "matches").mockImplementation((q: string) => (q === ":focus-visible" ? true : orig(q)));
     };
     const [a, b] = [book("leaguecraft"), book("pro-play")];
     keyboard(a);

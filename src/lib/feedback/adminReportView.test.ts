@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { capturedFields, diagnosticFields, reportOrigin } from "./adminReportView";
+import { capturedFields, diagnosticFields, reportOrigin, plainReportContext } from "./adminReportView";
 import { FEEDBACK_ADMIN_ONLY_FIELDS } from "./contract";
 
 const QUESTION_ROW = {
@@ -207,5 +207,26 @@ describe("the submitter/admin boundary is unchanged", () => {
     for (const file of ["src/pages/Feedback.tsx", "src/lib/feedback/submitReport.ts"]) {
       expect(code(file)).not.toMatch(/from\(\s*["']feedback["']\s*\)\s*\.select/);
     }
+  });
+});
+
+describe("plain-English question context", () => {
+  it("preserves captured prompt, options, answer and selection without claiming validation", () => {
+    expect(plainReportContext(QUESTION_ROW, {}).prompt).toBe("Which item gives the most armor?");
+    expect(plainReportContext(QUESTION_ROW, {}).choices).toBe("Thornmail\nWarmog's");
+    expect(plainReportContext(QUESTION_ROW, {}).answer).toBe("Thornmail");
+    expect(plainReportContext(QUESTION_ROW, {}).selected).toBe("Warmog's");
+  });
+  it("ranked engine id and Daily route cannot fabricate captured mode", () => {
+    const plain = plainReportContext({ entry_intent: "question_report", category: "Daily", page_url: "/quiz/daily-challenge", report_context: { game_mode_id: "ranked", round_number: 0 } }, {});
+    expect(plain.mode).toBe("Game mode was not captured");
+    expect(plain.round).toBe("0");
+  });
+  it("page entry intent cannot turn injected question fields into question evidence", () => {
+    expect(plainReportContext({ ...QUESTION_ROW, entry_intent: "page_report" }, {}).prompt).toBeNull();
+  });
+  it("malformed context is unavailable and viewport is not a verified device", () => {
+    expect(plainReportContext({ entry_intent: "question_report", report_context: ["bad"] }, {}).prompt).toBe("Question text was not captured");
+    expect(plainReportContext({}, { viewport: "390x844", ua: "iPhone" }).device).toBe("Browser viewport 390x844 · device not confirmed");
   });
 });
