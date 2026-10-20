@@ -10,6 +10,8 @@ on:
       - 'src/components/admin/AdminUserReports*'
       - 'src/components/admin/AdminComments*'
       - 'src/components/admin/AdminModeratorConfig*'
+      - 'src/components/admin/RecordFocusNotice*'
+      - 'src/components/admin/recordDeepLinks*'
       - 'src/pages/Notifications*'
       - 'src/test/notifications/**'
       - 'src/test/security/adminNotification*'
@@ -36,7 +38,7 @@ jobs:
       - name: Database lifecycle, RLS, backfill, rollback and policy parity (real Postgres via PGlite)
         run: npm test -- src/test/security/notificationsV2Lifecycle.test.ts src/test/security/notificationsV2Policy.test.ts src/test/security/adminNotificationReadSemantics.test.ts src/test/security/adminNotificationReadsMigration.test.ts src/test/security/adminNotificationPolicy.test.ts src/test/security/com1SocialNotificationIdentity.test.ts src/test/security/com1LiveSocialRealtime.test.ts
       - name: Notification surfaces and neighbouring workflows (unit + component)
-        run: npm test -- src/lib/notifications src/components/hud src/components/admin/AdminNotifications.test.tsx src/components/admin/AdminPushNotifications.test.tsx src/components/admin/AdminModeratorConfig.test.tsx src/pages/Notifications.test.tsx src/lib/admin/useAdminAttention.test.ts
+        run: npm test -- src/lib/notifications src/components/hud src/components/admin/AdminNotifications.test.tsx src/components/admin/AdminPushNotifications.test.tsx src/components/admin/AdminModeratorConfig.test.tsx src/components/admin/recordDeepLinks.test.tsx src/pages/Notifications.test.tsx src/lib/admin/useAdminAttention.test.ts
       - name: Typecheck (app and the browser harness)
         run: |
           npx tsc --noEmit -p tsconfig.app.json
@@ -45,7 +47,7 @@ jobs:
         run: npx vite build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser acceptance — desktop and phone
+      - name: Browser acceptance — desktop and phone (inbox, bell, player page, exact-record deep links)
         run: npx playwright test -c playwright.notifications-v2.config.ts
       - name: Upload screenshots and report
         if: always()

@@ -10,7 +10,8 @@
  * which is how two devices converge in production.
  *
  * Dev-only (served by `vite --mode e2e`); never part of a production build.
- * ?view=admin | menu | player | sync   ?role=admin | player   ?seed=reset
+ * ?view=admin | menu | player | sync | reports   ?role=admin | player   ?seed=reset
+ * Deep links: &notification=<id> (admin permalink), &focus=<id>&from_notification=<id> (reports view).
  */
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -22,6 +23,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import MogzyIdentityMenu from "@/components/hud/MogzyIdentityMenu";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import Notifications from "@/pages/Notifications";
+import AdminUserReports from "@/components/admin/AdminUserReports";
 
 const params = new URLSearchParams(window.location.search);
 const view = params.get("view") ?? "admin";
@@ -42,6 +44,9 @@ const seedAdmin = (): FakeAdminRow[] => [
   { id: "s2", type: "feedback", category: "community", priority: "normal", title: "New feedback: More Ranked modes", subject_type: "feedback", subject_id: "fb-3", created_at: iso(400), is_read: true },
   { id: "p1", type: "system_notice", category: "platform", priority: "low", title: "Nightly content refresh finished", created_at: iso(600) },
   { id: "r1", type: "user_report", category: "action", priority: "high", title: "User reported (handled)", subject_type: "user_report", subject_id: "ur-0", created_at: iso(60 * 24 * 3), resolved_at: iso(60 * 24 * 2), resolution: "resolved_report" },
+  // Already dismissed, so it changes no counter — but its permalink is the
+  // image report's record view.
+  { id: "i1", type: "image_report", category: "action", priority: "normal", title: "Image reported: Infinity Edge", subject_type: "image", subject_id: "img-1", metadata: { image_id: "img-1" }, occurrence_count: 3, created_at: iso(60 * 24 * 5), resolved_at: iso(60 * 24 * 4), resolution: "dismissed", is_read: true },
 ];
 
 const seedPlayer = (): FakePlayerRow[] => [
@@ -52,6 +57,22 @@ const seedPlayer = (): FakePlayerRow[] => [
 ];
 
 const server = createInboxServer();
+// Record tables behind the deep links. ur-1 (the report behind notification
+// u1) is deliberately the OLDEST of 60, beyond the reports view's 50-row cap,
+// so only a by-id load can open it.
+server.tables.public_profiles = [{ id: "p1", display_name: "Ana", avatar_url: null }];
+server.tables.user_reports = [
+  ...Array.from({ length: 59 }, (_, i) => ({
+    id: `ur-r${i}`, reporter_profile_id: "p1", reported_profile_id: "p1", reason: "spam", details: null,
+    status: "pending", created_at: iso(60 + i),
+  })),
+  { id: "ur-1", reporter_profile_id: "p1", reported_profile_id: "p1", reason: "harassment", details: "Repeated slurs in chat", status: "pending", created_at: iso(60 * 24 * 40) },
+];
+server.tables.preset_item_images = [{
+  id: "img-1", preset_item_id: "item-1", is_hidden: false, report_count: 3,
+  image_url: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='80' height='80' fill='%23c9a84c'/></svg>",
+}];
+server.tables.preset_items = [{ id: "item-1", name: "Infinity Edge" }];
 type Persisted = { admin: FakeAdminRow[]; player: FakePlayerRow[]; muted: string[] };
 const load = (): Persisted | null => {
   try {
@@ -117,6 +138,7 @@ function Harness() {
       <main className="mx-auto max-w-3xl px-3 py-4 sm:px-6">
         {(view === "admin" || view === "sync") && <AdminNotifications />}
         {view === "player" && <Notifications />}
+        {view === "reports" && <AdminUserReports />}
       </main>
       <Sonner />
     </div>

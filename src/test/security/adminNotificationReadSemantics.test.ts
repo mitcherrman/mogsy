@@ -140,7 +140,8 @@ describe("admin read state comes from receipts, never from is_read", () => {
   it("never names an admin in a v2 lifecycle RPC — the subject is always the session", () => {
     const api = files.find(f => f.path === "src/lib/notifications/api.ts")!;
     const calls = [...api.code.matchAll(/rpc\("(admin_[a-z_]+)"(?:,\s*(\{[^}]*\}))?/g)];
-    expect(calls.map(c => c[1]).sort()).toEqual([
+    expect([...new Set(calls.map(c => c[1]))].sort()).toEqual([
+      "admin_get_notification",
       "admin_get_notifications",
       "admin_notification_counts",
       "admin_reopen_notification",

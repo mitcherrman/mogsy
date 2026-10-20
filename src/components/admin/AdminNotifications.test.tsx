@@ -16,8 +16,10 @@ const authState = vi.hoisted(() => ({ user: { id: "admin-a" } as null | { id: st
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 const toastFn = vi.hoisted(() => Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), info: vi.fn() }));
 vi.mock("sonner", () => ({ toast: toastFn }));
+const routerLocation = vi.hoisted(() => ({ pathname: "/admin/operations", search: "?section=notifications" }));
 vi.mock("react-router-dom", () => ({
-  Link: ({ to, children, onClick, ...rest }: Record<string, unknown> & { to: string; children?: unknown; onClick?: (e: unknown) => void }) => (
+  useLocation: () => routerLocation,
+  Link:({ to, children, onClick, ...rest }: Record<string, unknown> & { to: string; children?: unknown; onClick?: (e: unknown) => void }) => (
     <a href={to} {...rest} onClick={e => { e.preventDefault(); onClick?.(e); }}>
       {children as never}
     </a>
@@ -54,6 +56,7 @@ const question = {
 beforeEach(() => {
   inbox.reset();
   authState.user = { id: "admin-a" };
+  routerLocation.search = "?section=notifications";
   inbox.admin = [
     structuredClone(question),
     { id: "c1", type: "comment_report", category: "action", priority: "critical", title: "Comment auto-hidden", subject_type: "comment", subject_id: "cm-1", occurrence_count: 6, created_at: "2026-10-18T10:00:00.000Z" },
@@ -94,7 +97,7 @@ describe("organisation and counters", () => {
     expect(digest.textContent).toMatch(/Evidence attached/);
     expect(digest.textContent).toMatch(/Review: In progress/);
     const link = within(q).getByRole("link", { name: /Open feedback/ });
-    expect(link.getAttribute("href")).toBe("/admin/users?section=moderation&view=feedback&focus=fb-1");
+    expect(link.getAttribute("href")).toBe("/admin/users?section=moderation&view=feedback&focus=fb-1&from_notification=q1");
   });
 
   it("shows a deduplicated report's occurrence count", async () => {
@@ -116,11 +119,15 @@ describe("read, done and resolved stay distinct", () => {
     expect(inbox.calls("admin_set_notification_state")[0].args).toEqual({ _ids: ["q1"], _action: "read", _tab: null });
   });
 
-  it("opening the record marks it read for this admin", async () => {
+  it("the record link targets the exact record by id, and clicking it neither reads nor resolves", async () => {
     render(<AdminNotifications />);
     const q = await screen.findByTestId("admin-notification-q1");
-    fireEvent.click(within(q).getByRole("link", { name: /Open feedback/ }));
-    await waitFor(() => expect(inbox.calls("admin_set_notification_state").length).toBe(1));
+    const link = within(q).getByRole("link", { name: /Open feedback/ });
+    expect(link.getAttribute("href")).toBe("/admin/users?section=moderation&view=feedback&focus=fb-1&from_notification=q1");
+    fireEvent.click(link);
+    // The destination marks it read once the record has actually opened.
+    expect(inbox.calls("admin_set_notification_state")).toHaveLength(0);
+    expect(inbox.calls("admin_resolve_notifications")).toHaveLength(0);
   });
 
   it("Done moves a community item to Completed, where it can be moved back", async () => {
@@ -242,5 +249,71 @@ describe("before the migration (legacy fallback)", () => {
     const up = inbox.fromCalls.find(c2 => c2.table === "admin_notification_reads" && c2.op === "upsert")!;
     expect(up.payload).toEqual([{ notification_id: "c1", admin_user_id: "admin-a" }]);
     expect(inbox.fromCalls.some(c => c.table === "admin_notifications" && c.op === "update")).toBe(false);
+  });
+});
+
+describe("notification permalinks (exact-record deep links)", () => {
+  it("opens the linked notification by id, switches to its tab, highlights it and marks it read", async () => {
+    routerLocation.search = "?section=notifications&notification=s1";
+    render(<AdminNotifications />);
+    const card = await screen.findByTestId("admin-notification-linked-row");
+    expect(card).toHaveTextContent("dark mode please");
+    await waitFor(() => expect(tab("community").getAttribute("aria-selected")).toBe("true"));
+    await waitFor(() => expect(inbox.calls("admin_set_notification_state")[0]?.args).toEqual({ _ids: ["s1"], _action: "read", _tab: null }));
+    expect(inbox.calls("admin_get_notification")[0].args).toEqual({ _id: "s1" });
+    expect(row("s1").className).toMatch(/ring-2/);
+    // A feedback item's card still links on to the feedback record itself.
+    expect(within(card).getByRole("link", { name: /Open feedback/ }).getAttribute("href")).toContain("focus=fb-2");
+  });
+
+  it("opens a resolved item in Completed rather than losing it", async () => {
+    routerLocation.search = "?section=notifications&notification=r1";
+    render(<AdminNotifications />);
+    expect(await screen.findByTestId("admin-notification-linked-row")).toHaveTextContent("Report resolved");
+    await waitFor(() => expect(tab("completed").getAttribute("aria-selected")).toBe("true"));
+  });
+
+  it("explains a deleted or inaccessible notification instead of showing a generic page", async () => {
+    routerLocation.search = "?section=notifications&notification=gone-1";
+    render(<AdminNotifications />);
+    expect(await screen.findByTestId("admin-notification-linked-missing")).toHaveTextContent(/no longer exists/);
+    expect(inbox.calls("admin_set_notification_state")).toHaveLength(0);
+    expect(screen.getByTestId("admin-notification-linked-close").getAttribute("href")).toBe("/admin/operations?section=notifications");
+  });
+
+  it("is the record view for an image report: shows the image and hides it on request", async () => {
+    inbox.admin.push({
+      id: "i1", type: "image_report", category: "action", priority: "normal", title: "Image reported: Infinity Edge",
+      subject_type: "image", subject_id: "img-1", metadata: { image_id: "img-1" },
+    });
+    inbox.tables.preset_item_images = [
+      { id: "img-1", image_url: "https://img.test/ie.png", is_hidden: false, report_count: 3, preset_item_id: "item-1" },
+    ];
+    inbox.tables.preset_items = [{ id: "item-1", name: "Infinity Edge" }];
+    render(<AdminNotifications />);
+    const listed = await screen.findByTestId("admin-notification-i1");
+    expect(within(listed).getByRole("link", { name: /Open image/ }).getAttribute("href")).toBe(
+      "/admin/operations?section=notifications&notification=i1",
+    );
+    routerLocation.search = "?section=notifications&notification=i1";
+    render(<AdminNotifications />);
+    const detail = await screen.findByTestId("admin-image-detail");
+    expect(detail).toHaveTextContent("Infinity Edge");
+    expect(detail).toHaveTextContent("3 reports");
+    fireEvent.click(within(detail).getByRole("button", { name: "Hide image" }));
+    await waitFor(() =>
+      expect(inbox.fromCalls.some(c => c.table === "preset_item_images" && c.op === "update")).toBe(true),
+    );
+    expect(inbox.fromCalls.find(c => c.table === "preset_item_images" && c.op === "update")!.payload).toEqual({ is_hidden: true });
+  });
+
+  it("says so when the reported image itself was deleted", async () => {
+    inbox.admin.push({
+      id: "i2", type: "image_report", category: "action", title: "Image reported: gone",
+      subject_type: "image", subject_id: "img-gone",
+    });
+    routerLocation.search = "?section=notifications&notification=i2";
+    render(<AdminNotifications />);
+    expect(await screen.findByTestId("admin-image-missing")).toBeTruthy();
   });
 });

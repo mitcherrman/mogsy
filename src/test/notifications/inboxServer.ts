@@ -95,6 +95,8 @@ export function createInboxServer() {
     listeners: [] as Listener[],
     statusCallbacks: [] as { channel: string; cb: (status: string) => void }[],
     removedChannels: 0,
+    /** Generic record tables served by from(): { table: rows }. */
+    tables: {} as Record<string, Json[]>,
   };
 
   const now = () => new Date().toISOString();
@@ -243,6 +245,12 @@ export function createInboxServer() {
         const tab = String(args._tab);
         return { data: page(adminTabRows(tab), args, r => adminOut(r, tab), tab === "action"), error: null };
       }
+      case "admin_get_notification": {
+        const r = s.admin.find(x => x.id === args._id);
+        if (!r) return { data: [], error: null };
+        const st = aState(r);
+        return { data: [{ ...adminOut(r, "single"), tab: st === "active" ? r.category : "completed" }], error: null };
+      }
       case "admin_notification_counts":
         return { data: counts(), error: null };
       case "admin_unread_notification_count":
@@ -298,6 +306,8 @@ export function createInboxServer() {
 
   /** PostgREST builder over the LEGACY tables (pre-migration fallback). */
   const from = (table: string) => {
+    const eqs: Array<[string, unknown]> = [];
+    let cap: number | undefined;
     const result = (): { data: unknown; error: DbError | null } => {
       if (s.errors[`from:${table}`]) return { data: null, error: s.errors[`from:${table}`]! };
       switch (table) {
@@ -320,8 +330,11 @@ export function createInboxServer() {
           return { data: s.legacyAdminReads, error: null };
         case "notification_preferences":
           return { data: s.legacy ? null : { muted_categories: s.muted }, error: null };
-        default:
-          return { data: [], error: null };
+        default: {
+          // Generic record tables (e.g. preset_item_images) filtered by .eq().
+          const rows = (s.tables[table] ?? []).filter(r => eqs.every(([c, v]) => r[c] === v));
+          return { data: cap == null ? rows : rows.slice(0, cap), error: null };
+        }
       }
     };
     const b: Record<string, unknown> = {};
@@ -331,8 +344,19 @@ export function createInboxServer() {
         s.fromCalls.push({ table, op: "select", payload: cols });
         return b;
       },
-      eq: chain, in: chain, gte: chain, order: chain, limit: chain,
-      maybeSingle: () => Promise.resolve(result()),
+      eq: (column: string, value: unknown) => {
+        eqs.push([column, value]);
+        return b;
+      },
+      in: chain, gte: chain, order: chain, not: chain,
+      limit: (n: number) => {
+        cap = n;
+        return b;
+      },
+      maybeSingle: () => {
+        const r = result();
+        return Promise.resolve(Array.isArray(r.data) ? { data: r.data[0] ?? null, error: r.error } : r);
+      },
       single: () => Promise.resolve(result()),
       upsert: (rows: unknown, opts: unknown) => {
         s.fromCalls.push({ table, op: "upsert", payload: rows, opts });
@@ -400,6 +424,7 @@ export function createInboxServer() {
       s.listeners = [];
       s.statusCallbacks = [];
       s.removedChannels = 0;
+      s.tables = {};
     },
     /** Deliver a realtime frame to every matching subscription. */
     emit(table: string, eventType: "INSERT" | "UPDATE" | "DELETE", row: Json = {}) {

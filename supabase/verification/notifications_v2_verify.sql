@@ -33,6 +33,9 @@ SELECT
      'admin_notifications_v2_classify','user_notifications_v2_classify','admin_notification_states_guard',
      'admin_notifications_v2_disposition','feedback_v2_notification_sync','user_reports_v2_notification_sync',
      'comments_v2_notification_sync','friendships_v2_notification_sync')) = 8                    AS triggers_ok,
+  (to_regclass('public.preset_item_images') IS NULL OR EXISTS (
+     SELECT 1 FROM pg_trigger WHERE NOT tgisinternal AND tgname = 'preset_item_images_v2_notification_sync')) AS image_trigger_ok,
+  NOT has_function_privilege('anon', 'public.admin_get_notification(uuid)', 'EXECUTE')                AS permalink_grant_ok,
   -- The shape of the new inboxes (shared view; per-admin read/done is personal).
   (SELECT count(*) FROM public.admin_notifications WHERE category = 'action' AND resolved_at IS NULL) AS action_required_open,
   (SELECT count(*) FROM public.admin_notifications WHERE category = 'community' AND resolved_at IS NULL

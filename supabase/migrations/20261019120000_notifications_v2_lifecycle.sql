@@ -809,7 +809,46 @@ CREATE TRIGGER comments_v2_notification_sync
   AFTER UPDATE OF is_hidden, hidden_by_admin OR DELETE ON public.comments
   FOR EACH ROW EXECUTE FUNCTION public.comments_v2_notification_sync();
 
--- 6e. Friend requests stop being actionable the moment the request is
+-- 6e. Reported images (legacy item images). An ADMIN hiding or restoring the
+--     image, or deleting it, resolves the report. The automatic threshold hide
+--     runs inside the reporter's own transaction, where has_role(admin) is
+--     false — so, as for comments, auto-hide escalates but never resolves.
+CREATE OR REPLACE FUNCTION public.preset_item_images_v2_notification_sync()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM public.admin_notifications_v2_sync('image', OLD.id::text, true, 'subject_deleted');
+    RETURN OLD;
+  END IF;
+  IF NEW.is_hidden IS DISTINCT FROM OLD.is_hidden
+     AND public.has_role(auth.uid(), 'admin'::app_role) THEN
+    PERFORM public.admin_notifications_v2_sync(
+      'image', NEW.id::text, true, CASE WHEN NEW.is_hidden THEN 'hidden_by_admin' ELSE 'restored' END);
+  END IF;
+  RETURN NEW;
+EXCEPTION WHEN others THEN
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.preset_item_images_v2_notification_sync() FROM PUBLIC, anon, authenticated;
+
+DO $$
+BEGIN
+  IF to_regclass('public.preset_item_images') IS NOT NULL THEN
+    EXECUTE 'DROP TRIGGER IF EXISTS preset_item_images_v2_notification_sync ON public.preset_item_images';
+    EXECUTE 'CREATE TRIGGER preset_item_images_v2_notification_sync
+               AFTER UPDATE OF is_hidden OR DELETE ON public.preset_item_images
+               FOR EACH ROW EXECUTE FUNCTION public.preset_item_images_v2_notification_sync()';
+  END IF;
+END
+$$;
+
+-- 6f. Friend requests stop being actionable the moment the request is
 --     accepted, declined, cancelled or the friendship row disappears.
 CREATE OR REPLACE FUNCTION public.friendships_v2_notification_sync()
 RETURNS trigger
@@ -1008,6 +1047,41 @@ BEGIN
      OR (t.rank_ = _cursor_rank AND (t.at_, t.id) < (_cursor_at, _cursor_id))
   ORDER BY t.rank_ ASC, t.at_ DESC, t.id DESC
   LIMIT LEAST(GREATEST(COALESCE(_limit, 30), 1), 100);
+END;
+$$;
+
+-- One notification by its stable id, as THIS admin sees it, plus the tab it
+-- belongs in — the target of a notification permalink
+-- (/admin/operations?section=notifications&notification=<id>). Returns no row
+-- for an id that does not exist; RLS on admin_notifications makes any row a
+-- non-admin cannot see equally absent, and the role check refuses outright.
+CREATE OR REPLACE FUNCTION public.admin_get_notification(_id uuid)
+RETURNS TABLE (
+  id uuid, type text, category text, priority text, title text, message text,
+  metadata jsonb, created_at timestamptz, activity_at timestamptz,
+  occurrence_count integer, subject_type text, subject_id text,
+  expires_at timestamptz, resolved_at timestamptz, resolution text,
+  is_read boolean, is_done boolean, is_saved boolean, is_expired boolean,
+  state text, sort_rank integer, sort_at timestamptz, tab text
+)
+LANGUAGE plpgsql
+STABLE
+SET search_path = public
+AS $$
+#variable_conflict use_column
+BEGIN
+  IF NOT public.has_role(auth.uid(), 'admin'::app_role) THEN
+    RAISE EXCEPTION 'admin role required' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN QUERY
+  SELECT x.id, x.type, x.category, x.priority, x.title, x.message, x.metadata,
+         x.created_at, x.activity_at, x.occurrence_count, x.subject_type, x.subject_id,
+         x.expires_at, x.resolved_at, x.resolution,
+         x.is_read, x.done_at IS NOT NULL, x.saved_at IS NOT NULL, x.is_expired,
+         x.state, 0, x.activity_at,
+         CASE WHEN x.state = 'active' THEN x.category ELSE 'completed' END
+  FROM public.admin_notification_inbox_rows() x
+  WHERE x.id = _id;
 END;
 $$;
 
@@ -1214,6 +1288,8 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.admin_get_notification(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_get_notification(uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.admin_get_notifications(text, integer, integer, timestamptz, uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_notification_counts() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_set_notification_state(uuid[], text, text) FROM PUBLIC, anon;

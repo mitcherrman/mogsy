@@ -129,3 +129,86 @@ test("the bell panel fits the viewport and closes on Escape", async ({ page }) =
   await expect(panel).toHaveCount(0);
   await expect(trigger).toBeFocused();
 });
+
+/* ───────────────────── exact-record deep links ───────────────────── */
+
+const adminRead = (page: Page, id: string) =>
+  page.evaluate(nid => {
+    const s = (window as unknown as { __inbox: { admin: Array<{ id: string; is_read?: boolean; resolved_at?: string | null }> } }).__inbox;
+    const row = s.admin.find(r => r.id === nid);
+    return { read: Boolean(row?.is_read), resolved: Boolean(row?.resolved_at) };
+  }, id);
+
+test("a notification permalink opens that exact item, survives refresh, and follows Back/Forward", async ({ page }, info) => {
+  await harness(page, "view=admin&role=admin&seed=reset&notification=s1");
+  const card = page.getByTestId("admin-notification-linked-row");
+  await expect(card).toContainText("Add a dark parchment theme");
+  await expect(page.getByTestId("admin-notif-tab-community")).toHaveAttribute("aria-selected", "true");
+  await expect(row(page, "s1")).toHaveClass(/ring-2/);
+  await expect.poll(() => adminRead(page, "s1")).toEqual({ read: true, resolved: false });
+  await info.attach("admin-permalink", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+
+  await page.reload();
+  await expect(page.getByTestId("admin-notification-linked-row")).toContainText("Add a dark parchment theme");
+
+  await page.getByTestId("admin-notification-linked-close").click();
+  await expect(page.getByTestId("admin-notification-linked")).toHaveCount(0);
+  expect(page.url()).not.toContain("notification=");
+  await page.goBack();
+  await expect(page.getByTestId("admin-notification-linked-row")).toContainText("Add a dark parchment theme");
+  await page.goForward();
+  await expect(page.getByTestId("admin-notification-linked")).toHaveCount(0);
+});
+
+test("a resolved item opens in Completed; an unknown id is explained, not a blank page", async ({ page }) => {
+  await harness(page, "view=admin&role=admin&seed=reset&notification=r1");
+  await expect(page.getByTestId("admin-notification-linked-row")).toContainText("Report resolved");
+  await expect(page.getByTestId("admin-notif-tab-completed")).toHaveAttribute("aria-selected", "true");
+
+  await harness(page, "view=admin&role=admin&notification=does-not-exist");
+  await expect(page.getByTestId("admin-notification-linked-missing")).toBeVisible();
+});
+
+test("an image report's permalink is its record view: the image and its hide control", async ({ page }, info) => {
+  await harness(page, "view=admin&role=admin&seed=reset&notification=i1");
+  const detail = page.getByTestId("admin-image-detail");
+  await expect(detail).toContainText("Infinity Edge");
+  await expect(detail).toContainText("3 reports");
+  await expect(detail.getByRole("button", { name: "Hide image" })).toBeVisible();
+  await info.attach("image-record", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+});
+
+test("a report deep link opens the exact report beyond the list cap and only then marks it read", async ({ page }, info) => {
+  await harness(page, "view=admin&role=admin&seed=reset");
+  await expect(row(page, "u1")).toHaveAttribute("data-read", "false");
+  expect(await adminRead(page, "u1")).toEqual({ read: false, resolved: false });
+
+  // The record view, opened directly by URL (as from the bell or the inbox).
+  await harness(page, "view=reports&role=admin&focus=ur-1&from_notification=u1");
+  const report = page.locator('[data-focus-id="ur-1"]');
+  await expect(report).toBeVisible();
+  await expect(report).toHaveClass(/ring-2/);
+  await expect(report).toContainText("Repeated slurs in chat");
+  await expect(page.getByTestId("record-focus-found")).toBeVisible();
+  await expect.poll(() => adminRead(page, "u1")).toEqual({ read: true, resolved: false });
+  await info.attach("report-deep-link", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+
+  await page.reload();
+  await expect(page.locator('[data-focus-id="ur-1"]')).toHaveClass(/ring-2/);
+
+  await harness(page, "view=reports&role=admin&focus=ur-deleted&from_notification=u9");
+  await expect(page.getByTestId("record-focus-missing")).toContainText("could not be found");
+  await expect(page.getByRole("link", { name: "Back to the notification" })).toHaveAttribute(
+    "href",
+    "/admin/operations?section=notifications&notification=u9",
+  );
+});
+
+test("the bell sends each admin notification to its exact record, not a landing page", async ({ page }) => {
+  await harness(page, "view=menu&role=admin&seed=reset");
+  await page.getByTestId("hud-notifications-trigger").click();
+  await page.getByTestId("hud-admin-notification-c1").click();
+  await expect(page).toHaveURL(/\/admin\/users\?section=moderation&view=comments&focus=cm-1&from_notification=c1$/);
+  // Navigating is not reading: the comments view marks it read once it opens.
+  expect(await adminRead(page, "c1")).toEqual({ read: false, resolved: false });
+});

@@ -216,31 +216,55 @@ export const feedbackStatusLabel = (status: string | null | undefined): string =
 export const feedbackReasonLabel = (reason: string | null | undefined): string | null =>
   reason ? questionReportReasonLabel(reason) : null;
 
+export const ADMIN_NOTIFICATIONS_PATH = "/admin/operations?section=notifications";
+
+/** The notification's own permalink: the admin inbox opened on exactly this item. */
+export const adminNotificationPermalink = (id: string): string =>
+  `${ADMIN_NOTIFICATIONS_PATH}&notification=${encodeURIComponent(id)}`;
+
 /**
- * The admin record behind an item. Every actionable notification links to the
- * row it is about, through the moderation views that own its workflow. `focus`
- * is read by those views to scroll to and expand the record.
+ * Where an admin notification takes you: always ONE specific record, by stable
+ * id — never a list position, search text or a generic landing page.
+ *
+ *   feedback / question & page reports → the feedback view, record expanded
+ *   user reports                        → the reports view, report highlighted
+ *   comment reports                     → the comments view, comment highlighted
+ *   moderator requests                  → the moderator queue, request highlighted
+ *   image reports, platform/system      → the notification's own permalink, whose
+ *                                         detail card shows the record (the image
+ *                                         and its hide/restore control live there,
+ *                                         since the legacy image product has no
+ *                                         admin page of its own)
+ *
+ * `focus` is the record id the destination opens; `from_notification` lets it
+ * mark THIS notification read once — and only once — the record has actually
+ * opened. A record that was deleted sends you to the permalink instead, which
+ * explains what happened.
  */
 export function adminRecordLink(item: {
   id: string;
   subjectType: string | null;
   subjectId: string | null;
-}): { href: string; label: string } | null {
-  const focus = item.subjectId ? `&focus=${encodeURIComponent(item.subjectId)}` : "";
+  resolution?: string | null;
+}): { href: string; label: string; kind: "record" | "notification" } {
+  const permalink = { href: adminNotificationPermalink(item.id), label: "Open details", kind: "notification" as const };
+  if (item.resolution === "subject_deleted") return permalink;
+  const target = item.subjectType === "mod_request" ? item.id : item.subjectId;
+  if (!target) return permalink;
+  const q = `&focus=${encodeURIComponent(target)}&from_notification=${encodeURIComponent(item.id)}`;
   switch (item.subjectType) {
     case "feedback":
-      return { href: `/admin/users?section=moderation&view=feedback${focus}`, label: "Open feedback" };
+      return { href: `/admin/users?section=moderation&view=feedback${q}`, label: "Open feedback", kind: "record" };
     case "user_report":
-      return { href: `/admin/users?section=moderation&view=reports${focus}`, label: "Open report" };
+      return { href: `/admin/users?section=moderation&view=reports${q}`, label: "Open report", kind: "record" };
     case "comment":
-      return { href: `/admin/users?section=moderation&view=comments${focus}`, label: "Open comment" };
+      return { href: `/admin/users?section=moderation&view=comments${q}`, label: "Open comment", kind: "record" };
     case "mod_request":
-      return {
-        href: `/admin/users?section=moderation&view=mod-config&focus=${encodeURIComponent(item.id)}`,
-        label: "Review request",
-      };
+      return { href: `/admin/users?section=moderation&view=mod-config${q}`, label: "Review request", kind: "record" };
+    case "image":
+      return { ...permalink, label: "Open image" };
     default:
-      return null;
+      return permalink;
   }
 }
 

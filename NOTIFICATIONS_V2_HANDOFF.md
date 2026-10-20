@@ -67,6 +67,41 @@ per-admin read isolation or the moderator-disposition meaning of
     the owner); both surfaces refetch on any change (debounced) and on every
     reconnect; a same-tab event syncs the bell and the admin page instantly.
 
+## Exact-record deep linking (added requirement)
+
+**Audit of what existed before this work (on `main`):** every admin
+notification in the bell navigated to bare `/admin`; the admin notifications
+page had no record links at all; the moderation views had no way to be opened
+on a specific record. The first pass on this branch added `&focus=<id>` links
+for feedback, user reports, comments and moderator requests — kept — but the
+audit found five gaps, all now closed:
+
+| Gap | Fix |
+|---|---|
+| Views load capped lists (300 comments, 50 reports, 50 requests; archived feedback hidden) so an older record silently didn't open | Each view also loads the focused record **by id** (bypassing cap, hidden and archived filters) and merges it in; filters/search that would hide it are cleared |
+| Image reports and platform/system notices had no destination | Notification permalink `/admin/operations?section=notifications&notification=<id>`; for image reports its detail card IS the record view (image, item, report count, Hide/Restore) |
+| Read was marked on click | `&from_notification=<id>`: the destination marks it read only after the record actually opened; a deleted record leaves it unread |
+| Deleted / inaccessible records gave an empty list | `RecordFocusNotice` explains it and links back to the notification permalink; a notification whose subject is deleted links to its permalink |
+| No Back/Forward or refresh support | Everything is URL-driven: the views re-evaluate focus on every URL change (and re-check "missing" once their data reloads); the admin page reads the permalink via `useLocation` |
+
+Destinations (`adminRecordLink`, pinned by `src/lib/notifications/policy.test.ts`):
+
+| Notification | Destination |
+|---|---|
+| feedback, question report, page report | `/admin/users?section=moderation&view=feedback&focus=<feedback id>&from_notification=<id>` — row expanded |
+| user report | `…&view=reports&focus=<user_reports id>&from_notification=<id>` — highlighted |
+| comment report | `…&view=comments&focus=<comment id>&from_notification=<id>` — highlighted, shown even if hidden |
+| moderator request | `…&view=mod-config&focus=<id>&from_notification=<id>` — highlighted |
+| image report (incl. critical) | `/admin/operations?section=notifications&notification=<id>` — image record card |
+| platform / system notice | same permalink — the notification itself is the record |
+
+Authorization is unchanged: the views run their existing admin queries/RPCs
+(RLS-scoped); the permalink uses `admin_get_notification(_id)` (INVOKER,
+admin-only, returns nothing for unknown/invisible ids). Viewing never resolves.
+Resolution still comes from the owning workflow; for image reports, an ADMIN
+hiding/restoring/deleting the image now resolves the notification via a new
+`preset_item_images` trigger (the automatic threshold hide only escalates).
+
 ## Relevant files
 
 - Migration: `supabase/migrations/20261019120000_notifications_v2_lifecycle.sql`
@@ -79,8 +114,9 @@ per-admin read isolation or the moderator-disposition meaning of
   (player history/saved/preferences, route `/notifications`),
   `src/components/admin/AdminPushNotifications.tsx` (retired types removed,
   lifecycle hint, broadcast-only history).
-- Deep links (`&focus=<id>` scroll + highlight/expand): `AdminFeedback`,
-  `AdminUserReports`, `AdminComments` (also shows hidden), `AdminModeratorConfig`.
+- Deep links: `src/lib/notifications/focus.ts` (hook), `src/components/admin/RecordFocusNotice.tsx`,
+  by-id loading in `AdminFeedback`, `AdminUserReports`, `AdminComments`,
+  `AdminModeratorConfig`; permalink card + image record view in `AdminNotifications`.
 - Tests: `src/test/security/notificationsV2Lifecycle.test.ts` (PGlite, real
   migration over a production-shaped fixture), `notificationsV2Policy.test.ts`
   (TS ⇄ SQL parity), updated `adminNotificationReadSemantics.test.ts` and
@@ -109,13 +145,17 @@ no notification or receipt is deleted). Covered by a test.
 
 ## Test results (local, Windows, LF checkout)
 
-- PGlite DB suite: **37/37** (backfill, isolation, RLS, grants, action guard,
-  dedupe/escalation/unread-again, resolution sync for every workflow, player
+- PGlite DB suite: **42/42** (backfill, isolation, RLS, grants, action guard,
+  dedupe/escalation/unread-again, resolution sync for every workflow incl. image
+  hide/restore/delete, permalink RPC incl. missing ids and non-admins, player
   lifecycle, muting, friend-request expiry, starvation + keyset paging,
   preflight accuracy, verify script, rollback without data loss, re-apply).
 - TS ⇄ SQL policy parity: **3/3**.
-- Component/unit: HUD **118/118**, admin inbox **14/14**, player page **6/6**,
-  api **4/4**, contract tests updated and green.
+- Component/unit: all notification-related suites **445/446** — the one failure
+  is pre-existing on `main` (see below). Includes deep links per type
+  (`recordDeepLinks.test.tsx`: beyond-cap, hidden, archived, resolved, missing,
+  Back/Forward, mark-read-on-success) and `policy.test.ts` (every type → a
+  specific destination).
 - `tsc -p tsconfig.app.json` clean; harness typechecks and bundles.
 - Full-suite comparison vs clean `main`: see PR description.
 - Browser acceptance: runs on the PR (desktop + phone). See PR checks.
@@ -138,6 +178,7 @@ Windows/shell-specific suites.
    fallback, but lifecycle features appear only after the migration).
 3. Verify on `mogzy.lol`: bell badge and panel, Clear all / Dismiss persist
    across reload, admin inbox tabs/counters, a feedback status change resolving
-   its item and notifying the player.
+   its item and notifying the player, and one deep link per type (bell →
+   record highlighted; refresh; Back/Forward; a permalink to a deleted id).
 4. Follow-ups (not required for this issue): regenerate Supabase types; a
    scheduled job is not needed (expiry is computed at read time).

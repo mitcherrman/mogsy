@@ -15,6 +15,7 @@
  * `mode: "legacy"`, which hides the lifecycle actions the server cannot honour.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { announceNotificationsChanged } from "./sync";
 import {
   classifyAdmin,
   classifyPlayer,
@@ -271,6 +272,37 @@ export async function setAdminState(
     });
   if (legacyError) fail(legacyError);
   return { applied: ids!.length, skipped: 0 };
+}
+
+/**
+ * One notification by its stable id (a permalink), as this admin sees it, and
+ * the tab it belongs in. `null` means it does not exist or is not visible to
+ * this session — the caller says so rather than guessing.
+ */
+export async function fetchAdminNotification(
+  userId: string,
+  id: string,
+): Promise<{ item: AdminInboxItem; tab: AdminTab; mode: InboxMode } | null> {
+  const { data, error } = await rpc("admin_get_notification", { _id: id });
+  if (!error) {
+    const row = ((data as RawRow[] | null) ?? [])[0];
+    return row ? { item: toAdminItem(row), tab: row.tab as AdminTab, mode: "v2" } : null;
+  }
+  if (!isMissingRpc(error)) fail(error);
+  const item = (await legacyAdminRows(userId)).find(r => r.id === id);
+  return item ? { item, tab: item.category, mode: "legacy" } : null;
+}
+
+/**
+ * Called by a record view once it has actually opened the record a
+ * notification pointed at — read on SUCCESSFUL opening, never on click, and
+ * never a resolution. A failure is swallowed: viewing the record still worked.
+ */
+export async function markAdminNotificationRead(id: string): Promise<boolean> {
+  const { error } = await rpc("admin_set_notification_state", { _ids: [id], _action: "read", _tab: null });
+  if (error) return false;
+  announceNotificationsChanged("admin", "record-view");
+  return true;
 }
 
 export async function resolveAdminItems(

@@ -454,6 +454,68 @@ describe("old rows cannot starve the inbox", () => {
   });
 });
 
+describe("exact-record deep links", () => {
+  type Linked = AdminRow & { tab: string; subject_type: string | null; subject_id: string | null };
+  const getOne = (uid: string, id: string) =>
+    as(db, uid, async () => (await db.query<Linked>(`SELECT * FROM public.admin_get_notification($1)`, [id])).rows);
+
+  it("opens one notification by stable id, with this admin's state and the tab it lives in", async () => {
+    const [q] = await getOne(ADMIN_A, seeded.fbQuestion);
+    expect(q).toMatchObject({ id: seeded.fbQuestion, subject_type: "feedback", subject_id: seeded.fbQuestionFeedback });
+    expect(["action", "completed"]).toContain(q.tab);
+    const [routine] = await getOne(ADMIN_A, seeded.routine);
+    expect(routine).toMatchObject({ tab: "completed", state: "expired" });
+  });
+
+  it("returns nothing for a deleted or unknown id, and refuses a non-admin", async () => {
+    expect(await getOne(ADMIN_A, "00000000-0000-4000-8000-000000000000")).toEqual([]);
+    expect(await rejected(() => getOne(PLAYER_A, seeded.fbQuestion))).toMatch(/admin role required/);
+    expect(await rejected(() => as(db, null, () => db.query(`SELECT * FROM public.admin_get_notification($1)`, [seeded.routine]), "anon")))
+      .toMatch(/permission denied/);
+  });
+
+  it("image reports dedupe per image; an admin hide resolves, the automatic hide only escalates", async () => {
+    const item = (await one<{ id: string }>(`INSERT INTO public.preset_items (name) VALUES ('Infinity Edge') RETURNING id`)).id;
+    const image = async () => (await one<{ id: string }>(
+      `INSERT INTO public.preset_item_images (preset_item_id, image_url) VALUES ($1, 'https://img.test/a.png') RETURNING id`, [item])).id;
+    const report = (img: string, n: number) => as(db, PLAYER_A, async () => {
+      for (let i = 0; i < n; i++) {
+        await db.query(`INSERT INTO public.image_reports (image_id, user_id) VALUES ($1, $2)`, [img, PLAYER_A]);
+      }
+    });
+    const openFor = async (img: string) => (await adminTab(ADMIN_A, "action")).filter(x => x.metadata.image_id === img);
+
+    const handled = await image();
+    await report(handled, 3);
+    let open = await openFor(handled);
+    expect(open).toHaveLength(1);
+    expect(open[0].occurrence_count).toBe(3);
+    await as(db, ADMIN_A, () => db.query(`UPDATE public.preset_item_images SET is_hidden = true WHERE id = $1`, [handled]));
+    expect(await openFor(handled)).toHaveLength(0);
+    const [done] = await getOne(ADMIN_B, open[0].id);
+    expect(done).toMatchObject({ tab: "completed", resolution: "hidden_by_admin" });
+
+    const flooded = await image();
+    await report(flooded, 10);
+    open = await openFor(flooded);
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ priority: "critical", type: "image_report_critical" });
+
+    await as(db, ADMIN_A, () => db.query(`DELETE FROM public.preset_item_images WHERE id = $1`, [flooded]));
+    expect(await openFor(flooded)).toHaveLength(0);
+    expect((await getOne(ADMIN_A, open[0].id))[0]).toMatchObject({ resolution: "subject_deleted", tab: "completed" });
+  });
+
+  it("viewing never resolves: a read leaves the item unresolved and in its tab", async () => {
+    const unread = (await adminTab(ADMIN_B, "action")).find(x => !x.is_read)!;
+    const [before] = await getOne(ADMIN_B, unread.id);
+    expect(before.is_read).toBe(false);
+    await adminSet(ADMIN_B, [before.id], "read");
+    const [after] = await getOne(ADMIN_B, before.id);
+    expect(after).toMatchObject({ is_read: true, state: "active", tab: before.tab, resolution: null });
+  });
+});
+
 describe("operability", () => {
   it("re-applying the migration is a no-op (safe after a partial manual run)", async () => {
     const snapshot = async () => (await db.query(

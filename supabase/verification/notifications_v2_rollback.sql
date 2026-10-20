@@ -24,6 +24,15 @@ DROP TRIGGER IF EXISTS user_reports_v2_notification_sync  ON public.user_reports
 DROP TRIGGER IF EXISTS comments_v2_notification_sync      ON public.comments;
 DROP TRIGGER IF EXISTS friendships_v2_notification_sync   ON public.friendships;
 
+DO $$
+BEGIN
+  IF to_regclass('public.preset_item_images') IS NOT NULL THEN
+    EXECUTE 'DROP TRIGGER IF EXISTS preset_item_images_v2_notification_sync ON public.preset_item_images';
+  END IF;
+END
+$$;
+DROP FUNCTION IF EXISTS public.preset_item_images_v2_notification_sync();
+DROP FUNCTION IF EXISTS public.admin_get_notification(uuid);
 DROP FUNCTION IF EXISTS public.admin_get_notifications(text, integer, integer, timestamptz, uuid);
 DROP FUNCTION IF EXISTS public.admin_notification_counts();
 DROP FUNCTION IF EXISTS public.admin_set_notification_state(uuid[], text, text);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   AlertTriangle,
   Bell,
@@ -22,7 +22,9 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import type { AdminInboxItem } from "@/lib/notifications/api";
+import { fetchAdminNotification, type AdminInboxItem } from "@/lib/notifications/api";
+import { supabase } from "@/integrations/supabase/client";
+import { focusHighlight } from "@/lib/notifications/focus";
 import {
   ADMIN_EXPIRY_DAYS,
   ADMIN_TABS,
@@ -139,6 +141,84 @@ function FeedbackDigestBlock({ item }: { item: AdminInboxItem }) {
   );
 }
 
+/**
+ * The record behind an image report. The legacy item-image product has no
+ * admin page, so the notification's permalink IS the record view: the image,
+ * its item, its report count and the hide/restore control. Hiding or restoring
+ * here (an admin action) resolves the report through the database trigger.
+ */
+function ImageSubjectDetail({ imageId, onChanged }: { imageId: string; onChanged?: () => void }) {
+  type ImageRow = { id: string; image_url: string; is_hidden: boolean; report_count: number; preset_item_id: string };
+  const [state, setState] = useState<{ status: "loading" | "ready" | "missing"; image?: ImageRow; itemName?: string | null }>({
+    status: "loading",
+  });
+  const [busy, setBusy] = useState(false);
+  // preset_item_images / preset_items are legacy tables read by id only here.
+  const db = supabase as unknown as {
+    from: (t: string) => {
+      select: (c: string) => { eq: (c: string, v: string) => { maybeSingle: () => PromiseLike<{ data: unknown; error: unknown }> } };
+      update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => PromiseLike<{ error: unknown }> };
+    };
+  };
+
+  const load = async () => {
+    const { data } = await db
+      .from("preset_item_images")
+      .select("id, image_url, is_hidden, report_count, preset_item_id")
+      .eq("id", imageId)
+      .maybeSingle();
+    const image = data as ImageRow | null;
+    if (!image) {
+      setState({ status: "missing" });
+      return;
+    }
+    const { data: item } = await db.from("preset_items").select("name").eq("id", image.preset_item_id).maybeSingle();
+    setState({ status: "ready", image, itemName: (item as { name?: string } | null)?.name ?? null });
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageId]);
+
+  const setHidden = async (hidden: boolean) => {
+    setBusy(true);
+    const { error } = await db.from("preset_item_images").update({ is_hidden: hidden }).eq("id", imageId);
+    setBusy(false);
+    if (error) {
+      toast.error("Could not update the image");
+      return;
+    }
+    toast.success(hidden ? "Image hidden - report resolved" : "Image restored - report resolved");
+    await load();
+    onChanged?.();
+  };
+
+  if (state.status === "loading") return <p className="mt-1.5 text-[11px] text-muted-foreground">Loading image…</p>;
+  if (state.status === "missing") {
+    return (
+      <p role="status" data-testid="admin-image-missing" className="mt-1.5 text-[11px] text-muted-foreground">
+        The reported image no longer exists.
+      </p>
+    );
+  }
+  const image = state.image!;
+  return (
+    <div data-testid="admin-image-detail" className="mt-1.5 flex items-start gap-3 rounded-md border border-border bg-muted/30 p-2">
+      <img src={image.image_url} alt={`Reported image for ${state.itemName ?? "an item"}`} className="h-20 w-20 shrink-0 rounded object-cover" />
+      <div className="min-w-0 flex-1 space-y-1 text-[11px]">
+        <p className="font-semibold text-foreground">{state.itemName ?? "Unknown item"}</p>
+        <p className="text-muted-foreground">
+          {image.report_count} report{image.report_count === 1 ? "" : "s"} · {image.is_hidden ? "Hidden from players" : "Visible to players"}
+        </p>
+        <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={() => void setHidden(!image.is_hidden)}>
+          {image.is_hidden ? "Restore image" : "Hide image"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 interface RowProps {
   item: AdminInboxItem;
   /** False before the v2 migration: only read state exists server-side. */
@@ -149,9 +229,14 @@ interface RowProps {
   onAct: (action: "read" | "done" | "undone" | "save" | "unsave") => void;
   onResolve: (resolution: "dismissed" | "actioned") => void;
   onReopen: () => void;
+  /** Rendered as the permalink's detail card (shows the record itself). */
+  linked?: boolean;
+  /** The list row the current permalink points at. */
+  highlighted?: boolean;
+  onSubjectChanged?: () => void;
 }
 
-function NotificationRow({ item, lifecycle, selected, nowMs, onSelect, onAct, onResolve, onReopen }: RowProps) {
+function NotificationRow({ item, lifecycle, selected, nowMs, onSelect, onAct, onResolve, onReopen, linked = false, highlighted = false, onSubjectChanged }: RowProps) {
   const [confirming, setConfirming] = useState(false);
   const Icon = typeIcon(item);
   const link = adminRecordLink(item);
@@ -161,11 +246,12 @@ function NotificationRow({ item, lifecycle, selected, nowMs, onSelect, onAct, on
 
   return (
     <li
-      data-testid={`admin-notification-${item.id}`}
+      data-testid={linked ? "admin-notification-linked-row" : `admin-notification-${item.id}`}
       data-read={item.isRead ? "true" : "false"}
       data-state={item.state}
       className={cn(
         "rounded-xl border p-3 transition-colors",
+        highlighted && focusHighlight,
         item.isRead ? "border-border bg-card" : "border-primary/30 bg-primary/5",
         critical && item.state === "active" && "border-destructive/50 bg-destructive/5",
       )}
@@ -208,6 +294,9 @@ function NotificationRow({ item, lifecycle, selected, nowMs, onSelect, onAct, on
           </div>
           {item.message && <p className="mt-0.5 text-xs text-muted-foreground">{item.message}</p>}
           <FeedbackDigestBlock item={item} />
+          {linked && item.subjectType === "image" && item.subjectId && (
+            <ImageSubjectDetail imageId={item.subjectId} onChanged={onSubjectChanged} />
+          )}
           <p className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
             <time dateTime={item.activityAt} title={new Date(item.activityAt).toLocaleString()}>
               {formatRelative(item.activityAt, nowMs)}
@@ -222,9 +311,12 @@ function NotificationRow({ item, lifecycle, selected, nowMs, onSelect, onAct, on
           </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {link && (
+            {/* The destination marks this read once the record has actually
+                opened (see src/lib/notifications/focus.ts) - never on click,
+                and opening never resolves anything. */}
+            {!(linked && link.kind === "notification") && (
               <Button asChild size="sm" variant="outline" className="h-7 gap-1 text-xs">
-                <Link to={link.href} onClick={() => !item.isRead && onAct("read")}>
+                <Link to={link.href} data-testid="admin-notification-open">
                   <ExternalLink className="h-3 w-3" aria-hidden="true" /> {link.label}
                 </Link>
               </Button>
@@ -310,6 +402,62 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
   const inbox = useAdminInbox({ enabled: Boolean(user), userId: user?.id ?? null, tab });
   const { items, counts, mode, status } = inbox;
 
+  /**
+   * Notification permalink: `?…&notification=<id>`. Opens exactly that item by
+   * its stable id — whatever tab it now lives in, including Completed — shows
+   * it as a detail card with its record, switches to its tab, and marks it
+   * read once it has actually loaded. Driven by the URL, so a direct link,
+   * refresh and browser Back/Forward all land on the same item.
+   */
+  const location = useLocation();
+  const linkedId = useMemo(() => {
+    const v = new URLSearchParams(location.search).get("notification");
+    return v && /^[0-9a-zA-Z-]{1,64}$/.test(v) ? v : null;
+  }, [location.search]);
+  const closeLinkedHref = useMemo(() => {
+    const next = new URLSearchParams(location.search);
+    next.delete("notification");
+    const q = next.toString();
+    return `${location.pathname}${q ? `?${q}` : ""}`;
+  }, [location.pathname, location.search]);
+  const [linked, setLinked] = useState<
+    { id: string; status: "loading" | "found" | "missing"; item?: AdminInboxItem; tab?: AdminTab } | null
+  >(null);
+  const openedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!linkedId || !user) {
+      setLinked(null);
+      openedRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    setLinked(prev => (prev?.id === linkedId ? prev : { id: linkedId, status: "loading" }));
+    fetchAdminNotification(user.id, linkedId).then(
+      r => {
+        if (cancelled) return;
+        setLinked(r ? { id: linkedId, status: "found", item: r.item, tab: r.tab } : { id: linkedId, status: "missing" });
+      },
+      () => {
+        if (!cancelled) setLinked({ id: linkedId, status: "missing" });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+    // `counts` changes after every action and realtime refresh, so the card
+    // reflects a resolution made anywhere.
+  }, [linkedId, user, counts]);
+
+  const actRef = useRef(inbox.act);
+  actRef.current = inbox.act;
+  useEffect(() => {
+    if (linked?.status !== "found" || !linked.item || openedRef.current === linked.id) return;
+    openedRef.current = linked.id;
+    if (linked.tab) setTab(linked.tab);
+    if (!linked.item.isRead) void actRef.current([linked.id], "read").catch(() => undefined);
+  }, [linked]);
+
   useEffect(() => {
     const t = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(t);
@@ -393,6 +541,53 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
           Showing the 50 most recent notifications. Done, Save, history and resolution sync turn on once the
           Notifications 2.0 database migration is applied.
         </p>
+      )}
+
+      {linkedId && (
+        <section aria-label="Linked notification" data-testid="admin-notification-linked" className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-foreground">Opened from a link</p>
+            <Link to={closeLinkedHref} data-testid="admin-notification-linked-close" className="text-xs text-primary hover:underline">
+              Close
+            </Link>
+          </div>
+          {(!linked || linked.status === "loading") && <p className="text-xs text-muted-foreground">Loading…</p>}
+          {linked?.status === "missing" && (
+            <p
+              role="status"
+              data-testid="admin-notification-linked-missing"
+              className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-foreground"
+            >
+              This notification no longer exists, or this session can’t access it.
+            </p>
+          )}
+          {linked?.status === "found" && linked.item && (
+            <ul>
+              <NotificationRow
+                item={linked.item}
+                linked
+                lifecycle={lifecycle}
+                nowMs={nowMs}
+                selected={false}
+                onSelect={() => undefined}
+                onAct={action =>
+                  void run("update that notification", async () => {
+                    if (!lifecycle && action !== "read") return;
+                    await inbox.act([linked.id], action);
+                  })
+                }
+                onResolve={resolution =>
+                  void run("resolve that item", async () => {
+                    const r = await inbox.resolve([linked.id], resolution);
+                    if (r.refused > 0) toast.info("Resolve this in its own workflow — use the record link.");
+                  })
+                }
+                onReopen={() => void run("reopen that item", () => inbox.reopen(linked.id))}
+                onSubjectChanged={() => void inbox.refresh()}
+              />
+            </ul>
+          )}
+        </section>
       )}
 
       <div role="tablist" aria-label="Notification categories" className="flex flex-wrap gap-1 border-b border-border">
@@ -546,6 +741,7 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
                 key={item.id}
                 item={item}
                 lifecycle={lifecycle}
+                highlighted={item.id === linkedId}
                 nowMs={nowMs}
                 selected={selected.has(item.id)}
                 onSelect={checked =>

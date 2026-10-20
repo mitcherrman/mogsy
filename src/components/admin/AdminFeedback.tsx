@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { focusHighlight, useFocusRecord } from "@/lib/notifications/focus";
+import { focusHighlight, readFocusParam, useFocusRecord } from "@/lib/notifications/focus";
+import RecordFocusNotice from "@/components/admin/RecordFocusNotice";
+import { feedbackStatusLabel } from "@/lib/notifications/policy";
 import { motion } from "framer-motion";
 import {
   MessageSquare, Check, Clock, Tag, X, ChevronDown, ChevronUp,
@@ -173,8 +175,26 @@ export default function AdminFeedback() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  // A notification deep link (`&focus=<feedback id>`) opens that record.
-  const focusId = useFocusRecord(!loading, id => setExpandedId(id));
+  // Notification deep link: `&focus=<feedback.id>` loads that record by id —
+  // archived or not — expands it, and clears every filter that would hide it.
+  const focusParam = readFocusParam();
+  const { focusId, status: focusStatus, fromNotification } = useFocusRecord({
+    ready: !loading,
+    data: items,
+    has: id => items.some(f => f.id === id),
+    onFocus: id => {
+      setExpandedId(id);
+      setFilter("all");
+      setCategoryFilter("all");
+      setOriginFilter("all");
+      setSearchQuery("");
+    },
+  });
+  const focusedFeedback = items.find(f => f.id === focusId);
+  const focusedClosed =
+    focusedFeedback && (focusedFeedback.status === "completed" || focusedFeedback.status === "declined" || focusedFeedback.is_archived)
+      ? focusedFeedback.is_archived ? "Archived" : feedbackStatusLabel(focusedFeedback.status)
+      : null;
   /**
    * The fallback used only until app_settings.feedback_config loads.
    *
@@ -196,7 +216,8 @@ export default function AdminFeedback() {
   const [newPage, setNewPage] = useState("");
   const [savingConfig, setSavingConfig] = useState(false);
 
-  useEffect(() => { loadData(); }, [showArchived]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, [showArchived, focusParam]);
 
   // Real-time refresh on new feedback so admins see it immediately
   useEffect(() => {
@@ -231,8 +252,17 @@ export default function AdminFeedback() {
     });
     if (fbError || !Array.isArray(fbData)) throw new Error("Feedback read unavailable");
 
-    if (fbData && fbData.length > 0) {
-      const profileIds = [...new Set(fbData.map(f => f.profile_id))];
+    let rows = fbData;
+    const focus = readFocusParam();
+    if (focus && !showArchived && !rows.some(f => f.id === focus)) {
+      // An archived record is only returned by the archived listing.
+      const { data: everything } = await supabase.rpc("admin_list_feedback", { _show_archived: true });
+      const hit = Array.isArray(everything) ? everything.find(f => f.id === focus) : undefined;
+      if (hit) rows = [hit, ...rows];
+    }
+
+    if (rows.length > 0) {
+      const profileIds = [...new Set(rows.map(f => f.profile_id))];
       const { data: profiles } = await supabase
         .from("public_profiles")
         .select("id, display_name, avatar_url")
@@ -246,7 +276,7 @@ export default function AdminFeedback() {
          src/lib/feedback/client.ts. Regenerating types after the migration
          lands makes the double cast unnecessary; it is confined to this one
          mapping so that clean-up is a one-line edit. */
-      setItems(fbData.map(f => ({
+      setItems(rows.map(f => ({
         ...(f as unknown as FeedbackRow),
         display_name: profileMap.get(f.profile_id)?.display_name || "Reporter profile unavailable",
         avatar_url: profileMap.get(f.profile_id)?.avatar_url || null,
@@ -490,6 +520,12 @@ export default function AdminFeedback() {
       </div>
 
       {/* List */}
+      <RecordFocusNotice
+        kind="feedback"
+        status={focusStatus}
+        fromNotification={fromNotification}
+        resolvedLabel={focusedClosed}
+      />
       {filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">No feedback found</p>
       ) : (

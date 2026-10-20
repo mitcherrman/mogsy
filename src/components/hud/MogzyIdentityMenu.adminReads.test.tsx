@@ -83,13 +83,26 @@ describe("HUD admin section", () => {
     await waitFor(() => expect(screen.getByTestId("hud-unread-badge").textContent).toBe("2"));
   });
 
-  it("opens the record a row is about and records a read for THIS admin only", async () => {
+  it("opens the exact record a row is about, leaving read-marking to the record view", async () => {
     render(<MogzyIdentityMenu />);
     const panel = await openPanel();
     fireEvent.click(await within(panel).findByTestId("hud-admin-notification-q1"));
-    expect(navigate).toHaveBeenCalledWith("/admin/users?section=moderation&view=feedback&focus=fb-1");
-    await waitFor(() => expect(inbox.calls("admin_set_notification_state")[0].args).toEqual({ _ids: ["q1"], _action: "read", _tab: null }));
+    expect(navigate).toHaveBeenCalledWith("/admin/users?section=moderation&view=feedback&focus=fb-1&from_notification=q1");
+    // Read is recorded by the destination once the record has opened; a click
+    // that lands on a deleted record must not mark it read.
+    expect(inbox.calls("admin_set_notification_state")).toHaveLength(0);
     for (const c of inbox.rpcCalls) expect(JSON.stringify(c.args)).not.toContain("admin-a");
+  });
+
+  it("sends a comment report to its comment and a system notice to its own permalink", async () => {
+    inbox.admin.push({ id: "p9", type: "system_notice", category: "action", priority: "critical", title: "Patch ingest failed" });
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    fireEvent.click(await within(panel).findByTestId("hud-admin-notification-c1"));
+    expect(navigate).toHaveBeenLastCalledWith("/admin/users?section=moderation&view=comments&focus=cm-1&from_notification=c1");
+    const again = await openPanel();
+    fireEvent.click(await within(again).findByTestId("hud-admin-notification-p9"));
+    expect(navigate).toHaveBeenLastCalledWith("/admin/operations?section=notifications&notification=p9");
   });
 
   it("Mark all read clears both sections, and reading never resolves a report", async () => {

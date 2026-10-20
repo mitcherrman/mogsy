@@ -316,11 +316,15 @@ export default function MogzyIdentityMenu() {
     }
   };
 
-  /** Admin rows open the record they are about, not a bare /admin. */
+  /**
+   * Admin rows open the exact record they are about — never a bare /admin.
+   * The destination marks the notification read once the record has actually
+   * opened (a deleted record shows an explanation and leaves it unread), and
+   * opening never resolves anything.
+   */
   const openAdminItem = (item: AdminInboxItem) => {
-    if (!item.isRead) void actSafely(() => admin.act([item.id], "read"), "Could not mark that as read");
     closePanel();
-    navigate(adminRecordLink(item)?.href ?? ADMIN_NOTIFICATIONS_PATH);
+    navigate(adminRecordLink(item).href);
   };
 
   const handleAcceptOutcome = (

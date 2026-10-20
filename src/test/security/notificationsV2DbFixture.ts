@@ -118,7 +118,6 @@ export const FIXTURE = `
     body text,
     status text NOT NULL DEFAULT 'open',
     priority text NOT NULL DEFAULT 'normal',
-    admin_notes text,
     is_archived boolean NOT NULL DEFAULT false,
     entry_intent text, type text, severity text,
     evidence_url text, screenshot_path text, page_url text,
@@ -161,7 +160,60 @@ export const FIXTURE = `
     UNIQUE (requester_id, addressee_id)
   );
 
-  -- Producers, final applied bodies (20260523081658 / 20260823120000).
+  -- Legacy item images and their reports (20260222074007 + 20260616122818).
+  CREATE TABLE public.preset_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL);
+  CREATE TABLE public.preset_item_images (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    preset_item_id uuid NOT NULL REFERENCES public.preset_items(id) ON DELETE CASCADE,
+    image_url text NOT NULL,
+    is_hidden boolean NOT NULL DEFAULT false,
+    report_count integer NOT NULL DEFAULT 0
+  );
+  ALTER TABLE public.preset_item_images ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Images are publicly readable when not hidden" ON public.preset_item_images
+    FOR SELECT USING (is_hidden = false);
+  CREATE POLICY "Admins and moderators can read hidden images" ON public.preset_item_images
+    FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+  CREATE POLICY "Admins can update images" ON public.preset_item_images
+    FOR UPDATE USING (has_role(auth.uid(), 'admin'::app_role));
+  CREATE POLICY "Admins can delete images" ON public.preset_item_images
+    FOR DELETE USING (has_role(auth.uid(), 'admin'::app_role));
+  CREATE TABLE public.image_reports (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    image_id uuid NOT NULL REFERENCES public.preset_item_images(id) ON DELETE CASCADE,
+    user_id uuid NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  );
+  ALTER TABLE public.image_reports ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Users can insert reports" ON public.image_reports FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+  -- Producers, final applied bodies (20260523081658 / 20260802120000 / 20260823120000).
+  CREATE FUNCTION public.check_and_auto_hide_image() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+  DECLARE _report_count integer; _item_name text; _item_id uuid;
+  BEGIN
+    SELECT COUNT(*) INTO _report_count FROM public.image_reports WHERE image_id = NEW.image_id;
+    SELECT pi.name, pi.id INTO _item_name, _item_id FROM public.preset_items pi
+      JOIN public.preset_item_images pii ON pii.preset_item_id = pi.id WHERE pii.id = NEW.image_id;
+    INSERT INTO public.admin_notifications (type, title, message, metadata)
+    VALUES ('image_report', 'Image reported: ' || COALESCE(left(_item_name, 100), 'Unknown'),
+      'A user reported an image for "' || COALESCE(left(_item_name, 100), 'Unknown') || '" as not representative. ('
+        || _report_count || ' total)',
+      jsonb_build_object('image_id', NEW.image_id, 'item_id', _item_id, 'report_count', _report_count));
+    IF _report_count >= 10 THEN
+      UPDATE public.preset_item_images SET is_hidden = true WHERE id = NEW.image_id AND is_hidden = false;
+      IF FOUND THEN
+        INSERT INTO public.admin_notifications (type, title, message, metadata)
+        VALUES ('image_report_critical', 'Image auto-hidden: ' || COALESCE(left(_item_name, 100), 'Unknown'),
+          'An image received ' || _report_count || ' reports and was automatically hidden.',
+          jsonb_build_object('image_id', NEW.image_id, 'report_count', _report_count));
+      END IF;
+    END IF;
+    RETURN NEW;
+  END; $f$;
+  CREATE TRIGGER image_reports_auto_hide AFTER INSERT ON public.image_reports
+    FOR EACH ROW EXECUTE FUNCTION public.check_and_auto_hide_image();
+
   CREATE FUNCTION public.check_and_auto_hide_comment() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $f$
   DECLARE _report_count integer; _comment_content text;
