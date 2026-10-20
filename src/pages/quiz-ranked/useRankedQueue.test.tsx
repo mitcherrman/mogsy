@@ -485,3 +485,49 @@ describe("RG1 — a live match is surfaced for an explicit reconnect", () => {
     expect(result.current.reconnectMatch).toBeNull();
   });
 });
+
+describe("useRankedQueue — a closed Ranked cannot be started", () => {
+  it("startAllowed:false sends no request for a class join or a bot join and reads as unavailable", async () => {
+    const { result } = renderHook(() => useRankedQueue({ startAllowed: false }));
+    await flush();
+    act(() => result.current.joinAs("tank"));
+    await flush();
+    expect(joinQueue).not.toHaveBeenCalled();
+    expect(result.current.state).toBe("unavailable");
+    expect(result.current.unavailableReason).toContain("temporarily unavailable");
+
+    const second = renderHook(() => useRankedQueue({ startAllowed: false }));
+    await flush();
+    act(() => second.result.current.joinWithoutClass({ matchWithBot: true }));
+    await flush();
+    expect(joinQueue).not.toHaveBeenCalled();
+    expect(second.result.current.state).toBe("unavailable");
+  });
+
+  it("the default still joins, so every existing host is unchanged", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.status = "waiting";
+    act(() => result.current.joinAs("tank"));
+    await flush();
+    expect(joinQueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("a server pause (RANKED_QUEUE_PAUSED, 503) is shown as unavailable and not as a retryable error", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.joinError = new FakeApiError("RANKED_QUEUE_PAUSED", 503);
+    act(() => result.current.joinAs("tank"));
+    await flush();
+    expect(joinQueue).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toBe("unavailable");
+    expect(result.current.unavailableReason).toContain("Existing matches may continue");
+  });
+
+  it("a closed host still recovers existing queue state on mount; only STARTING is withheld", async () => {
+    const { result } = renderHook(() => useRankedQueue({ startAllowed: false }));
+    await flush();
+    expect(result.current.state).toBe("selecting_class");
+    expect(joinQueue).not.toHaveBeenCalled();
+  });
+});
