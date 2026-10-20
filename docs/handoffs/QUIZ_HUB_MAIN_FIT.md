@@ -89,8 +89,8 @@ Screenshots (`docs/handoffs/quiz-hub-main-fit/`): `before-320x568`, `after-320x5
 ## Test evidence
 
 Workflow *Quiz Hub Main Screen Fit* (GitHub Actions, ubuntu, Playwright's bundled headless Chromium —
-no local Edge/Chrome and no Docker; nothing browser-based was run locally). Final green run: head `8cf1aefd`
-(run 39381217416, merged with current `main` `6334913f`): 68 browser tests, 25 unit tests, type check of
+no local Edge/Chrome and no Docker; nothing browser-based was run locally). Final green run: head `39321731`
+(run 39409418818, merged with current `main` `f6835049`): 68 browser tests, 25 unit tests, type check of
 touched files.
 
 Browser assertions (DOM geometry, not screenshots), at **320×568, 360×640, 375×667, 390×844,
@@ -123,7 +123,7 @@ PR: all green. The Ranked-pause release (#90) is in the branch as well.
 ## Final results (after merging `main` `6334913f`)
 
 * **Conflict-free:** `git merge origin/main` was clean; nothing from either mobile fix was lost.
-* **CI on `8cf1aefd`:** Quiz Hub Main Screen Fit (fit acceptance, baseline, popup compatibility), Play Selector
+* **CI on `39321731`:** Quiz Hub Main Screen Fit (fit acceptance, baseline, popup compatibility), Play Selector
   Short Phone Acceptance, History Review Acceptance, Mobile Recording Fit, mobile-arena-visibility, Journey
   Mobile Space, role-challenge-review, combat-estimate-public, practice-modernization: all success.
 * **Screenshot review** (all four Daily states at the six viewports for the account; Daily available and
@@ -131,9 +131,27 @@ PR: all green. The Ranked-pause release (#90) is in the branch as well.
   artwork. The figures read in full (`Ready`, `In progress`, `Complete`, `1,840`, `9/12`); the seal and the
   results button sit wholly inside the parchment above the foot roll; Mogzy is whole at every size. Guests
   show the HUD *Sign up* chip, which does not touch the sheet.
-* **Visible, not caused by this PR:** the Ranked tab's *COMING SOON* ribbon (PR #90) overlays the "RANKED"
-  label on portrait phones, and the *Complete* pill overlaps the top of Mogzy's hat on the smallest phones
-  (existing placement). Neither is clipped.
+* **Polish pass (two visual issues from the first review), both fixed and asserted:**
+  * **Ranked *COMING SOON* ribbon over the "RANKED" label.** Owned by PR #90 / `main`
+    (`FeatureRibbon size="tab"`, a 96 px diagonal band sized for a ~117 px tab; phone tabs are 54–68 px and the
+    short label fills them: the band covered 448 px² of the tab, from x = 24 of 54). Corrected with CSS only,
+    leaving `FeatureRibbon`, `RankedLobbyHero` and PR #90's copy untouched: below 21 rem of writing width (the
+    short-label tabs) the ribbon becomes a slim corner tape (2.25 rem × 7 px, text hidden; the ribbon is
+    `aria-hidden` and the pause is still stated under the Ranked seal and by the disabled seal), and on the
+    320 px sheet the Ranked label steps to 10 px so it ends before the tape. 568×320 landscape gets the same
+    tape (3 label pixels were still touched there); 667×375 keeps the full legible ribbon. Desktop and
+    other widths keep the original ribbon.
+  * **Complete pill over Mogzy's hat.** On narrow sheets the pill is a notch smaller and the art is drawn
+    2.25 rem shorter (`.lc-daily-hero--complete`, set only on a completed day), so the pill and Mogzy never
+    share pixels, including while the art breathes. Cost: Mogzy is ~77 px tall (was ~110) on the 320×568
+    completed state, ~150–190 px on 360–390 phones. Landscape hides the pill (unchanged).
+  * **New assertions:** the ribbon's rotated band is built from its own geometry and the Ranked label's glyph
+    pixels are sampled against it (0 allowed); the Complete pill and Mogzy overlap ≤ 2 px² at every phone.
+    Screenshots: `after-ribbon-tabs-320-360-375-390`, `after-pill-complete-finished-320-360-375`,
+    `after-landscape-568-667-complete`.
+* **Flake seen once:** *Practice modernization acceptance* (`pm1`, a desktop 1440×900 Practice run, 150 s
+  timeout) failed on one push and passed on the next with no change to anything it covers; it is unaffected
+  by this CSS (all of it is below 1024 px and Daily-scoped).
 * **Defects found and fixed during review:** `Complete` truncated to `Co…` and `In progress` clipped on
   320–360 px sheets (the pane clips overflow and centred text overflows both sides, which `scrollWidth`
   cannot see); the Complete pill cut off in landscape; a results button that squeezed Mogzy to 19 px. The spec
