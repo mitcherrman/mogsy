@@ -50,6 +50,17 @@ SELECT
   (SELECT count(*) FROM a WHERE type IN ('mod_delete_request','mod_action') AND is_read)            AS mod_requests_resolved,
   (SELECT count(*) FROM a WHERE type = 'feedback' AND (fb_status IN ('completed','declined') OR fb_archived)) AS feedback_resolved,
   (SELECT count(*) FROM a WHERE type = 'feedback' AND fb_id IS NULL)                                AS feedback_subject_missing,
+  -- Alerts whose record is gone. The migration KEEPS each one and resolves it
+  -- as 'subject_deleted' (Completed, "Record deleted"), tagged
+  -- metadata.resolution_source = 'v2_backfill_missing_subject'. Listed so the
+  -- owner can see exactly which rows that is.
+  (SELECT string_agg(a.id::text || ' (' || a.type || ', ' || to_char(a.created_at, 'YYYY-MM-DD') || ')', '; ' ORDER BY a.created_at)
+     FROM a
+    WHERE (a.type = 'feedback' AND a.fb_id IS NULL)
+       OR (a.type = 'user_report' AND NOT EXISTS (
+             SELECT 1 FROM public.user_reports r WHERE r.id::text = a.metadata ->> 'user_report_id'))
+       OR (a.type = 'comment_report' AND NOT EXISTS (
+             SELECT 1 FROM public.comments c WHERE c.id::text = a.metadata ->> 'comment_id')))  AS missing_subject_notifications,
   (SELECT count(*) FROM a JOIN public.user_reports r ON r.id::text = a.metadata ->> 'user_report_id'
      WHERE a.type = 'user_report' AND r.status <> 'pending')                                        AS user_reports_resolved,
   (SELECT count(*) - count(DISTINCT metadata ->> 'comment_id') FROM a WHERE type = 'comment_report') AS comment_reports_merged,

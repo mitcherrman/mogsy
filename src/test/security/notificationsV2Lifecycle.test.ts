@@ -89,6 +89,11 @@ beforeAll(async () => {
   await fb("fbQuestion", "title, entry_intent, type, report_context",
     `'Wrong answer', 'question_report', 'bug',
      '{"reason":"incorrect_answer","prompt":"Which item gives 40 AD?","selected_answer":"Long Sword","canonical_answer":"Pickaxe","answer_evidence":"patch notes"}'::jsonb`, 90);
+  // The production orphan (preflight 2026-10-20): a Ranked question report's
+  // alert whose feedback row was deleted before v2 existed to notice.
+  await fb("orphan", "title, entry_intent, type, report_context",
+    `'Other — Ranked', 'question_report', 'bug', '{"reason":"other","mode":"Ranked"}'::jsonb`, 2);
+  await db.query(`DELETE FROM public.feedback WHERE id = $1`, [seeded.orphanFeedback]);
 
   await ins("comment", `INSERT INTO public.comments (profile_id, content) VALUES ('${profile[PLAYER_B]}', 'rude') RETURNING id`);
   for (let i = 0; i < 3; i++) {
@@ -200,8 +205,8 @@ describe("backfill — old clutter leaves the active inbox, unresolved work does
 
   it("deleted no rows", async () => {
     const n = await one<{ n: number }>(`SELECT count(*)::int AS n FROM public.admin_notifications`);
-    // routine, 2 mod, 3 feedback, 3 comment reports, 2 user reports
-    expect(n.n).toBe(11);
+    // routine, 2 mod, 4 feedback (one orphaned), 3 comment reports, 2 user reports
+    expect(n.n).toBe(12);
   });
 });
 
@@ -516,6 +521,52 @@ describe("exact-record deep links", () => {
   });
 });
 
+describe("orphaned records (the production preflight case)", () => {
+  it("keeps the orphan, resolves it as deleted, and never strands it in an active tab", async () => {
+    const row = await one<{ title: string; message: string; category: string; resolution: string; resolved_at: string; metadata: Record<string, unknown> }>(
+      `SELECT title, message, category, resolution, resolved_at, metadata FROM public.admin_notifications WHERE id = $1`, [seeded.orphan]);
+    expect(row.title).toBe("New feedback: Other — Ranked");
+    expect(row).toMatchObject({ resolution: "subject_deleted", category: "community" });
+    expect(row.resolved_at).toBeTruthy();
+    expect(row.metadata).toMatchObject({ feedback_id: seeded.orphanFeedback, resolution_source: "v2_backfill_missing_subject" });
+    for (const tab of ["action", "community", "platform"]) {
+      expect((await adminTab(ADMIN_A, tab)).map(x => x.id), tab).not.toContain(seeded.orphan);
+    }
+    const [linked] = await as(db, ADMIN_A, async () =>
+      (await db.query<{ tab: string; state: string }>(`SELECT tab, state FROM public.admin_get_notification($1)`, [seeded.orphan])).rows);
+    expect(linked).toMatchObject({ tab: "completed", state: "resolved" });
+    // History is retrievable: page through Completed (150+ cleared items from
+    // the starvation case sit ahead of it) until the orphan turns up.
+    const history: string[] = [];
+    let cursor: AdminRow | undefined;
+    for (;;) {
+      const rows = await adminTab(ADMIN_A, "completed", 50, cursor);
+      if (rows.length === 0) break;
+      history.push(...rows.map(r => r.id));
+      cursor = rows[rows.length - 1];
+    }
+    expect(history).toContain(seeded.orphan);
+    expect(new Set(history).size).toBe(history.length);
+  });
+
+  it("a record deleted after the migration resolves live, without the backfill tag", async () => {
+    const fbId = (await one<{ id: string }>(`INSERT INTO public.feedback (title) VALUES ('Short-lived') RETURNING id`)).id;
+    const alert = (await one<{ id: string }>(`SELECT id FROM public.admin_notifications WHERE subject_id = $1`, [fbId])).id;
+    expect((await adminTab(ADMIN_A, "community")).map(x => x.id)).toContain(alert);
+    await db.query(`DELETE FROM public.feedback WHERE id = $1`, [fbId]);
+    const row = await one<{ resolution: string; metadata: Record<string, unknown> }>(
+      `SELECT resolution, metadata FROM public.admin_notifications WHERE id = $1`, [alert]);
+    expect(row.resolution).toBe("subject_deleted");
+    expect(row.metadata.resolution_source).toBeUndefined();
+  });
+
+  it("the verification script asserts no orphan stays open, and counts the kept one", async () => {
+    const v = (await db.query<Record<string, unknown>>(VERIFY)).rows[0];
+    expect(v.orphans_resolved_ok).toBe(true);
+    expect(Number(v.orphans_kept)).toBe(1);
+  });
+});
+
 describe("operability", () => {
   it("re-applying the migration is a no-op (safe after a partial manual run)", async () => {
     const snapshot = async () => (await db.query(
@@ -526,9 +577,15 @@ describe("operability", () => {
     expect(await snapshot()).toEqual(before);
   });
 
+  it("the preflight lists the orphan by id before anything is written", () => {
+    expect(String(preflight.missing_subject_notifications)).toContain(seeded.orphan);
+    expect(String(preflight.missing_subject_notifications)).toContain("feedback");
+  });
+
   it("the preflight predicted the cleanup without writing anything", () => {
     expect(preflight).toMatchObject({
-      admin_rows_total: 11,
+      admin_rows_total: 12,
+      feedback_subject_missing: 1,
       mod_requests_resolved: 1,
       feedback_resolved: 1,
       user_reports_resolved: 1,

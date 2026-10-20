@@ -13,6 +13,15 @@ SELECT
   NOT EXISTS (SELECT dedupe_key FROM public.admin_notifications
               WHERE dedupe_key IS NOT NULL AND resolved_at IS NULL
               GROUP BY dedupe_key HAVING count(*) > 1)                                             AS dedupe_ok,
+  -- No alert stays open for a record that no longer exists (the 2026-10-20
+  -- preflight found one orphaned Ranked feedback alert). Kept, not deleted:
+  -- see orphans_kept below.
+  NOT EXISTS (SELECT 1 FROM public.admin_notifications n
+              WHERE n.resolved_at IS NULL AND n.subject_id IS NOT NULL AND (
+                   (n.subject_type = 'feedback'    AND NOT EXISTS (SELECT 1 FROM public.feedback f     WHERE f.id::text = n.subject_id))
+                OR (n.subject_type = 'user_report' AND NOT EXISTS (SELECT 1 FROM public.user_reports r WHERE r.id::text = n.subject_id))
+                OR (n.subject_type = 'comment'     AND NOT EXISTS (SELECT 1 FROM public.comments c     WHERE c.id::text = n.subject_id))))
+                                                                                                   AS orphans_resolved_ok,
   -- is_read still means disposition, and every disposition is mirrored.
   NOT EXISTS (SELECT 1 FROM public.admin_notifications
               WHERE type IN ('mod_delete_request','mod_action') AND is_read AND resolved_at IS NULL) AS disposition_mirrored_ok,
@@ -43,5 +52,7 @@ SELECT
   (SELECT count(*) FROM public.admin_notifications WHERE category = 'platform' AND resolved_at IS NULL
      AND (expires_at IS NULL OR expires_at > now()))                                              AS platform_open,
   (SELECT count(*) FROM public.admin_notifications WHERE resolution = 'merged')                    AS merged_duplicates,
+  (SELECT count(*) FROM public.admin_notifications
+    WHERE metadata ->> 'resolution_source' = 'v2_backfill_missing_subject')                        AS orphans_kept,
   (SELECT count(*) FROM public.user_notifications WHERE target_type = 'all'
      AND category IN ('announcement','account','security') AND (expires_at IS NULL OR expires_at > now())) AS live_broadcasts;

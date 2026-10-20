@@ -1555,9 +1555,17 @@ FROM public.comments c
 WHERE n.subject_type = 'comment' AND n.subject_id = c.id::text AND n.resolved_at IS NULL
   AND c.hidden_by_admin;
 
--- Subjects that no longer exist: nothing left to act on.
+-- Subjects that no longer exist: nothing left to act on. The notification is
+-- KEPT (title, message, metadata untouched) and moves to Completed as
+-- "Record deleted"; its permalink explains it. `resolution_source` records
+-- that the backfill — not a live deletion — found it orphaned, because the
+-- old schema never recorded when the record was deleted. (Production
+-- preflight 2026-10-20 found exactly one: a Ranked feedback alert whose
+-- feedback row is gone. It must not become unresolvable Action Required.)
 UPDATE public.admin_notifications n
-SET resolved_at = now(), resolution = 'subject_deleted'
+SET resolved_at = now(), resolution = 'subject_deleted',
+    metadata = COALESCE(n.metadata, '{}'::jsonb)
+               || jsonb_build_object('resolution_source', 'v2_backfill_missing_subject')
 WHERE n.resolved_at IS NULL AND n.subject_id IS NOT NULL AND (
      (n.subject_type = 'feedback'    AND NOT EXISTS (SELECT 1 FROM public.feedback f     WHERE f.id::text = n.subject_id))
   OR (n.subject_type = 'user_report' AND NOT EXISTS (SELECT 1 FROM public.user_reports r WHERE r.id::text = n.subject_id))
@@ -1569,7 +1577,9 @@ BEGIN
   IF to_regclass('public.preset_item_images') IS NOT NULL THEN
     EXECUTE $q$
       UPDATE public.admin_notifications n
-      SET resolved_at = now(), resolution = 'subject_deleted'
+      SET resolved_at = now(), resolution = 'subject_deleted',
+          metadata = COALESCE(n.metadata, '{}'::jsonb)
+                     || jsonb_build_object('resolution_source', 'v2_backfill_missing_subject')
       WHERE n.resolved_at IS NULL AND n.subject_type = 'image' AND n.subject_id IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM public.preset_item_images i WHERE i.id::text = n.subject_id)
     $q$;
