@@ -33,7 +33,7 @@ test("admin inbox is organised by what needs action, prioritised, and linked to 
   await expect(q).toContainText("Review: Received");
   await expect(q.getByRole("link", { name: /Open feedback/ })).toHaveAttribute(
     "href",
-    "/admin/users?section=moderation&view=feedback&focus=fb-1",
+    "/admin/users?section=moderation&view=feedback&focus=fb-1&from_notification=q1",
   );
   await expect(q.getByRole("button", { name: /Done/ })).toBeDisabled();
   // A 40-day-old unresolved report is still here: action work never expires.

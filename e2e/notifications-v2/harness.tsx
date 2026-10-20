@@ -89,6 +89,13 @@ const restore = (state: Persisted | null) => {
 };
 restore(params.get("seed") === "reset" ? null : load());
 save();
+// Seeding is a one-off: drop `seed=reset` from the address so a reload is a
+// true reload against the persisted state, exactly like a reload in production.
+if (params.has("seed")) {
+  const clean = new URLSearchParams(window.location.search);
+  clean.delete("seed");
+  window.history.replaceState(null, "", `${window.location.pathname}?${clean.toString()}`);
+}
 
 // Writes persist; every RPC re-reads persisted state first so another tab's
 // writes are honoured exactly like rows in a shared database.
