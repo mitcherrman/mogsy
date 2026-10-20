@@ -231,8 +231,12 @@ export function rankedHostBucket(e: Pick<AnalyticsEventRecord, "metadata">): Ran
   const host = e.metadata?.host;
   const opponent = e.metadata?.opponent_type;
   if (host === "direct") {
-    if (opponent === "human") return "direct_pvp";
-    if (opponent === "bot") return "direct_bot";
+    // The frozen is_bot_match must agree with the opponent type. A row that
+    // contradicts itself is not resolved in either direction: it stays unknown
+    // rather than being counted as genuine player-versus-player (or as a bot).
+    const botMatch = e.metadata?.is_bot_match;
+    if (opponent === "human") return botMatch === true ? "legacy_unknown" : "direct_pvp";
+    if (opponent === "bot") return botMatch === false ? "legacy_unknown" : "direct_bot";
     return "legacy_unknown";
   }
   if (host === "playtest" || host === "study_hall" || host === "daily_challenge"

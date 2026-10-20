@@ -45,23 +45,73 @@ describe("visitor identity evidence", () => {
 describe("round provenance", () => {
   it("route and ranked engine name cannot turn a round into Daily", () => {
     const action = describeJourneyEvent({ ...round(), route: "/quiz/daily-challenge" });
-    expect(action.title).toBe("Game round completed — mode unknown");
+    expect(action.title).toBe("game round (host not recorded) completed");
     expect(action.stage).toBeUndefined();
+    expect(action.where).toBe("Daily Challenge page");
   });
   it("Daily requires canonical server host plus parent; child completion is not parent completion", () => {
     const action = describeJourneyEvent(round({ host: "daily_challenge", parent_activity_type: "daily_challenge", parent_activity_id: "run1", parent_stage_index: 2 }));
-    expect(action.title).toBe("Game round completed — Daily Challenge child round · stage 3");
-    expect(describeJourneyEvent(round({ host: "daily_challenge" })).title).toBe("Game round completed — mode unknown");
+    expect(action.title).toBe("Daily Challenge stage 3 completed");
+    expect(action.kind).toBe("stage_end");
+    expect(describeJourneyEvent(round({ host: "daily_challenge" })).title).toBe("game round (Daily host without a Daily run id) completed");
+  });
+  it("names the Daily stage kind only from the recorded parent kind", () => {
+    const meta = { host: "daily_challenge", parent_activity_type: "daily_challenge", parent_activity_id: "run1", parent_stage_index: 1 };
+    expect(describeJourneyEvent(round({ ...meta, parent_stage_kind: "time_trial" })).title).toBe("Daily Challenge stage 2 (Time Trial) completed");
+    expect(describeJourneyEvent(round({ ...meta, parent_stage_kind: "made_up" })).title).toBe("Daily Challenge stage 2 completed");
   });
   it("Role and More Challenges labels require canonical host evidence", () => {
-    expect(describeJourneyEvent(round({ host: "role_challenge" })).title).toBe("Game round completed — Role Challenge");
-    expect(describeJourneyEvent(round({ host: "bonus_game" })).title).toBe("Game round completed — More Challenges");
-    expect(describeJourneyEvent({ ...round({ host: "bonus_game" }), source_system: "web" }).title).toContain("mode unknown");
+    expect(describeJourneyEvent(round({ host: "role_challenge" })).title).toBe("Role Challenge completed");
+    expect(describeJourneyEvent(round({ host: "bonus_game" })).title).toBe("More Challenges (mode not recorded) completed");
+    expect(describeJourneyEvent(round({ host: "bonus_game", session_preset: "bonus.survival" })).title).toBe("More Challenges · Survival completed");
+    expect(describeJourneyEvent(round({ host: "bonus_game", session_preset: "bonus.not_a_mode" })).title).toBe("More Challenges (mode not recorded) completed");
+    const web = describeJourneyEvent({ ...round({ host: "bonus_game" }), source_system: "web" });
+    expect(web.title).toBe("Browser reported a game round completed (unconfirmed)");
+    expect(web.category).toBe("unknown");
   });
-  it("direct Ranked requires opponent provenance and missing stage does not invent progress", () => {
-    expect(describeJourneyEvent(round({ host: "direct" })).title).toContain("mode unknown");
-    expect(describeJourneyEvent(round({ host: "direct", opponent_type: "bot" })).title).toBe("Game round completed — Ranked");
+  it("direct Ranked is a bot or a player only when both opponent facts are recorded", () => {
+    expect(describeJourneyEvent(round({ host: "direct" })).title).toBe("Ranked-engine match (opponent type not recorded) completed");
+    expect(describeJourneyEvent(round({ host: "direct", opponent_type: "bot" })).category).toBe("unknown");
+    expect(describeJourneyEvent(round({ host: "direct", opponent_type: "bot", is_bot_match: true })).title).toBe("Ranked match against a bot (unrated) completed");
+    expect(describeJourneyEvent(round({ host: "direct", opponent_type: "human", is_bot_match: false })).title).toBe("Ranked match against another player completed");
+    // Contradictory provenance is not resolved in either direction.
+    expect(describeJourneyEvent(round({ host: "direct", opponent_type: "human", is_bot_match: true })).category).toBe("unknown");
     expect(describeJourneyEvent(round({ host: "daily_challenge", parent_activity_type: "daily_challenge", parent_activity_id: "r1" })).stage).toBeUndefined();
+  });
+  it("a Daily child round recorded with a bot opponent is a Daily stage, never Ranked", () => {
+    const action = describeJourneyEvent(round({ host: "daily_challenge", parent_activity_type: "daily_challenge", parent_activity_id: "r1", parent_stage_index: 0, opponent_type: "bot", is_bot_match: true }));
+    expect(action.category).toBe("daily_stage");
+    expect(action.title).not.toContain("Ranked");
+  });
+  it("other hosts keep their own names", () => {
+    expect(describeJourneyEvent(round({ host: "playtest" })).category).toBe("playtest");
+    expect(describeJourneyEvent(round({ host: "journey_library" })).category).toBe("journey_library");
+    expect(describeJourneyEvent(round({ host: "study_hall" })).category).toBe("study_hall");
+  });
+});
+
+describe("action kinds and Daily entry", () => {
+  it("separates page view, click, game start and stage completion", () => {
+    expect(describeJourneyEvent(event({ event_name: "hub_entered" })).kind).toBe("page_view");
+    expect(describeJourneyEvent(event({ event_name: "leaguecraft_cta_clicked" })).kind).toBe("click");
+    const meta = { host: "daily_challenge", parent_activity_type: "daily_challenge", parent_activity_id: "r1", parent_stage_index: 0 };
+    expect(describeJourneyEvent({ ...round(meta), event_name: "ranked_started" }).kind).toBe("game_start");
+    expect(describeJourneyEvent(round(meta)).kind).toBe("stage_end");
+    expect(describeJourneyEvent(round({ host: "role_challenge" })).kind).toBe("game_end");
+    expect(describeJourneyEvent(event({ event_name: "something_new" })).kind).toBe("other");
+  });
+  it("names the Daily button from the recorded control and nothing more", () => {
+    const click = (control: unknown) => describeJourneyEvent(event({ event_name: "daily_challenge_entry_clicked", metadata: { entry_surface: "home_hub", control } }));
+    expect(click("academy_core_daily_button").title).toBe("Pressed the Daily Challenge button on the Home Hub (Academy)");
+    expect(click("play_seal_ranked_closed").title).toContain("while Ranked was not open");
+    expect(click("totally_new").title).toBe("Pressed a Daily Challenge button (which one is not recognised)");
+    expect(click(undefined).kind).toBe("click");
+  });
+  it("names the More Challenges mode that was pressed", () => {
+    const sel = (metadata: Record<string, unknown>) => describeJourneyEvent(event({ event_name: "more_challenges_mode_selected", metadata })).title;
+    expect(sel({ game_mode_id: "time_trial", action: "play", source: "hub" })).toBe("Pressed Play on Time Trial in More Challenges");
+    expect(sel({ game_mode_id: "time_trial", action: "rules" })).toBe("Opened the rules for Time Trial in More Challenges");
+    expect(sel({ game_mode_id: "nope", action: "play" })).toBe("Selected a More Challenges mode");
   });
 });
 

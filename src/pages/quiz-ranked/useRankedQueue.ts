@@ -70,6 +70,9 @@ const PAIRING_POLL_MS = 700;
 const UNAVAILABLE_CODES = new Set([
   "FEATURE_DISABLED", "AUTH_REQUIRED", "ACCOUNT_REQUIRED",
   "RANKED_QUEUE_DISABLED", "RANKED_QUEUE_NOT_ELIGIBLE", "RANKED_QUESTION_POOL_UNAVAILABLE",
+  // The server's platform-policy pause (POST /api/ranked/queue answers 503 to a
+  // non-admin before any match or bot match is created). Not retryable here.
+  "RANKED_QUEUE_PAUSED",
 ]);
 
 /** The states in which a join request must NOT be sent. Anything other than
@@ -91,6 +94,8 @@ const UNAVAILABLE_MESSAGES: Record<string, string> = {
     "Ranked isn't open yet. Check back soon — no action needed on your side.",
   RANKED_QUEUE_DISABLED:
     "Ranked matchmaking is paused right now. Check back soon.",
+  RANKED_QUEUE_PAUSED:
+    "Ranked is temporarily unavailable. Existing matches may continue.",
   RANKED_QUEUE_NOT_ELIGIBLE:
     "Ranked needs a full (non-guest) account. Sign in to play.",
   RANKED_QUESTION_POOL_UNAVAILABLE:
@@ -166,7 +171,17 @@ export interface QueueController {
   reconnect: () => void;
 }
 
-export function useRankedQueue(): QueueController {
+export function useRankedQueue(options: { startAllowed?: boolean } = {}): QueueController {
+  /**
+   * Whether this host may START a new queue entry or bot match at all. The
+   * server's pause is the real enforcement (503 RANKED_QUEUE_PAUSED); this is
+   * the matching pre-flight, so a control that is hidden by policy but still
+   * reachable (a stale render, a test hook, a future caller) cannot send the
+   * request. Defaults to true: only a host that knows Ranked is closed opts out,
+   * and recovery of an EXISTING match or queue entry is never gated by it.
+   */
+  const startAllowedRef = useRef(options.startAllowed !== false);
+  startAllowedRef.current = options.startAllowed !== false;
   const [state, setState] = useState<QueueState>("recovering");
   const [status, setStatus] = useState<QueueStatusView | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
@@ -348,6 +363,13 @@ export function useRankedQueue(): QueueController {
    * ran out, or the opponent finished it), and the ordinary recovery poll
    * returns the player to the menu where they can simply queue again.
    */
+  /** A start refused locally because this host knows Ranked is closed. No request is sent. */
+  const refuseClosedStart = useCallback(() => {
+    setUnavailableReason(UNAVAILABLE_MESSAGES.RANKED_QUEUE_PAUSED);
+    setState("unavailable");
+    clearTimer();
+  }, []);
+
   const offerReconnect = useCallback(async (signal?: AbortSignal) => {
     const found = await api.getActiveMatch(signal).catch(() => null);
     if (!found || !found.withinReconnectWindow || found.host === "daily_challenge") {
@@ -390,6 +412,7 @@ export function useRankedQueue(): QueueController {
     // Duplicate-join guard. Read from the ref, not from the closed-over state:
     // two clicks in the same frame both see the pre-click render otherwise.
     if (JOIN_BLOCKED_STATES.has(stateRef.current)) return;
+    if (!startAllowedRef.current) { refuseClosedStart(); return; }
     stateRef.current = "joining";
     setSelectedClass(classId);
     setState("joining");
@@ -416,12 +439,13 @@ export function useRankedQueue(): QueueController {
         handleError(e, "action");
       }
     })();
-  }, [applyStatus, handleError, offerReconnect, poll]);
+  }, [applyStatus, handleError, offerReconnect, poll, refuseClosedStart]);
 
   const join = useCallback(() => joinAs(selectedClass), [joinAs, selectedClass]);
 
   const joinWithoutClass = useCallback((options?: { matchWithBot?: boolean; preset?: string }) => {
     if (JOIN_BLOCKED_STATES.has(stateRef.current)) return;
+    if (!startAllowedRef.current) { refuseClosedStart(); return; }
     stateRef.current = "joining";
     setState("joining");
     setError(null);
@@ -447,7 +471,7 @@ export function useRankedQueue(): QueueController {
         handleError(e, "action");
       }
     })();
-  }, [applyStatus, handleError, offerReconnect, poll]);
+  }, [applyStatus, handleError, offerReconnect, poll, refuseClosedStart]);
 
   const cancelAndWait = useCallback(async (): Promise<QueueCancellationResult> => {
     // Cancelling twice would race two DELETEs; the pairing window cannot be

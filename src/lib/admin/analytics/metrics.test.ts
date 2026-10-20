@@ -788,3 +788,19 @@ describe("paged reads", () => {
     ).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("rankedHostBucket — genuine player-versus-player needs consistent provenance", () => {
+  const row = (metadata: Record<string, unknown>) => ({ metadata });
+  it("a human opponent on a non-bot match is the only player-versus-player bucket", () => {
+    expect(rankedHostBucket(row({ host: "direct", opponent_type: "human", is_bot_match: false }))).toBe("direct_pvp");
+    expect(rankedHostBucket(row({ host: "direct", opponent_type: "human" }))).toBe("direct_pvp");
+  });
+  it("a contradictory row is never counted as player-versus-player or bot", () => {
+    expect(rankedHostBucket(row({ host: "direct", opponent_type: "human", is_bot_match: true }))).toBe("legacy_unknown");
+    expect(rankedHostBucket(row({ host: "direct", opponent_type: "bot", is_bot_match: false }))).toBe("legacy_unknown");
+  });
+  it("a bot opponent is direct bot Ranked and a Daily child with a bot is still Daily", () => {
+    expect(rankedHostBucket(row({ host: "direct", opponent_type: "bot", is_bot_match: true }))).toBe("direct_bot");
+    expect(rankedHostBucket(row({ host: "daily_challenge", opponent_type: "bot", is_bot_match: true }))).toBe("daily_challenge");
+  });
+});
