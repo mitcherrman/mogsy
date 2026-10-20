@@ -767,7 +767,7 @@ export default function CombatLab() {
     if (unsupported.length === 0) return;
     toast({
       title: "Unsupported runes removed",
-      description: unsupported.join(", ") + " are not executable in Combat Lab.",
+      description: `Not executable in Combat Lab: ${unsupported.join(", ")}.`,
     });
   }, [metaLoading, runes, config.runes]);
 

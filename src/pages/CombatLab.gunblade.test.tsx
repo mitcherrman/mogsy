@@ -218,7 +218,7 @@ describe("Combat Lab Hextech Gunblade", () => {
     });
     expect(toast).toHaveBeenCalledWith({
       title: "Unsupported runes removed",
-      description: "Phase Rush, 42, null are not executable in Combat Lab.",
+      description: "Not executable in Combat Lab: Phase Rush, 42, null.",
     });
   });
 });
