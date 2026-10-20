@@ -10,6 +10,9 @@
  *   stacked            one row above the instrument: crest left, seal right
  *   short landscape    crest above the seal, beside the instrument
  *
+ * Styles: ./academy-core-masthead.css, imported by AcademyCorePage AFTER the
+ * Orrery stylesheet (it overrides some stacked-layout rules at equal specificity).
+ *
  * Contracts kept from the previous header: the level-1 heading "Mogzy
  * Academy" (#acore-title labels the hero), the Daily link's accessible name
  * ("Play Daily Challenge" / "Resume Daily Challenge"), its router state, its
@@ -20,8 +23,6 @@ import { Link } from "react-router-dom";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { DAILY_ROUTE } from "@/pages/academy-core/academy-core-destinations";
-
-import "./academy-core-masthead.css";
 
 export default function AcademyMasthead({ dailyResume }: { dailyResume: boolean }) {
   return (
