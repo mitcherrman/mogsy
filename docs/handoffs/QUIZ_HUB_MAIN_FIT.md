@@ -1,7 +1,8 @@
 # Quiz Hub main screen — fit the phone (Daily + PLAY seal)
 
-Branch `fix/quiz-hub-main-mobile-fit` (from `main`), PR [#85](https://github.com/mitcherrman/mogsy/pull/85).
+Branch `fix/quiz-hub-main-mobile-fit` (from `main`), PR [#85](https://github.com/mitcherrman/mogsy/pull/85) (draft).
 Frontend only. No gameplay, routing, backend, or account change. Not merged, not deployed.
+Status: **conflict-free on `main` `6334913f`** (PR #68 squash included) and green in cloud CI — see *Final results*.
 
 This is the **main `/quiz` screen** (the centre parchment: Daily / Role / Ranked tabs, *Today's
 Challenge*, Mogzy, the record, the red PLAY seal). It is **not** the Play popup that PR #68 fixes.
@@ -34,8 +35,9 @@ never a target). The seal steps 8 → 6.5 rem (≤ 700 px tall) → 6 rem (≤ 6
 
 **Narrow sheet record.** On a 320 px phone the three equal stat cells were 59 px each and the Today
 value truncated to **"Co…"** (`Complete`) and clipped `In progress` — the completion state itself.
-Below 17 rem of writing width the cells size to content (`max-content`, 14 px values, tighter label
-tracking) and still sit inside the writing area (the pane clips overflow, so nothing borrows margin).
+Below 17 rem of writing width the cells size to content (`max-content`, tighter label tracking) and still sit
+inside the writing area (the pane clips overflow, so nothing borrows margin). Values keep 16 px on 375 / 390 px
+phones and step to 14 px bold only below 13 rem of writing width (320 / 360 px phones).
 
 **Landscape phones (≤ 1023 wide, landscape, ≤ 600 tall), Daily only.** The head and foot rolls keep their
 artwork (same slices of the 1086×1448 image, ×`1448/145` and ×`1448/165`) but are drawn 36 px / 40 px
@@ -71,7 +73,7 @@ spec with assertions disabled (`HUBFIT_MEASURE_ONLY=1`). Pixel values are CSS px
 | 667×375 landscape | 1018 / 882 / **no** (0/5) | 367 / 286 / yes (5/5) | 92 px |
 
 * After: the Daily sheet ends at `viewport − 8 px` wherever the cap binds (568, 640, 667, 320 and 375 tall,
-  and 836 of 844); document height drops 11–585 px (e.g. 2935 → 2350 at 568×320).
+  and 836 of 844); document height drops 10–650 px (e.g. 3068 → 2483 at 568×320).
 * Sheet heights, Role and Ranked, unchanged at every phone viewport (e.g. 758 / 774 / 780 / 786 / 837 / 950).
 * 390×844: Ranked-pause made Ranked 786 px; Daily is capped to 776.
 * Desktop 1024×768, 1280×800, 1440×900, 1920×1080: left / centre / right sheet boxes **identical** to
@@ -80,14 +82,16 @@ spec with assertions disabled (`HUBFIT_MEASURE_ONLY=1`). Pixel values are CSS px
 
 Screenshots (`docs/handoffs/quiz-hub-main-fit/`): `before-320x568`, `after-320x568-in-progress`,
 `before-568x320-landscape`, `after-568x320-landscape-complete`, `after-375x667-complete`,
-`after-360x640-finished`. Raw per-case JSON and 24 PNGs are the workflow's `quiz-hub-fit-after` /
-`quiz-hub-fit-before` artifacts (14-day retention).
+`after-390x844-complete`, `after-360x640-finished`, `after-320x568-finished-guest`,
+`after-568x320-landscape-available-guest`. Raw per-case JSON and 48 PNGs (account, plus `…__guest` /
+`…__no-session`) are the workflow's `quiz-hub-fit-after` / `quiz-hub-fit-before` artifacts (14-day retention).
 
 ## Test evidence
 
 Workflow *Quiz Hub Main Screen Fit* (GitHub Actions, ubuntu, Playwright's bundled headless Chromium —
-no local Edge/Chrome and no Docker; nothing browser-based was run locally). Green on `2ff0b9fa`
-(run 39345191002, on top of current `main`): 68 browser tests, 25 unit tests, type check of touched files.
+no local Edge/Chrome and no Docker; nothing browser-based was run locally). Final green run: head `8cf1aefd`
+(run 39381217416, merged with current `main` `6334913f`): 68 browser tests, 25 unit tests, type check of
+touched files.
 
 Browser assertions (DOM geometry, not screenshots), at **320×568, 360×640, 375×667, 390×844,
 568×320, 667×375**, for Daily **available / active / complete (More Challenges open) / finished
@@ -110,9 +114,33 @@ Browser assertions (DOM geometry, not screenshots), at **320×568, 360×640, 375
    a simulated 34 px bottom safe-area inset (headless Chromium has none, so the spec overrides the
    `--lc-hub-below` token the cap reads).
 
-PR #68 compatibility: the workflow's `compat-pr68` job merges `refs/pull/68/head` (merges cleanly; its
-`index.css` hunks are elsewhere) and runs both this spec and PR #68's own short-phone popup spec: green.
-Ranked-pause (#81 → #90) is merged into this branch; green.
+PR #68 compatibility: PR #68 is squash-merged into `main` (`6334913f`) and merged into this branch with no
+conflicts (its `index.css` hunks and this block coexist). The workflow's `compat-play-popup` job runs the
+popup's own `playScroll.shortViewport` stylesheet test and `play-scroll-short-phone` browser spec **and** this
+spec on the merged tree, and the dedicated *Play Selector Short Phone Acceptance* workflow also ran on this
+PR: all green. The Ranked-pause release (#90) is in the branch as well.
+
+## Final results (after merging `main` `6334913f`)
+
+* **Conflict-free:** `git merge origin/main` was clean; nothing from either mobile fix was lost.
+* **CI on `8cf1aefd`:** Quiz Hub Main Screen Fit (fit acceptance, baseline, popup compatibility), Play Selector
+  Short Phone Acceptance, History Review Acceptance, Mobile Recording Fit, mobile-arena-visibility, Journey
+  Mobile Space, role-challenge-review, combat-estimate-public, practice-modernization: all success.
+* **Screenshot review** (all four Daily states at the six viewports for the account; Daily available and
+  finished for a guest with an anonymous session and for a cold visitor): no clipped text, buttons, pills or
+  artwork. The figures read in full (`Ready`, `In progress`, `Complete`, `1,840`, `9/12`); the seal and the
+  results button sit wholly inside the parchment above the foot roll; Mogzy is whole at every size. Guests
+  show the HUD *Sign up* chip, which does not touch the sheet.
+* **Visible, not caused by this PR:** the Ranked tab's *COMING SOON* ribbon (PR #90) overlays the "RANKED"
+  label on portrait phones, and the *Complete* pill overlaps the top of Mogzy's hat on the smallest phones
+  (existing placement). Neither is clipped.
+* **Defects found and fixed during review:** `Complete` truncated to `Co…` and `In progress` clipped on
+  320–360 px sheets (the pane clips overflow and centred text overflows both sides, which `scrollWidth`
+  cannot see); the Complete pill cut off in landscape; a results button that squeezed Mogzy to 19 px. The spec
+  now fails on any truncated figure, text outside its box, or element cut by a clipping ancestor.
+* **History Review Acceptance:** green on the last runs here. Its earlier intermittent red (*art › a failed
+  image request leaves a fully rendered card*) is being investigated separately; no History Review code is
+  touched by this PR.
 
 ## Notes and risks
 
@@ -128,9 +156,5 @@ Ranked-pause (#81 → #90) is merged into this branch; green.
   already subtracts `env(safe-area-inset-bottom)` for when that changes.
 * **Ranked tab** now carries PR #90's "COMING SOON" ribbon, which overlays the label at phone widths. Not
   this PR's concern, visible in the after screenshots.
-* **History Review Acceptance** (another workstream's workflow, triggered because this PR edits
-  `src/index.css`) fails intermittently on one test, *art › a failed image request leaves a fully rendered
-  card* (`e2e/history-review/review-inspector.spec.ts:272`); it passed on a re-run of an identical stylesheet
-  (run 39343514587) and fails the same way on that branch's own PR runs. Unrelated to this change.
 * Not run: Academy Core browser benchmarks (per instructions); full-suite vitest (only `centre-stage`,
   which includes the existing `centreStage.test.tsx`).
