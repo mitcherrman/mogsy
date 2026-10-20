@@ -74,6 +74,7 @@ import { useSfx } from "@/lib/audio/useSfx";
 import type { CoreMedia } from "@/pages/academy-core/AcademyCoreInstrument";
 import MogzyOperator from "@/pages/academy-core/MogzyOperator";
 import AcademyMasthead from "./orrery/AcademyMasthead";
+import { composedFit, composedStage } from "./orrery/composed-fit";
 import {
   CORE_FULL_LAYOUT_MEDIA,
   CORE_MEASURE_SHARDS,
@@ -95,13 +96,14 @@ import {
 import "@/pages/academy-core/academy-core.css";
 import "./orrery/academy-core-v35.css";
 import "./orrery/academy-core-masthead.css";
+import "./orrery/academy-core-phone-fit.css";
 
 import OrreryCore from "./orrery/OrreryCore";
 import OrreryEnvironment from "./orrery/OrreryEnvironment";
 import { OrreryEngine } from "./orrery/OrreryEngine";
 import { useCoreNavigator } from "./orrery/useCoreNavigator";
 import { MATCHUP_LINEUP, MYSTERY_CHAMPION, RIFT_CENTRE_ART, type MatchupMedia } from "./orrery/orrery-projections-data";
-import { BOOK_ORDER, CALM, DESKTOP_ORBIT, STAGE, STAGE_COMPOSED, type BookId } from "./orrery/orrery-motion";
+import { BOOK_ORDER, CALM, DESKTOP_ORBIT, STAGE, type BookId } from "./orrery/orrery-motion";
 
 /** The Hall's own SEO block, carried verbatim from V3: `/lol` is still the indexed home. */
 const HOME_TITLE = "Mogzy LoL Quiz | League of Legends Trivia and Training";
@@ -323,6 +325,8 @@ function AcademyCoreOrrery() {
   targetsRef.current = targets;
 
   const [onScreen, setOnScreen] = useState(true);
+  // phones: how far the composition is drawn in to fit the screen's height (composed-fit.ts)
+  const [fit, setFit] = useState(0);
   useLayoutEffect(() => {
     const stage = stageRef.current;
     const hero = heroRef.current;
@@ -346,12 +350,16 @@ function AcademyCoreOrrery() {
     engineRef.current = engine;
     const r = stage.getBoundingClientRect();
     engine.resize(r.width, r.height);
+    setFit(mode === "composed" ? composedFit(r.width, r.height) : 0);
     engine.setTargets(targetsRef.current);
     engine.start();
     stage.dataset.ready = "true";
 
     const ro = typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(([entry]) => engine.resize(entry.contentRect.width, entry.contentRect.height))
+      ? new ResizeObserver(([entry]) => {
+        engine.resize(entry.contentRect.width, entry.contentRect.height);
+        setFit(mode === "composed" ? composedFit(entry.contentRect.width, entry.contentRect.height) : 0);
+      })
       : null;
     ro?.observe(stage);
     const io = typeof IntersectionObserver !== "undefined"
@@ -434,7 +442,7 @@ function AcademyCoreOrrery() {
   const focused = destinationById(focus);
   const mogzyLine = focused ? focused.preview : IDLE_LINE;
   const previewLabel = focused ? `Previewing ${focused.title}` : "No room previewed";
-  const stageSize = fullLayout ? STAGE : STAGE_COMPOSED;
+  const stageSize = fullLayout ? STAGE : composedStage(fit);
   const anyFocus = focus !== "idle";
 
   /* ---------------- the arrow selector ---------------- */
@@ -639,7 +647,7 @@ function AcademyCoreOrrery() {
           data-activating={activating ?? ""}
           data-testid="academy-core-stage"
         >
-          <div className="o35-scene" style={{ ["--w" as string]: stageSize.width, ["--h" as string]: stageSize.height }}>
+          <div className="o35-scene" data-fit={fullLayout ? undefined : fit} style={{ ["--w" as string]: stageSize.width, ["--h" as string]: stageSize.height, ["--fit" as string]: fullLayout ? 0 : fit }}>
             {orbitPaths}
             <svg className="o35-tethers" viewBox={`0 0 ${stageSize.width} ${stageSize.height}`} aria-hidden focusable="false">
               {BOOK_ORDER.map((id) => (

@@ -30,16 +30,13 @@ import {
   BOOK_ORDER,
   BOOK_RATIO,
   CALM,
-  COMPOSED_POSES,
   CORE_CENTER,
-  CORE_CENTER_COMPOSED,
   DESKTOP_ORBIT,
   EMPHASIS_SCALE,
   SELECTED_EMPHASIS_SCALE,
   ORBIT_OMEGA,
   SpinModel,
   STAGE,
-  STAGE_COMPOSED,
   SUPPORT_SCALE,
   approach,
   approachAngle,
@@ -55,6 +52,7 @@ import {
   type BookId,
   type BookPose,
 } from "./orrery-motion";
+import { composedCore, composedFit, composedPose, composedStage } from "./composed-fit";
 
 export interface EngineElements {
   books: Record<BookId, HTMLElement | null>;
@@ -114,6 +112,8 @@ const WINDOW_FRAMES = 512;
 const TAU_NEEDLE = 0.22;
 const TETHER_START_R = 168;
 const TETHER_START_R_COMPOSED = 124;
+/** The compact phone Core is 290 units across instead of 330: its threads start closer in. */
+const TETHER_START_R_COMPOSED_COMPACT = 110;
 const MAX_DT = 0.05;
 
 export class OrreryEngine {
@@ -153,6 +153,9 @@ export class OrreryEngine {
   private lastSpin = "";
   private parallaxLast = new WeakMap<HTMLElement, string>();
 
+  /** Phone composition fit, 0 (tall) .. 1 (compact); set from the stage box in resize(). */
+  private fit = 0;
+
   constructor(els: EngineElements, opts: EngineOptions) {
     this.els = els;
     this.mode = opts.mode;
@@ -165,7 +168,9 @@ export class OrreryEngine {
 
   /** The stage's pixel size → one scale for every unit. */
   resize(width: number, height: number): void {
-    const stage = this.mode === "orbit" ? STAGE : STAGE_COMPOSED;
+    // phones: the composition is fitted to the stage box's aspect (composed-fit.ts)
+    if (this.mode === "composed") this.fit = composedFit(width, height);
+    const stage = this.mode === "orbit" ? STAGE : composedStage(this.fit);
     this.u = Math.max(0.2, Math.min(width / stage.width, height / stage.height));
     this.renderFrame(0);
   }
@@ -383,7 +388,7 @@ export class OrreryEngine {
 
     const baseW = orbit ? BOOK_BASE_W : BOOK_BASE_W_COMPOSED;
     const baseH = baseW * BOOK_RATIO;
-    const core = orbit ? CORE_CENTER : CORE_CENTER_COMPOSED;
+    const core = orbit ? CORE_CENTER : composedCore(this.fit);
     const anyFocus = t.emphasis !== null;
     const selected = this.selected;
     let needleTarget: BookPose | null = null;
@@ -396,7 +401,7 @@ export class OrreryEngine {
         s.front = approach(s.front, t.front === id ? 1 : 0, dt, TAU_FRONT);
       }
 
-      let pose: BookPose = orbit ? orbitPose(bookAngle(i, theta), DESKTOP_ORBIT) : COMPOSED_POSES[id];
+      let pose: BookPose = orbit ? orbitPose(bookAngle(i, theta), DESKTOP_ORBIT) : composedPose(id, this.fit);
       if (orbit && s.front > 0.001) pose = blendPose(pose, frontPose(s.side), s.front);
       // Float the phone books a touch differently so they never read as a grid.
       // the selector's book sits in the orbit right under the crystal: it is lit and
@@ -445,7 +450,7 @@ export class OrreryEngine {
         const sway = Math.sin(this.clock * 0.7 + i * 1.7) * 10;
         path.setAttribute(
           "d",
-          tetherPath(core, { x: pose.x, y: pose.y }, orbit ? TETHER_START_R : TETHER_START_R_COMPOSED, sway),
+          tetherPath(core, { x: pose.x, y: pose.y }, orbit ? TETHER_START_R : lerp(TETHER_START_R_COMPOSED, TETHER_START_R_COMPOSED_COMPACT, this.fit), sway),
         );
       }
     });

@@ -131,7 +131,7 @@ test.describe("desktop: the Orrery dominates; a compact crest and a Daily seal",
   });
 });
 
-test.describe("phones: Orrery-first", () => {
+test.describe("phones: Orrery-first, fitted to the screen height", () => {
   for (const vp of [{ name: "360x640", width: 360, height: 640 }, { name: "390x844", width: 390, height: 844 }, { name: "320x568", width: 320, height: 568 }, { name: "430x932", width: 430, height: 932 }]) {
     test(`portrait ${vp.name}`, async ({ page }) => {
       await open(page, vp.width, vp.height);
@@ -149,6 +149,23 @@ test.describe("phones: Orrery-first", () => {
       expect(crystal.y + crystal.height / 2, "the Core is in the first viewport").toBeLessThanOrEqual(vp.height);
       const up = await box(page, '[data-testid="academy-core-slot-leaguecraft"]');
       expect(up.y, "the upper books are in the first viewport").toBeLessThan(vp.height * 0.5);
+      // the whole composition (four books and the crystal) is in the first screen, not cropped
+      for (const id of ["leaguecraft", "pro-play", "combat-lab", "archives"]) {
+        const b = await box(page, `.o35-book[data-bay="${id}"]`);
+        expect(b.y + b.height, `${id} whole on the first screen`).toBeLessThanOrEqual(vp.height + 1);
+        expect(b.width, `${id} readable`).toBeGreaterThanOrEqual(96);
+      }
+      expect(crystal.y + crystal.height, "the crystal whole on the first screen").toBeLessThanOrEqual(vp.height);
+      expect(crystal.height, "crystal target").toBeGreaterThanOrEqual(44);
+      // the arrows join the first screen wherever there is room for them (>= 600 px tall)
+      if (vp.height >= 600) {
+        for (const id of ["academy-core-arrow-left", "academy-core-arrow-right"]) {
+          const a = await box(page, `[data-testid="${id}"]`);
+          expect(a.y + a.height, `${id} on the first screen`).toBeLessThanOrEqual(vp.height);
+        }
+      }
+      const fit = await page.locator(".o35-scene").getAttribute("data-fit");
+      console.log(`fit ${vp.name}: ${fit}`);
       await page.screenshot({ path: path.join(OUT, `phone-${vp.name}.png`) });
     });
   }
