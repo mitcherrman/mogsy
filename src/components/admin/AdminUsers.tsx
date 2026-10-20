@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import { AdminIdentityLines } from "@/components/admin/AdminUserCard";
 import { AccountOperationsPulse, AdminAccountJourney } from "@/components/admin/users/AdminAccountJourney";
+import { AdminDailyHistory } from "@/components/admin/users/AdminDailyHistory";
 import { acquisitionSource, countAccountMilestones, isKnownQaEmail, type AccountActivityEvent, type AccountLinkedBrowser } from "@/lib/admin/account-journey";
 import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
 import { BotStateToggle } from "@/components/admin/BotStateToggle";
@@ -1048,6 +1049,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             linkedBrowsers: accountBrowsersLoading ? undefined : accountBrowsers,
             linkedBrowserError: accountBrowsersError,
           }}
+        />
+
+        {/* Daily Challenge as its own activity: owner-gated Railway read, keyed to the
+            selected account so a previous account's runs are never shown. */}
+        <AdminDailyHistory
+          key={`daily-${selectedUser.user_id}`}
+          userId={selectedUser.user_id}
+          isAnonymous={!!selectedUser.is_anonymous}
         />
 
         {authError && (
