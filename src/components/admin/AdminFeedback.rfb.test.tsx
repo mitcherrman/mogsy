@@ -197,10 +197,13 @@ describe("an expanded question report shows the captured snapshot", () => {
   it("shows the reason and the player's own comment, kept apart", async () => {
     await expand("Incorrect answer — Ranked");
     expect(screen.getByText("Player's comment")).toBeInTheDocument();
-    // Twice on purpose: once truncated in the collapsed row, once in full
-    // under its own label. That is the shipped list behaviour, not a bug.
+    // Three on purpose: truncated in the collapsed row, in full under "What
+    // did they report?" in the at-a-glance summary, and under its own
+    // "Player's comment" label next to the captured facts.
     expect(screen.getAllByText("Thornmail gives more armor than Warmog's."))
-      .toHaveLength(2);
+      .toHaveLength(3);
+    expect(within(screen.getByTestId("feedback-plain-summary"))
+      .getByText("Thornmail gives more armor than Warmog's.")).toBeInTheDocument();
     // The reason lives in the origin line, not buried in the body.
     expect(screen.getByText("Question Report · Incorrect answer · Ranked")).toBeInTheDocument();
   });
