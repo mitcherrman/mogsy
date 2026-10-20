@@ -57,8 +57,8 @@ export function AfterDailyCard({ summary }: { summary: AfterDailySummary }) {
 export function VisitorJourneysView({ journeys, rangeEnd }: { journeys: VisitorJourney[]; rangeEnd?: number }) {
   const [filter,setFilter] = useState("human");
   const [limit,setLimit] = useState(12);
-  const humans=journeys.filter(j=>j.human);
-  const afterDaily=useMemo(()=>computeAfterDaily(humans,rangeEnd ?? Date.now()),[journeys,rangeEnd]);
+  const humans=useMemo(()=>journeys.filter(j=>j.human),[journeys]);
+  const afterDaily=useMemo(()=>computeAfterDaily(humans,rangeEnd ?? Date.now()),[humans,rangeEnd]);
   const visible=journeys.filter(j=>filter === "human" ? j.human : (filter === "traffic_unknown" ? !j.human : j.human && j.kind === filter));
   const tiles=[{label:"Human-signal visitors",value:humans.length,definition:"Distinct browsers with human input evidence; not verified people.",Icon:Users},
     {label:"Returning browsers",value:humans.filter(j=>j.returning).length,definition:"Human-signal browsers with a later recorded session in this range.",Icon:Activity},

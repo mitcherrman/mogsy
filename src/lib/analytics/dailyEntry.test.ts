@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const track = vi.hoisted(() => vi.fn());
-vi.mock("./track", () => ({ track }));
+vi.mock("@/lib/analytics", () => ({ track }));
 
 import { DAILY_ENTRY_CLICKED, DAILY_ENTRY_CONTROLS, dailyEntryMetadata, trackDailyEntry } from "./dailyEntry";
 import { PRODUCT_EVENTS, isKnownEvent } from "./contract";

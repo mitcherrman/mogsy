@@ -12,7 +12,7 @@
  * control cannot leak free text into the warehouse, and a reader of a timeline
  * can trust the label.
  */
-import { track } from "./track";
+import { track } from "@/lib/analytics";
 
 export const DAILY_ENTRY_CLICKED = "daily_challenge_entry_clicked" as const;
 
