@@ -7552,6 +7552,54 @@ html.worlds-viewport-locked body {
   }
 }
 
+/* ── The Complete pill clears Mogzy ──────────────────────────────────────
+   The pill sits in the figure's top-right corner and, on a phone, Mogzy's hat
+   reaches into it. On narrow sheets the figure gives the pill its own band:
+   the pill is a notch smaller and the art is drawn 1.75rem shorter, so the
+   two never share pixels. (Landscape hides the pill altogether.) */
+@container lc-scroll (max-width: 17rem) {
+  .lc-daily-panel [data-testid="daily-mode-complete"] {
+    top: 0;
+    padding-block: 0.125rem;
+    font-size: 9.5px;
+  }
+  .lc-daily-panel .lc-daily-hero--complete .lc-daily-hero__art {
+    height: min(calc(100% - 1.75rem), 19rem);
+  }
+}
+
+/* ── The Ranked tab's COMING SOON ribbon (PR #90) on a phone ─────────────
+   `FeatureRibbon size="tab"` is a 6rem diagonal band built for a ~117px tab.
+   A phone sheet's tabs are 54–68px and the short label ("RANKED") fills them,
+   so the band lay across its last letters. Below 21rem of writing width
+   (where the tabs switch to their short names) the ribbon becomes a slim
+   corner tape that stays clear of the label; the pause itself is still
+   stated under the Ranked seal and by the disabled seal, and the ribbon is
+   `aria-hidden`, so nothing is lost to assistive tech. On the smallest
+   sheet the Ranked label also steps down a hair so it ends before the tape. */
+@container lc-scroll (max-width: 20.9rem) {
+  .lc-mode-tab [data-testid="feature-ribbon-coming-soon"] {
+    right: -0.75rem;
+    top: 0;
+    width: 2.25rem;
+    height: 7px;
+    padding-block: 0;
+    font-size: 0;
+    line-height: 0;
+  }
+  .lc-mode-tab:has([data-testid="feature-ribbon-coming-soon"]) {
+    padding-right: 0.25rem;
+  }
+}
+
+@container lc-scroll (max-width: 12rem) {
+  .lc-mode-tab:has([data-testid="feature-ribbon-coming-soon"]) {
+    padding-left: 0;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+}
+
 /* ── Landscape phones ────────────────────────────────────────────────────
    A landscape phone offers ~250–300px of height under the header band. The
    stacked sheet's frame alone (percentage padding of a 30rem column) costs

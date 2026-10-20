@@ -75,9 +75,12 @@ describe("the Quiz Hub fit stylesheet", () => {
   });
 
   it("keeps the narrow-sheet record rule to a container query on Daily's own markup", () => {
-    expect(parsed.containers).toHaveLength(2);
-    expect(parsed.containers.map((c) => c.query)).toEqual(["lc-scroll (max-width: 17rem)", "lc-scroll (max-width: 13rem)"]);
-    for (const c of parsed.containers) expect(c.body).toContain(".lc-daily-panel .lc-daily-panel__stats");
+    expect(parsed.containers.length).toBeGreaterThanOrEqual(4);
+    // Only narrow-sheet queries: nothing here applies once the sheet is wide.
+    for (const c of parsed.containers) expect(c.query, c.query).toMatch(/^lc-scroll \(max-width: [\d.]+rem\)$/);
+    expect(parsed.containers.some((c) => c.body.includes(".lc-daily-panel .lc-daily-panel__stats"))).toBe(true);
+    expect(parsed.containers.some((c) => c.body.includes("feature-ribbon-coming-soon"))).toBe(true);
+    expect(parsed.containers.some((c) => c.body.includes(".lc-daily-hero--complete"))).toBe(true);
   });
 
   it("keys every rule to the Daily mode or to Daily's own markup", () => {
@@ -86,7 +89,10 @@ describe("the Quiz Hub fit stylesheet", () => {
       expect(selectors.length).toBeGreaterThan(0);
       for (const sel of selectors) {
         for (const part of sel.split(",").map((s) => s.trim())) {
-          expect(part.startsWith(DAILY_SHEET) || part.startsWith(".lc-daily-panel"), part).toBe(true);
+          expect(
+            part.startsWith(DAILY_SHEET) || part.startsWith(".lc-daily-panel") || part.startsWith(".lc-mode-tab"),
+            part,
+          ).toBe(true);
         }
       }
     }
@@ -145,6 +151,10 @@ describe("the Daily pane's layout hooks", () => {
     const { container } = render(<DailyModePanel daily={daily} onPlay={() => {}} />);
     const panel = screen.getByTestId("daily-mode-panel");
     expect(panel.classList.contains("lc-daily-panel")).toBe(true);
+    // The pill's band is keyed to this modifier, only on a completed day.
+    expect(Boolean(container.querySelector(".lc-daily-hero--complete"))).toBe(
+      daily?.known === true && daily.completed,
+    );
     for (const cls of [
       "lc-daily-panel__head", "lc-daily-panel__title", "lc-daily-panel__status",
       "lc-daily-panel__stats", "lc-daily-panel__cta", "lc-daily-hero",

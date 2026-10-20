@@ -196,6 +196,8 @@ interface Geometry {
   /** Each figure's own box (the clip box of a truncating value). */
   statValueRects: Box[];
   badge: Box | null;
+  /** The Ranked tab's COMING SOON ribbon against its own label: sample points of the label inside the rotated band. */
+  ribbon: { w: number; h: number; inside: number; total: number; label: Box[] } | null;
   /** Text ranges (not boxes) for text that can overflow its element. */
   titleText: Box | null;
   statusText: Box | null;
@@ -307,6 +309,28 @@ const MEASURE_SOURCE = `(() => {
     clipped,
     statOverflow: statCells.flatMap((c) => [c.querySelector('dt'), c.querySelector('dd')]).map((e) => (e ? e.scrollWidth - e.clientWidth : 0)),
     statValueRects: statCells.map((c) => box(c.querySelector('dd').getBoundingClientRect())),
+    ribbon: (() => {
+      const rb = el('[data-testid="feature-ribbon-coming-soon"]');
+      if (!rb) return null;
+      const tab = rb.closest('[role="tab"]');
+      const tr = tab.getBoundingClientRect();
+      const r = rb.getBoundingClientRect();
+      const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+      const w = rb.offsetWidth, h = rb.offsetHeight, c = Math.SQRT1_2;
+      const labels = Array.from(tab.querySelectorAll('span')).filter((sp) => sp.getAttribute('aria-hidden') === 'true' && !sp.matches('[data-testid^="feature-ribbon"]') && getComputedStyle(sp).display !== 'none');
+      const boxes = labels.map(textBox).filter(Boolean);
+      let inside = 0, total = 0;
+      for (const b of boxes) {
+        // Glyph ink, not the line box: trim 2px off the top and bottom.
+        for (let x = b.left; x <= b.right; x += 1) for (let y = b.top + 2; y <= b.bottom - 2; y += 1) {
+          total += 1;
+          const dx = x - cx, dy = y - cy;
+          const u = dx * c + dy * c, v = -dx * c + dy * c;
+          if (Math.abs(u) <= w / 2 && Math.abs(v) <= h / 2 && x >= tr.left && x <= tr.right && y >= tr.top && y <= tr.bottom) inside += 1;
+        }
+      }
+      return { w, h, inside, total, label: boxes };
+    })(),
     badge: (() => { const b = el('[data-testid="daily-mode-complete"]'); if (!b) return null; const r = b.getBoundingClientRect(); return r.width > 0 ? box(r) : null; })(),
     titleText: textBox(titleEl),
     statusText: textBox(statusEl),
@@ -407,6 +431,13 @@ function assertDailyFits(g: Geometry, label: string) {
     expect(within(g.statTextBoxes[2 * i + 1], g.statValueRects[i], 0.5), `${label}: figure ${i} value ${JSON.stringify(g.statTextBoxes[2 * i + 1])} fits its box ${JSON.stringify(g.statValueRects[i])}`).toBe(true);
   });
   if (g.badge) expect(within(g.badge, writing, 1), `${label}: Complete pill ${JSON.stringify(g.badge)} inside writing area`).toBe(true);
+  // The Complete pill and Mogzy share no pixels (the art breathes by a few px).
+  if (g.badge && g.mascot) expect(overlapArea(g.badge, g.mascot), `${label}: Complete pill overlaps Mogzy`).toBeLessThanOrEqual(2);
+  // The COMING SOON ribbon (PR #90) stays off the Ranked label.
+  if (g.ribbon) {
+    expect(g.ribbon.total, `${label}: Ranked label measured`).toBeGreaterThan(20);
+    expect(g.ribbon.inside, `${label}: COMING SOON ribbon covers ${g.ribbon.inside} of ${g.ribbon.total} label pixels`).toBe(0);
+  }
   expect(g.statTexts.join("|"), `${label}: figure labels`).toMatch(/Today.*\|Score.*\|Correct/);
   expect(within(play, writing, 1), `${label}: play inside the writing area`).toBe(true);
   if (g.caption) expect(within(g.caption, writing, 1), `${label}: caption inside writing area`).toBe(true);

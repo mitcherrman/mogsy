@@ -116,7 +116,10 @@ export default function DailyModePanel({
              height the stage has left and Mogzy is drawn to fit it, so the
              sheet's box is never asked to grow. A finished day gets the
              cheering pose; every other state the scholar with his book. ── */}
-      <div className="lc-daily-hero relative mt-1 w-full min-h-[5.5rem] flex-1" data-testid="daily-mode-hero">
+      <div
+        className={`lc-daily-hero relative mt-1 w-full min-h-[5.5rem] flex-1${copy.completed ? " lc-daily-hero--complete" : ""}`}
+        data-testid="daily-mode-hero"
+      >
         <span aria-hidden="true" className="lc-daily-hero__aura" />
         <span aria-hidden="true" className="lc-daily-hero__plinth" />
         <MogzyMascot
