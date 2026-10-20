@@ -75,3 +75,42 @@ The artifact `academy-masthead-screens` of run 39377375321 (head 4a26fcb5) holds
 1. Is the seal's slow-turning tick ring wanted? It stops under reduced motion and does not stop in `lite`.
 2. In short landscape the Orrery is fitted to the screen height, so the books are about 65–80 px wide. Is that acceptable, or should the page scroll with larger books?
 3. Should the desktop crest also show the "Mogzy's Hextech Workshop" eyebrow? Phones hide it.
+
+## Round 2 (2026-10-20): mobile fit + Hextech sigil CTA (commit c9660b76)
+
+The owner approved the desktop direction. Priorities: (1) the mobile composition was cropped on short phones; (2) the Daily CTA needed to be more premium.
+
+### Mobile sizing: what changed in the layout logic
+- **Before:** the stacked stage was `width: min(100%, 520px); aspect-ratio: 360/640`, so its height came from the width alone. On 360x640 and 320x568 the lower book tier fell below the fold.
+- **1. Height budget** (`orrery/academy-core-phone-fit.css`): stage height = `clamp(86 % of compact-at-full-width, --app-viewport-h - above - below, approved 360:640 at full width)`.
+  - above = 4.4rem (hero padding + masthead row + gap).
+  - below = the arrow row (3.6rem) on screens >= 600 px tall, and 0.6rem on shorter ones. There, the arrows follow just below the fold and the books and crystal, which also navigate, stay whole.
+- **2. Rebalanced composition, not just shrunk** (`orrery/composed-fit.ts`, pure and unit-tested): `composedFit(boxW, boxH)` reads the stage box's aspect and returns 0 (the approved tall 360x640) up to 1 (a compact 360x520). Compact means the tiers are drawn in around the Core (Core 330 -> 290 units at y 262), the books go from 0.92/0.90 to 0.86/0.84, and Mogzy is tucked closer. Values in between are interpolated.
+  - `OrreryEngine.resize()` takes the fit for book poses, the Core centre and the tether start.
+  - The page sets the scene's `--h` / `--fit` / `data-fit` from it, and CSS moves the Core, instrument and Mogzy by `--fit`.
+  - The desktop orbit is untouched.
+- **3. Short landscape** uses the compact aspect (360/520), fitted to the screen height.
+- **Measured fit on CI:** 360x640 -> 1, 320x568 -> 0.75, 390x844 and 430x932 -> 0 (the approved look, unchanged).
+
+### Daily Challenge CTA
+- **Sigil:** a gold bezel with engraved notches, a rune ring turning every 36 s, a faceted Hextech crystal holding the play glyph, and a soft aura pulse every 3.8 s.
+- **Plaque:** an engraved plaque with a gold edge, dark Hextech glass and two hairlines, with a sheen passing every 7.5 s.
+- **Desktop hover:** the sigil scales and brightens, the pulse quickens and the sheen runs at once.
+- **Reduced motion and the `lite` tier:** a lit, still sigil.
+- **Size:** 66 px on desktop, 56 px on phones (50 px at <= 300 px). The masthead row stays at about 56 px.
+- **Unchanged:** the accessible name, route, router state, prefetch and #103 entry analytics.
+
+### PR #95 overlap
+- New files: `composed-fit.ts` (+ test) and `academy-core-phone-fit.css`.
+- `OrreryEngine.ts`: imports, a `fit` field, and 4 lines in `resize()` / `renderFrame()`. #95 only adds `steerTo()` around line 250.
+- `AcademyCorePage.tsx`: two imports, the fit state, the RO callback and the scene attributes.
+- Re-check with `git merge-tree` before integrating.
+
+### Evidence
+- `academy-masthead-review` 39381138294: 15/15. It adds per-viewport asserts on 320x568, 360x640, 390x844 and 430x932: all four books and the crystal whole on the first screen, each book >= 96 px wide, and the arrows on screen where the height is >= 600 px. Landscape at 740x360 (and 640x360 to 932x430) fits.
+- `academy-core-orrery` 39381138785: unit 242/242, build OK, V3 spec 23/23, V3.5 spec 55/56. The one failure is the known pre-existing orbit-turn test, which also fails on main.
+- Gameplay Analytics 39381138352: 384/384.
+- The stills in `docs/handoffs/academy-header-redesign/` are this round's captures.
+
+### Known, not changed
+- The "BETA" ribbon on Combat Simulation still crosses the Core on phones (pre-existing).
