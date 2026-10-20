@@ -1,7 +1,7 @@
 # W26Q — Worlds 2026-exclusive Pro Play Quiz (handoff)
 
 Date: 2026-10-19/20 (local), evidence read 2026-10-20 03:50–03:56 UTC.
-Status: **tested integration candidate, local branches only.** Nothing was pushed, merged, published, deployed, migrated or ingested. No production database was opened, and no live data was changed. The only production reads were public GET endpoints.
+Status: **tested integration candidate, pushed as feature branches with draft PRs** — backend mitcherrman/League_Combat_Simulator#66, frontend mitcherrman/mogsy#104. Nothing was merged, published, deployed, migrated or ingested. No production database was opened, and no live data was changed. The only production reads were public GET endpoints. Pass 2 (2026-10-20) is §15.
 
 | Repo | Branch | Base | Worktree |
 |---|---|---|---|
@@ -360,10 +360,13 @@ The **failure sets are identical**. All are pre-existing: review-sample/taxonomy
 
 ## 11. Owner decisions
 
-- **A. Entry point.** A CTA on the live Worlds experience (Overview) and/or the Pro Play hub. Not added, because those layouts are zero-scroll and pixel-swept. The route works, and the published/rollback Worlds page links to it.
-- **B. Field-only mode.** Before results exist, or with upstream down, a session is all field facts (region, entry stage, seed tier, region counts). It is honest, but lighter. To require results-based questions instead, set a minimum Match+Bracket count in the preset (a one-line rule).
-- **C. Labels.** Canonical team keys ("Team Liquid", "Cloud9", "LYON") rather than Worlds sponsor names ("Team Liquid Alienware", "Cloud9 Kia").
-- **D. Report identity.** Question reports still file under mode "Pro Play Quiz" (unchanged filing). Say if Worlds reports should file separately.
+- **A. Entry point.** DONE in pass 2 (§15.2): one compact control in the Worlds experience command bar, visually certified 50/50. Owner review of the look is still welcome; there is no open decision.
+- **B. Field-only mode. Current default, PENDING OWNER SIGN-OFF (not permanent policy).**
+  - What it means: before results exist, or with upstream down, a session is all field facts (region, entry stage, seed tier, region counts). It is honest, but lighter.
+  - Where it is marked: `pro_play/presets.py`, at the `worlds_2026` entry.
+  - To require results instead: set a minimum Match+Bracket count enforced in `plan` (a one-line rule).
+- **C. Labels. Current default, PENDING OWNER SIGN-OFF (not permanent policy).** Canonical team keys ("Team Liquid", "Cloud9", "LYON") rather than Worlds sponsor names ("Team Liquid Alienware", "Cloud9 Kia"). Marked at `tournament_fact_family.team_labels`.
+- **D. Report identity.** There is a proposal (§15.4) that needs owner approval. It is not applied, so reports still file under mode "Pro Play Quiz".
 
 ## 12. Deployment order and owner actions
 
@@ -402,4 +405,150 @@ The **failure sets are identical**. All are pre-existing: review-sample/taxonomy
 
 ## 14. Next step
 
-Owner review of this handoff and decisions §11 A–D. Then: push both branches as feature branches, open PRs, merge the backend, smoke, merge the frontend, then Lovable Publish.
+1. Owner sign-off on §11-B and §11-C (defaults), and a decision on §11-D (§15.4).
+2. Mark both PRs ready.
+3. Merge the backend (#66) and smoke it (§12).
+4. Merge the frontend (#104).
+5. Lovable Publish.
+
+## 15. Pass 2 (2026-10-20)
+
+Code commits: backend `1093738f`, frontend `42c6ec3c` (each branch tip adds only this handoff).
+
+### 15.1 CI and the Perfect Timing failure — BASELINE, not a regression (VERIFIED)
+
+**CI on the pass-1 heads:**
+- Backend #66 `safety`: success.
+- Frontend #104: `validation` and `patch-deck` succeeded; `owner-prototypes` (workflow `interaction-labs-integration`) failed.
+
+**The failure.** Exactly 1 of 21 Playwright tests:
+
+`e2e/interaction-labs-access.spec.ts:84` › "the owner's bookmark /admin/perfect-timing lands on /admin/playtests/perfect-timing…"
+
+`owner-playtest-page` mounts (`data-mode="perfect-timing"`) but stays `hidden`. The 453 unit tests passed.
+
+**Baseline proof:**
+- The workflow runs only on PRs that touch `src/App.tsx` (among other paths), so it never runs on main itself.
+- The identical test fails in every run of the last day on unrelated branches: `patchhub/phd-release` (`1989cb4b`, run 39364334634), `academy-startup/release-rc2.2` (`a7e4c69d`, run 39234180840, 2026-10-19 09:37Z) and `notifications/v2` (run 39378985845).
+- Both `1989cb4b` and `a7e4c69d` are **ancestors of the clean base** `2cd80efb`.
+- The W26Q branch touches no Perfect Timing, interaction-labs or admin file.
+
+**Not reproduced locally.** That would mean a browser run against the admin route with an owner sign-in, which `AGENTS.md` does not permit unprompted, and the CI evidence on base ancestors already settles it.
+
+**No Perfect Timing code was changed.** Owner: a separate fix is needed on main. Until then, `owner-prototypes` stays red on every App.tsx PR.
+
+### 15.2 Worlds 2026 Quiz CTA in the flag-enabled Worlds experience (implemented, certified)
+
+**What and where.** `QuizChip` in `WorldsExperience.tsx`: one fixed-size control in the command bar's existing right cluster, beside the phase chip, in all three bar layouts.
+
+| Layout | Form | Size |
+|---|---|---|
+| Desktop ≥ 1280 px | labelled chip "Quiz" | 73 × 28 |
+| Desktop 1024–1279 px | icon-only | 28 × 28 |
+| Portrait phone | icon-only | 36 × 44 tap target |
+| Landscape phone | icon-only | 36 × 44 tap target |
+
+All forms carry the accessible name "Worlds 2026 Quiz" and link to `/lol/pro-play/quiz/worlds-2026`. The control has no motion and adds no row and no scroll container.
+
+**Phase-chip wording on desktop 1024–1279 px.** The phase chip now uses the phone bar's existing short wording there, keeping the stage's full name: "Knockouts now", "Play-In done", "Complete". From 1280 px the long label is unchanged.
+
+Why this was needed: the certification found "Knockouts in progress" plus the five-tab nav leave no room for any control at 1024 × 768. Two collisions were found and fixed during certification:
+- the labelled chip met "Discover" in the Play-In-complete state;
+- the icon chip met it in the knockout state.
+
+**Visual certification (owner-approved runs).**
+- Setup:
+  - Playwright's bundled headless Chromium shell, not Edge or Chrome;
+  - production build with the Worlds flag on, served by a self-owned static server;
+  - 1 worker, no windows, reduced motion emulated, a 10-minute hard cap, try/finally teardown; no browser process was left behind.
+- Result: **50 / 50** = 5 states × 10 viewports.
+  - States: pre-event, the real Play-In-complete feed, and synthetic Swiss R3, quarterfinals done and event complete.
+  - Viewports: 1920×1080, 1440×900, 1280×800, 1280×600, 1024×768, 768×1024, 390×844, 360×640, 844×390 and 740×360; phones run as mobile with touch.
+- Each case checks:
+  - the page does not scroll in either axis;
+  - the bar height: desktop 56 px, landscape 44 px; the portrait bar is 93 px, i.e. the 44 px row + nav, unchanged;
+  - the CTA is fully in view and does not overlap the title, the nav or the phase chip;
+  - the title is not clipped;
+  - no overflowing scroller exists inside the experience;
+  - the nav does not meet the phase chip;
+  - reduced motion is applied.
+- Evidence (frontend repo): `docs/handoffs/w26q/cta-cert-results.json`, `docs/handoffs/w26q/cta-cert.cjs` and 6 screenshots in `docs/handoffs/w26q/shots/`.
+
+**Tests:**
+- `QuizCta.test.tsx`, 6 tests:
+  - one CTA per layout, in the phase chip's row;
+  - fixed heights, no animation or scroll classes;
+  - icon-only on phones;
+  - present on Overview, Stages, Teams and Schedule across Play-In, Swiss, knockout and complete states with no scroll container;
+  - desktop short/long phase wording.
+- Worlds experience suites: 145 / 145.
+- Focused regression (`src/lib/pro-play`, `src/components/pro-play`, `ProPlayQuiz`, `src/pages/pro-play`, `Layout`, `Worlds2026Quiz`, `App.ux3aRoutes`): **29 failed / 1,848 passed**, with the failure set **identical** to clean main (the pre-existing Worlds-flag tests).
+- A wider run including `src/pages/dev` differed only in `LobbyPreviewPage.premiumAnalytics`, a known load flake. It also fails on base, in different tests, and passes 39/39 on both branch and base when run alone.
+- `tsc`: the same 2 pre-existing errors.
+- Production build: OK.
+
+**Not covered:** a "phone recording" layout. No layout by that name exists in the Worlds experience. The certified phone cases (390×844, 360×640, 844×390, 740×360, with touch and isMobile) cover portrait and landscape.
+
+### 15.3 Defaults marked pending owner sign-off
+
+Field-only sessions and canonical team labels stay as the current defaults. Both are marked **PENDING OWNER SIGN-OFF** in code and here (§11-B, §11-C); neither is permanent policy.
+
+### 15.4 Report filing — proposal, not applied
+
+**How reports file today (frontend `src/lib/feedback`).** A question report is a `feedback` row with:
+- `entry_intent = "question_report"`;
+- `category`, the CHECK-constrained, server-visible column, which is `"Leaguecraft"` for both quizzes (`PRO_PLAY_REPORT_IDENTITY.category`);
+- a client-written `report_context` jsonb holding:
+  - `mode`: free text, capped, currently `"Pro Play Quiz"` for both;
+  - `route`: already `/lol/pro-play/quiz/worlds-2026` for Worlds reports;
+  - `runtime_question_id`, the prompt and the choices.
+
+The admin view labels a report "Question Report · {reason} · {mode}". Nothing filters on the mode string; mode is display only.
+
+**Smallest correct change (proposed):**
+- For a preset session, set the report identity's `mode` to the arena's mode label ("Worlds 2026 Quiz"), e.g. pass `proPlayModeLabel(state)` into `projectProPlayReportable` / the arena's report identity.
+- Keep `category: "Leaguecraft"`.
+
+**Why this is safe:**
+- It needs no schema, column, CHECK or migration change.
+- Reports land in the same category bucket, so nothing is silently separated.
+- The admin label tells them apart.
+- Historical rows are untouched.
+
+**Dependency:** any owner dashboard or saved query that counts reports by the exact `mode` text would see a second value. The repo has none, but out-of-repo queries such as Supabase SQL views are unknown.
+
+Not applied, because it changes report records and the brief asks for a proposal.
+
+### 15.5 Statistical Worlds questions — the asks/discloses gap (recorded, enforced)
+
+**The gap.**
+- Stat candidates (`presets.stat_candidates`) declare **no** `asks` / `discloses`.
+- So the planner cannot stop a stat reveal from answering a fact question, or the reverse. For example, "Chovy has 4 games on Ahri at Worlds 2026" shows that Gen.G played at least two series, and "Faker's most-played champion at Worlds" names T1's run.
+- Stat questions also say nothing about the Play-In or Swiss records they imply.
+
+**Enforced in code.**
+- `presets.STAT_DISCLOSURE_RULE_IMPLEMENTED = False` gates `candidate_pool`.
+- Certifying a canonical tournament id is **not** enough to activate statistical questions: this flag must also flip, together with the rule and its tests.
+- `test_stat_gate_holds_even_with_a_certified_id` asserts this.
+- The stat path's scope test still runs, with the gate opened only inside that test.
+
+**Required before activation (10.1a):**
+- every stat candidate declares:
+  - `asks` = its semantic fact;
+  - `discloses` = each named team's/player's participation and stage presence in the window, plus any match/series outcome its counts imply;
+- tests prove no stat and fact pair in a session violates the rule, mirroring `assert_session_rules`;
+- the mutation check is extended.
+
+**Backend tests now:** 41 / 41.
+
+### 15.6 Merge readiness
+
+**Backend #66 — code-ready:**
+- CI is green; tests pass; additive.
+- Waiting on owner sign-off on §11-B/§11-C (defaults) and the draft-to-ready step.
+
+**Frontend #104 — code-ready:**
+- Tests and visual certification pass.
+- One red CI check, `owner-prototypes`, is the pre-existing Perfect Timing baseline failure (§15.1). It is not caused by this PR, but it keeps the check red until main is fixed. The owner can merge over it knowingly or fix main first.
+- It depends on the backend being deployed first.
+- §11-D is open but does not block: reports file safely as today.
