@@ -81,6 +81,7 @@ Classes: **E** existing / reusable · **T** representable with UI / typography o
 | VIS-F1 kit, Web Audio generators | Original code in the repo | OK |
 | Mogzy mascot (all poses, family, ranked) | **None found** (no provenance or licence doc) | Missing: owner to record origin and author |
 | Role emblems, crowns, ranked backgrounds, `caster-minion.webp`, `play-seal.png` | **None found** | Missing: assumed Mogzy-made, unconfirmed |
+| VIS-F2 scene art: `ranked-academy-duel-bg-960w.webp` (`scene.hq`), `/images/lol-hub/leaguecraft-classroom-bg.png` (`scene.practice`) | **None found** | Missing: confirm origin before release (VIS-F2 rightly avoided `public/themes/lol-bg.png`, which is Riot art) |
 | `elder-dragon.webp` (added `e4632461`, 2026-08-21) | **None found** | Missing; likely Riot-derived; chip use only |
 | Objective / structure squares | backend `provenance.json` (source URL, revision, hashes) | Provenance yes; licence = Riot IP under the fan-content posture |
 | Champion, item, rank, rune, spell art | No per-file licence; existing Mogzy posture | Riot IP; known exposure |

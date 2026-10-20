@@ -43,7 +43,7 @@ All loops play quietly under the cues: ducked −6 dB on any cue, with a 400 ms 
 
 ## Crowd system
 
-A murmur inside `dynasty.loop.stage`, plus three one-shots (`dynasty.crowd.swell`, `dynasty.crowd.roar` ★, `dynasty.crowd.gasp`) driven by moments, not a meter.
+A murmur inside `dynasty.loop.stage`, plus three one-shots (`dynasty.crowd.swell`, `dynasty.crowd.roar` ★, `dynasty.crowd.gasp`). The **one-shots are driven by moments**. VIS-F2's visual `CrowdMeter` / `crowdLevel` (rises with the lead and with a Baron on the table) may set the stage loop's gain, within ±3 dB, but never fires a one-shot by itself.
 
 | Level | Trigger moments | Shape |
 |---|---|---|
