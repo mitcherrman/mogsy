@@ -9,7 +9,7 @@
  * lab-local `ModuleRenderer` whose Viewport draws the stage (Rangefinder's
  * trick). No registry, transport or contract seam is touched.
  */
-import { createContext, useContext, useRef, type ReactNode } from "react";
+import { createContext, useContext, useRef, type ReactNode, type RefObject } from "react";
 import { useStageRoom } from "@/components/interaction-grammar/useStageRoom";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { CombatEstimateStage } from "@/components/combat-estimate/CombatEstimateStage";
@@ -44,11 +44,16 @@ export interface LabStage {
 }
 const LabStageContext = createContext<LabStage | null>(null);
 
+/** How the viewport learns the room it may spend: a hook of the stage's element. Fixed for a host's lifetime. */
+export type StageRoomHook = (ref: RefObject<HTMLElement | null>) => number | undefined;
+const StageRoomContext = createContext<StageRoomHook>(useStageRoom);
+
 function LabViewport() {
   const s = useContext(LabStageContext);
+  const useRoom = useContext(StageRoomContext);
   const ref = useRef<HTMLDivElement>(null);
   // The host measures the stage and hands the primitive a definite height, as a Ranked module does.
-  const stageHeight = useStageRoom(ref);
+  const stageHeight = useRoom(ref);
   if (!s) return null;
   return (
     <div ref={ref} data-testid="combat-estimate-lab-viewport" className="flex min-h-0 flex-col">
@@ -127,11 +132,24 @@ export function labArenaView(phase: Phase, header: { eyebrow: string; title: str
   } as ArenaViewModel;
 }
 
-/** The arena with the stage in it. `chrome` is the host's control row. */
-export function CombatEstimateArena({ stage, view, chrome }: { stage: LabStage; view: ArenaViewModel; chrome: ReactNode }) {
+/**
+ * The arena with the stage in it. `chrome` is the host's control row.
+ *
+ * `useRoom` defaults to measuring the arena's stage, which is right for the
+ * duel-banner arena the labs draw: there the phone stage grows into the
+ * screen. A host whose flanks are PANELS (the public game) stacks below `lg`
+ * and its stage is content-sized, so measuring it is circular — each reading
+ * caps the stage 2px under itself and it shrinks away. Such a host passes a
+ * room that does not read the stage on a phone (`useOwnerStageRoom`).
+ */
+export function CombatEstimateArena({ stage, view, chrome, useRoom = useStageRoom }: {
+  stage: LabStage; view: ArenaViewModel; chrome: ReactNode; useRoom?: StageRoomHook;
+}) {
   return (
-    <LabStageContext.Provider value={stage}>
-      <CanonicalArena view={view} chrome={chrome} />
-    </LabStageContext.Provider>
+    <StageRoomContext.Provider value={useRoom}>
+      <LabStageContext.Provider value={stage}>
+        <CanonicalArena view={view} chrome={chrome} />
+      </LabStageContext.Provider>
+    </StageRoomContext.Provider>
   );
 }
