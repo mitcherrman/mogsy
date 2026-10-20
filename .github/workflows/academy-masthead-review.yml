@@ -1,0 +1,43 @@
+name: academy-masthead-review
+
+# The Academy header redesign (Orrery-first crest + Daily seal): geometry
+# acceptance and owner-review screenshots for desktop, phones, short landscape,
+# tablet and reduced motion. Bundled headless Chromium on GitHub's runner only
+# (AGENTS.md). Screenshots: the `academy-masthead-screens` artifact.
+on:
+  pull_request:
+    paths:
+      - "src/pages/academy-core/**"
+      - "e2e/academy-core-masthead.spec.ts"
+      - ".github/workflows/academy-masthead-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  masthead:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Masthead geometry and review screenshots
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-core-masthead.spec.ts --workers=1
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: academy-masthead-screens
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 30
