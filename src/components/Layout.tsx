@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
-import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_QUIZ_ROUTE } from "@/lib/pro-play/routes";
+import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
 import { StartupSurface } from "@/components/startup/StartupShells";
 import { getAcademyStartup } from "@/lib/academy-startup/veil-store";
@@ -125,6 +125,8 @@ export default function Layout() {
     // PPQ2-E — the production Pro Play Quiz IS that arena now (it was a
     // max-w-2xl reading column). Already in the LoL section for its theme.
     || pathname === PRO_PLAY_QUIZ_ROUTE
+    // W26Q — the Worlds 2026 quiz is the same arena on a preset session.
+    || pathname === PRO_PLAY_WORLDS_QUIZ_ROUTE
     // UX1 — the Worlds experience prototype is an application frame sized to
     // the viewport, with its own gutters (development-only route).
     || pathname.startsWith("/lol/dev/worlds-experience")

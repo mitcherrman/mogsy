@@ -50,6 +50,26 @@ import type {
 
 export const PRO_PLAY_ARENA_MODE = "Pro Play Quiz";
 
+export interface ProPlayArenaProjectionOptions {
+  /** The mode label to show before the server's session names a preset. */
+  modeLabel?: string;
+}
+
+/**
+ * W26Q — the arena's mode label. A PRESET session names itself (the server's
+ * `session.preset.label`, e.g. "Worlds 2026" → "Worlds 2026 Quiz"); before
+ * the session exists the caller's label stands in; otherwise "Pro Play Quiz",
+ * so the general quiz renders exactly as before.
+ */
+export function proPlayModeLabel(
+  state: ProPlayArenaState,
+  options: ProPlayArenaProjectionOptions = {},
+): string {
+  const label = state.session?.preset?.label;
+  if (typeof label === "string" && label.trim()) return `${label.trim()} Quiz`;
+  return options.modeLabel || PRO_PLAY_ARENA_MODE;
+}
+
 /** The arena's report identity (FB1-4). The same filing the page uses today. */
 export const PRO_PLAY_REPORT_IDENTITY: ArenaReportIdentity = Object.freeze({
   mode: PRO_PLAY_ARENA_MODE,
@@ -92,7 +112,7 @@ function gradedFor(state: ProPlayArenaState) {
   return state.question && state.result ? state.result : null;
 }
 
-function projectHeader(state: ProPlayArenaState): ArenaHeaderView {
+function projectHeader(state: ProPlayArenaState, options: ProPlayArenaProjectionOptions): ArenaHeaderView {
   const q = state.question;
   const title = q
     ? `Question ${q.number} / ${q.total}`
@@ -100,7 +120,7 @@ function projectHeader(state: ProPlayArenaState): ArenaHeaderView {
       ? "Quiz complete"
       : state.busy === "starting" ? "Preparing questions…" : "";
   return {
-    eyebrow: PRO_PLAY_ARENA_MODE,
+    eyebrow: proPlayModeLabel(state, options),
     title,
     transitionNote: null,
     playtestNote: null,
@@ -298,12 +318,15 @@ function projectPhase(state: ProPlayArenaState): ProPlayArenaPhase {
   return "loading";
 }
 
-export function projectProPlayArena(state: ProPlayArenaState): ProPlayArenaProjection {
+export function projectProPlayArena(
+  state: ProPlayArenaState,
+  options: ProPlayArenaProjectionOptions = {},
+): ProPlayArenaProjection {
   const error = projectError(state);
   return {
     phase: projectPhase(state),
     report: PRO_PLAY_REPORT_IDENTITY,
-    header: projectHeader(state),
+    header: projectHeader(state, options),
     surface: projectSurface(state),
     dossier: projectDossier(state.question),
     run: projectRun(state),

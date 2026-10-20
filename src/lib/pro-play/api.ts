@@ -31,12 +31,26 @@ export type ProPlayQuestion = {
   context?: unknown;
 };
 
+/**
+ * W26Q, additive. Present only on a PRESET session (e.g. Worlds 2026): every
+ * question in it comes from that scope. `as_of` is when the server read the
+ * source the session was planned from. Absent on the general quiz.
+ */
+export type ProPlayPreset = {
+  id: string;
+  label: string;
+  tournament?: string | null;
+  context_id?: string | null;
+  as_of?: string | null;
+};
+
 export type ProPlaySessionState = {
   session_id: string;
   total: number;
   answered: number;
   score: number;
   complete: boolean;
+  preset?: ProPlayPreset;
 };
 
 export type ProPlayAnswerResult = {
@@ -107,8 +121,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function startProPlayQuiz(): Promise<ProPlayTurn> {
-  return request<ProPlayTurn>("/api/pro-play/quiz/sessions", { method: "POST" });
+/**
+ * Start a session. With `preset` (W26Q, e.g. "worlds_2026") the server plans
+ * all ten questions from that scope only, or refuses with
+ * `PP_PRESET_UNAVAILABLE` (503) — it never tops a preset up with general
+ * questions. Without it, the general quiz, exactly as before.
+ */
+export async function startProPlayQuiz(preset?: string): Promise<ProPlayTurn> {
+  const query = preset ? `?preset=${encodeURIComponent(preset)}` : "";
+  return request<ProPlayTurn>(`/api/pro-play/quiz/sessions${query}`, { method: "POST" });
+}
+
+/** W26Q — whether a preset quiz can start now. Counts only, never a question. */
+export type ProPlayPresetAvailability = {
+  preset: ProPlayPreset;
+  available: boolean;
+  reason: string | null;
+  session_length: number;
+  supply: { total: number; by_template: Record<string, number>; by_category: Record<string, number> };
+};
+
+export async function getProPlayPresetAvailability(preset: string): Promise<ProPlayPresetAvailability> {
+  return request<ProPlayPresetAvailability>(`/api/pro-play/quiz/presets/${encodeURIComponent(preset)}`);
 }
 
 /** The session's current question, or `question: null` with the final summary
@@ -139,6 +173,7 @@ export async function answerProPlayQuestion(
 
 export const proPlayApi = {
   startProPlayQuiz,
+  getProPlayPresetAvailability,
   getProPlaySession,
   answerProPlayQuestion,
   baseUrl: API_BASE_URL,

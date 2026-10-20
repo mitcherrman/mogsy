@@ -22,7 +22,7 @@ import { HubKicker } from "@/components/pro-play/hub/HubSection";
 import { PlayerPortrait, TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import { EventMark } from "@/components/pro-play/media/EventMark";
 import { countdown, localStart } from "@/lib/pro-play/hubSeries";
-import { PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_ROUTE, PRO_PLAY_SEARCH_ROUTE, proPlayProfileUrl } from "@/lib/pro-play/routes";
+import { PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_ROUTE, PRO_PLAY_SEARCH_ROUTE, PRO_PLAY_WORLDS_QUIZ_ROUTE, proPlayProfileUrl } from "@/lib/pro-play/routes";
 import type {
   TournamentMatchV2,
   TournamentParticipantV2,
@@ -637,6 +637,10 @@ function Body({ data, onRetry, retrying, refreshFailed }: {
       <div className="space-y-4 border-t border-border/60 pt-5">
         <SourceLine data={data} />
         <nav aria-label="More Pro Play" className="flex flex-wrap gap-2">
+          {/* W26Q: v2 contexts are Worlds 2026 only; its own quiz first. */}
+          <Link to={PRO_PLAY_WORLDS_QUIZ_ROUTE} data-testid="tournament-worlds-quiz" className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border/70 px-3 text-sm hover:bg-muted/40">
+            <Brain className="h-4 w-4 text-[#c9a84c]" aria-hidden="true" /> Worlds 2026 quiz
+          </Link>
           <Link to={PRO_PLAY_QUIZ_ROUTE} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border/70 px-3 text-sm hover:bg-muted/40">
             <Brain className="h-4 w-4 text-[#c9a84c]" aria-hidden="true" /> Pro Play quiz
           </Link>

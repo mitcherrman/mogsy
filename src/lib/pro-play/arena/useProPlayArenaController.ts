@@ -49,6 +49,13 @@ export interface ProPlayArenaTransport {
 
 export interface ProPlayArenaControllerOptions {
   transport?: Partial<ProPlayArenaTransport>;
+  /**
+   * W26Q: a server PRESET id ("worlds_2026"). Every start (and restart) asks
+   * the server for that preset session; omitted, the general quiz.
+   */
+  preset?: string;
+  /** The arena's mode label before the server's session names its preset. */
+  modeLabel?: string;
   /** Start a session on mount. Default true. */
   autoStart?: boolean;
   retryDelaysMs?: readonly number[];
@@ -78,15 +85,15 @@ const toApiError = (err: unknown) =>
 export function useProPlayArenaController(
   options: ProPlayArenaControllerOptions = {},
 ): ProPlayArenaController {
-  const { autoStart = true } = options;
+  const { autoStart = true, preset, modeLabel } = options;
   const transport: ProPlayArenaTransport = {
     start: options.transport?.start ?? startProPlayQuiz,
     getSession: options.transport?.getSession ?? getProPlaySession,
     answer: options.transport?.answer ?? answerProPlayQuestion,
   };
   // Latest options without re-creating every callback on each render.
-  const opts = useRef({ transport, retryDelaysMs: options.retryDelaysMs, sleep: options.sleep });
-  opts.current = { transport, retryDelaysMs: options.retryDelaysMs, sleep: options.sleep };
+  const opts = useRef({ transport, retryDelaysMs: options.retryDelaysMs, sleep: options.sleep, preset });
+  opts.current = { transport, retryDelaysMs: options.retryDelaysMs, sleep: options.sleep, preset };
 
   const [state, setState] = useState<ProPlayArenaState>(INITIAL_PRO_PLAY_ARENA_STATE);
   const stateRef = useRef<ProPlayArenaState>(INITIAL_PRO_PLAY_ARENA_STATE);
@@ -104,7 +111,9 @@ export function useProPlayArenaController(
     const mine = ++epoch.current;
     dispatch({ type: "startSent" });
     try {
-      const turn = await opts.current.transport.start();
+      const turn = await (opts.current.preset
+        ? opts.current.transport.start(opts.current.preset)
+        : opts.current.transport.start());
       if (mine !== epoch.current) return;
       dispatch({ type: "started", turn });
     } catch (err) {
@@ -198,7 +207,7 @@ export function useProPlayArenaController(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const projection = useMemo(() => projectProPlayArena(state), [state]);
+  const projection = useMemo(() => projectProPlayArena(state, { modeLabel }), [state, modeLabel]);
   // A start already in flight is the restart being asked for; a second would
   // orphan a server session.
   const restartVoid = useCallback(() => {

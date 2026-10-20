@@ -58,6 +58,14 @@ export function proStatsRedirect(search: URLSearchParams): string | null {
   return qs ? `${PRO_PLAY_STATS_ROUTE}?${qs}` : null;
 }
 export const PRO_PLAY_QUIZ_ROUTE = "/lol/pro-play/quiz";
+
+/**
+ * W26Q — the Worlds 2026 quiz: the same arena, a server-side PRESET session
+ * whose ten questions all come from verified Worlds 2026 facts (no general
+ * Pro Play fallback). `PRO_PLAY_WORLDS_QUIZ_PRESET` is the backend preset id.
+ */
+export const PRO_PLAY_WORLDS_QUIZ_ROUTE = "/lol/pro-play/quiz/worlds-2026";
+export const PRO_PLAY_WORLDS_QUIZ_PRESET = "worlds_2026";
 export const PRO_PLAY_GRAPHS_ROUTE = "/lol/pro-play/graphs";
 
 /**
