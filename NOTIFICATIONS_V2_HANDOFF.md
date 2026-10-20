@@ -125,7 +125,7 @@ hiding/restoring/deleting the image now resolves the notification via a new
 - Browser acceptance (GitHub Actions only): `e2e/notifications-v2/*`,
   `playwright.notifications-v2.config.ts`, `.github/workflows/notifications-v2.yml`.
 
-## Database migration — how to apply (owner action)
+## Database migration — how to apply (owner or connected-database operator)
 
 Apply as `postgres` in the Supabase SQL Editor (do **not** `supabase db push`;
 the ledger has drifted):
@@ -179,21 +179,83 @@ Pre-existing failures on `main` (unrelated, not touched): `AdminFeedback.rfb`
 "reason and comment kept apart" (fixed by open PR #94), plus several
 Windows/shell-specific suites.
 
+## Production preflight and the orphaned alert (2026-10-20)
+
+The read-only preflight was run against production through the connected
+Lovable/Supabase database (no writes). Result:
+
+| | |
+|---|---|
+| admin rows | 13 (12 action, 1 community) |
+| action_required_upper_bound | 12 |
+| player rows | 13 |
+| friend requests no longer actionable | 6 |
+| admin / user receipts (untouched) | 20 / 14 |
+| feedback_subject_missing | **1** |
+
+The missing subject is admin notification `e1819840-afcb-4f66-b648-367e3d2c4c6c`
+("New feedback: Other — Ranked", 2026-10-18 10:21 UTC), whose feedback row
+`3aa6a1fb-a7ac-404e-9763-cc9ec8d4e6de` no longer exists.
+
+**How the migration handles it.** Without its feedback row there is no digest,
+so it classifies as Community rather than Action Required. The backfill then
+resolves every alert whose record is missing as `subject_deleted`. It **keeps**
+the row: title, message and metadata are unchanged and the row stays in
+Completed and on its permalink. It also tags the row
+`metadata.resolution_source = 'v2_backfill_missing_subject'`, because the old
+schema never recorded when the record was deleted.
+
+`notifications_v2_preflight.sql` now lists every such alert by id
+(`missing_subject_notifications`). `notifications_v2_verify.sql` asserts that
+none stays open (`orphans_resolved_ok`) and reports how many were kept
+(`orphans_kept`, expected **1** in production). A live deletion after the
+migration resolves through the delete triggers, without the backfill tag. The
+PGlite suite reproduces both cases and pages through Completed to find the
+orphan.
+
+## CI flake and Perfect Timing (2026-10-20)
+
+- **Desktop flake at `97ba551b`** (`inbox.spec.ts:142`: the permalink opened
+  but `s1` never read). This was a test-harness defect, not a product defect.
+  The harness persisted its stand-in database with an async wrapper, so a
+  permalink's mark-read and the refresh it triggers interleaved and the write
+  was lost. Persistence moved to `src/test/notifications/persistentInbox.ts`,
+  which reloads, applies and saves in one synchronous step. A unit test
+  overlaps a write with two reads. No browser assertion was weakened.
+- **`interaction-labs-integration` → `/admin/perfect-timing`** is a stale test
+  on `main`, outside this workstream. PT4.4 (`8fbce340`, 2026-10-16) hides
+  `#root` (`display:none` + `inert`, `useFixedViewport`) and renders the mode in
+  a `<body>` portal (`data-testid="perfect-timing-page"`). The access spec still
+  asserts the `owner-playtest-page` wrapper inside `#root` is visible, which is
+  impossible by design. It fails on every PR that touches `App.tsx` (the
+  workflow's path filter); on recent branches it failed 8 of 8 runs. The fix
+  belongs to the Perfect Timing owners. #97 does not change it.
+
 ## Current state
 
-- Branch: `notifications/v2`, PR [#97](https://github.com/mitcherrman/mogsy/pull/97) (code head `eaf7342a`).
-- Deployment status: **not deployed**. The migration has **not** been applied to
-  production (requires the owner in the SQL Editor). Frontend deploys via
-  Lovable on merge to `main`.
+- Branch: `notifications/v2`, PR [#97](https://github.com/mitcherrman/mogsy/pull/97),
+  up to date with `main` @ `2a7fa911`. Final SHA and its CI run are in the PR
+  thread.
+- **Not merged, not deployed.** The migration has **not** been applied to
+  production. The PR stays unmerged by instruction.
 
 ## Remaining blockers / next actions
 
-1. Owner: run preflight, apply migration, run verify (above).
-2. Merge the PR after CI is green (order with step 1 is flexible thanks to the
-   fallback, but lifecycle features appear only after the migration).
-3. Verify on `mogzy.lol`: bell badge and panel, Clear all / Dismiss persist
-   across reload, admin inbox tabs/counters, a feedback status change resolving
-   its item and notifying the player, and one deep link per type (bell →
-   record highlighted; refresh; Back/Forward; a permalink to a deleted id).
-4. Follow-ups (not required for this issue): regenerate Supabase types; a
-   scheduled job is not needed (expiry is computed at read time).
+1. After CI is green, ChatGPT (connected database) will:
+   - re-run the preflight and confirm `missing_subject_notifications` lists only
+     `e1819840-…`;
+   - apply the migration in one transaction;
+   - run verify: every `*_ok` must be true and `orphans_kept` must be 1.
+   Rollback: `notifications_v2_rollback.sql`.
+2. Merge #97, then Lovable deploys.
+3. Verify on `mogzy.lol`:
+   - the bell badge and panel;
+   - Clear all and Dismiss persist across reload;
+   - admin inbox tabs and counters;
+   - a feedback status change resolves its item and notifies the player;
+   - one deep link per type (refresh, Back/Forward, a deleted id);
+   - the orphan appears under Completed as "Record deleted".
+4. Follow-ups, not required for this issue:
+   - regenerate Supabase types;
+   - the Perfect Timing owners update `e2e/interaction-labs-access.spec.ts`
+     for PT4.4.
