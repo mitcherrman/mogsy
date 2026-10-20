@@ -103,7 +103,7 @@ to gameplay or persistence:
 - [x] Remote browser acceptance green (run 39358499833; integrated with main at 44afc3ed: run 39359065180, also green)
 - [ ] Screenshots visually reviewed — skipped by the owner (artifact download needed a GitHub sign-in this machine did not have)
 - [x] Merged to `main` — `c0fc4292` (merge commit of `practice-modernization/pm1` @ `9afa4669` onto `6fc8c343`), pushed 2026-10-19. Screenshot review skipped at the owner's request; the automated geometry checks stand in for it.
-- [ ] Production verified
+- [x] Production verified — owner pressed Publish in Lovable; https://mogzy.lol moved from `index-DH3O7p14.js` to `index-TGeIurJl.js`; `pm1-production-verify` run https://github.com/mitcherrman/mogsy/actions/runs/39363655443 green
 
 ## Tests and screenshots
 
@@ -166,7 +166,11 @@ Lovable does not deploy on push: the owner must press **Publish** in Lovable
 `/assets/index-DH3O7p14.js` (pre-PM1); it was still serving that bundle ~12
 minutes after `c0fc4292` was pushed.
 
-After publish, run `pm1-production-verify` (push any change under
+**Verified 2026-10-19** after the owner published: the bundle changed to
+`/assets/index-TGeIurJl.js`, and `pm1-production-verify` (run 39363655443)
+passed at 1440x900 and 390x844 against the live site.
+
+To re-run later, run `pm1-production-verify` (push any change under
 `e2e/pm1-prod/` to a `practice-modernization/**` branch, or dispatch it). It
 is read-only: GET pages, art and real Practice questions; every non-GET
 (session, attempt, analytics, anonymous sign-in) is answered locally. It checks
@@ -178,5 +182,7 @@ reveal footer and the leave guard.
 
 - Pre-existing failing unit tests on `main` (Ranked coming-soon and CRLF source
   guards) are not addressed here.
+- The CI screenshots (artifact `practice-modernization-evidence`) were never
+  visually reviewed; a human look at them is still worthwhile.
 - `fill_blank` questions are retired on the backend; the arena keeps a typed
   input fallback in the HUD row, untested in the browser.
