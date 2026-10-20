@@ -109,31 +109,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  compat-pr68:
-    name: Compatibility with PR #68 (Play popup short-phone fix)
+  compat-play-popup:
+    name: Compatibility with the Play popup fix (PR #68, on main)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    # Informational: PR #68 is another workstream's open branch.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - name: Merge PR #68's head into a throwaway checkout
-        run: |
-          git config user.email ci@example.test
-          git config user.name ci
-          git fetch origin pull/68/head:pr68
-          git merge --no-edit pr68
-          git diff --stat HEAD~1 | tail -3
       - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Play popup short-viewport stylesheet test
+        run: npx vitest run src/components/quiz/play-scroll/playScroll.shortViewport.styles.test.ts
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: The popup's own short-phone browser acceptance, with the hub fit present
+        run: npx playwright test -c playwright.play-scroll-short-phone.config.ts
       - name: Quiz Hub fit, with the popup changes present
         run: npx playwright test -c playwright.quiz-hub-fit.config.ts
-      - name: PR #68's own short-phone popup spec, with the hub fit present
-        run: npx playwright test -c playwright.play-scroll-short-phone.config.ts
