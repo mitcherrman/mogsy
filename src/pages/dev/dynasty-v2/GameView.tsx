@@ -22,13 +22,15 @@ import {
   applySmallEvents, baronQualified, beginGame, planStage, resolveObjective, resolveTeamfight, scoreStage,
   type Game, type LaneRes, type LedgerItem, type Run, type StagePlan, type StageResult,
 } from "./engine";
-import { CHAMP_BY_ID, ROLE_LABEL, SEASON, STAGES, STAGE_LABEL, type Role, type Stage } from "./fixtures";
+import { CHAMP_BY_ID, ROLE_LABEL, SEASON, STAGES, STAGE_LABEL, type Role, type Stage, ROLES } from "./fixtures";
 import { ObjectivePanel, OutcomeCard } from "./ObjectivePanel";
 import type { ObjectiveKind } from "./objectives";
-import { Btn, EffectChip, Eyebrow, LABEL_TONE, LeadMeter, PLATE, Pips, RANKED_ROLE, SevenPips, Sigil, SourceChip, StateLabel, useCountUp } from "./parts";
+import { Btn, EffectChip, Eyebrow, LABEL_TONE, LeadMeter, PLATE, Pips, RANKED_ROLE, SevenPips, Sigil, SourceChip, StateLabel, useCountUp, ORG_ACCENT } from "./parts";
 import { RoleEmblem } from "@/components/ranked-arena/RoleEmblem";
 import { CasterPop, CrowdMeter, ReactionPop, ambientNewGame, crowdLevel, useStinger } from "./broadcast";
 import { CineFrame, LineupStrip } from "./cinematics";
+import type { EnvState } from "./environments";
+import { WalkoutSequence } from "./walkout";
 import type { StadiumVariant } from "./scenes";
 import { Scene } from "./scenes";
 
@@ -199,6 +201,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
   const [revealed, setRevealed] = useState(0);
   const [why, setWhy] = useState<{ role: Role | null; team: boolean } | null>(null);
   const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [walked, setWalked] = useState(false);
   const headRef = useRef<HTMLHeadingElement>(null);
   const plan = g.plans[stage]!;
   const queue = majorQueue(stage, plan);
@@ -283,14 +286,18 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
   const focusEncounter = step === "baron" || (step === "major" && cur !== "teamfight");
   // Stadium dressing: the Worlds Final gets the finals stage; an elimination game (Worlds, or facing match point) the red ribbon.
   const variant: StadiumVariant = run.nodeIdx === SEASON.length - 1 ? "finals" : node.kind === "worlds" || losses === 2 ? "elimination" : "normal";
+  const inTunnel = intro && !walked;
+  const accent = ORG_ACCENT[run.org.id]?.hex;
+  // The stadium shows the run: both names on the board, the score, the stage, and the floor light follows the advantage.
+  const env: EnvState = { accent, mono: ORG_ACCENT[run.org.id]?.mono, team: teamName, opp: oppName, roster: ROLES.map((r) => ({ name: run.starters[r].name, role: r, kind: run.starters[r].kind })), cohesion: run.cohesion, results: run.results, lead: g.lead, live: !inTunnel, score: `${wins}–${losses}`, stageLabel: `Game ${g.idx} · ${node.label} · ${STAGE_LABEL[stage]}`, variant, mood: node.kind === "worlds" ? "worlds" : "neutral" };
 
   return (
-    <Scene id={intro ? "tunnel" : "stadium"} caption={false} variant={variant} loud={node.kind === "worlds"}>
-    <div data-testid="game-view" data-stage={stage} data-step={step} data-scene={intro ? "tunnel" : "stadium"} data-variant={variant} className="flex flex-col gap-2.5 sm:gap-3">
+    <Scene id={inTunnel ? "tunnel" : "stadium"} caption={false} variant={variant} loud={node.kind === "worlds"} env={env}>
+    <div data-testid="game-view" data-stage={stage} data-step={step} data-scene={inTunnel ? "tunnel" : "stadium"} data-variant={variant} className={cn("flex flex-col gap-2.5 sm:gap-3", focusEncounter && "dyn-encounter-compact")}>
       {/* LED ribbon: who is on stage */}
       <div className="dyn-ribbon -mx-4 flex items-center justify-between gap-2 px-4 py-1 text-[10px] uppercase tracking-[0.2em] sm:mx-0 sm:rounded-md" data-testid="led-ribbon">
         <span className="truncate text-[#f2dc98]">{teamName}</span>
-        <span className="shrink-0 text-white/45">{intro ? "Walking out" : "Live"}</span>
+        <span className="shrink-0 text-white/45">{inTunnel ? "Walking out" : "Live"}</span>
         <CrowdMeter level={crowdLevel(g.lead, step === "baron" || step === "closed" ? 0.2 : revealed >= 6 && step === "after" ? 0.12 : 0)} className="hidden sm:flex" />
         <span className="truncate text-right text-white/70">{oppName}</span>
       </div>
@@ -298,7 +305,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
       <div className="flex items-end justify-between gap-2">
         <div className="min-w-0">
           <Eyebrow>Game {g.idx} · vs {node.opp.name.replace(/^SYN /, "")}</Eyebrow>
-          <h2 ref={headRef} tabIndex={-1} data-testid="game-heading" className={cn("dyn-title truncate text-[24px] font-semibold leading-tight outline-none sm:text-[28px]", motion && "dyn-enter-fast")} key={stage}>{STAGE_LABEL[stage]} stage</h2>
+          <h2 ref={headRef} tabIndex={-1} data-testid="game-heading" className={cn("dyn-title dyn-game-head truncate text-[24px] font-semibold leading-tight outline-none sm:text-[28px]", motion && "dyn-enter-fast")} key={stage}>{STAGE_LABEL[stage]} stage</h2>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-xs text-white/60" data-testid="game-series-score">
           <Pips n={wins} max={3} label="Your wins" /> <span className="dyn-num dyn-title text-[16px] font-bold text-white">{wins}–{losses}</span> <Pips n={losses} max={3} label="Their wins" tone="red" />
@@ -333,12 +340,9 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
         </div>
         {eventsLive ? (
           <>
-            {intro ? (
-              <>
-                <LineupStrip picks={picks} oppTags={node.opp.tags} />
-                <CineFrame kind="tunnel" kicker={`Game ${g.idx} · ${node.label}`} title="Walking out" caption={`${teamName} vs ${oppName}`} />
-              </>
-            ) : null}
+            {intro ? (walked
+              ? <LineupStrip picks={picks} oppTags={node.opp.tags} />
+              : <WalkoutSequence env={env} picks={picks} gameLabel={`Game ${g.idx} · ${node.label}`} onDone={() => setWalked(true)} />) : null}
             {stageEvents.some((l) => l.rare) ? (
               <>
                 <CineFrame kind="outplay" kicker="Rare event · generated in-run" title={stageEvents.find((l) => l.rare)!.title} caption="A 1v2 turned into a turret." />
@@ -372,7 +376,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
             <div className="flex justify-end"><Btn primary beckon testId="teamfight-resolve" onClick={() => advanceMajor(resolveTeamfight(g, stage).game)}>Resolve the fight</Btn></div>
           </div>
         ) : (
-          <ObjectivePanel key={`${stage}-${cur}`} kind={cur} seed={`${run.seed}|g${g.idx}|${stage}`}
+          <ObjectivePanel accent={accent} key={`${stage}-${cur}`} kind={cur} seed={`${run.seed}|g${g.idx}|${stage}`}
             reason={cur === "elder" ? "Late is tight. An Elder fight can tilt the final seven points." : undefined}
             onResolve={(c) => advanceMajor(resolveObjective(g, stage, cur, c).game)} />
         )
@@ -444,7 +448,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
       ) : null}
 
       {step === "baron" ? (
-        <ObjectivePanel key="baron" kind="baron" seed={`${run.seed}|g${g.idx}|baron`} closeoutOffered
+        <ObjectivePanel accent={accent} key="baron" kind="baron" seed={`${run.seed}|g${g.idx}|baron`} closeoutOffered
           reason={`Mid ended ${result?.ours}–${result?.theirs} (${result?.label}). A Baron window is open, and a clean sweep here would end the game.`}
           onResolve={(c) => { const out = resolveObjective(g, "mid", "baron", c, true); setG(out.game); if (out.game.over) setStep("closed"); else enter("late", out.game); }} />
       ) : null}

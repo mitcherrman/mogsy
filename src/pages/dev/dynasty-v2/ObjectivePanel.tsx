@@ -18,7 +18,7 @@ import { SYN_QUESTIONS } from "./fixtures";
 import { OBJECTIVES, ladderFor, objectiveOutcome, type ObjectiveKind, type ObjectiveOutcome } from "./objectives";
 import { Btn, EffectChip, Eyebrow, PLATE, SIGIL_COLOR, Sigil, SourceChip } from "./parts";
 import { CasterPop, ChatBurst, SimTag, ambientQuestionOpen, useStinger } from "./broadcast";
-import { playCue, setTension, type DynCue } from "./audio";
+import { hush, playCue, setTension, type DynCue } from "./audio";
 import { ObjectiveSpectacle, PIT_PLACE } from "./spectacle";
 
 const TONE_STINGER: Record<ObjectiveOutcome["tone"], "gold" | "ice" | "ember" | "red"> = { great: "gold", good: "ice", mixed: "ember", bad: "red" };
@@ -68,9 +68,11 @@ export interface ObjectivePanelProps {
   /** Called with the correct count when the player continues from the outcome card. */
   onResolve: (correct: number, outcome: ObjectiveOutcome) => void;
   reason?: string;
+  /** org accent for the squad at the pit edge */
+  accent?: string;
 }
 
-export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve, reason }: ObjectivePanelProps) {
+export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve, reason, accent }: ObjectivePanelProps) {
   const def = OBJECTIVES[kind];
   const sfx = useSfx();
   const motion = useMotionAllowed();
@@ -90,14 +92,17 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
   useEffect(() => { window.scrollTo?.({ top: 0 }); }, [phase, i]);
   useEffect(() => {
     if (!outcome) return;
-    sting({ id: "objective.result", kicker: `${def.title} · ${outcome.correct} of ${outcome.total}`, title: outcome.title, tone: TONE_STINGER[outcome.tone], ms: 2000, cue: OUTCOME_CUE[outcome.tone] });
-    if (outcome.tone === "great") window.setTimeout(() => playCue("dynasty.crowd.roar"), 350);
-    else if (outcome.tone === "bad") window.setTimeout(() => playCue("dynasty.crowd.gasp"), 250);
+    // Silence, then the verdict: the loops drop out for a beat before the outcome cue and the crowd answer (04).
+    hush(380);
+    const t1 = window.setTimeout(() => sting({ id: "objective.result", kicker: `${def.title} · ${outcome.correct} of ${outcome.total}`, title: outcome.title, tone: TONE_STINGER[outcome.tone], ms: 2000, cue: OUTCOME_CUE[outcome.tone] }), 380);
+    const t2 = outcome.tone === "great" ? window.setTimeout(() => playCue("dynasty.crowd.roar"), 750) : outcome.tone === "bad" ? window.setTimeout(() => playCue("dynasty.crowd.gasp"), 650) : null;
+    return () => { window.clearTimeout(t1); if (t2) window.clearTimeout(t2); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
   // Ambient text yields to an open question (04 rule 6); the tension loop holds from stakes to outcome (04 loop 5).
   useEffect(() => { ambientQuestionOpen(phase === "ask"); return () => ambientQuestionOpen(false); }, [phase]);
-  useEffect(() => { setTension(phase !== "outcome"); return () => setTension(false); }, [phase]);
+  useEffect(() => { setTension(phase !== "outcome", phase === "ask" ? 1 + i : 0); return () => setTension(false); }, [phase, i]);
+  const intensity = phase === "stakes" ? 0 : phase === "ask" ? Math.min(3, 1 + i) : 3;
 
   const answer = (n: number) => {
     if (picked !== null) return;
@@ -118,7 +123,7 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
       className={cn(PLATE, "dyn-plate--ornate flex flex-col gap-3 p-4", motion && "dyn-enter-fast")}
       style={{ borderColor: `${color}55`, boxShadow: `inset 0 1px 0 ${color}33, 0 0 48px -18px ${color}66, 0 24px 48px -32px rgba(0,0,0,0.95)` } as CSSProperties}>
       {/* Encounter banner: the pit as a place on the map (VIS-F3 spectacle) */}
-      <ObjectiveSpectacle kind={kind} phase={phase} tone={outcome?.tone ?? null}>
+      <ObjectiveSpectacle kind={kind} phase={phase} tone={outcome?.tone ?? null} intensity={intensity} accent={accent}>
       <div className="relative flex items-center gap-3">
         <Sigil kind={kind} size={phase === "stakes" ? 44 : 34} breathe={phase !== "outcome"} className="sm:h-12 sm:w-12" />
         <div className="min-w-0 flex-1">
@@ -191,11 +196,12 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
       {outcome ? (
         <>
           <OutcomeCard outcome={outcome} />
+          <p className="dyn-consequence flex flex-wrap items-center gap-x-2 pt-2 text-[12px] text-white/70" data-testid="objective-consequence"><b className="text-white/90">Back to the match:</b> {outcome.closeout ? "the game ends here; the result screen is next." : kind === "baron" ? "the Late stage opens with these effects applied." : kind === "dragon" ? "the Early stage carries on with this tempo change." : "the Late stage resolves with these effects."}</p>
           <div className="hidden gap-2 sm:grid sm:grid-cols-[1.3fr_1fr]">
             <CasterPop moment="objective.result" k={`${seed}|${kind}|out`} ctx={{ tier: outcome.title }} compact />
             <ChatBurst moment="objective.result" k={`${seed}|${kind}|${correct}`} n={3} good={outcome.tone === "great" || outcome.tone === "good"} />
           </div>
-          <div className="flex justify-end"><Btn primary beckon testId="objective-continue" onClick={() => onResolve(correct, outcome)}>Continue</Btn></div>
+          <div className="flex justify-end"><Btn primary beckon testId="objective-continue" onClick={() => onResolve(correct, outcome)}>{outcome.closeout ? "See how the game ended" : "Back to the match"}</Btn></div>
         </>
       ) : null}
     </div>

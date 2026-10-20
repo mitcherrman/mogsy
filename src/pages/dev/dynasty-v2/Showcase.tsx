@@ -8,7 +8,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import "./vis.css";
 import "./vis-f2.css";
-import { autoPicks, finishGame, newRun, playGameScripted, startSeries, type Game, type GameSummary, type Run } from "./engine";
+import { autoPicks, finishGame, newRun, playGameScripted, startSeries, type Game, type GameSummary, type Run, type Series } from "./engine";
 import { CHAMPS_BY_ROLE, ORGS, ROLES, SEASON } from "./fixtures";
 import { CloseoutBanner } from "./GameView";
 import { OutcomeCard } from "./ObjectivePanel";
@@ -23,6 +23,11 @@ import { CineFrame, FullFrame, type FullFrameKind } from "./cinematics";
 import { ObjectiveSpectacle } from "./spectacle";
 import { AmbiencePanel } from "./ambience";
 import "./vis-f3.css";
+import "./vis-f4.css";
+import { WalkoutSequence } from "./walkout";
+import { DraftLockSequence } from "./lock";
+import type { EnvMood, EnvState } from "./environments";
+import { ORG_ACCENT } from "./parts";
 import { PanelArt, StoryBeat } from "./story";
 
 interface Fixture { won: { run: Run; game: Game; summary: GameSummary }; lost: { run: Run; game: Game; summary: GameSummary } | null; seriesWon: Run; seriesLost: Run | null; champion: Run; over: Run }
@@ -90,13 +95,19 @@ export function Showcase() {
   const [scene, setScene] = useState<SceneId>("stadium");
   const [variant, setVariant] = useState<StadiumVariant>("normal");
   const [full, setFull] = useState<FullFrameKind | null>(null);
+  const [mood, setMood] = useState<EnvMood>("neutral");
+  const [lock, setLock] = useState(false);
+  const [walk, setWalk] = useState(0);
+  const showRun = fx.won.run;
+  const env: EnvState = { accent: ORG_ACCENT[showRun.org.id]?.hex, mono: ORG_ACCENT[showRun.org.id]?.mono, team: showRun.org.name, opp: SEASON[showRun.nodeIdx].opp.name, roster: ROLES.map((r) => ({ name: showRun.starters[r].name, role: r, kind: showRun.starters[r].kind })), cohesion: showRun.cohesion, results: ["W", "W", "L", "W", null, null, null, null], mood, signed: mood === "signing" ? showRun.starters.mid.name : undefined, lead: mood === "win" ? 3 : mood === "loss" ? -2 : 0, score: "2–1", stageLabel: "Game 4 · Worlds Semi · Mid" };
   const noop = () => undefined;
   const roster = ROLES.map((r) => fx.won.run.starters[r]);
   return (
     <StingerHost>
       <div className="dyn min-h-screen pt-11" data-mood="victory" data-testid="showcase">
-        {full ? <FullFrame kind={full} org={fx.won.run.org} opp="SYN Crown of Ash" team={fx.won.run.org.name.replace(/^SYN /, "")} onDone={() => setFull(null)} /> : null}
-        <Scene id={scene} caption={false} variant={variant}>
+        {full ? <FullFrame kind={full} org={fx.won.run.org} opp="SYN Crown of Ash" team={fx.won.run.org.name.replace(/^SYN /, "")} roster={ROLES.map((r) => showRun.starters[r].name)} score="3–2" onDone={() => setFull(null)} /> : null}
+        {lock ? <DraftLockSequence run={{ ...showRun, series: showRun.series ?? { nodeIdx: showRun.nodeIdx, wins: 2, losses: 1, games: [], used: [], scoutTier: 1, prepTeam: { early: 0, mid: 0, late: 0 }, prepPlayer: {} } as Series }} picks={autoPicks(showRun)} onDone={() => setLock(false)} /> : null}
+        <Scene id={scene} caption={false} variant={variant} env={env} champion>
           <main className="mx-auto flex max-w-4xl flex-col gap-8 px-4 pb-12 pt-4" key={take}>
             <ProtoBanner />
             <header className="flex flex-wrap items-end justify-between gap-3">
@@ -118,6 +129,10 @@ export function Showcase() {
                   {(["normal", "elimination", "finals"] as StadiumVariant[]).map((v) => <Btn key={v} testId={`scene-variant-${v}`} primary={v === variant} className="min-h-[32px] px-3 py-1 text-[12px] capitalize" onClick={() => setVariant(v)}>{v}</Btn>)}
                 </div>
               ) : null}
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Room state">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-white/45">State</span>
+                {(["neutral", "win", "loss", "signing", "worlds"] as EnvMood[]).map((m) => <Btn key={m} testId={`env-mood-${m}`} primary={m === mood} className="min-h-[32px] px-3 py-1 text-[12px] capitalize" onClick={() => setMood(m)}>{m}</Btn>)}
+              </div>
               <p className="text-[12px] text-white/55">Slot <code className="text-white/75">scene.{scene}</code>: {MEDIA_SLOTS[`scene.${scene}`].fill === "mogzy-asset" ? `Mogzy asset ${MEDIA_SLOTS[`scene.${scene}`].src}` : "painted in CSS / SVG"} · brief: {MEDIA_SLOTS[`scene.${scene}`].brief}</p>
             </Section>
 
@@ -129,16 +144,21 @@ export function Showcase() {
               <p className="text-[12px] text-white/55">In the run these fire once: the Final intro at draft lock of game 1 of the Worlds Final, the championship when the series is won.</p>
             </Section>
 
-            <Section title="Objective spectacles · the pit as a place on the map">
-              <div className="grid gap-3 sm:grid-cols-3">
-                {(["baron", "dragon", "elder"] as const).map((k) => (
-                  <div key={k} className="dyn-plate dyn-plate--ornate overflow-hidden p-4" data-testid={`showcase-spectacle-${k}`}>
-                    <ObjectiveSpectacle kind={k} phase="stakes"><p className="dyn-title text-[16px] font-semibold capitalize text-white">{k === "baron" ? "Baron Nashor · E1 contract" : `${k} · prototype-only`}</p></ObjectiveSpectacle>
-                  </div>
-                ))}
-                <div className="dyn-plate overflow-hidden p-4"><ObjectiveSpectacle kind="baron" phase="outcome" tone="great"><p className="dyn-title text-[14px] text-[#f2dc98]">Baron · 3 of 3 · exceptional</p></ObjectiveSpectacle></div>
-                <div className="dyn-plate overflow-hidden p-4"><ObjectiveSpectacle kind="baron" phase="outcome" tone="bad"><p className="dyn-title text-[14px] text-rose-200">Baron · 0 of 3 · disaster</p></ObjectiveSpectacle></div>
-                <div className="dyn-plate overflow-hidden p-4"><ObjectiveSpectacle kind="elder" phase="ask"><p className="dyn-title text-[14px] text-white">Elder · questions open (compact)</p></ObjectiveSpectacle></div>
+            <Section title="Walking onto the stage · the walkout sequence (skippable, two beats)">
+              <WalkoutSequence key={walk} env={{ ...env, variant }} picks={autoPicks(showRun)} gameLabel="Game 1 · Worlds Semi" onDone={() => undefined} />
+              <div className="flex flex-wrap gap-2"><Btn testId="walkout-replay" onClick={() => setWalk((n) => n + 1)}>Replay the walkout</Btn><Btn testId="fire-lock" onClick={() => setLock(true)}>Draft lock-in sequence</Btn></div>
+            </Section>
+
+            <Section title="Fighting for Baron · escalation and the four outcomes">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[0, 1, 2, 3].map((t) => <div key={t} className="dyn-plate dyn-plate--ornate overflow-hidden p-4" data-testid={`showcase-baron-t${t}`}><ObjectiveSpectacle kind="baron" phase={t === 0 ? "stakes" : "ask"} intensity={t} accent={env.accent}><p className="dyn-title text-[14px] text-white">{t === 0 ? "Stakes · the window opens" : `Question ${t} of 3 · tension ${t}`}</p></ObjectiveSpectacle></div>)}
+                {(["great", "good", "mixed", "bad"] as const).map((tone) => <div key={tone} className="dyn-plate overflow-hidden p-4" data-testid={`showcase-baron-${tone}`}><ObjectiveSpectacle kind="baron" phase="outcome" tone={tone} accent={env.accent}><p className="dyn-title text-[14px] capitalize text-white">Baron · {tone === "great" ? "3 of 3 · exceptional" : tone === "good" ? "2 of 3 · success" : tone === "mixed" ? "1 of 3 · partial" : "0 of 3 · disaster"}</p></ObjectiveSpectacle></div>)}
+              </div>
+            </Section>
+
+            <Section title="Dragon (tempo) and Elder (the last confrontation) · prototype-only">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(["dragon", "elder"] as const).map((k) => <div key={k} className="dyn-plate overflow-hidden p-4" data-testid={`showcase-spectacle-${k}`}><ObjectiveSpectacle kind={k} phase="stakes" accent={env.accent}><p className="dyn-title text-[16px] font-semibold capitalize text-white">{k} · prototype-only</p></ObjectiveSpectacle></div>)}
               </div>
             </Section>
 

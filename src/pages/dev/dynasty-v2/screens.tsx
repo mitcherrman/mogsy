@@ -25,6 +25,7 @@ import { CasterPop, ChatBurst } from "./broadcast";
 import { ChampionCard, PlayerCard } from "./cards";
 import { PanelArt, StoryBeat } from "./story";
 import { CineFrame } from "./cinematics";
+import { PlayerSpotlight } from "./spotlight";
 import {
   Btn, ConfidenceDiamonds, Crest, Delta, Eyebrow, FatigueBars, KindRibbon, Monogram, ORG_ACCENT, PLATE, Pips, Plate, PlayerRow, ProtoBanner,
   RANKED_ROLE, RolePill, Rule, Screen, SourceChip, StateLabel, accentStyle,
@@ -170,6 +171,7 @@ export function RosterScreen({ run, onNext }: { run: Run; onNext: () => void }) 
         { art: <PanelArt kind="draft" accent={ORG_ACCENT[run.org.id]?.hex} />, kicker: "The road:", caption: "four regular series, playoffs, then Worlds. Losses in the first four cost condition; after that they end the run." },
       ]} />
       <CasterPop moment="run.start" k={run.seed} ctx={{ org: run.org.name.replace(/^SYN /, "") }} compact />
+      <div className="grid gap-2 sm:grid-cols-2" data-testid="star-spotlights">{ROLES.map((r) => run.starters[r]).filter((p) => p.kind === "star").map((p) => <PlayerSpotlight key={p.id} p={p} mono={ORG_ACCENT[run.org.id]?.mono} note="Franchise star · signed before the season" />)}</div>
       <RosterList run={run} columns />
     </Screen>
   );
@@ -231,11 +233,11 @@ export function RecruitScreen({ run, picked, onPick, onSign, onSkip }: { run: Ru
   return (
     <Screen testId="screen-recruit" eyebrow="Transfer window" title="Recruit a player" kicker="Three offers. A signing costs a roster slot and some cohesion, and brings a honeymoon."
       actions={<><Btn testId="recruit-skip" onClick={onSkip}>Skip the window</Btn><Btn primary beckon testId="recruit-sign" disabled={!sel} onClick={() => sel && onSign(sel)}>{sel ? `Sign ${sel.name.replace("SYN-", "")}` : "Pick an offer"}</Btn></>}>
-      <div className={cn("grid gap-3 sm:grid-cols-3", motion && "dyn-stagger")}>
+      <div className={cn("grid gap-3 sm:grid-cols-2", motion && "dyn-stagger")}>
         {offers.map((o, i) => (
           <button key={o.id} type="button" data-testid={`offer-${o.id}`} aria-pressed={picked === o.id} onClick={() => onPick(o.id)} style={{ "--i": i } as CSSProperties}
             className="rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]">
-            <PlayerRow p={o} compact selected={picked === o.id}><p className="text-[11px] text-white/55">{o.note}</p></PlayerRow>
+            <PlayerSpotlight p={o} selected={picked === o.id} note={o.note} mono={ORG_ACCENT[run.org.id]?.mono} testId={`spotlight-${o.id}`} />
           </button>
         ))}
       </div>

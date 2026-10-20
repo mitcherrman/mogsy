@@ -13,6 +13,7 @@ vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: () => undefined, s
 import DynastyV2Prototype from "./DynastyV2Prototype";
 import { CasterPop, ChatBurst, ambience, ambientNewGame, ambientQuestionOpen, ambientResetForTests } from "./broadcast";
 import { FullFrame } from "./cinematics";
+import { hush } from "./audio";
 import { ORGS } from "./fixtures";
 import { MEDIA_SLOTS } from "./media";
 import { MOMENT_CUES } from "./audio";
@@ -54,6 +55,7 @@ function draftAndLock() {
     fireEvent.click(radios.find((x) => !x.disabled)!);
   }
   click("draft-lock");
+  if (has("lock-seq")) click("lock-skip"); // VIS-F4: the lock-in sequence plays first
 }
 
 type Answer = (kind: string, qIndex: number) => boolean;
@@ -503,9 +505,14 @@ describe("VIS-F3 living worlds and cinematic media", () => {
     const gv = screen.getByTestId("game-view");
     expect(gv.getAttribute("data-scene")).toBe("tunnel");
     expect(gv.getAttribute("data-variant")).toBe("normal");
+    // VIS-F4: the walkout sequence plays first (skippable); the lineup strip takes its place
+    const walkout = screen.getByTestId("walkout");
+    expect(walkout.getAttribute("data-beat")).toBe("stage"); // motion is off: static stage beat
+    expect(walkout.textContent).toMatch(/Ember Wing/); // the stage beat carries both team names
+    click("walkout-skip");
+    expect(screen.queryByTestId("walkout")).toBeNull();
     expect(screen.getByTestId("lineup-strip").getAttribute("data-comp")).not.toBe("");
     expect(screen.getAllByTestId("lineup-tile").length).toBe(5);
-    expect(screen.getByTestId("comic-frame").getAttribute("data-kind")).toBe("tunnel");
     click("events-continue");
     if (has("objective-panel")) {
       const kind = screen.getByTestId("objective-panel").getAttribute("data-kind");
@@ -542,6 +549,88 @@ describe("VIS-F3 living worlds and cinematic media", () => {
       fireEvent.click(screen.getByTestId("cine-skip"));
       expect(done2).toHaveBeenCalledTimes(1);
       expect(screen.queryByTestId("cine-full")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// ───────────────────────────────────────────────────────────── VIS-F4
+
+describe("VIS-F4 cinematic production", () => {
+  it("shows the run in the rooms: mood on the scene, star spotlights, the welcome banner after a signing", () => {
+    mount();
+    click("home-new"); click("org-choose-ember");
+    const stars = screen.getAllByTestId(/^star-/);
+    fireEvent.click(stars[0]); fireEvent.click(stars[1]);
+    click("stars-confirm");
+    expect(screen.getByTestId("scene").getAttribute("data-mood")).toBe("neutral");
+    expect(screen.getAllByTestId("player-spotlight").length).toBe(2); // two franchise stars
+    expect(document.querySelectorAll('[data-slot="player.portrait"] [data-pose]').length).toBeGreaterThanOrEqual(2);
+    click("roster-continue"); click("season-begin");
+    expect(screenId()).toBe("recruit");
+    expect(screen.getAllByTestId(/^spotlight-/).length).toBe(3); // three offers as spotlights
+    fireEvent.click(screen.getAllByTestId(/^offer-/)[0]);
+    click("recruit-sign");
+    expect(screenId()).toBe("prep");
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("practice");
+    expect(document.querySelector('svg text')?.textContent ?? "").toBeDefined();
+  });
+
+  it("plays the draft lock-in sequence (five stamped tiles, identity, skippable) before the walkout", () => {
+    mount();
+    setup(); enterSeries();
+    for (const r of ["top", "jng", "mid", "bot", "sup"]) {
+      const radios = within(screen.getByTestId(`draft-row-${r}`)).getAllByRole("radio") as HTMLInputElement[];
+      fireEvent.click(radios.find((x) => !x.disabled)!);
+    }
+    click("draft-lock");
+    const seq = screen.getByTestId("lock-seq");
+    expect(within(seq).getAllByTestId("lock-tile").length).toBe(5);
+    expect(within(seq).getByTestId("lock-identity").textContent).not.toBe("");
+    expect(screenId()).toBe("draft"); // the game opens only when the sequence ends
+    click("lock-skip");
+    expect(screen.queryByTestId("lock-seq")).toBeNull();
+    expect(screenId()).toBe("game");
+    expect(screen.getByTestId("stinger").getAttribute("data-stinger")).toBe("draft.lock");
+    expect(screen.getByTestId("walkout")).toBeInTheDocument();
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("tunnel");
+    click("walkout-skip");
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("stadium");
+  });
+
+  it("escalates the Baron with every question and names the consequence on the outcome", () => {
+    mount("/dev/dynasty-v2?view=objectives");
+    const pit = () => screen.getByTestId("objective-pit");
+    expect(pit().getAttribute("data-intensity")).toBe("0");
+    expect(screen.getByTestId("tension-ring")).toBeInTheDocument();
+    click("objective-start");
+    expect(pit().getAttribute("data-intensity")).toBe("1");
+    const answerRight = () => { fireEvent.click(screen.getAllByTestId(/^objective-opt-/).find((o) => o.getAttribute("data-synthetic-correct") === "true")!); click("objective-next"); };
+    answerRight();
+    expect(pit().getAttribute("data-intensity")).toBe("2");
+    answerRight();
+    expect(pit().getAttribute("data-intensity")).toBe("3");
+    answerRight();
+    expect(screen.getByTestId("objective-panel").getAttribute("data-phase")).toBe("outcome");
+    expect(pit().getAttribute("data-intensity")).toBe("3");
+    expect(document.querySelector('[data-testid="objective-pit"] svg')?.getAttribute("data-tone")).toBe("great");
+    expect(screen.getByTestId("objective-consequence").textContent).toMatch(/Back to the match/);
+    expect(screen.getByTestId("objective-continue").textContent).toMatch(/Back to the match|See how the game ended/);
+  });
+
+  it("builds the championship payoff from run state and keeps the engine helpers safe without audio", () => {
+    expect(() => hush(300)).not.toThrow(); // no AudioContext in jsdom: a no-op
+    vi.useFakeTimers();
+    try {
+      const done = vi.fn();
+      render(<FullFrame kind="championship" org={ORGS[0]} team="Ember Wing" roster={["SYN-Pell", "SYN-Quill", "SYN-Aurel Voss", "SYN-Dree", "SYN-Marn"]} score="3–2" onDone={done} cue="dyn.end.championship" />);
+      const roster = screen.getByTestId("cine-roster");
+      expect(within(roster).getAllByRole("listitem").length).toBe(5);
+      expect(roster.textContent).toContain("Aurel Voss");
+      expect(screen.getByText(/3–2/)).toBeInTheDocument();
+      act(() => { vi.advanceTimersByTime(3001); });
+      expect(done).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }

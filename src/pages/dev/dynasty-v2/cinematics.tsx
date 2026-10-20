@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMotionAllowed } from "@/lib/motion/useReveal";
 import { cn } from "@/lib/utils";
-import { playMoment, type MomentId } from "./audio";
+import { hush, playCue, playMoment, type MomentId } from "./audio";
 import { CLASS_COLOR, ClassGlyph } from "./cards";
 import { readComposition } from "./engine";
 import { CHAMPS_BY_ROLE, ROLES, type Champion, type Org, type Role } from "./fixtures";
@@ -174,7 +174,7 @@ function OppCrest({ name, size = 72 }: { name: string; size?: number }) {
 function TrophyArt({ accent = G }: { accent?: string }) {
   // Original Dynasty cup: a tall chalice with a laurel band. Not a Summoner's Cup likeness.
   return (
-    <svg viewBox="0 0 200 260" width="150" height="195" aria-hidden className="dyn-cine-trophy">
+    <svg viewBox="0 0 200 260" width="150" height="195" aria-hidden>
       <defs><linearGradient id="tr-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fff1b8" /><stop offset="0.5" stopColor={G} /><stop offset="1" stopColor="#8a6a1f" /></linearGradient></defs>
       <path d="M50 30 L150 30 L140 120 C135 150 115 165 100 165 C85 165 65 150 60 120 Z" fill="url(#tr-gold)" />
       <path d="M50 40 C20 40 15 90 50 100 L56 86 C36 82 36 52 54 52 Z M150 40 C180 40 185 90 150 100 L144 86 C164 82 164 52 146 52 Z" fill="url(#tr-gold)" />
@@ -187,13 +187,20 @@ function TrophyArt({ accent = G }: { accent?: string }) {
   );
 }
 
-export function FullFrame({ kind, org, opp, team, onDone, cue, holdMs }: { kind: FullFrameKind; org: Org; opp?: string; team: string; onDone: () => void; cue?: MomentId; holdMs?: number }) {
+export function FullFrame({ kind, org, opp, team, roster, score, onDone, cue, holdMs }: { kind: FullFrameKind; org: Org; opp?: string; team: string; roster?: string[]; score?: string; onDone: () => void; cue?: MomentId; holdMs?: number }) {
   const motion = useMotionAllowed();
   const [gone, setGone] = useState(false);
   const done = useRef(false);
   const accent = ORG_ACCENT[org.id]?.hex ?? G;
   const hold = holdMs ?? (motion ? 3000 : 2500);
-  useEffect(() => { if (cue) playMoment(cue); }, [cue]);
+  // Silence, then the hit: loops drop for a beat, the cue lands, and on the title the crowd answers (04 "championship payoff").
+  useEffect(() => {
+    if (!cue) return;
+    hush(360);
+    const t = window.setTimeout(() => playMoment(cue), 380);
+    const r = kind === "championship" ? window.setTimeout(() => playCue("dynasty.crowd.roar"), 950) : null;
+    return () => { window.clearTimeout(t); if (r) window.clearTimeout(r); };
+  }, [cue, kind]);
   useEffect(() => {
     const finish = () => { if (done.current) return; done.current = true; setGone(true); onDone(); };
     const t = window.setTimeout(finish, hold);
@@ -220,13 +227,16 @@ export function FullFrame({ kind, org, opp, team, onDone, cue, holdMs }: { kind:
           <p className="dyn-cine-rows text-[12.5px] text-white/70">Best of five · Fearless draft · <span data-slot="season.worlds_mark" className="text-[#c9a7ff]">✦ original Worlds mark</span></p>
         </div>
       ) : (
-        <div className="relative flex w-full max-w-3xl flex-col items-center gap-3 px-6 text-center" data-slot="frame.championship">
+        <div className="relative flex w-full max-w-3xl flex-col items-center gap-2 px-6 text-center" data-slot="frame.championship">
+          <span aria-hidden className="dyn-champ-rays pointer-events-none absolute left-1/2 top-[34%] h-[160vmax] w-[160vmax] -translate-x-1/2 -translate-y-1/2 opacity-0" style={{ background: "repeating-conic-gradient(from 0deg, rgba(246,221,143,0.13) 0 5deg, transparent 5deg 16deg)" }} />
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" data-slot="end.confetti">{confetti.map((s, i) => <span key={i} className="dyn-confetti" style={s} />)}</div>
-          <TrophyArt accent={accent} />
-          <h2 className="dyn-title dyn-cine-title text-[34px] font-black uppercase tracking-[0.2em] text-[#f6dd8f] sm:text-[56px]" data-slot="end.champion_banner">Champions</h2>
-          <p className="dyn-cine-rows dyn-title text-[16px] text-white sm:text-[20px]">{team} · Worlds Dynasty</p>
+          <div className="dyn-champ-trophy relative"><TrophyArt accent={accent} /></div>
+          <h2 className="dyn-title dyn-champ-title relative text-[34px] font-black uppercase tracking-[0.2em] text-[#f6dd8f] sm:text-[56px]" data-slot="end.champion_banner">Champions</h2>
+          <p className="dyn-champ-team dyn-title relative text-[16px] text-white sm:text-[20px]">{team} · Worlds Dynasty{score ? <span className="text-white/60"> · {score}</span> : null}</p>
+          {roster?.length ? <ul className="dyn-champ-roster relative flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10.5px] uppercase tracking-[0.18em] text-[#f6dd8f]/85 sm:text-[12px]" data-testid="cine-roster">{roster.map((n, i) => <li key={n} style={{ "--i": i } as CSSProperties}>{n.replace(/^SYN-/, "")}</li>)}</ul> : null}
         </div>
       )}
+      {kind === "championship" ? <><span aria-hidden className="dyn-champ-black pointer-events-none absolute inset-0 bg-black opacity-0" /><span aria-hidden className="dyn-champ-flash pointer-events-none absolute inset-0 bg-[#fff3c4] opacity-0" /></> : null}
       <span aria-hidden className="dyn-cine-whiteout pointer-events-none absolute inset-0 bg-[#fff3c4] opacity-0" />
       <div className="absolute bottom-6 right-6" onClick={(e) => e.stopPropagation()}><Btn testId="cine-skip" className="min-h-[36px] px-4 py-1.5 text-[12px]" onClick={skip}>Skip</Btn></div>
     </div>

@@ -298,12 +298,19 @@ export function setScene(scene: SceneId, force = false, loud = false) {
 }
 
 /** The held-breath pulse under an objective encounter. Ducks the stage bed; stops on the outcome. */
-export function setTension(on: boolean) {
+export function setTension(on: boolean, level = 1) {
   E.tension = on; E.snap.tension = on;
   if (!E.ctx || E.ctx.state !== "running") { emit(); return; }
-  fadeLoop("loop.tension", on ? 0.9 : 0, on ? 600 : 300);
+  fadeLoop("loop.tension", on ? 0.55 + 0.15 * Math.max(0, Math.min(3, level)) : 0, on ? 600 : 300);
   if (E.scene) { const st = E.loops.get(SCENE_LOOP[E.scene]); if (st) { const t = E.ctx.currentTime; st.gain.gain.cancelScheduledValues(t); st.gain.gain.setValueAtTime(st.gain.gain.value, t); st.gain.gain.linearRampToValueAtTime(on ? 0.2 : 0.75, t + 0.5); } }
   emit();
+}
+
+/** Silence before a decisive moment (04): every loop ducks to near-nothing for `ms`, then recovers over 600 ms. Cues still play. */
+export function hush(ms = 400) {
+  const ctx = E.ctx; if (!ctx || !E.loopBus || ctx.state !== "running" || !E.snap.loops) return;
+  const t = ctx.currentTime; const g = E.loopBus.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0.04, t + 0.08); g.setValueAtTime(0.04, t + ms / 1000); g.linearRampToValueAtTime(0.9, t + ms / 1000 + 0.6);
 }
 
 /** Stop everything (route unmount). */
@@ -312,4 +319,4 @@ export function stopAllDynastyAudio() {
 }
 
 // Dev-only inspection hook for browser verification (the route itself is registered only under DEV).
-if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dynastyAudio?: unknown }).__dynastyAudio = { dynastyAudio, playCue, playMoment, setScene, setTension };
+if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dynastyAudio?: unknown }).__dynastyAudio = { dynastyAudio, playCue, playMoment, setScene, setTension, hush };
