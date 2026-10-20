@@ -1,0 +1,39 @@
+name: combat-gunblade-capability
+
+on:
+  push:
+    branches:
+      - "fix/combat-gunblade-capability-**"
+  pull_request:
+    paths:
+      - "src/pages/CombatLab.tsx"
+      - "src/lib/combat-lab/api.ts"
+      - "src/lib/combat-lab/api.capabilities.test.ts"
+      - ".github/workflows/combat-gunblade-capability.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  combat-lab-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install packages
+        run: npm ci --no-audit --no-fund
+      - name: Capability and Combat Lab regression tests
+        run: >-
+          npx vitest run
+          src/lib/combat-lab/api.capabilities.test.ts
+          src/pages/CombatLab.content.test.tsx
+          src/pages/CombatLab.actionFeedback.test.tsx
+      - name: Production bundle compile
+        run: npx vite build
