@@ -543,12 +543,15 @@ Not applied, because it changes report records and the brief asks for a proposal
 
 ### 15.6 Merge readiness
 
-**Backend #66 — code-ready:**
-- CI is green; tests pass; additive.
+**Backend #66 — code-ready, CI blocked by billing:**
+- On the pass-2 tip (`2343b28c`) the `safety` check did **not run**. GitHub refused to start the job: "recent account payments have failed or your spending limit needs to be increased" (2026-10-20 10:42Z).
+- This is an account billing problem, not a code failure. **Owner action:** fix GitHub Actions billing or the spending limit, then re-run `safety`.
+- The pass-1 tip `dec442b3` passed the same check, and pass 2 changed only the stat gate, tests and docs.
+- Locally the W26Q tests pass 41/41 and the 9-suite regression matches base. The change is additive.
 - Waiting on owner sign-off on §11-B/§11-C (defaults) and the draft-to-ready step.
 
 **Frontend #104 — code-ready:**
 - Tests and visual certification pass.
-- One red CI check, `owner-prototypes`, is the pre-existing Perfect Timing baseline failure (§15.1). It is not caused by this PR, but it keeps the check red until main is fixed. The owner can merge over it knowingly or fix main first.
+- CI on the pass-2 tip `141b7f73`: `validation` and `patch-deck` are green. `owner-prototypes` is red on the same single test (453/453 unit, 20/21 e2e). That is the pre-existing Perfect Timing baseline failure (§15.1). It is not caused by this PR, but it keeps the check red until main is fixed. The owner can merge over it knowingly or fix main first.
 - It depends on the backend being deployed first.
 - §11-D is open but does not block: reports file safely as today.
