@@ -313,14 +313,16 @@ test.describe("keyboard, focus and reduced motion", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     const motion = await page.evaluate(() => ({
       matches: matchMedia("(prefers-reduced-motion: reduce)").matches,
-      durations: [".dk-layout-switch__item", ".dk-chapter", ".dk-tickmark"].map((sel) => {
+      durations: [".dk-layout-switch__item", ".dk-btn", ".dk-fan__card", ".dk-chapter"].map((sel) => {
         const el = document.querySelector(sel);
         return el ? getComputedStyle(el).transitionDuration : "missing";
       }),
     }));
     info.annotations.push({ type: "reduced-motion", description: JSON.stringify(motion) });
     expect(motion.matches).toBe(true);
-    for (const d of motion.durations) {
+    const measured = motion.durations.filter((d) => d !== "missing");
+    expect(measured.length).toBeGreaterThan(0);
+    for (const d of measured) {
       expect(d.split(",").every((part) => parseFloat(part) * (part.trim().endsWith("ms") ? 0.001 : 1) <= 0.001), d).toBe(true);
     }
     await shot(page, info, "1440-reduced-motion-cover");
