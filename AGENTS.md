@@ -24,3 +24,7 @@
 - No agent should replace these rules with a per-issue handoff. Check and preserve this file when spinning up new instances.
 
 **Incident motivating policy:** repeated local Edge/Chrome automation made the user's Windows desktop unusable and stole foreground focus. Safety and unattended desktop usability are more important than test speed.
+
+## Audience and report projections
+- Overview browser journeys use explicit visitor/session correlation only; account-only server events stay unattributed to avoid guessed cross-device joins.
+- Keep captured feedback claims in the pure admin report projection and diagnostics collapsed; this makes evidence boundaries testable without changing owner access.

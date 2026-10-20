@@ -2,8 +2,9 @@
 // Quiz Review — a `mastery_slice` segment on the match record.
 //
 // A slice is several questions answered inside one segment, so its review body
-// repeats the same five things every other body states — where am I, what was
-// asked, what did I pick, what was right, and why — once per challenge.
+// states the same five things every other body states — where am I, what was
+// asked, what did I pick, what was right, and why — for the challenge the
+// reader selected (V2.1: one at a time; the selector has its own test file).
 //
 // The load-bearing property proven here is that everything shown comes from the
 // FROZEN round. Nothing in this path re-resolves a Mastery set, re-reads
@@ -11,7 +12,7 @@
 // makes a played match's record immune to a later admin change.
 // ---------------------------------------------------------------------------
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { ReviewRound } from "@/lib/ranked-public/contracts";
@@ -67,16 +68,23 @@ function masteryRound(over: Partial<ReviewRound> = {}): ReviewRound {
 }
 
 describe("Quiz Review — a mastery slice round", () => {
-  it("prints every frozen challenge, in order", () => {
+  it("prints every frozen challenge, in order, one selection at a time", () => {
     render(<QuestionReviewCard round={masteryRound()} position={3} total={6} />);
     const list = screen.getByTestId("review-mastery-challenges");
     expect(within(list).getByText("A generated question #0")).toBeInTheDocument();
+    expect(within(list).queryByText("A second generated question")).toBeNull();
+    fireEvent.click(screen.getByTestId("review-mastery-select-2"));
     expect(within(list).getByText("A second generated question")).toBeInTheDocument();
+    expect(within(list).queryByText("A generated question #0")).toBeNull();
   });
 
   it("prints each challenge's frozen options", () => {
     render(<QuestionReviewCard round={masteryRound()} position={3} total={6} />);
-    for (const option of ["115", "134", "144", "199", "149", "168", "221"]) {
+    for (const option of ["115", "134", "144", "199"]) {
+      expect(screen.getAllByText(option).length).toBeGreaterThan(0);
+    }
+    fireEvent.click(screen.getByTestId("review-mastery-select-2"));
+    for (const option of ["115", "149", "168", "221"]) {
       expect(screen.getAllByText(option).length).toBeGreaterThan(0);
     }
   });
@@ -88,6 +96,7 @@ describe("Quiz Review — a mastery slice round", () => {
     expect(screen.getByTestId("review-mastery-correct-answer-0"))
       .toHaveTextContent("144");
     // The one they got wrong states both, differently.
+    fireEvent.click(screen.getByTestId("review-mastery-select-2"));
     expect(screen.getByTestId("review-mastery-your-answer-1"))
       .toHaveTextContent("149");
     expect(screen.getByTestId("review-mastery-correct-answer-1"))
@@ -98,6 +107,7 @@ describe("Quiz Review — a mastery slice round", () => {
     render(<QuestionReviewCard round={masteryRound()} position={3} total={6} />);
     expect(screen.getByTestId("review-mastery-explanation-0"))
       .toHaveTextContent("The worked explanation for #0.");
+    fireEvent.click(screen.getByTestId("review-mastery-select-2"));
     expect(screen.getByTestId("review-mastery-explanation-1"))
       .toHaveTextContent("The worked explanation for #1.");
   });
@@ -128,8 +138,13 @@ describe("Quiz Review — a mastery slice round", () => {
 
   it("renders no answerable control — review, never replay", () => {
     render(<QuestionReviewCard round={masteryRound()} position={3} total={6} />);
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    // The only controls are the selector's (choose which frozen question to
+    // read); nothing answers, and nothing is a radio or a form field.
+    const nav = screen.getByTestId("review-mastery-nav");
+    for (const button of screen.queryAllByRole("button")) expect(nav).toContainElement(button);
     expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
   it("does not render the card body meant for Meta Reflex", () => {
