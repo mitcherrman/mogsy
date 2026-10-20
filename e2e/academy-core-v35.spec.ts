@@ -387,18 +387,19 @@ test.describe("desktop: interaction", () => {
     await p?.close();
   });
 
-  test("Daily and Ranked are clear, working shortcuts", async ({ page }) => {
+  test("Daily is a clear, working shortcut, and no Ranked shortcut is offered", async ({ page }) => {
     await open(page, 1366, 768);
     await expect(page.getByTestId("academy-core-daily")).toHaveAccessibleName("Play Daily Challenge");
-    await expect(page.getByTestId("academy-core-ranked")).toContainText("opens mode selection");
-    await page.getByTestId("academy-core-ranked").click();
-    await page.waitForURL(/\/quiz\?play=1/);
+    await expect(page.getByTestId("academy-core-ranked")).toHaveCount(0);
+    await expect(page.getByTestId("academy-core-shortcuts")).not.toContainText(/ranked|coming soon/i);
+    await page.getByTestId("academy-core-daily").click();
+    await page.waitForURL(/\/quiz\/daily-challenge/);
   });
 
   test("every control is hit-testable: no decorative layer covers the shortcuts, links, crystal or Patch Report", async ({ page }) => {
     await open(page, 1366, 768);
     const covered = await page.evaluate(() => {
-      const sels = ['[data-testid="academy-core-daily"]', '[data-testid="academy-core-ranked"]', '[data-testid="academy-core-commons-link"]',
+      const sels = ['[data-testid="academy-core-daily"]', '[data-testid="academy-core-commons-link"]',
         '[data-testid="academy-core-hall-link"]', '[data-testid="academy-core-crystal"]', '[data-testid="academy-core-book"] a', '[data-testid="academy-core-book"] button'];
       const out: string[] = [];
       for (const sel of sels) {
@@ -472,9 +473,8 @@ test.describe("mobile: a composed floating arrangement", () => {
       for (const id of IDS) expect(dist(a[id], b[id]), `${id} is not orbiting on a phone`).toBeLessThan(10); // levitation only
       const crystal = (await page.getByTestId("academy-core-crystal").boundingBox())!;
       expect(Math.min(crystal.width, crystal.height), "crystal target").toBeGreaterThanOrEqual(44);
-      for (const id of ["academy-core-daily", "academy-core-ranked"]) {
-        expect((await page.getByTestId(id).boundingBox())!.height, id).toBeGreaterThanOrEqual(44);
-      }
+      expect((await page.getByTestId("academy-core-daily").boundingBox())!.height, "daily").toBeGreaterThanOrEqual(44);
+      await expect(page.getByTestId("academy-core-ranked"), "no Ranked shortcut on phones").toHaveCount(0);
       await page.getByTestId("academy-core-book-mobile").scrollIntoViewIfNeeded();
       await expect(page.getByTestId("academy-core-book-mobile").getByText("Patch 26.20")).toBeVisible();
       await page.evaluate(() => window.scrollTo(0, 0));

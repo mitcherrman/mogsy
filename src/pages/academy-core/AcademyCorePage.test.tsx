@@ -224,7 +224,15 @@ describe("structure: an open space, not a chassis", () => {
     mount();
     expect(screen.getByRole("heading", { level: 1, name: "Mogzy Academy" })).toBeInTheDocument();
     expect(screen.getByTestId("academy-core-daily")).toHaveAccessibleName("Play Daily Challenge");
-    expect(screen.getByTestId("academy-core-ranked")).toHaveTextContent(/opens mode selection/i);
+  });
+
+  it("offers no Ranked shortcut while Ranked is disabled: no button, placeholder or Coming Soon label", () => {
+    mount();
+    expect(screen.queryByTestId("academy-core-ranked")).toBeNull();
+    const shortcuts = screen.getByTestId("academy-core-shortcuts");
+    expect(shortcuts.querySelectorAll("a, button")).toHaveLength(1);
+    expect(shortcuts).not.toHaveTextContent(/ranked|coming soon/i);
+    expect(document.querySelector('a[href^="/quiz?play"], a[href^="/quiz/ranked"]')).toBeNull();
   });
 });
 
@@ -391,7 +399,7 @@ describe("navigation contracts (carried over from V3)", () => {
     expect(screen.getByTestId("academy-core-preview")).toHaveTextContent("No room previewed");
   });
 
-  it("Daily and Ranked are immediate links with the V3 router state", () => {
+  it("Daily is an immediate link with the V3 router state", () => {
     mount();
     fireEvent.click(screen.getByTestId("academy-core-daily"));
     expect(screen.getByTestId("probe")).toHaveTextContent("daily|/quiz/daily-challenge||daily-intent");
@@ -404,12 +412,6 @@ describe("navigation contracts (carried over from V3)", () => {
     expect(track).toHaveBeenCalledWith("daily_challenge_entry_clicked", {
       metadata: { entry_surface: "home_hub", control: "academy_core_daily_button" },
     });
-  });
-
-  it("Ranked opens mode selection", () => {
-    mount();
-    fireEvent.click(screen.getByTestId("academy-core-ranked"));
-    expect(screen.getByTestId("probe")).toHaveTextContent("quiz|/quiz|?play=1");
   });
 
   it("only an authenticated visitor triggers the Daily read, and resume wording follows the status", () => {

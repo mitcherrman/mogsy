@@ -122,7 +122,7 @@
   color: #f6e8c4; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 28px rgba(201, 162, 76, 0.2);
 }
 
-/* compact shortcuts: Daily leads, Ranked is small; the row is decided by the
+/* compact shortcuts (the Daily Challenge); the row is decided by the
    island's width (container query), never by font metrics */
 .acore-shortcuts { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 0.6rem; }
 @container (max-width: 400px) { .acore-shortcuts { flex-direction: column; } }
@@ -147,17 +147,6 @@
 .acore-cta-key {
   display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 999px;
   background: #1b1306; color: #f3dfa6; font-size: 0.55rem; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-.acore-cta-secondary {
-  flex: 0 0 auto; flex-direction: column; gap: 0.05rem; line-height: 1.1;
-  min-height: 48px; padding: 0 0.9rem; font-size: 0.72rem;
-  color: var(--acore-ink); background: rgba(11, 21, 39, 0.8);
-  border: 1px solid rgba(201, 162, 76, 0.5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-.acore-cta-secondary:hover { border-color: var(--acore-brass); background: rgba(16, 32, 58, 0.92); }
-.acore-cta-hint {
-  font-family: "Space Mono", ui-monospace, monospace; font-weight: 400; font-size: 0.5rem;
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--acore-brass); opacity: 0.8;
 }
 
 /* the open Patch Report book on its lectern */

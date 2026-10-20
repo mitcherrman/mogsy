@@ -1,0 +1,54 @@
+name: academy-core-orrery
+
+# The Academy /lol home (the Living Hextech Orrery): unit tests, the production
+# build, and the real-browser behaviour suites (bundled headless Chromium on
+# GitHub's runner — never on the owner's PC; see AGENTS.md).
+on:
+  pull_request:
+    paths:
+      - "src/pages/academy-core/**"
+      - "src/components/lol/AcademyHubBook.tsx"
+      - "src/components/startup/**"
+      - "src/lib/academy-startup/**"
+      - "e2e/academy-core.spec.ts"
+      - "e2e/academy-core-v35.spec.ts"
+      - "playwright.frontend.config.ts"
+      - ".github/workflows/academy-core-orrery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  orrery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Unit tests (Orrery, Core page, startup)
+        run: npx vitest run src/pages/academy-core src/lib/academy-startup src/components/startup
+      - name: Production build
+        run: npx vite build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Orrery behaviour (V3.5 spec, evidence suites skipped)
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-core-v35.spec.ts --workers=1
+      - name: Core contracts and startup veil (V3 spec)
+        if: always()
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-core.spec.ts --workers=1
+      - name: Upload failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: academy-core-orrery-evidence
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
