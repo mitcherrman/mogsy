@@ -157,8 +157,23 @@ no notification or receipt is deleted). Covered by a test.
   Back/Forward, mark-read-on-success) and `policy.test.ts` (every type → a
   specific destination).
 - `tsc -p tsconfig.app.json` clean; harness typechecks and bundles.
-- Full-suite comparison vs clean `main`: see PR description.
-- Browser acceptance: runs on the PR (desktop + phone). See PR checks.
+- Regression comparison vs clean `main` (56 affected test files): no new
+  failures, 4 fixed (see PR description).
+
+## CI (GitHub Actions, PR #97, commit `eaf7342a`)
+
+- **Notifications 2.0 Acceptance — success**
+  ([run 39363130479](https://github.com/mitcherrman/mogsy/actions/runs/39363130479)):
+  PGlite suites, component suites, typecheck (app + harness), production build,
+  and browser acceptance **22/22** (11 cases × desktop + phone), screenshots
+  uploaded as the `notifications-v2-acceptance` artifact.
+- creator-replay-frontend — success.
+- interaction-labs-integration — failure on one case unrelated to this work
+  (`/admin/perfect-timing` owner bookmark). The same case has failed on every
+  recent branch (8 of the last 8 runs before this PR), i.e. pre-existing on `main`.
+- The browser runs found and fixed two real issues along the way: test reloads
+  that re-seeded the harness, and a race where a permalink's mark-read could
+  reload the previous tab (fixed in both inbox hooks).
 
 Pre-existing failures on `main` (unrelated, not touched): `AdminFeedback.rfb`
 "reason and comment kept apart" (fixed by open PR #94), plus several
@@ -166,7 +181,7 @@ Windows/shell-specific suites.
 
 ## Current state
 
-- Branch: `notifications/v2` — see `git log` for the head commit.
+- Branch: `notifications/v2`, PR [#97](https://github.com/mitcherrman/mogsy/pull/97) (code head `eaf7342a`).
 - Deployment status: **not deployed**. The migration has **not** been applied to
   production (requires the owner in the SQL Editor). Frontend deploys via
   Lovable on merge to `main`.
