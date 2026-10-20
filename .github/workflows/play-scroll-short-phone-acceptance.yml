@@ -1,0 +1,45 @@
+name: Play Selector Short Phone Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'src/index.css'
+      - 'src/components/quiz/play-scroll/**'
+      - 'e2e/play-scroll-short-phone.spec.ts'
+      - 'playwright.play-scroll-short-phone.config.ts'
+      - '.github/workflows/play-scroll-short-phone-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  play-scroll-short-phone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Test short-phone styles
+        run: npx vitest run src/components/quiz/play-scroll/playScroll.shortViewport.styles.test.ts
+      - name: Install bundled Chromium on runner
+        run: npx playwright install --with-deps chromium
+      - name: Hosted headless browser acceptance
+        run: npx playwright test -c playwright.play-scroll-short-phone.config.ts
+      - name: Compile frontend bundle
+        run: npx vite build
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-scroll-short-phone-failures
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

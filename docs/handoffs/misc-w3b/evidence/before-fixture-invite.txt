@@ -1,0 +1,17 @@
+320x568            sheet 304x652.4      body 372/372             hOver:false unreachable w/o scroll: [back] err:0/0
+360x640            sheet 344x620.8      body 327/357 SCROLLS     hOver:false unreachable w/o scroll: [back] err:0/0
+375x667            sheet 359x647        body 349/357 SCROLLS     hOver:false unreachable w/o scroll: [back] err:0/0
+390x844            sheet 374x669.7      body 357/357             hOver:false unreachable w/o scroll: [] err:0/0
+568x320-landscape ERROR TimeoutError: page.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-testid="play-mode-invite"]')[22m
+[2m    - locator resolved to <button type="button" aria-busy="false" data-mode="invite" data-testid="play-mode-invite" class="play-scroll-clause play-mode-card group di
+667x375-landscape ERROR TimeoutError: page.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-testid="play-mode-invite"]')[22m
+[2m    - locator resolved to <button type="button" aria-busy="false" data-mode="invite" data-testid="play-mode-invite" class="play-scroll-clause play-mode-card group di
+844x390-landscape ERROR TimeoutError: page.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-testid="play-mode-invite"]')[22m
+[2m    - locator resolved to <button type="button" aria-busy="false" data-mode="invite" data-testid="play-mode-invite" class="play-scroll-clause play-mode-card group di
+1440x900           sheet 752x840.1      body 341/341             hOver:false unreachable w/o scroll: [] err:0/0

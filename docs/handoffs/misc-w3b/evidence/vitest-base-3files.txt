@@ -1,0 +1,765 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mC:/Users/mlmit/mogzy-wt/misc-w3b-base[39m
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — browsing is local[2m > [22m[2msends NOTHING when the already-selected mascot is clicked twenty-five times
+[22m[39m[analytics] insert:analytics_visitors failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+[analytics] insert:analytics_sessions failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — browsing is local[2m > [22m[2msends NOTHING when the already-selected mascot is clicked twenty-five times
+[22m[39m[analytics] auth:getSession failed: __vite_ssr_import_6__.supabase.auth.getSession is not a function
+
+[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — browsing is local[2m > [22m[2msends NOTHING when the already-selected mascot is clicked twenty-five times
+[22m[39m[analytics] track failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+
+[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — top chrome[2m > [22m[2mrenders no header row above the lobby
+[22m[39m[analytics] insert:analytics_visitors failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+[analytics] insert:analytics_sessions failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — top chrome[2m > [22m[2mrenders no header row above the lobby
+[22m[39m[analytics] auth:getSession failed: __vite_ssr_import_6__.supabase.auth.getSession is not a function
+
+[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — top chrome[2m > [22m[2mrenders no header row above the lobby
+[22m[39m[analytics] track failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — hierarchy[2m > [22m[2mVision starts an in-place Practice session from the live category
+[22m[39m[analytics] insert:analytics_visitors failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+[analytics] insert:analytics_sessions failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+
+[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — hierarchy[2m > [22m[2mVision starts an in-place Practice session from the live category
+[22m[39m[analytics] auth:getSession failed: __vite_ssr_import_6__.supabase.auth.getSession is not a function
+
+[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — hierarchy[2m > [22m[2mVision starts an in-place Practice session from the live category
+[22m[39m[analytics] track failed: __vite_ssr_import_5__.analyticsDb.from(...).insert is not a function
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — PLAY commits the role[2m > [22m[2mpersists the settled role exactly once, then opens the record
+[22m[39mWarning: An update to Quiz inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to Quiz inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — PLAY commits the role[2m > [22m[2mwrites NOTHING when the settled role is the one already stored
+[22m[39mWarning: An update to PlayScrollRecord inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlayScrollRecord (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\PlayScrollRecord.tsx:101:29)
+    at RankedPlayScroll (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\RankedPlayScroll.tsx:107:41)
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to PlayScrollRecord inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlayScrollRecord (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\PlayScrollRecord.tsx:101:29)
+    at RankedPlayScroll (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\RankedPlayScroll.tsx:107:41)
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to PlayScrollRecord inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlayScrollRecord (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\PlayScrollRecord.tsx:101:29)
+    at RankedPlayScroll (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\RankedPlayScroll.tsx:107:41)
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — PLAY commits the role[2m > [22m[2mwrites NOTHING when the reader never touches the stage
+[22m[39mWarning: An update to PlayScrollRecord inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlayScrollRecord (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\PlayScrollRecord.tsx:101:29)
+    at RankedPlayScroll (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\RankedPlayScroll.tsx:107:41)
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to PlayScrollRecord inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlayScrollRecord (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\PlayScrollRecord.tsx:101:29)
+    at RankedPlayScroll (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\RankedPlayScroll.tsx:107:41)
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to PlayScrollRecord inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlayScrollRecord (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\PlayScrollRecord.tsx:101:29)
+    at RankedPlayScroll (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\play-scroll\RankedPlayScroll.tsx:107:41)
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.hub.test.tsx[2m > [22m[2mLeaguecraft hub — category rail[2m > [22m[2mkeeps initial/restored state silent and sounds one intentional Record selection
+[22m[39mWarning: An update to OwnedQuestionsPane inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OwnedQuestionsPane (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\workspace\OwnedQuestionsPane.tsx:329:31)
+    at div
+    at div
+    at ReviewPane (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\workspace\ReviewPane.tsx:76:23)
+    at section
+    at div
+    at div
+    at LobbyPanel (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LobbyPanel.tsx:53:23)
+    at div
+    at LeaguecraftWorkspace (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\workspace\LeaguecraftWorkspace.tsx:50:33)
+    at section
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to OwnedQuestionsPane inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OwnedQuestionsPane (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\workspace\OwnedQuestionsPane.tsx:329:31)
+    at div
+    at div
+    at ReviewPane (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\workspace\ReviewPane.tsx:76:23)
+    at section
+    at div
+    at div
+    at LobbyPanel (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LobbyPanel.tsx:53:23)
+    at div
+    at LeaguecraftWorkspace (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\workspace\LeaguecraftWorkspace.tsx:50:33)
+    at section
+    at div
+    at LeaguecraftHub (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\components\quiz\LeaguecraftHub.tsx:158:27)
+    at div
+    at div
+    at div
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — PLAY commits the role[2m > [22m[2mcommits a FIRST role for an account that has never chosen one
+[22m[39mWarning: An update to Quiz inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+Warning: An update to Quiz inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — a refused commit[2m > [22m[2msurfaces the refusal and does NOT continue into Ranked
+[22m[39mWarning: An update to Quiz inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mLeaguecraft lobby — a refused commit[2m > [22m[2mkeeps the local choice after a refusal, so Ranked can be retried
+[22m[39mWarning: An update to Quiz inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Quiz (C:\Users\mlmit\mogzy-wt\misc-w3b-base\src\pages\Quiz.tsx:343:29)
+    at RenderedRoute (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at Router (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Users\mlmit\OneDrive\Desktop\mogsy\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mthe lobby and the record share one role selection[2m > [22m[2mcommits NOTHING for Daily Challenge after a role change
+[22m[39mNo routes matched location "/quiz/daily-challenge" 
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mPLAY1 sound — one action, one cue, across both role surfaces[2m > [22m[2msounds one seal for Daily Challenge, and commits nothing
+[22m[39mNo routes matched location "/quiz/daily-challenge" 
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mthe signup CTA's destination[2m > [22m[2msends the player into the canonical signup flow
+[22m[39mNo routes matched location "/auth?mode=signup&returnTo=%2Fquiz%3Fplay%3D1%26role%3Djungle" 
+
+[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mthe signup CTA's destination[2m > [22m[2mcarries a Leaguecraft return target, with the chosen role
+[22m[39mNo routes matched location "/auth?mode=signup&returnTo=%2Fquiz%3Fplay%3D1%26role%3Djungle" 
+
+[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mthe signup CTA's destination[2m > [22m[2mdoes not queue anything on the way out
+[22m[39mNo routes matched location "/auth?mode=signup&returnTo=%2Fquiz%3Fplay%3D1%26role%3Djungle" 
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[90mstderr[2m | src/pages/Quiz.rankedRole.test.tsx[2m > [22m[2mPLAY1 sound — the Create Account action[2m > [22m[2mknocks once, and still navigates
+[22m[39mNo routes matched location "/auth?mode=signup&returnTo=%2Fquiz%3Fplay%3D1%26role%3Dtop" 
+
+[33m[39m[32m·[39m[33m[39m[32m·[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 7 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/pages/Quiz.hub.test.tsx[2m > [22mLeaguecraft hub — top chrome[2m > [22mkeeps exactly one h1 — the centre scroll's wordmark
+[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m src/pages/Quiz.hub.test.tsx:[2m191:24[22m[39m
+    [90m189| [39m    [35mconst[39m { container } [33m=[39m [35mawait[39m [34mrenderHub[39m()[33m;[39m
+    [90m190| [39m    [35mconst[39m h1s [33m=[39m [[33m...[39mcontainer[33m.[39m[34mquerySelectorAll[39m([32m"h1"[39m)][33m;[39m
+    [90m191| [39m    [34mexpect[39m(h1s[33m.[39mlength)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m192| [39m    [34mexpect[39m(h1s[[34m0[39m][33m.[39mtextContent)[33m.[39m[34mtoContain[39m([32m"LEAGUECRAFT"[39m)[33m;[39m
+    [90m193| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/Quiz.hub.test.tsx[2m > [22mLeaguecraft hub — hierarchy[2m > [22mHUB7: reads QUICK STUDY then HISTORY, with no Practice Packs or Builder
+[31m[1mAssertionError[22m: expected [ <section …(3)>…(2)</section> ] to deeply equal [][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [][39m
+[31m+ [[39m
+[31m+   <section[39m
+[31m+     aria-labelledby="hub-more-challenges-heading"[39m
+[31m+     class="flex flex-col gap-1.5"[39m
+[31m+     data-testid="hub-more-challenges"[39m
+[31m+   >[39m
+[31m+     <div[39m
+[31m+       class="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5"[39m
+[31m+     >[39m
+[31m+       <h2[39m
+[31m+         class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#e2c877]/85"[39m
+[31m+         id="hub-more-challenges-heading"[39m
+[31m+       >[39m
+[31m+         <svg[39m
+[31m+           aria-hidden="true"[39m
+[31m+           class="lucide lucide-trophy h-3 w-3 text-[#c9a84c]/70"[39m
+[31m+           fill="none"[39m
+[31m+           height="24"[39m
+[31m+           stroke="currentColor"[39m
+[31m+           stroke-linecap="round"[39m
+[31m+           stroke-linejoin="round"[39m
+[31m+           stroke-width="2"[39m
+[31m+           viewBox="0 0 24 24"[39m
+[31m+           width="24"[39m
+[31m+           xmlns="http://www.w3.org/2000/svg"[39m
+[31m+         >[39m
+[31m+           <path[39m
+[31m+             d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"[39m
+[31m+           />[39m
+[31m+           <path[39m
+[31m+             d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"[39m
+[31m+           />[39m
+[31m+           <path[39m
+[31m+             d="M4 22h16"[39m
+[31m+           />[39m
+[31m+           <path[39m
+[31m+             d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"[39m
+[31m+           />[39m
+[31m+           <path[39m
+[31m+             d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"[39m
+[31m+           />[39m
+[31m+           <path[39m
+[31m+             d="M18 2H6v7a6 6 0 0 0 12 0V2Z"[39m
+[31m+           />[39m
+[31m+         </svg>[39m
+[31m+         More Challenges[39m
+[31m+       </h2>[39m
+[31m+       <p[39m
+[31m+         class="text-[10px] text-muted-foreground"[39m
+[31m+       >[39m
+[31m+         Bonus modes to play after your Daily Challenge.[39m
+[31m+       </p>[39m
+[31m+     </div>[39m
+[31m+     <div[39m
+[31m+       class="ranked-subpanel flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"[39m
+[31m+     >[39m
+[31m+       <p[39m
+[31m+         class="text-sm text-[color:var(--ranked-muted)]"[39m
+[31m+       >[39m
+[31m+         Time Trial, Survival and the new bonus modes. None of them change your Daily score or Ranked rating.[39m
+[31m+       </p>[39m
+[31m+       <a[39m
+[31m+         class="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-[rgba(201,168,76,0.55)][39m
+[31m+[39m
+[31m+               bg-[rgba(201,168,76,0.12)] px-4 text-sm font-semibold text-[#f0d78c] hover:bg-[rgba(201,168,76,0.2)][39m
+[31m+[39m
+[31m+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(201,168,76,0.6)]"[39m
+[31m+         data-testid="hub-more-challenges-link"[39m
+[31m+         href="/quiz/more-challenges"[39m
+[31m+       >[39m
+[31m+         Browse More Challenges[39m
+[31m+       </a>[39m
+[31m+     </div>[39m
+[31m+   </section>,[39m
+[31m+ ][39m
+
+[36m [2m❯[22m src/pages/Quiz.hub.test.tsx:[2m306:21[22m[39m
+    [90m304| [39m        [33m![39mquick[33m.[39m[34mcontains[39m(el)[33m,[39m
+    [90m305| [39m    )[33m;[39m
+    [90m306| [39m    [34mexpect[39m(between)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m   | [39m                    [31m^[39m
+    [90m307| [39m
+    [90m308| [39m    // No Builder request and no false builder funnel event from a vis…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/Quiz.hub.test.tsx[2m > [22mLeaguecraft hub — category rail[2m > [22mis a menu of six in-page controls, and links to nowhere
+[31m[1mAssertionError[22m: expected 6 to be 5 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 5[39m
+[31m+ 6[39m
+
+[36m [2m❯[22m src/pages/Quiz.hub.test.tsx:[2m451:69[22m[39m
+    [90m449| [39m    [34mexpect[39m(rail[33m.[39m[34mquerySelectorAll[39m([32m"a, [role='button']"[39m)[33m.[39mlength)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m450| [39m    // Five doors, one declared-unavailable subject. No tile is silent…
+    [90m451| [39m    expect(rail.querySelectorAll('[data-available="true"]').length).to…
+    [90m   | [39m                                                                    [31m^[39m
+    [90m452| [39m    expect(rail.querySelectorAll('[data-available="false"]').length).t…
+    [90m453| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/Quiz.rankedRole.test.tsx[2m > [22mthe lobby and the record share one role selection[2m > [22mcommits NOTHING for Practice after a role change
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element by: [data-testid="ranked-class-role-emblem"]
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m""[39m
+[36m>[39m
+  [36m<div>[39m
+    [36m<span[39m
+      [33mdata-testid[39m=[32m"location"[39m
+    [36m>[39m
+      [0m/quiz[0m
+    [36m</span>[39m
+    [36m<span[39m
+      [33mdata-testid[39m=[32m"location-href"[39m
+    [36m>[39m
+      [0m/quiz?mode=ranked[0m
+    [36m</span>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"relative min-h-[calc(100dvh-var(--app-header-h))]"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"pointer-events-none absolute inset-x-0 bottom-0 -top-[var(--app-header-h)]"[39m
+          [33mstyle[39m=[32m"background-image: url(/images/lol-hub/leaguecraft-classroom-bg.png); background-size: cover; background-repeat: no-repeat;"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"pointer-events-none absolute inset-x-0 bottom-0 -top-[var(--app-header-h)]"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"relative mx-auto px-4 pb-4 max-w-3xl pt-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33maria-label[39m=[32m"Back to League hub"[39m
+              [33mclass[39m=[32m"inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-2.5 py-1 text-[11px] font-semibold text-[#c9a84c] backdrop-blur-md transition-colors hover:border-[#c9a84c] hover:bg-[#0a1428]"[39m
+              [33mhref[39m=[32m"/lol"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-arrow-left h-3.5 w-3.5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m12 19-7-7 7-7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M19 12H5"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [0mLeague Hub[0m
+            [36m</a>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-book-open h-4 w-4 shrink-0 text-[#c9a84c]/80"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 7v14"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"text-lg font-bold tracking-[0.18em] sm:text-xl"[39m
+            [36m>[39m
+              [0mLEAGUECRAFT[0m
+            [36m</h1>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-[11px] uppercase tracking-[0.26em] text-[#c9a84c]/60"[39m
+            [36m>[39m
+              [0mStudy. Practice. Ascend.[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ml-auto flex items-center gap-3"[39m
+            [36m>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"items-center justify-center whitespace-nowrap font-bold tracking-wide ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground rounded-md px-3 hidden h-7 gap-1 text-xs md:inline-flex [@media(max-height:480px)]:!hidden"[39m
+                [33mhref[39m=[32m"/quiz/diagnostics"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-stethoscope h-3.5 w-3.5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M11 2v2"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M5 2v2"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M8 15a6 6 0 0 0 12 0v-3"[39m
+                  [36m/>[39m
+                  [36m<circle[39m
+                    [33mcx[39m=[32m"20"[39m
+                    [33mcy[39m=[32m"10"[39m
+                    [33mr[39m=[32m"2"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [0mDiagnostics[0m
+              [36m</a>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center"[39m
+            [33mstyle[39m=[32m"opacity: 0; transform: translateY(10px);"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert h-8 w-8 text-destructive mx-auto mb-3"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-base font-semibold text-destructive mb-1"[39m
+            [36m>[39m
+              [0mSomething went wrong[0m
+            [36m</h3>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-sm text-muted-foreground mb-4"[39m
+            [36m>[39m
+              [0mNo questions available for this set.[0m
+            [36m</p>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-bold tracking-wide ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-rotate-ccw h-4 w-4 mr-2"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 3v5h5"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [0mTry again[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError ../../OneDrive/Desktop/mogsy/node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m ../../OneDrive/Desktop/mogsy/node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m ../../OneDrive/Desktop/mogsy/node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m getByTestId ../../OneDrive/Desktop/mogsy/node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m lobbyRole src/pages/Quiz.rankedRole.test.tsx:[2m461:12[22m[39m
+    [90m459| [39m  [90m/** What the LOBBY's stage is pointing at, behind the open record. */[39m
+    [90m460| [39m  [35mconst[39m lobbyRole [33m=[39m () [33m=>[39m
+    [90m461| [39m    screen.getByTestId("ranked-class-role-emblem").getAttribute("data-…
+    [90m   | [39m           [31m^[39m
+    [90m462| [39m  [90m/** What the RECORD's stepper is showing. */[39m
+    [90m463| [39m  [35mconst[39m scrollRole [33m=[39m () [33m=>[39m
+[90m [2m❯[22m src/pages/Quiz.rankedRole.test.tsx:[2m608:12[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/quiz/QuizCategoryRail.test.tsx[2m > [22mQuizCategoryRail[2m > [22mopens every content-backed subject, and only those
+[31m[1mAssertionError[22m: expected [ 'objectives', …(5) ] to deeply equal [ 'objectives', …(4) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -2,6 +2,7 @@[39m
+[2m    "objectives",[22m
+[2m    "wave-management",[22m
+[2m    "summoner-spells",[22m
+[2m    "itemization",[22m
+[2m    "abilities",[22m
+[31m+   "vision",[39m
+[2m  ][22m
+
+[36m [2m❯[22m src/components/quiz/QuizCategoryRail.test.tsx:[2m119:59[22m[39m
+    [90m117| [39m    }
+    [90m118| [39m    [90m// Five doors. Vision is in the taxonomy and is not one of them.[39m
+    [90m119| [39m    [34mexpect[39m(onSelectCategory[33m.[39mmock[33m.[39mcalls[33m.[39m[34mmap[39m(([id]) [33m=>[39m id))[33m.[39m[34mtoEqual[39m([
+    [90m   | [39m                                                          [31m^[39m
+    [90m120| [39m      [32m"objectives"[39m[33m,[39m
+    [90m121| [39m      [32m"wave-management"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/quiz/QuizCategoryRail.test.tsx[2m > [22mQuizCategoryRail[2m > [22mmarks Vision unavailable without removing it, and never navigates from it
+[31m[1mAssertionError[22m: expected 'true' to be 'false' // Object.is equality[39m
+
+Expected: [32m"[7mfals[27me"[39m
+Received: [31m"[7mtru[27me"[39m
+
+[36m [2m❯[22m src/components/quiz/QuizCategoryRail.test.tsx:[2m136:49[22m[39m
+    [90m134| [39m    [35mconst[39m button [33m=[39m [34mwithin[39m(tile)[33m.[39m[34mgetByRole[39m([32m"button"[39m)[33m;[39m
+    [90m135| [39m
+    [90m136| [39m    [34mexpect[39m(tile[33m.[39m[34mgetAttribute[39m([32m"data-available"[39m))[33m.[39m[34mtoBe[39m([32m"false"[39m)[33m;[39m
+    [90m   | [39m                                                [31m^[39m
+    [90m137| [39m    [34mexpect[39m(button[33m.[39m[34mgetAttribute[39m([32m"aria-disabled"[39m))[33m.[39m[34mtoBe[39m([32m"true"[39m)[33m;[39m
+    [90m138| [39m    [34mexpect[39m(tile[33m.[39m[34mgetAttribute[39m([32m"title"[39m))[33m.[39m[34mtoContain[39m([32m"coming soon"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/quiz/QuizCategoryRail.test.tsx[2m > [22mQuizCategoryRail[2m > [22mgives the pointer cursor only to the subjects that open something
+[31m[1mAssertionError[22m: vision: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/components/quiz/QuizCategoryRail.test.tsx:[2m166:50[22m[39m
+    [90m164| [39m        [33m.[39m[34mfind[39m((el) [33m=>[39m el[33m.[39m[34mgetAttribute[39m([32m"data-category"[39m) [33m===[39m id)[33m![39m[33m;[39m
+    [90m165| [39m      [35mconst[39m cls [33m=[39m [34mwithin[39m(tile)[33m.[39m[34mgetByRole[39m([32m"button"[39m)[33m.[39mclassName[33m;[39m
+    [90m166| [39m      [34mexpect[39m(cls[33m.[39m[34mincludes[39m([32m"cursor-pointer"[39m)[33m,[39m id)[33m.[39m[34mtoBe[39m(id [33m!==[39m [32m"vision"[39m)[33m;[39m
+    [90m   | [39m                                                 [31m^[39m
+    [90m167| [39m    }
+    [90m168| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m99 passed[39m[22m[90m (106)[39m
+[2m   Start at [22m 18:05:04
+[2m   Duration [22m 18.92s[2m (transform 2.54s, setup 322ms, collect 9.35s, tests 17.63s, environment 1.83s, prepare 552ms)[22m
+
