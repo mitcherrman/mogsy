@@ -19,6 +19,7 @@ on:
       - "src/index.css"
       - "e2e/pm1/**"
       - "playwright.pm1.config.ts"
+      - "scripts/ci/pm1-annotate.mjs"
       - ".github/workflows/practice-modernization-acceptance.yml"
   workflow_dispatch:
 
@@ -46,7 +47,10 @@ jobs:
         run: |
           mkdir -p test-results/pm1
           set -o pipefail
-          npx playwright test -c playwright.pm1.config.ts --workers=1 --reporter=list,github 2>&1 | tee test-results/pm1/run.log
+          npx playwright test -c playwright.pm1.config.ts --workers=1 2>&1 | tee test-results/pm1/run.log
+      - name: Annotate failures and measurements
+        if: always()
+        run: node scripts/ci/pm1-annotate.mjs
       - name: Upload screenshots and evidence
         if: always()
         uses: actions/upload-artifact@v4

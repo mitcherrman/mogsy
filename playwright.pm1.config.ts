@@ -15,7 +15,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  reporter: [["list"]],
+  reporter: [["list"], ["json", { outputFile: "test-results/pm1/report.json" }]],
   use: {
     ...devices["Desktop Chrome"],
     baseURL: "http://127.0.0.1:8125",
