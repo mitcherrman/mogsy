@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { focusHighlight, readFocusParam, useFocusRecord } from "@/lib/notifications/focus";
+import RecordFocusNotice from "@/components/admin/RecordFocusNotice";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +40,15 @@ export default function AdminModeratorConfig() {
   const [notifications, setNotifications] = useState<ModNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  // Notification deep link: `&focus=<admin_notifications.id>` loads that
+  // request by id even when it is older than the 50 most recent.
+  const focusParam = readFocusParam();
+  const { focusId, status: focusStatus, fromNotification } = useFocusRecord({
+    ready: !loading,
+    data: notifications,
+    has: id => notifications.some(n => n.id === id),
+  });
+  const focusedRequest = notifications.find(n => n.id === focusId);
 
   const fetchData = async () => {
     setLoading(true);
@@ -60,12 +71,23 @@ export default function AdminModeratorConfig() {
     }
 
     // Get mod-related notifications
-    const { data: notifs } = await supabase
+    const { data: recent } = await supabase
       .from("admin_notifications")
       .select("id, type, title, message, metadata, created_at, is_read")
       .in("type", ["mod_delete_request", "mod_action"])
       .order("created_at", { ascending: false })
       .limit(50);
+    let notifs = recent ?? [];
+    const focus = readFocusParam();
+    if (focus && !notifs.some((n) => n.id === focus)) {
+      const { data: one } = await supabase
+        .from("admin_notifications")
+        .select("id, type, title, message, metadata, created_at, is_read")
+        .in("type", ["mod_delete_request", "mod_action"])
+        .eq("id", focus)
+        .maybeSingle();
+      if (one) notifs = [one, ...notifs];
+    }
     setNotifications(
       (notifs || []).map(({ is_read, ...rest }) => ({ ...rest, isDispositioned: is_read })),
     );
@@ -75,7 +97,8 @@ export default function AdminModeratorConfig() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusParam]);
 
   /**
    * Disposition + the acting admin's read receipt, in one round trip.
@@ -211,6 +234,12 @@ export default function AdminModeratorConfig() {
 
       {/* Mod Action Notifications */}
       <div className="space-y-2">
+        <RecordFocusNotice
+          kind="request"
+          status={focusStatus}
+          fromNotification={fromNotification}
+          resolvedLabel={focusedRequest?.isDispositioned ? "Request dispositioned" : null}
+        />
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Moderator Requests ({notifications.filter((n) => !n.isDispositioned).length} pending)
         </h4>
@@ -227,7 +256,8 @@ export default function AdminModeratorConfig() {
               return (
                 <div
                   key={notif.id}
-                  className={`rounded-xl border p-4 space-y-2 ${
+                  data-focus-id={notif.id}
+                  className={`rounded-xl border p-4 space-y-2 ${focusId === notif.id ? focusHighlight : ""} ${
                     isHandled
                       ? "border-border/50 bg-muted/30 opacity-60"
                       : "border-primary/30 bg-primary/5"

@@ -115,6 +115,9 @@ vi.mock("@/integrations/supabase/client", () => {
   Object.assign(channel, { on: () => channel, subscribe: () => channel });
   return {
     supabase: {
+      // Notifications 2.0: answer every v2 RPC as "not deployed", so the bell
+      // takes its pre-migration fallback over the tables this double serves.
+      rpc: () => Promise.resolve({ data: null, error: { code: "PGRST202", message: "Could not find the function" } }),
       from: (table: string) => makeBuilder(table),
       channel: () => channel,
       removeChannel: vi.fn(),
