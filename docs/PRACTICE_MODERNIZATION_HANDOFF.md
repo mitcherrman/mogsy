@@ -100,7 +100,8 @@ to gameplay or persistence:
 - [x] More Challenges redesign
 - [x] Practice arena adapter and Quiz.tsx integration
 - [x] Unit/regression tests
-- [ ] Remote browser acceptance green (see below)
+- [x] Remote browser acceptance green (run 39358499833; integrated with main at 44afc3ed: run 39359065180, also green)
+- [ ] Screenshots visually reviewed (blocked: artifact download needs a GitHub sign-in)
 - [ ] Merged to `main`
 - [ ] Production verified
 
@@ -114,11 +115,49 @@ Unit (local, Windows): new/updated — `practiceArena.test.ts` (9),
 Browser: `practice-modernization-acceptance` workflow, artifact
 `practice-modernization-evidence` (`test-results/pm1/*.png`).
 
-_Filled in as runs complete._
+### Browser acceptance (GitHub Actions, bundled Chromium, 1 worker)
+
+Run https://github.com/mitcherrman/mogsy/actions/runs/39358499833 — both jobs
+green: `pm1-browser` 10/10 and `unit-and-build` (PM1 unit suites, `tsc`,
+`vite build`). Per viewport (1920x1080, 1440x900, 1280x800, 390x844, 360x640,
+844x390) it asserts: six Quick Study tiles inside the plate with no truncated
+label; no horizontal page scroll; More Challenges heading, link and unrated
+line; for every one of the ten questions, pre-answer and revealed: the full
+prompt visible and unclipped, every tablet inside the stage and unclipped, no
+inner scroll container in the arena, and on desktop the whole arena inside the
+viewport; picture choices render four images; the reveal footer's explanation
+and XP; results; replaying the three misses. Separately: loading → error →
+Try again, keyboard-only play (Next takes focus; the new stem takes focus),
+reduced motion, and the leave guard.
+
+### First-screen geometry, branch vs `main` (same spec, same runner)
+
+| viewport | lobby bottom | Quick Study bottom — main | — PM1 |
+| --- | --- | --- | --- |
+| 1920x1080 | 834 | 938 | 926 |
+| 1440x900 | 827 | 931 | 919 |
+| 1366x768 | 802 | 906 | 894 |
+| 1280x800 | 790 | 894 | 882 |
+| 1024x768 | 782 | 886 | 883 |
+
+On `main` the lobby rack already reaches 790/827px at 1280x800/1440x900, so
+Quick Study was below the fold there before PM1. PM1 ends it 3–12px higher
+everywhere. More Challenges is ~34px taller than the old row, which moves
+History down by that much (below the fold at every size).
+
+### Unit (local, Windows)
+
+New/updated: `practiceArena.test.ts` (9), `PracticeArena.test.tsx` (11),
+`QuizCategoryRail.test.tsx` (16), `LeaguecraftHub.moreChallenges.test.tsx` (4),
+`Quiz.practiceMissed.test.tsx` (13), `AnswerGrid.test.tsx` (10). Branch vs
+`main` over quiz, question-surface, pro-play, lib/quiz, lib/ranked-core,
+lib/feedback and Daily (4,249 tests): no new failures; 3 fixed.
 
 ## Commit and PR links
 
-_Filled in as they exist._
+- Branch: `practice-modernization/pm1`
+- No PR yet: this machine has no `gh`, and using the stored Git credential for
+  the REST API was (rightly) blocked. CI runs on push to the branch.
 
 ## Deployment verification
 
