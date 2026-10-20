@@ -74,3 +74,70 @@
 - Provenance confirmation for the mascot and the other Mogzy-made art (05 §3a).
 - Which source makes each signature cue and loop: in-house synthesis vs. a CC0 library. Paid options need separate approval.
 - Backend support for Elder and Dragon Soul (deferred in E1), and whether Dragon becomes interactive (O-4).
+
+---
+
+## Support handoff (2026-10-19)
+
+### Where it lives
+
+- **Repository:** the Mogzy frontend (`mitcherrman/mogsy`); local checkout `C:\Users\mlmit\OneDrive\Desktop\mogsy`.
+- **Branch:** `vis/vis-f2-support-docs`, local only (**not pushed**), in its own worktree `C:\Users\mlmit\mogzy-wt\vis-f2-support`. It has no `node_modules` because it needs none.
+- **Base:** `3d79759c` (VIS-F1). That is also the tip of Fable's `vis/vis-f2-cinematic-journey` as checked on 2026-10-19.
+- **Docs commit:** `b06d6956d99b227b89bdbd5e9bd2f0031326f687`, which adds the seven files below. This handoff section is a second, docs-only commit on top of it.
+- **Files:** `docs/roguelike/vis_f2_support/` (00_README, 01_MOMENT_MAP, 02_MEDIA_SLOTS, 03_AUDIO_HOOKS, 04_AMBIENT_SYSTEMS, 05_ASSET_INVENTORY, 06_STORYBOARDS).
+- **Not touched:** Fable's worktree `C:\Users\mlmit\mogzy-wt\vis-f2`, the VIS-F1 worktree, any application code, any backend worktree. Nothing was pushed, merged or deployed.
+
+### Integration manifest (for VIS-F2)
+
+| Need | File | Use in the visual pass |
+|---|---|---|
+| Moment ids, weights, E1 rules | `01_MOMENT_MAP.md` | Name every animated moment `dyn.*`; gate W3 to two moments |
+| Slot ids, portrait tiers | `02_MEDIA_SLOTS.md` | `data-media-slot` hooks; the four-tier `player.portrait` frame; `player.trait_chip` |
+| Cue ids, fallbacks | `03_AUDIO_HOOKS.md` | One `playMoment()` map; fallbacks are verified voiced cues |
+| Ambient layers | `04_AMBIENT_SYSTEMS.md` | Default-on text with controls and rate limits; the five loop ids |
+| Rights | `05_ASSET_INVENTORY.md` | What may ship; manifest rules for any new file |
+| Storyboards | `06_STORYBOARDS.md` | Beat timings for S1–S7 and the W3 reduced-motion frames |
+
+**Safe transfer**, run by the owner or Fable from Fable's worktree at a clean point (not mid-edit):
+
+```
+git status --short                       # expect nothing under docs/roguelike/vis_f2_support/
+git cherry-pick 3d79759c..vis/vis-f2-support-docs
+```
+
+- **Why it is conflict-free:** both commits only **add** files under `docs/roguelike/vis_f2_support/`. They cannot conflict unless that folder already exists there.
+- **The dev server is unaffected:** nothing under `docs/` is imported, so vite / HMR does not react.
+- **Line endings:** `core.autocrlf=true` prints LF→CRLF warnings; they are harmless.
+- **Without the commits:** `git checkout vis/vis-f2-support-docs -- docs/roguelike/vis_f2_support` stages the files only.
+- **To back out:** `git cherry-pick --abort` mid-pick, or afterwards `git revert` the picked commits.
+
+### Confirmed facts (verified 2026-10-19)
+
+- All 10 existing cues cited exist in `SFX_REGISTRY` (`src/lib/audio/sfx-registry.ts` @ `3d79759c`). `ranked.round.final` (line 94) has no built-in voice.
+- `sfx.ts:356` throttles each cue by `minReplayMs`. `ranked.discovery.reveal` is 850 ms against the 330 ms tile rhythm (`GameView.tsx:211`), so only tiles 1 and 4 sound.
+- `dynasty-v2` calls 8 cues (see 03 for line refs).
+- The E1 catalog (`.worktrees/wd-v2-combat`, `dynasty/combat_v2/events/catalog.py` @ `d279233b`):
+  - `early.dragon` is a skill-free post-stage major;
+  - `early.rift_herald`, `late.baron` and `late.decisive_teamfight` are skill-free pre-score majors;
+  - `mid.baron_qualified` is the only encounter (`baron_three_question`, 3 questions, `closeout_on_perfect`);
+  - Dragon Soul and Elder are deferred (`models.py`).
+- The backend serves `assets/` statically (`api_server.py:458`). That includes the 11 objective squares (no Dragon, by recorded decision), 16 team crests and 72 player portraits.
+- The Pro Play approval layer was removed 2026-09-08. The portraits' recorded `license_note` says All Rights Reserved, with a grant to Liquipedia, not to Mogzy.
+
+### Unresolved rights
+
+- **Real-player portraits:** no Dynasty-approved basis for any of them. Each needs a licence, written permission or owner-supplied media, recorded per asset.
+- **Real org crests:** provenance is on file, but no Dynasty rights row has been recorded.
+- **Mogzy-made art** (mascot, role emblems, crowns, ranked backgrounds, `caster-minion.webp`, `play-seal.png`): no provenance doc anywhere.
+- **`elder-dragon.webp`:** origin undocumented.
+- **Tidecaller:** the rights note is unfinished. The other Riot music in the backend inventory is unverified, and the `public/sounds/` meme clips are third-party. None of these may be used in Dynasty.
+- **Signature cues and loops:** none sourced yet. In-house synthesis or CC0 only; any paid purchase or commission needs separate approval.
+
+### Next steps
+
+1. The owner or Fable cherry-picks the two commits into `vis/vis-f2-cinematic-journey` when convenient (manifest above).
+2. VIS-F2 wires `playMoment()` with the 03 fallbacks; adds the W3 finals intro and championship with their static alternatives; builds the portrait-tier frame and `player.trait_chip`.
+3. Audio: generate ticks and locks with Web Audio; propose sources for the 12 signature cues and 5 loops (in-house or CC0) for owner approval before anything lands in `public/assets/dynasty/`.
+4. The owner records provenance for existing Mogzy art and decides per-asset rights before any real portrait or crest appears in Dynasty.
+5. Backend: Elder / Dragon Soul support and the Dragon interactivity decision (O-4) before those prototype-only paths leave the fixtures.
