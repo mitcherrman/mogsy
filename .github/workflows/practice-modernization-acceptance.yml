@@ -42,7 +42,11 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Practice modernization acceptance
-        run: npx playwright test -c playwright.pm1.config.ts --workers=1
+        shell: bash
+        run: |
+          mkdir -p test-results/pm1
+          set -o pipefail
+          npx playwright test -c playwright.pm1.config.ts --workers=1 --reporter=list,github 2>&1 | tee test-results/pm1/run.log
       - name: Upload screenshots and evidence
         if: always()
         uses: actions/upload-artifact@v4
