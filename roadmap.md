@@ -1,6 +1,7 @@
 # Roadmap
 
 - [ ] Overview expandable visitor journeys: evidence projection, truthful labels, focused tests and handoff (frontend only)
+- [ ] Verify PR #87 feedback summaries and question context; run regressions and record release caveats
 
 - [ ] Secure private first-customer annual gift, tests, disabled-only gift function deployment and handoff
 

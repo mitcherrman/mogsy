@@ -102,7 +102,7 @@ const LEGACY_ROW = {
 
 const ROWS = [QUESTION_ROW, MASTERY_ROW, PAGE_ROW, LEGACY_ROW];
 
-const supa = vi.hoisted(() => ({ rows: [] as unknown[] }));
+const supa = vi.hoisted(() => ({ rows: [] as unknown[], error: null as { message: string } | null, profiles: [] as unknown[] }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -110,7 +110,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       select: () => ({
         eq: () => ({ single: async () => ({ data: { value: null } }) }),
         in: async () => ({
-          data: [{ id: "p-1", display_name: "Summoner One", avatar_url: null }],
+          data: supa.profiles,
         }),
       }),
       update: () => ({ eq: async () => ({ error: null }) }),
@@ -118,7 +118,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       upsert: async () => ({ error: null }),
       _table: table,
     }),
-    rpc: async () => ({ data: supa.rows }),
+    rpc: async () => ({ data: supa.rows, error: supa.error }),
     channel: () => ({ on() { return this; }, subscribe() { return this; } }),
     removeChannel: () => {},
   },
@@ -131,7 +131,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import AdminFeedback from "./AdminFeedback";
 
-beforeEach(() => { supa.rows = ROWS; });
+beforeEach(() => { supa.rows = ROWS; supa.error = null; supa.profiles = [{ id: "p-1", display_name: "Summoner One", avatar_url: null }]; });
 afterEach(cleanup);
 
 async function renderInbox() {
@@ -293,5 +293,30 @@ describe("the retired vocabulary is gone", () => {
     for (const dead of ["Swipe", "Aura Check", "Multiplayer", "Bug Report", "UI/UX"]) {
       expect(within(root).queryByText(dead)).toBeNull();
     }
+  });
+});
+
+describe("PR 87 truthful owner summary", () => {
+  it("shows actual captured question context with technical evidence collapsed", async () => {
+    await renderInbox();
+    fireEvent.click(screen.getByText("Incorrect answer — Ranked"));
+    const summary = screen.getByTestId("feedback-plain-summary");
+    expect(summary).toHaveTextContent("Which item gives the most armor?");
+    expect(summary).toHaveTextContent("Captured mode: Ranked · Round 3");
+    expect(summary).toHaveTextContent("Player selected: Thornmail");
+    expect(summary).toHaveTextContent("Recorded correct answer: Warmog's (not independently checked)");
+    expect(screen.getByText("Technical details (for investigating)").closest("details")).not.toHaveAttribute("open");
+  });
+  it("missing reporter profile cannot imply guest status, deletion or signup", async () => {
+    supa.profiles = [];
+    await renderInbox();
+    fireEvent.click(screen.getByText("Incorrect answer — Ranked"));
+    expect(screen.getByTestId("feedback-plain-summary")).toHaveTextContent("Reporter profile unavailable");
+  });
+  it("denied report read does not look like an empty inbox", async () => {
+    supa.error = { message: "denied" };
+    render(<AdminFeedback />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("This is not evidence of an empty inbox");
+    expect(screen.queryByText("No feedback found")).toBeNull();
   });
 });
