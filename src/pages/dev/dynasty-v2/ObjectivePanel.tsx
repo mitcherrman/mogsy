@@ -17,6 +17,10 @@ import { draw } from "./engine";
 import { SYN_QUESTIONS } from "./fixtures";
 import { OBJECTIVES, ladderFor, objectiveOutcome, type ObjectiveKind, type ObjectiveOutcome } from "./objectives";
 import { Btn, EffectChip, Eyebrow, PLATE, SIGIL_COLOR, Sigil, SourceChip } from "./parts";
+import { CasterPop, ChatBurst, useStinger } from "./broadcast";
+
+const PIT_LIGHT: Record<ObjectiveKind, string> = { dragon: "22 90% 56%", baron: "262 70% 64%", elder: "190 85% 62%" };
+const TONE_STINGER: Record<ObjectiveOutcome["tone"], "gold" | "ice" | "ember" | "red"> = { great: "gold", good: "ice", mixed: "ember", bad: "red" };
 
 const TONE: Record<ObjectiveOutcome["tone"], string> = {
   great: "border-[#e3c66f]/70 bg-[radial-gradient(80%_70%_at_50%_0%,rgba(227,198,111,0.22),rgba(227,198,111,0.02)),linear-gradient(180deg,hsl(213_48%_11%/0.94),hsl(214_52%_7%/0.94))]",
@@ -80,7 +84,13 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
   const correct = answers.filter(Boolean).length;
   const outcome = phase === "outcome" ? objectiveOutcome(kind, correct, { closeoutOffered }) : null;
   const color = SIGIL_COLOR[kind];
+  const sting = useStinger();
   useEffect(() => { window.scrollTo?.({ top: 0 }); }, [phase, i]);
+  useEffect(() => {
+    if (!outcome) return;
+    sting({ id: "objective.result", kicker: `${def.title} · ${outcome.correct} of ${outcome.total}`, title: outcome.title, tone: TONE_STINGER[outcome.tone], ms: 2000, cue: outcome.tone === "bad" ? "ui.feedback.error" : "ranked.points.awarded" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const answer = (n: number) => {
     if (picked !== null) return;
@@ -100,20 +110,25 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
     <div data-testid="objective-panel" data-kind={kind} data-phase={phase}
       className={cn(PLATE, "dyn-plate--ornate flex flex-col gap-3 p-4", motion && "dyn-enter-fast")}
       style={{ borderColor: `${color}55`, boxShadow: `inset 0 1px 0 ${color}33, 0 0 48px -18px ${color}66, 0 24px 48px -32px rgba(0,0,0,0.95)` } as CSSProperties}>
-      {/* Encounter banner */}
-      <div className="flex items-center gap-3">
-        <Sigil kind={kind} size={phase === "stakes" ? 48 : 40} breathe={phase !== "outcome"} />
+      {/* Encounter banner: the pit, a map moment */}
+      <div className={cn("dyn-pit -mx-4 -mt-4 mb-1 px-4 pb-3 pt-4", motion && "dyn-pit--motion")} style={{ "--dyn-light": PIT_LIGHT[kind] } as CSSProperties} data-testid="objective-pit">
+        <span aria-hidden className="dyn-pit-sky" /><span aria-hidden className="dyn-pit-ring" /><span aria-hidden className="dyn-pit-mist" />
+        {outcome ? <span aria-hidden className={cn("absolute inset-0", `dyn-pit-wash--${outcome.tone}`)} /> : null}
+      <div className="relative flex items-center gap-3">
+        <Sigil kind={kind} size={phase === "stakes" ? 48 : 40} breathe={phase !== "outcome"} className="sm:h-14 sm:w-14" />
         <div className="min-w-0 flex-1">
           <Eyebrow>{phase === "stakes" ? "Objective encounter" : phase === "ask" ? `Question ${i + 1} of ${def.questions}` : "Outcome"}</Eyebrow>
           <h3 className="dyn-title mt-0.5 truncate text-[20px] font-semibold leading-tight sm:text-[24px]">{def.title}</h3>
         </div>
         <span className="hidden text-right text-[10px] uppercase leading-tight tracking-[0.16em] text-white/45 sm:block">Optional boost<br />knowledge decides this</span>
       </div>
+      </div>
 
 
       {phase === "stakes" ? (
         <>
           <p className="text-[13px] leading-snug text-white/80">{reason ?? def.intro} <span className="text-white/45 sm:hidden">Optional boost: knowledge decides this.</span></p>
+          <CasterPop moment="objective.offer" k={`${seed}|${kind}`} ctx={{ objective: def.title }} compact className="hidden sm:flex" />
           <ul className={cn("flex flex-col gap-1", motion && "dyn-ladder")} aria-label="Possible outcomes">
             {[...ladder].reverse().map((row, idx) => {
               const top = row.correct === def.questions, bottom = row.correct === 0;
@@ -171,6 +186,10 @@ export function ObjectivePanel({ kind, seed, closeoutOffered = false, onResolve,
       {outcome ? (
         <>
           <OutcomeCard outcome={outcome} />
+          <div className="hidden gap-2 sm:grid sm:grid-cols-[1.3fr_1fr]">
+            <CasterPop moment="objective.result" k={`${seed}|${kind}|out`} ctx={{ tier: outcome.title }} compact />
+            <ChatBurst moment="objective.result" k={`${seed}|${kind}|${correct}`} n={3} good={outcome.tone === "great" || outcome.tone === "good"} />
+          </div>
           <div className="flex justify-end"><Btn primary beckon testId="objective-continue" onClick={() => onResolve(correct, outcome)}>Continue</Btn></div>
         </>
       ) : null}

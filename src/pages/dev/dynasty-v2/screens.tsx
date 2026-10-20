@@ -17,10 +17,13 @@ import {
   type Game, type GameSummary, type PrepPick, type Run,
 } from "./engine";
 import {
-  CHAMP_BY_ID, CHAMPS_BY_ROLE, ORGS, PREP_ACTIONS, ROLES, ROLE_LABEL, SEASON, STAGE_LABEL, TAG_LABEL, TAGS,
+  CHAMP_BY_ID, CHAMPS_BY_ROLE, ORGS, PREP_ACTIONS, RARE_TOP_CHAMP, ROLES, ROLE_LABEL, SEASON, STAGE_LABEL, TAG_LABEL, TAGS,
   type Org, type Player, type Role, type Stage,
 } from "./fixtures";
 import { EventCard } from "./GameView";
+import { CasterPop, ChatBurst } from "./broadcast";
+import { ChampionCard, PlayerCard } from "./cards";
+import { PanelArt, StoryBeat } from "./story";
 import {
   Btn, ConfidenceDiamonds, Crest, Delta, Eyebrow, FatigueBars, KindRibbon, Monogram, ORG_ACCENT, PLATE, Pips, Plate, PlayerRow, ProtoBanner,
   RANKED_ROLE, RolePill, Rule, Screen, SourceChip, StateLabel, accentStyle,
@@ -147,9 +150,9 @@ export function StarsScreen({ org, selected, onToggle, onConfirm }: { org: Org; 
 export function RosterList({ run, columns }: { run: Run; columns?: boolean }) {
   return (
     <div className="flex flex-col gap-2" data-testid="roster-list">
-      <div className={cn("grid gap-2", columns && "sm:grid-cols-2")}>{ROLES.map((r) => <PlayerRow key={r} p={run.starters[r]} testId={`roster-${r}`} />)}</div>
+      <div className={cn("grid gap-2", columns && "sm:grid-cols-2")}>{ROLES.map((r) => <PlayerCard key={r} p={run.starters[r]} testId={`roster-${r}`} hierarchy />)}</div>
       <Eyebrow tone="muted" className="mt-1">Bench ({run.bench.length}/2)</Eyebrow>
-      <div className={cn("grid gap-2", columns && "sm:grid-cols-2")}>{[0, 1].map((i) => run.bench[i] ? <PlayerRow key={i} p={run.bench[i]} compact /> : <div key={i} className="rounded-xl border border-dashed border-white/15 px-3 py-3 text-sm text-white/40">Open bench slot</div>)}</div>
+      <div className={cn("grid gap-2", columns && "sm:grid-cols-2")}>{[0, 1].map((i) => run.bench[i] ? <PlayerCard key={i} p={run.bench[i]} size="bench" showCondition={false} compactMeta /> : <div key={i} className="rounded-xl border border-dashed border-white/15 px-3 py-3 text-sm text-white/40">Open bench slot</div>)}</div>
       <p className="text-[11px] uppercase tracking-[0.14em] text-white/55">Team cohesion <Pips n={run.cohesion} max={5} label="Cohesion" /></p>
     </div>
   );
@@ -160,6 +163,12 @@ export function RosterScreen({ run, onNext }: { run: Run; onNext: () => void }) 
     <Screen testId="screen-roster" eyebrow={run.org.name} title="Your starting roster"
       kicker="Two stars, three academy stand-ins, and an open bench. Early / Mid / Late bars show each player's phase strength (synthetic)."
       actions={<Btn primary beckon testId="roster-continue" onClick={onNext}>Enter the season</Btn>}>
+      <StoryBeat id="run.start" title="A new campaign" panels={[
+        { art: <PanelArt kind="crest" accent={ORG_ACCENT[run.org.id]?.hex} />, kicker: "Day one.", caption: `${run.org.name.replace(/^SYN /, "")} opens the house for a new season.` },
+        { art: <PanelArt kind="house" accent={ORG_ACCENT[run.org.id]?.hex} />, caption: "Two stars move in. Three academy names fill the gaps, for now." },
+        { art: <PanelArt kind="draft" accent={ORG_ACCENT[run.org.id]?.hex} />, kicker: "The road:", caption: "four regular series, playoffs, then Worlds. Losses in the first four cost condition; after that they end the run." },
+      ]} />
+      <CasterPop moment="run.start" k={run.seed} ctx={{ org: run.org.name.replace(/^SYN /, "") }} compact />
       <RosterList run={run} columns />
     </Screen>
   );
@@ -260,6 +269,18 @@ export function PrepScreen({ run, picks, onToggle, onTarget, onConfirm }: {
     <Screen testId="screen-prep" eyebrow={`Before ${SEASON[run.nodeIdx].label} · vs ${SEASON[run.nodeIdx].opp.name.replace(/^SYN /, "")}`} title={`Preparation · ${left} action${left === 1 ? "" : "s"} left`}
       kicker="Two slots. Each action says who it helps, which phase, and what it costs, before you commit."
       actions={<Btn primary beckon testId="prep-confirm" disabled={needsTarget} onClick={onConfirm}>{picks.length ? "Run preparation" : "Skip preparation"}</Btn>}>
+      {run.signedThisWindow ? (() => {
+        const signed = ROLES.map((r) => run.starters[r]).find((x) => x.traits.includes("Honeymoon"));
+        return signed ? (
+          <>
+            <StoryBeat id="player.sign" title={`Signed: ${signed.name.replace(/^SYN-/, "")}`} holdMs={3200} panels={[
+              { art: <PanelArt kind="handshake" accent={ORG_ACCENT[run.org.id]?.hex} />, kicker: "Transfer window.", caption: `${signed.name.replace(/^SYN-/, "")} signs for ${run.org.name.replace(/^SYN /, "")}.` },
+              { art: <PanelArt kind="house" accent={ORG_ACCENT[run.org.id]?.hex} />, caption: "New pairings need time: cohesion dips, the honeymoon lifts confidence for one series." },
+            ]} />
+            <CasterPop moment="player.sign" k={`${run.seed}|${run.nodeIdx}|sign`} ctx={{ player: signed.name.replace(/^SYN-/, "") }} compact />
+          </>
+        ) : null;
+      })() : null}
       <div className={cn("grid gap-2 sm:grid-cols-3", motion && "dyn-stagger")}>
         {PREP_ACTIONS.map((a, i) => {
           const sel = picks.find((p) => p.id === a.id);
@@ -350,6 +371,16 @@ export function DraftScreen({ run, picks, onPick, onLock }: { run: Run; picks: P
   return (
     <Screen testId="screen-draft" eyebrow={`Game ${s.games.length + 1} of up to 5 · Fearless · series ${s.wins}–${s.losses}`} title="Draft your champions"
       actions={<Btn primary beckon testId="draft-lock" disabled={chosen.length < 5} onClick={onLock}>{chosen.length < 5 ? `Pick ${5 - chosen.length} more` : "Lock draft and play"}</Btn>}>
+      {node.kind === "worlds" && node.label === "Worlds Final" && s.games.length === 0 ? (
+        <>
+          <StoryBeat id="finals.intro" title="Worlds Final" holdMs={5200} panels={[
+            { art: <PanelArt kind="tunnel" />, kicker: "The tunnel.", caption: `${run.org.name.replace(/^SYN /, "")} walk out for the last series of the season.` },
+            { art: <PanelArt kind="stage" />, caption: `${node.opp.name.replace(/^SYN /, "")} wait on the other side of the stage. Best of five, Fearless.` },
+            { art: <PanelArt kind="trophy" />, kicker: "One trophy.", caption: "Whoever lifts it, the season remembers." },
+          ]} />
+          <CasterPop moment="finals.intro" k={`${run.seed}|final`} ctx={{ team: run.org.name.replace(/^SYN /, ""), opp: node.opp.name.replace(/^SYN /, "") }} compact />
+        </>
+      ) : null}
       <Plate testId="fearless-strip" className="flex flex-col gap-1 p-3 text-[12px] text-white/65">
         <div className="flex flex-wrap items-center gap-2"><Eyebrow tone="muted">Fearless: used earlier this series</Eyebrow><span className="ml-auto text-[10.5px] uppercase tracking-wider text-white/45">Game {s.games.length + 1}</span></div>
         <p className="flex flex-wrap gap-1">{s.used.length ? s.used.map((u) => <span key={u} className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[11px] text-white/50 line-through">{u.replace("SynChamp-", "Syn ")}</span>) : "Nothing used yet."}</p>
@@ -374,18 +405,9 @@ export function DraftScreen({ run, picks, onPick, onLock }: { run: Run; picks: P
                 {pool.map((c, ci) => {
                   const ok = avail.has(c.id);
                   const prof = p.prof[ci] ?? 0;
-                  const on = picks[r] === c.id;
-                  return (
-                    <label key={c.id} className={cn("relative shrink-0", !ok && "opacity-40")}>
-                      <input type="radio" name={`pick-${r}`} className="peer sr-only" disabled={!ok} checked={on} onChange={() => onPick(r, c.id)} data-testid={`pick-${r}-${c.id}`} />
-                      <span className={cn("flex min-h-[44px] min-w-[112px] cursor-pointer flex-col justify-center rounded-lg border px-2.5 py-1.5 text-[11.5px] text-white/85 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[#e3c66f] peer-disabled:cursor-not-allowed",
-                        on ? "border-[#e3c66f] bg-[linear-gradient(180deg,rgba(227,198,111,0.2),rgba(227,198,111,0.06))] shadow-[0_0_18px_-6px_rgba(227,198,111,0.7)]" : "border-white/15 bg-white/[0.04] hover:border-white/30")}>
-                        <span className="flex items-center justify-between gap-1 font-semibold"><span>{c.name.replace("SynChamp-", "Syn ")}</span>{!ok ? <span className="text-[9px] uppercase text-white/50">used</span> : prof === 2 ? <span className="text-[#f2dc98]">★</span> : null}</span>
-                        <span className="text-white/55">{c.cls} · {prof === 2 ? "Great" : prof === 1 ? "Fine" : "Off-pool"}</span>
-                        <span className="dyn-num mt-0.5 flex gap-1.5 text-[10px] text-white/45"><span className="text-sky-200/80">E{c.phase.early}</span><span className="text-[#f2dc98]/80">M{c.phase.mid}</span><span className="text-orange-200/80">L{c.phase.late}</span></span>
-                      </span>
-                    </label>
-                  );
+                  const scouted = lanes.includes(r);
+                  const relevance = r === "top" && c.id === RARE_TOP_CHAMP ? "Rare play possible" : scouted && c.phase.early >= 4 && /early/i.test(node.opp.tags.join(" ")) ? "Matches their tempo" : null;
+                  return <ChampionCard key={c.id} c={c} prof={prof} picked={picks[r] === c.id} used={!ok} onPick={() => onPick(r, c.id)} testId={`pick-${r}-${c.id}`} name={`pick-${r}`} relevance={relevance} />;
                 })}
               </div>
             </fieldset>
@@ -454,6 +476,10 @@ export function GameResultScreen({ run, game, summary, onNext }: { run: Run; gam
           ))}
         </ol>
         <p className="text-sm text-white/85" data-testid="game-reason">{summary.reason}.{summary.endedAt === "mid" ? " No Late stage was played." : ""}</p>
+        <div className="grid gap-2 sm:grid-cols-[1.3fr_1fr]">
+          <CasterPop moment={summary.won ? "game.win" : "game.loss"} k={`${run.seed}|${run.nodeIdx}|${game.idx}`} ctx={{ team: run.org.name.replace(/^SYN /, ""), opp: SEASON[run.nodeIdx].opp.name.replace(/^SYN /, ""), score: `${s.wins}–${s.losses}` }} compact />
+          <ChatBurst moment={s.wins === 2 && s.losses < 2 ? "series.point" : summary.won ? "game.win" : "game.loss"} k={`${run.seed}|${run.nodeIdx}|${game.idx}`} n={3} />
+        </div>
       </Plate>
       <Plate testId="deltas" className="flex flex-col gap-2 p-3">
         <Eyebrow>Player condition · before → after</Eyebrow>
@@ -529,6 +555,7 @@ export function SeriesScreen({ run, onNext }: { run: Run; onNext: () => void }) 
           ))}
         </ol>
         <p className="text-sm text-white/75">{elim ? "This was an elimination series. The run ends here." : won ? "Your condition carries forward. Players recover a little between series." : "A regular-season loss costs momentum, not the run."}</p>
+        <CasterPop moment={won ? "game.win" : "game.loss"} k={`${run.seed}|${run.nodeIdx}|series`} ctx={{ team: run.org.name.replace(/^SYN /, ""), opp: node.opp.name.replace(/^SYN /, ""), score: `${s.wins}–${s.losses}` }} compact />
       </Plate>
     </Screen>
   );
@@ -543,6 +570,29 @@ export function EndScreen({ run, onHome }: { run: Run; onHome: () => void }) {
   return (
     <Screen testId="screen-end" eyebrow={champion ? "Run complete · the title" : "Run complete"} title={champion ? "Worlds champions (synthetic)" : "Run over"} hero={champion}
       actions={<Btn primary beckon testId="end-home" onClick={onHome}>Back to Dynasty home</Btn>}>
+      {champion ? (
+        <StoryBeat id="championship" title="Worlds Dynasty champions" holdMs={6000} panels={[
+          { art: <PanelArt kind="stage" />, kicker: "Final game.", caption: `${run.org.name.replace(/^SYN /, "")} close the series on the biggest stage of the year.` },
+          { art: <PanelArt kind="trophy" />, kicker: "The lift.", caption: "The cup comes up. The house that started with three academy names is a dynasty." },
+          { art: <PanelArt kind="crest" accent={ORG_ACCENT[run.org.id]?.hex} />, caption: "This roster goes on the legacy card. Only stored facts appear." },
+        ]} />
+      ) : (
+        <StoryBeat id="run.defeat" title="The run ends" tone="cold" holdMs={5000} panels={[
+          { art: <PanelArt kind="rain" />, kicker: "Backstage.", caption: `${run.org.name.replace(/^SYN /, "")} walk off after an elimination series.` },
+          { art: <PanelArt kind="house" accent={ORG_ACCENT[run.org.id]?.hex} />, caption: "The house stays. The duo stays. The next seed starts a new story." },
+        ]} />
+      )}
+      {champion ? (
+        <div className="flex justify-center" aria-hidden>
+          <svg viewBox="0 0 120 120" width="112" height="112" className={cn("dyn-trophy-glow", motion && "dyn-trophy-rise")} data-slot="trophy.cup">
+            <defs><linearGradient id="cup-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff3c4" /><stop offset="0.55" stopColor="#e3c66f" /><stop offset="1" stopColor="#9a7a2f" /></linearGradient></defs>
+            <path d="M36 14 H84 V46 C84 66 72 78 60 80 C48 78 36 66 36 46 Z" fill="url(#cup-g)" stroke="#b8913f" />
+            <path d="M36 22 C18 22 18 50 38 52 M84 22 C102 22 102 50 82 52" fill="none" stroke="#e3c66f" strokeWidth="4" strokeLinecap="round" />
+            <rect x="52" y="80" width="16" height="14" fill="#b8913f" /><rect x="38" y="94" width="44" height="10" rx="3" fill="url(#cup-g)" /><rect x="30" y="104" width="60" height="8" rx="2" fill="#0b1727" stroke="#e3c66f" strokeOpacity="0.6" />
+            <path d="M60 30 L63 38 L71 38 L65 43 L67 51 L60 46 L53 51 L55 43 L49 38 L57 38 Z" fill="#fff3c4" fillOpacity="0.9" />
+          </svg>
+        </div>
+      ) : null}
       <Plate ornate accent testId="legacy-card" className={cn("dyn-hero flex flex-col gap-3 p-4 sm:p-5", champion ? "dyn-hero--victory border-[#e3c66f]/60" : "dyn-hero--defeat")}>
         <div className="flex items-center gap-3">
           <Crest org={run.org} size={64} />
@@ -589,6 +639,10 @@ export function EndScreen({ run, onHome }: { run: Run; onHome: () => void }) {
         </ul>
         <p className="text-[11px] text-white/45">Invented players and results. Only stored facts appear on a real legacy card.</p>
       </Plate>
+      <div className="grid gap-2 sm:grid-cols-[1.3fr_1fr]">
+        <CasterPop moment={champion ? "championship" : "run.defeat"} k={`${run.seed}|end`} ctx={{ team: run.org.name.replace(/^SYN /, "") }} compact />
+        <ChatBurst moment={champion ? "championship" : "run.defeat"} k={`${run.seed}|end`} n={4} />
+      </div>
     </Screen>
   );
 }

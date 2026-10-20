@@ -27,6 +27,8 @@ import { ObjectivePanel, OutcomeCard } from "./ObjectivePanel";
 import type { ObjectiveKind } from "./objectives";
 import { Btn, EffectChip, Eyebrow, LABEL_TONE, LeadMeter, PLATE, Pips, RANKED_ROLE, SevenPips, Sigil, SourceChip, StateLabel, useCountUp } from "./parts";
 import { RoleEmblem } from "@/components/ranked-arena/RoleEmblem";
+import { CasterPop, CrowdMeter, crowdLevel, useStinger } from "./broadcast";
+import { Scene } from "./scenes";
 
 type Step = "events" | "major" | "score" | "after" | "baron" | "closed";
 export type GameMood = Stage | ObjectiveKind | "victory" | "defeat";
@@ -185,6 +187,7 @@ export interface GameViewProps { run: Run; picks: Record<Role, string>; onDone: 
 export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
   const sfx = useSfx();
   const motion = useMotionAllowed();
+  const sting = useStinger();
   const [stage, setStage] = useState<Stage>("early");
   const [g, setG] = useState<Game>(() => {
     const base = beginGame(run, picks);
@@ -211,6 +214,14 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
     const t = window.setTimeout(() => { setRevealed((n) => n + 1); sfx.play("ranked.discovery.reveal"); }, 330);
     return () => window.clearTimeout(t);
   }, [step, revealed, motion, sfx]);
+  // Signature moments: an objective appearing gets its own stinger.
+  useEffect(() => {
+    if (step === "baron") sting({ id: "objective.baron", kicker: "After Mid", title: "Baron window opens", sub: "Three questions. Three clean answers end the game.", tone: "violet", cue: "ranked.module.start" });
+    else if (step === "major" && cur === "dragon") sting({ id: "objective.dragon", kicker: "Early", title: "Dragon spawns", sub: "One question for the pit.", tone: "ember", cue: "ranked.module.start" });
+    else if (step === "major" && cur === "elder") sting({ id: "objective.elder", kicker: "Late · tight game", title: "Elder Dragon", sub: "Three questions for the final stage.", tone: "ice", cue: "ranked.round.final" });
+    else if (step === "major" && cur === "teamfight") sting({ id: "objective.teamfight", kicker: "Late", title: "Decisive teamfight", tone: "gold", ms: 1300 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, cur]);
   // Mood light follows the focus: the stage, or the objective on the table.
   useEffect(() => {
     if (!onMood) return;
@@ -249,13 +260,25 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
 
   const wins = run.series!.wins, losses = run.series!.losses;
   const stageEvents = g.ledger.filter((l) => l.stage === stage);
+  // The first beat of a series' first game plays in the tunnel; everything after is on stage.
+  const intro = stage === "early" && step === "events" && g.idx === 1;
+  const teamName = run.org.name.replace(/^SYN /, ""), oppName = node.opp.name.replace(/^SYN /, "");
+  const castKey = `${run.seed}|n${run.nodeIdx}|g${g.idx}|${stage}`;
   const eventsLive = step === "events";
   const scoreLive = step === "after" || step === "score";
   // While a question encounter is on the table, phones show only the encounter; the context rows return at sm+.
   const focusEncounter = step === "baron" || (step === "major" && cur !== "teamfight");
 
   return (
-    <div data-testid="game-view" data-stage={stage} data-step={step} className="flex flex-col gap-2.5 sm:gap-3">
+    <Scene id={intro ? "tunnel" : "stadium"} caption={false}>
+    <div data-testid="game-view" data-stage={stage} data-step={step} data-scene={intro ? "tunnel" : "stadium"} className="flex flex-col gap-2.5 sm:gap-3">
+      {/* LED ribbon: who is on stage */}
+      <div className="dyn-ribbon -mx-4 flex items-center justify-between gap-2 px-4 py-1 text-[10px] uppercase tracking-[0.2em] sm:mx-0 sm:rounded-md" data-testid="led-ribbon">
+        <span className="truncate text-[#f2dc98]">{teamName}</span>
+        <span className="shrink-0 text-white/45">{intro ? "Walking out" : "Live"}</span>
+        <CrowdMeter level={crowdLevel(g.lead, step === "baron" || step === "closed" ? 0.2 : revealed >= 6 && step === "after" ? 0.12 : 0)} className="hidden sm:flex" />
+        <span className="truncate text-right text-white/70">{oppName}</span>
+      </div>
       {/* Header: game, opponent, series */}
       <div className="flex items-end justify-between gap-2">
         <div className="min-w-0">
@@ -295,6 +318,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
         </div>
         {eventsLive ? (
           <>
+            <CasterPop moment="stage.open" k={castKey} ctx={{ stage: STAGE_LABEL[stage], team: teamName, opp: oppName }} compact className="hidden sm:flex" />
             <div className={cn("flex flex-col gap-2", motion && "dyn-stagger")}>{stageEvents.map((l, i) => <div key={i} style={{ "--i": i } as CSSProperties}><EventCard item={l} /></div>)}</div>
             <div className="flex justify-end"><Btn primary beckon testId="events-continue" onClick={afterEvents}>{queue.length ? `On to the ${queue[0] === "dragon" ? "Dragon" : queue[0] === "elder" ? "Elder Dragon" : "teamfight"}` : "Score the stage"}</Btn></div>
           </>
@@ -379,6 +403,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
               {stage !== "late" ? <p className="text-[12.5px] text-white/65" data-testid="carry-note">Advantage <b className="dyn-num text-white/85">{result.leadBefore > 0 ? "+" : ""}{result.leadBefore}</b> → <b className="dyn-num text-white/85">{result.leadAfter > 0 ? "+" : ""}{result.leadAfter}</b> entering {stage === "early" ? "Mid" : "Late"}. Carried advantage, not extra points.</p>
                 : <p className="text-[12.5px] text-white/65" data-testid="late-final">Late always decides: 4 or more points wins the game.</p>}
               <p className="sr-only" role="status" aria-live="polite">{STAGE_LABEL[stage]} stage: {result.ours} to {result.theirs}, {stage === "late" ? (result.ours >= 4 ? "game won" : "game lost") : result.label}.</p>
+              <CasterPop moment="stage.result" k={`${castKey}|result`} ctx={{ stage: STAGE_LABEL[stage], score: `${result.ours}–${result.theirs}`, label: stage === "late" ? (result.ours >= 4 ? "game won" : "game lost") : result.label.toLowerCase() }} compact className="hidden sm:flex" />
               {step === "after" ? (
                 <div className="flex justify-end"><Btn primary beckon testId="stage-continue" onClick={afterContinue}>{stage === "late" ? "See the game result" : g.over ? "See why the game ended" : stage === "early" ? "On to Mid" : baronQualified(g) ? "A Baron window opens" : "On to Late"}</Btn></div>
               ) : null}
@@ -410,6 +435,7 @@ export function GameView({ run, picks, onDone, onMood }: GameViewProps) {
         </SheetContent>
       </Sheet>
     </div>
+    </Scene>
   );
 }
 

@@ -358,3 +358,81 @@ describe("VIS-F1 visual layer", () => {
     expect(document.querySelector(".dyn-tile--win, .dyn-tile--loss, .dyn-stamp, .dyn-bump")).toBeNull();
   });
 });
+
+describe("VIS-F2 cinematic layer", () => {
+  it("places each screen in its location and the game in the tunnel, then the stadium", () => {
+    mount();
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("hq");
+    setup();
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("hq");
+    click("season-begin");
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("practice");
+    if (screenId() === "recruit") click("recruit-skip");
+    click("prep-toggle-rest"); click("prep-confirm"); click("scout-continue");
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("warroom");
+    draftAndLock();
+    expect(screen.getByTestId("game-view").getAttribute("data-scene")).toBe("tunnel");
+    expect(screen.getByTestId("led-ribbon").textContent).toMatch(/Walking out/);
+    click("events-continue");
+    expect(screen.getByTestId("game-view").getAttribute("data-scene")).toBe("stadium");
+  });
+
+  it("fires stingers for the signature moments and shows the roster story beat", () => {
+    mount();
+    click("home-new");
+    click("org-choose-ember");
+    expect(screen.getByTestId("stinger").getAttribute("data-stinger")).toBe("org.choose");
+    const stars = screen.getAllByTestId(/^star-/);
+    fireEvent.click(stars[0]); fireEvent.click(stars[1]);
+    click("stars-confirm");
+    expect(screen.getByTestId("stinger").getAttribute("data-stinger")).toBe("run.start");
+    const beat = screen.getByTestId("story-beat");
+    expect(beat.getAttribute("data-folded")).toBe("false");
+    click("story-skip");
+    expect(screen.getByTestId("story-beat").getAttribute("data-folded")).toBe("true");
+    click("roster-continue");
+    enterSeries();
+    draftAndLock();
+    expect(screen.getByTestId("stinger").getAttribute("data-stinger")).toBe("draft.lock");
+    click("events-continue");
+    if (has("objective-panel")) {
+      expect(screen.getByTestId("stinger").getAttribute("data-stinger")).toBe("objective.dragon");
+      expect(screen.getByTestId("objective-pit")).toBeInTheDocument();
+    }
+  });
+
+  it("draft rows use champion cards with class glyphs and keep the radio contract", () => {
+    mount();
+    setup(); enterSeries();
+    const row = screen.getByTestId("draft-row-top");
+    expect(within(row).getAllByTestId("class-glyph").length).toBe(5);
+    expect(within(row).getAllByRole("radio").length).toBe(5);
+    expect(within(row).getByText("Rare play possible")).toBeInTheDocument();
+  });
+
+  it("generates the same caster line and chat burst for the same key", () => {
+    mount("/dev/dynasty-v2?view=showcase");
+    const casters = screen.getAllByTestId("caster-pop");
+    expect(casters.length).toBeGreaterThanOrEqual(2);
+    const text = casters[0].textContent;
+    cleanup();
+    mount("/dev/dynasty-v2?view=showcase");
+    expect(screen.getAllByTestId("caster-pop")[0].textContent).toBe(text);
+    expect(screen.getAllByTestId("chat-burst").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("stinger-board")).toBeInTheDocument();
+    click("fire-championship");
+    expect(screen.getByTestId("stinger").getAttribute("data-stinger")).toBe("championship");
+    click("scene-trophy");
+    expect(screen.getByTestId("scene").getAttribute("data-scene")).toBe("trophy");
+  });
+
+  it("renders the roster as hierarchy cards: stars large, academy small", () => {
+    mount();
+    setup();
+    click("roster-open");
+    const sheet = screen.getByTestId("roster-sheet");
+    const sizes = within(sheet).getAllByTestId(/^roster-/).map((el) => el.getAttribute("data-size"));
+    expect(sizes.filter((s) => s === "star").length).toBe(2);
+    expect(sizes.filter((s) => s === "bench").length).toBe(3);
+  });
+});
