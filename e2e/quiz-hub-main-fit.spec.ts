@@ -675,7 +675,7 @@ for (const vp of WIDE) {
   });
 }
 
-test("tablet 768x1024: Daily keeps its natural sheet and the standard seal", async ({ page }) => {
+test("tablet 768x1024: Daily is capped to the viewport and keeps the standard seal", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await openHub(page, { width: 768, height: 1024, daily: "available" });
   const g = await measure(page);
@@ -685,7 +685,11 @@ test("tablet 768x1024: Daily keeps its natural sheet and the standard seal", asy
   record("tablet__768x1024", { g, ranked });
   check(() => {
     assertDailyFits(g, "768x1024");
-    expect(g.sheet.height).toBeCloseTo(ranked, 0);
+    // 768x1024 is stacked, so the cap applies: the sheet is never TALLER than
+    // Ranked's, and equals it when the viewport can hold it (here it cannot by
+    // ~35px, so Daily ends 8px above the bottom edge).
+    expect(g.sheet.height).toBeLessThanOrEqual(ranked + 1);
+    if (g.sheet.height < ranked - 1) expect(g.sheet.bottom).toBeCloseTo(g.viewport.height - 8, 0);
     expect(g.seal!.cssSize, "tablet seal is the 9rem it always was").toBeCloseTo(144, 0);
   });
 });
