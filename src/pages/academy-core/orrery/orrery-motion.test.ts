@@ -577,3 +577,127 @@ describe("arrow selector: the orbit turns one book at a time and holds it at the
     expect(mid.d).toBeGreaterThan(1);
   });
 });
+
+describe("hover-to-front: steerToBook brings that very book forward", () => {
+  const TAU = Math.PI * 2;
+  /** How far book i is from the front (radians, signed, shortest). */
+  const offFront = (m: SpinModel, i: number) => angleDelta(bookAngle(i, m.theta), FRONT_ANGLE);
+  const run = (m: SpinModel, seconds: number, dt = 1 / 60) => { for (let t = 0; t < seconds; t += dt) m.step(dt, 1); };
+
+  it("every book, from arbitrary orbit positions and speeds, ends exactly front-centre by the shorter way", () => {
+    for (let k = 0; k < 40; k++) {
+      for (let i = 0; i < BOOK_ORDER.length; i++) {
+        const m = new SpinModel();
+        m.theta = REST_THETA + k * 0.611; // 40 phases spread around the circle (not multiples of the book spacing)
+        m.omega = [0, ORBIT_OMEGA, -0.4, 1.2][k % 4];
+        const start = m.theta;
+        const need = Math.abs(offFront(m, i));
+        expect(m.steerToBook(i)).toBe(true);
+        expect(m.phase).toBe("steering");
+        expect(m.selected).toBe(i);
+        run(m, 2.5);
+        expect(m.phase, `book ${i} from ${start.toFixed(2)}`).toBe("held");
+        expect(Math.abs(offFront(m, i))).toBeLessThan(1e-9);
+        // the shorter way round (half a turn at most)
+        expect(Math.abs(m.theta - start)).toBeLessThanOrEqual(Math.min(need, Math.PI) + 1e-9);
+        // the whole orbit turned together: the books keep their spacing
+        expect(angleDelta(bookAngle(i, m.theta), bookAngle((i + 1) % 4, m.theta))).toBeCloseTo(TAU / 4, 9);
+      }
+    }
+  });
+
+  it("from rest the turn is monotone with no overshoot, and then it holds still", () => {
+    for (let i = 0; i < 4; i++) {
+      const m = new SpinModel(0);
+      m.omega = 0;
+      const target = m.theta + angleDelta(bookAngle(i, m.theta), FRONT_ANGLE);
+      m.steerToBook(i);
+      const dir = Math.sign(target - m.theta) || 1;
+      let prev = m.theta;
+      for (let t = 0; t < 2.5; t += 1 / 60) {
+        m.step(1 / 60, 1);
+        expect((m.theta - prev) * dir).toBeGreaterThanOrEqual(-1e-12);
+        expect((m.theta - target) * dir).toBeLessThanOrEqual(1e-9);
+        prev = m.theta;
+      }
+      const held = m.theta;
+      run(m, 10);
+      expect(m.theta).toBe(held);
+      expect(m.phase).toBe("held");
+    }
+  });
+
+  it("the book directly behind turns the way the orbit is going", () => {
+    const m = new SpinModel();
+    m.theta = FRONT_ANGLE + Math.PI; // book 0 exactly at the back
+    m.omega = ORBIT_OMEGA;
+    m.steerToBook(0);
+    run(m, 0.2);
+    expect(m.theta).toBeGreaterThan(FRONT_ANGLE + Math.PI);
+    const r = new SpinModel();
+    r.theta = FRONT_ANGLE + Math.PI;
+    r.omega = -0.2;
+    r.steerToBook(0);
+    run(r, 0.2);
+    expect(r.theta).toBeLessThan(FRONT_ANGLE + Math.PI);
+  });
+
+  it("choosing the book already coming forward (or held) never re-plans: the same smooth turn", () => {
+    const a = new SpinModel();
+    const b = new SpinModel();
+    a.steerToBook(2);
+    b.steerToBook(2);
+    for (let f = 0; f < 120; f++) {
+      a.step(1 / 60, 1);
+      b.step(1 / 60, 1);
+      if (f % 7 === 0) expect(b.steerToBook(2)).toBe(true); // repeated hovers of the same book
+      expect(b.theta).toBe(a.theta);
+    }
+  });
+
+  it("switching books mid-turn is continuous (no jump in position) and lands on the new book", () => {
+    const m = new SpinModel();
+    m.steerToBook(1);
+    run(m, 0.4);
+    const at = m.theta;
+    m.steerToBook(3);
+    expect(m.theta).toBe(at);
+    let prev = m.theta;
+    for (let t = 0; t < 2.5; t += 1 / 60) {
+      m.step(1 / 60, 1);
+      expect(Math.abs(m.theta - prev)).toBeLessThan(0.08); // ≤ ~4.8 rad/s per frame step: no teleport
+      prev = m.theta;
+    }
+    expect(m.selected).toBe(3);
+    expect(Math.abs(offFront(m, 3))).toBeLessThan(1e-9);
+  });
+
+  it("is refused while the pointer holds the orbit; a grab drops it; reduced motion places it at once", () => {
+    const g = new SpinModel();
+    g.grab();
+    expect(g.steerToBook(1)).toBe(false);
+    expect(g.phase).toBe("grabbed");
+    const m = new SpinModel();
+    m.steerToBook(1);
+    run(m, 0.3);
+    m.grab();
+    expect(m.selected).toBe(-1);
+    const r = new SpinModel(0);
+    r.steerToBook(3, false);
+    expect(r.phase).toBe("held");
+    expect(Math.abs(offFront(r, 3))).toBeLessThan(1e-9);
+  });
+
+  it("the arrows continue from a hover selection, one book per press", () => {
+    const m = new SpinModel();
+    m.steerToBook(2);
+    run(m, 2.5);
+    expect(m.steer(1)).toBe(1); // as from an arrow-held book: the next one round
+    run(m, 2.5);
+    expect(Math.abs(offFront(m, 1))).toBeLessThan(1e-9);
+    expect(m.steer(-1)).toBe(2);
+    m.releaseHold();
+    expect(m.phase).toBe("free");
+    expect(m.selected).toBe(-1);
+  });
+});

@@ -192,7 +192,10 @@ function AcademyCoreOrrery() {
   const reduced = useReducedMotionPreference();
   const sfx = useSfx();
   const queryClient = useQueryClient();
-  const nav = useCoreNavigator(reduced);
+  // Hover-to-front: the navigator asks, once a hover's dwell completes, for the
+  // orbit to bring that book forward (wired to the engine below).
+  const hoverCommit = useRef<(id: BookId) => boolean>(() => false);
+  const nav = useCoreNavigator(reduced, (id) => hoverCommit.current(id));
   const [quality, setQuality] = useState<SceneQuality>(initialQuality);
   const { focus, pointerFocus, keyboardFocus, pinned, pinSource, activating } = nav;
 
@@ -384,6 +387,16 @@ function AcademyCoreOrrery() {
   // each room sets the Core's tempo: Measure races, Strata is slow and deliberate
   useEffect(() => { engineRef.current?.setTempo(TEMPO[focus] ?? 1); }, [focus, mode, reduced]);
 
+  /* ---------------- hover-to-front ---------------- */
+  // A held hover turns the whole orbit with the arrows' own controller (one
+  // Hermite turn, then held). Not under reduced motion (the hover stays in place:
+  // the scene never rearranges itself under the cursor), not in the phone
+  // composition (nothing orbits), never during a drag.
+  hoverCommit.current = (id) => {
+    if (mode !== "orbit" || reduced || drag.current) return false;
+    return engineRef.current?.steerTo(id) ?? false;
+  };
+
   /* ---------------- direct manipulation: drag the orbit ---------------- */
   // Only from empty space (never from a book, link or the crystal), so every
   // click contract is untouched; the orbit follows the pointer, a fling keeps
@@ -392,9 +405,10 @@ function AcademyCoreOrrery() {
   const onStageDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (mode !== "orbit" || (e.pointerType === "mouse" && e.button !== 0)) return;
     if ((e.target as Element).closest("a,button,.o35-slot")) return;
-    // an intentional press on open space lets go of the arrow selector's hold
+    // an intentional press on open space lets go of the arrow selector's (or a hover's) hold
     engineRef.current?.releaseSelection();
     nav.clearSelection();
+    nav.endHover();
     if (reduced) return;
     drag.current = { id: e.pointerId, x: e.clientX, t: e.timeStamp };
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -404,7 +418,8 @@ function AcademyCoreOrrery() {
   };
   const onStageMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const d = drag.current;
-    if (!d || d.id !== e.pointerId) return;
+    if (!d) { nav.onStagePointerMove(e); return; }
+    if (d.id !== e.pointerId) return;
     const dt = Math.max(0.001, (e.timeStamp - d.t) / 1000);
     engineRef.current?.dragBy(e.clientX - d.x, dt);
     d.x = e.clientX;
@@ -664,8 +679,10 @@ function AcademyCoreOrrery() {
           data-mode={mode}
           data-focus={focus}
           data-intent={pointerFocus !== "idle" || keyboardFocus !== "idle" ? "book" : "preview"}
+          data-hover={nav.hoverHold === "idle" ? "" : nav.hoverHold}
           onPointerDown={onStageDown}
           onPointerMove={onStageMove}
+          onPointerLeave={nav.onStagePointerLeave}
           onPointerUp={onStageUp}
           onPointerCancel={onStageUp}
           data-activating={activating ?? ""}

@@ -250,7 +250,7 @@ describe("motion: the engine really moves the books", () => {
     expect(much.some((b, i) => Math.abs(b.xy[0] - first[i].xy[0]) > 100)).toBe(true);
   });
 
-  it("the orbit slows while a book is hovered and resumes when the pointer leaves", () => {
+  it("a hovered book is brought to the front and the orbit holds it; leaving the stage keeps it there, and a press on open space lets the orbit go", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "clearTimeout"] });
     mount();
     const travel = (ms: number) => {
@@ -260,14 +260,17 @@ describe("motion: the engine really moves the books", () => {
       return Math.hypot(b[0] - a[0], b[1] - a[1]);
     };
     const free = travel(2000);
-    fireEvent.pointerEnter(slot("leaguecraft"), { pointerType: "mouse" });
-    act(() => { vi.advanceTimersByTime(2500); }); // let the orbit ease down
-    const held = travel(2000);
-    expect(held).toBeLessThan(free * 0.2);
-    fireEvent.pointerLeave(slot("leaguecraft"));
+    expect(free).toBeGreaterThan(0);
+    fireEvent.pointerEnter(slot("leaguecraft"), { pointerType: "mouse", clientX: 700, clientY: 400 });
+    act(() => { vi.advanceTimersByTime(2500); }); // the dwell, then the turn
+    expect(travel(2000)).toBe(0); // held
+    fireEvent.pointerLeave(screen.getByTestId("academy-core-stage"), { clientX: 40, clientY: 300 });
     act(() => { vi.advanceTimersByTime(2500); });
-    const resumed = travel(2000);
-    expect(resumed).toBeGreaterThan(held * 3);
+    expect(travel(2000)).toBe(0); // still held: leaving is not a release of the selection
+    fireEvent.pointerDown(screen.getByTestId("academy-core-stage"), { pointerId: 3, clientX: 400, clientY: 600, button: 0, pointerType: "mouse" });
+    fireEvent.pointerUp(screen.getByTestId("academy-core-stage"), { pointerId: 3, pointerType: "mouse" });
+    act(() => { vi.advanceTimersByTime(2500); });
+    expect(travel(2000)).toBeGreaterThan(0); // the idle orbit resumes
   });
 
   it("emphasises the pointer's book in place, takes it to the top of the stack, and dims the others", () => {
@@ -285,9 +288,15 @@ describe("motion: the engine really moves the books", () => {
     // the V3 projection and Mogzy follow the focus, exactly as in V3
     expect(screen.getByTestId("academy-core-mogzy")).toHaveAttribute("data-pose", "raisingHand");
     expect(document.querySelector(".o35-tether[data-bay='combat-lab']")).toHaveAttribute("data-on", "true");
-    fireEvent.pointerLeave(slot("combat-lab"));
+    // the book moved away from the still pointer: that is not a departure
+    fireEvent.pointerLeave(slot("combat-lab"), { relatedTarget: screen.getByTestId("academy-core-stage") });
     act(() => { vi.advanceTimersByTime(400); });
-    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "idle");
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "book");
+    // really leaving the stage ends the hover; the selection stays (as an arrow's would)
+    fireEvent.pointerLeave(screen.getByTestId("academy-core-stage"), { clientX: 40, clientY: 300 });
+    act(() => { vi.advanceTimersByTime(400); });
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+    expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "combat-lab");
   });
 
   it("writes live tether paths for all four books and rotates the bearing needle toward the focused book", () => {
@@ -1107,5 +1116,261 @@ describe("the held entrance veil (ACADEMY STARTUP RC2)", () => {
     await frames(2);
     expect(screen.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "archives");
     expect(store().phase).toBe("held");
+  });
+});
+
+describe("hover-to-front", () => {
+  const fake = () => vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "clearTimeout"] });
+  const stage = () => screen.getByTestId("academy-core-stage");
+  const xy = () => IDS.map((id) => translateOf(id));
+  const tick = (ms: number) => act(() => { vi.advanceTimersByTime(ms); });
+  /** A real reach: the pointer moves onto the book (new coordinates each time). */
+  let px = 100;
+  const reach = (id: string, x = (px += 37)) => fireEvent.pointerEnter(slot(id), { pointerType: "mouse", clientX: x, clientY: 320 });
+  /** The geometry moved under a still pointer: the browser reports the same coordinates again. */
+  /** The book left a still pointer over open stage (the browser names the stage as where the pointer now is). */
+  const leaveToStage = (id: string) => fireEvent.pointerLeave(slot(id), { relatedTarget: stage() });
+  const slideUnder = (id: string) => fireEvent.pointerEnter(slot(id), { pointerType: "mouse", clientX: px, clientY: 320 });
+  /** Which book is front-centre: the lowest on screen, midway between the two side books. */
+  const frontBook = () => {
+    const p = xy();
+    const i = p.reduce((best, v, k) => (v[1] > p[best][1] ? k : best), 0);
+    const left = p[(i + 1) % 4];
+    const right = p[(i + 3) % 4];
+    return { id: IDS[i], centred: Math.abs(p[i][0] - (left[0] + right[0]) / 2) < 0.05 };
+  };
+
+  it("hovering any of the four books, from wherever the orbit is, brings that book front-centre and holds it", () => {
+    fake();
+    mount();
+    for (const [k, id] of (["combat-lab", "leaguecraft", "archives", "pro-play"] as const).entries()) {
+      tick(700 + k * 900); // a different orbit position each time
+      reach(id);
+      expect(stage()).toHaveAttribute("data-focus", id); // emphasis at once, as before
+      tick(2600);
+      expect(stage()).toHaveAttribute("data-hover", id);
+      expect(stage()).toHaveAttribute("data-spin", "held");
+      expect(frontBook()).toEqual({ id, centred: true });
+      expect(screen.getByTestId("academy-core-preview")).toHaveTextContent(`Previewing ${CORE_DESTINATIONS.find((d) => d.id === id)!.title}`);
+      const held = xy();
+      tick(4000);
+      expect(xy()).toEqual(held); // stable at the front
+    }
+  });
+
+  it("a still pointer: the selected book moving away and other books sliding under it change nothing (no chasing)", () => {
+    fake();
+    mount();
+    reach("pro-play");
+    tick(400); // committed, turning
+    expect(stage()).toHaveAttribute("data-hover", "pro-play");
+    for (const other of ["archives", "leaguecraft", "combat-lab"]) {
+      leaveToStage("pro-play");
+      slideUnder(other);
+      leaveToStage(other);
+      tick(300);
+    }
+    tick(2000);
+    expect(stage()).toHaveAttribute("data-hover", "pro-play");
+    expect(stage()).toHaveAttribute("data-focus", "pro-play");
+    expect(stage()).toHaveAttribute("data-intent", "book");
+    expect(frontBook()).toEqual({ id: "pro-play", centred: true });
+  });
+
+  it("a nudge of a few px is not a choice; a real move onto another book is", () => {
+    fake();
+    mount();
+    reach("archives", 500);
+    tick(2600);
+    // the hand barely moves, and another book has slid under it
+    fireEvent.pointerMove(slot("leaguecraft"), { pointerType: "mouse", clientX: 503, clientY: 320 });
+    tick(600);
+    expect(stage()).toHaveAttribute("data-hover", "archives");
+    fireEvent.pointerMove(slot("leaguecraft"), { pointerType: "mouse", clientX: 540, clientY: 320 });
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft");
+    tick(2600);
+    expect(stage()).toHaveAttribute("data-hover", "leaguecraft");
+    expect(frontBook()).toEqual({ id: "leaguecraft", centred: true });
+  });
+
+  it("moving across open space keeps the held hover (the visitor can follow the book), and really leaving the stage ends it", () => {
+    fake();
+    mount();
+    reach("leaguecraft");
+    tick(2600);
+    leaveToStage("leaguecraft");
+    for (let i = 0; i < 8; i++) fireEvent.pointerMove(stage(), { pointerType: "mouse", clientX: 600 + i * 20, clientY: 500 });
+    tick(500);
+    expect(stage()).toHaveAttribute("data-hover", "leaguecraft");
+    expect(stage()).toHaveAttribute("data-intent", "book"); // Lux's iris stays open
+    fireEvent.pointerLeave(stage(), { clientX: 40, clientY: 300 });
+    tick(300);
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(stage()).toHaveAttribute("data-intent", "preview");
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft"); // the selection itself stays
+    expect(stage()).toHaveAttribute("data-spin", "held");
+  });
+
+  it("switching quickly: each new book re-plans the same turn from where the orbit is, and the last one wins", () => {
+    fake();
+    mount();
+    reach("combat-lab");
+    tick(400);
+    leaveToStage("combat-lab");
+    reach("archives");
+    tick(250);
+    leaveToStage("archives");
+    reach("pro-play");
+    expect(stage()).toHaveAttribute("data-focus", "pro-play");
+    tick(2600);
+    expect(stage()).toHaveAttribute("data-hover", "pro-play");
+    expect(frontBook()).toEqual({ id: "pro-play", centred: true });
+  });
+
+  it("a pass shorter than the dwell never turns the orbit, and an arrow selection comes back after it", () => {
+    fake();
+    mount();
+    fireEvent.click(screen.getByTestId("academy-core-arrow-right")); // leaguecraft
+    tick(2500);
+    const held = xy();
+    reach("archives");
+    expect(stage()).toHaveAttribute("data-focus", "archives");
+    tick(100);
+    leaveToStage("archives");
+    tick(400);
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft");
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(xy()).toEqual(held);
+    // a pass across open space releases a not-yet-held book too
+    reach("pro-play");
+    fireEvent.pointerMove(stage(), { pointerType: "mouse", clientX: 5, clientY: 5 });
+    tick(400);
+    expect(stage()).toHaveAttribute("data-focus", "leaguecraft");
+    expect(xy()).toEqual(held);
+  });
+
+  it("an arrow takes precedence over a held hover and continues from it", () => {
+    fake();
+    mount();
+    reach("combat-lab");
+    tick(2600);
+    fireEvent.click(screen.getByTestId("academy-core-arrow-right"));
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(stage()).toHaveAttribute("data-focus", "pro-play"); // the next book round from combat-lab
+    tick(2600);
+    expect(frontBook()).toEqual({ id: "pro-play", centred: true });
+  });
+
+  it("the crystal ends a held hover and continues its cycle from the hovered room", () => {
+    fake();
+    mount();
+    reach("leaguecraft");
+    tick(2600);
+    fireEvent.click(screen.getByTestId("academy-core-crystal"));
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(stage()).toHaveAttribute("data-focus", "pro-play");
+    expect(stage()).toHaveAttribute("data-spin", "free");
+    expect(screen.queryByTestId("probe")).toBeNull();
+  });
+
+  it("a drag interrupts it: the hover ends, the pointer has the orbit, and no book is chosen during the drag", () => {
+    fake();
+    mount();
+    reach("archives");
+    tick(600);
+    fireEvent.pointerDown(stage(), { pointerId: 4, clientX: 400, clientY: 600, button: 0, pointerType: "mouse" });
+    tick(50);
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(stage()).toHaveAttribute("data-spin", "grabbed");
+    expect(stage()).toHaveAttribute("data-focus", "idle");
+    for (let i = 1; i <= 6; i++) fireEvent.pointerMove(stage(), { pointerId: 4, clientX: 400 + i * 30, clientY: 600, pointerType: "mouse" });
+    fireEvent.pointerUp(stage(), { pointerId: 4, pointerType: "mouse" });
+    tick(600);
+    expect(stage()).toHaveAttribute("data-hover", "");
+  });
+
+  it("the held book is one click from its room (the 240 ms activation), and a click inside the dwell starts no turn", () => {
+    fake();
+    mount();
+    reach("pro-play");
+    tick(2600);
+    fireEvent.click(book("pro-play"));
+    tick(BOOK_ACTIVATION_MS + 10);
+    expect(screen.getByTestId("probe")).toHaveTextContent("pro-play|/lol/pro-play");
+  });
+
+  it("a click before the dwell completes navigates without turning the orbit under the activation", () => {
+    fake();
+    mount();
+    tick(300);
+    reach("combat-lab");
+    fireEvent.pointerDown(slot("combat-lab"), { pointerType: "mouse" });
+    fireEvent.click(book("combat-lab"));
+    tick(BOOK_ACTIVATION_MS - 20);
+    expect(stage()).not.toHaveAttribute("data-spin", "steering");
+    tick(40);
+    expect(screen.getByTestId("probe")).toHaveTextContent("combat|/combat-lab");
+  });
+
+  it("keyboard focus is unchanged: a focused book comes beside the crystal and the orbit is not turned", () => {
+    fake();
+    mount();
+    tick(200);
+    act(() => { book("archives").focus(); });
+    tick(1500);
+    expect(stage()).toHaveAttribute("data-focus", "archives");
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(stage()).not.toHaveAttribute("data-spin", "steering");
+    expect(stage()).not.toHaveAttribute("data-spin", "held");
+  });
+
+  it("reduced motion: the hover stays in place (nothing rearranges under the cursor) and still leaves cleanly", () => {
+    reduced.current = true;
+    fake();
+    mount();
+    const before = xy();
+    reach("archives");
+    tick(1000);
+    expect(stage()).toHaveAttribute("data-focus", "archives");
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(xy()).toEqual(before);
+    leaveToStage("archives");
+    tick(300);
+    expect(stage()).toHaveAttribute("data-focus", "idle");
+  });
+
+  it("phones and touch: no orbit to turn, and a touch never holds a hover", () => {
+    setLayout(false);
+    fake();
+    mount();
+    reach("leaguecraft");
+    tick(1000);
+    expect(stage()).toHaveAttribute("data-hover", "");
+    leaveToStage("leaguecraft");
+    tick(300);
+    expect(stage()).toHaveAttribute("data-focus", "idle");
+  });
+
+  it("touch on the desktop orbit: no hover, so nothing is held", () => {
+    fake();
+    mount();
+    fireEvent.pointerEnter(slot("archives"), { pointerType: "touch", clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(slot("archives"), { pointerType: "touch", clientX: 330, clientY: 300 });
+    tick(1000);
+    expect(stage()).toHaveAttribute("data-hover", "");
+    expect(stage()).toHaveAttribute("data-focus", "idle");
+  });
+
+  it("the focus cue sounds once per real reach, not for books sliding under a still pointer", () => {
+    fake();
+    mount();
+    sfxPlay.mockClear();
+    reach("pro-play");
+    tick(400);
+    leaveToStage("pro-play");
+    slideUnder("archives");
+    slideUnder("leaguecraft");
+    tick(2000);
+    expect(sfxPlay.mock.calls.filter(([cue]) => cue === "hub.destination.focus")).toHaveLength(1);
   });
 });
