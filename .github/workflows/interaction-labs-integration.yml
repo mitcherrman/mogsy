@@ -13,6 +13,8 @@ on:
       - 'src/App.tsx'
       - 'src/lib/admin/admin-registry.ts'
       - '.github/workflows/interaction-labs-integration.yml'
+      - 'e2e/interaction-labs-access.spec.ts'
+      - 'playwright.interaction-labs.config.ts'
 jobs:
   owner-prototypes:
     runs-on: ubuntu-latest

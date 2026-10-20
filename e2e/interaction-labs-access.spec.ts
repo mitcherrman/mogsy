@@ -85,6 +85,22 @@ test.describe("owner and non-owner (production bundle)", () => {
       const page = await open(browser, true);
       await page.goto(from);
       await expect(page).toHaveURL(new RegExp(`${to}$`), { timeout: 15_000 });
+      if (to.endsWith("/perfect-timing")) {
+        // PT4.4: the mode is a fixed screen portalled into <body>; the app root
+        // (and the owner page wrapper inside it) is hidden and inert by design.
+        await expect(page.getByTestId("owner-playtest-page")).toBeAttached({ timeout: 15_000 });
+        await expect(page.getByTestId("owner-playtest-page")).toHaveAttribute("data-mode", "perfect-timing");
+        const screen = page.getByTestId("perfect-timing-page");
+        await expect(screen).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('input[type="file"]')).toHaveCount(0);
+        // PT5 opens on the mode pick; a Random Run asks the backend to deal, which is unreachable here.
+        await screen.getByTestId("pt-mode-random").click();
+        await expect(screen.getByTestId("pt-retry-deal")).toBeVisible({ timeout: 15_000 });
+        await expect(screen.getByTestId("playtest-back")).toHaveAttribute("href", "/admin/leaguecraft?section=ranked&view=playtests");
+        await expect(screen.getByTestId("playtest-back")).toBeVisible();
+        await page.screenshot({ path: path.join(SHOTS, `owner-bookmark-perfect-timing-1280x720.png`) });
+        return;
+      }
       await expect(page.getByTestId("owner-playtest-page")).toBeVisible({ timeout: 15_000 });
       await expect(page.locator('input[type="file"]')).toHaveCount(0);
       // The backend is unreachable in this hermetic run: the page says so instead of offering rounds.
