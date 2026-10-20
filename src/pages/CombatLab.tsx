@@ -458,7 +458,7 @@ function SearchSelect<T extends { name: string }>({
   );
 }
 
-function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
+function MultiSelect<T extends { name: string; tree?: string; type?: string; simulation_warnings?: string[] }>({
   label,
   placeholder,
   values,
@@ -485,6 +485,16 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   const filtered = useMemo(
     () => options.filter((o) => (o?.name ?? "").toLowerCase().includes(query.toLowerCase())),
     [options, query]
+  );
+  const capabilityWarnings = useMemo(
+    () => values.flatMap((value) =>
+      options
+        .filter((option) => option.name === value)
+        .flatMap((option) => (option.simulation_warnings ?? []).map(
+          (warning) => ({ item: value, warning })
+        ))
+    ),
+    [options, values]
   );
   const groups = useMemo(() => {
     if (!grouped) return null;
@@ -543,6 +553,13 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
           </div>
         )}
       </button>
+      {capabilityWarnings.length > 0 && (
+        <div role="status" className="mt-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-200">
+          {capabilityWarnings.map(({ item, warning }) => (
+            <p key={item + warning}><strong>{item}:</strong> {warning}</p>
+          ))}
+        </div>
+      )}
       {open && (
         <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl">
           <div className="flex items-center gap-2 border-b border-border/60 px-2">
