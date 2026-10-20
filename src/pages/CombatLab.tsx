@@ -130,6 +130,10 @@ import {
 } from "@/lib/combat-lab/inputHistory";
 
 const STORAGE_KEY = "combat-lab:last-config";
+// The one item active Combat Lab exposes as its own button (backend registry key).
+const GUNBLADE_ITEM = "Hextech Gunblade";
+const GUNBLADE_ACTIVE_ID = "item_hextech_gunblade";
+const GUNBLADE_ACTIVE_LABEL = "Gunblade · Lightning Bolt";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
 const ALLOWED_CRIT_MODES = CRIT_MODES;
 
@@ -748,14 +752,19 @@ export default function CombatLab() {
   // capability catalog loads, remove those inert selections rather than
   // silently running a simulation in which the chosen rune does nothing.
   useEffect(() => {
-    if (metaLoading || runes.length === 0 || !Array.isArray(config.runes)) return;
+    if (metaLoading || runes.length === 0) return;
     const playable = new Set(runes.map((r) => r.name.toLowerCase()));
-    const unsupported = config.runes.filter((name) => !playable.has(name.toLowerCase()));
-    if (unsupported.length === 0) return;
+    // A corrupt saved build can hold a non-array or non-string entries.
+    const isPlayable = (name: unknown): name is string =>
+      typeof name === "string" && playable.has(name.toLowerCase());
+    const saved: unknown[] = Array.isArray(config.runes) ? config.runes : [];
+    if (Array.isArray(config.runes) && saved.every(isPlayable)) return;
     setConfig((current) => ({
       ...current,
-      runes: current.runes.filter((name) => playable.has(name.toLowerCase())),
+      runes: (Array.isArray(current.runes) ? current.runes : []).filter(isPlayable),
     }));
+    const unsupported = saved.filter((name) => !isPlayable(name)).map(String);
+    if (unsupported.length === 0) return;
     toast({
       title: "Unsupported runes removed",
       description: unsupported.join(", ") + " are not executable in Combat Lab.",
@@ -2862,6 +2871,7 @@ function InteractiveSandbox({
           ? "Basic Attack"
           : (() => {
               const a = (typeof action_id === "string" && action_id) || "Active";
+              if (a === GUNBLADE_ACTIVE_ID) return GUNBLADE_ACTIVE_LABEL;
               const found = actions.find((x) => x.id === a);
               return found?.label || found?.name || a;
             })();
@@ -3694,10 +3704,10 @@ function InteractiveSandbox({
               disabled={!!busy || offline}
               onClick={() => sendStep("basic-attack")}
             />
-            {config.items.includes("Hextech Gunblade") && (
+            {config.items.includes(GUNBLADE_ITEM) && (
               <div className="border-t border-border/25 pt-2">
                 <ActionButton
-                  label="Gunblade · Lightning Bolt"
+                  label={GUNBLADE_ACTIVE_LABEL}
                   hint={
                     targetSetup.targetMode === "target_champion"
                       ? "Single-target magic damage, 25% slow · 60s cooldown"
@@ -3705,13 +3715,22 @@ function InteractiveSandbox({
                   }
                   icon={Zap}
                   tone="accent"
-                  busy={busy === "item_hextech_gunblade"}
+                  busy={busy === GUNBLADE_ACTIVE_ID}
                   disabled={
                     !!busy || offline || !config.champion ||
                     targetSetup.targetMode !== "target_champion"
                   }
-                  onClick={() => sendStep("active", "item_hextech_gunblade")}
+                  onClick={() => sendStep("active", GUNBLADE_ACTIVE_ID)}
                 />
+                {/* The Items row is collapsed by default, so the backend's
+                    stated limits are repeated beside the cast itself. */}
+                {(items.find((item) => item.name === GUNBLADE_ITEM)?.simulation_warnings ?? []).map(
+                  (warning) => (
+                    <p key={warning} className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                      {warning}
+                    </p>
+                  )
+                )}
               </div>
             )}
             {visibleActions.length > 0 && (

@@ -9,6 +9,7 @@ on:
       - "src/pages/CombatLab.tsx"
       - "src/lib/combat-lab/api.ts"
       - "src/lib/combat-lab/api.capabilities.test.ts"
+      - "src/pages/CombatLab.gunblade.test.tsx"
       - ".github/workflows/combat-gunblade-capability.yml"
   workflow_dispatch:
 
@@ -33,6 +34,7 @@ jobs:
         run: >-
           npx vitest run
           src/lib/combat-lab/api.capabilities.test.ts
+          src/pages/CombatLab.gunblade.test.tsx
           src/pages/CombatLab.content.test.tsx
           src/pages/CombatLab.actionFeedback.test.tsx
       - name: Production bundle compile
