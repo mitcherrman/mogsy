@@ -19,7 +19,8 @@ if (!process.env.CI) {
   throw new Error("patch-deck browser acceptance runs on GitHub Actions only (AGENTS.md: no local browser automation).");
 }
 
-const live = process.env.PATCH_DECK_BASE_URL;
+// The workflow passes an empty string when no base_url input was given.
+const live = process.env.PATCH_DECK_BASE_URL?.trim() || undefined;
 const PORT = 8141;
 
 export default defineConfig({
