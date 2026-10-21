@@ -1,0 +1,6918 @@
+{
+  "catalog_contract_version": "sim2.team-simulate-catalog.v1",
+  "contract_version": "sim2.team-simulate.v1",
+  "catalog_digest": "bfdddc345242d35c",
+  "generated_from": {
+    "item_authority": "ranked Summoner's Rift roster for the active patch (sr_roster manifest, League Wiki)",
+    "rune_authority": "ranked Summoner's Rift roster for the active patch (sr_roster manifest, League Wiki)",
+    "capability_authority": "sr_roster.capability (runtime mechanic declarations; per-entry capability)",
+    "roster_patch": "26.21",
+    "champion_authority": "champion base-stat table (positive-HP rows)",
+    "action_authority": "mechanic registry intersected with the execution dispatcher"
+  },
+  "champions": [
+    {
+      "name": "Aatrox",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "aatrox_q1",
+          "label": "Q1",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "aatrox_q1_sweetspot",
+          "label": "Q1 Sweetspot",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "sweetspot"
+        },
+        {
+          "active_name": "aatrox_q2",
+          "label": "Q2",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "aatrox_q2_sweetspot",
+          "label": "Q2 Sweetspot",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 2,
+          "variant": "sweetspot"
+        },
+        {
+          "active_name": "aatrox_q3",
+          "label": "Q3",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        },
+        {
+          "active_name": "aatrox_q3_sweetspot",
+          "label": "Q3 Sweetspot",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 3,
+          "variant": "sweetspot"
+        }
+      ]
+    },
+    {
+      "name": "Ahri",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "ahri_r1",
+          "label": "R1",
+          "ability_slot": "R",
+          "mechanic_type": "charge_recast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "ahri_r2",
+          "label": "R2",
+          "ability_slot": "R",
+          "mechanic_type": "charge_recast",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "ahri_r3",
+          "label": "R3",
+          "ability_slot": "R",
+          "mechanic_type": "charge_recast",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Akali",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "akali_e1",
+          "label": "Shuriken Flip",
+          "ability_slot": "E",
+          "mechanic_type": "mark_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "akali_e2",
+          "label": "Shuriken Flip",
+          "ability_slot": "E",
+          "mechanic_type": "mark_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "akali_r1",
+          "label": "Perfect Execution",
+          "ability_slot": "R",
+          "mechanic_type": "execute_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "akali_r2",
+          "label": "Perfect Execution",
+          "ability_slot": "R",
+          "mechanic_type": "execute_recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Akshan",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Alistar",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Ambessa",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Amumu",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Anivia",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Annie",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Aphelios",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "aphelios_moonlight_vigil",
+          "label": "Moonstone Weapons",
+          "ability_slot": "P",
+          "mechanic_type": "weapon_system",
+          "implemented": true
+        },
+        {
+          "active_name": "aphelios_phase",
+          "label": "Moonstone Weapons",
+          "ability_slot": "P",
+          "mechanic_type": "weapon_system",
+          "implemented": true
+        },
+        {
+          "active_name": "aphelios_q",
+          "label": "Moonstone Weapons",
+          "ability_slot": "P",
+          "mechanic_type": "weapon_system",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Ashe",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Aurelion Sol",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "aurelion_e",
+          "label": "Singularity",
+          "ability_slot": "E",
+          "mechanic_type": "stardust_augmented_execute",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_q_burst",
+          "label": "Breath of Light",
+          "ability_slot": "Q",
+          "mechanic_type": "stardust_augmented",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_q_end",
+          "label": "Breath of Light",
+          "ability_slot": "Q",
+          "mechanic_type": "stardust_augmented",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_q_tick",
+          "label": "Breath of Light",
+          "ability_slot": "Q",
+          "mechanic_type": "stardust_augmented",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_r",
+          "label": "Falling Star / The Skies Descend",
+          "ability_slot": "R",
+          "mechanic_type": "stardust_evolution",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_r_skies_descend",
+          "label": "Falling Star / The Skies Descend",
+          "ability_slot": "R",
+          "mechanic_type": "stardust_evolution",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_stardust_add",
+          "label": "Cosmic Creator",
+          "ability_slot": "P",
+          "mechanic_type": "progression_system",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_stardust_set",
+          "label": "Cosmic Creator",
+          "ability_slot": "P",
+          "mechanic_type": "progression_system",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_w_end",
+          "label": "Astral Flight",
+          "ability_slot": "W",
+          "mechanic_type": "stardust_augmented_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "aurelion_w_start",
+          "label": "Astral Flight",
+          "ability_slot": "W",
+          "mechanic_type": "stardust_augmented_recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Aurora",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Azir",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Bard",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "bard_chime_add",
+          "label": "Traveler's Call",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "bard_chime_set",
+          "label": "Traveler's Call",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "bard_meep_attack",
+          "label": "Traveler's Call",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Bel'Veth",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "belveth_lavender_add",
+          "label": "Death in Lavender",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "belveth_lavender_set",
+          "label": "Death in Lavender",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Blitzcrank",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Brand",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Braum",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Briar",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Caitlyn",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Camille",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "camille_e_hookshot",
+          "label": "Hookshot / Wall Dive",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "camille_e_wall_dive",
+          "label": "Hookshot / Wall Dive",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Cassiopeia",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Cho'Gath",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "chogath_feast",
+          "label": "Feast",
+          "ability_slot": "R",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "chogath_feast_stack_add",
+          "label": "Feast",
+          "ability_slot": "R",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "chogath_feast_stack_set",
+          "label": "Feast",
+          "ability_slot": "R",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Corki",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "corki_e",
+          "label": "Gatling Gun",
+          "ability_slot": "E",
+          "mechanic_type": "channel_ticks",
+          "implemented": true
+        },
+        {
+          "active_name": "corki_r",
+          "label": "Missile Barrage",
+          "ability_slot": "R",
+          "mechanic_type": "ammo",
+          "implemented": true
+        },
+        {
+          "active_name": "corki_r_big_one",
+          "label": "Missile Barrage",
+          "ability_slot": "R",
+          "mechanic_type": "ammo",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Darius",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "darius_apply_bleed",
+          "label": "Hemorrhage",
+          "ability_slot": "P",
+          "mechanic_type": "target_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "darius_e_passive",
+          "label": "Apprehend Armor Penetration",
+          "ability_slot": "E",
+          "mechanic_type": "passive_stat_modifier",
+          "implemented": true
+        },
+        {
+          "active_name": "darius_q_inner",
+          "label": "Decimate",
+          "ability_slot": "Q",
+          "mechanic_type": "zone_variant",
+          "implemented": true
+        },
+        {
+          "active_name": "darius_q_outer",
+          "label": "Decimate",
+          "ability_slot": "Q",
+          "mechanic_type": "zone_variant",
+          "implemented": true
+        },
+        {
+          "active_name": "darius_r",
+          "label": "Noxian Guillotine",
+          "ability_slot": "R",
+          "mechanic_type": "stack_execute",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Diana",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Dr Mundo",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Draven",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Ekko",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Elise",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Evelynn",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Ezreal",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Fiddlesticks",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Fiora",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Fizz",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Galio",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Gangplank",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Garen",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Gnar",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Gragas",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "gragas_q_max",
+          "label": "Barrel Roll",
+          "ability_slot": "Q",
+          "mechanic_type": "charge_detonate",
+          "implemented": true
+        },
+        {
+          "active_name": "gragas_q_min",
+          "label": "Barrel Roll",
+          "ability_slot": "Q",
+          "mechanic_type": "charge_detonate",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Graves",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Gwen",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "gwen_r1",
+          "label": "R1",
+          "ability_slot": "R",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "gwen_r2",
+          "label": "R2",
+          "ability_slot": "R",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "gwen_r3",
+          "label": "R3",
+          "ability_slot": "R",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Hecarim",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Heimerdinger",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Hwei",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "hwei_ee",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_eq",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_ew",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_qe",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_qq",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_qw",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_r",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_we",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_wq",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        },
+        {
+          "active_name": "hwei_ww",
+          "label": "Subject Spellbook",
+          "ability_slot": "QWE",
+          "mechanic_type": "spellbook_variants",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Illaoi",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Irelia",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "irelia_e1",
+          "label": "Flawless Duet",
+          "ability_slot": "E",
+          "mechanic_type": "mark_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "irelia_e2",
+          "label": "Flawless Duet",
+          "ability_slot": "E",
+          "mechanic_type": "mark_recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Ivern",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Janna",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Jarvan IV",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Jax",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "jax_e_recast",
+          "label": "Counter Strike",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "jax_e_start",
+          "label": "Counter Strike",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Jayce",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Jhin",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "jhin_r1",
+          "label": "R1",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "jhin_r2",
+          "label": "R2",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "jhin_r3",
+          "label": "R3",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        },
+        {
+          "active_name": "jhin_r4",
+          "label": "R4",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 4,
+          "variant": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Jinx",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "K'Sante",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "ksante_all_out",
+          "label": "All Out",
+          "ability_slot": "R",
+          "mechanic_type": "transformation",
+          "implemented": true
+        },
+        {
+          "active_name": "ksante_all_out_end",
+          "label": "All Out",
+          "ability_slot": "R",
+          "mechanic_type": "transformation",
+          "implemented": true
+        },
+        {
+          "active_name": "ksante_e",
+          "label": "Footwork",
+          "ability_slot": "E",
+          "mechanic_type": "dash_shield",
+          "implemented": true
+        },
+        {
+          "active_name": "ksante_ntofo_strikes",
+          "label": "Ntofo Strikes",
+          "ability_slot": "Q",
+          "mechanic_type": "stacked_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "ksante_q",
+          "label": "Ntofo Strikes",
+          "ability_slot": "Q",
+          "mechanic_type": "stacked_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "ksante_r",
+          "label": "All Out",
+          "ability_slot": "R",
+          "mechanic_type": "transformation",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Kai'Sa",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Kalista",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Karma",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Karthus",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Kassadin",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Katarina",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "katarina_death_lotus",
+          "label": "Death Lotus",
+          "ability_slot": "R",
+          "mechanic_type": "channeled_multi_hit",
+          "implemented": true
+        },
+        {
+          "active_name": "katarina_pickup_dagger",
+          "label": "Dagger Pickup",
+          "ability_slot": "P",
+          "mechanic_type": "toggle_state",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Kayle",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Kayn",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Kennen",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Kha'Zix",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Kindred",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "kindred_mark_add",
+          "label": "Mark of the Kindred",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "kindred_mark_set",
+          "label": "Mark of the Kindred",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Kled",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "kled_courage_add",
+          "label": "Skaarl, the Cowardly Lizard",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "kled_courage_set",
+          "label": "Skaarl, the Cowardly Lizard",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "kled_dismount",
+          "label": "Skaarl, the Cowardly Lizard",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "kled_e_cast",
+          "label": "Jousting",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "kled_e_recast",
+          "label": "Jousting",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "kled_w",
+          "label": "Violent Tendencies",
+          "ability_slot": "W",
+          "mechanic_type": "hit_count_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Kog'Maw",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "LeBlanc",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "leblanc_rw_cast",
+          "label": "Mimic",
+          "ability_slot": "R",
+          "mechanic_type": "mimic_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "leblanc_rw_return",
+          "label": "Mimic",
+          "ability_slot": "R",
+          "mechanic_type": "mimic_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "leblanc_w_cast",
+          "label": "Distortion",
+          "ability_slot": "W",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "leblanc_w_return",
+          "label": "Distortion",
+          "ability_slot": "W",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Lee Sin",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "lee_sin_q1",
+          "label": "Sonic Wave / Resonating Strike",
+          "ability_slot": "Q",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "lee_sin_q2",
+          "label": "Sonic Wave / Resonating Strike",
+          "ability_slot": "Q",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "lee_sin_r",
+          "label": "Dragon's Rage",
+          "ability_slot": "R",
+          "mechanic_type": "knockback_collision",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Leona",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Lillia",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Lissandra",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Locke",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "locke_e_blink",
+          "label": "Ashen Pursuit",
+          "ability_slot": "E",
+          "mechanic_type": "blink_empowered_attack",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_e_dash",
+          "label": "Ashen Pursuit",
+          "ability_slot": "E",
+          "mechanic_type": "blink_empowered_attack",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_q1",
+          "label": "Q1",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "locke_q2",
+          "label": "Q2",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "locke_q3",
+          "label": "Q3",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        },
+        {
+          "active_name": "locke_q_end",
+          "label": "Ritual Nails (end / unused-recast refund)",
+          "ability_slot": "Q",
+          "mechanic_type": "recast_refund",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_r",
+          "label": "Purgatory",
+          "ability_slot": "R",
+          "mechanic_type": "execute_soul_seal",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_r_seal_souls",
+          "label": "Purgatory",
+          "ability_slot": "R",
+          "mechanic_type": "execute_soul_seal",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_w_recast",
+          "label": "Soul Ignition",
+          "ability_slot": "W",
+          "mechanic_type": "grey_health_buff",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_w_start",
+          "label": "Soul Ignition",
+          "ability_slot": "W",
+          "mechanic_type": "grey_health_buff",
+          "implemented": true
+        },
+        {
+          "active_name": "locke_w_store",
+          "label": "Soul Ignition",
+          "ability_slot": "W",
+          "mechanic_type": "grey_health_buff",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Lucian",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Lulu",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Lux",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Malphite",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Malzahar",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Maokai",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Master Yi",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Mel",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Milio",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Miss Fortune",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Mordekaiser",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "mordekaiser_w_heal",
+          "label": "Indestructible",
+          "ability_slot": "W",
+          "mechanic_type": "store_and_consume",
+          "implemented": true
+        },
+        {
+          "active_name": "mordekaiser_w_shield",
+          "label": "Indestructible",
+          "ability_slot": "W",
+          "mechanic_type": "store_and_consume",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Morgana",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Naafiri",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Nami",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Nasus",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "nasus_q",
+          "label": "Siphoning Strike",
+          "ability_slot": "Q",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "nasus_q_stack_add",
+          "label": "Siphoning Strike",
+          "ability_slot": "Q",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "nasus_q_stack_set",
+          "label": "Siphoning Strike",
+          "ability_slot": "Q",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Nautilus",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Neeko",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Nidalee",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Nilah",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Nocturne",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Nunu",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Olaf",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Orianna",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Ornn",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "ornn_r_call",
+          "label": "Call of the Forge God",
+          "ability_slot": "R",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "ornn_r_recast",
+          "label": "Call of the Forge God",
+          "ability_slot": "R",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Pantheon",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "pantheon_e_empowered",
+          "label": "Aegis Assault",
+          "ability_slot": "E",
+          "mechanic_type": "channel_cancel",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_e_recast",
+          "label": "Aegis Assault",
+          "ability_slot": "E",
+          "mechanic_type": "channel_cancel",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_e_start",
+          "label": "Aegis Assault",
+          "ability_slot": "E",
+          "mechanic_type": "channel_cancel",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_gain_stack",
+          "label": "Mortal Will",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_q",
+          "label": "Comet Spear",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_q_empowered",
+          "label": "Comet Spear",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_w",
+          "label": "Shield Vault",
+          "ability_slot": "W",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "pantheon_w_empowered",
+          "label": "Shield Vault",
+          "ability_slot": "W",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Poppy",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Pyke",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Qiyana",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Quinn",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Rakan",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "rakan_e1",
+          "label": "E1",
+          "ability_slot": "E",
+          "mechanic_type": "charge_recast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Rammus",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Rek'Sai",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Rell",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Renata",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Renekton",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "renekton_e",
+          "label": "Slice and Dice",
+          "ability_slot": "E",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_e_empowered",
+          "label": "Slice and Dice",
+          "ability_slot": "E",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_fury_add",
+          "label": "Reign of Anger",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_fury_set",
+          "label": "Reign of Anger",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_q",
+          "label": "Cull the Meek",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_q_empowered",
+          "label": "Cull the Meek",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_w",
+          "label": "Ruthless Predator",
+          "ability_slot": "W",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "renekton_w_empowered",
+          "label": "Ruthless Predator",
+          "ability_slot": "W",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Rengar",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "rengar_e",
+          "label": "Bola Strike",
+          "ability_slot": "E",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_e_empowered",
+          "label": "Bola Strike",
+          "ability_slot": "E",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_ferocity_add",
+          "label": "Ferocity",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_ferocity_set",
+          "label": "Ferocity",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_q",
+          "label": "Savagery",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_q_empowered",
+          "label": "Savagery",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_w",
+          "label": "Battle Roar",
+          "ability_slot": "W",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        },
+        {
+          "active_name": "rengar_w_empowered",
+          "label": "Battle Roar",
+          "ability_slot": "W",
+          "mechanic_type": "empowered_cast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Riven",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "riven_q1",
+          "label": "Q1",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "riven_q2",
+          "label": "Q2",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "riven_q3",
+          "label": "Q3",
+          "ability_slot": "Q",
+          "mechanic_type": "multi_cast",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Rumble",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "rumble_e",
+          "label": "Electro Harpoon",
+          "ability_slot": "E",
+          "mechanic_type": "charge",
+          "implemented": true
+        },
+        {
+          "active_name": "rumble_e_danger_zone",
+          "label": "Electro Harpoon",
+          "ability_slot": "E",
+          "mechanic_type": "charge",
+          "implemented": true
+        },
+        {
+          "active_name": "rumble_overheat_attack",
+          "label": "Heat",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "rumble_q",
+          "label": "Flamespitter",
+          "ability_slot": "Q",
+          "mechanic_type": "heat_augmented",
+          "implemented": true
+        },
+        {
+          "active_name": "rumble_q_danger_zone",
+          "label": "Flamespitter",
+          "ability_slot": "Q",
+          "mechanic_type": "heat_augmented",
+          "implemented": true
+        },
+        {
+          "active_name": "rumble_set_heat",
+          "label": "Heat",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Ryze",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Samira",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Sejuani",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "sejuani_permafrost",
+          "label": "Permafrost",
+          "ability_slot": "E",
+          "mechanic_type": "stack_consume",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Senna",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "senna_mist_add",
+          "label": "Absolution",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "senna_mist_set",
+          "label": "Absolution",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Seraphine",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Sett",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "sett_grit_add",
+          "label": "Haymaker",
+          "ability_slot": "W",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "sett_grit_set",
+          "label": "Haymaker",
+          "ability_slot": "W",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "sett_q",
+          "label": "Knuckle Down",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_attack",
+          "implemented": true
+        },
+        {
+          "active_name": "sett_right_punch",
+          "label": "Pit Grit",
+          "ability_slot": "P",
+          "mechanic_type": "basic_attack_modifier",
+          "implemented": true
+        },
+        {
+          "active_name": "sett_w",
+          "label": "Haymaker",
+          "ability_slot": "W",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Shaco",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Shen",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Shyvana",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Singed",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Sion",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "sion_r_impact",
+          "label": "Unstoppable Onslaught",
+          "ability_slot": "R",
+          "mechanic_type": "channel_cancel",
+          "implemented": true
+        },
+        {
+          "active_name": "sion_r_start",
+          "label": "Unstoppable Onslaught",
+          "ability_slot": "R",
+          "mechanic_type": "channel_cancel",
+          "implemented": true
+        },
+        {
+          "active_name": "sion_w_detonate",
+          "label": "Soul Furnace",
+          "ability_slot": "W",
+          "mechanic_type": "shield_detonate",
+          "implemented": true
+        },
+        {
+          "active_name": "sion_w_shield",
+          "label": "Soul Furnace",
+          "ability_slot": "W",
+          "mechanic_type": "shield_detonate",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Sivir",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Skarner",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Smolder",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "smolder_q",
+          "label": "Dragon Practice",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "smolder_stack_add",
+          "label": "Dragon Practice",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "smolder_stack_set",
+          "label": "Dragon Practice",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Sona",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Soraka",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Swain",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Sylas",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "sylas_e1",
+          "label": "Abscond / Abduct",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "sylas_e2",
+          "label": "Abscond / Abduct",
+          "ability_slot": "E",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Syndra",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Tahm Kench",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Taliyah",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Talon",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Taric",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Teemo",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Thresh",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "thresh_soul_add",
+          "label": "Damnation",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "thresh_soul_set",
+          "label": "Damnation",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Tristana",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Trundle",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "trundle_passive_unit_death",
+          "label": "King's Tribute",
+          "ability_slot": "P",
+          "mechanic_type": "unit_death_trigger",
+          "implemented": true
+        },
+        {
+          "active_name": "trundle_q",
+          "label": "Chomp",
+          "ability_slot": "Q",
+          "mechanic_type": "empowered_attack",
+          "implemented": true
+        },
+        {
+          "active_name": "trundle_r",
+          "label": "Subjugate",
+          "ability_slot": "R",
+          "mechanic_type": "drain_resist_steal",
+          "implemented": true
+        },
+        {
+          "active_name": "trundle_r_tick",
+          "label": "Subjugate",
+          "ability_slot": "R",
+          "mechanic_type": "drain_resist_steal",
+          "implemented": true
+        },
+        {
+          "active_name": "trundle_w",
+          "label": "Frozen Domain",
+          "ability_slot": "W",
+          "mechanic_type": "zone_buff",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Tryndamere",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "tryndamere_e",
+          "label": "Spinning Slash",
+          "ability_slot": "E",
+          "mechanic_type": "formula",
+          "implemented": true
+        },
+        {
+          "active_name": "tryndamere_fury_add",
+          "label": "Battle Fury",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "tryndamere_fury_set",
+          "label": "Battle Fury",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "tryndamere_q_heal",
+          "label": "Bloodlust",
+          "ability_slot": "Q",
+          "mechanic_type": "resource_consume",
+          "implemented": true
+        },
+        {
+          "active_name": "tryndamere_r",
+          "label": "Undying Rage",
+          "ability_slot": "R",
+          "mechanic_type": "state",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Twisted Fate",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "twisted_fate_e_proc",
+          "label": "Stacked Deck",
+          "ability_slot": "E",
+          "mechanic_type": "target_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "twisted_fate_w_blue",
+          "label": "Pick a Card",
+          "ability_slot": "W",
+          "mechanic_type": "card_select",
+          "implemented": true
+        },
+        {
+          "active_name": "twisted_fate_w_cycle",
+          "label": "Pick a Card",
+          "ability_slot": "W",
+          "mechanic_type": "card_select",
+          "implemented": true
+        },
+        {
+          "active_name": "twisted_fate_w_gold",
+          "label": "Pick a Card",
+          "ability_slot": "W",
+          "mechanic_type": "card_select",
+          "implemented": true
+        },
+        {
+          "active_name": "twisted_fate_w_red",
+          "label": "Pick a Card",
+          "ability_slot": "W",
+          "mechanic_type": "card_select",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Twitch",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Udyr",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Urgot",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "urgot_r_cast",
+          "label": "Fear Beyond Death",
+          "ability_slot": "R",
+          "mechanic_type": "execute_recast",
+          "implemented": true
+        },
+        {
+          "active_name": "urgot_r_execute",
+          "label": "Fear Beyond Death",
+          "ability_slot": "R",
+          "mechanic_type": "execute_recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Varus",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Vayne",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Veigar",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "veigar_stack_add",
+          "label": "Phenomenal Evil Power",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "veigar_stack_set",
+          "label": "Phenomenal Evil Power",
+          "ability_slot": "P",
+          "mechanic_type": "permanent_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Vel'Koz",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Vex",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Vi",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Viego",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Viktor",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Vladimir",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Volibear",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "volibear_w_apply",
+          "label": "Frenzied Maul",
+          "ability_slot": "W",
+          "mechanic_type": "mark_consume",
+          "implemented": true
+        },
+        {
+          "active_name": "volibear_w_consume",
+          "label": "Frenzied Maul",
+          "ability_slot": "W",
+          "mechanic_type": "mark_consume",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Warwick",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Wukong",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Xayah",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Xerath",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "xerath_r1",
+          "label": "R1",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 1,
+          "variant": "normal"
+        },
+        {
+          "active_name": "xerath_r2",
+          "label": "R2",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 2,
+          "variant": "normal"
+        },
+        {
+          "active_name": "xerath_r3",
+          "label": "R3",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 3,
+          "variant": "normal"
+        },
+        {
+          "active_name": "xerath_r4",
+          "label": "R4",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 4,
+          "variant": "normal"
+        },
+        {
+          "active_name": "xerath_r5",
+          "label": "R5",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 5,
+          "variant": "normal"
+        },
+        {
+          "active_name": "xerath_r6",
+          "label": "R6",
+          "ability_slot": "R",
+          "mechanic_type": "multi_shot",
+          "implemented": true,
+          "cast": 6,
+          "variant": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Xin Zhao",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "xin_zhao_q",
+          "label": "Three Talon Strike",
+          "ability_slot": "Q",
+          "mechanic_type": "hit_count_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Yasuo",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "yasuo_e",
+          "label": "Sweeping Blade",
+          "ability_slot": "E",
+          "mechanic_type": "dash_modifier",
+          "implemented": true
+        },
+        {
+          "active_name": "yasuo_flow_add",
+          "label": "Way of the Wanderer",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "yasuo_flow_set",
+          "label": "Way of the Wanderer",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "yasuo_flow_shield",
+          "label": "Way of the Wanderer",
+          "ability_slot": "P",
+          "mechanic_type": "resource_stack",
+          "implemented": true
+        },
+        {
+          "active_name": "yasuo_q",
+          "label": "Steel Tempest",
+          "ability_slot": "Q",
+          "mechanic_type": "target_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Yone",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "yone_basic_attack",
+          "label": "Way of the Hunter",
+          "ability_slot": "P",
+          "mechanic_type": "basic_attack_modifier",
+          "implemented": true
+        },
+        {
+          "active_name": "yone_e_return",
+          "label": "Soul Unbound",
+          "ability_slot": "E",
+          "mechanic_type": "mark",
+          "implemented": true
+        },
+        {
+          "active_name": "yone_e_start",
+          "label": "Soul Unbound",
+          "ability_slot": "E",
+          "mechanic_type": "mark",
+          "implemented": true
+        },
+        {
+          "active_name": "yone_e_store",
+          "label": "Soul Unbound",
+          "ability_slot": "E",
+          "mechanic_type": "mark",
+          "implemented": true
+        },
+        {
+          "active_name": "yone_q",
+          "label": "Mortal Steel",
+          "ability_slot": "Q",
+          "mechanic_type": "target_stack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Yorick",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "yorick_q_awaken",
+          "label": "Last Rites / Awakening",
+          "ability_slot": "Q",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "yorick_q_strike",
+          "label": "Last Rites / Awakening",
+          "ability_slot": "Q",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "yorick_r_summon",
+          "label": "Eulogy of the Isles",
+          "ability_slot": "R",
+          "mechanic_type": "pet_summon",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Yunara",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Yuumi",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Zaahen",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Zac",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Zed",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "zed_r_cast",
+          "label": "Death Mark",
+          "ability_slot": "R",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "zed_r_swap",
+          "label": "Death Mark",
+          "ability_slot": "R",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "zed_w_cast",
+          "label": "Living Shadow",
+          "ability_slot": "W",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "zed_w_swap",
+          "label": "Living Shadow",
+          "ability_slot": "W",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Zeri",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "zeri_basic_zap",
+          "label": "Living Battery",
+          "ability_slot": "P",
+          "mechanic_type": "charge_attack",
+          "implemented": true
+        },
+        {
+          "active_name": "zeri_burst_fire",
+          "label": "Burst Fire",
+          "ability_slot": "Q",
+          "mechanic_type": "basic_attack_replacement",
+          "implemented": true
+        },
+        {
+          "active_name": "zeri_charged_attack",
+          "label": "Living Battery",
+          "ability_slot": "P",
+          "mechanic_type": "charge_attack",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Ziggs",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "ziggs_w_detonate",
+          "label": "Satchel Charge",
+          "ability_slot": "W",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "ziggs_w_place",
+          "label": "Satchel Charge",
+          "ability_slot": "W",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Zilean",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    },
+    {
+      "name": "Zoe",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": [
+        {
+          "active_name": "zoe_q_cast",
+          "label": "Paddle Star",
+          "ability_slot": "Q",
+          "mechanic_type": "recast",
+          "implemented": true
+        },
+        {
+          "active_name": "zoe_q_recast",
+          "label": "Paddle Star",
+          "ability_slot": "Q",
+          "mechanic_type": "recast",
+          "implemented": true
+        }
+      ]
+    },
+    {
+      "name": "Zyra",
+      "basic_attack": true,
+      "generic_slot_actions": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "actions": []
+    }
+  ],
+  "items": {
+    "supported": [
+      {
+        "name": "Abyssal Mask",
+        "item_id": 8020,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Actualizer",
+        "item_id": 2522,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Mana Made Real is not simulated: the active is not simulated."
+        ]
+      },
+      {
+        "name": "Aether Wisp",
+        "item_id": 3113,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Amplifying Tome",
+        "item_id": 1052,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Archangel's Staff",
+        "item_id": 3003,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Manaflow is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Ardent Censer",
+        "item_id": 3504,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Armored Advance",
+        "item_id": 3174,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Axiom Arc",
+        "item_id": 6696,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "B. F. Sword",
+        "item_id": 1038,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bami's Cinder",
+        "item_id": 6660,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bandleglass Mirror",
+        "item_id": 4642,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bandlepipes",
+        "item_id": 2524,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Fanfare is not simulated: needs slows or immobilizes to trigger it and allies to share it."
+        ]
+      },
+      {
+        "name": "Banshee's Veil",
+        "item_id": 3102,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bastionbreaker",
+        "item_id": 2520,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Shaped Charge is not simulated: the bonus true damage on ability hit is not simulated.",
+          "Sabotage has no combat effect here: empowers attacks on turrets and epic monsters after a takedown."
+        ]
+      },
+      {
+        "name": "Berserker's Greaves",
+        "item_id": 3006,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Black Cleaver",
+        "item_id": 3071,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Black Spear",
+        "item_id": 3599,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Oathsworn Bond has no combat effect here: binds Kalista to an ally; no stat or damage effect.",
+          "Only Kalista and Sylas can obtain this item in game; Mogzy does not enforce that."
+        ]
+      },
+      {
+        "name": "Blackfire Torch",
+        "item_id": 2503,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Blackfire is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Blade of The Ruined King",
+        "item_id": 3153,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Blasting Wand",
+        "item_id": 1026,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Blighting Jewel",
+        "item_id": 4630,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bloodletter's Curse",
+        "item_id": 8010,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bloodsong",
+        "item_id": 3877,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bloodthirster",
+        "item_id": 3072,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Ichorshield is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Boots",
+        "item_id": 1001,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Boots of Swiftness",
+        "item_id": 3009,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bounty of Worlds",
+        "item_id": 3867,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Bramble Vest",
+        "item_id": 3076,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Catalyst of Aeons",
+        "item_id": 3803,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Eternity is not simulated: needs mana, charges or gold to be simulated."
+        ]
+      },
+      {
+        "name": "Caulfield's Warhammer",
+        "item_id": 3133,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Celestial Opposition",
+        "item_id": 3869,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Chain Vest",
+        "item_id": 1031,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Chainlaced Crushers",
+        "item_id": 3173,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Chempunk Chainsword",
+        "item_id": 6609,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Cloak of Agility",
+        "item_id": 1018,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Cloth Armor",
+        "item_id": 1029,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Control Ward",
+        "item_id": 2055,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Consumable has no combat effect here: places a vision ward."
+        ]
+      },
+      {
+        "name": "Cosmic Drive",
+        "item_id": 4629,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Crimson Lucidity",
+        "item_id": 3171,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Noxian Haste is not simulated: needs damage taken by the holder."
+        ]
+      },
+      {
+        "name": "Cryptbloom",
+        "item_id": 3137,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Life From Death is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Crystalline Bracer",
+        "item_id": 3801,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Cull",
+        "item_id": 1083,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Reap is not simulated: needs kills, deaths, shop visits or quests."
+        ]
+      },
+      {
+        "name": "Dagger",
+        "item_id": 1042,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Dark Seal",
+        "item_id": 1082,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Dawncore",
+        "item_id": 6621,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Dead Man's Plate",
+        "item_id": 3742,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Death's Dance",
+        "item_id": 6333,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Diadem of Songs",
+        "item_id": 2530,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Harmony is not simulated: the heal and shield power from bonus mana is not applied.",
+          "Consonance is not simulated: needs allied champions to heal."
+        ]
+      },
+      {
+        "name": "Doran's Blade",
+        "item_id": 1055,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Doran's Bow",
+        "item_id": 1086,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Doran's Helm",
+        "item_id": 1120,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Helping Hand is not simulated: bonus on-hit damage against minions is not simulated."
+        ]
+      },
+      {
+        "name": "Doran's Ring",
+        "item_id": 1056,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Drain is not simulated: needs mana, charges or gold to be simulated."
+        ]
+      },
+      {
+        "name": "Doran's Shield",
+        "item_id": 1054,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Enduring Focus is not simulated: needs damage taken by the holder."
+        ]
+      },
+      {
+        "name": "Dream Maker",
+        "item_id": 3870,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Dream Maker is not simulated: needs damage taken by the holder."
+        ]
+      },
+      {
+        "name": "Dusk and Dawn",
+        "item_id": 2510,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Spellblade is not simulated: this item's Spellblade is not simulated."
+        ]
+      },
+      {
+        "name": "Echoes of Helia",
+        "item_id": 6620,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Soul Siphon is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Eclipse",
+        "item_id": 6692,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Ever Rising Moon is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Edge of Night",
+        "item_id": 3814,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Elixir of Avarice",
+        "item_id": 2151,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Consumable is not simulated: the temporary on-hit damage against minions and the gold are not applied."
+        ]
+      },
+      {
+        "name": "Elixir of Force",
+        "item_id": 2152,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Consumable is not simulated: the temporary adaptive force is not applied."
+        ]
+      },
+      {
+        "name": "Elixir of Iron",
+        "item_id": 2138,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Consumable is not simulated: needs movement, which is not simulated as an outcome."
+        ]
+      },
+      {
+        "name": "Elixir of Skill",
+        "item_id": 2150,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Consumable has no combat effect here: grants a skill point; set ability ranks directly instead."
+        ]
+      },
+      {
+        "name": "Elixir of Sorcery",
+        "item_id": 2139,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Consumable is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Elixir of Wrath",
+        "item_id": 2140,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Consumable is not simulated: needs positions or areas, which are not simulated."
+        ]
+      },
+      {
+        "name": "Endless Hunger",
+        "item_id": 2517,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Famine is not simulated: the bonus-AD ability haste is not applied.",
+          "Feast is not simulated: needs a takedown, which is not simulated."
+        ]
+      },
+      {
+        "name": "Essence Reaver",
+        "item_id": 3508,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Executioner's Calling",
+        "item_id": 3123,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Experimental Hexplate",
+        "item_id": 3073,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Overdrive is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Eye of the Herald",
+        "item_id": 3513,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Consumable has no combat effect here: summons the Rift Herald to siege structures."
+        ]
+      },
+      {
+        "name": "Faerie Charm",
+        "item_id": 1004,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Farsight Alteration",
+        "item_id": 3363,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Trinket has no combat effect here: places a vision ward."
+        ]
+      },
+      {
+        "name": "Fated Ashes",
+        "item_id": 2508,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Fiendhunter Bolts",
+        "item_id": 2512,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Night Vigil is not simulated: ultimate haste is not applied.",
+          "Opening Barrage is not simulated: the post-ultimate empowered attacks are not simulated."
+        ]
+      },
+      {
+        "name": "Fiendish Codex",
+        "item_id": 3108,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Fimbulwinter",
+        "item_id": 3121,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Everlasting is not simulated: needs damage taken by the holder."
+        ]
+      },
+      {
+        "name": "Forbidden Idol",
+        "item_id": 3114,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Force of Nature",
+        "item_id": 4401,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Frozen Heart",
+        "item_id": 3110,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Winter's Caress is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Giant's Belt",
+        "item_id": 1011,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Glacial Buckler",
+        "item_id": 3024,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Glowing Mote",
+        "item_id": 2022,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Gluttonous Greaves",
+        "item_id": 3008,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Slay is not simulated: needs takedowns, which are not simulated."
+        ]
+      },
+      {
+        "name": "Guardian Angel",
+        "item_id": 3026,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Guinsoo's Rageblade",
+        "item_id": 3124,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Seething Strike is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Gunmetal Greaves",
+        "item_id": 3172,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Gustwalker Hatchling",
+        "item_id": 1102,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Jungle Companions is not simulated: the jungle companion's damage to monsters is not simulated.",
+          "Gustwalker's Gait is not simulated: evolves over game time; the upgraded Smite and its buff are not simulated."
+        ]
+      },
+      {
+        "name": "Haunting Guise",
+        "item_id": 3147,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Health Potion",
+        "item_id": 2003,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Consumable is not simulated: consumable use is not scheduled, so the healing is not applied."
+        ]
+      },
+      {
+        "name": "Hearthbound Axe",
+        "item_id": 3051,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Heartsteel",
+        "item_id": 3084,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Colossal Consumption is not simulated: only the retired engine runs it.",
+          "Goliath is not simulated: needs state carried across actions."
+        ]
+      },
+      {
+        "name": "Hexdrinker",
+        "item_id": 3155,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Hexoptics C44",
+        "item_id": 2523,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Magnification is not simulated: needs the distance to the target, which is not simulated.",
+          "Arcane Aim is not simulated: needs a takedown, which is not simulated."
+        ]
+      },
+      {
+        "name": "Hextech Alternator",
+        "item_id": 3145,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Hextech Gunblade",
+        "item_id": 3146,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Lightning Bolt models targeted magic damage (175-253 by level, the game's own level interpolation, + 30% AP), a 25% slow for 1.5 seconds and its 60-second cooldown. The selected enemy champion is assumed to be in range (700); range, vision and spell-shield targeting are not verified. Omnivamp healing from the bolt itself is not applied on the item-active route. Team Simulator applies the held stats but cannot schedule this item active."
+        ]
+      },
+      {
+        "name": "Hextech Rocketbelt",
+        "item_id": 3152,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Supersonic is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Hollow Radiance",
+        "item_id": 6664,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Desolate is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Horizon Focus",
+        "item_id": 4628,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Hypershot is partly simulated: partly simulated; part of the effect's text is not modeled.",
+          "Focus is not simulated: needs positions or areas, which are not simulated."
+        ]
+      },
+      {
+        "name": "Hubris",
+        "item_id": 6697,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Hullbreaker",
+        "item_id": 3181,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Boarding Party is not simulated: needs positions or areas, which are not simulated."
+        ]
+      },
+      {
+        "name": "Iceborn Gauntlet",
+        "item_id": 6662,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Immortal Path",
+        "item_id": 3168,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Slay is not simulated: needs takedowns, which are not simulated.",
+          "Now and Forever is not simulated: the health-threshold damage and healing bonuses are not applied."
+        ]
+      },
+      {
+        "name": "Immortal Shieldbow",
+        "item_id": 6673,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Imperial Mandate",
+        "item_id": 4005,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Command is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Infinity Edge",
+        "item_id": 3031,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Ionian Boots of Lucidity",
+        "item_id": 3158,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Jak'Sho, The Protean",
+        "item_id": 6665,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Kaenic Rookern",
+        "item_id": 2504,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Kindlegem",
+        "item_id": 3067,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Knight's Vow",
+        "item_id": 3109,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Sacrifice is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated.",
+          "Pledge is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Kraken Slayer",
+        "item_id": 6672,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Last Whisper",
+        "item_id": 3035,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Liandry's Torment",
+        "item_id": 6653,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Lich Bane",
+        "item_id": 3100,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Locket of the Iron Solari",
+        "item_id": 3190,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Devotion is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Long Sword",
+        "item_id": 1036,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Lord Dominik's Regards",
+        "item_id": 3036,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Lost Chapter",
+        "item_id": 3802,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Enlighten is not simulated: needs mana, charges or gold to be simulated."
+        ]
+      },
+      {
+        "name": "Luden's Echo",
+        "item_id": 6655,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Echo is not simulated: a rule exists but no live route calls it."
+        ]
+      },
+      {
+        "name": "Malignance",
+        "item_id": 3118,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Manamune",
+        "item_id": 3004,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Manaflow is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Maw of Malmortius",
+        "item_id": 3156,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Mejai's Soulstealer",
+        "item_id": 3041,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Mercurial Scimitar",
+        "item_id": 3139,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Quicksilver is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Mercury's Treads",
+        "item_id": 3111,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Mikael's Blessing",
+        "item_id": 3222,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Purify is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Moonstone Renewer",
+        "item_id": 6617,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Starlit Grace is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Morellonomicon",
+        "item_id": 3165,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Mortal Reminder",
+        "item_id": 3033,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Mosstomper Seedling",
+        "item_id": 1103,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Jungle Companions is not simulated: the jungle companion's damage to monsters is not simulated.",
+          "Mosstomper's Courage is not simulated: evolves over game time; the upgraded Smite and its buff are not simulated."
+        ]
+      },
+      {
+        "name": "Muramana",
+        "item_id": 3042,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Nashor's Tooth",
+        "item_id": 3115,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Navori Flickerblade",
+        "item_id": 6675,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Transcendence is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Needlessly Large Rod",
+        "item_id": 1058,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Negatron Cloak",
+        "item_id": 1057,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Noonquiver",
+        "item_id": 6670,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Null-Magic Mantle",
+        "item_id": 1033,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Oblivion Orb",
+        "item_id": 3916,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Oracle Lens",
+        "item_id": 3364,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Active has no combat effect here: reveals hidden units and wards."
+        ]
+      },
+      {
+        "name": "Overlord's Bloodmail",
+        "item_id": 2501,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Phage",
+        "item_id": 3044,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Phantom Dancer",
+        "item_id": 3046,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Spectral Waltz is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Pickaxe",
+        "item_id": 1037,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Plated Steelcaps",
+        "item_id": 3047,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Profane Hydra",
+        "item_id": 6698,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Protoplasm Harness",
+        "item_id": 2525,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Lifeline is not simulated: needs damage taken by the holder; a rule exists but no live route calls it."
+        ]
+      },
+      {
+        "name": "Quicksilver Sash",
+        "item_id": 3140,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Quicksilver is not simulated: needs state carried across actions."
+        ]
+      },
+      {
+        "name": "Rabadon's Deathcap",
+        "item_id": 3089,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Randuin's Omen",
+        "item_id": 3143,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Rapid Firecannon",
+        "item_id": 3094,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Energized is partly simulated: partly simulated; part of the effect's text is not modeled.",
+          "Sharpshooter is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Ravenous Hydra",
+        "item_id": 3074,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Rectrix",
+        "item_id": 6690,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Recurve Bow",
+        "item_id": 1043,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Redemption",
+        "item_id": 3107,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Intervention is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Refillable Potion",
+        "item_id": 2031,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Passive has no combat effect here: refills at the shop.",
+          "Consumable is not simulated: consumable use is not scheduled, so the healing is not applied."
+        ]
+      },
+      {
+        "name": "Rejuvenation Bead",
+        "item_id": 1006,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Riftmaker",
+        "item_id": 4633,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Rod of Ages",
+        "item_id": 6657,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Timeless is partly simulated: partly simulated; part of the effect's text is not modeled.",
+          "Eternity is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Ruby Crystal",
+        "item_id": 1028,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Runaan's Hurricane",
+        "item_id": 3085,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Wind's Fury is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Runic Compass",
+        "item_id": 3866,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Support Quest is not simulated: needs kills, deaths, shop visits or quests.",
+          "Shared Riches is not simulated: needs units other than the primary target."
+        ]
+      },
+      {
+        "name": "Rylai's Crystal Scepter",
+        "item_id": 3116,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Sapphire Crystal",
+        "item_id": 1027,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Scarecrow Effigy",
+        "item_id": 3330,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Trinket has no combat effect here: places a vision effigy.",
+          "Only Fiddlesticks can obtain this item in game; Mogzy does not enforce that."
+        ]
+      },
+      {
+        "name": "Scorchclaw Pup",
+        "item_id": 1101,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Jungle Companions is not simulated: the jungle companion's damage to monsters is not simulated.",
+          "Scorchclaw's Slash is not simulated: evolves over game time; the upgraded Smite and its buff are not simulated."
+        ]
+      },
+      {
+        "name": "Scout's Slingshot",
+        "item_id": 3144,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Bullseye is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Seeker's Armguard",
+        "item_id": 2420,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Time Stop is not simulated: needs movement, which is not simulated as an outcome."
+        ]
+      },
+      {
+        "name": "Seraph's Embrace",
+        "item_id": 3040,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Serpent's Fang",
+        "item_id": 6695,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Serrated Dirk",
+        "item_id": 3134,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Serylda's Grudge",
+        "item_id": 6694,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Shadowflame",
+        "item_id": 4645,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Shattered Armguard",
+        "item_id": 2421,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Sheen",
+        "item_id": 3057,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Shurelya's Battlesong",
+        "item_id": 2065,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Inspiring Speech is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Slightly Magical Boots",
+        "item_id": 2422,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Slightly Quicker is not simulated: the extra 10 movement speed is not added."
+        ]
+      },
+      {
+        "name": "Solstice Sleigh",
+        "item_id": 3876,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Going Sledding is not simulated: needs movement, which is not simulated as an outcome."
+        ]
+      },
+      {
+        "name": "Sorcerer's Shoes",
+        "item_id": 3020,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Spear of Shojin",
+        "item_id": 3161,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Spectre's Cowl",
+        "item_id": 3211,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Spellslinger's Shoes",
+        "item_id": 3175,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Spirit Visage",
+        "item_id": 3065,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Staff of Flowing Water",
+        "item_id": 6616,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Statikk Shiv",
+        "item_id": 3087,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Energized is partly simulated: partly simulated; part of the effect's text is not modeled.",
+          "Electrospark is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Stealth Ward",
+        "item_id": 3340,
+        "status": "supported",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Trinket has no combat effect here: places a vision ward."
+        ]
+      },
+      {
+        "name": "Steel Sigil",
+        "item_id": 2019,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Sterak's Gage",
+        "item_id": 3053,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Lifeline is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Stormrazor",
+        "item_id": 3095,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Energized is not simulated: Energize stacks are not simulated for this item.",
+          "Bolt is not simulated: the energized bolt is not simulated."
+        ]
+      },
+      {
+        "name": "Stormsurge",
+        "item_id": 4646,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Stormraider is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Stridebreaker",
+        "item_id": 6631,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Breaking Shockwave is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Sundered Sky",
+        "item_id": 6610,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Lightshield Strike is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Sunfire Aegis",
+        "item_id": 3068,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Swiftmarch",
+        "item_id": 3170,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Tear of the Goddess",
+        "item_id": 3070,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Manaflow is not simulated: needs units other than the primary target."
+        ]
+      },
+      {
+        "name": "Terminus",
+        "item_id": 3302,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "The Brutalizer",
+        "item_id": 2020,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "The Collector",
+        "item_id": 6676,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Taxes is not simulated: needs kills, deaths, shop visits or quests."
+        ]
+      },
+      {
+        "name": "Thornmail",
+        "item_id": 3075,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Tiamat",
+        "item_id": 3077,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Titanic Hydra",
+        "item_id": 3748,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Total Biscuit of Everlasting Will",
+        "item_id": 2010,
+        "status": "supported",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Consumable is not simulated: consumable use is not scheduled, so the healing is not applied."
+        ]
+      },
+      {
+        "name": "Trinity Force",
+        "item_id": 3078,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Tunneler",
+        "item_id": 2021,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Umbral Glaive",
+        "item_id": 3179,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Blackout is not simulated: needs kills, deaths, shop visits or quests.",
+          "Blackout is not simulated: needs kills, deaths, shop visits or quests.",
+          "Nightstalker is not simulated: needs state carried across actions."
+        ]
+      },
+      {
+        "name": "Unending Despair",
+        "item_id": 2502,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Vampiric Scepter",
+        "item_id": 1053,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Verdant Barrier",
+        "item_id": 4632,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Void Staff",
+        "item_id": 3135,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Voltaic Cyclosword",
+        "item_id": 6699,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Energized is partly simulated: partly simulated; part of the effect's text is not modeled.",
+          "Galvanize is not simulated: needs state carried across actions."
+        ]
+      },
+      {
+        "name": "Warden's Mail",
+        "item_id": 3082,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Warmog's Armor",
+        "item_id": 3083,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Passive is not simulated: needs state carried across actions.",
+          "Warmog's Heart is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated.",
+          "Warmog's Vitality is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      },
+      {
+        "name": "Whispering Circlet",
+        "item_id": 2526,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Harmony is not simulated: the heal and shield power from bonus mana is not applied.",
+          "Manaflow is not simulated: the mana charges are not simulated.",
+          "Passive has no combat effect here: transforms into Diadem of Songs; select that item directly."
+        ]
+      },
+      {
+        "name": "Winged Moonplate",
+        "item_id": 3066,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Winter's Approach",
+        "item_id": 3119,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Manaflow is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Wit's End",
+        "item_id": 3091,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "World Atlas",
+        "item_id": 3865,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Support Quest is not simulated: needs kills, deaths, shop visits or quests.",
+          "Shared Riches is not simulated: needs units other than the primary target."
+        ]
+      },
+      {
+        "name": "Youmuu's Ghostblade",
+        "item_id": 3142,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Wraith Step is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Yun Tal Wildarrows",
+        "item_id": 3032,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Practice Makes Lethal is partly simulated: partly simulated; part of the effect's text is not modeled."
+        ]
+      },
+      {
+        "name": "Zaz'Zak's Realmspike",
+        "item_id": 3871,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Zeal",
+        "item_id": 3086,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Zeke's Convergence",
+        "item_id": 3050,
+        "status": "supported",
+        "capability": "fully_modeled",
+        "capability_label": "Fully modeled",
+        "simulation_warnings": []
+      },
+      {
+        "name": "Zhonya's Hourglass",
+        "item_id": 3157,
+        "status": "supported",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Time Stop is not simulated: its trigger (damage taken, a takedown, a death or an ally heal) is not simulated."
+        ]
+      }
+    ],
+    "known_unsupported": [
+      {
+        "name": "Aegis of the Legion",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Anathema's Chains",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Anti-Tower Socks",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Base Turret Reinforced Armor (Turret Item)",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Crystalline Overgrowth",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Death's Daughter",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Fire at Will",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Forever Forward",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Gusto",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Luden's Companion",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Mobility Boots",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Ohmwrecker (Turret Item)",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Opportunity",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Overcharged",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Phreakish Gusto",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Raise Morale",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Reinforced Armor (Turret Item)",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Stirring Wardstone",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Super Mech Armor",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Super Mech Power Field",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Symbiotic Soles",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Synchronized Souls",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Trailblazer",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Turret Plating",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Vigilant Wardstone",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Warden's Eye",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Watchful Wardstone",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      },
+      {
+        "name": "Your Cut",
+        "item_id": null,
+        "status": "unsupported",
+        "reason": "not_a_current_ranked_item"
+      }
+    ]
+  },
+  "runes": {
+    "supported": [
+      {
+        "name": "Absolute Focus",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "ABSOLUTE_FOCUS",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "The above-70%-health bonus is simulated on basic attacks, but a separate flat +30 AP is also always applied (even below 70% health, at any level, and for AD champions), so the rune is over-counted."
+        ]
+      },
+      {
+        "name": "Absorb Life",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "ABSORB_LIFE",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the heal on killing an enemy is not applied."
+        ]
+      },
+      {
+        "name": "Aftershock",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "AFTERSHOCK",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: neither the resistances nor the shockwave damage is applied."
+        ]
+      },
+      {
+        "name": "Approach Velocity",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "APPROACH_VELOCITY",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the movement-speed bonus toward crowd-controlled enemies is not applied (the simulator has no positional movement)."
+        ]
+      },
+      {
+        "name": "Arcane Comet",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "ARCANE_COMET",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the comet damage is not applied."
+        ]
+      },
+      {
+        "name": "Axiom Arcanist",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "AXIOM_ARCANIST",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the ultimate damage/heal/shield bonus and takedown cooldown refund are not applied."
+        ]
+      },
+      {
+        "name": "Biscuit Delivery",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "BISCUIT_DELIVERY",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the permanent bonus health from biscuits is not applied."
+        ]
+      },
+      {
+        "name": "Bone Plating",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "BONE_PLATING",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the damage reduction against the next three hits is not applied."
+        ]
+      },
+      {
+        "name": "Cash Back",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "CASH_BACK",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Gold-only rune; it has no effect in a fight simulation."
+        ]
+      },
+      {
+        "name": "Celerity",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "CELERITY",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the movement-speed bonuses are not applied (the simulator has no positional movement)."
+        ]
+      },
+      {
+        "name": "Cheap Shot",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "CHEAP_SHOT",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the bonus true damage against crowd-controlled targets is not applied."
+        ]
+      },
+      {
+        "name": "Conditioning",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "CONDITIONING",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the bonus armor and magic resist are not applied."
+        ]
+      },
+      {
+        "name": "Conqueror",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "CONQUEROR",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Stacking and the adaptive stat bonus are simulated from basic attacks only; stacks never expire, abilities neither build stacks nor benefit from the bonus, and the max-stack healing is not applied."
+        ]
+      },
+      {
+        "name": "Cosmic Insight",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "COSMIC_INSIGHT",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "The summoner spell haste shortens summoner cooldowns; the item haste is not applied to item active cooldowns."
+        ]
+      },
+      {
+        "name": "Coup de Grace",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "COUP_DE_GRACE",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "The 8% damage bonus below 40% health is simulated, but it is only switched on or off when you basic attack; ability-only combos never trigger it."
+        ]
+      },
+      {
+        "name": "Cut Down",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "CUT_DOWN",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the 8% bonus damage against healthy targets is not applied."
+        ]
+      },
+      {
+        "name": "Dark Harvest",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "DARK_HARVEST",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the execute damage and soul stacking have no effect on the fight."
+        ]
+      },
+      {
+        "name": "Deathfire Touch",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "DEATHFIRE_TOUCH",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the burn damage is not applied."
+        ]
+      },
+      {
+        "name": "Deep Ward",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "DEEP_WARD",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Ward rune; it has no effect in a fight simulation."
+        ]
+      },
+      {
+        "name": "Demolish",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "DEMOLISH",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Turret-damage rune; there are no turrets in a fight simulation, so it has no effect."
+        ]
+      },
+      {
+        "name": "Electrocute",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "ELECTROCUTE",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Electrocute damage is simulated, but only basic attacks build stacks (no 3-second window), it can proc only once per fight instead of every 20 seconds, and the AD/AP ratios are only partly applied."
+        ]
+      },
+      {
+        "name": "First Strike",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "FIRST_STRIKE",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the 7% bonus true damage window is not applied (the gold is out of scope)."
+        ]
+      },
+      {
+        "name": "Fleet Footwork",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "FLEET_FOOTWORK",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the Energized heal and movement-speed burst have no effect on the fight."
+        ]
+      },
+      {
+        "name": "Font of Life",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "FONT_OF_LIFE",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the heal on crowd control is not applied."
+        ]
+      },
+      {
+        "name": "Gathering Storm",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "GATHERING_STORM",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Simulated as a flat +48 AP (the 30-minute value) regardless of game time, always as ability power even for attack-damage champions; the time-based growth is not."
+        ]
+      },
+      {
+        "name": "Glacial Augment",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "GLACIAL_AUGMENT",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the icy-zone slow and damage reduction are not applied."
+        ]
+      },
+      {
+        "name": "Grasp of the Undying",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "GRASP_OF_THE_UNDYING",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the max-health damage, heal and permanent health are not applied."
+        ]
+      },
+      {
+        "name": "Grisly Mementos",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "GRISLY_MEMENTOS",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Trinket-haste (vision) rune; it has no effect in a fight simulation."
+        ]
+      },
+      {
+        "name": "Guardian",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "GUARDIAN",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the protective shield is not applied."
+        ]
+      },
+      {
+        "name": "Hail of Blades",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "HAIL_OF_BLADES",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: neither the attack-speed burst nor the bonus true damage is applied."
+        ]
+      },
+      {
+        "name": "Hextech Flashtraption",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "HEXTECH_FLASHTRAPTION",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: Hexflash is not available as an action."
+        ]
+      },
+      {
+        "name": "Jack of All Trades",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "JACK_OF_ALL_TRADES",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the ability haste and adaptive force from item stat variety are not applied."
+        ]
+      },
+      {
+        "name": "Last Stand",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "LAST_STAND",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "The 5-11% low-health damage bonus is simulated, but it is only re-evaluated when you basic attack; ability-only combos never trigger it."
+        ]
+      },
+      {
+        "name": "Legend: Alacrity",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "LEGEND_ALACRITY",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Simulated as the full 10-stack bonus (18% attack speed) at all times; fewer stacks cannot be represented."
+        ]
+      },
+      {
+        "name": "Legend: Bloodline",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "LEGEND_BLOODLINE",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: neither the life steal nor the max-stack bonus health is applied."
+        ]
+      },
+      {
+        "name": "Legend: Haste",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "LEGEND_HASTE",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Simulated as a flat 15 ability haste at full stacks; it wrongly also hastes the ultimate, and partial stacks cannot be represented."
+        ]
+      },
+      {
+        "name": "Lethal Tempo",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "LETHAL_TEMPO",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Attack-speed stacking is simulated (with outdated per-stack values: 9% melee / 5% ranged instead of 6% / 4.8%); the max-stack damage bolt and gradual stack decay are not."
+        ]
+      },
+      {
+        "name": "Magical Footwear",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "MAGICAL_FOOTWEAR",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "The +10 movement speed is always added (even without boots) but movement is not simulated positionally, so it only matters for effects that scale with movement speed; the free boots are out of scope."
+        ]
+      },
+      {
+        "name": "Manaflow Band",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "MANAFLOW_BAND",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: neither the bonus mana nor the mana restoration is applied."
+        ]
+      },
+      {
+        "name": "Nimbus Cloak",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "NIMBUS_CLOAK",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the movement-speed burst after summoner spells is not applied (the simulator has no positional movement)."
+        ]
+      },
+      {
+        "name": "Overgrowth",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "OVERGROWTH",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the bonus health is not applied (stacks cannot be set)."
+        ]
+      },
+      {
+        "name": "Presence of Mind",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "PRESENCE_OF_MIND",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: neither the on-damage nor the takedown mana restore is applied."
+        ]
+      },
+      {
+        "name": "Press the Attack",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "PRESS_THE_ATTACK",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Burst damage and the 8% damage amp are simulated from basic attacks, but the burst uses outdated level scaling (up to 174 instead of 160), the amp lasts a fixed 6 s, and the 4-second stack window is not modeled."
+        ]
+      },
+      {
+        "name": "Relentless Hunter",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "RELENTLESS_HUNTER",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Out-of-combat movement-speed rune; it has no effect in a fight simulation."
+        ]
+      },
+      {
+        "name": "Revitalize",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "REVITALIZE",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "The flat 5% heal and shield power is applied; the extra 10% on low-health targets (or while you are low) is not."
+        ]
+      },
+      {
+        "name": "Scorch",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "SCORCH",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the delayed bonus magic damage is not applied."
+        ]
+      },
+      {
+        "name": "Second Wind",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "SECOND_WIND",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the regeneration after taking damage is not applied."
+        ]
+      },
+      {
+        "name": "Shield Bash",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "SHIELD_BASH",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the empowered attack after gaining a shield is not applied."
+        ]
+      },
+      {
+        "name": "Sixth Sense",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "SIXTH_SENSE",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Vision-only rune; it has no effect in a fight simulation."
+        ]
+      },
+      {
+        "name": "Stormraider's Surge",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "STORMRAIDERS_SURGE",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the movement-speed and slow-resist burst is not applied (the similarly named Stormsurge item effect is unrelated)."
+        ]
+      },
+      {
+        "name": "Sudden Impact",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "SUDDEN_IMPACT",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the bonus true damage after dashes or blinks is not applied."
+        ]
+      },
+      {
+        "name": "Summon Aery",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "SUMMON_AERY",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: neither Aery's damage nor her ally shield is applied."
+        ]
+      },
+      {
+        "name": "Taste of Blood",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "TASTE_OF_BLOOD",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the on-damage heal is not applied."
+        ]
+      },
+      {
+        "name": "Time Warp Tonic",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "TIME_WARP_TONIC",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: potion healing is not part of the simulation."
+        ]
+      },
+      {
+        "name": "Transcendence",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "TRANSCENDENCE",
+        "capability": "partially_modeled",
+        "capability_label": "Partially modeled",
+        "simulation_warnings": [
+          "Simulated as a flat 10 ability haste at every level; the level 5/8 gating and the level-11 takedown cooldown refund are not."
+        ]
+      },
+      {
+        "name": "Treasure Hunter",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "TREASURE_HUNTER",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Gold-only rune; it has no effect in a fight simulation."
+        ]
+      },
+      {
+        "name": "Triple Tonic",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "TRIPLE_TONIC",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the Elixir of Force combat stats are not applied (the other elixirs are out of scope)."
+        ]
+      },
+      {
+        "name": "Triumph",
+        "status": "supported",
+        "tree": "Precision",
+        "rune_key": "TRIUMPH",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the takedown heal is not applied (the bonus gold is out of scope)."
+        ]
+      },
+      {
+        "name": "Ultimate Hunter",
+        "status": "supported",
+        "tree": "Domination",
+        "rune_key": "ULTIMATE_HUNTER",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the ultimate haste is not applied."
+        ]
+      },
+      {
+        "name": "Unflinching",
+        "status": "supported",
+        "tree": "Resolve",
+        "rune_key": "UNFLINCHING",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the armor and magic resist while crowd-controlled are not applied."
+        ]
+      },
+      {
+        "name": "Unsealed Spellbook",
+        "status": "supported",
+        "tree": "Inspiration",
+        "rune_key": "UNSEALED_SPELLBOOK",
+        "capability": "noncombat",
+        "capability_label": "No combat effect in this simulator",
+        "simulation_warnings": [
+          "Its swaps happen out of combat; in a fight, pick the summoner spells you want directly."
+        ]
+      },
+      {
+        "name": "Waterwalking",
+        "status": "supported",
+        "tree": "Sorcery",
+        "rune_key": "WATERWALKING",
+        "capability": "not_implemented",
+        "capability_label": "Mechanics not yet implemented",
+        "simulation_warnings": [
+          "Not simulated: the river-only movement speed and adaptive force are not applied (the simulator has no map position)."
+        ]
+      }
+    ],
+    "known_unsupported": [
+      {
+        "name": "Phase Rush",
+        "status": "unsupported",
+        "reason": "not_a_current_rune"
+      }
+    ],
+    "rune_page_legality_modelled": false
+  },
+  "actions": {
+    "action_types": [
+      "basic_attack",
+      "active"
+    ],
+    "basic_attack": {
+      "type": "basic_attack",
+      "all_champions": true,
+      "description": "one basic attack; crit behavior follows the combatant's crit_mode"
+    },
+    "generic_slot_actions": {
+      "type": "active",
+      "slots": [
+        "P",
+        "Q",
+        "W",
+        "E",
+        "R"
+      ],
+      "all_champions": true,
+      "description": "cast by slot ({\"type\": \"active\", \"slot\": \"Q\"}); damage follows the champion's per-slot formula at the combatant's validated ability rank"
+    },
+    "champion_actions_field": "per-champion supported active_name values are listed on each champions[] entry",
+    "validation_note": "active_name validation at execution time is runtime-based: names listed here are supported; an unlisted name is not guaranteed to fail but a kernel-rejected action appears in the trace as action_failed under the plan's on_failure policy and is still billed"
+  },
+  "ability_rules": {
+    "slots": [
+      "E",
+      "Q",
+      "R",
+      "W"
+    ],
+    "rank_bounds": {
+      "E": {
+        "min": 1,
+        "max": 5
+      },
+      "Q": {
+        "min": 1,
+        "max": 5
+      },
+      "R": {
+        "min": 1,
+        "max": 3
+      },
+      "W": {
+        "min": 1,
+        "max": 5
+      }
+    },
+    "defaults": {
+      "E": 5,
+      "Q": 5,
+      "R": 3,
+      "W": 5
+    },
+    "strict_integers": true,
+    "keys_case_insensitive": true,
+    "duplicate_keys_rejected": true
+  },
+  "build_options": {
+    "crit_modes": [
+      "expected",
+      "force",
+      "none"
+    ],
+    "max_items_per_combatant": 8,
+    "max_runes_per_combatant": 12,
+    "level": {
+      "min": 1,
+      "max": 18,
+      "default": 18
+    },
+    "starting_hp": "optional; any finite value > 0, defaults to the champion's computed max HP"
+  },
+  "targeting_policies": [
+    {
+      "policy": "fixed",
+      "description": "explicit ordered priority list of enemy runtime IDs; first living entry is the target; idles if none listed is alive",
+      "requires_priority": true
+    },
+    {
+      "policy": "first_living",
+      "description": "first living enemy in scenario slot order",
+      "requires_priority": false
+    },
+    {
+      "policy": "lowest_hp",
+      "description": "living enemy with the lowest current HP",
+      "requires_priority": false
+    },
+    {
+      "policy": "lowest_hp_pct",
+      "description": "living enemy with the lowest current HP fraction",
+      "requires_priority": false
+    }
+  ],
+  "targeting_tie_break": "equal values break to the lower scenario slot index",
+  "action_plan_options": {
+    "repeat": [
+      false,
+      true
+    ],
+    "on_failure": [
+      "skip",
+      "retry",
+      "halt"
+    ],
+    "not_before": {
+      "type": "float",
+      "minimum": 0.0,
+      "description": "absolute scenario time (seconds) before which the step is not eligible"
+    },
+    "max_steps_per_plan": 40,
+    "empty_plan_is_legal": true,
+    "plan_exhaustion": "a non-repeating plan past its last step idles for the rest of the scenario"
+  },
+  "scheduler_limits": {
+    "max_duration": {
+      "default": 120.0,
+      "maximum": 180.0
+    },
+    "max_events": {
+      "default": 1000,
+      "maximum": 2000,
+      "bounds": "trace_retention",
+      "terminates_simulation": false
+    },
+    "max_scheduler_steps": {
+      "default": 100000,
+      "maximum": 200000,
+      "bounds": "scheduler_work",
+      "terminates_simulation": true
+    },
+    "max_trace_events": {
+      "default": 1000,
+      "maximum": 1000,
+      "bounds": "response_size",
+      "terminates_simulation": false
+    },
+    "request_body_bytes": 1048576,
+    "json_nesting_depth": 32
+  },
+  "trace_options": {
+    "default": "standard",
+    "allowed": [
+      "summary",
+      "standard",
+      "calculation",
+      "full"
+    ],
+    "field": "limits.trace_detail",
+    "affects_idempotency_digest": true,
+    "descriptions": {
+      "summary": "actions, failures, target changes, deaths, plan transitions and termination; per-action damage and healing totals included, kernel breakdown omitted",
+      "standard": "every event family, with the kernel's damage-pipeline intermediates removed and identical magnitude-free kernel events folded into one row carrying a repeat count",
+      "calculation": "everything `standard` returns, plus the evidence a calculation inspector needs: the damage pipeline stage by stage (raw, mitigation, amps, flat reduction, shield, applied HP), the defences the mitigation used, and each ability's formula text with the value every identifier in it resolved to",
+      "full": "the complete diagnostic trace, unmodified; larger payloads"
+    }
+  },
+  "team_limits": {
+    "min_team_size": 1,
+    "max_team_size": 5,
+    "max_runtime_id_length": 64,
+    "max_champion_name_length": 64,
+    "max_build_entry_length": 96
+  },
+  "pricing": {
+    "unit": "combat_lab_credits",
+    "costs": [
+      {
+        "team_a_size": 1,
+        "team_b_size": 1,
+        "credits": 1
+      },
+      {
+        "team_a_size": 1,
+        "team_b_size": 2,
+        "credits": 2
+      },
+      {
+        "team_a_size": 1,
+        "team_b_size": 3,
+        "credits": 3
+      },
+      {
+        "team_a_size": 1,
+        "team_b_size": 4,
+        "credits": 4
+      },
+      {
+        "team_a_size": 1,
+        "team_b_size": 5,
+        "credits": 5
+      },
+      {
+        "team_a_size": 2,
+        "team_b_size": 1,
+        "credits": 2
+      },
+      {
+        "team_a_size": 2,
+        "team_b_size": 2,
+        "credits": 3
+      },
+      {
+        "team_a_size": 2,
+        "team_b_size": 3,
+        "credits": 4
+      },
+      {
+        "team_a_size": 2,
+        "team_b_size": 4,
+        "credits": 5
+      },
+      {
+        "team_a_size": 2,
+        "team_b_size": 5,
+        "credits": 6
+      },
+      {
+        "team_a_size": 3,
+        "team_b_size": 1,
+        "credits": 3
+      },
+      {
+        "team_a_size": 3,
+        "team_b_size": 2,
+        "credits": 4
+      },
+      {
+        "team_a_size": 3,
+        "team_b_size": 3,
+        "credits": 5
+      },
+      {
+        "team_a_size": 3,
+        "team_b_size": 4,
+        "credits": 6
+      },
+      {
+        "team_a_size": 3,
+        "team_b_size": 5,
+        "credits": 7
+      },
+      {
+        "team_a_size": 4,
+        "team_b_size": 1,
+        "credits": 4
+      },
+      {
+        "team_a_size": 4,
+        "team_b_size": 2,
+        "credits": 5
+      },
+      {
+        "team_a_size": 4,
+        "team_b_size": 3,
+        "credits": 6
+      },
+      {
+        "team_a_size": 4,
+        "team_b_size": 4,
+        "credits": 7
+      },
+      {
+        "team_a_size": 4,
+        "team_b_size": 5,
+        "credits": 8
+      },
+      {
+        "team_a_size": 5,
+        "team_b_size": 1,
+        "credits": 5
+      },
+      {
+        "team_a_size": 5,
+        "team_b_size": 2,
+        "credits": 6
+      },
+      {
+        "team_a_size": 5,
+        "team_b_size": 3,
+        "credits": 7
+      },
+      {
+        "team_a_size": 5,
+        "team_b_size": 4,
+        "credits": 8
+      },
+      {
+        "team_a_size": 5,
+        "team_b_size": 5,
+        "credits": 9
+      }
+    ],
+    "charged_only_on_success": true
+  },
+  "billing": {
+    "unit": "combat_lab_credits",
+    "charged_only_on_success": true,
+    "idempotency_required": true,
+    "idempotency_header": "Idempotency-Key",
+    "idempotency_replayed_header": "Idempotency-Replayed",
+    "idempotency_key_min_length": 1,
+    "idempotency_key_max_length": 128,
+    "idempotency_key_charset": "printable ASCII (0x21-0x7E)",
+    "idempotency_retention_seconds": 86400,
+    "idempotency_scope": "authenticated user + endpoint + key",
+    "idempotency_request_matching": "the stored request is matched by a digest of the validated request; resend the identical body to replay, and prefer re-sending the exact bytes rather than re-serializing",
+    "replay_charges": 0,
+    "conflict_status": 409,
+    "conflict_code": "idempotency_conflict",
+    "in_progress_status": 409,
+    "in_progress_code": "idempotency_in_progress",
+    "ledger_unavailable_code": "idempotency_unavailable",
+    "result_unreadable_code": "idempotency_result_unreadable",
+    "replay_is_byte_identical": true
+  },
+  "recovery": {
+    "supported": true,
+    "discovery_path": "/api/combat-lab/team-simulate/recoverable/v1",
+    "discovery_method": "GET",
+    "recovery_path": "/api/combat-lab/team-simulate/recover/v1/{recovery_id}",
+    "recovery_method": "POST",
+    "requires_account": true,
+    "discovery_is_read_only": true,
+    "recovery_charges": 0,
+    "recovery_invokes_scheduler": false,
+    "recovery_replayed_header": "Idempotency-Replayed",
+    "max_results": 50,
+    "paginated": false,
+    "order": "created_at descending",
+    "retention_seconds": 86400,
+    "recovery_id_format": "opaque server-generated identifier",
+    "statuses": [
+      "completed",
+      "pending",
+      "stale"
+    ],
+    "replay_available_statuses": [
+      "completed"
+    ],
+    "not_found_status": 404,
+    "not_found_code": "recovery_not_found",
+    "in_progress_status": 409,
+    "in_progress_code": "idempotency_in_progress",
+    "stale_status": 409,
+    "stale_code": "recovery_stale_pending",
+    "note": "records created before this contract existed carry no team_shape and no champions; they are listed with those fields null rather than inferred"
+  },
+  "rate_limit": {
+    "scope": "per_account",
+    "limit": 20,
+    "window_seconds": 60
+  },
+  "execution_assumptions": {
+    "deterministic": true,
+    "same_timestamp_actions": "sequential in scenario slot order, never simultaneous",
+    "client_retry_idempotency": true,
+    "retry_warning": "recovering a lost response is safe ONLY by resending the identical request with the SAME Idempotency-Key; any other resend is a new billable simulation",
+    "action_failures_in_trace": true,
+    "scope_attribution": "explicit non-empty scope_attribution mappings are rejected; scoped pools belong to the action's primary target"
+  },
+  "unsupported_mechanics": [
+    "simultaneous same-timestamp resolution (equal times run sequentially in scenario slot order)",
+    "combat AI or optimal-action selection (plans and targeting are explicit caller input)",
+    "movement, positioning, or range checks",
+    "skillshot geometry, projectiles, or dodging",
+    "full crowd-control simulation (stuns/roots/displacements as time denial)",
+    "assists and takedown triggers",
+    "summons, pets, clones, minions, jungle monsters, turrets, objectives, experience, or routing",
+    "cross-champion secondary-scope attribution (scoped pools belong to the action's primary target; explicit non-empty mappings are rejected)",
+    "teams larger than 5 combatants (product cap; 1v1 through 5v5 are supported)"
+  ]
+}

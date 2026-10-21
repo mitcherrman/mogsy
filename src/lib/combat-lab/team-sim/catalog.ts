@@ -146,7 +146,30 @@ export type CatalogPickEntry = {
   supported: boolean;
   reason?: string;
   group?: string;
+  /** Short tag for an accepted entry that is not fully simulated. */
+  badge?: string;
+  capabilityLabel?: string;
+  /** What is not simulated, shown once the entry is selected. */
+  warnings?: string[];
 };
+
+const CAPABILITY_BADGE: Record<string, string> = {
+  partially_modeled: "Partial",
+  not_implemented: "Not simulated",
+  noncombat: "No combat effect",
+};
+
+function capabilityFields(entry: {
+  capability?: string;
+  capability_label?: string;
+  simulation_warnings?: string[];
+}): Pick<CatalogPickEntry, "badge" | "capabilityLabel" | "warnings"> {
+  return {
+    badge: entry.capability ? CAPABILITY_BADGE[entry.capability] : undefined,
+    capabilityLabel: entry.capability_label,
+    warnings: entry.simulation_warnings?.length ? entry.simulation_warnings : undefined,
+  };
+}
 
 export type CatalogIndex = {
   catalog: TeamSimCatalog;
@@ -210,7 +233,11 @@ export function indexCatalog(catalog: TeamSimCatalog): CatalogIndex {
     championNames: catalog.champions.map((c) => c.name),
     championOptions: catalog.champions.map((c) => ({ value: c.name, label: c.name })),
     itemEntries: [
-      ...supportedItems.map((item) => ({ name: item.name, supported: true })),
+      ...supportedItems.map((item) => ({
+        name: item.name,
+        supported: true,
+        ...capabilityFields(item),
+      })),
       ...(catalog.items.known_unsupported ?? []).map((item) => ({
         name: item.name,
         supported: false,
@@ -222,6 +249,7 @@ export function indexCatalog(catalog: TeamSimCatalog): CatalogIndex {
         name: rune.name,
         supported: true,
         group: rune.tree,
+        ...capabilityFields(rune),
       })),
       ...(catalog.runes.known_unsupported ?? []).map((rune) => ({
         name: rune.name,

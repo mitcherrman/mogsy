@@ -217,8 +217,8 @@ describe("Combat Lab Hextech Gunblade", () => {
       expect(saved.runes).toEqual(["Electrocute"]);
     });
     expect(toast).toHaveBeenCalledWith({
-      title: "Unsupported runes removed",
-      description: "Not executable in Combat Lab: Phase Rush, 42, null.",
+      title: "Retired runes removed",
+      description: "Not in the current ranked roster: Phase Rush, 42, null.",
     });
   });
 });

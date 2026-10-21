@@ -10,6 +10,9 @@ on:
       - "src/lib/combat-lab/api.ts"
       - "src/lib/combat-lab/api.capabilities.test.ts"
       - "src/pages/CombatLab.gunblade.test.tsx"
+      - "src/pages/CombatLab.roster.test.tsx"
+      - "src/lib/combat-lab/team-sim/**"
+      - "src/pages/dev/team-sim/components/controls.tsx"
       - ".github/workflows/combat-gunblade-capability.yml"
   workflow_dispatch:
 
@@ -35,6 +38,8 @@ jobs:
           npx vitest run
           src/lib/combat-lab/api.capabilities.test.ts
           src/pages/CombatLab.gunblade.test.tsx
+          src/pages/CombatLab.roster.test.tsx
+          src/lib/combat-lab/team-sim/catalog.test.ts
           src/pages/CombatLab.content.test.tsx
           src/pages/CombatLab.actionFeedback.test.tsx
       - name: Production bundle compile
