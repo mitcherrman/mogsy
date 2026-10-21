@@ -194,7 +194,8 @@ export interface SeriesGameView {
 export type SeriesStatus = "prep" | "drafting" | "in_game" | "between_games" | "complete";
 
 export interface SeriesView {
-  authority: "pending_run2_series";
+  /** `e2_series`: the live E2 series (UX-4 `LiveSeriesTransport`) */
+  authority: "pending_run2_series" | "e2_series";
   series_id: string;
   /** monotonically increasing; every mutation must quote the current value */
   rev: number;
@@ -230,7 +231,8 @@ export interface ObjectiveQuestionView {
 }
 
 export interface ObjectiveSessionView {
-  authority: "pending_e2_objective";
+  /** `e2_objective`: hosted and graded by the live E2 series */
+  authority: "pending_e2_objective" | "e2_objective";
   encounter_id: string;
   state: "offered" | "launching" | "in_progress" | "graded" | "settled";
   child_match_id: string | null;
@@ -255,6 +257,8 @@ export type TransportErrorCode =
   | "ALREADY_ANSWERED"
   | "UNSUPPORTED_OBJECTIVE"
   | "NETWORK"
+  | "AUTH"                // live: no owner session (401/403)
+  | "DISABLED"            // live: DYNASTY_ENABLED is off (404 DYNASTY_DISABLED)
   | "SERVER";
 
 export class TransportError extends Error {

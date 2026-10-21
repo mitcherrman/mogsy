@@ -6,9 +6,10 @@
  * Local state holds only presentation: which org branding was picked, whether
  * the roster/result screens were already seen, and the lock-in overlay.
  *
- * Authority today (see the UX-3 handoff): game frames are recorded E1 machine
- * output served by the in-browser contract double; series persistence (RUN-2),
- * objective hosting (E2B) and between-game state (E3) are PENDING.
+ * Authority (see the UX-3 handoff §6, §9): by default game frames are recorded
+ * E1 machine output served by the in-browser contract double. With
+ * `&transport=live` the live E2 series API serves everything instead
+ * (`LiveSeriesTransport`); between-game state beyond E2's ledger (E3) stays pending.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { FlaskConical } from "lucide-react";
@@ -16,6 +17,8 @@ import { useMotionAllowed } from "@/lib/motion/useReveal";
 import { cn } from "@/lib/utils";
 import { BETWEEN_GAME_DECISIONS, type BetweenGameDecisionId, type FixtureLineup, type SeriesEnvelope, type SeriesGameView } from "@/lib/dynasty/e1/contracts";
 import { FixtureSeriesServer, browserStore } from "@/lib/dynasty/e1/fixtureServer";
+import { LiveSeriesTransport } from "@/lib/dynasty/e1/liveTransport";
+import type { E2QualificationPolicy } from "@/lib/dynasty/e1/e2contracts";
 import type { DynastySeriesTransport } from "@/lib/dynasty/e1/transport";
 import { useDynastySeries, type DynastySeries } from "@/lib/dynasty/e1/useDynastySeries";
 import { installDynastyAudioUnlock, playCue, playMoment } from "../audio";
@@ -28,14 +31,30 @@ import { Btn, Crest, Eyebrow, LABEL_TONE, ORG_ACCENT, PLATE, Plate, Pips, Rule, 
 import { Scene } from "../scenes";
 import { BoPips, OrgScreen } from "../screens";
 import { ServerGame, ServerLineupStrip, type ServerGameMood } from "./ServerGame";
+import { SeriesAuthorityContext } from "./authority";
 import { ServerEffectChip } from "./ServerObjective";
 import { HOW_TEXT, ROLE_ORDER, STAGE_NAME, champClass, lineupById, matchPoint, shortName } from "./present";
 
 const BRAND_KEY = "mogzy.dynasty.ux3.brand";
+/** `?view=bo5&transport=live`: drive the BO5 from the live E2 series API (UX-4). */
+const liveRequested = () => { try { return new URLSearchParams(window.location.search).get("transport") === "live"; } catch { return false; } };
+/** `&policy=broad_mid_win`: the E2 qualification policy for NEW live series (an open owner decision; default narrow, as UX-3). */
+const livePolicy = (): E2QualificationPolicy => { try { return new URLSearchParams(window.location.search).get("policy") === "broad_mid_win" ? "broad_mid_win" : "narrow_early_mid_combo"; } catch { return "narrow_early_mid_combo"; } };
 const readBrand = (): string | null => { try { return window.localStorage.getItem(BRAND_KEY); } catch { return null; } };
 const writeBrand = (id: string | null) => { try { if (id) window.localStorage.setItem(BRAND_KEY, id); else window.localStorage.removeItem(BRAND_KEY); } catch { /* ignore */ } };
 
-export function Bo5Banner({ compact }: { compact?: boolean }) {
+export function Bo5Banner({ compact, live }: { compact?: boolean; live?: boolean }) {
+  if (live) {
+    return (
+      <div role="note" data-testid="bo5-banner" data-transport="live" className={cn("flex items-center gap-2 rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-3 text-[11px] leading-snug text-emerald-50/85", compact ? "py-1" : "py-1.5")}>
+        <FlaskConical className="h-3.5 w-3.5 shrink-0 text-emerald-300" aria-hidden />
+        <span className={cn(compact && "truncate")}>
+          <strong className="font-semibold text-emerald-50">UX-4 · live E2 series · </strong>
+          Synthetic catalogs and players; every number provisional.<span className={cn("hidden", compact ? "md:inline" : "sm:inline")}> The server plays each game, hosts and grades the Baron questions and keeps the series. The game plan and backstage choices stay on this device (E3 pending).</span>
+        </span>
+      </div>
+    );
+  }
   return (
     <div role="note" data-testid="bo5-banner" className={cn("flex items-center gap-2 rounded-lg border border-violet-300/25 bg-violet-300/[0.06] px-3 text-[11px] leading-snug text-violet-100/85", compact ? "py-1" : "py-1.5")}>
       <FlaskConical className="h-3.5 w-3.5 shrink-0 text-violet-300" aria-hidden />
@@ -152,14 +171,18 @@ function GameRow({ g }: { g: SeriesGameView }) {
   );
 }
 
-function PendingConsequences({ games }: { games: SeriesGameView[] }) {
+function PendingConsequences({ games, live }: { games: SeriesGameView[]; live?: boolean }) {
   const all = games.flatMap((g) => g.pending_consequences.map((e) => ({ g: g.index, e })));
   return (
     <Plate className="flex flex-col gap-2 p-3" testId="pending-consequences">
-      <div className="flex items-center gap-2"><Eyebrow>Carried-over state</Eyebrow><SimTag>E3 pending</SimTag></div>
+      <div className="flex items-center gap-2"><Eyebrow>Carried-over state</Eyebrow><SimTag>{live ? "E2 ledger" : "E3 pending"}</SimTag></div>
       {all.length ? (
         <>
-          <p className="text-[12px] text-white/60">Typed persistent effects the server recorded. In E1 they are <b>pending and applied to nothing</b>: a future state engine (E3) will consume each once. They did not change any later game.</p>
+          {live ? (
+            <p className="text-[12px] text-white/60">Persistent effects the server <b>consumed once</b> after the game that earned them. They enter the next game(s) as player conditions and only gate event eligibility; they never change contest power.</p>
+          ) : (
+            <p className="text-[12px] text-white/60">Typed persistent effects the server recorded. In E1 they are <b>pending and applied to nothing</b>: a future state engine (E3) will consume each once. They did not change any later game.</p>
+          )}
           <div className="flex flex-wrap gap-1.5">{all.map(({ g, e }, i) => <span key={i} className="inline-flex items-center gap-1"><span className="text-[10px] text-white/40">G{g}</span><ServerEffectChip e={e} /></span>)}</div>
         </>
       ) : <p className="text-[12px] text-white/60">No persistent effects were recorded in these games.</p>}
@@ -168,7 +191,8 @@ function PendingConsequences({ games }: { games: SeriesGameView[] }) {
 }
 
 export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
-  const t = useMemo(() => transport ?? new FixtureSeriesServer({ store: browserStore(), delayMs: 140 }), [transport]);
+  const t = useMemo<DynastySeriesTransport>(() => transport ?? (liveRequested() ? new LiveSeriesTransport({ store: browserStore(), qualificationPolicy: livePolicy() }) : new FixtureSeriesServer({ store: browserStore(), delayMs: 140 })), [transport]);
+  const live = t.kind === "live";
   const s = useDynastySeries(t);
   const sting = useStinger();
   const [brand, setBrand] = useState<string | null>(() => readBrand());
@@ -246,10 +270,10 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
     body = <Plate className="p-4" testId="series-loading"><p className="text-sm text-white/70" role="status">Connecting to the series…</p></Plate>;
   } else if (screen === "home") {
     body = (
-      <Screen testId="bo5-home" eyebrow="Worlds Dynasty · BO5" title="A best-of-five, played by the server" hero kicker="Every stage, event, Baron and result below is real E1 machine output, replayed through the adapter boundary.">
+      <Screen testId="bo5-home" eyebrow="Worlds Dynasty · BO5" title="A best-of-five, played by the server" hero kicker={live ? "Every stage, event, Baron question and result below comes from the live E2 series server." : "Every stage, event, Baron and result below is real E1 machine output, replayed through the adapter boundary."}>
         <Plate ornate className="flex flex-col gap-2 p-4">
           <p className="text-sm text-white/80">Choose an organization, prepare for <b>SYN t_opp</b>, draft one of three legal lineups each game, and play until one team has three wins.</p>
-          <p className="text-[12px] text-white/55">Qualification policy: <code className="text-white/75">narrow_early_mid_combo</code> (candidate; owner decision pending). A three-question Baron appears only when the server qualifies it.</p>
+          <p className="text-[12px] text-white/55">Qualification policy: <code className="text-white/75">{live ? livePolicy() : "narrow_early_mid_combo"}</code> (candidate; owner decision pending). A three-question Baron appears only when the server qualifies it.</p>
         </Plate>
         <div className="flex justify-end"><Btn primary beckon testId="bo5-new" onClick={() => setPicking(true)}>Start a series</Btn></div>
       </Screen>
@@ -320,7 +344,7 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
           ))}
           {last.objective ? <p className="text-[12.5px] text-violet-200/90">Baron: {last.objective.correct_count} of 3, {last.objective.category.replace(/_/g, " ")}.</p> : null}
         </Plate>
-        <PendingConsequences games={[last]} />
+        <PendingConsequences games={[last]} live={live} />
       </Screen>
     );
   } else if (screen === "decision" && series) {
@@ -340,7 +364,7 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
           ))}
         </div>
         {decision === "switch_plan" ? <LineupChoice lineups={series.legal_lineups.filter((l) => l.lineup_id !== series.plan)} value={plan === series.plan ? null : plan} onPick={setPlan} testPrefix="switch" /> : null}
-        <PendingConsequences games={series.games} />
+        <PendingConsequences games={series.games} live={live} />
       </Screen>
     );
   } else if (screen === "series" && series) {
@@ -351,7 +375,7 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
         actions={<Btn testId="series-again" onClick={async () => { await s.abandon(); resetLocal(); }}>New series</Btn>}>
         <BoPips wins={series.wins} losses={series.losses} />
         <ol className="flex flex-col gap-1.5" data-testid="series-games">{series.games.map((g) => <GameRow key={g.index} g={g} />)}</ol>
-        <PendingConsequences games={series.games} />
+        <PendingConsequences games={series.games} live={live} />
         <Rule />
         <p className="text-[11.5px] text-white/50" data-testid="series-authority">Series tally: <code>{series.authority}</code>. Policy {series.policy.policy_id} ({series.policy.status}).</p>
       </Screen>
@@ -362,7 +386,8 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
   const pageMood = screen === "game" ? mood : screen === "result" || screen === "decision" ? (last?.winner === "you" ? "victory" : "defeat") : screen === "series" ? (series?.winner === "you" ? "victory" : "defeat") : "home";
 
   return (
-    <div className="dyn min-h-screen pt-11" data-testid="dynasty-bo5" data-screen={screen} data-status={series?.status ?? "none"} data-rev={series?.rev ?? -1} data-mood={pageMood} style={accentStyle(org.id)}>
+    <SeriesAuthorityContext.Provider value={t.kind}>
+    <div className="dyn min-h-screen pt-11" data-testid="dynasty-bo5" data-transport={t.kind} data-screen={screen} data-status={series?.status ?? "none"} data-rev={series?.rev ?? -1} data-mood={pageMood} style={accentStyle(org.id)}>
       {series ? (
         <div className="sticky top-11 z-20 border-b border-white/10 bg-[#07111f]/90 backdrop-blur" data-testid="run-bar">
           <div className="mx-auto flex h-11 max-w-4xl items-center gap-2.5 px-4 text-xs">
@@ -377,11 +402,12 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
         </div>
       ) : <div className="fixed right-3 top-[3.25rem] z-20"><AmbienceButton /></div>}
       <main ref={mainRef} className="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-8 pt-4" data-testid="dynasty-bo5-main">
-        <Bo5Banner compact={screen === "game"} />
+        <Bo5Banner compact={screen === "game"} live={live} />
         <ErrorPanel s={s} />
         {sceneId ? <Scene id={sceneId} caption env={envState} champion={screen === "series" && series?.winner === "you"}>{body}</Scene> : body}
       </main>
       {locking && env && series?.status === "in_game" ? <ServerLockSequence env={env} org={org} onDone={() => setLocking(false)} /> : null}
     </div>
+    </SeriesAuthorityContext.Provider>
   );
 }

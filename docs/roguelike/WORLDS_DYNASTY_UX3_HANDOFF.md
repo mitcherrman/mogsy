@@ -2,6 +2,8 @@
 
 **Status:** implemented and verified locally on branch `ux/ux3-dynasty-real-bo5` (worktree `C:\Users\mlmit\mogzy-wt\ux3-bo5`), cut from VIS-F4 `756ca7ad`. Dev-only route `/dev/dynasty-v2?view=bo5`. Nothing pushed, merged or deployed. No backend file, credential, migration or production data was touched.
 
+**UX-4 update (2026-10-20):** a `LiveSeriesTransport` now drives the same BO5 from the committed E2 series API (`?view=bo5&transport=live`). It was verified with a contract test against captured real e2 responses and with full BO5s against a real local backend. See §6 (mapping) and §9 (record).
+
 **Verdict in one line:** the BO5 is now driven end to end by **genuine E1 machine output** through a typed adapter boundary, but it is served by an **in-browser contract double**, not a live server. **Full integration is NOT claimed:** E2 (objective hosting + series API) is still being built by the separate E2 instance (uncommitted at handoff time; §6).
 
 ## 0. Verified starting state
@@ -92,26 +94,24 @@ Checkpoint identity: every request quotes `rev` (+ `expected seq` for `advance`)
 
 Evidence (not committed): `C:\Users\mlmit\OneDrive\Desktop\ux3-dynasty-bo5-shots\` — `desktop/` 15 captures (home → prep → lock-in → walkout → event → tally → Baron stakes/question/refresh-resume/graded/settled → closeout → result → backstage → series), `mobile-390/` 2, `mobile-360/` 5. Captured from integrated gameplay of recorded E1 output through the contract double. Pane-capture trap: a frame right after navigation can show the entrance fade.
 
-## 6. E2 dependencies (verified vs pending)
+## 6. E2 dependencies (UX-4: verified against the committed E2)
 
-**Verified (in use):** E1 `snapshot.e1` shape at `786dc81b`, E1 BO5 convention, E2A §C8 objective states and §C2 "no count from the client".
+E2 is committed on backend `roguelike/wd-v2-e2-series`: implementation `b022b21a`, handoff `590b9010`, API `docs/roguelike/WORLDS_DYNASTY_E2_API.md`. UX-4 (§9) built the live transport against it. The mapping, as implemented:
 
-**In progress, not used:** at handoff time the backend worktree holds **uncommitted** E2 work by the other instance: `routes/dynasty_series.py` (`/api/admin/dynasty/v2`), `dynasty/combat_v2/series/{engine,questions,service,snapshot}.py`, `migrate_add_dynasty_v2_series.py`, and a 5-line `api_server.py` router include. Read only, never imported by the capture. Its surface maps onto this adapter as follows (to confirm once committed):
-
-| UX-3 transport | E2 (in progress) | Gap to close |
+| UX-3 transport | E2 | How the live transport maps it |
 |---|---|---|
-| `create` | `POST /series` `{start_key, qualification_policy, user_preset, opponent_preset}` | the UI must pick presets; `start_key` = idempotency key |
-| `resume` | `GET /series/{id}` | need a "my active series" read, or keep the id client-side |
-| `lockLineup` | action `lock_lineup` | — |
-| `advance` | action `advance` | — |
-| `openObjective` | action `open_objective` | — |
-| `answerQuestion` | action `answer_objective` (×3) | — |
-| `settleObjective` | (none: E2 appears to settle on the third answer) | make it a no-op read in the live transport |
-| `choosePlan`, `decide` | (none) | keep client-side (plan = default lineup) until E3 adds between-game actions |
-| `rev` + `requestId` | `expected_seq` + `action_id` | rename in the live transport |
-| envelope | `dynasty.combat_v2.series.snapshot.e2` | write an `e2 → SeriesEnvelope` mapper and a contract test against a captured e2 response |
+| `create` | `POST /series` `{start_key, qualification_policy, user_preset, opponent_preset}` | `start_key` = the request id, so a retried create resumes the same series. Presets `balanced` vs `balanced2`. Policy `narrow_early_mid_combo` by default; `&policy=broad_mid_win` on the URL picks the other one. |
+| `resume` | `GET /series/{id}` | E2 has no "my active series" read, so the id is kept client-side (`mogzy.dynasty.ux4.live.v1`). A 404 `DYNASTY_SERIES_NOT_FOUND` forgets it. |
+| `lockLineup` | action `lock_lineup` `{game, champions}` | The lineup id maps to the E1 study's champion set. It is offered only if all five are in `champion_pool`. |
+| `advance` | action `advance` `{game, machine_seq, steps: 1}` | One E1 transition per request, as in UX-3. |
+| `openObjective` | action `open_objective` `{game, encounter_id}` | — |
+| `answerQuestion` | action `answer_objective` `{game, encounter_id, question_id, option_id}` (×3) | The UI's option index maps to the current question's `option_id`. The client sends ids only. |
+| `settleObjective` | (none: E2 grades, seals and applies on the third answer) | **A read** (`GET`) that acknowledges the grade (§9.2). |
+| `choosePlan`, `decide` | (none) | Client-side, with the double's rules (recovery refused, keep = same plan). The server never sees them. |
+| `rev` + `requestId` | `expected_seq` + `action_id` | A retry resends the identical body. E2 answers `duplicate: true` and never applies it twice. |
+| envelope | `dynasty.combat_v2.series.snapshot.e2` | `e2mapper.ts` maps e2 to `SeriesEnvelope`. A contract test runs against a captured real e2 run (§9). |
 
-Also still pending: RUN-2 production persistence (owner-gated migration), E3 between-game state, real question content (Elder/Soul have 0 questions), owner choice of qualification policy.
+Still pending: RUN-2 production persistence (the migration is owner-gated), E3 between-game actions, real question content beyond Baron (Elder and Soul have 0 questions), and the owner's choice of qualification policy.
 
 ## 7. Owner decisions / follow-ups
 
@@ -119,7 +119,7 @@ Also still pending: RUN-2 production persistence (owner-gated migration), E3 bet
 2. Whether the series/plan choice should exist server-side (E2 currently has none).
 3. Recovery/tactical effects need E3 before they can be offered.
 4. Org choice is cosmetic until org rosters exist server-side.
-5. Next slice (UX-4): a `LiveSeriesTransport` against the committed E2 API, its contract test against a captured e2 response, and a real local-backend run (HS256 + E2E persona recipe; the real-auth NO-GO from ROG1-D2 still applies to any owner deploy).
+5. ~~Next slice (UX-4): a `LiveSeriesTransport` against the committed E2 API.~~ Done: see §9. The real-auth NO-GO from ROG1-D2 still applies to any owner deploy.
 
 ## 8. Verification record (final run)
 
@@ -129,3 +129,64 @@ Also still pending: RUN-2 production persistence (owner-gated migration), E3 bet
 - Capture re-run: byte-identical fixture (sha256 prefix `762fc19fa8d5556e`), recorded against backend worktree HEAD `d279233b` (E1 code `786dc81b`; the uncommitted E2 files are not imported).
 - Browser pane (`ux3-bo5` launch entry, port 5424): one full live series at 1280×800, 390×844 and 360×780; no console errors.
 - Re-capture recipe: `PYTHONPATH=<backend>/.worktrees/wd-v2-combat python -I scripts/dynasty/capture_ux3_bo5_fixture.py` from the mogsy root (`UX3_SERIES_SEED`, default 3). Any capture change must keep `e1.contract.test.ts` and the 3–2 series tests green.
+
+## 9. UX-4 — live E2 transport (2026-10-20)
+
+**Status:** implemented and verified against a **real local backend** on branch `ux/ux3-dynasty-real-bo5` (worktree `C:\Users\mlmit\mogzy-wt\ux3-bo5`). The work is uncommitted. Nothing was pushed, merged or deployed. No backend file was changed, and no production database or migration was touched. Route: `/dev/dynasty-v2?view=bo5&transport=live`. Without `transport=live`, the UX-3 contract double is unchanged and remains the default.
+
+### 9.1 What was built
+
+| File | Role |
+|---|---|
+| `src/lib/dynasty/e1/e2contracts.ts` | Types for the e2 snapshot fields the client reads. `readE2Snapshot` refuses a wrong schema or missing phase parts, so a drifted response fails loudly instead of rendering half a game. |
+| `src/lib/dynasty/e1/e2mapper.ts` | Pure mapping from an e2 snapshot plus client state to a `SeriesEnvelope`. It maps series status from `phase`, lineups from `champion_pool`, the tally from `games[]`, consumed effects from `between_games.consumed`, the E2 objective block to the E1 prompt shape, and hosted questions to `ObjectiveQuestionView`. |
+| `src/lib/dynasty/e1/liveTransport.ts` | `LiveSeriesTransport` over `ADMIN_API_BASE_URL` + `/api/admin/dynasty/v2`, with the owner bearer from `buildAdminHeaders`. HTTP errors become transport codes: `STALE_SEQ`/`STALE_CHECKPOINT` → `STALE_REVISION` with a fresh read; 401/403 → `AUTH`; `DYNASTY_DISABLED` → `DISABLED`; `BAD_LINEUP` → `ILLEGAL_LINEUP`; other 4xx → `NOT_ALLOWED` with a fresh read; 5xx (incl. `OBJECTIVE_CONTENT_UNAVAILABLE`) → retryable `SERVER`; no answer → `NETWORK`. |
+| `src/lib/dynasty/e1/liveTransport.test.ts` + `fixtures/e2-live-capture.json` | The contract test (17 tests). It runs against **real e2 responses** captured from the local backend, one per UX state (create, game start, advance, Baron offered, Q1, after Q1, after Q2, settled, between games, completed). The questions are live bank content, not the `[SAMPLE FIXTURE]` samples. |
+| `scripts/dynasty/capture_ux4_e2_live.py` | Re-captures that fixture over HTTP. It plays a whole BO5, sending only the snapshot's own `next` actions with lineup balanced and always option A, and retries until a series contains a Baron. |
+| `Bo5Flow.tsx`, `ServerObjective.tsx`, `present.ts`, `authority.ts`, `useDynastySeries.ts`, `contracts.ts`, `transport.ts` | Transport selection (`?transport=live`, `&policy=`) and copy that is honest about the authority: a live banner; "E2 · server-hosted questions"; "consumed once" instead of "pending E3"; "See the outcome" instead of "Settle". Also: four answer letters (E2 serves A–D; UX-3 had three) and the `e2_series`/`e2_objective` authority markers and `AUTH`/`DISABLED` codes. |
+
+### 9.2 The one mapping that is not 1:1 (owner should know)
+
+E2 grades, seals and applies the Baron **in the same request as the third answer**. That response no longer carries the encounter: `current_game.objective` is `null`, and question 3's own feedback is never returned, only `games[].objectives[].correct_count`. The UX-3 flow has a separate graded → settle → outcome beat. To keep it:
+- The transport caches the last in-progress encounter view and the option it sent.
+- The mapper derives question 3's mark as the server count minus the marks of questions 1–2. Nothing is re-graded.
+- Until "See the outcome" (a `GET`), the mapper shows the game paused at the objective: it holds back the trailing `objective_result` beat and the objective event.
+- The hold applies only to the response that settled the encounter, and only when the cache exists. Another device, or a later read, shows the server's outcome directly.
+
+**Backend follow-up:** keep a settled-encounter view (answers with feedback and the grade) in the snapshot after settlement. The derivation would then go away.
+
+### 9.3 Verification record
+
+**Setup.** A real `api_server:app` runs from `.worktrees/wd-v2-combat` @ `590b9010` on `127.0.0.1:8766`.
+- Scratch SQLite DB in the session scratchpad. `migrate_add_dynasty_v2_series.migrate()` was applied to **that file only**.
+- `DYNASTY_ENABLED=1`. HS256 auth with a locally generated secret and `SUPABASE_ALLOW_HS256=1`; the real `_decode_token` verified every bearer.
+- Only `routes._auth._owner_state` was stubbed (owner for one minted user id).
+- The series question source was overridden to the **real** `BankQuestionSource` over the read-only bank copy `C:/Users/mlmit/mogzy-data/lol_calc.db` (opened `mode=ro`), because the scratch DB has no quiz bank.
+- Frontend: vite `ux4-live` on port 5425 (`VITE_E2E_AUTH=1`, `VITE_COMBAT_API_URL=http://127.0.0.1:8766`), with the persona in `mogsy_e2e_identity` (`admin:true`). The launcher and token are scratch-only and not committed.
+
+| Check | Result |
+|---|---|
+| `vitest run src/pages/dev/dynasty-v2 src/lib/dynasty src/pages/admin/dynasty src/App.dynastyRoute.test.ts src/pages/dev/dynasty` | 9 files, **127 passed** (110 UX-3 + 17 UX-4) |
+| `tsc --noEmit -p tsconfig.app.json` | only the two baseline errors (`OnboardingProfile.tsx`, `identity/connections.ts`) |
+| `eslint src/lib/dynasty/e1 src/pages/dev/dynasty-v2/bo5 DynastyV2Prototype.tsx` | clean |
+| **Full live BO5, narrow policy** (series `wds2_8ad0c461…`) | Played by clicking through `/dev/dynasty-v2?view=bo5&transport=live` at 1280×800: org → roster → plan → draft → walkout → Early/Mid/Late, game by game. Won **3–0**, no Baron qualified. Server record = UI (per-stage points `4·4·4`, `4·5·6`, `2·5·4`; seq 70; 67 one-step `advance` events). |
+| **Full live BO5 with Barons, `&policy=broad_mid_win`** (series `wds2_dedb5d98…`) | Five games, lost **2–3**. Four real Baron encounters, 12 server-graded answers: 1/3 "Baron at a heavy cost", then 0/3 ×3. Questions such as "How long does Baron Nashor take to respawn?" came from the live bank. A reload between Q1 and Q2 resumed at Q2 with Q1 still marked. The graded beat showed "1 of 3 … already applied", and "See the outcome" did not advance `seq` (a read). Server record = UI (score, stage points, counts). |
+| Request outcomes (backend access log) | Every Dynasty request returned 200: 574 action POSTs, 12 creates, 8 reads. The one 403 was a deliberate non-owner probe. Console errors were all from the global HUD (`/api/stat-check/invites` 503, Supabase 401, `/api/assets/champions` 500), the same noise ROG1-D1 saw. |
+| Phone 390×844, live 4-option question | No horizontal overflow; option D ends at 723 px of 844; letters A–D. |
+
+The narrow policy qualified **no** Baron in 5 live UI series, and in 2 of 5 capture series. That is why the Baron run used `broad_mid_win`. It is evidence for the open policy decision, not a defect.
+
+### 9.4 Found, not fixed (backend; out of scope here)
+
+1. The settled encounter is dropped from the snapshot (§9.2).
+2. There is no "my active series" read. The series id lives in localStorage, so a new device starts a new series.
+3. The opponent's champions are not in `champion_pool` and have no profile anywhere in the snapshot. The opponent dossier shows names derived from keys, with no class or ratings.
+4. There is no abandon/delete route. "Leave" and "New series" only forget the series on the client; the server keeps it `active`.
+5. E2 fixes player ratings per series (`user_preset`), so a lineup choice changes champions only. In the UX-3 double the lineup also changed the players' phase ratings.
+
+### 9.5 Owner decisions (unchanged plus new)
+
+1. Qualification policy (now with the frequency evidence in §9.3).
+2. Whether the game plan and between-game choice should be server actions (E3). Today they are client-side and not recorded.
+3. The backend follow-ups in §9.4.
+4. Production: the migration and flag stay owner-gated. The real Supabase owner sign-in (ROG1-D2 NO-GO) is still untested for this route.

@@ -55,12 +55,13 @@ export function carryNow(s: E1Snapshot | null): number {
 /** VIS-F4 meters take −4..4; E1 carry is on the server's own bounded scale (cap 10, unit 4). */
 export const meterLead = (carry: number) => Math.max(-4, Math.min(4, Math.round(carry / 2.5)));
 
-export function effectText(e: E1Effect): string {
+/** `live`: the E2 series consumes persistent effects between games (UX-4); the double leaves them for E3. */
+export function effectText(e: E1Effect, live = false): string {
   const v = e.value_applied ?? e.value ?? 0;
   const sign = v > 0 ? "+" : "";
   const who = e.for === "you" ? "You" : "Them";
   const what = e.kind.replace(/_/g, " ");
-  const where = e.channel === "current_stage" ? "this stage" : e.channel === "next_stage" ? "next stage" : e.channel === "persistent" ? `next ${e.duration_games || 1} game(s), pending E3` : "game";
+  const where = e.channel === "current_stage" ? "this stage" : e.channel === "next_stage" ? "next stage" : e.channel === "persistent" ? `next ${e.duration_games || 1} game(s)${live ? "" : ", pending E3"}` : "game";
   if (e.kind === "closeout_win") return `${who}: game win`;
   return `${who}: ${what}${e.role ? ` (${e.role})` : ""} ${sign}${Number.isInteger(v) ? v : v.toFixed(1)} · ${where}${e.capped ? " · capped" : ""}`;
 }

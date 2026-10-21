@@ -6,6 +6,7 @@
  *        `?view=showcase`    VIS-F1 showcase: closeout, result, series and run-end heroes.
  *        `?seed=abc`          start with a given run seed.
  *        `?view=bo5`          UX-3: the server-driven BO5 (recorded E1 machine output).
+ *        `?view=bo5&transport=live[&policy=broad_mid_win]`  UX-4: the same BO5 on the live E2 series API.
  *
  * This is a flow prototype. It is NOT connected to the authoritative Combat
  * v2 / Event E0 simulator, any backend, auth or real data. See `engine.ts`.

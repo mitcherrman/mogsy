@@ -9,7 +9,7 @@
  *    sent by the client — "Settle" carries only the encounter id;
  *  - the outcome card renders the settled E1 event (category, narrative, effects).
  */
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, X } from "lucide-react";
 import { useMotionAllowed } from "@/lib/motion/useReveal";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ import { hush, playCue, setTension } from "../audio";
 import { CasterPop, SimTag, ambientQuestionOpen, useStinger } from "../broadcast";
 import { Btn, Eyebrow, PLATE, SIGIL_COLOR, Sigil, SourceChip } from "../parts";
 import { ObjectiveSpectacle, PIT_PLACE } from "../spectacle";
+import { SeriesAuthorityContext } from "./authority";
 import { CATEGORY_TITLE, CATEGORY_TONE, effectGood, effectText } from "./present";
 
 const TONE_BORDER = { great: "border-[#e3c66f]/70", good: "border-emerald-400/45", mixed: "border-amber-400/45", bad: "border-rose-400/50" } as const;
@@ -26,10 +27,11 @@ const TONE_STING = { great: "gold", good: "ice", mixed: "ember", bad: "red" } as
 const TONE_CUE = { great: "dynasty.obj.outcome_exceptional", good: "dynasty.obj.outcome_success", mixed: "dynasty.obj.outcome_partial", bad: "dynasty.obj.outcome_disaster" } as const;
 
 export function ServerEffectChip({ e }: { e: E1Event["effects"][number] }) {
+  const live = useContext(SeriesAuthorityContext) === "live";
   const good = effectGood(e);
   return (
     <span data-testid="effect-chip" data-sign={good ? "+" : "-"} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", good ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-rose-400/30 bg-rose-400/10 text-rose-200")}>
-      <span className="sr-only">{good ? "Good for you: " : "Bad for you: "}</span>{effectText(e)}
+      <span className="sr-only">{good ? "Good for you: " : "Bad for you: "}</span>{effectText(e, live)}
     </span>
   );
 }
@@ -77,6 +79,7 @@ export interface ServerObjectiveProps {
 export function ServerObjective({ prompt, session, result, busy, accent, onOpen, onAnswer, onSettle, onContinue, continueLabel }: ServerObjectiveProps) {
   const motion = useMotionAllowed();
   const sting = useStinger();
+  const live = useContext(SeriesAuthorityContext) === "live";
   const color = SIGIL_COLOR.baron;
   const phase: "stakes" | "ask" | "graded" | "outcome" = result ? "outcome" : !session ? "stakes" : session.state === "in_progress" ? "ask" : "graded";
   // Purely visual: after a lock, keep the just-answered question on screen until the player moves on.
@@ -124,7 +127,7 @@ export function ServerObjective({ prompt, session, result, busy, accent, onOpen,
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <Eyebrow>{phase === "stakes" ? "Objective encounter" : phase === "ask" || review !== null ? `Question ${(shown?.index ?? Math.min(qIndex, 2)) + 1} of 3` : phase === "graded" ? "Graded by the server" : "Outcome"}</Eyebrow>
-              <span data-testid="objective-contract" data-contract="e1"><SimTag className="border-violet-300/40 bg-violet-300/10 text-violet-100/90">E1 encounter · E2 host pending</SimTag></span>
+              <span data-testid="objective-contract" data-contract={live ? "e2" : "e1"}><SimTag className="border-violet-300/40 bg-violet-300/10 text-violet-100/90">{live ? "E2 · server-hosted questions" : "E1 encounter · E2 host pending"}</SimTag></span>
             </div>
             <h3 className="dyn-title mt-0.5 truncate text-[20px] font-semibold leading-tight sm:text-[24px]">Baron Nashor</h3>
           </div>
@@ -177,7 +180,7 @@ export function ServerObjective({ prompt, session, result, busy, accent, onOpen,
                   className={cn("dyn-opt flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]",
                     st === "right" ? cn("border-emerald-400/70 bg-emerald-400/15 text-emerald-50", motion && "dyn-opt--right") : st === "wrong" ? cn("border-rose-400/70 bg-rose-400/15 text-rose-50", motion && "dyn-opt--wrong")
                       : locked ? "border-white/10 bg-white/[0.02] text-white/40" : "border-white/15 bg-white/[0.04] text-white/90 hover:border-[#e3c66f]/50 hover:bg-white/[0.07]")}>
-                  <span className="dyn-title flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/20 text-[11px] font-bold text-white/60">{"ABC"[n]}</span>
+                  <span className="dyn-title flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/20 text-[11px] font-bold text-white/60">{"ABCD"[n]}</span>
                   <span className="min-w-0 flex-1">{o}</span>
                   {st === "right" ? <Check className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden /> : st === "wrong" ? <X className="h-4 w-4 shrink-0 text-rose-300" aria-hidden /> : null}
                   {st === "right" ? <span className="sr-only"> (your answer, correct)</span> : st === "wrong" ? <span className="sr-only"> (your answer, incorrect)</span> : null}
@@ -196,8 +199,8 @@ export function ServerObjective({ prompt, session, result, busy, accent, onOpen,
 
       {phase === "graded" && review === null && session?.graded ? (
         <div className="flex flex-col gap-2" data-testid="objective-graded" data-correct={session.graded.correct_count}>
-          <p className="text-sm text-white/85"><b className="dyn-num text-white">{session.graded.correct_count} of 3</b> correct, graded by the objective host. Settling applies the matching E1 outcome to the game.</p>
-          <div className="flex justify-end"><Btn primary beckon testId="objective-settle" disabled={busy} onClick={onSettle}>{busy ? "Settling…" : "Settle the Baron"}</Btn></div>
+          <p className="text-sm text-white/85"><b className="dyn-num text-white">{session.graded.correct_count} of 3</b> correct, graded by the objective host. {live ? "The server has already applied the matching E1 outcome." : "Settling applies the matching E1 outcome to the game."}</p>
+          <div className="flex justify-end"><Btn primary beckon testId="objective-settle" disabled={busy} onClick={onSettle}>{busy ? (live ? "Loading…" : "Settling…") : live ? "See the outcome" : "Settle the Baron"}</Btn></div>
         </div>
       ) : null}
 

@@ -109,6 +109,6 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
     }
   }, [run, transport]);
 
-  return { env, loading, busy, error, notice, clearNotice: () => setNotice(null), retry, reload: load, advanceTo, ...api };
+  return { kind: transport.kind, env, loading, busy, error, notice, clearNotice: () => setNotice(null), retry, reload: load, advanceTo, ...api };
 }
 export type DynastySeries = ReturnType<typeof useDynastySeries>;

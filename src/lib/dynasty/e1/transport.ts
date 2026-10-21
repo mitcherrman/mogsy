@@ -1,14 +1,14 @@
 /**
  * UX-3 — the adapter boundary between the Dynasty BO5 UI and its authority.
  *
- * The UI talks ONLY to this interface. Today the single implementation is the
- * in-browser contract double (`fixtureServer.ts`) that replays recorded E1
- * machine output. A live implementation needs, at minimum (none exist yet):
+ * The UI talks ONLY to this interface. Two implementations:
  *
- *   series   RUN-2: a persisted Combat v2 series / game (owner-gated migration)
- *   game     an owner-only route exposing E1 `advance` + `snapshot`
- *   objective E2B: `POST …/objectives/{encounter}/open|settle`, `GET …/objectives/{encounter}`
- *            (E2A §5); answers go to the Ranked child-match routes, never here
+ *   fixture  `fixtureServer.ts`, the in-browser contract double replaying
+ *            recorded E1 machine output (UX-3; the default);
+ *   live     `liveTransport.ts`, the E2 series API `/api/admin/dynasty/v2`
+ *            (UX-4; `?view=bo5&transport=live`). E2 hosts the series, the
+ *            games and the Baron questions; `choosePlan`/`decide` stay
+ *            client-side there until E3, and `settleObjective` is a read.
  *
  * Contract rules every implementation must keep (the UI relies on them):
  *  - every mutation quotes the series `rev` it was based on; a mismatch is
@@ -34,11 +34,11 @@ export interface DynastySeriesTransport {
   lockLineup(m: Mutation, lineupId: string): Promise<SeriesEnvelope>;
   /** One E1 transition. `expectedSeq` must equal the current snapshot seq. */
   advance(m: Mutation, expectedSeq: number): Promise<SeriesEnvelope>;
-  /** E2 (pending): open or resume the hosted objective for the pending encounter. */
+  /** Open or resume the hosted objective for the pending encounter. */
   openObjective(m: Mutation, encounterId: string): Promise<SeriesEnvelope>;
-  /** E2 (pending; Ranked child routes): lock one answer. The server grades it. */
+  /** Lock one answer (option index of the current question). The server grades it. */
   answerQuestion(m: Mutation, encounterId: string, index: number, option: number): Promise<SeriesEnvelope>;
-  /** E2 (pending): settle the server grade into the game. The body has no count. */
+  /** Settle the server grade into the game (live: a read; E2 applied it on the third answer). No count is sent. */
   settleObjective(m: Mutation, encounterId: string): Promise<SeriesEnvelope>;
   /** between_games -> drafting. */
   decide(m: Mutation, decision: BetweenGameDecisionId, lineupId: string): Promise<SeriesEnvelope>;
