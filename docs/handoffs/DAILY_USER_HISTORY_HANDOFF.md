@@ -60,7 +60,48 @@ Both layers are on untouched `origin/master`: the same 6 tests failed there loca
 
 **The other three workflows.** `4456a8f6` changed only `test_dcmod_integration_daily.py`. Storage Safety, Role Challenge Review and Daily User History do not execute that file, passed on the previous commit per the report, and pass locally on this code. All four runs were created in one batch (consecutive run ids). That pattern points away from this diff, toward something shared at run level (runner start / quota / billing); earlier backend PRs in this project were noted as blocked by Actions billing. **This is an inference, not a verified cause** — it needs the run page or annotations.
 
-**Status:** fix pushed as `085c9861`. GitHub results for that commit were **not readable by the agent**. Do not merge or deploy until the four checks are confirmed green on `085c9861`.
+**Status:** superseded by the release-gate section below.
+
+## Release gate without GitHub Actions (2026-10-20)
+
+**GitHub CI did not run.** The owner reports that GitHub Actions for this account is blocked *before job execution* by billing (jobs never start, so no step — checkout, install or tests — ever ran), and that billing will not be changed. The owner holds the screenshots; **they were not supplied to the agent and were not seen by it**, so this statement is the owner's report, not something the agent verified. Actions must not be re-run. The earlier "failed" results on `4456a8f6` (runs 39406874013 / 39406873920 / 39406873939 / 39406873947) are therefore not test evidence either way; the Creator Replay defect found above is real and was reproduced and fixed locally, independent of CI.
+
+**Validated commit:** backend `579248eee88562dbdca6a5d6c86cfba6669b6943` on `analytics/daily-user-history`. Code is identical to the previously reported head `0e5faac6ac0b6dc9c58168ac28e2a965372f3d32` plus one new test file and its workflow entry. `git diff 085c9861..0e5faac6` is `DAILY_USER_HISTORY_HANDOFF.md` only (commits `77790ac1`, `0e5faac6`): no effect on tests, endpoint, security or contract, so the `085c9861` results carried over; everything was nevertheless re-run on the exact heads below. Any commit after `579248ee` is documentation only.
+
+**Local results** (the exact commands from the four workflows; Python 3.14 / Windows, CI would use 3.12 / Linux):
+
+| Workflow command | `0e5faac6` | `579248ee` (final) | merge of `0e5faac6` into current `master` `0f28fc9e` |
+|---|---|---|---|
+| Daily User History | 51 passed | **62 passed** (51 + 11 gate tests) | 51 passed |
+| Creator Replay (4 files) | 75 passed, 2 skipped | **75 passed, 2 skipped** | 75 passed, 2 skipped |
+| Storage Lifecycle Safety (6 suites) | 215 passed, 4 skipped | **215 passed, 4 skipped** | 215 passed, 4 skipped |
+| Role Challenge Review: RC1–RC5 / queue controls / Reconstruct | 293 passed, 45 skipped / 10 / 40 | **293, 45 skipped / 10 / 40**; `py_compile` ok | 293, 45 skipped / 10 / 40 |
+| Tracked tree after the runs | clean | clean | n/a (merge staged) |
+
+The 4 + 45 skips are the suites' own (Linux `/proc`, symlinks, data-file-dependent); they are not new.
+
+**`master` drift.** `master` is `0f28fc9e`, 49 commits ahead of the PR base `84567e11`, with **no file overlap** with this PR; the merge is automatic and conflict-free (checked with `git merge-tree` and a real `--no-commit` merge in a scratch worktree, since removed). The suites above were run on that merge result with the PR at `0e5faac6`. The final head `579248ee` only adds `test_daily_user_history_gate.py` and one workflow line, touching no existing file, so the merge result was not re-built for it; its 11 tests also passed on the merged tree earlier.
+
+**What the PR changes in production code:** `routes/daily_run.py` (+31 lines: one GET route and imports) and the new `daily_challenge/run/history.py`. No schema, migration, event, write path, auth or gameplay change.
+
+**Owner-only authorization and cross-user isolation (`test_daily_user_history_gate.py`, 11 tests).** The REAL `require_admin` is in front of the route; only JWT decoding and Supabase `owner_auth_state` are stubbed.
+- Refused with 403: no credentials; legacy `X-Admin-Key` only; undecodable bearer; anonymous session; signed-in non-owner (including a player reading their **own** history); owner whose state is not `authorized` (no MFA / untrusted device); owner state empty.
+- Refused with 503 and no data: owner state unreadable (fails closed).
+- The authorized owner gets exactly the user named in the path: two users with different runs return disjoint run ids and never contain each other's id; `?user_id=` / `?uid=` cannot redirect the read; an unknown user gets an empty list, not someone else's.
+- Malformed ids (non-UUID, SQL-style text, path traversal, uppercase, no dashes, trailing characters) get 400/404 and `daily_runs` is intact afterwards.
+- POST/PUT/PATCH/DELETE are rejected (404/405). `Cache-Control: no-store` on 200.
+Not covered by an automated test: the real Supabase `owner_auth_state` RPC (network); that is production behaviour shared with every other `require_admin` route and is unchanged here.
+
+**Frontend/backend golden contract.** Backend payload == `daily_challenge/run/golden/user_history_v1.json` (enforced by `test_payload_matches_the_golden_the_frontend_parses`). That file is byte-identical to the frontend fixture `src/lib/admin/__fixtures__/daily-history-v1.json` at frontend PR #107 head `f5b2328c` (SHA-256 of both, CRLF-normalised: `48dd2ae7a6f4976f…`), and the frontend parser tests (25) pass on that head.
+
+**Remaining risks (none is a known defect):**
+1. No GitHub-side confirmation exists; the evidence is local (Windows, Python 3.14). A Linux/3.12-only difference is possible but nothing in the changed code is platform-specific (`PRAGMA query_only` reads, plain `sqlite3`).
+2. Path-id check uses `re.match`, so `<uuid>\n` is accepted; it is parametrised SQL and owner-only, returns an empty list, and could be tightened to `fullmatch` later.
+3. Read load: up to 60 runs × 2 queries per request on the live SQLite file (`busy_timeout` 5 s, read-only pragma), owner-only and bounded.
+4. Resume and abandonment remain unrecorded by design; entry source exists only for runs created after the click event shipped.
+5. Frontend panel was never rendered in the signed-in `/admin` route (needs the owner's MFA session).
+
+**Verdict:** backend PR #67 is **ready for the backend-first merge**, on the local evidence above, with the caveat that GitHub CI never executed. Not merged, not deployed. Order: merge #67 → deploy Railway → smoke `GET /api/daily-run/admin/users/<uuid>/history` as the owner (expect 200 with `schema_version: 1`; 403 unauthenticated) → merge frontend PR #107 → publish in Lovable → compare one real account's run with the player's own Daily screen.
 
 ## Deploy / acceptance (owner)
 1. Merge the **backend** PR and deploy Railway (not done). Until then the panel shows "The Daily history service answered 404" as an error, never as an empty history.
