@@ -126,3 +126,54 @@ Deploy order is free: an old frontend ignores the new composition fields; a
 new frontend shows nothing new until the backend flag is `owner`. Before
 release: owner phone playtest (gate 4), CI or explicit acceptance of local
 evidence, PR review. Lovable publish only on explicit owner approval.
+
+---
+
+## Pass 2 — integration readiness (2026-10-21)
+
+Backend readiness report (why no day composes, deficits, exact gate 8/9/10 text):
+`League_Combat_Simulator\.worktrees\daily-v2-e\docs\daily_v2_lane_e\READINESS_2026-10-21.md`.
+
+### Commits (frontend)
+
+| SHA | What |
+|---|---|
+| `9628cd0c` | merge `origin/main` @ `2c6dee32` (3 commits: Combat Lab roster, #110) — clean |
+| `3555fd96` | Meta Reflex: the final card's verdict holds through the wait — reconciles draft PR #108 with ONE verdict |
+| (this commit) | this section |
+
+### #108 reconciliation (one verdict, both values)
+
+Root cause of #108's "missing final verdict": a card's verdict appears on the
+centre stamp (`QuestionResultOverlay`, every viewport) only during its 1.5 s
+reveal window, and the header's per-card plate (`CardResultBeat`) is
+`hidden md:flex`. After the LAST card's window the player waits for the
+opponent and, **below 768 px, no verdict was shown at all**. #108 added a
+second verdict word in the waiting line (a duplicate on desktop, where the
+header shows it).
+
+Integration fix (`QuizRankedMatch.tsx`, ~15 lines): the centre stamp keeps the
+final card's verdict — same element, same event id, so nothing is
+re-announced — until the block settles, for a card this mount watched being
+revealed (a page restored mid-wait stays restored, as before). Phone: one
+verdict (stamp). Desktop: unchanged (stamp + header plate, the pre-existing
+pairing during every card reveal). Lane A's two server values stay on the
+settled card; nothing derives a value or a gap. #108 is **not** merged; if it
+is merged later, its inline word would be a duplicate — recommend closing it
+as superseded (owner gate 6).
+
+New test `QuizRankedMatch.metaReflexFinalVerdict.test.tsx` (2): the hold test
+**fails on the previous code and passes now** (negative control run); a
+restored wait does not re-stamp.
+
+### Tests (local; CI billing-blocked)
+
+| run | result | vs baseline `657b4a91` |
+|---|---|---|
+| full vitest, 4 chunks, `3555fd96` (detached `.worktrees/daily-v2-e-head`) | 43 failed / 1,079 passed files (1,122); 179 failing tests | **0 new**; 1 base-only (`LobbyPreviewPage.premiumAnalytics` stopwatch, timing) |
+| targeted Meta Reflex + header + flow | 145 / 145 | — |
+| `tsc --noEmit -p tsconfig.app.json` | 2 errors, both pre-existing | unchanged |
+| `npm run build` (+ `git checkout -- public/sitemap.xml`) | ✓ 39.8 s, prerender verify OK | — |
+
+Browser acceptance and video: not run (needs a separately approved bounded
+headless Chromium run). Harness in `docs/daily-v2-lane-e/harness/`.
