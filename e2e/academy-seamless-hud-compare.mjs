@@ -29,7 +29,7 @@ for (const vp of Object.keys(after)) {
     for (const k of ["x", "y", "w", "h"]) if (Math.abs(ga[k] - gb[k]) > TOL) moved.push(`${key}.${k} ${gb[k]} → ${ga[k]}`);
   }
   if (moved.length) failures.push(`${vp}: ${moved.join("; ")}`);
-  lines.push(`| ${vp} | ${b.seam.across} → ${a.seam.across} | ${a.seam.ordinary} | ${moved.length ? "MOVED" : "identical"} |`);
+  lines.push(`| ${vp} | ${a.seam ? `${b.seam.across} → ${a.seam.across}` : "–"} | ${a.seam?.ordinary ?? "–"} | ${moved.length ? "MOVED" : "identical"} |`);
 }
 
 const report = lines.join("\n");

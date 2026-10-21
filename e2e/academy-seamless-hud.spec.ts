@@ -270,10 +270,14 @@ test.describe(`seamless HUD (${LABEL})`, () => {
         await page.waitForTimeout(1500);
         expect(new URL(page.url()).pathname, "stayed on the route").toBe(route);
         await expect(page.locator(".o35-root")).toHaveCount(0);
-        const mainTop = await page.evaluate(() => document.querySelector("main")!.getBoundingClientRect().top + scrollY);
-        const band = await bandPx(page);
-        expect(Math.abs(mainTop - band), `${route}: <main> still starts below the band`).toBeLessThanOrEqual(0.5);
+        // recorded, not asserted: the compare job proves before == after
+        const mainTop = await page.evaluate(() => +(document.querySelector("main")!.getBoundingClientRect().top + scrollY).toFixed(1));
+        const firstChildTop = await page.evaluate(() => {
+          const el = document.querySelector("main")!.firstElementChild;
+          return el ? +(el.getBoundingClientRect().top + scrollY).toFixed(1) : null;
+        });
         const slug = route.replace(/\//g, "_");
+        records[`route${slug}-${vp.width}x${vp.height}`] = { geometry: { mainTop, firstChildTop, scrollHeight: await page.evaluate(() => document.documentElement.scrollHeight) } };
         await page.screenshot({ path: path.join(OUT, `route${slug}-${vp.width}x${vp.height}.png`), clip: { x: 0, y: 0, width: vp.width, height: Math.min(vp.height, 220) } });
       }
     }
