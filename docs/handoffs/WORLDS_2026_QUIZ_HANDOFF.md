@@ -361,12 +361,12 @@ The **failure sets are identical**. All are pre-existing: review-sample/taxonomy
 ## 11. Owner decisions
 
 - **A. Entry point.** DONE in pass 2 (§15.2): one compact control in the Worlds experience command bar, visually certified 50/50. Owner review of the look is still welcome; there is no open decision.
-- **B. Field-only mode. Current default, PENDING OWNER SIGN-OFF (not permanent policy).**
+- **B. Field-only mode. OWNER-APPROVED 2026-10-20 (§16).** Allowed when result data is unavailable.
   - What it means: before results exist, or with upstream down, a session is all field facts (region, entry stage, seed tier, region counts). It is honest, but lighter.
   - Where it is marked: `pro_play/presets.py`, at the `worlds_2026` entry.
   - To require results instead: set a minimum Match+Bracket count enforced in `plan` (a one-line rule).
-- **C. Labels. Current default, PENDING OWNER SIGN-OFF (not permanent policy).** Canonical team keys ("Team Liquid", "Cloud9", "LYON") rather than Worlds sponsor names ("Team Liquid Alienware", "Cloud9 Kia"). Marked at `tournament_fact_family.team_labels`.
-- **D. Report identity.** There is a proposal (§15.4) that needs owner approval. It is not applied, so reports still file under mode "Pro Play Quiz".
+- **C. Labels. OWNER-APPROVED 2026-10-20 (§16).** Canonical team keys ("Team Liquid", "Cloud9", "LYON") rather than Worlds sponsor names ("Team Liquid Alienware", "Cloud9 Kia"). Marked at `tournament_fact_family.team_labels`.
+- **D. Report identity. OWNER-APPROVED 2026-10-20 and implemented (§16, §17.4):** mode "Worlds 2026 Quiz", category "Leaguecraft".
 
 ## 12. Deployment order and owner actions
 
@@ -567,3 +567,110 @@ Owner approved all three product defaults:
 Frontend PR #104 implements reporting mode selection from the *server-confirmed* session preset (`session.preset.id == worlds_2026`); the general Pro Play Quiz report identity remains unchanged. A contract test checks the projected report and reportable snapshot. Frontend commits `5ecd2604` and `7ffe8c27` (code/test), awaiting CI after push. The owner has **not authorized any production merge, deploy or Lovable Publish**.
 
 CI release risks remain: backend safety workflow last failed without execution due to reported Actions billing restrictions; frontend owner-prototypes historically fails the unrelated Perfect Timing owner page test. Check latest CI once generated, and verify the exact underlying failure before release. Both PRs remain draft pending explicit merge approval. Merge backend first, Railway smoke, frontend second, Lovable Publish only after explicit permission.
+
+## 17. Local release verification (2026-10-20) — replaces CI as the gate
+
+GitHub Actions billing is unavailable, so CI is not a release gate. The evidence below is local. Every failure was compared against a clean base checkout (backend `w26q-be-base` = master `84567e11`; frontend `w26q-fe-base` = main `2cd80efb`).
+
+**Tips verified:** backend `7d401cad` (+ this handoff/comment commit), frontend `1494c6f3` + `ecf45834` (new attribution test).
+
+### 17.1 Recent report-filing diff (frontend `5ecd2604`, `7ffe8c27`) — reviewed, correct
+
+- `proPlayReportIdentity(state)` returns `{mode: "Worlds 2026 Quiz", category: "Leaguecraft"}` only when the **server-confirmed** `session.preset.id === "worlds_2026"`. Otherwise it returns the unchanged `PRO_PLAY_REPORT_IDENTITY`.
+- It feeds both `projection.report` (what `CanonicalArena` publishes) and `projectProPlayReportable`.
+- No schema, column, CHECK or migration change.
+
+### 17.2 Commands and results
+
+Backend (Windows, system Python, `-p no:cacheprovider`; stray `lol_calc.db` removed first):
+
+```
+python -m pytest -q test_pro_play_quiz.py test_pro_authority_on_demand.py test_pro_play_stem_order.py test_worlds_tournament_context.py test_tournament_context.py test_pro_play_question_enumeration.py test_pro_play_question_context.py test_pro_authority_bounded_scopes.py test_worlds_2026_quiz.py
+```
+
+| | Result |
+|---|---|
+| Branch | **542 passed, 8 failed, 5 skipped** (12:17) |
+| Base `84567e11` (same suites minus W26Q) | 501 passed, 8 failed, 5 skipped |
+| W26Q suite alone | **41 / 41** |
+| Failure sets | **identical** |
+
+The 8 failures are pre-existing on base: 7 review-sample/taxonomy admin route tests, plus the date-dependent `test_route_walks_pages_and_uses_each_id_for_its_own_read`.
+
+Frontend. Vitest goes through the machine's documented workaround: an esbuild-JSX scratch config plus the rollup-wasm require hook (`NODE_OPTIONS=--require rollup-wasm-hook.cjs`), `--maxWorkers=4`.
+
+```
+npx vitest run --config <scratch vt.mts> src/lib/pro-play src/components/pro-play src/pages/ProPlayQuiz.test.tsx src/pages/pro-play src/components/Layout src/lib/feedback src/components/feedback src/App.ux3aRoutes.test.ts src/pages/Worlds2026Quiz.test.tsx
+npx tsc -p tsconfig.app.json --noEmit
+node node_modules/vite/bin/vite.js build --config <scratch vite.build.mts>
+```
+
+| Check | Branch | Base `2cd80efb` | Verdict |
+|---|---|---|---|
+| Vitest release set | 34 failed / **1,948 passed** (65 files) | 34 failed / 1,932 passed (62 files) | **failure sets identical** |
+| W26Q frontend tests | `Worlds2026Quiz.test.tsx` 8/8, `QuizCta.test.tsx` 6/6, `worlds2026ReportMode.test.tsx` 2/2 | — | pass |
+| Worlds experience suites | 145 / 145 (pass 2) | 139 | pass |
+| `tsc` | 2 errors | 2 errors | identical, pre-existing: `OnboardingProfile.tsx`, `identity/connections.ts` |
+| Production build | OK (1m14s), `Worlds2026Quiz-*.js` lazy chunk | — | pass |
+
+**The 34 base failures, all present on clean main:**
+- 21 in `ProPlayTournamentWorlds`, 7 in `ProPlayTournamentExperience`, 1 in `featuredSwitchUx3a`: main's tracked `.env` turns the Worlds flag on, so the flag-off tests fail (UX6 note).
+- 5 in `feedback/contract.test.ts`: the test looks for `feedback_*_check` CHECK constraints in Supabase migration files absent from this checkout. This is environmental, and identical on base.
+
+**No regression was proven, so no unrelated module was touched.**
+
+### 17.3 Visual evidence (no new browser automation)
+
+- The certified run is the owner-approved 50/50 (§15.2, `docs/handoffs/w26q/cta-cert-results.json`) at frontend `42c6ec3c`.
+- Since then `git diff 42c6ec3c HEAD -- src/components src/pages src/App.tsx src/index.css tailwind.config.ts` shows only `src/pages/Worlds2026Quiz.test.tsx`.
+- The only non-test source change is `src/lib/pro-play/arena/projectProPlayArena.ts` (report identity, no markup or style).
+- So the certified layout is byte-identical in every rendered component, and the evidence stands.
+
+### 17.4 Mode attribution, end to end (frontend `ecf45834`, `src/lib/feedback/worlds2026ReportMode.test.tsx`, 2/2)
+
+The test uses the real page, arena publisher, feedback code and admin view; only the FB1 insert (`./client`) is mocked, as in `submitReport.test.ts`.
+
+1. **Displayed session:** `/lol/pro-play/quiz/worlds-2026` on a captured real backend session; the header reads "Worlds 2026 Quiz".
+2. **Published snapshot** (the one report slot, `useReportableQuestion`): `mode: "Worlds 2026 Quiz"`, `category: "Leaguecraft"`, `runtimeQuestionId` equal to the served `question_id`, no `canonicalAnswer` pre-grade.
+3. **Persistence contract:** `submitQuestionReport` produces exactly one `submitFeedback` call with:
+   - `entryIntent: "question_report"`;
+   - `category: "Leaguecraft"`;
+   - `reportContext.mode: "Worlds 2026 Quiz"`;
+   - `reportContext.route: /lol/pro-play/quiz/worlds-2026`;
+   - a body naming the mode.
+4. **Admin presentation:** `reportOrigin(row)` gives "Question Report · {reason} · Worlds 2026 Quiz".
+5. **Control:** the general `/lol/pro-play/quiz` still files `mode: "Pro Play Quiz"`, `category: "Leaguecraft"`.
+
+**Dependency:** any out-of-repo report query keyed on the exact mode text will now see a second value. The repo has none.
+
+### 17.5 Unresolved items
+
+- **Not code blockers.** CI cannot run, because Actions billing is unavailable; local verification replaces it (§17.2). Frontend `owner-prototypes`, when it runs, carries the pre-existing Perfect Timing e2e failure from base ancestors (§15.1). It is unrelated and not fixed here.
+- **Accepted constraint, already recorded:** statistical Worlds questions stay gated off (`STAT_DISCLOSURE_RULE_IMPLEMENTED = False`, §15.5) until Worlds 2026 canonical games exist and the stats asks/discloses rule is built.
+- **Owner actions:** explicit approval to merge (below). Then Railway deploy and smoke, then Lovable Publish.
+
+### 17.6 Merge order (owner approval required for each step)
+
+1. Mark backend #66 ready and merge it to `master`. Railway `web` auto-deploys.
+2. Smoke, read-only:
+   - `GET /api/pro-play/quiz/presets/worlds_2026` should give `available: true`, supply ≥ 60, `canonical_stat_tournaments: []`;
+   - `POST /api/pro-play/quiz/sessions?preset=worlds_2026` should give `session.preset.id == "worlds_2026"`;
+   - `POST /api/pro-play/quiz/sessions` (no preset) should still be the general quiz with no `preset` key.
+3. Mark frontend #104 ready and merge it to `main`, then Lovable Publish.
+4. Live check:
+   - `/lol/pro-play/quiz/worlds-2026` plays 10 questions under the "Worlds 2026 Quiz" header;
+   - the Worlds page's Quiz control appears beside the phase chip;
+   - one test report shows mode "Worlds 2026 Quiz" in Admin.
+5. Rollback: revert either merge.
+
+### 17.7 Recommendation
+
+**GO for production merge, conditional on explicit owner approval.** Both branches meet the local release gate:
+- failure sets identical to clean base in every backend and frontend suite;
+- W26Q-specific tests all pass;
+- `tsc` matches base; the build passes;
+- the visual evidence covers the shipped layout;
+- report attribution is verified end to end.
+
+No merge, deploy or publish has been performed.
+
