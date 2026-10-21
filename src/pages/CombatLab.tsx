@@ -118,6 +118,8 @@ import {
   type TargetDefenseMetadata,
   type CombatLabCreditStatus,
   CombatLabCreditsExhaustedError,
+  capabilityBadge,
+  type Capability,
 } from "@/lib/combat-lab/api";
 import CombatLabToolbar from "@/components/combat-lab/CombatLabToolbar";
 import { useInputHistory } from "@/hooks/useInputHistory";
@@ -462,7 +464,14 @@ function SearchSelect<T extends { name: string }>({
   );
 }
 
-function MultiSelect<T extends { name: string; tree?: string; type?: string; simulation_warnings?: string[] }>({
+function MultiSelect<T extends {
+  name: string;
+  tree?: string;
+  type?: string;
+  capability?: Capability;
+  capability_label?: string;
+  simulation_warnings?: string[];
+}>({
   label,
   placeholder,
   values,
@@ -490,10 +499,12 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string; sim
     () => options.filter((o) => (o?.name ?? "").toLowerCase().includes(query.toLowerCase())),
     [options, query]
   );
+  // Every current ranked item and rune is selectable, modeled or not, so a
+  // selected entry's limitations are always spelled out under the picker.
   const capabilityWarnings = useMemo(
     () => values.flatMap((value) =>
       options
-        .filter((option) => option.name === value)
+        .filter((option) => option.name.toLowerCase() === String(value).toLowerCase())
         .flatMap((option) => (option.simulation_warnings ?? []).map(
           (warning) => ({ item: value, warning })
         ))
@@ -611,7 +622,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string; sim
                             {withIcons && <IconBubble name={o.name} size="sm" />}
                             <span className="truncate">{o.name}</span>
                           </span>
-                          {selected && <span className="text-xs">✓</span>}
+                          <CapabilityTag option={o} selected={selected} />
                         </button>
                       );
                     })}
@@ -632,7 +643,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string; sim
                         {withIcons && <IconBubble name={o.name} size="sm" />}
                         <span className="truncate">{o.name}</span>
                       </span>
-                      {selected && <span className="text-xs">✓</span>}
+                      <CapabilityTag option={o} selected={selected} />
                     </button>
                   );
                 })}
@@ -640,6 +651,57 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string; sim
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Collapsed-row summary for an item or rune selection. The picker (and its
+ * limitation notes) only renders when the row is opened, so the summary says
+ * up front how many selected entries are not fully simulated.
+ */
+function SelectionSummary({
+  values,
+  options,
+}: {
+  values: string[];
+  options: { name: string; capability?: Capability }[];
+}) {
+  if (values.length === 0) return <>None</>;
+  const limited = values.filter((value) => {
+    const option = options.find((o) => o.name.toLowerCase() === String(value).toLowerCase());
+    return option?.capability != null && option.capability !== "fully_modeled";
+  }).length;
+  return (
+    <>
+      {values.join(" · ")}
+      {limited > 0 && (
+        <span className="text-amber-300/90"> · {limited} not fully simulated</span>
+      )}
+    </>
+  );
+}
+
+/** Option-row tail: a capability badge for anything not fully modeled, then the check. */
+function CapabilityTag({
+  option,
+  selected,
+}: {
+  option: { capability?: Capability; capability_label?: string };
+  selected: boolean;
+}) {
+  const badge = capabilityBadge(option.capability);
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      {badge && (
+        <span
+          title={option.capability_label ?? badge}
+          className="rounded border border-amber-500/40 px-1 py-px text-[10px] text-amber-300/90"
+        >
+          {badge}
+        </span>
+      )}
+      {selected && <span className="text-xs">✓</span>}
+    </span>
   );
 }
 
@@ -748,28 +810,48 @@ export default function CombatLab() {
     };
   }, []);
 
-  // Old saved builds may contain descriptive-only runes. When the backend
-  // capability catalog loads, remove those inert selections rather than
-  // silently running a simulation in which the chosen rune does nothing.
+  // Every current ranked item and rune is selectable, so the only names a saved
+  // build can hold that the catalog lacks are ones League no longer has
+  // (Phase Rush, Luden's Companion, ...) or corrupt entries. When the catalog
+  // loads, drop those and say so rather than simulating a dead name.
   useEffect(() => {
     if (metaLoading || runes.length === 0) return;
-    const playable = new Set(runes.map((r) => r.name.toLowerCase()));
+    const current = new Set(runes.map((r) => r.name.toLowerCase()));
     // A corrupt saved build can hold a non-array or non-string entries.
-    const isPlayable = (name: unknown): name is string =>
-      typeof name === "string" && playable.has(name.toLowerCase());
+    const isCurrent = (name: unknown): name is string =>
+      typeof name === "string" && current.has(name.toLowerCase());
     const saved: unknown[] = Array.isArray(config.runes) ? config.runes : [];
-    if (Array.isArray(config.runes) && saved.every(isPlayable)) return;
-    setConfig((current) => ({
-      ...current,
-      runes: (Array.isArray(current.runes) ? current.runes : []).filter(isPlayable),
+    if (Array.isArray(config.runes) && saved.every(isCurrent)) return;
+    setConfig((prev) => ({
+      ...prev,
+      runes: (Array.isArray(prev.runes) ? prev.runes : []).filter(isCurrent),
     }));
-    const unsupported = saved.filter((name) => !isPlayable(name)).map(String);
-    if (unsupported.length === 0) return;
+    const removed = saved.filter((name) => !isCurrent(name)).map(String);
+    if (removed.length === 0) return;
     toast({
-      title: "Unsupported runes removed",
-      description: `Not executable in Combat Lab: ${unsupported.join(", ")}.`,
+      title: removed.length === 1 ? "Retired rune removed" : "Retired runes removed",
+      description: `Not in the current ranked roster: ${removed.join(", ")}.`,
     });
   }, [metaLoading, runes, config.runes]);
+
+  useEffect(() => {
+    if (metaLoading || items.length === 0) return;
+    const current = new Set(items.map((i) => i.name.toLowerCase()));
+    const isCurrent = (name: unknown): name is string =>
+      typeof name === "string" && current.has(name.toLowerCase());
+    const saved: unknown[] = Array.isArray(config.items) ? config.items : [];
+    if (Array.isArray(config.items) && saved.every(isCurrent)) return;
+    setConfig((prev) => ({
+      ...prev,
+      items: (Array.isArray(prev.items) ? prev.items : []).filter(isCurrent),
+    }));
+    const removed = saved.filter((name) => !isCurrent(name)).map(String);
+    if (removed.length === 0) return;
+    toast({
+      title: removed.length === 1 ? "Retired item removed" : "Retired items removed",
+      description: `Not in the current ranked roster: ${removed.join(", ")}.`,
+    });
+  }, [metaLoading, items, config.items]);
 
   const critModes = useMemo<readonly CritMode[]>(() => {
     const fromApi = (options?.crit_modes || []).filter((m): m is CritMode =>
@@ -3465,7 +3547,7 @@ function InteractiveSandbox({
             <div className="border-t border-border/25">
             <ConfigRow
               label="Items"
-              summary={config.items.length > 0 ? config.items.join(" · ") : "None"}
+              summary={<SelectionSummary values={config.items} options={items} />}
             >
               <MultiSelect
                 label="Items (max 6)"
@@ -3493,7 +3575,7 @@ function InteractiveSandbox({
             >
             <ConfigRow
               label="Runes"
-              summary={config.runes.length > 0 ? config.runes.join(" · ") : "None"}
+              summary={<SelectionSummary values={config.runes} options={runes} />}
             >
               <MultiSelect
                 label="Runes"
@@ -4847,9 +4929,7 @@ function DefenderPanel({
             <div className="border-t border-border/25">
             <ConfigRow
               label="Items"
-              summary={
-                setup.targetItemNames.length > 0 ? setup.targetItemNames.join(" · ") : "None"
-              }
+              summary={<SelectionSummary values={setup.targetItemNames} options={items} />}
             >
               <MultiSelect
                 label="Defender items"
@@ -4878,9 +4958,7 @@ function DefenderPanel({
             >
             <ConfigRow
               label="Runes"
-              summary={
-                setup.targetRuneNames.length > 0 ? setup.targetRuneNames.join(" · ") : "None"
-              }
+              summary={<SelectionSummary values={setup.targetRuneNames} options={runes} />}
             >
               <MultiSelect
                 label="Defender runes"

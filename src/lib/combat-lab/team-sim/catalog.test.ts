@@ -18,7 +18,7 @@ import {
   rankBoundsFor,
   targetingPolicyInfo,
 } from "./catalog";
-import { REAL_CATALOG } from "./__fixtures__";
+import { REAL_CATALOG, REAL_CATALOG_ROSTER } from "./__fixtures__";
 
 describe("assertTeamSimCatalog", () => {
   it("accepts the real Phase 4A payload", () => {
@@ -283,5 +283,45 @@ describe("Phase 4C catalog contract", () => {
 
   it("declares client-retry idempotency in execution_assumptions", () => {
     expect(REAL_CATALOG.execution_assumptions.client_retry_idempotency).toBe(true);
+  });
+});
+
+describe("universal ranked roster catalog (2026-10-20)", () => {
+  const roster = indexCatalog(REAL_CATALOG_ROSTER);
+
+  it("accepts the real roster payload", () => {
+    expect(() => assertTeamSimCatalog(REAL_CATALOG_ROSTER)).not.toThrow();
+  });
+
+  it("offers every current ranked item and rune as supported", () => {
+    expect(roster.supportedItems).toHaveLength(221);
+    expect(roster.supportedRunes).toHaveLength(62);
+    for (const name of ["Luden's Echo", "Stormrazor", "Stealth Ward", "Health Potion"]) {
+      expect(roster.supportedItemNames.has(name)).toBe(true);
+    }
+    for (const name of ["Glacial Augment", "Treasure Hunter", "Unsealed Spellbook"]) {
+      expect(roster.supportedRuneNames.has(name)).toBe(true);
+    }
+    expect(roster.unsupportedRunes.map((r) => r.name)).toEqual(["Phase Rush"]);
+  });
+
+  it("carries capability onto the picker entries, never implying full simulation", () => {
+    const entry = (name: string) => roster.itemEntries.find((e) => e.name === name);
+    expect(entry("Infinity Edge")?.badge).toBeUndefined();
+    expect(entry("Luden's Echo")?.badge).toBe("Partial");
+    expect(entry("Luden's Echo")?.warnings?.join(" ")).toContain("Echo is not simulated");
+    expect(entry("Stealth Ward")?.badge).toBe("No combat effect");
+    expect(entry("Health Potion")?.badge).toBe("Not simulated");
+    const glacial = roster.runeEntries.find((e) => e.name === "Glacial Augment");
+    expect(glacial?.group).toBe("Inspiration");
+    expect(glacial?.badge).toBe("Not simulated");
+    for (const item of REAL_CATALOG_ROSTER.items.supported) {
+      if (item.capability !== "fully_modeled") expect(item.simulation_warnings?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("still indexes a pre-roster catalog that has no capability fields", () => {
+    const legacy = indexCatalog(REAL_CATALOG);
+    expect(legacy.itemEntries.every((e) => e.badge === undefined)).toBe(true);
   });
 });
