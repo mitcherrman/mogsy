@@ -31,8 +31,49 @@ export type ChampionConfidenceResponse = {
 };
 
 export type Champion = { id?: string; name: string; icon?: string };
-export type Item = { id?: string; name: string; type?: string; gold?: number; icon?: string; simulation_warnings?: string[] };
-export type Rune = { id?: string; name: string; tree?: string; icon?: string };
+/**
+ * What the simulator does with a selectable item or rune. Every current ranked
+ * Summoner's Rift item and rune is selectable; this says how much of it is
+ * actually calculated (backend `sr_roster.capability`).
+ */
+export type Capability = "fully_modeled" | "partially_modeled" | "noncombat" | "not_implemented";
+export type Item = {
+  id?: string;
+  item_id?: number;
+  name: string;
+  type?: string;
+  gold?: number;
+  icon?: string;
+  capability?: Capability;
+  capability_label?: string;
+  champion_exclusive?: string[];
+  simulation_warnings?: string[];
+};
+export type Rune = {
+  id?: string;
+  rune_key?: string;
+  name: string;
+  tree?: string;
+  rune_type?: string;
+  icon?: string;
+  capability?: Capability;
+  capability_label?: string;
+  simulation_warnings?: string[];
+};
+
+/** Short badge text for anything not fully modeled; null when fully modeled or unknown. */
+export const capabilityBadge = (capability?: Capability): string | null => {
+  switch (capability) {
+    case "partially_modeled":
+      return "Partial";
+    case "not_implemented":
+      return "Not simulated";
+    case "noncombat":
+      return "No combat effect";
+    default:
+      return null;
+  }
+};
 export type TargetProfile = { id?: string; name: string; description?: string };
 export type Summoner = { id?: string; name: string; icon?: string };
 

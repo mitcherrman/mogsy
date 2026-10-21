@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeItemsResponse, normalizeRunesResponse } from "./api";
+import { capabilityBadge, normalizeItemsResponse, normalizeRunesResponse } from "./api";
 
 describe("Combat Lab capability metadata", () => {
   it("preserves partial Gunblade warnings for the item selector", () => {
@@ -37,5 +37,55 @@ describe("Combat Lab capability metadata", () => {
     });
     expect(runes).toHaveLength(1);
     expect(runes[0].name).toBe("Arcane Comet");
+  });
+});
+
+describe("universal ranked roster capability (2026-10-20)", () => {
+  it("passes item capability, id and exclusivity through to the selector", () => {
+    const [item] = normalizeItemsResponse({
+      items: [{
+        item_name: "Black Spear",
+        item_id: 3599,
+        item_type: "starter",
+        cost: null,
+        capability: "noncombat",
+        capability_label: "No combat effect in this simulator",
+        champion_exclusive: ["Kalista", "Sylas"],
+        simulation_warnings: ["Oathsworn Bond has no combat effect here."],
+      }],
+    });
+    expect(item).toMatchObject({
+      name: "Black Spear",
+      item_id: 3599,
+      capability: "noncombat",
+      champion_exclusive: ["Kalista", "Sylas"],
+    });
+  });
+
+  it("passes rune capability and warnings through", () => {
+    const [rune] = normalizeRunesResponse({
+      runes: [{
+        rune_name: "Glacial Augment",
+        rune_key: "GLACIAL_AUGMENT",
+        tree_name: "Inspiration",
+        rune_type: "keystone",
+        capability: "not_implemented",
+        simulation_warnings: ["Not simulated: the icy-zone slow is not applied."],
+      }],
+    });
+    expect(rune).toMatchObject({
+      name: "Glacial Augment",
+      tree: "Inspiration",
+      capability: "not_implemented",
+      simulation_warnings: ["Not simulated: the icy-zone slow is not applied."],
+    });
+  });
+
+  it("badges everything that is not fully modeled, and nothing else", () => {
+    expect(capabilityBadge("fully_modeled")).toBeNull();
+    expect(capabilityBadge(undefined)).toBeNull();
+    expect(capabilityBadge("partially_modeled")).toBe("Partial");
+    expect(capabilityBadge("not_implemented")).toBe("Not simulated");
+    expect(capabilityBadge("noncombat")).toBe("No combat effect");
   });
 });

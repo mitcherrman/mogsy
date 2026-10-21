@@ -75,11 +75,25 @@ export type CatalogChampion = {
   actions: CatalogChampionAction[];
 };
 
+/**
+ * What the simulator does with an accepted entry. Every current ranked item and
+ * rune is "supported" (accepted); `capability` says how much of it is simulated.
+ * Optional: absent against a backend that predates the universal roster.
+ */
+export type CatalogCapability =
+  | "fully_modeled"
+  | "partially_modeled"
+  | "noncombat"
+  | "not_implemented";
+
 export type CatalogItem = {
   name: string;
   item_id: number | null;
   status: "supported" | "unsupported";
   reason?: string;
+  capability?: CatalogCapability;
+  capability_label?: string;
+  simulation_warnings?: string[];
 };
 
 export type CatalogRune = {
@@ -87,6 +101,10 @@ export type CatalogRune = {
   status: "supported" | "unsupported";
   tree?: string;
   reason?: string;
+  rune_key?: string;
+  capability?: CatalogCapability;
+  capability_label?: string;
+  simulation_warnings?: string[];
 };
 
 export type CatalogTargetingPolicy = {
