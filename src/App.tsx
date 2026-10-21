@@ -304,6 +304,12 @@ const PerfectTimingPageDev = import.meta.env.DEV
 const PerfectTimingDemo = import.meta.env.DEV
   ? lazy(() => import("./components/perfect-timing/__stories__/PerfectTimingDemo"))
   : null;
+// COMBAT V4: the Combat Theater prototype over committed Team Sim fixtures.
+// Same DEVELOPMENT-ONLY rule; no network, no credits, nothing shared with
+// the public /combat-lab page.
+const CombatTheaterDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/combat-theater/CombatTheaterDev"))
+  : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -823,6 +829,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {CombatEstimateLab ? (
                     <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
+                  ) : null}
+                  {CombatTheaterDev ? (
+                    <Route path="/dev/combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterDev /></Suspense>} />
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
