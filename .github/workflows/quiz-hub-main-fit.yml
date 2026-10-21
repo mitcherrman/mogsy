@@ -1,0 +1,132 @@
+name: Quiz Hub Main Screen Fit
+
+# Headless Chromium on GitHub's runner only — never a local Edge/Chrome (AGENTS.md).
+
+on:
+  push:
+    branches:
+      - fix/quiz-hub-main-mobile-fit
+  pull_request:
+    paths:
+      - 'src/index.css'
+      - 'src/components/quiz/centre-stage/**'
+      - 'src/components/quiz/RankedLobbyHero.tsx'
+      - 'src/components/quiz/LeaguecraftHub.tsx'
+      - 'src/components/quiz/LobbyPanel.tsx'
+      - 'e2e/quiz-hub-main-fit.spec.ts'
+      - 'playwright.quiz-hub-fit.config.ts'
+      - '.github/workflows/quiz-hub-main-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    name: Fit acceptance (this branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      # The repository lockfile is out of sync with package.json; resolve
+      # ephemerally and leave package.json / package-lock.json untouched.
+      - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Type check the files this change touches
+        # The app project has unrelated, pre-existing Supabase typing errors on
+        # main; fail only on errors in the files this workflow covers.
+        run: |
+          npx tsc -p tsconfig.app.json --noEmit > tsc.log || true
+          if grep -E "src/components/quiz/(centre-stage|RankedLobbyHero|LeaguecraftHub|LobbyPanel)" tsc.log; then exit 1; fi
+          echo "no type errors in the touched files"
+      - name: Stylesheet contract and Daily pane unit tests
+        run: npx vitest run src/components/quiz/centre-stage
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Real-browser geometry on the six phones, states, tabs and desktop
+        run: npx playwright test -c playwright.quiz-hub-fit.config.ts
+        env:
+          HUBFIT_OUT: ${{ github.workspace }}/hubfit-evidence/after
+      - name: Upload measurements and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-hub-fit-after
+          path: hubfit-evidence/after
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-hub-fit-failure
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  before:
+    name: Baseline measurements (base commit, no assertions)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Put the base commit's app code under the new spec
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          BASE="${BASE_SHA:-$(git merge-base HEAD origin/main)}"
+          echo "base: $BASE"
+          git checkout "$BASE" -- src public
+          git status --short | head -20
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Measure (assertions disabled)
+        run: npx playwright test -c playwright.quiz-hub-fit.config.ts
+        env:
+          HUBFIT_MEASURE_ONLY: '1'
+          HUBFIT_OUT: ${{ github.workspace }}/hubfit-evidence/before
+      - name: Upload baseline measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-hub-fit-before
+          path: hubfit-evidence/before
+          if-no-files-found: ignore
+          retention-days: 14
+
+  compat-play-popup:
+    name: Compatibility with the Play popup fix (PR #68, on main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Play popup short-viewport stylesheet test
+        run: npx vitest run src/components/quiz/play-scroll/playScroll.shortViewport.styles.test.ts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: The popup's own short-phone browser acceptance, with the hub fit present
+        run: npx playwright test -c playwright.play-scroll-short-phone.config.ts
+      - name: Quiz Hub fit, with the popup changes present
+        run: npx playwright test -c playwright.quiz-hub-fit.config.ts
