@@ -719,6 +719,9 @@
    beat, no flash and no travelling sweep. The digits still count. */
 .pt-chrono[data-animate="false"] .pt-chrono-sweep { display: none; }
 .pt-chrono[data-animate="false"] * { animation: none !important; }
+/* PT5.3: and no fades either — under reduced motion every state change of the instrument is instant. */
+.pt-chrono[data-animate="false"],
+.pt-chrono[data-animate="false"] * { transition: none !important; }
 .pt-chrono[data-animate="false"][data-phase="stopped"] .pt-chrono-beat,
 .pt-chrono[data-animate="false"][data-phase="submitting"] .pt-chrono-beat { stroke: var(--pt-gold); opacity: 0.55; stroke-width: 1.6; }
 

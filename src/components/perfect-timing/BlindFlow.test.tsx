@@ -156,6 +156,7 @@ describe("BlindChronometer — what the instrument shows", () => {
     expect(rules).not.toMatch(/infinite/);
     for (const name of ["pt-countin-beat", "pt-countin-ring", "pt-chrono-castword", "pt-auto-fill"]) expect(rules).toContain(`@keyframes ${name}`);
     expect(rules).toMatch(/\.pt-chrono\[data-animate="false"\] \* \{ animation: none !important; \}/);
+    expect(rules).toMatch(/\.pt-chrono\[data-animate="false"\] \* \{ transition: none !important; \}/);
     expect(rules).toMatch(/\.pt-reveal\[data-animate="true"\] \.pt-next\[data-auto="running"\] \.pt-auto-fill/);
   });
 
