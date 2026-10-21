@@ -772,7 +772,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * ledger the two duelist columns read. Nothing new is fetched and nothing is
    * recomputed.
    */
-  const timeline = useMemo(() => (m.publicRound ? projectRoundTimeline({
+  // Daily three acts (V2): the host's server-published set plan. It groups the
+  // SAME timeline by set; nothing about a round is derived from its ordinal.
+  const threeActsPlan = host?.threeActsPlan ?? null;
+  const roundTimeline = useMemo(() => (m.publicRound ? projectRoundTimeline({
     roundNumber: m.roundNumber,
     completedRounds: m.publicRound.completedRounds,
     segmentRoundNumber,
@@ -789,12 +792,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     totalRounds: plannedRoundTotal(m.publicRound),
   }) : null),
   [m.publicRound, m.roundNumber, m.damageLog, segmentRoundNumber, nextObservedKinds]);
-  // Daily three acts (V2): the host's server-published set plan. Groups the
-  // SAME timeline by set; nothing about a round is derived from its ordinal.
-  const threeActsPlan = host?.threeActsPlan ?? null;
-  const setTimeline = useMemo(
-    () => (timeline && threeActsPlan ? projectSetTimeline(timeline, threeActsPlan) : null),
-    [timeline, threeActsPlan]);
+  const timeline = useMemo(
+    () => (roundTimeline && threeActsPlan
+      ? { ...roundTimeline, sets: projectSetTimeline(roundTimeline, threeActsPlan) }
+      : roundTimeline),
+    [roundTimeline, threeActsPlan]);
   // The active segment's module renderer. A v2 payload or a legacy round has
   // no discriminator and resolves to quiz.v1 — the module those rounds were
   // created under — so behaviour is unchanged. null = unknown module.
@@ -1774,7 +1776,6 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
         className="shrink-0 pt-0.5" />
     ),
     timeline,
-    setTimeline,
     revealHold: m.revealHold,
     progressionEnabled,
     resultFeedback,

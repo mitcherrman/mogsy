@@ -56,6 +56,7 @@
  */
 import { META_REFLEX_MIXED_VERSION, type SegmentMeta } from "@/lib/ranked-public/contracts";
 import { ITEM_COST_DUEL_MODULE_ID } from "@/lib/ranked-core/modules/itemCostDuelModule";
+import { windowSetTimeline } from "@/lib/daily-v2/threeActsPlan";
 import type {
   PlayerSlot, ResolvedRoundView, ResultKind, RoundTimelineView, TimelineNode,
   TimelineNodeState, TimelineNodeTag, TimelineSegmentKind,
@@ -456,6 +457,9 @@ export function projectRoundTimeline(input: RoundTimelineInput): RoundTimelineVi
 export function windowTimelineView(view: RoundTimelineView, size: number): RoundTimelineView {
   const total = view.visibleNodes;
   if (size <= 0 || total <= size) return view;
+  // Daily three acts: the window keeps whole SETS (a set is about two node
+  // widths, so the phone's five-node window holds three sets).
+  const sets = view.sets ? windowSetTimeline(view.sets, Math.ceil(size / 2)) : view.sets;
   let focus = view.currentIndex;
   if (focus === null) {
     const resolved = view.nodes
@@ -475,5 +479,6 @@ export function windowTimelineView(view: RoundTimelineView, size: number): Round
     nodes: view.nodes.map((n) => ({
       ...n, index: n.index - start, visible: n.visible && inWindow(n.index - start),
     })),
+    ...(sets !== undefined ? { sets } : {}),
   };
 }

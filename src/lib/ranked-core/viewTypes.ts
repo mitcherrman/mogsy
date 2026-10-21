@@ -466,4 +466,11 @@ export interface RoundTimelineView {
   anchored: boolean;
   /** Ascending, INCLUDING the off-edge buffer. See `TimelineNode.index`. */
   nodes: TimelineNode[];
+  /**
+   * Daily three acts (V2) — the SAME rounds grouped by the server-published set
+   * plan (`daily-v2/threeActsPlan.ts`). Present only for a three-act stage;
+   * `RoundTimeline` then draws sets instead of nodes. Another view model of
+   * one strip, never a second strip.
+   */
+  sets?: import("@/lib/daily-v2/threeActsPlan").SetTimelineView | null;
 }

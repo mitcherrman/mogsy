@@ -27,7 +27,6 @@ import type { ArenaCardBeat } from "./cardBeat";
 import type { RankedPresentationPhase, RankedResultFeedback } from "./flow/rankedFlow";
 import type { DuelEventView, DuelStanding } from "./duelState";
 import type { ArenaReportIdentity } from "./reportSnapshot";
-import type { SetTimelineView } from "@/lib/daily-v2/threeActsPlan";
 export type { ArenaReportIdentity };
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 // Re-exported so a component that renders one part of this view model has a
@@ -502,12 +501,6 @@ export interface ArenaViewModel {
    */
   hudAction: ReactNode | null;
   timeline: RoundTimelineView | null;
-  /**
-   * Daily three acts (V2) — the same timeline grouped by the server's
-   * published set plan. When present the arena draws SETS (and the phone bar a
-   * three-set window) in place of the round strip. Absent everywhere else.
-   */
-  setTimeline?: SetTimelineView | null;
   /**
    * The settlement beat is running: the arena dims the question and withholds
    * interaction. Presentation only — the mode has already opened the next

@@ -31,7 +31,6 @@ import { MobileMatchBar } from "./MobileMatchBar";
 import { MatchOverFrame } from "./MatchOverFrame";
 import { RevealPanel } from "./RevealPanel";
 import { RoundTimeline } from "./RoundTimeline";
-import { SetTimeline } from "./SetTimeline";
 import { SegmentResultBeat } from "./SegmentResultBeat";
 import { SegmentTranscript } from "./SegmentTranscript";
 import { CardResultBeat } from "./CardResultBeat";
@@ -264,7 +263,7 @@ export function CanonicalArena({
     );
   }
 
-  const { header, surface, abilityHud, status, hudAction, timeline, setTimeline = null } = view;
+  const { header, surface, abilityHud, status, hudAction, timeline } = view;
   // PPQ2-A — the two surface members, resolved ONCE. Everything below reads
   // these locals, so the stage itself has no member-specific branch except
   // the one child it mounts.
@@ -928,11 +927,8 @@ export function CanonicalArena({
           timeline · Rules. Mounted only on a phone viewport (see the bar). The
           strip below stays the arena's last child and the desktop floor; on a
           phone Ranked arena CSS hides it in favour of the bar. */}
-      {mobileDuel && timeline && <MobileBottomBar timeline={timeline} setTimeline={setTimeline}
-        journeyCompact={journeyMobile} className="lg:hidden" />}
-      {timeline && (setTimeline
-        ? <SetTimeline view={setTimeline} className="ranked-timeline lg:shrink-0" />
-        : <RoundTimeline timeline={timeline} className="lg:shrink-0" />)}
+      {mobileDuel && timeline && <MobileBottomBar timeline={timeline} journeyCompact={journeyMobile} className="lg:hidden" />}
+      {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
 
       {/* RFX1 2B3 — the PRESENTATION OVERLAY. LAST, so it lays over everything
           in the shell, and `pointer-events-none` so it can never be what stops
