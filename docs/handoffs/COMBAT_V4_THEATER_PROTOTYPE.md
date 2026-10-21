@@ -36,6 +36,9 @@ click any marker, and read the "Why" ledger beside (desktop) or below (mobile) t
   (`node_modules` is a junction to the primary checkout's; see the repo memory on never running `pnpm` in worktrees).
 - Code commit: **`8f41e0eca298e718f463b713add230a5f84695b3`** — "COMBAT V4: Combat Theater prototype at /dev/combat-theater".
   This document is the following commit. **Nothing is pushed, merged, deployed or published.**
+- `origin/main` moved 21 commits during the session (to `d3854e5f`, "chore: re-sync Lovable with main", 04:32 -0700). A dry-run
+  `git merge-tree --write-tree origin/main HEAD` is clean (no conflicts) and both `App.tsx` anchor hunks still exist there; rebase
+  or merge just before opening a PR, as the prep handoff advised.
 
 New files (all under new directories except `App.tsx`):
 
