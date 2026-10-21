@@ -117,14 +117,17 @@ function useLockHold(model: PtStageModel): PtStageModel {
   const since = lockedAt.current && lockedAt.current.roundId === roundId ? performance.now() - lockedAt.current.at : Infinity;
   const left = model.phase === "revealed" ? LOCK_HOLD_MS - since : 0;
   const holding = left > 0;
-  const [, wake] = useReducer((n: number) => n + 1, 0);
+  const [woken, wake] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     if (!holding) return;
-    const t = window.setTimeout(wake, left);
+    // +1 ms: a timer may fire a hair before `performance.now()` agrees the hold is over (the two
+    // round differently). If it does, the wake finds the hold still on and this effect re-arms
+    // (`woken` changed) — before PT5.3A it did not, and the reveal could stay hidden for good.
+    const t = window.setTimeout(wake, Math.max(0, left) + 1);
     return () => window.clearTimeout(t);
-    // `left` is read once per hold; a re-render inside it must not re-arm the timer.
+    // `left` is read once per arming; a re-render for any other reason must not re-arm the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holding, roundId]);
+  }, [holding, roundId, woken]);
   return holding ? { ...model, phase: "submitting", reveal: null } : model;
 }
 

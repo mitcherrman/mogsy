@@ -144,3 +144,25 @@ describe("PerfectTimingArena — sound", () => {
     expect(play).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("PT5.2 lock hold — a timer that fires a hair early never strands the reveal (PT5.3A fix)", () => {
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it("re-arms when the wake finds the hold not yet over, so the reveal always comes", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let now = 1_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    const { rerender } = render(<PerfectTimingArena model={model({ phase: "stopped" })} />);
+    now = 1_000.4;
+    rerender(<PerfectTimingArena model={model({ phase: "revealed", reveal: DEMO_REVEALS.early })} />);
+    expect(screen.queryByTestId("pt-reveal")).toBeNull();
+    // The timer fires as asked (419.6 ms), but the clock reads a fraction of a millisecond short of the hold:
+    // timer and clock round differently (Node truncates, browsers coarsen performance.now()).
+    now = 1_419.9;
+    act(() => { vi.advanceTimersByTime(420); });
+    expect(screen.queryByTestId("pt-reveal")).toBeNull();
+    now = 1_422;
+    act(() => { vi.advanceTimersByTime(5); });
+    expect(screen.getByTestId("pt-reveal")).toBeInTheDocument();
+  });
+});
