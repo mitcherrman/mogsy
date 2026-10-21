@@ -1,0 +1,30 @@
+name: Admin Daily History Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/components/admin/AdminUsers.tsx'
+      - 'src/components/admin/users/AdminDailyHistory*'
+      - 'src/lib/admin/dailyHistory*'
+      - 'src/lib/admin/__fixtures__/daily-history-v1.json'
+      - '.github/workflows/admin-daily-history.yml'
+permissions:
+  contents: read
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Daily history contract, display rules, component and existing Admin Users regressions
+        run: npm test -- src/lib/admin/dailyHistory.test.ts src/components/admin/users src/components/admin/AdminUsers.phase1.test.tsx src/components/admin/AdminUsers.entitlement.test.tsx src/lib/analytics/dailyEntry.test.ts
+      - name: Vite production build
+        run: npx vite build
+      - name: No additional TS diagnostics beyond the current main baseline
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          node scripts/ci/check-audience-typecheck.mjs
