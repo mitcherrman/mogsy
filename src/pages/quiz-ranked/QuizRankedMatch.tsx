@@ -635,6 +635,8 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   /** RFX1 — the card that was already revealing when this mount first saw the
    *  match (`undefined` until then). Restored, never replayed. */
   const cardBaselineRef = useRef<string | null | undefined>(undefined);
+  /** The last card this mount watched being revealed (see `heldFinal`). */
+  const watchedCardKeyRef = useRef<string | null>(null);
   const settlementAwards = useMemo((): Record<string, AwardEvent> => {
     const round = m.lastResolved?.roundNumber ?? null;
     if (round === null) return {};
@@ -1503,7 +1505,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     ? cardBeat : null;
   const cardKey = revealingCard ? `${revealingCard.roundNumber}:${revealingCard.challengeIndex}` : null;
   if (cardBaselineRef.current === undefined) cardBaselineRef.current = cardKey;
-  const liveCard = revealingCard && cardKey !== cardBaselineRef.current ? revealingCard : null;
+  const watchedCard = revealingCard && cardKey !== cardBaselineRef.current ? revealingCard : null;
+  if (watchedCard) watchedCardKeyRef.current = cardKey;
+  // The LAST card of a finished block keeps its verdict on the centre stamp
+  // until the block settles. Its reveal window ends long before the opponent
+  // does, and the header's per-card plate is `md:` and up only, so on a phone
+  // the final verdict otherwise vanished while the player waited (the defect
+  // draft PR #108 patched with a second verdict word in the waiting line).
+  // Same element, same event id: nothing re-announces, and only a card this
+  // mount watched being revealed — a restored wait stays restored.
+  const segState = surfaceRound?.segmentState ?? null;
+  const heldFinal = cardBeat && segState?.ownFinished === true
+    && segState.ownRevealingCardIndex === null
+    && `${cardBeat.roundNumber}:${cardBeat.challengeIndex}` === watchedCardKeyRef.current
+    ? cardBeat : null;
+  const liveCard = watchedCard ?? heldFinal;
   const resultFeedback = projectResultFeedback({
     matchId, viewerId: viewerUserId, opponentId: opponentPlayerId,
     revealing, presentedRoundNumber: surfaceRoundNumber,
