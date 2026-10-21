@@ -1,0 +1,38 @@
+/* ==========================================================================
+   Seamless top HUD — the Orrery's sky reaches the top edge of the viewport.
+   Imported by AcademyCorePage LAST, after academy-core-phone-fit.css (order
+   matters). Every rule is scoped under `.o35-root`, which only /lol renders,
+   so no other route, and no global header colour, changes.
+
+   The app shell keeps the HUD band clear with `pt-[var(--app-header-h)]`, and
+   the hero started below it, so the band showed the shell's own flat ground: a
+   dark strip with a hard edge where the sky began. Here the Academy page lifts
+   into that band and the hero pads back down by the same amount:
+
+     .o35-root    margin-top   − band   (the page starts at the viewport top)
+     .o35-hero    padding-top  + band   (its content starts where it did)
+     .o35-hero    min-height   + band   (its content box is the same size)
+
+   so the stage, the masthead, the arrows and every later section keep their
+   exact positions and sizes, and the document is exactly as tall as before.
+   `--app-header-h`, `--app-viewport-h` and the phone height budget are not
+   touched. The sky (`.o35-env`, inset 0 in the hero) now covers the band too,
+   and the fixed HUD (z-index 50) floats in it above `<main>` (z-index 20).
+   ========================================================================== */
+
+.o35-root {
+  --o35-hud-band: var(--app-header-h, 0px);
+  margin-top: calc(-1 * var(--o35-hud-band));
+}
+
+/* desktop: academy-core-v35.css's padding-top and min-height, plus the band */
+.o35-root .o35-hero {
+  padding-top: calc(clamp(0.5rem, 1.6vh, 1.25rem) + var(--o35-hud-band));
+  min-height: calc(max(560px, calc(100dvh - var(--app-header-h))) + var(--o35-hud-band));
+}
+
+/* stacked (phones, tablets, short landscape): academy-core-masthead.css's
+   0.5rem, plus the band; min-height stays 0 */
+.o35-root[data-layout="stacked"] .o35-hero {
+  padding-top: calc(0.5rem + var(--o35-hud-band));
+}
