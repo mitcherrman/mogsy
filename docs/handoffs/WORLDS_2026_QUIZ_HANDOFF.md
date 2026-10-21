@@ -555,3 +555,15 @@ Not applied, because it changes report records and the brief asks for a proposal
 - CI on the pass-2 tip `141b7f73`: `validation` and `patch-deck` are green. `owner-prototypes` is red on the same single test (453/453 unit, 20/21 e2e). That is the pre-existing Perfect Timing baseline failure (§15.1). It is not caused by this PR, but it keeps the check red until main is fixed. The owner can merge over it knowingly or fix main first.
 - It depends on the backend being deployed first.
 - §11-D is open but does not block: reports file safely as today.
+
+
+## 16. Owner sign-off and release-preparation update (2026-10-20)
+
+Owner approved all three product defaults:
+- **Field-only:** allow a verified field-only 10-question session when results are unavailable. Do not broaden to other tournaments.
+- **Teams:** canonical stable team names; no sponsor-name substitution.
+- **Reporting:** Worlds 2026 Quiz is its own free-text mode label, with existing **Leaguecraft** report category; no schema change.
+
+Frontend PR #104 implements reporting mode selection from the *server-confirmed* session preset (`session.preset.id == worlds_2026`); the general Pro Play Quiz report identity remains unchanged. A contract test checks the projected report and reportable snapshot. Frontend commits `5ecd2604` and `7ffe8c27` (code/test), awaiting CI after push. The owner has **not authorized any production merge, deploy or Lovable Publish**.
+
+CI release risks remain: backend safety workflow last failed without execution due to reported Actions billing restrictions; frontend owner-prototypes historically fails the unrelated Perfect Timing owner page test. Check latest CI once generated, and verify the exact underlying failure before release. Both PRs remain draft pending explicit merge approval. Merge backend first, Railway smoke, frontend second, Lovable Publish only after explicit permission.
