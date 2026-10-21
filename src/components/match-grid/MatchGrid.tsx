@@ -36,6 +36,19 @@ import {
 import { planReveal, reached, type RevealStage } from "@/lib/match-grid/reveal";
 import "./matchGrid.css";
 
+/** Decorative art, or its text fallback when there is none OR it fails to load
+ * (QMEDIA2): a dead asset shows the same monogram a missing one does, never
+ * the browser's broken-image glyph. */
+function ArtOr({ src, fallback, imgProps }: {
+  src: string | null | undefined;
+  fallback: ReactNode;
+  imgProps?: { className?: string; draggable?: boolean };
+}) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || failedSrc === src) return <>{fallback}</>;
+  return <img src={src} alt="" data-art-state="ok" {...imgProps} onError={() => setFailedSrc(src)} />;
+}
+
 export interface MatchGridProps {
   content: MatchPublic;
   phase: InteractionPhase;
@@ -646,9 +659,9 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
                   })}
                 </svg>
                 <span className="mg-seal-face" aria-hidden>
-                  {renderGroupGlyph?.(g) ?? (g.media?.src
-                    ? <img src={g.media.src} alt="" draggable={false} />
-                    : <span className="mg-seal-mono">{g.label.slice(0, 1)}</span>)}
+                  {renderGroupGlyph?.(g) ?? (
+                    <ArtOr src={g.media?.src} imgProps={{ draggable: false }}
+                      fallback={<span className="mg-seal-mono">{g.label.slice(0, 1)}</span>} />)}
                 </span>
                 <span className="mg-seal-index" aria-hidden>{ROMAN[gi] ?? String(gi + 1)}</span>
               </button>
@@ -706,7 +719,8 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
               }}
             >
               <span className="mg-sigil-disc" aria-hidden>
-                {art ? <img src={art} alt="" draggable={false} /> : <span className="mg-sigil-mono">{(e.monogram ?? e.label).slice(0, 2)}</span>}
+                <ArtOr src={art} imgProps={{ draggable: false }}
+                  fallback={<span className="mg-sigil-mono">{(e.monogram ?? e.label).slice(0, 2)}</span>} />
                 {landed?.token === e.token && !reveal ? <span key={landed.n} className="mg-sigil-land" /> : null}
                 <span className="mg-sigil-mark" data-mark={mark ?? undefined} />
               </span>
@@ -845,7 +859,8 @@ function Ledger({ content, reveal, shown, detailsOpen, box, groupLabel, groupHue
                   aria-label={`${e.label}. Your placement: ${from}. Correct ${content.groupNoun}: ${groupLabel(to)}.`}
                   style={hue == null ? undefined : ({ "--mg-hue": String(hue) } as CSSProperties)}>
                   <span className="mg-ledger-line1">
-                    {e.media?.src ? <img src={e.media.src} alt="" className="mg-ledger-art" /> : <span className="mg-ledger-art" aria-hidden />}
+                    <ArtOr src={e.media?.src} imgProps={{ className: "mg-ledger-art" }}
+                      fallback={<span className="mg-ledger-art" aria-hidden />} />
                     <span className="mg-ledger-name">{e.label}</span>
                     {fit.mode === "compact" ? toLine(null) : null}
                   </span>

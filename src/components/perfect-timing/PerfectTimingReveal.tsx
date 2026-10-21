@@ -92,7 +92,8 @@ function SliceDelta({ slice, targetMs, rank }: { slice: PtSliceRevealView; targe
     return (
       <p className="pt-delta" data-testid="pt-slice-delta" data-kind={slice.kind}>
         <span className="pt-delta-tag">
-          {slice.item.iconUrl ? <img className="pt-delta-item" src={slice.item.iconUrl} alt="" draggable={false} aria-hidden /> : null}
+          {slice.item.iconUrl ? <img className="pt-delta-item" src={slice.item.iconUrl} alt="" draggable={false} aria-hidden
+            onError={(ev) => { ev.currentTarget.style.display = "none"; }} /> : null}
           {slice.item.name} {hasteText(slice.abilityHaste, true)}
         </span>
         <span className="pt-delta-math" data-testid="pt-slice-math">
