@@ -9,7 +9,7 @@
  * (Rank up, Item equipped); `leave()` is that way out, and the "PT5.1" block at
  * the bottom is the transition's own rules.
  */
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import capture from "@/lib/perfect-timing/__fixtures__/sliceCaptureV1.json";
@@ -40,6 +40,10 @@ vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
 });
 
 import PerfectTimingPage from "./PerfectTimingPage";
+
+// PT5.3 CI: these runs wait through the real 420 ms lock hold on a shared runner; the default
+// 1 s wait for the reveal was too tight there (passes locally either way).
+configure({ asyncUtilTimeout: 4_000 });
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;

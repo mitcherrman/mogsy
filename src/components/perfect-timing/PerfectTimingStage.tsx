@@ -246,7 +246,7 @@ export function PerfectTimingStage({ round, phase, press, statusText, actions, a
               <button type="button" className="pt-hold" data-testid="pt-resume" data-primary="true" onClick={resume}>Resume</button>
             ) : (
               <>
-                <span>Get ready</span>
+                <span>Not ready?</span>
                 <button type="button" className="pt-hold" data-testid="pt-hold" onClick={flow.onHold}>Hold</button>
               </>
             )
