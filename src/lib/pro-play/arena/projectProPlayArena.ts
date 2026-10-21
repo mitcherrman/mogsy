@@ -289,6 +289,13 @@ function projectTerminal(state: ProPlayArenaState): ProPlayTerminalData | null {
   };
 }
 
+/** Worlds reports retain the Leaguecraft category, but have a distinct mode label. */
+export function proPlayReportIdentity(state: ProPlayArenaState): ArenaReportIdentity {
+  return state.session?.preset?.id === "worlds_2026"
+    ? { ...PRO_PLAY_REPORT_IDENTITY, mode: "Worlds 2026 Quiz" }
+    : PRO_PLAY_REPORT_IDENTITY;
+}
+
 /** The FB1-4 snapshot. The answer rides along only once the server graded. */
 export function projectProPlayReportable(
   state: ProPlayArenaState,
@@ -297,8 +304,8 @@ export function projectProPlayReportable(
   if (!q) return null;
   const graded = gradedFor(state);
   return {
-    category: PRO_PLAY_REPORT_IDENTITY.category,
-    mode: PRO_PLAY_REPORT_IDENTITY.mode,
+    category: proPlayReportIdentity(state).category,
+    mode: proPlayReportIdentity(state).mode,
     runtimeQuestionId: q.question_id,
     prompt: q.question_text,
     choices: q.choices,
@@ -325,7 +332,7 @@ export function projectProPlayArena(
   const error = projectError(state);
   return {
     phase: projectPhase(state),
-    report: PRO_PLAY_REPORT_IDENTITY,
+    report: proPlayReportIdentity(state),
     header: projectHeader(state, options),
     surface: projectSurface(state),
     dossier: projectDossier(state.question),
