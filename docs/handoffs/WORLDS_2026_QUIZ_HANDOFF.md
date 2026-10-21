@@ -674,3 +674,28 @@ The test uses the real page, arena publisher, feedback code and admin view; only
 
 No merge, deploy or publish has been performed.
 
+## 18. Backend released (2026-10-21) — owner-approved
+
+**Pre-merge proof.** Master had moved 20 commits past the verification base, to `a018bc0c` (Gunblade, BKP1, admin Daily history).
+- No files overlap with #66.
+- On a trial merge, the W26Q, quiz, on_demand, stem-order and tournament-context suites gave 212 passed and 1 failed. The failure is the pre-existing date-dependent `test_route_walks_pages_and_uses_each_id_for_its_own_read`.
+
+**Merge.** League_Combat_Simulator#66 was marked ready and merged, merge commit `7d59cb0f`.
+- Its parents are `db4b56ff`, which is PR #71 (PAUTH1), merged by another session minutes earlier, and `388024c6`.
+- #71 and #66 also share no files.
+
+**Deploy.** Railway `web` deployment for `7d59cb0f`: SUCCESS.
+
+**Smoke, read-only (§17.6), 2026-10-21 ~05:39Z — all pass:**
+
+| Call | Result |
+|---|---|
+| `GET /api/pro-play/quiz/presets/worlds_2026` | 200, `available: true`, supply 60 (Match 12 / Bracket 4 / Field 44), `canonical_stat_tournaments: []`, results certified, feed not stale, `as_of 2026-10-21T05:38:55Z` |
+| `POST /api/pro-play/quiz/sessions?preset=worlds_2026` | 200, `session.preset.id = worlds_2026`, label "Worlds 2026", 10 questions; Q1 "Who won MVK Esports vs Karmine Corp in the Worlds 2026 Play-In final?"; no answer/explanation/evidence/reveal/family key pre-answer, no internal family id |
+| `POST /api/pro-play/quiz/sessions` (no preset) | 200, general quiz, no `preset` key |
+| `POST /api/pro-play/quiz/sessions?preset=nope` | 404 `PP_UNKNOWN_PRESET` |
+
+Side effect: the two smoke POSTs created two transient in-memory quiz sessions (1 h TTL, no database write).
+
+**Next.** The frontend mogsy#104 is still draft and unmerged, awaiting owner approval. Then Lovable Publish and the live check (§17.6 step 4).
+
