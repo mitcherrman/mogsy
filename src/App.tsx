@@ -37,6 +37,7 @@ import {
   PRO_PLAY_STATS_ROUTE,
   PRO_PLAY_TEAM_ROUTE,
   PRO_PLAY_TOURNAMENT_ROUTE,
+  PRO_PLAY_WORLDS_QUIZ_ROUTE,
 } from "@/lib/pro-play/routes";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
@@ -102,6 +103,7 @@ const LolMissedQuestions = R.LolMissedQuestions.Component;
 const LolPremium = R.LolPremium.Component;
 const ProPlayHub = R.ProPlayHub.Component;
 const ProPlayQuiz = R.ProPlayQuiz.Component;
+const Worlds2026Quiz = R.Worlds2026Quiz.Component;
 const ProPlayGraphs = R.ProPlayGraphs.Component;
 const ProPlaySearch = R.ProPlaySearch.Component;
 const ProPlayPlayerProfile = R.ProPlayPlayerProfile.Component;
@@ -732,6 +734,10 @@ export const appRouter = createBrowserRouter(
                       /lol/premium above, which is the subscription page. */}
                   <Route path="/lol/pro-play" element={<Suspense fallback={<RouteFallback />}><ProPlayHub /></Suspense>} />
                   <Route path="/lol/pro-play/quiz" element={<Suspense fallback={<RouteFallback />}><ProPlayQuiz /></Suspense>} />
+                  {/* W26Q: the Worlds 2026 quiz — the same arena on a server
+                      preset session (every question from verified Worlds 2026
+                      facts, no general fallback). */}
+                  <Route path={PRO_PLAY_WORLDS_QUIZ_ROUTE} element={<Suspense fallback={<RouteFallback />}><Worlds2026Quiz /></Suspense>} />
                   {/* PP-IA2: the Pro Stats table, off the hub. Old hub URLs
                       carrying its query keys redirect here (ProPlayHub). */}
                   <Route path={PRO_PLAY_STATS_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayStats /></Suspense>} />
