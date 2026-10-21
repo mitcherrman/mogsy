@@ -99,7 +99,7 @@ function standIn(override?: Override, mutateDeal?: (deal: Json) => void) {
 
 function mount(be: ReturnType<typeof standIn>, mode?: "slice") {
   const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode={mode} /></MemoryRouter>);
+  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode={mode} flow="visible" /></MemoryRouter>);
 }
 
 function key(el: Element | Document, t: number, init: KeyboardEventInit = {}) {
@@ -162,7 +162,7 @@ describe("Perfect Timing — mode pick", () => {
       return new Response(JSON.stringify(deal), { status: 200, headers: { "Content-Type": "application/json" } });
     });
     const api = perfectTimingApi({ fetchImpl: fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-    render(<MemoryRouter><PerfectTimingPage api={api} /></MemoryRouter>);
+    render(<MemoryRouter><PerfectTimingPage api={api} flow="visible" /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("pt-mode-random"));
     await armed();
     expect(calls).toEqual(['/deal {"count":5}']);

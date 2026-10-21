@@ -19,6 +19,12 @@
  * NOTHING HERE MEASURES OR GRADES. The phase, the handlers and the status
  * line arrive through props; this component draws them.
  *
+ * PT5.3 BLIND FLOW (owner lab, `flow` present). The game counts the round in
+ * and starts it; the seal is the BLIND chronometer (no elapsed time while it
+ * runs) and the one input is the STOP. During the count-in the hint line offers
+ * Hold (between attempts only); a held count-in offers Resume, which counts in
+ * again from 3. Absent `flow`, everything is PT5.2.
+ *
  * PT5 MASTERY SLICE. When the round carries `slice`, the hero also draws the
  * three-stage track (Foundation › Rank up › Equipped) over the art, and the
  * one input that changed since the last stage is marked: the rank on Rank up,
@@ -30,10 +36,10 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { SubjectArt } from "@/components/interaction-grammar/shared";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import type { PtPhase, PtPressSurfaceProps, PtRoundView, PtSliceItemView, PtSliceStageView } from "@/lib/perfect-timing/viewModel";
+import type { PtBlindFlowView, PtPhase, PtPressSurfaceProps, PtRoundView, PtSliceItemView, PtSliceStageView } from "@/lib/perfect-timing/viewModel";
 import type { PtClockReading, SecondBeat } from "@/lib/perfect-timing/chronometer";
-import { ArcaneChronometer } from "./ArcaneChronometer";
-import { PHASE_FACE, SLICE_STAGE_WORD, hasteText, lockedStatusText, rankText } from "./presentation";
+import { ArcaneChronometer, BlindChronometer } from "./ArcaneChronometer";
+import { BLIND_FACE, CAST_WORD, HELD_FACE, PHASE_FACE, SLICE_STAGE_WORD, hasteText, lockedStatusText, rankText } from "./presentation";
 import "./perfectTiming.css";
 
 export interface PerfectTimingStageProps {
@@ -56,6 +62,8 @@ export interface PerfectTimingStageProps {
   clock?: PtClockReading | null;
   /** PT5.2: each whole elapsed second (the host plays the tick). */
   onClockBeat?: (beat: SecondBeat) => void;
+  /** PT5.3: the blind automatic flow. Absent: the PT5.2 visible stopwatch. */
+  flow?: PtBlindFlowView | null;
 }
 
 /** The champion's splash, cropped to the hero; a failure leaves the dark card. */
@@ -172,19 +180,27 @@ export function PerfectTimingHero({ round, compact = false }: { round: PtRoundVi
   );
 }
 
-export function PerfectTimingStage({ round, phase, press, statusText, actions, autoFocusSeal = false, clock = null, onClockBeat }: PerfectTimingStageProps) {
+export function PerfectTimingStage({ round, phase, press, statusText, actions, autoFocusSeal = false, clock = null, onClockBeat, flow = null }: PerfectTimingStageProps) {
   const reducedMotion = useReducedMotionPreference();
   const coarse = useCoarsePointer();
   const sealRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (autoFocusSeal) sealRef.current?.focus({ preventScroll: true });
   }, [autoFocusSeal]);
-  const face = PHASE_FACE[phase];
+  const held = flow !== null && flow.held && phase === "countdown";
+  const face = held ? HELD_FACE : flow ? BLIND_FACE[phase] ?? PHASE_FACE[phase] : PHASE_FACE[phase];
   // The lock is announced once, at the phase edge, with the time the player
   // stopped on (the engine's submitted value); the running digits never are.
   const lockedAt = (phase === "stopped" || phase === "submitting") && clock?.elapsedMs != null ? clock.elapsedMs : null;
   const status = statusText ?? (lockedAt !== null ? lockedStatusText(lockedAt) : face.status);
   const monogram = round?.slot ?? "?";
+  const sealIcon = <SubjectArt media={round?.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={monogram} className="h-full w-full" />;
+  // The hint line: the stop keys while a round can be stopped; during a blind count-in, the hold.
+  const hintLive = phase === "armed" || phase === "running" || (flow !== null && phase === "countdown");
+  const resume = () => {
+    flow?.onResume();
+    sealRef.current?.focus({ preventScroll: true });
+  };
 
   return (
     <div className="pt-stage" data-testid="pt-stage" data-phase={phase} data-actions={actions ? "true" : undefined}>
@@ -206,10 +222,13 @@ export function PerfectTimingStage({ round, phase, press, statusText, actions, a
           >
             <span aria-hidden className="pt-seal-ring" />
             <span aria-hidden className="pt-seal-face">
-              <ArcaneChronometer phase={phase} roundId={round?.roundId ?? null} clock={clock}
-                reducedMotion={reducedMotion} word={face.word} onBeat={onClockBeat}
-                icon={<SubjectArt media={round?.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={monogram}
-                  className="h-full w-full" />} />
+              {flow ? (
+                <BlindChronometer phase={phase} clock={clock} countIn={flow.countIn} countInId={flow.countInId} held={held}
+                  slot={monogram} icon={sealIcon} word={face.word} castWord={CAST_WORD} reducedMotion={reducedMotion} />
+              ) : (
+                <ArcaneChronometer phase={phase} roundId={round?.roundId ?? null} clock={clock}
+                  reducedMotion={reducedMotion} word={face.word} onBeat={onClockBeat} icon={sealIcon} />
+              )}
             </span>
           </div>
         </div>
@@ -220,11 +239,25 @@ export function PerfectTimingStage({ round, phase, press, statusText, actions, a
 
         {actions ? <div className="pt-actions" data-testid="pt-actions">{actions}</div> : null}
 
-        <p className="pt-hint" data-testid="pt-hint" data-live={phase === "armed" || phase === "running" ? "true" : "false"}>
-          <kbd className="pt-kbd">Space</kbd>
-          <span>or</span>
-          <kbd className="pt-kbd">Enter</kbd>
-          <span>{coarse ? "· or tap the clock" : "· or click the clock"}</span>
+        <p className="pt-hint" data-testid="pt-hint" data-live={hintLive ? "true" : "false"}
+          data-mode={flow && phase === "countdown" ? (held ? "held" : "count-in") : "keys"}>
+          {flow && phase === "countdown" ? (
+            held ? (
+              <button type="button" className="pt-hold" data-testid="pt-resume" data-primary="true" onClick={resume}>Resume</button>
+            ) : (
+              <>
+                <span>Get ready</span>
+                <button type="button" className="pt-hold" data-testid="pt-hold" onClick={flow.onHold}>Hold</button>
+              </>
+            )
+          ) : (
+            <>
+              <kbd className="pt-kbd">Space</kbd>
+              <span>or</span>
+              <kbd className="pt-kbd">Enter</kbd>
+              <span>{coarse ? "· or tap the clock" : "· or click the clock"}</span>
+            </>
+          )}
         </p>
       </div>
     </div>

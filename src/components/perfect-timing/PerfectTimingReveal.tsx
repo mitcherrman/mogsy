@@ -23,6 +23,13 @@
  * control or a text field has the key) — so the keyboard player who stopped with
  * Space continues with Space, and a double-tap during the reveal can never skip it.
  *
+ * PT5.3 — AUTOMATIC PROGRESSION (blind flow, `autoAdvanceMs`). Once settled
+ * the reveal also moves on by itself after the dwell; a quiet fill along the
+ * way-on button shows it coming (none under reduced motion). Hold, beside it,
+ * stops that for this reveal (the player then continues with the button, Space
+ * or Enter). The dwell is never cut short and never runs while the page is
+ * hidden. Without `autoAdvanceMs` the reveal waits for the player, as before.
+ *
  * PT5 MASTERY SLICE. A slice reveal adds ONE line under the plates — what
  * changed since the previous stage and what it did to the cooldown: the rank
  * step with the previous TRUE cooldown (only if that stage was revealed, never
@@ -43,7 +50,7 @@ import "./perfectTiming.css";
 export interface PerfectTimingRevealProps {
   reveal: PtRevealView;
   /** `"key"` when Space/Enter advanced it, from the document or from the focused button. */
-  onNext: (source?: "key") => void;
+  onNext: (source?: "key" | "auto") => void;
   /** The label on the way-on button. "Next round" by default; the last round says "See results". */
   nextLabel?: string;
   /**
@@ -52,6 +59,12 @@ export interface PerfectTimingRevealProps {
    * same key they stopped with. Default on.
    */
   autoFocusNext?: boolean;
+  /** PT5.3: move on by itself this long after settling (`onNext("auto")`). Null: wait for the player. */
+  autoAdvanceMs?: number | null;
+  /** PT5.3: the run is held — no automatic move. */
+  held?: boolean;
+  /** PT5.3: hold the run (offered beside the way on while an automatic move is coming). */
+  onHold?: () => void;
 }
 
 /** Where the beats fall, in ms after mount, with motion allowed. */
@@ -122,7 +135,7 @@ function SliceDelta({ slice, targetMs, rank }: { slice: PtSliceRevealView; targe
   );
 }
 
-export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", autoFocusNext = true }: PerfectTimingRevealProps) {
+export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", autoFocusNext = true, autoAdvanceMs = null, held = false, onHold }: PerfectTimingRevealProps) {
   const reducedMotion = useReducedMotionPreference();
   const animate = !reducedMotion;
   const direction = errorDirection(reveal.errorMs);
@@ -143,12 +156,15 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
 
   // Once settled, focus moves to the way on and Space/Enter anywhere advance once.
   // A press aimed at the button itself (or any control) is the control's own.
-  useSettledAdvance({
+  const { autoPass } = useSettledAdvance({
     buttonRef: nextRef,
     settleMs: animate ? REVEAL_BEATS.focus : REDUCED_FOCUS_MS,
     onAdvance: onNext,
     enabled: autoFocusNext,
+    autoAdvanceMs,
+    paused: held,
   });
+  const auto = autoAdvanceMs !== null;
 
   // A slice prints at the precision it was graded (4545 → "4.545 s"); a Random Run keeps PT4.4's two places.
   const secs = reveal.slice ? formatSliceSeconds : formatSeconds;
@@ -244,10 +260,25 @@ export function PerfectTimingReveal({ reveal, onNext, nextLabel = "Next round", 
         )}
       </p>
 
-      <button ref={nextRef} type="button" className="pt-next pt-enter" data-testid="pt-next" onClick={(e) => onNext(e.detail === 0 ? "key" : undefined)}
-        style={delay(REVEAL_BEATS.next)}>
-        {nextLabel}
-      </button>
+      {auto ? (
+        <div className="pt-next-row pt-enter" data-testid="pt-next-row" data-auto-row="true" style={delay(REVEAL_BEATS.next)}>
+          <button ref={nextRef} type="button" className="pt-next" data-testid="pt-next" onClick={(e) => onNext(e.detail === 0 ? "key" : undefined)}
+            data-auto={held ? "held" : autoPass > 0 ? "running" : "waiting"}
+            style={{ "--pt-auto-ms": `${autoAdvanceMs}ms` } as CSSProperties}>
+            {autoPass > 0 ? <span key={autoPass} className="pt-auto-fill" data-testid="pt-auto-fill" aria-hidden /> : null}
+            <span className="pt-next-label">{nextLabel}</span>
+          </button>
+          <button type="button" className="pt-hold" data-testid="pt-hold" data-held={held ? "true" : undefined}
+            disabled={held} onClick={() => { onHold?.(); nextRef.current?.focus({ preventScroll: true }); }} aria-label={held ? "Held: continue when ready" : "Hold: stop the automatic advance"}>
+            {held ? "Held" : "Hold"}
+          </button>
+        </div>
+      ) : (
+        <button ref={nextRef} type="button" className="pt-next pt-enter" data-testid="pt-next" onClick={(e) => onNext(e.detail === 0 ? "key" : undefined)}
+          style={delay(REVEAL_BEATS.next)}>
+          {nextLabel}
+        </button>
+      )}
     </section>
   );
 }

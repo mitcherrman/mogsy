@@ -7,6 +7,12 @@
  * voice — the cast, one restrained tick per whole elapsed second while it
  * runs (a brighter mark every fifth), and the lock.
  *
+ * PT5.3 — the BLIND flow (`model.flow`): the count-in's voices (3 and 2, then
+ * a stronger 1 — the quiz countdown's own voices), the cast as the game starts
+ * the round, the lock and the verdict. Nothing at all sounds while the round
+ * runs: no tick, no mark. The round's old start cue is replaced by the count-in.
+ * The reveal moves on by itself after `REVEAL_DWELL_MS` unless the run is held.
+ *
  * PT4.4: it no longer mounts Ranked's `CanonicalArena` (whose header, flanks and
  * round rail made the page taller than the viewport). The frame is
  * `PerfectTimingScreen`; this draws what goes in it.
@@ -15,10 +21,11 @@ import { useCallback, useEffect, useReducer, useRef, type ReactNode } from "reac
 import { mogzyAudio } from "@/lib/audio/engine";
 import { useSfx } from "@/lib/audio/useSfx";
 import type { SecondBeat } from "@/lib/perfect-timing/chronometer";
+import { countInIsFinal } from "@/lib/perfect-timing/countIn";
 import type { PtStageModel } from "@/lib/perfect-timing/viewModel";
 import { PerfectTimingReveal } from "./PerfectTimingReveal";
 import { PerfectTimingHero, PerfectTimingStage } from "./PerfectTimingStage";
-import { LOCK_HOLD_MS, tierSfx } from "./presentation";
+import { LOCK_HOLD_MS, REVEAL_DWELL_MS, tierSfx } from "./presentation";
 import "./perfectTiming.css";
 
 /**
@@ -56,12 +63,32 @@ function usePerfectTimingSfx(model: PtStageModel) {
       sfx.play("ranked.module.start", { eventId: `perfect-timing:${roundId ?? "round"}:start` });
     } else if (model.phase === "running" && prev.phase === "armed" && prev.roundId === roundId) {
       sfx.play("perfect-timing.cast", { eventId: `perfect-timing:${roundId ?? "round"}:cast` });
+    } else if (model.phase === "running" && prev.phase === "countdown" && prev.roundId === roundId) {
+      // PT5.3: the GAME started it — the cast is the start cue itself, so it is
+      // never played late (a suspended context drops it rather than resuming).
+      if (!contextSuspended()) sfx.play("perfect-timing.cast", { eventId: `perfect-timing:${roundId ?? "round"}:cast`, dropIfNotRunning: true });
     } else if (model.phase === "stopped" && prev.phase === "running") {
       sfx.play("perfect-timing.lock", { eventId: `perfect-timing:${roundId ?? "round"}:lock` });
     } else if (model.phase === "revealed" && prev.phase !== "revealed" && model.reveal) {
       sfx.play(tierSfx(model.reveal.tier), { eventId: `perfect-timing:${roundId ?? "round"}:verdict` });
     }
   }, [model.phase, model.round?.roundId, model.reveal, sfx]);
+
+  // PT5.3: the count-in. One voice per beat of each pass (a re-count after a
+  // hold or a hidden tab is a new pass); pre-start only, and never late.
+  const countIn = model.flow?.countIn ?? null;
+  const countInId = model.flow?.countInId ?? null;
+  const countingIn = model.phase === "countdown" && !model.flow?.held;
+  const lastCountIn = useRef<string | null>(null);
+  useEffect(() => {
+    if (!countingIn || countIn === null || countInId === null) return;
+    const eventId = `perfect-timing:${countInId}:countin:${countIn}`;
+    // Each beat of each pass is answered once here (and once by the engine's own dedupe).
+    if (lastCountIn.current === eventId) return;
+    lastCountIn.current = eventId;
+    if (contextSuspended()) return;
+    sfx.play(countInIsFinal(countIn) ? "perfect-timing.countin.final" : "perfect-timing.countin", { eventId, dropIfNotRunning: true });
+  }, [countingIn, countIn, countInId, sfx]);
 
   // The tick. Only a running round's beat sounds: the chronometer stops its
   // frame loop on every other phase, and this re-checks the phase it last saw.
@@ -118,7 +145,7 @@ export function PerfectTimingArena({ model, actions, nextLabel, autoFocusSeal }:
   const cameFrom = prevPhase.current;
   useEffect(() => { prevPhase.current = model.phase; });
 
-  const focusSeal = autoFocusSeal ?? (model.phase === "armed" && (cameFrom === "revealed" || cameFrom === "interrupted" || cameFrom === "error"));
+  const focusSeal = autoFocusSeal ?? ((model.phase === "armed" || model.phase === "countdown") && (cameFrom === "revealed" || cameFrom === "interrupted" || cameFrom === "error"));
   const lastRound = model.round !== null && model.round.index >= model.round.total;
 
   if (shown.phase === "revealed" && model.reveal) {
@@ -127,7 +154,8 @@ export function PerfectTimingArena({ model, actions, nextLabel, autoFocusSeal }:
         <PerfectTimingHero round={model.round} compact />
         <div className="pt-column">
           <PerfectTimingReveal key={model.round?.roundId ?? "reveal"} reveal={model.reveal} onNext={model.onNext}
-            nextLabel={nextLabel ?? (lastRound ? "See results" : "Next round")} />
+            nextLabel={nextLabel ?? (lastRound ? "See results" : "Next round")}
+            autoAdvanceMs={model.flow ? REVEAL_DWELL_MS : null} held={model.flow?.held ?? false} onHold={model.flow?.onHold} />
         </div>
       </div>
     );
@@ -135,6 +163,6 @@ export function PerfectTimingArena({ model, actions, nextLabel, autoFocusSeal }:
   return (
     <PerfectTimingStage key={model.round?.roundId ?? "stage"} round={model.round} phase={shown.phase} press={model.press}
       statusText={model.statusText ?? null} actions={actions} autoFocusSeal={focusSeal}
-      clock={model.clock ?? null} onClockBeat={onClockBeat} />
+      clock={model.clock ?? null} onClockBeat={model.flow ? undefined : onClockBeat} flow={model.flow ?? null} />
   );
 }

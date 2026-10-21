@@ -25,6 +25,14 @@
  * through three connected stages. Results offer Play again (same mode) and
  * Change mode.
  *
+ * PT5.3: the owner lab plays the BLIND AUTOMATIC flow (`flow="blind"`): each
+ * round counts in (3, 2, 1) and the game starts it (`AUTO_START` at the time
+ * the start is executed); the player only stops it; the chronometer shows no
+ * elapsed time while it runs; reveals (and slice transitions) move on by
+ * themselves; Hold pauses between attempts. The public PGM2 host keeps the
+ * PT5.2 flow (`flow="visible"`) until the owner approves the rollout; the owner
+ * can compare with `?flow=visible`.
+ *
  * WHAT IT CLAIMS. Elapsed time is measured in this browser and is NOT
  * tamper-proof; the server grades it and reports an upper-bound plausibility
  * verdict only. Scoring constants are playtest starting values. Nothing is
@@ -40,11 +48,12 @@ import { PerfectTimingBar, PerfectTimingScreen } from "@/components/perfect-timi
 import { PerfectTimingApiError, perfectTimingApi, type PerfectTimingApi } from "@/lib/perfect-timing/api";
 import { toRevealView, type PtDeal, type PtDealRound } from "@/lib/perfect-timing/contract";
 import { useSplashManifest } from "@/lib/perfect-timing/useSplashManifest";
+import { useCountIn } from "@/lib/perfect-timing/useCountIn";
 import { useTimingEngine } from "@/lib/perfect-timing/useTimingEngine";
-import type { PtPhase, PtRevealView, PtRunHud, PtRunSummary, PtStageModel, PtTier } from "@/lib/perfect-timing/viewModel";
+import type { PtBlindFlowView, PtPhase, PtRevealView, PtRunHud, PtRunSummary, PtStageModel, PtTier } from "@/lib/perfect-timing/viewModel";
 import { MasterySliceRun } from "./MasterySliceRun";
 import { toRoundView } from "./roundView";
-import { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS, VOID_TEXT, dealErrorText } from "./runShared";
+import { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS, VOID_TEXT, dealErrorText, type PtFlow } from "./runShared";
 
 export const ROUNDS_PER_RUN = 5;
 
@@ -92,8 +101,10 @@ export interface PerfectTimingPublicHost {
 
 const RUN_PARAM = "run";
 const isMode = (v: string | null): v is PtMode => v === "random" || v === "slice";
+/** PT5.3: `?flow=visible` plays the PT5.2 flow in the owner lab (comparison); anything else is blind. */
+const FLOW_PARAM = "flow";
 
-export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, initialMode, publicHost }: {
+export default function PerfectTimingPage({ api: injected, exitTo = "/admin", lead, initialMode, publicHost, flow: flowProp }: {
   api?: PerfectTimingApi;
   exitTo?: string;
   /** PT4.1: launched from Ranked → Playtests; heads the top bar and replaces "Exit". */
@@ -101,6 +112,12 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   /** PT5: skip the mode pick (tests, links). `?run=random|slice` does the same. */
   initialMode?: PtMode;
   publicHost?: PerfectTimingPublicHost;
+  /**
+   * PT5.3: which flow to play. Default: the PT5.2 visible flow for a public
+   * host (not rolled out), the blind automatic flow in the owner lab unless
+   * linked with `?flow=visible`.
+   */
+  flow?: PtFlow;
 } = {}) {
   const api = useMemo(() => injected ?? perfectTimingApi(), [injected]);
   const [params, setParams] = useSearchParams();
@@ -116,11 +133,12 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
   }, [setParams]);
   const changeMode = useCallback(() => pick(null), [pick]);
   const leadNode = lead ?? <Link to={exitTo} className="pt-back">Exit</Link>;
+  const flow: PtFlow = flowProp ?? (publicHost || params.get(FLOW_PARAM) === "visible" ? "visible" : "blind");
 
-  if (publicHost) return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} publicHost={publicHost} />;
+  if (publicHost) return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} publicHost={publicHost} flow={flow} />;
 
-  if (mode === "random") return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} />;
-  if (mode === "slice") return <MasterySliceRun api={api} lead={leadNode} onChangeMode={changeMode} />;
+  if (mode === "random") return <RandomRun api={api} lead={leadNode} onChangeMode={changeMode} flow={flow} />;
+  if (mode === "slice") return <MasterySliceRun api={api} lead={leadNode} onChangeMode={changeMode} flow={flow} />;
   return (
     <PerfectTimingScreen bar={<div className="pt-bar" data-testid="pt-chrome">{leadNode}</div>} stage="mode">
       <PerfectTimingModeSelect onPick={pick} />
@@ -129,19 +147,26 @@ export default function PerfectTimingPage({ api: injected, exitTo = "/admin", le
 }
 
 /** The PT4.4 Random Run: five distinct abilities, base cooldowns, one at a time. Unchanged by PT5. */
-function RandomRun({ api, lead, onChangeMode, publicHost }: {
+function RandomRun({ api, lead, onChangeMode, publicHost, flow }: {
   api: PerfectTimingApi;
   lead: ReactNode;
   onChangeMode: () => void;
   publicHost?: PerfectTimingPublicHost;
+  flow: PtFlow;
 }) {
+  const blind = flow === "blind";
   const publicHostRef = useRef(publicHost);
   publicHostRef.current = publicHost;
   const manifest = useSplashManifest();
   const [run, setRun] = useState<Run | null>(null);
   const [index, setIndex] = useState(0);
-  const [stage, setStage] = useState<Stage>({ kind: "dealing", message: null });
+  const [stage, setStageState] = useState<Stage>({ kind: "dealing", message: null });
+  // PT5.3: the stage the run is in RIGHT NOW (state lags a render behind an automatic advance racing a press).
+  const stageRef = useRef<Stage>({ kind: "dealing", message: null });
+  const setStage = useCallback((next: Stage) => { stageRef.current = next; setStageState(next); }, []);
   const [showSubmitting, setShowSubmitting] = useState(false);
+  // PT5.3: the player's hold between attempts (blind flow only).
+  const [held, setHeld] = useState(false);
 
   // Async guards: a response is applied only if the page is still mounted, the
   // run that asked is still the run, and (for a lock) its round is still current.
@@ -179,7 +204,7 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
         : `${e?.message ?? "The round could not be recorded."} The round is voided.`;
       setStage({ kind: "lock-error", roundId, elapsedMs, message, retryable: Boolean(e?.transient) });
     }
-  }, [api, commitRun]);
+  }, [api, commitRun, setStage]);
 
   const onStopped = useCallback((elapsedMs: number, roundId: string) => {
     // A stop that belongs to anything but the round on screen, or a second
@@ -194,7 +219,7 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
   const keyGuardUntil = useRef(0);
   const keyGuard = useCallback(() => performance.now() < keyGuardUntil.current, []);
   const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play", keyGuard });
-  const { arm, reset } = engine;
+  const { arm, reset, autoStart } = engine;
 
   // ---------------------------------------------------------------- rounds
   const beginRound = useCallback((i: number, r: Run) => {
@@ -207,8 +232,9 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
     }
     currentRoundId.current = slot.wire.round_id;
     setStage({ kind: "play" });
-    arm(slot.wire.round_id);
-  }, [arm]);
+    // PT5.3: blind rounds count in and are started by the game, not by a press.
+    arm(slot.wire.round_id, blind ? "auto" : "press");
+  }, [arm, blind, setStage]);
 
   /** Swap the round at `i` (default: current) for a fresh single deal. */
   const replace = useCallback(async (at?: number) => {
@@ -230,7 +256,7 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
       const e = err instanceof PerfectTimingApiError ? err : null;
       setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal a fresh round."), status: e?.status ?? null });
     }
-  }, [api, index, reset, commitRun, beginRound]);
+  }, [api, index, reset, commitRun, beginRound, setStage]);
   const replaceRef = useRef(replace);
   useEffect(() => { replaceRef.current = replace; });
 
@@ -241,6 +267,7 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
     reset();
     commitRun(null);
     setIndex(0);
+    setHeld(false);
     setStage({ kind: "dealing", message: null });
     try {
       const deal = await api.deal(ROUNDS_PER_RUN);
@@ -253,7 +280,7 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
       const e = err instanceof PerfectTimingApiError ? err : null;
       setStage({ kind: "deal-error", message: (publicHostRef.current?.dealErrorText ?? dealErrorText)(e?.status ?? null, e?.message ?? "Could not deal rounds."), status: e?.status ?? null });
     }
-  }, [api, reset, commitRun, beginRound]);
+  }, [api, reset, commitRun, beginRound, setStage]);
 
   useEffect(() => { void startRun(); }, [startRun]);
 
@@ -266,7 +293,20 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
     const r = runRef.current;
     if (r && roundId) commitRun({ ...r, slots: r.slots.map((s) => (s.wire.round_id === roundId ? { ...s, outcome: "voided" } : s)) });
     setStage({ kind: "voided", message: VOID_TEXT[interruptReason ?? "hidden"] });
-  }, [stage.kind, enginePhase, interruptReason, commitRun]);
+  }, [stage.kind, enginePhase, interruptReason, commitRun, setStage]);
+
+  // PT5.3 — the count-in. Runs while the round waits for its automatic start
+  // and nothing holds the run; the start is executed only for the round on
+  // screen, and the engine refuses any other.
+  const onCountInStart = useCallback((roundId: string, t: number) => {
+    if (roundId !== currentRoundId.current || stageRef.current.kind !== "play") return;
+    autoStart(roundId, t);
+  }, [autoStart]);
+  const countIn = useCountIn({
+    roundId: engine.state.phase === "countdown" ? engine.state.roundId : null,
+    active: blind && stage.kind === "play" && enginePhase === "countdown" && !held,
+    onStart: onCountInStart,
+  });
 
   // "Locked" first (the lock cue's edge), then "checking the archive" if the
   // server is slow. Starts only after the stop, so nothing ticks while timing.
@@ -279,14 +319,29 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
   const advance = useCallback(() => {
     const r = runRef.current;
     if (!r) return;
+    // Only a settled round can be left, and only once: an automatic advance
+    // racing a press (or a late click) finds the run already moved on.
+    const at = stageRef.current.kind;
+    if (at !== "revealed" && at !== "voided" && at !== "lock-error") return;
+    // Moving on is the player continuing (or the dwell they did not hold): the hold is over.
+    setHeld(false);
     if (index + 1 < r.slots.length) beginRound(index + 1, r);
     else { currentRoundId.current = null; setStage({ kind: "complete" }); }
-  }, [index, beginRound]);
+  }, [index, beginRound, setStage]);
 
-  const onReveal = useCallback((source?: "key") => {
+  const onReveal = useCallback((source?: "key" | "auto") => {
     if (source === "key") keyGuardUntil.current = performance.now() + ADVANCE_KEY_GUARD_MS;
     advance();
   }, [advance]);
+
+  // PT5.3 — hold between attempts only: while a round counts in, or on its reveal.
+  const enginePhaseRef = useRef(enginePhase);
+  enginePhaseRef.current = enginePhase;
+  const hold = useCallback(() => {
+    const at = stageRef.current.kind;
+    if (at === "revealed" || (at === "play" && enginePhaseRef.current === "countdown")) setHeld(true);
+  }, []);
+  const resume = useCallback(() => setHeld(false), []);
 
   const voidAndAdvance = useCallback(() => {
     const r = runRef.current;
@@ -320,6 +375,14 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
     }
   })();
 
+  const flowView: PtBlindFlowView | null = blind ? {
+    countIn: countIn.beat,
+    countInId: countIn.passId,
+    held,
+    onHold: hold,
+    onResume: resume,
+  } : null;
+
   const statusText = stage.kind === "dealing" ? stage.message
     : stage.kind === "deal-error" || stage.kind === "lock-error" || stage.kind === "voided" ? stage.message
     : null;
@@ -340,7 +403,9 @@ function RandomRun({ api, lead, onChangeMode, publicHost }: {
     onNext: onReveal,
     hud,
     // PT5.2: the visible stopwatch draws the engine's own readings; it never measures.
+    // PT5.3: the blind chronometer draws only the locked value.
     clock: { t0: engine.state.t0, elapsedMs: engine.state.elapsedMs },
+    flow: flowView,
   };
 
   // PGM2 — tell a public host which round is on screen (and its reveal), so

@@ -21,9 +21,21 @@
  * light travelling once around the dial), a one-shot pulse on each whole
  * elapsed second (stronger, gold, on every fifth), and the lock flash. Under
  * reduced motion none of it plays and the sweep is hidden; the digits still run.
+ *
+ * PT5.3 — THE BLIND CHRONOMETER (`BlindChronometer`, the owner lab's automatic
+ * flow). The same instrument with NO elapsed time while the round runs: no
+ * digits, no sweep, no per-second pulse or tick, nothing that moves on a
+ * period. Before the start it counts the round in (3, 2, 1 — one-shot beats in
+ * the manner of the quiz countdown) and flashes CAST as the game starts it;
+ * while it runs the face is still and cold, the ability's slot letter engraved
+ * in the centre; once stopped it shows the player's own locked time (the
+ * engine's submitted value — no longer secret, the measurement is over). There
+ * is no frame loop at all: every change is a React render on a phase or beat edge.
  */
 import { useCallback, useId, useRef, type ReactNode } from "react";
 import { CHRONO_WIDE_FROM_MS, formatLocked, formatRunning, sweepDegrees, type PtClockReading, type SecondBeat } from "@/lib/perfect-timing/chronometer";
+import { countInIsFinal, type CountInBeat } from "@/lib/perfect-timing/countIn";
+import { blindReadoutFor } from "./presentation";
 import { useChronometer, type ChronoFrameKind } from "@/lib/perfect-timing/useChronometer";
 import type { PtPhase } from "@/lib/perfect-timing/viewModel";
 
@@ -37,6 +49,24 @@ const TICKS = Array.from({ length: 60 }, (_, i) => {
   const y = (r: number) => (100 - r * Math.cos(a)).toFixed(2);
   return { i, major, d: `M${x(r1)} ${y(r1)}L${x(r2)} ${y(r2)}` };
 });
+
+/** The engraved dial every chronometer shares: bezel, 60 ticks, rings, the beat and ignition lights. */
+function ChronoDialBase({ children }: { children?: ReactNode }) {
+  return (
+    <>
+      <circle className="pt-chrono-bezel" cx="100" cy="100" r="96.5" />
+      <g className="pt-chrono-ticks">
+        {TICKS.map((t) => <path key={t.i} d={t.d} data-major={t.major ? "true" : undefined} />)}
+      </g>
+      <circle className="pt-chrono-ring" cx="100" cy="100" r="79.5" />
+      <circle className="pt-chrono-track" cx="100" cy="100" r="76" />
+      <circle className="pt-chrono-runes" cx="100" cy="100" r="66" />
+      <circle className="pt-chrono-beat" cx="100" cy="100" r="76" />
+      <circle className="pt-chrono-ignite" cx="100" cy="100" r="76" pathLength={100} transform="rotate(-90 100 100)" />
+      {children}
+    </>
+  );
+}
 
 export interface ArcaneChronometerProps {
   phase: PtPhase;
@@ -105,26 +135,88 @@ export function ArcaneChronometer({ phase, roundId, clock, icon, word, reducedMo
             <stop offset="1" stopColor="#7fd6ef" stopOpacity="0.85" />
           </linearGradient>
         </defs>
-        <circle className="pt-chrono-bezel" cx="100" cy="100" r="96.5" />
-        <g className="pt-chrono-ticks">
-          {TICKS.map((t) => <path key={t.i} d={t.d} data-major={t.major ? "true" : undefined} />)}
-        </g>
-        <circle className="pt-chrono-ring" cx="100" cy="100" r="79.5" />
-        <circle className="pt-chrono-track" cx="100" cy="100" r="76" />
-        <circle className="pt-chrono-runes" cx="100" cy="100" r="66" />
-        <circle className="pt-chrono-beat" cx="100" cy="100" r="76" />
-        <circle className="pt-chrono-ignite" cx="100" cy="100" r="76" pathLength={100} transform="rotate(-90 100 100)" />
-        <g ref={sweepRef} className="pt-chrono-sweep" transform="rotate(0 100 100)">
-          <path className="pt-chrono-tail" d="M66.68 31.69A76 76 0 0 1 100 24" stroke={`url(#${tailId})`} />
-          <circle className="pt-chrono-pip-glow" cx="100" cy="24" r="6.5" />
-          <circle className="pt-chrono-pip" cx="100" cy="24" r="3" />
-        </g>
+        <ChronoDialBase>
+          <g ref={sweepRef} className="pt-chrono-sweep" transform="rotate(0 100 100)">
+            <path className="pt-chrono-tail" d="M66.68 31.69A76 76 0 0 1 100 24" stroke={`url(#${tailId})`} />
+            <circle className="pt-chrono-pip-glow" cx="100" cy="24" r="6.5" />
+            <circle className="pt-chrono-pip" cx="100" cy="24" r="3" />
+          </g>
+        </ChronoDialBase>
       </svg>
       <span className="pt-chrono-flare" />
       <span className="pt-seal-icon pt-chrono-medallion" data-testid="pt-seal-icon">{icon}</span>
       <span className="pt-chrono-readout">
         <span ref={digitsRef} className="pt-chrono-digits" data-testid="pt-chrono-digits">0.00</span>
         <span className="pt-chrono-unit">Seconds</span>
+      </span>
+      <span className="pt-seal-word pt-chrono-word" data-testid="pt-seal-word">{word}</span>
+    </span>
+  );
+}
+
+export interface BlindChronometerProps {
+  phase: PtPhase;
+  /** The engine's readings: only `elapsedMs` (once stopped) is ever drawn. */
+  clock: PtClockReading | null;
+  /** The count-in beat on screen, or null. */
+  countIn: CountInBeat | null;
+  /** This count-in pass: each beat of each pass is its own one-shot. */
+  countInId: string | null;
+  /** The player is holding between attempts (a held count-in shows no beat). */
+  held: boolean;
+  /** The ability's slot letter, engraved in the centre while the round runs. */
+  slot: string;
+  /** The ability's icon (or monogram), set as the medallion at twelve o'clock. */
+  icon: ReactNode;
+  /** The state word: GET READY, HELD, PRESS TO STOP, LOCKED, VOIDED … */
+  word: string;
+  /** The word flashed as the game starts the round. */
+  castWord: string;
+  reducedMotion: boolean;
+}
+
+/**
+ * PT5.3: the blind instrument (see the file header). Every node is decoration
+ * (`aria-hidden`); the stage's status line speaks for it.
+ */
+export function BlindChronometer({ phase, clock, countIn, countInId, held, slot, icon, word, castWord, reducedMotion }: BlindChronometerProps) {
+  const elapsedMs = clock?.elapsedMs ?? null;
+  const readout = blindReadoutFor(phase, held, countIn, elapsedMs);
+  const beatKey = `${countInId ?? "pass"}:${countIn ?? "-"}`;
+  return (
+    <span className="pt-chrono" data-testid="pt-chrono" data-flow="blind" data-phase={phase} data-readout={readout}
+      data-held={held ? "true" : undefined} data-animate={reducedMotion ? "false" : "true"} aria-hidden>
+      <svg className="pt-chrono-dial" viewBox="0 0 200 200" focusable="false">
+        <ChronoDialBase>
+          {/* The count-in ring: one finite stroke per beat, keyed so each beat replays it. */}
+          {readout === "count" ? (
+            <circle key={beatKey} className="pt-chrono-countring" cx="100" cy="100" r="76"
+              data-final={countIn !== null && countInIsFinal(countIn) ? "true" : undefined} />
+          ) : null}
+        </ChronoDialBase>
+      </svg>
+      <span className="pt-chrono-flare" />
+      <span className="pt-seal-icon pt-chrono-medallion" data-testid="pt-seal-icon">{icon}</span>
+      <span className="pt-chrono-readout" data-readout={readout}>
+        {readout === "count" && countIn !== null ? (
+          <span key={beatKey} className="pt-chrono-count" data-testid="pt-chrono-count"
+            data-final={countInIsFinal(countIn) ? "true" : undefined}>{countIn}</span>
+        ) : readout === "held" ? (
+          <span className="pt-chrono-pause" data-testid="pt-chrono-held"><i /><i /></span>
+        ) : readout === "blind" ? (
+          <>
+            <span className="pt-chrono-glyph" data-testid="pt-chrono-glyph">{slot}</span>
+            <span className="pt-chrono-cast" data-testid="pt-chrono-cast">{castWord}</span>
+          </>
+        ) : readout === "locked" && elapsedMs !== null ? (
+          <>
+            <span className="pt-chrono-digits" data-testid="pt-chrono-digits"
+              data-wide={elapsedMs >= CHRONO_WIDE_FROM_MS ? "true" : undefined}>{formatLocked(elapsedMs)}</span>
+            <span className="pt-chrono-unit">Seconds</span>
+          </>
+        ) : readout === "halted" ? (
+          <span className="pt-chrono-glyph" data-testid="pt-chrono-glyph" data-halted="true">—</span>
+        ) : null}
       </span>
       <span className="pt-seal-word pt-chrono-word" data-testid="pt-seal-word">{word}</span>
     </span>
