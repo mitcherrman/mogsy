@@ -132,7 +132,7 @@ Still pending: RUN-2 production persistence (the migration is owner-gated), E3 b
 
 ## 9. UX-4 — live E2 transport (2026-10-20)
 
-**Status:** implemented and verified against a **real local backend** on branch `ux/ux3-dynasty-real-bo5` (worktree `C:\Users\mlmit\mogzy-wt\ux3-bo5`). The work is uncommitted. Nothing was pushed, merged or deployed. No backend file was changed, and no production database or migration was touched. Route: `/dev/dynasty-v2?view=bo5&transport=live`. Without `transport=live`, the UX-3 contract double is unchanged and remains the default.
+**Status:** implemented and verified against a **real local backend** on branch `ux/ux3-dynasty-real-bo5` (worktree `C:\Users\mlmit\mogzy-wt\ux3-bo5`). **Committed locally as `dd8d5374`** (on UX-3 `91d97ea3`); see §9.6. Nothing was pushed, merged or deployed. No backend file was changed, and no production database or migration was touched. Route: `/dev/dynasty-v2?view=bo5&transport=live`. Without `transport=live`, the UX-3 contract double is unchanged and remains the default.
 
 ### 9.1 What was built
 
@@ -190,3 +190,33 @@ The narrow policy qualified **no** Baron in 5 live UI series, and in 2 of 5 capt
 2. Whether the game plan and between-game choice should be server actions (E3). Today they are client-side and not recorded.
 3. The backend follow-ups in §9.4.
 4. Production: the migration and flag stay owner-gated. The real Supabase owner sign-in (ROG1-D2 NO-GO) is still untested for this route.
+
+### 9.6 Commit record (2026-10-20)
+
+**Commit:** `dd8d5374` "UX-4: drive the Dynasty BO5 from the live E2 series API". It is local only (not pushed or merged) and changes 15 files:
+- added: `scripts/dynasty/capture_ux4_e2_live.py`, `src/lib/dynasty/e1/{e2contracts,e2mapper,liveTransport,liveTransport.test}.ts`, `src/lib/dynasty/e1/fixtures/e2-live-capture.json`, `src/pages/dev/dynasty-v2/bo5/authority.ts`;
+- modified: `src/lib/dynasty/e1/{contracts,transport,useDynastySeries}.ts`, `src/pages/dev/dynasty-v2/{DynastyV2Prototype.tsx,bo5/Bo5Flow.tsx,bo5/ServerObjective.tsx,bo5/present.ts}`, this handoff.
+
+**Checks before the commit:**
+
+| Check | Result |
+|---|---|
+| Working diff | Only UX-4 source, tests, the captured fixture, its capture script and this handoff. Nothing else. |
+| Fixture `e2-live-capture.json` (268 KB) | No `Authorization` header, bearer or JWT. No email, owner/user/sub id, UUID or seed; only the server's `seed_fingerprint`. Requests carry ids only. `correct`/`correct_option_id` appear only in `feedback` on questions already answered, which is E2's own post-answer reveal. Question content is 3 public prompts from the read-only bank, served through E2's question contract. The capture script reads the token from the environment and never writes it. |
+| Contract invariants | `rev`→`expected_seq` and `requestId`→`action_id`. A retry resends the identical body, and E2 answers `duplicate: true`. No count, correctness or outcome is ever sent (asserted in `liveTransport.test.ts`). Stale responses are rejected by the hook. The answer-3 hold-back (§9.2) is unchanged; no new response shape was invented. |
+| Dev-only exposure | The route is registered only when `import.meta.env.DEV` (`App.tsx:317`). `LiveSeriesTransport` is imported only by `bo5/Bo5Flow.tsx` inside that route and selected only by `?transport=live`. It calls the owner-only `/api/admin/dynasty/v2` with the admin bearer, and the server still enforces `require_admin` and `DYNASTY_ENABLED`. Public users get neither the route nor the module. |
+| Tests | `vitest run src/pages/dev/dynasty-v2 src/lib/dynasty src/pages/admin/dynasty src/App.dynastyRoute.test.ts src/pages/dev/dynasty`: 9 files, **127 / 127 passed**. No regressions. |
+| tsc | Only the 2 pre-existing baseline errors (`OnboardingProfile.tsx:180`, `identity/connections.ts:263`), the same ones recorded as the ROG1-D2 baseline. |
+| eslint (all UX-3/UX-4 files) | 0 problems. |
+
+**Live BO5 evidence** (from §9.3, not repeated at commit time; the code is unchanged since): series `wds2_8ad0c461…` was won 3–0 under the narrow policy with no Baron. Series `wds2_dedb5d98…` was lost 2–3 under `broad_mid_win`, with four real Barons and 12 server-graded answers. A mid-encounter reload resumed at Q2. The server record matched the UI.
+
+**Unresolved backend dependencies** (all owner-side, not fixed here):
+1. A settled-encounter view after the third answer (§9.2). Until then the client derives Q3's mark; do not change it without a backend contract.
+2. A "my active series" read; today the series id lives in localStorage.
+3. Opponent champion profiles in the snapshot.
+4. An abandon/delete route.
+5. Lineup-dependent player ratings (E2 fixes `user_preset` per series).
+6. A server-side game plan and between-game decisions (E3).
+7. The qualification policy decision.
+8. Production: `migrate_add_dynasty_v2_series` and `DYNASTY_ENABLED` stay owner-gated, and real Supabase owner sign-in for this route is untested (ROG1-D2 NO-GO).
