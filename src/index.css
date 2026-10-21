@@ -16284,7 +16284,8 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .ranked-shell[data-phone-arena="true"] [data-testid="ranked-focus-column"] {
     flex: 1 1 auto;
   }
-  .ranked-shell[data-phone-arena="true"] > [data-testid="ranked-round-timeline"] {
+  .ranked-shell[data-phone-arena="true"] > [data-testid="ranked-round-timeline"],
+  .ranked-shell[data-phone-arena="true"] > [data-testid="daily-set-timeline"] {
     display: none;
   }
   .ranked-shell[data-phone-arena="true"] .ranked-folio {
