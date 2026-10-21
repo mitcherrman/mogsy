@@ -33,6 +33,8 @@ import { RankedRulesScroll } from "@/components/ranked-rules/RankedRulesScroll";
 import { BonusModeRules } from "@/components/public-modes/BonusModeRules";
 import { isPublicModeId, PUBLIC_MODE_TITLES } from "@/lib/public-modes/contracts";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
+import { rendererForDailyV2Segment } from "@/lib/daily-v2/adapters/modeReuse";
+import { projectSetTimeline } from "@/lib/daily-v2/threeActsPlan";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
@@ -787,12 +789,22 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     totalRounds: plannedRoundTotal(m.publicRound),
   }) : null),
   [m.publicRound, m.roundNumber, m.damageLog, segmentRoundNumber, nextObservedKinds]);
+  // Daily three acts (V2): the host's server-published set plan. Groups the
+  // SAME timeline by set; nothing about a round is derived from its ordinal.
+  const threeActsPlan = host?.threeActsPlan ?? null;
+  const setTimeline = useMemo(
+    () => (timeline && threeActsPlan ? projectSetTimeline(timeline, threeActsPlan) : null),
+    [timeline, threeActsPlan]);
   // The active segment's module renderer. A v2 payload or a legacy round has
   // no discriminator and resolves to quiz.v1 — the module those rounds were
   // created under — so behaviour is unchanged. null = unknown module.
+  // A three-act stage resolves ONLY the Daily V2 allow-list (lane D): an
+  // off-list pair renders the shell's neutral unsupported state.
   const renderer = useMemo(
-    () => (surfaceRound ? rendererForSegment(surfaceRound.segment) : null),
-    [surfaceRound]);
+    () => (!surfaceRound ? null : threeActsPlan
+      ? rendererForDailyV2Segment(surfaceRound.segment?.moduleId, surfaceRound.segment?.moduleVersion)
+      : rendererForSegment(surfaceRound.segment)),
+    [surfaceRound, threeActsPlan]);
   const question = useMemo(
     () => (surfaceRound && renderer ? renderer.projectQuestion(surfaceRound) : null),
     [surfaceRound, renderer]);
@@ -1762,6 +1774,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
         className="shrink-0 pt-0.5" />
     ),
     timeline,
+    setTimeline,
     revealHold: m.revealHold,
     progressionEnabled,
     resultFeedback,

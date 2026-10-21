@@ -51,6 +51,35 @@ export default function CreatorReplayPage() {
   const roles = ["top", "jungle", "mid", "bot", "support"];
   const validSelection = selection === "__auto__" || journeys.some((j) => j.recipe_id === selection);
 
+  // Daily three acts (V2) — an owner-only take of the three-act Standard,
+  // behind the server flag. The server answers 404 while the flag is off; the
+  // take then plays through the same creator run page as any filming take.
+  const [threeActsBusy, setThreeActsBusy] = useState(false);
+  const [threeActsMessage, setThreeActsMessage] = useState<string | null>(null);
+  async function createThreeActsRun() {
+    setThreeActsBusy(true);
+    setThreeActsMessage(null);
+    try {
+      const url = `${ADMIN_API_BASE_URL}/api/daily-run/admin/three-acts`;
+      const response = await fetch(url, { method: "POST", headers: await buildAdminHeaders(url) });
+      if (response.status === 404) {
+        setThreeActsMessage("Daily three acts is not enabled on this server.");
+        return;
+      }
+      if (!response.ok) throw new Error(`Three-act take request failed (${response.status})`);
+      const json: unknown = await response.json();
+      if (!json || typeof json !== "object" || !("run_id" in json)
+          || typeof json.run_id !== "string" || !/^dr_[a-f0-9]{24}$/.test(json.run_id)) {
+        throw new Error("The Daily service returned an invalid run.");
+      }
+      navigate(`/quiz/daily-challenge/creator/${json.run_id}`);
+    } catch (err) {
+      setThreeActsMessage(err instanceof Error ? err.message : "Unable to start a three-act take.");
+    } finally {
+      setThreeActsBusy(false);
+    }
+  }
+
   async function createRun() {
     if (loading || !validSelection || !journeys.length) return;
     setBusy(true);
@@ -125,6 +154,16 @@ export default function CreatorReplayPage() {
         {busy ? "Creating take…" : "Record a new take"}
       </Button>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    </div>
+    <div className="space-y-3 rounded-lg border p-5" data-testid="three-acts-take">
+      <div>
+        <h2 className="text-lg font-semibold">Daily three acts (owner preview)</h2>
+        <p className="text-sm text-muted-foreground">Play the three-act Daily (six Easy/Medium/Hard sets and one Meta Reflex sprint) as a separate take. Only available while the server flag is on. Your official Daily, history and stats are untouched.</p>
+      </div>
+      <Button variant="outline" onClick={createThreeActsRun} disabled={threeActsBusy} data-testid="three-acts-new">
+        {threeActsBusy ? "Starting…" : "Play a three-act take"}
+      </Button>
+      {threeActsMessage && <p role="status" className="text-sm text-muted-foreground">{threeActsMessage}</p>}
     </div>
     <Link className="text-sm underline" to="/admin/leaguecraft">Back to Leaguecraft Admin</Link>
   </main>;

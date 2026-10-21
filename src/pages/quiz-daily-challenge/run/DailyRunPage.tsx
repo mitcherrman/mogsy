@@ -101,6 +101,8 @@ export function DailyRunPage({
   const { user } = useAuth();
   const viewerUserId = viewerOverride ?? user?.id ?? null;
   const { onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus } = dc;
+  // Daily three acts (V2): the hosted stage's server-published set plan.
+  const threeActsPlan = dc.flow?.stage?.content?.plan ?? null;
 
   const host = useMemo<MatchHost>(() => ({
     eyebrow: DAILY_EYEBROW,
@@ -109,7 +111,8 @@ export function DailyRunPage({
     onPresentationPhase: onChildPhase,
     onPlayerFinished: onChildPlayerFinished,
     onSurvivalStatus: onChildSurvivalStatus,
-  }), [onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus]);
+    threeActsPlan,
+  }), [onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus, threeActsPlan]);
 
   const run = dc.run;
   const flow = dc.flow;

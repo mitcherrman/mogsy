@@ -22,10 +22,14 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { DOCK_SIDE, useMogzyDockTabHost } from "@/components/mogzy-dock/MogzyDock";
 import { windowTimelineView } from "@/lib/ranked-core/roundTimeline";
 import type { RoundTimelineView } from "@/lib/ranked-core/viewTypes";
+import { windowSetTimeline, type SetTimelineView } from "@/lib/daily-v2/threeActsPlan";
 import { RoundTimeline } from "./RoundTimeline";
+import { SetTimeline } from "./SetTimeline";
 
 /** Slots on screen. Five reads as a window, not a squeezed rail (see RMOB2). */
 export const MOBILE_TIMELINE_WINDOW = 5;
+/** Daily three acts: whole SETS on screen; three fit between the tab slots at 320px. */
+export const MOBILE_SET_WINDOW = 3;
 
 /**
  * SCBS1 — THE TWO TAB SLOTS ARE FIXED BOXES.
@@ -62,8 +66,10 @@ function usePhoneViewport(): boolean {
   return phone;
 }
 
-export function MobileBottomBar({ timeline, journeyCompact = false, className = "" }: {
+export function MobileBottomBar({ timeline, setTimeline = null, journeyCompact = false, className = "" }: {
   timeline: RoundTimelineView;
+  /** Daily three acts — draw a window of SETS instead of rounds. */
+  setTimeline?: SetTimelineView | null;
   journeyCompact?: boolean;
   className?: string;
 }) {
@@ -99,8 +105,11 @@ export function MobileBottomBar({ timeline, journeyCompact = false, className = 
         className={`${journeyCompact && !expanded ? "hidden" : "flex"} w-full items-center gap-1`}>
         <div ref={setLeft} data-testid="ranked-mobile-bottombar-left"
           className={`flex justify-start ${TAB_SLOT}`} />
-        <RoundTimeline timeline={windowTimelineView(timeline, MOBILE_TIMELINE_WINDOW)}
-          testIdPrefix="mobile-" className="min-w-0 flex-1" />
+        {setTimeline
+          ? <SetTimeline view={windowSetTimeline(setTimeline, MOBILE_SET_WINDOW)}
+            testIdPrefix="mobile-" className="min-w-0 flex-1" />
+          : <RoundTimeline timeline={windowTimelineView(timeline, MOBILE_TIMELINE_WINDOW)}
+            testIdPrefix="mobile-" className="min-w-0 flex-1" />}
         <div ref={setRight} data-testid="ranked-mobile-bottombar-right"
           className={`flex justify-end ${TAB_SLOT}`} />
       </div>

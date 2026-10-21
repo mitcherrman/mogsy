@@ -28,6 +28,7 @@
  */
 import type { RankedPresentationPhase } from "./rankedFlow";
 import type { SurvivalStatus } from "../survivalFinish";
+import type { ThreeActsPlan } from "@/lib/daily-v2/threeActsPlan";
 
 /** What a host is told when its match is over. Authoritative facts only. */
 export interface HostedMatchSettlement {
@@ -61,6 +62,12 @@ export interface MatchHost {
   onPlayerFinished?: (matchId: string) => void;
   /** DC-SURV-UX — the viewer's Survival status as the server published it. */
   onSurvivalStatus?: (status: SurvivalStatus) => void;
+  /**
+   * Daily three acts (V2) — the hosted stage's server-published set plan.
+   * Set only for a three-act Standard. The arena then resolves renderers
+   * through the Daily V2 allow-list and draws its timeline by SET.
+   */
+  threeActsPlan?: ThreeActsPlan | null;
 }
 
 /**
