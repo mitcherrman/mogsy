@@ -175,4 +175,20 @@ Smart App Control did not block rollup this session: vite and vitest ran nativel
 
 ## 7. Commit record
 
-Recorded in the commit that follows this one (the UX-4/E3A convention).
+The commit is **`e2360683`**, "UX-6: playable E3A management loop in the live Dynasty BO5".
+- It is on `ux/ux6-dynasty-management`, and its parent is UX-5 `bcb73349`.
+- It is local only: nothing is pushed or merged.
+- This SHA record is the commit after it.
+
+Its 17 files:
+- **New:**
+  - `src/lib/dynasty/e1/{e3acontracts,e3aTransport.test}.ts`
+  - `src/lib/dynasty/e1/fixtures/e3a-live-capture.json`
+  - `src/pages/dev/dynasty-v2/bo5/{Management.tsx,Management.test.tsx,managementView.ts}`
+  - `scripts/dynasty/capture_ux6_e3a_live.py`
+  - this handoff
+- **Modified:**
+  - `src/lib/dynasty/e1/{contracts,e2contracts,e2mapper,fixtureServer,liveTransport,transport,useDynastySeries}.ts`
+  - `src/pages/dev/dynasty-v2/bo5/{Bo5Flow,ServerGame}.tsx`
+
+Checks at commit time: vitest 158/158 (baseline 140/140), tsc only the 2 baseline errors, eslint 0 problems.
