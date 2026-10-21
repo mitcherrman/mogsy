@@ -19,6 +19,7 @@ import { ReportableQuestionProvider } from "@/lib/feedback/reportable-question";
 import { startProPlayQuiz } from "@/lib/pro-play/api";
 import { proPlayModeLabel, INITIAL_PRO_PLAY_ARENA_STATE, optionIdForLabel } from "@/lib/pro-play/arena";
 import { asEvidence } from "@/lib/pro-play/contract";
+import { proPlayReportIdentity, projectProPlayReportable, projectProPlayArena } from "@/lib/pro-play/arena/projectProPlayArena";
 import { buildProPlayRevealModel } from "@/components/pro-play/arena/reveal/proPlayRevealModel";
 import { PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 import { WORLDS_EXPERIENCE_BASE } from "@/lib/pro-play/worldsExperience/productionGate";
@@ -134,6 +135,18 @@ describe("Worlds2026Quiz", () => {
 });
 
 describe("W26Q contract pieces", () => {
+  it("files Worlds reports under its own mode, preserving the Leaguecraft category", () => {
+    const base = INITIAL_PRO_PLAY_ARENA_STATE;
+    const worlds = { ...base, session: START.session as never, question: START.question as never };
+    const general = { ...worlds, session: { session_id: "s", total: 10, answered: 0, score: 0, complete: false } as never };
+    expect(proPlayReportIdentity(worlds)).toEqual({ mode: "Worlds 2026 Quiz", category: "Leaguecraft" });
+    expect(projectProPlayArena(worlds).report.mode).toBe("Worlds 2026 Quiz");
+    expect(projectProPlayReportable(worlds)?.mode).toBe("Worlds 2026 Quiz");
+    expect(projectProPlayReportable(worlds)?.category).toBe("Leaguecraft");
+    expect(proPlayReportIdentity(general)).toEqual({ mode: "Pro Play Quiz", category: "Leaguecraft" });
+    expect(projectProPlayReportable(general)?.mode).toBe("Pro Play Quiz");
+  });
+
   it("names the mode from the session preset, else the caller, else Pro Play", () => {
     const base = INITIAL_PRO_PLAY_ARENA_STATE;
     expect(proPlayModeLabel(base)).toBe("Pro Play Quiz");
