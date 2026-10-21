@@ -4,6 +4,8 @@
 
 **UX-4 update (2026-10-20):** a `LiveSeriesTransport` now drives the same BO5 from the committed E2 series API (`?view=bo5&transport=live`). It was verified with a contract test against captured real e2 responses and with full BO5s against a real local backend. See §6 (mapping) and §9 (record).
 
+**UX-5 update (2026-10-21):** the live transport now speaks E2 **schema revision 2** (backend `roguelike/wd-v2-e2-hardening` `bb5bc111`/`3cbdc1e0`). Question 3's feedback is read from `current_game.objective_results`; UX-4's encounter cache, Q3 derivation and held-back beat are gone; resume goes through the owner-scoped `GET /series` discovery with a picker for several series; automatic create uses `when_unfinished_exists: "refuse"`. See §10.
+
 **Verdict in one line:** the BO5 is now driven end to end by **genuine E1 machine output** through a typed adapter boundary, but it is served by an **in-browser contract double**, not a live server. **Full integration is NOT claimed:** E2 (objective hosting + series API) is still being built by the separate E2 instance (uncommitted at handoff time; §6).
 
 ## 0. Verified starting state
@@ -94,19 +96,20 @@ Checkpoint identity: every request quotes `rev` (+ `expected seq` for `advance`)
 
 Evidence (not committed): `C:\Users\mlmit\OneDrive\Desktop\ux3-dynasty-bo5-shots\` — `desktop/` 15 captures (home → prep → lock-in → walkout → event → tally → Baron stakes/question/refresh-resume/graded/settled → closeout → result → backstage → series), `mobile-390/` 2, `mobile-360/` 5. Captured from integrated gameplay of recorded E1 output through the contract double. Pane-capture trap: a frame right after navigation can show the entrance fade.
 
-## 6. E2 dependencies (UX-4: verified against the committed E2)
+## 6. E2 dependencies (UX-4: verified against the committed E2; UX-5: revision 2)
 
 E2 is committed on backend `roguelike/wd-v2-e2-series`: implementation `b022b21a`, handoff `590b9010`, API `docs/roguelike/WORLDS_DYNASTY_E2_API.md`. UX-4 (§9) built the live transport against it. The mapping, as implemented:
 
 | UX-3 transport | E2 | How the live transport maps it |
 |---|---|---|
-| `create` | `POST /series` `{start_key, qualification_policy, user_preset, opponent_preset}` | `start_key` = the request id, so a retried create resumes the same series. Presets `balanced` vs `balanced2`. Policy `narrow_early_mid_combo` by default; `&policy=broad_mid_win` on the URL picks the other one. |
-| `resume` | `GET /series/{id}` | E2 has no "my active series" read, so the id is kept client-side (`mogzy.dynasty.ux4.live.v1`). A 404 `DYNASTY_SERIES_NOT_FOUND` forgets it. |
+| `create` | `POST /series` `{start_key, qualification_policy, user_preset, opponent_preset, when_unfinished_exists}` | `start_key` = the request id, so a retried create resumes the same series. Presets `balanced` vs `balanced2`. Policy `narrow_early_mid_combo` by default; `&policy=broad_mid_win` on the URL picks the other one. **UX-5:** automatic entry sends `"refuse"`; `409 UNFINISHED_SERIES_EXISTS` becomes `UNFINISHED_SERIES` with the `detail.unfinished` rows as choices (the picker). The picker's explicit "Start a new series" sends `"create"`, because E2 has no abandon route. |
+| `resume` | `GET /series` (discovery), then `GET /series/{id}` | **UX-5:** `single` resumes it; `multiple` returns the choices and nothing is fetched or picked; `none` offers create (a hinted *completed* series is still shown, a missing one is forgotten). The localStorage id (`mogzy.dynasty.ux4.live.v1`) is only a hint: it marks "Last played here" and keeps that series' client-side plan/decisions. |
+| `resumeSeries` (UX-5) | `GET /series/{id}` | The series the owner picked. |
 | `lockLineup` | action `lock_lineup` `{game, champions}` | The lineup id maps to the E1 study's champion set. It is offered only if all five are in `champion_pool`. |
 | `advance` | action `advance` `{game, machine_seq, steps: 1}` | One E1 transition per request, as in UX-3. |
 | `openObjective` | action `open_objective` `{game, encounter_id}` | — |
 | `answerQuestion` | action `answer_objective` `{game, encounter_id, question_id, option_id}` (×3) | The UI's option index maps to the current question's `option_id`. The client sends ids only. |
-| `settleObjective` | (none: E2 grades, seals and applies on the third answer) | **A read** (`GET`) that acknowledges the grade (§9.2). |
+| `settleObjective` | (none: E2 grades, seals and applies on the third answer) | **UX-5: local, no request.** It marks the encounter's outcome as opened. The third-answer response already carries the sealed encounter in `current_game.objective_results` (all three answers' feedback + grade); the session reads `graded` while the game's newest beat is that result's `result_beat_seq` and it is unopened, then `settled`. The outcome card uses the event named by `event_instance_id`. (UX-4's read + cache + hold-back, §9.2, is removed.) |
 | `choosePlan`, `decide` | (none) | Client-side, with the double's rules (recovery refused, keep = same plan). The server never sees them. |
 | `rev` + `requestId` | `expected_seq` + `action_id` | A retry resends the identical body. E2 answers `duplicate: true` and never applies it twice. |
 | envelope | `dynasty.combat_v2.series.snapshot.e2` | `e2mapper.ts` maps e2 to `SeriesEnvelope`. A contract test runs against a captured real e2 run (§9). |
@@ -145,7 +148,7 @@ Still pending: RUN-2 production persistence (the migration is owner-gated), E3 b
 | `scripts/dynasty/capture_ux4_e2_live.py` | Re-captures that fixture over HTTP. It plays a whole BO5, sending only the snapshot's own `next` actions with lineup balanced and always option A, and retries until a series contains a Baron. |
 | `Bo5Flow.tsx`, `ServerObjective.tsx`, `present.ts`, `authority.ts`, `useDynastySeries.ts`, `contracts.ts`, `transport.ts` | Transport selection (`?transport=live`, `&policy=`) and copy that is honest about the authority: a live banner; "E2 · server-hosted questions"; "consumed once" instead of "pending E3"; "See the outcome" instead of "Settle". Also: four answer letters (E2 serves A–D; UX-3 had three) and the `e2_series`/`e2_objective` authority markers and `AUTH`/`DISABLED` codes. |
 
-### 9.2 The one mapping that is not 1:1 (owner should know)
+### 9.2 The one mapping that is not 1:1 (owner should know) — superseded by UX-5 (§10)
 
 E2 grades, seals and applies the Baron **in the same request as the third answer**. That response no longer carries the encounter: `current_game.objective` is `null`, and question 3's own feedback is never returned, only `games[].objectives[].correct_count`. The UX-3 flow has a separate graded → settle → outcome beat. To keep it:
 - The transport caches the last in-progress encounter view and the option it sent.
@@ -178,10 +181,10 @@ The narrow policy qualified **no** Baron in 5 live UI series, and in 2 of 5 capt
 
 ### 9.4 Found, not fixed (backend; out of scope here)
 
-1. The settled encounter is dropped from the snapshot (§9.2).
-2. There is no "my active series" read. The series id lives in localStorage, so a new device starts a new series.
+1. The settled encounter is dropped from the snapshot (§9.2). **Fixed in E2 rev 2; adopted by UX-5 (§10).**
+2. There is no "my active series" read. The series id lives in localStorage, so a new device starts a new series. **Fixed in E2 rev 2 (`GET /series`); adopted by UX-5 (§10).**
 3. The opponent's champions are not in `champion_pool` and have no profile anywhere in the snapshot. The opponent dossier shows names derived from keys, with no class or ratings.
-4. There is no abandon/delete route. "Leave" and "New series" only forget the series on the client; the server keeps it `active`.
+4. There is no abandon/delete route. "Leave" and "New series" only forget the series on the client; the server keeps it `active`. **Still open (E2 §9.6 item 5);** with UX-5 discovery such a series is listed again in the picker.
 5. E2 fixes player ratings per series (`user_preset`), so a lineup choice changes champions only. In the UX-3 double the lineup also changed the players' phase ratings.
 
 ### 9.5 Owner decisions (unchanged plus new)
@@ -220,3 +223,51 @@ The narrow policy qualified **no** Baron in 5 live UI series, and in 2 of 5 capt
 6. A server-side game plan and between-game decisions (E3).
 7. The qualification policy decision.
 8. Production: `migrate_add_dynasty_v2_series` and `DYNASTY_ENABLED` stay owner-gated, and real Supabase owner sign-in for this route is untested (ROG1-D2 NO-GO).
+
+## 10. UX-5 — E2 schema revision 2 (2026-10-21)
+
+**Status:** implemented and verified against a **real local rev-2 backend** on branch `ux/ux3-dynasty-real-bo5` (worktree `C:\Users\mlmit\mogzy-wt\ux3-bo5`), on top of UX-4 `c3def59e`. Committed locally only (the SHA is in the commit log; nothing pushed, merged or deployed). No backend file was changed; no production database, migration or registry was touched. It follows E2 handoff §9.4 and `WORLDS_DYNASTY_E2_API.md` §7 on backend `roguelike/wd-v2-e2-hardening` (`bb5bc111`, SHA record `3cbdc1e0`).
+
+### 10.1 What changed
+
+| Area | Change |
+|---|---|
+| `e2contracts.ts` | Types for `schema_revision`, `E2ObjectiveResult` (`current_game.objective_results`) and the discovery listing `dynasty.combat_v2.series.list.e2`. `readE2Snapshot` still accepts rev 1 (no `schema_revision`), and refuses a rev-2 `current_game` without `objective_results`. New `readE2SeriesList` refuses a listing whose `resume.reason`/`series_id` disagree with its rows. |
+| `e2mapper.ts` | **Deleted** UX-4's `CachedEncounter`/`encounters`, the Q3 "count minus marks" derivation and `pausedAtObjective` (the held-back `objective_result` beat and event). A settled encounter is now `resultSession(objective_results[-1])`: every mark from the server's `feedback`, the grade from `grade`, `result_event_id` = `event_instance_id`. It reads `graded` only while the game's newest beat is that result's `result_beat_seq` and the player has not opened it; the game snapshot is shown exactly as served. Rev 1 has no results: the outcome shows directly. |
+| `liveTransport.ts` | `resume` = `GET /series` (single → `GET /series/{id}`; multiple → `{choices}`; none → `null`, or the hinted completed series). New `resumeSeries(id)`. `create(m, when)` sends `when_unfinished_exists` (`"refuse"` by default); `409 UNFINISHED_SERIES_EXISTS` → `TransportError("UNFINISHED_SERIES", …, choices)` from `detail.unfinished`. `settleObjective` is **local** (no request). The persisted state no longer holds encounters, and an old UX-4 cache is dropped on load. |
+| `transport.ts`, `contracts.ts`, `fixtureServer.ts` | `resume()` may return `SeriesChoices`; `resumeSeries`; `create(m, when?)`; `SeriesChoice`; error code `UNFINISHED_SERIES`; `ObjectiveSessionView.result_event_id`. The double gains a trivial `resumeSeries` (one series per browser). |
+| `useDynastySeries.ts` | `choices` state (from resume or a refused create), `pick(id)`, `createNew()` (explicit `"create"`), `dismissChoices()`. One request in flight, stale-response rejection and identical-body retries are unchanged. |
+| `Bo5Flow.tsx` | New `pick` screen ("Resume a series"): the rows in server order with score, game/phase, "Last played here" for the hint, updated time, id and policy, plus "Start a new series" (→ org → explicit create). Banner copy "UX-5 · live E2 series (rev 2)". |
+| `ServerGame.tsx` | The outcome card waits while the session is `graded` (presentation only; the controls stay hidden), and picks the event by `result_event_id`. |
+| `capture_ux4_e2_live.py` + `fixtures/e2-live-capture.json` | Re-captured against rev 2 (334 KB, `mogzy.ux4.e2_live_capture.v2`, policy `broad_mid_win`, `UX4_POLICY` overrides). New states: `discovery_none`, `discovery_single`, `discovery_multiple`, `create_refused` (409), `objective_settled_retry` (identical third-answer body → `duplicate: true`, same `objective_results`). It needs a fresh scratch DB and leaves two unfinished series on it by design. |
+| Tests | `liveTransport.test.ts` 17 → 28: rev-2 parse/refusals, rev-1 compatibility, all three answers' feedback from `objective_results`, Q3 from the server even when the count would disagree, graded → settled locally with 0 requests, settle refused before grading, a lost third answer retried with the identical body, discovery single/multiple/none, the hint kept only for the same series, 409 → choices, explicit `create`, the old cache dropped. `Bo5Flow.test.tsx` +2: the picker resumes only the picked series; a refused create opens the picker and "Start a new series" sends `refuse` then `create`. |
+
+Unchanged: `rev`/`requestId` → `expected_seq`/`action_id`, identical-body retries, ids-only requests (asserted: no `correct`, `category`, `winner` or `score` in any body), stale-response rejection, `choosePlan`/`decide` client-side.
+
+### 10.2 Verification record
+
+**Setup.** A real `api_server:app` runs from `.worktrees/wd-v2-e2h` @ `3cbdc1e0` on `127.0.0.1:8766`, launched by a scratch-only script (not committed):
+- a **fresh** scratch SQLite DB in the session scratchpad, with `migrate_add_dynasty_v2_series.migrate()` applied to that file only;
+- `DYNASTY_ENABLED=1`, and HS256 with a locally generated secret (`SUPABASE_ALLOW_HS256=1`). Only `routes._auth._owner_state` is stubbed;
+- the question source is the real `BankQuestionSource` over the read-only bank `C:/Users/mlmit/mogzy-data/lol_calc.db`, opened `mode=ro`.
+
+The frontend is vite `ux4-live` on port 5425 with the E2E persona (`admin:true`).
+
+| Check | Result |
+|---|---|
+| `vitest run src/pages/dev/dynasty-v2 src/lib/dynasty src/pages/admin/dynasty src/App.dynastyRoute.test.ts src/pages/dev/dynasty` | 9 files, **140 passed** (110 UX-3 + 28 live contract + 2 picker UI) |
+| `tsc --noEmit -p tsconfig.app.json` | only the two baseline errors (`OnboardingProfile.tsx:180`, `identity/connections.ts:263`) |
+| `eslint src/lib/dynasty/e1 src/pages/dev/dynasty-v2/bo5 DynastyV2Prototype.tsx` | 0 problems |
+| Capture | 1 attempt; series `wds2_84aab174…` lost 2–3 with 2 Barons. The first settled encounter carries all three answers' feedback (0/3, `enemy_baron_team_wiped`, `result_beat_seq` 14 = the top beat). The identical retry gave `duplicate: true`, `applied: false`, the same `seq` and the same results. Discovery returned none → single → multiple, and the refuse guard returned 409. |
+| **Live BO5 with a Baron**, `/dev/dynasty-v2?view=bo5&transport=live&policy=broad_mid_win`, series `wds2_799dedfe…` | Entry: discovery `multiple` (the two capture series) → picker → "Start a new series" → org → explicit create. A Baron qualified in game 1. Q1 was answered, then the page was reloaded: discovery listed 3, with this one "Last played here" at "Game 1 · at the Baron". Picking it resumed at Q2 with Q1 still marked. Q2 and Q3 were answered. **Q3 showed the server's own feedback** ("When does Rift Herald first spawn?", your answer C, incorrect), equal to `objective_results[-1].questions[2].feedback` on the server (you C, correct B). "See the grade" showed "0 of 3 … already applied", with no controls and no outcome yet. "See the outcome" sent **0 requests**, and `rev` stayed 18; the outcome card showed `enemy_baron_team_wiped`. Played to the end: **won 3–2**, seq 123. Server record = UI: stage points per game, a late_decides in every game, and the Baron 0/3 with 3 recorded questions. |
+| Refuse path in the UI | "New series" → home → org → automatic create → 409 → picker with the 2 remaining unfinished series, and no error panel. |
+| Phone 390×844, picker | No horizontal overflow (scrollWidth 390); the rows end at 374 px. |
+| Backend access log | Every Dynasty request returned 200, except the deliberate 409s (capture and UI refuse path). Console errors were the known global-HUD noise (Supabase 401, `/api/stat-check` 503). |
+
+Only one Baron qualified in this UI series. Its answers were all wrong, so no "correct" mark was seen live. The correct-mark path is covered by the contract test, which flips Q3 to correct in a copy of the real response.
+
+### 10.3 Still open (owner / backend)
+1. **Abandonment** (E2 §9.6 item 5). "Leave" only forgets the hint, and discovery lists the series again. Unfinished series accumulate, and the picker lists them all.
+2. The qualification policy decision; the other §9.6 dependencies (fixed ratings per preset, opponent champion profiles, E3 between-game actions).
+3. The UI never reveals the correct option of a wrong answer, although rev 2 serves `correct_option_id`. That is a design choice for the owner, unchanged from UX-3.
+4. Production stays NO-GO: the migration and flag are owner-gated, and real Supabase owner sign-in is untested (ROG1-D2).

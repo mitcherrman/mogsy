@@ -1,5 +1,5 @@
 /**
- * UX-4 — e2 series snapshot → the UI's `SeriesEnvelope`. Pure: the same
+ * UX-4/UX-5 — e2 series snapshot → the UI's `SeriesEnvelope`. Pure: the same
  * snapshot and client state always give the same envelope.
  *
  * Every game number, grade and result comes from the e2 snapshot. The client
@@ -10,22 +10,22 @@
  *    are client-side until E3 adds between-game actions. They select which
  *    legal lineup the draft pre-selects and gate the prep/backstage screens;
  *    the server never sees them.
- *  - `encounters` / `acked`: E2 grades, seals and applies the Baron in the same
- *    request as the third answer, and that response no longer carries the
- *    encounter. To keep the UX-3 "graded → settle → outcome" beat, the last
- *    in-progress encounter view is cached and the player's "Settle" becomes a
- *    read that acknowledges it. Until acknowledged, the settled game is shown
- *    paused at the objective (the trailing `objective_result` beat and the
- *    objective event are held back). Nothing is recomputed: the grade is the
- *    server's `games[].objectives[].correct_count`.
+ *  - `acked`: E2 grades, seals and applies the Baron in the same request as
+ *    the third answer. Rev 2 returns that settled encounter, with all three
+ *    answers' feedback and the grade, in `current_game.objective_results`.
+ *    The UX-3 "graded → see the outcome" beat is presentation only: while the
+ *    game's newest beat is that result's `objective_result` beat and the
+ *    player has not opened it, the session reads `graded`; afterwards
+ *    `settled`. The game snapshot is always shown exactly as served, and
+ *    nothing is derived: every mark and count is the server's.
  *  - `pool`: the champion catalog from the last `lineup` phase, so champion
  *    names and classes survive into the game screens.
  */
 import type {
-  BetweenGameDecisionId, E1Effect, E1Objective, E1ObjectiveCategory, E1Role, E1Snapshot, FixtureChampion, FixtureLineup,
+  BetweenGameDecisionId, E1Effect, E1Objective, E1Role, E1Snapshot, FixtureChampion, FixtureLineup,
   ObjectiveQuestionView, ObjectiveSessionView, SeriesEnvelope, SeriesGameView, SeriesStatus, SeriesView,
 } from "./contracts";
-import type { E2Champion, E2Lineup, E2Objective, E2Question, E2SeriesSnapshot } from "./e2contracts";
+import type { E2Champion, E2Lineup, E2Objective, E2ObjectiveResult, E2Question, E2SeriesSnapshot } from "./e2contracts";
 
 export const ROLES: E1Role[] = ["top", "jng", "mid", "bot", "sup"];
 
@@ -41,22 +41,15 @@ export const LIVE_LINEUPS: { lineup_id: string; title: string; champions: string
 ];
 export const CUSTOM_LINEUP = "custom";
 
-export interface CachedEncounter {
-  /** the last e2 objective block seen while the encounter was offered or in progress */
-  objective: E2Objective;
-  /** question_id → option_id this client sent */
-  sent: Record<string, string>;
-}
-
 export interface LiveLocal {
   plan: string | null;
   /** after game n → the decision taken before game n+1 */
   decisions: Record<number, BetweenGameDecisionId>;
-  encounters: Record<string, CachedEncounter>;
+  /** encounter ids whose outcome the player has opened (presentation only) */
   acked: string[];
   pool: E2Champion[];
 }
-export const emptyLocal = (): LiveLocal => ({ plan: null, decisions: {}, encounters: {}, acked: [], pool: [] });
+export const emptyLocal = (): LiveLocal => ({ plan: null, decisions: {}, acked: [], pool: [] });
 
 export const CONTENT_LABEL = "Real questions from the Mogzy bank, frozen per encounter and graded by the E2 server. The client never sees an answer before it locks one.";
 
@@ -124,18 +117,13 @@ function toE1Objective(o: E2Objective): E1Objective {
   };
 }
 
-function questionView(q: E2Question, graded: boolean, sent: string | undefined, derivedCorrect?: boolean): ObjectiveQuestionView {
+function questionView(q: E2Question): ObjectiveQuestionView {
   const texts = q.options?.map((o) => o.text) ?? null;
-  const pick = q.feedback?.your_option_id ?? sent;
-  const chosen = pick && q.options ? q.options.findIndex((o) => o.option_id === pick) : -1;
   if (q.state === "answered" && q.feedback) {
+    const chosen = q.options ? q.options.findIndex((o) => o.option_id === q.feedback!.your_option_id) : -1;
     return { index: q.index, state: q.feedback.correct ? "revealed_correct" : "revealed_incorrect", prompt: q.prompt ?? null, options: texts, chosen: chosen >= 0 ? chosen : null };
   }
-  if (q.state === "current" && derivedCorrect !== undefined) {
-    // The question answered by the settling request: E2 returns the grade, not this question's feedback.
-    return { index: q.index, state: derivedCorrect ? "revealed_correct" : "revealed_incorrect", prompt: q.prompt ?? null, options: texts, chosen: chosen >= 0 ? chosen : null };
-  }
-  if (q.state === "current" && !graded) return { index: q.index, state: "answering", prompt: q.prompt ?? null, options: texts, chosen: null };
+  if (q.state === "current") return { index: q.index, state: "answering", prompt: q.prompt ?? null, options: texts, chosen: null };
   return { index: q.index, state: "pending", prompt: null, options: null, chosen: null };
 }
 
@@ -144,30 +132,17 @@ function liveSession(o: E2Objective): ObjectiveSessionView | null {
   const e = o.encounter;
   return {
     authority: "e2_objective", encounter_id: e.encounter_id, state: "in_progress", child_match_id: null,
-    question_index: e.answered, questions: e.questions.map((q) => questionView(q, false, undefined)), graded: null, content_label: CONTENT_LABEL,
+    question_index: e.answered, questions: e.questions.map(questionView), graded: null, content_label: CONTENT_LABEL,
   };
 }
 
-/** A settled encounter from the cache plus the server's grade. */
-function settledSession(c: CachedEncounter, grade: { correct_count: number; category: E1ObjectiveCategory }, acked: boolean): ObjectiveSessionView {
-  const qs = c.objective.encounter?.questions ?? [];
-  const before = qs.filter((q) => q.state === "answered" && q.feedback?.correct).length;
-  const last = grade.correct_count - before;
+/** Rev 2: a settled encounter exactly as the server sealed it (all three answers' feedback + the grade). */
+function resultSession(r: E2ObjectiveResult, graded: boolean): ObjectiveSessionView {
   return {
-    authority: "e2_objective", encounter_id: c.objective.encounter_id, state: acked ? "settled" : "graded", child_match_id: null,
-    question_index: qs.length,
-    questions: qs.map((q) => questionView(q, true, c.sent[q.question_id], q.state === "current" ? last === 1 : undefined)),
-    graded: { correct_count: grade.correct_count, category: grade.category }, content_label: CONTENT_LABEL,
-  };
-}
-
-/** Hold back the settled objective until the player acknowledges the grade (presentation only). */
-function pausedAtObjective(g: E1Snapshot, c: CachedEncounter): E1Snapshot {
-  const beats = g.beats[g.beats.length - 1]?.beat === "objective_result" ? g.beats.slice(0, -1) : g.beats;
-  return {
-    ...g, phase: "awaiting_objective", next: { can_advance: false, needs: "objective_answer" }, beats,
-    events: g.events.filter((e) => !(e.resolution === "objective" && e.event_id === c.objective.event_id)),
-    objective: toE1Objective(c.objective),
+    authority: "e2_objective", encounter_id: r.encounter_id, state: graded ? "graded" : "settled", child_match_id: null,
+    question_index: r.questions.length, questions: r.questions.map(questionView),
+    graded: { correct_count: r.grade.correct_count, category: r.grade.category }, content_label: CONTENT_LABEL,
+    result_event_id: r.event_instance_id,
   };
 }
 
@@ -215,14 +190,13 @@ export function mapE2ToEnvelope(snap: E2SeriesSnapshot, local: LiveLocal): Serie
     if (raw.objective) {
       objective = liveSession(raw.objective);
     } else {
-      // The most recent settled encounter of this game, if this client hosted it.
-      const settled = [...(playing?.objectives ?? [])].reverse().find((o) => o.state === "settled" && o.correct_count !== null);
-      const cached = settled ? local.encounters[settled.encounter_id] : undefined;
-      if (settled && cached) {
-        // Hold only the response that settled it; once the game moved on (e.g. another tab), show it as settled.
-        const hold = !local.acked.includes(settled.encounter_id) && raw.beats[raw.beats.length - 1]?.beat === "objective_result";
-        objective = settledSession(cached, { correct_count: settled.correct_count!, category: settled.category! }, !hold);
-        if (hold) game = pausedAtObjective(game, cached);
+      // Rev 2: the most recent settled encounter of this game. Rev 1 has none, and the outcome shows directly.
+      const r = raw.objective_results?.[raw.objective_results.length - 1];
+      if (r) {
+        // "graded" only on that result's own beat and until opened; once the game moved on it is just settled.
+        const top = raw.beats[raw.beats.length - 1];
+        const onResult = top?.beat === "objective_result" && top.seq === r.result_beat_seq;
+        objective = resultSession(r, onResult && !local.acked.includes(r.encounter_id));
       }
     }
   }

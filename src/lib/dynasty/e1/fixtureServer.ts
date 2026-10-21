@@ -256,6 +256,12 @@ export class FixtureSeriesServer implements DynastySeriesTransport {
     const st = this.load();
     return st ? this.envelope(st) : null;
   }
+  /** The double holds one series per browser, so there is nothing to choose between. */
+  async resumeSeries(seriesId: string): Promise<SeriesEnvelope> {
+    const env = await this.resume();
+    if (!env || env.series.series_id !== seriesId) throw new TransportError("NOT_ALLOWED", `no series ${seriesId}`);
+    return env;
+  }
   create(m: Omit<Mutation, "rev">) { return this.call("create", m, "", () => undefined, { create: true }); }
   choosePlan(m: Mutation, lineupId: string) {
     return this.call("choosePlan", m, lineupId, (st) => { this.need(st, "prep"); this.legal(lineupId); st.plan = lineupId; st.status = "drafting"; });

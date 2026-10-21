@@ -8,11 +8,14 @@
  *    requestId) for Retry, so the server can recognise the replay and never
  *    applies the action twice;
  *  - STALE_REVISION adopts the server's fresh envelope instead of guessing;
+ *  - live discovery never picks among several unfinished series: `choices`
+ *    holds them (from resume, or from a refused create) until the owner picks
+ *    one or explicitly starts a new series;
  *  - nothing here derives a game result: the UI renders `env` as served.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TransportError, type BetweenGameDecisionId, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
-import { newRequestId, type DynastySeriesTransport } from "./transport";
+import { TransportError, type BetweenGameDecisionId, type SeriesChoice, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
+import { isChoices, newRequestId, type DynastySeriesTransport } from "./transport";
 
 export interface SeriesError { code: TransportErrorCode; message: string; retryable: boolean; action: string }
 
@@ -27,6 +30,7 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<SeriesError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [choices, setChoices] = useState<SeriesChoice[] | null>(null);
   const envRef = useRef<SeriesEnvelope | null>(null);
   const busyRef = useRef(false);
   const alive = useRef(true);
@@ -42,7 +46,11 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { accept(await transport.resume()); }
+    try {
+      const r = await transport.resume();
+      if (isChoices(r)) { accept(null); if (alive.current) setChoices(r.choices); }
+      else { accept(r); if (alive.current) setChoices(null); }
+    }
     catch (e) {
       const t = e instanceof TransportError ? e : new TransportError("SERVER", String(e));
       retryRef.current = load;
@@ -67,6 +75,7 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
         const out = await make(rev, requestId);
         retryRef.current = null;
         accept(out);
+        if (alive.current) setChoices(null);
         return out;
       } catch (e) {
         const t = e instanceof TransportError ? e : new TransportError("SERVER", String(e));
@@ -74,7 +83,8 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
         const retryable = t.code === "NETWORK" || t.code === "SERVER";
         retryRef.current = retryable ? async () => { await attempt(); } : null;
         if (alive.current) {
-          if (t.code === "STALE_REVISION") setNotice("The server had moved on; showing its latest state.");
+          if (t.code === "UNFINISHED_SERIES" && t.choices) setChoices(t.choices);
+          else if (t.code === "STALE_REVISION") setNotice("The server had moved on; showing its latest state.");
           else setError({ code: t.code, message: t.message, retryable, action });
         }
         return null;
@@ -86,7 +96,13 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
   const retry = useCallback(async () => { const r = retryRef.current; if (r) await r(); }, []);
 
   const api = {
-    create: () => run("create", (_rev, requestId) => transport.create({ requestId })),
+    /** Automatic entry: refused (→ `choices`) when an unfinished series exists. */
+    create: () => run("create", (_rev, requestId) => transport.create({ requestId }, "refuse")),
+    /** Explicit "New series": always starts one (E2 has no abandon route). */
+    createNew: () => run("create", (_rev, requestId) => transport.create({ requestId }, "create")),
+    /** Resume the series the owner picked. A read: no rev/requestId to quote. */
+    pick: (seriesId: string) => run("resume", () => transport.resumeSeries(seriesId)),
+    dismissChoices: () => setChoices(null),
     choosePlan: (lineupId: string) => run("choosePlan", (rev, requestId) => transport.choosePlan({ rev, requestId }, lineupId)),
     lockLineup: (lineupId: string) => run("lockLineup", (rev, requestId) => transport.lockLineup({ rev, requestId }, lineupId)),
     advanceOnce: () => { const s = envRef.current?.game; return s ? run("advance", (rev, requestId) => transport.advance({ rev, requestId }, s.seq)) : Promise.resolve(null); },
@@ -94,7 +110,7 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
     answer: (enc: string, index: number, option: number) => run("answer", (rev, requestId) => transport.answerQuestion({ rev, requestId }, enc, index, option)),
     settleObjective: (enc: string) => run("settleObjective", (rev, requestId) => transport.settleObjective({ rev, requestId }, enc)),
     decide: (d: BetweenGameDecisionId, lineupId: string) => run("decide", (rev, requestId) => transport.decide({ rev, requestId }, d, lineupId)),
-    abandon: async () => { await transport.abandon(); envRef.current = null; setEnv(null); setError(null); },
+    abandon: async () => { await transport.abandon(); envRef.current = null; setEnv(null); setError(null); setChoices(null); },
   };
 
   /** Advance one transition at a time until a beat in `stops` (or a pause/needs). Each step is its own request. */
@@ -109,6 +125,6 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
     }
   }, [run, transport]);
 
-  return { kind: transport.kind, env, loading, busy, error, notice, clearNotice: () => setNotice(null), retry, reload: load, advanceTo, ...api };
+  return { kind: transport.kind, env, loading, busy, error, notice, choices, clearNotice: () => setNotice(null), retry, reload: load, advanceTo, ...api };
 }
 export type DynastySeries = ReturnType<typeof useDynastySeries>;

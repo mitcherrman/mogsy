@@ -10,8 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const motion = vi.hoisted(() => ({ allowed: false }));
 vi.mock("@/lib/motion/useReveal", async (orig) => ({ ...(await orig<typeof import("@/lib/motion/useReveal")>()), useMotionAllowed: () => motion.allowed }));
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: () => undefined, stop: () => undefined, preload: () => undefined }) }));
+vi.mock("@/lib/admin-auth/adminCredentials", () => ({ ADMIN_API_BASE_URL: "http://backend.test", buildAdminHeaders: async () => ({ Authorization: "Bearer owner-session" }) }));
 
 import { FixtureSeriesServer, __placeholderAnswerForTests, memoryStore, type KeyValueStore } from "@/lib/dynasty/e1/fixtureServer";
+import capture from "@/lib/dynasty/e1/fixtures/e2-live-capture.json";
+import { LiveSeriesTransport } from "@/lib/dynasty/e1/liveTransport";
 import type { SeriesEnvelope } from "@/lib/dynasty/e1/contracts";
 import type { DynastySeriesTransport } from "@/lib/dynasty/e1/transport";
 import { useDynastySeries } from "@/lib/dynasty/e1/useDynastySeries";
@@ -214,5 +217,52 @@ describe("useDynastySeries", () => {
     old = first; // a late, older read arrives
     await act(async () => { await result.current.reload(); });
     expect(result.current.env!.series.rev).toBe(rev);
+  });
+});
+
+describe("UX-5 live discovery (captured rev-2 responses)", () => {
+  const S = Object.fromEntries((capture as unknown as { samples: { state: string; response: unknown }[] }).samples.map((x) => [x.state, x.response])) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const BASE = "http://backend.test/api/admin/dynasty/v2";
+  function backend(answer: (method: string, url: string, body: any) => { status?: number; body: unknown }) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const calls: { method: string; url: string; body: any }[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const f = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const c = { method: init?.method ?? "GET", url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null };
+      calls.push(c);
+      const r = answer(c.method, c.url, c.body);
+      return new Response(JSON.stringify(r.body), { status: r.status ?? 200, headers: { "Content-Type": "application/json" } });
+    });
+    return { f: f as unknown as typeof fetch, calls };
+  }
+
+  it("lets the owner pick among several unfinished series and resumes only the picked one", async () => {
+    const multi = S.discovery_multiple;
+    const picked = multi.series[1].series_id;
+    const { f, calls } = backend((_m, url) => ({ body: url.endsWith("/series") ? multi : { ...S.series_created, series_id: picked } }));
+    mount(new LiveSeriesTransport({ store: memoryStore(), fetchImpl: f }));
+    await waitFor(() => expect(screenId()).toBe("pick"));
+    expect(screen.getAllByTestId("series-choice").map((b) => b.getAttribute("data-series"))).toEqual(multi.series.map((x: { series_id: string }) => x.series_id));
+    expect(calls).toHaveLength(1); // nothing is resumed silently
+    await act(async () => { fireEvent.click(screen.getAllByTestId("series-choice")[1]); });
+    await waitFor(() => expect(screenId()).toBe("roster"));
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([`GET ${BASE}/series`, `GET ${BASE}/series/${picked}`]);
+  });
+
+  it("turns a refused automatic create into the picker, and Start a new series creates explicitly", async () => {
+    const { f, calls } = backend((m, url, body) => {
+      if (m === "GET") return { body: S.discovery_none };
+      return body.when_unfinished_exists === "refuse" ? { status: 409, body: S.create_refused } : { body: S.series_created };
+    });
+    mount(new LiveSeriesTransport({ store: memoryStore(), fetchImpl: f }));
+    await waitFor(() => expect(screenId()).toBe("home"));
+    await click("bo5-new");
+    await click("org-choose-ember");
+    await waitFor(() => expect(screenId()).toBe("pick"));
+    expect(has("series-error")).toBe(false);
+    expect(screen.getAllByTestId("series-choice")).toHaveLength(S.create_refused.detail.unfinished.count);
+    await click("pick-new");
+    await waitFor(() => expect(screenId()).toBe("org"));
+    await click("org-choose-ember");
+    await waitFor(() => expect(screenId()).toBe("roster"));
+    expect(calls.filter((c) => c.method === "POST").map((c) => c.body.when_unfinished_exists)).toEqual(["refuse", "create"]);
   });
 });

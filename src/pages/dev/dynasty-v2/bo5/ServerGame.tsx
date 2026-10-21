@@ -165,8 +165,11 @@ export function ServerGame({ s, env, teamName, accent, mono, onResult, onMood }:
   const busy = !!s.busy;
   const settled = snap.phase === "settled";
   const closedEarly = settled && snap.settlement?.after_stage !== "late";
-  const objEvent = snap.events.find((e) => e.resolution === "objective" && e.outcome.correct_count !== null) ?? null;
+  const objEvent = (env.objective?.result_event_id ? snap.events.find((e) => e.instance_id === env.objective!.result_event_id) : undefined)
+    ?? snap.events.find((e) => e.resolution === "objective" && e.outcome.correct_count !== null) ?? null;
   const objectiveLive = snap.phase === "awaiting_objective" || beat?.beat === "objective_result";
+  // Live: the server applied the grade with the third answer; the outcome waits until the player opens it (presentation only).
+  const graded = objectiveLive && env.objective?.state === "graded";
   const wins = series.wins, losses = series.losses;
 
   // New tally beat → replay the tile reveal (presentation only; controls stay live).
@@ -302,7 +305,7 @@ export function ServerGame({ s, env, teamName, accent, mono, onResult, onMood }:
 
         {objectiveLive ? (
           <ServerObjective
-            prompt={snap.objective} session={env.objective} result={beat?.beat === "objective_result" ? objEvent : null} busy={busy} accent={accent}
+            prompt={snap.objective} session={env.objective} result={beat?.beat === "objective_result" && !graded ? objEvent : null} busy={busy} accent={accent}
             onOpen={() => snap.objective && void s.openObjective(snap.objective.encounter_id)}
             onAnswer={(i, o) => snap.objective && void s.answer(snap.objective.encounter_id, i, o)}
             onSettle={() => env.objective && void s.settleObjective(env.objective.encounter_id)}
@@ -317,7 +320,7 @@ export function ServerGame({ s, env, teamName, accent, mono, onResult, onMood }:
           <p className="text-[12.5px] text-white/70" data-testid="late-final">{settleReason(snap)}. Late always decides: 4 or more of 7 points wins the game.</p>
         ) : null}
 
-        {!objectiveLive || settled ? (
+        {(!objectiveLive || settled) && !graded ? (
           <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[#07111f]/92 px-4 py-2.5 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0" data-testid="game-controls">
             {busy ? <span className="mr-auto text-[11px] text-white/50" data-testid="game-busy" role="status">Waiting for the server…</span> : null}
             {!settled ? <Btn testId="game-skip" disabled={busy} className="min-h-[40px] px-3 text-xs" onClick={() => void s.advanceTo(SKIP_BEATS)}>Skip ahead</Btn> : null}

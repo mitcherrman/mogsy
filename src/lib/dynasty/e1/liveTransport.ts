@@ -1,15 +1,22 @@
 /**
- * UX-4 — `DynastySeriesTransport` over the live E2 series API
- * (`/api/admin/dynasty/v2`, backend commit b022b21a; `DYNASTY_ENABLED` +
- * `require_admin`). The mapping follows UX-3 handoff §6:
+ * UX-4/UX-5 — `DynastySeriesTransport` over the live E2 series API
+ * (`/api/admin/dynasty/v2`, backend commit b022b21a + revision 2 bb5bc111;
+ * `DYNASTY_ENABLED` + `require_admin`). The mapping follows UX-3 handoff §6
+ * and E2 API §7:
  *
- *   create          POST /series {start_key = requestId, qualification_policy, presets}
- *   resume          GET  /series/{id}  (the id is kept client-side; E2 has no "my series" read)
+ *   resume          GET  /series (owner-scoped discovery): single → GET /series/{id};
+ *                   multiple → the owner chooses; none → nothing (the UI offers create).
+ *                   The localStorage id is only a hint (marks the choice, finds a completed series).
+ *   resumeSeries    GET  /series/{id}
+ *   create          POST /series {start_key = requestId, qualification_policy, presets, when_unfinished_exists}
+ *                   automatic entry sends "refuse" (409 UNFINISHED_SERIES_EXISTS → the choices);
+ *                   an explicit "New series" sends "create" (E2 has no abandon route)
  *   lockLineup      action lock_lineup {game, champions}
  *   advance         action advance {game, machine_seq, steps: 1}   (one E1 transition)
  *   openObjective   action open_objective {game, encounter_id}
  *   answerQuestion  action answer_objective {game, encounter_id, question_id, option_id}
- *   settleObjective a READ: E2 settles on the third answer; this acknowledges it
+ *   settleObjective local: E2 graded, sealed and applied the Baron with the third answer, and
+ *                   `current_game.objective_results` already carries all three answers' feedback
  *   choosePlan, decide  client-side until E3 (they never reach the server)
  *   rev, requestId  → expected_seq, action_id
  *
@@ -19,14 +26,15 @@
  */
 import { ADMIN_API_BASE_URL, buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
 import { readErrorBody } from "@/lib/dynasty/client";
-import { BETWEEN_GAME_DECISIONS, TransportError, type BetweenGameDecisionId, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
-import { E2_API, E2ContractError, readE2Snapshot, type E2ActionKind, type E2Preset, type E2QualificationPolicy, type E2SeriesSnapshot } from "./e2contracts";
+import { BETWEEN_GAME_DECISIONS, TransportError, type BetweenGameDecisionId, type SeriesChoice, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
+import { E2_API, E2ContractError, readE2SeriesList, readE2Snapshot, type E2ActionKind, type E2Preset, type E2QualificationPolicy, type E2SeriesList, type E2SeriesSnapshot } from "./e2contracts";
 import { emptyLocal, lineupChampions, mapE2ToEnvelope, type LiveLocal } from "./e2mapper";
 import { memoryStore, type KeyValueStore } from "./fixtureServer";
-import type { DynastySeriesTransport, Mutation } from "./transport";
+import type { DynastySeriesTransport, Mutation, SeriesChoices } from "./transport";
 
 export const LIVE_STORE_KEY = "mogzy.dynasty.ux4.live.v1";
 
+/** Client-side presentation state for the series this browser played last (a hint, never the authority). */
 interface Persisted { v: 1; seriesId: string; local: LiveLocal }
 
 export interface LiveTransportOptions {
@@ -40,7 +48,7 @@ export interface LiveTransportOptions {
 }
 
 class HttpFailure extends Error {
-  constructor(public status: number | null, public code: string | null, message: string) { super(message); }
+  constructor(public status: number | null, public code: string | null, message: string, public body: unknown = null) { super(message); }
 }
 
 function errorCode(f: HttpFailure): TransportErrorCode {
@@ -48,11 +56,19 @@ function errorCode(f: HttpFailure): TransportErrorCode {
   if (f.code === "DYNASTY_DISABLED") return "DISABLED";
   if (f.status === 401 || f.status === 403) return "AUTH";
   if (f.code === "STALE_SEQ" || f.code === "STALE_CHECKPOINT") return "STALE_REVISION";
+  if (f.code === "UNFINISHED_SERIES_EXISTS") return "UNFINISHED_SERIES";
   if (f.code === "BAD_LINEUP") return "ILLEGAL_LINEUP";
   if (f.code === "WRONG_ENCOUNTER") return "ENCOUNTER_MISMATCH";
   if (f.code === "QUESTION_ALREADY_ANSWERED") return "ALREADY_ANSWERED";
   if (f.status === 409 || f.status === 422 || f.status === 404) return "NOT_ALLOWED";
   return "SERVER"; // 5xx incl. OBJECTIVE_CONTENT_UNAVAILABLE: retryable
+}
+
+function choicesOf(list: E2SeriesList, hint: string | null): SeriesChoice[] {
+  return list.series.map((r) => ({
+    series_id: r.series_id, phase: r.phase, rev: r.seq, wins: r.score.you, losses: r.score.opponent,
+    games_started: r.games_started, policy: r.qualification_policy, updated_at: r.updated_at, hinted: r.series_id === hint,
+  }));
 }
 
 export class LiveSeriesTransport implements DynastySeriesTransport {
@@ -79,7 +95,12 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
   private load(): Persisted | null {
     const raw = this.store.get(LIVE_STORE_KEY);
     if (!raw) return null;
-    try { const p = JSON.parse(raw) as Persisted; return p.v === 1 && typeof p.seriesId === "string" ? { ...p, local: { ...emptyLocal(), ...p.local } } : null; } catch { return null; }
+    try {
+      const p = JSON.parse(raw) as Persisted;
+      if (p.v !== 1 || typeof p.seriesId !== "string") return null;
+      const { plan, decisions, acked, pool } = { ...emptyLocal(), ...p.local }; // drops UX-4's encounter cache
+      return { v: 1, seriesId: p.seriesId, local: { plan, decisions, acked, pool } };
+    } catch { return null; }
   }
   private save(p: Persisted) { this.store.set(LIVE_STORE_KEY, JSON.stringify(p)); }
   private need(): Persisted {
@@ -87,9 +108,16 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     if (!p) throw new TransportError("NOT_ALLOWED", "no series: create one first");
     return p;
   }
+  /** The persisted state for `seriesId`: kept when it is the hinted series, fresh otherwise. */
+  private adopt(seriesId: string): Persisted {
+    const prev = this.load();
+    if (prev?.seriesId === seriesId) return prev;
+    this.last = null;
+    return { v: 1, seriesId, local: emptyLocal() };
+  }
 
   // ── http
-  private async http(method: "GET" | "POST", path: string, body?: unknown): Promise<E2SeriesSnapshot> {
+  private async request(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
     const url = `${this.base}${path}`;
     let res: Response;
     try {
@@ -99,20 +127,22 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     }
     let json: unknown = null;
     try { json = await res.json(); } catch { json = null; }
-    if (!res.ok) { const { code, message } = readErrorBody(res.status, json); throw new HttpFailure(res.status, code, message); }
+    if (!res.ok) { const { code, message } = readErrorBody(res.status, json); throw new HttpFailure(res.status, code, message, json); }
+    return json;
+  }
+  private async http(method: "GET" | "POST", path: string, body?: unknown): Promise<E2SeriesSnapshot> {
+    const json = await this.request(method, path, body);
     try { return readE2Snapshot(json); } catch (e) { throw new HttpFailure(500, "INVALID_RESPONSE", e instanceof E2ContractError ? e.message : "unreadable response"); }
   }
+  private async list(): Promise<E2SeriesList> {
+    const json = await this.request("GET", "/series");
+    try { return readE2SeriesList(json); } catch (e) { throw new HttpFailure(500, "INVALID_RESPONSE", e instanceof E2ContractError ? e.message : "unreadable response"); }
+  }
 
-  /** Keep the cache in step with the server: remember the champion pool and every open encounter. */
+  /** Keep the client in step with the server: remember the newest snapshot and the champion pool. */
   private absorb(p: Persisted, snap: E2SeriesSnapshot): SeriesEnvelope {
     if (!this.last || this.last.series_id !== snap.series_id || snap.seq >= this.last.seq) this.last = snap;
     if (snap.lineup?.champion_pool?.length) p.local.pool = snap.lineup.champion_pool;
-    const o = snap.current_game?.objective;
-    if (o) p.local.encounters[o.encounter_id] = { objective: o, sent: p.local.encounters[o.encounter_id]?.sent ?? {} };
-    // Bound the cache: encounters of earlier games are no longer shown.
-    const keep = new Set((snap.games.find((g) => g.game === snap.current_game?.game_index)?.objectives ?? []).map((x) => x.encounter_id));
-    if (o) keep.add(o.encounter_id);
-    for (const id of Object.keys(p.local.encounters)) if (!keep.has(id)) delete p.local.encounters[id];
     this.save(p);
     return mapE2ToEnvelope(snap, p.local);
   }
@@ -125,15 +155,19 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     if (e instanceof TransportError) throw e;
     const f = e instanceof HttpFailure ? e : new HttpFailure(null, null, String(e));
     const code = errorCode(f);
+    if (code === "UNFINISHED_SERIES") {
+      // The refused create carries the discovery listing: the owner resumes one of those instead.
+      let choices: SeriesChoice[] = [];
+      try { choices = choicesOf(readE2SeriesList((f.body as { detail?: { unfinished?: unknown } } | null)?.detail?.unfinished), this.load()?.seriesId ?? null); } catch { /* listing unreadable: the picker re-reads it */ }
+      throw new TransportError(code, `${f.code}: ${f.message}`, undefined, choices);
+    }
     // Any refused action means this client is out of date: carry the server's current state.
     const withFresh = p && f.status !== null && f.status >= 400 && f.status < 500 && code !== "AUTH" && code !== "DISABLED";
     throw new TransportError(code, f.code ? `${f.code}: ${f.message}` : f.message, withFresh ? await this.fresh(p!) : undefined);
   }
 
-  private async act(m: Mutation, kind: E2ActionKind, payload: Record<string, unknown>, before?: (p: Persisted) => void): Promise<SeriesEnvelope> {
+  private async act(m: Mutation, kind: E2ActionKind, payload: Record<string, unknown>): Promise<SeriesEnvelope> {
     const p = this.need();
-    before?.(p);
-    this.save(p);
     try {
       const snap = await this.http("POST", `/series/${encodeURIComponent(p.seriesId)}/actions`, { expected_seq: m.rev, action_id: m.requestId, kind, payload });
       return this.absorb(p, snap);
@@ -159,25 +193,36 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
   }
 
   // ── API
-  async resume(): Promise<SeriesEnvelope | null> {
-    const p = this.load();
-    if (!p) return null;
+  async resume(): Promise<SeriesEnvelope | SeriesChoices | null> {
+    const hint = this.load();
+    let list: E2SeriesList;
+    try { list = await this.list(); } catch (e) { return this.fail(e, null); }
+    if (list.resume.reason === "single") return this.resumeSeries(list.resume.series_id!);
+    if (list.resume.reason === "multiple") return { choices: choicesOf(list, hint?.seriesId ?? null) };
+    // Nothing unfinished. The hinted series may be completed (show its result) or gone.
+    if (!hint) return null;
     try {
-      return this.absorb(p, await this.http("GET", `/series/${encodeURIComponent(p.seriesId)}`));
+      const snap = await this.http("GET", `/series/${encodeURIComponent(hint.seriesId)}`);
+      if (snap.status !== "completed") { this.store.remove(LIVE_STORE_KEY); return null; } // listing is the authority for unfinished series
+      return this.absorb(hint, snap);
     } catch (e) {
       if (e instanceof HttpFailure && e.code === "DYNASTY_SERIES_NOT_FOUND") { this.store.remove(LIVE_STORE_KEY); return null; }
       return this.fail(e, null);
     }
   }
 
-  async create(m: Omit<Mutation, "rev">): Promise<SeriesEnvelope> {
+  async resumeSeries(seriesId: string): Promise<SeriesEnvelope> {
+    try {
+      const snap = await this.http("GET", `/series/${encodeURIComponent(seriesId)}`);
+      return this.absorb(this.adopt(snap.series_id), snap);
+    } catch (e) { return this.fail(e, null); }
+  }
+
+  async create(m: Omit<Mutation, "rev">, when: "refuse" | "create" = "refuse"): Promise<SeriesEnvelope> {
     try {
       // start_key = the request id: a retried create resumes the same series instead of starting a second one.
-      const snap = await this.http("POST", "/series", { start_key: m.requestId, qualification_policy: this.policy, user_preset: this.userPreset, opponent_preset: this.opponentPreset });
-      const prev = this.load();
-      const p: Persisted = prev?.seriesId === snap.series_id ? prev : { v: 1, seriesId: snap.series_id, local: emptyLocal() };
-      this.last = null;
-      return this.absorb(p, snap);
+      const snap = await this.http("POST", "/series", { start_key: m.requestId, qualification_policy: this.policy, user_preset: this.userPreset, opponent_preset: this.opponentPreset, when_unfinished_exists: when });
+      return this.absorb(this.adopt(snap.series_id), snap);
     } catch (e) { return this.fail(e, null); }
   }
 
@@ -211,22 +256,15 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     if (!q || q.state !== "current" || index !== enc.answered) throw new TransportError(q?.state === "answered" ? "ALREADY_ANSWERED" : "NOT_ALLOWED", `question ${index + 1} is not open`);
     const opt = q.options?.[option];
     if (!opt) throw new TransportError("NOT_ALLOWED", "no such option");
-    return this.act(m, "answer_objective", { game: this.game(), encounter_id: encounterId, question_id: q.question_id, option_id: opt.option_id }, (p) => {
-      const c = p.local.encounters[encounterId];
-      if (c) c.sent[q.question_id] = opt.option_id;
-    });
+    return this.act(m, "answer_objective", { game: this.game(), encounter_id: encounterId, question_id: q.question_id, option_id: opt.option_id });
   }
 
+  /** Local: open the outcome of an encounter the server already settled (no request; presentation only). */
   async settleObjective(m: Mutation, encounterId: string): Promise<SeriesEnvelope> {
-    const p = this.need();
-    if (this.last && m.rev !== this.last.seq) throw new TransportError("STALE_REVISION", `stale revision ${m.rev} (current ${this.last.seq})`, mapE2ToEnvelope(this.last, p.local));
-    try {
-      const snap = await this.http("GET", `/series/${encodeURIComponent(p.seriesId)}`);
-      const settled = snap.games.some((g) => g.objectives.some((o) => o.encounter_id === encounterId && o.state === "settled"));
-      if (!settled) throw new TransportError("NOT_ALLOWED", "the encounter is not graded yet", this.absorb(p, snap));
+    return this.local(m, (p, snap) => {
+      if (!snap.current_game?.objective_results?.some((r) => r.encounter_id === encounterId)) throw new TransportError("NOT_ALLOWED", "the encounter is not graded yet");
       if (!p.local.acked.includes(encounterId)) p.local.acked = [...p.local.acked.slice(-15), encounterId];
-      return this.absorb(p, snap);
-    } catch (e) { return this.fail(e, p); }
+    });
   }
 
   async decide(m: Mutation, decision: BetweenGameDecisionId, lineupId: string): Promise<SeriesEnvelope> {
@@ -243,6 +281,6 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     });
   }
 
-  /** Forget the series on this client. E2 has no delete: the server keeps it, a new create starts another. */
+  /** Forget the series on this client. E2 has no abandon route: the server keeps it and discovery lists it again. */
   async abandon(): Promise<void> { this.store.remove(LIVE_STORE_KEY); this.last = null; }
 }

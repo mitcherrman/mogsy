@@ -240,6 +240,22 @@ export interface ObjectiveSessionView {
   questions: ObjectiveQuestionView[];
   graded: { correct_count: number; category: E1ObjectiveCategory } | null;
   content_label: string;
+  /** live rev 2: the E1 event (`events[].instance_id`) this grade became */
+  result_event_id?: string | null;
+}
+
+/** An unfinished series the owner can resume (live discovery; the client never picks among several). */
+export interface SeriesChoice {
+  series_id: string;
+  phase: string;
+  rev: number;
+  wins: number;
+  losses: number;
+  games_started: number;
+  policy: string;
+  updated_at: string;
+  /** this browser played it last (the localStorage hint) */
+  hinted: boolean;
 }
 
 export interface SeriesEnvelope {
@@ -259,10 +275,11 @@ export type TransportErrorCode =
   | "NETWORK"
   | "AUTH"                // live: no owner session (401/403)
   | "DISABLED"            // live: DYNASTY_ENABLED is off (404 DYNASTY_DISABLED)
+  | "UNFINISHED_SERIES"   // live: create refused, the owner has unfinished series (`choices`)
   | "SERVER";
 
 export class TransportError extends Error {
-  constructor(public code: TransportErrorCode, message: string, public fresh?: SeriesEnvelope) {
+  constructor(public code: TransportErrorCode, message: string, public fresh?: SeriesEnvelope, public choices?: SeriesChoice[]) {
     super(message);
     this.name = "TransportError";
   }

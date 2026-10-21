@@ -49,7 +49,7 @@ export function Bo5Banner({ compact, live }: { compact?: boolean; live?: boolean
       <div role="note" data-testid="bo5-banner" data-transport="live" className={cn("flex items-center gap-2 rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-3 text-[11px] leading-snug text-emerald-50/85", compact ? "py-1" : "py-1.5")}>
         <FlaskConical className="h-3.5 w-3.5 shrink-0 text-emerald-300" aria-hidden />
         <span className={cn(compact && "truncate")}>
-          <strong className="font-semibold text-emerald-50">UX-4 · live E2 series · </strong>
+          <strong className="font-semibold text-emerald-50">UX-5 · live E2 series (rev 2) · </strong>
           Synthetic catalogs and players; every number provisional.<span className={cn("hidden", compact ? "md:inline" : "sm:inline")}> The server plays each game, hosts and grades the Baron questions and keeps the series. The game plan and backstage choices stay on this device (E3 pending).</span>
         </span>
       </div>
@@ -190,6 +190,8 @@ function PendingConsequences({ games, live }: { games: SeriesGameView[]; live?: 
   );
 }
 
+const PHASE_TEXT: Record<string, string> = { lineup: "drafting", game: "in game", objective: "at the Baron", completed: "complete" };
+
 export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
   const t = useMemo<DynastySeriesTransport>(() => transport ?? (liveRequested() ? new LiveSeriesTransport({ store: browserStore(), qualificationPolicy: livePolicy() }) : new FixtureSeriesServer({ store: browserStore(), delayMs: 140 })), [transport]);
   const live = t.kind === "live";
@@ -197,6 +199,8 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
   const sting = useStinger();
   const [brand, setBrand] = useState<string | null>(() => readBrand());
   const [picking, setPicking] = useState(false);
+  /** the owner asked for a new series from the resume picker: create explicitly, not with "refuse" */
+  const [startNew, setStartNew] = useState(false);
   const [rosterSeen, setRosterSeen] = useState(false);
   const [resultSeen, setResultSeen] = useState<number>(0);
   /** games whose final in-game frame the player has left (the settled game stays on stage until then) */
@@ -212,7 +216,7 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
 
   useEffect(() => installDynastyAudioUnlock(), []);
 
-  const screen = !env ? (s.loading ? "loading" : picking ? "org" : "home")
+  const screen = !env ? (s.loading ? "loading" : s.choices ? "pick" : picking ? "org" : "home")
     : series!.status === "prep" ? (rosterSeen ? "prep" : "roster")
     : series!.status === "drafting" ? "draft"
     : series!.status === "in_game" || series!.games.length > gameAck ? "game"
@@ -282,8 +286,31 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
     body = (
       <div className="flex flex-col gap-2">
         <p className="text-[12px] text-white/55" data-testid="org-branding-note">Organization = your broadcast identity (crest, colours, name). The server roster is the same synthetic team whichever you pick; org-specific rosters need the RUN-2 run service.</p>
-        <OrgScreen onChoose={async (o) => { setBrand(o.id); writeBrand(o.id); const out = await s.create(); if (out) { setPicking(false); sting({ id: "org.choose", kicker: "Your organization", title: shortName(o.name), sub: "BO5 vs SYN t_opp", tone: "gold", cue: "dynasty.org.choose" }); } }} />
+        <OrgScreen onChoose={async (o) => { setBrand(o.id); writeBrand(o.id); const out = await (startNew ? s.createNew() : s.create()); if (out) { setPicking(false); setStartNew(false); sting({ id: "org.choose", kicker: "Your organization", title: shortName(o.name), sub: "BO5 vs SYN t_opp", tone: "gold", cue: "dynasty.org.choose" }); } }} />
       </div>
+    );
+  } else if (screen === "pick" && s.choices) {
+    body = (
+      <Screen testId="bo5-pick" eyebrow="Worlds Dynasty · BO5" title="Resume a series"
+        kicker={`The server holds ${s.choices.length} unfinished series for you. Pick the one to continue; none is resumed automatically.`}
+        actions={<Btn testId="pick-new" disabled={busy} onClick={() => { s.dismissChoices(); setStartNew(true); setPicking(true); }}>Start a new series</Btn>}>
+        <ol className="flex flex-col gap-2" data-testid="series-choices">
+          {s.choices.map((c) => (
+            <li key={c.series_id}>
+              <button type="button" data-testid="series-choice" data-series={c.series_id} disabled={busy}
+                onClick={async () => { const out = await s.pick(c.series_id); if (out) { setPicking(false); setStartNew(false); } }}
+                className={cn(PLATE, "flex w-full flex-wrap items-center gap-x-3 gap-y-1 p-3 text-left transition-colors hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]")}>
+                <b className="dyn-num dyn-title text-[18px] text-white">{c.wins}–{c.losses}</b>
+                <span className="text-[13px] text-white/80">{c.games_started ? `Game ${c.games_started} · ${PHASE_TEXT[c.phase] ?? c.phase}` : "Not started"}</span>
+                {c.hinted ? <SimTag>Last played here</SimTag> : null}
+                <span className="ml-auto text-[11px] text-white/50">{new Date(c.updated_at).toLocaleString()}</span>
+                <code className="w-full truncate text-[10.5px] text-white/40">{c.series_id} · {c.policy}</code>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <p className="text-[12px] text-white/55" data-testid="pick-note">E2 has no abandon route yet: a series you do not resume stays unfinished on the server and stays listed here.</p>
+      </Screen>
     );
   } else if (screen === "roster" && series) {
     body = (
