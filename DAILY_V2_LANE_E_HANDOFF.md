@@ -88,11 +88,26 @@ Verified on the server for take 1: 21 child results / 21 distinct refs /
 18 misses, `creator_replay` match, 0 official runs for the test owner.
 
 Not captured: the Meta Reflex 1.5 s value reveal (pane screenshots are slower
-than the hold; lane A's screenshots cover it) and the **video**. Local
-browser automation needs explicit owner authorization (`AGENTS.md`): a bounded
-script is ready (`local_three_acts/record.cjs` in the session scratchpad —
-bundled headless Chromium, one context, 390×844, recorded video, 9-minute
-deadline, browser closed in `finally`). Not run.
+than the hold; lane A's screenshots cover it) and the **video** — skipped by
+the user on 2026-10-21. Local browser automation needs explicit owner
+authorization for each run (`AGENTS.md`).
+
+The harness is kept in `docs/daily-v2-lane-e/harness/` (LOCAL ONLY, never
+deploy it):
+
+* `server.py` — runs the backend worktree's app on 127.0.0.1:8711 against a DB
+  copy at `<harness dir>/../dbcopy/lol_calc.db` (make it with
+  `sqlite3.backup` from the canonical DB opened `mode=ro`); flag `owner`,
+  serveable scope, playtest caps; a fresh random HS256 secret per start;
+  removes every `SUPABASE_*` variable; overrides `require_admin` to a local
+  test owner; writes the e2e persona to `persona.json` beside itself. Edit
+  `WT`/`DB` for your paths.
+* `record.cjs` — the ONE bounded run, once approved: bundled headless Chromium
+  (no channel, no profile), one context, 390×844, recorded video, 9-minute
+  deadline, browser closed in `finally`. Starts a take from the admin page and
+  plays it to the stage result. Run with `WT=<frontend worktree> node record.cjs`
+  after the backend and `VITE_E2E_AUTH=1 VITE_COMBAT_API_URL=http://127.0.0.1:8711`
+  Vite (cwd = worktree, rollup hook) are up; stop both afterwards.
 
 ## 5. Owner gates touching the frontend (proposals; full table in the backend handoff)
 
