@@ -43,7 +43,17 @@ export interface ProPlayArenaRunProps {
    * way back; the loading panel gains one from `lg`).
    */
   backLink?: boolean;
+  /** W26Q: the way-back label ("Back to Worlds"); default "Back to Pro Play". */
+  exitLabel?: string;
+  /**
+   * W26Q: shown under the server's message when a PRESET quiz cannot start
+   * (`PP_PRESET_UNAVAILABLE`) — why there is no quiz, in the scope's terms.
+   */
+  unavailableNote?: string;
 }
+
+/** The server refused a preset session for lack of verified questions. */
+const PRESET_UNAVAILABLE = "PP_PRESET_UNAVAILABLE";
 
 /**
  * PPQ2-E — the arena frame's glow bleeds 0.25rem past the shell on each side
@@ -227,8 +237,17 @@ function FramePanel({ testId, eyebrow, children }: { testId: string; eyebrow: st
   );
 }
 
-export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, chrome, backLink = false }: ProPlayArenaRunProps) {
+export default function ProPlayArenaRun({
+  controller,
+  exitTo = PRO_PLAY_ROUTE,
+  chrome,
+  backLink = false,
+  exitLabel = "Back to Pro Play",
+  unavailableNote,
+}: ProPlayArenaRunProps) {
   const { state, projection } = controller;
+  // W26Q: "Pro Play Quiz", or the preset's own name ("Worlds 2026 Quiz").
+  const mode = projection.header.eyebrow;
 
   const action = projection.error && projection.surface ? (
     <TryAgainControl enabled={projection.error.enabled} onTryAgain={controller.tryAgain} />
@@ -252,14 +271,14 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
   if (view) {
     return (
       <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
-        <CanonicalArena view={view} chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} /> : undefined)} />
+        <CanonicalArena view={view} chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} label={exitLabel} /> : undefined)} />
       </div>
     );
   }
 
   const exit = (
     <Button variant="outline" asChild className="min-h-[44px] flex-1">
-      <Link to={exitTo}>Back to Pro Play</Link>
+      <Link to={exitTo}>{exitLabel}</Link>
     </Button>
   );
 
@@ -267,7 +286,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
   if (projection.terminal) {
     const t = projection.terminal;
     intro = (
-      <FramePanel testId="pro-play-summary" eyebrow="Pro Play Quiz">
+      <FramePanel testId="pro-play-summary" eyebrow={mode}>
         {/* PPQ2-E: focused when this panel replaces the last question. */}
         <h2 data-pro-play-summary-heading tabIndex={-1} className="ranked-title text-xl font-semibold outline-none">
           Quiz complete
@@ -287,9 +306,15 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
     );
   } else if (projection.error) {
     const e = projection.error;
+    // A preset with too few verified questions is an honest state, not a
+    // fault: the server's message in the ordinary tone, plus why.
+    const unavailable = e.code === PRESET_UNAVAILABLE;
     intro = (
-      <FramePanel testId="pro-play-error" eyebrow="Pro Play Quiz">
-        <p role="alert" className="text-sm text-destructive">{e.message}</p>
+      <FramePanel testId={unavailable ? "pro-play-unavailable" : "pro-play-error"} eyebrow={mode}>
+        <p role="alert" className={cn("text-sm", unavailable ? "text-foreground" : "text-destructive")}>{e.message}</p>
+        {unavailable && unavailableNote ? (
+          <p data-testid="pro-play-unavailable-note" className="text-xs text-muted-foreground">{unavailableNote}</p>
+        ) : null}
         <div className="flex flex-col gap-2 pt-1 sm:flex-row">
           <Button type="button" data-testid="pro-play-try-again" onClick={controller.tryAgain}
             disabled={!e.enabled} className="min-h-[44px] flex-1">
@@ -301,14 +326,14 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
     );
   } else {
     intro = (
-      <FramePanel testId="pro-play-loading" eyebrow="Pro Play Quiz">
+      <FramePanel testId="pro-play-loading" eyebrow={mode}>
         <p role="status" className="text-sm text-muted-foreground">
           {projection.header.title || "Preparing questions…"}
         </p>
         {backLink && !chrome ? (
           <Link to={exitTo} data-testid="pro-play-loading-back"
             className="hidden text-xs text-muted-foreground/70 underline underline-offset-2 hover:text-muted-foreground lg:inline">
-            Back to Pro Play
+            {exitLabel}
           </Link>
         ) : null}
       </FramePanel>
@@ -318,8 +343,8 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
   return (
     <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
       <CanonicalArena view={null}
-        chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} fromLg={false} /> : undefined)}
-        recovering={{ eyebrow: "Pro Play Quiz", message: "", intro }} />
+        chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} label={exitLabel} fromLg={false} /> : undefined)}
+        recovering={{ eyebrow: mode, message: "", intro }} />
     </div>
   );
 }

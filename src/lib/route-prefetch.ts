@@ -81,6 +81,7 @@ export const Routes = {
   LolPremium: lazyWithRetry(() => import("@/pages/LolPremium")),
   ProPlayHub: lazyWithRetry(() => import("@/pages/ProPlayHub")),
   ProPlayQuiz: lazyWithRetry(() => import("@/pages/ProPlayQuiz")),
+  Worlds2026Quiz: lazyWithRetry(() => import("@/pages/Worlds2026Quiz")),
   ProPlayGraphs: lazyWithRetry(() => import("@/pages/lol/ProPlayGraphs")),
   ProPlaySearch: lazyWithRetry(() => import("@/pages/pro-play/ProPlaySearch")),
   ProPlayPlayerProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayPlayerProfile")),
@@ -148,6 +149,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
     keys: ["ProPlayHub", "ProPlayQuiz", "ProPlayGraphs"],
   },
   { test: (p) => p === "/lol/pro-play/quiz", keys: ["ProPlayQuiz"] },
+  { test: (p) => p === "/lol/pro-play/quiz/worlds-2026", keys: ["Worlds2026Quiz"] },
   { test: (p) => p === "/lol/pro-play/graphs", keys: ["ProPlayGraphs"] },
   { test: (p) => p === "/lol/pro-play/stats", keys: ["ProPlayStats"] },
   // Research. Deliberately NOT prefetched from the hub above: the hub has no

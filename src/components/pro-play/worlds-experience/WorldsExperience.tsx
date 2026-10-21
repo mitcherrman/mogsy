@@ -23,13 +23,13 @@
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Info, RefreshCw } from "lucide-react";
+import { ArrowLeft, Brain, Info, RefreshCw } from "lucide-react";
 
 import { EventMark } from "@/components/pro-play/media/EventMark";
 import { TournamentKitProvider, useKit } from "@/components/pro-play/tournament/TournamentParts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useViewportLock } from "@/lib/pro-play/worldsExperience/viewportLock";
-import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
+import { PRO_PLAY_ROUTE, PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 import type { TournamentResponseV2 } from "@/lib/pro-play/tournamentApi";
 import { dateRange } from "@/lib/pro-play/tournamentView";
 import { freshness, stageOf } from "@/lib/pro-play/tournamentV2View";
@@ -132,30 +132,40 @@ function PrimaryNav({ compact }: { compact: boolean }) {
 function PhaseChip({ compact = false }: { compact?: boolean }) {
   const { ctx, state } = useKit();
   const live = state.matches.some((m) => m.state === "live");
+  // `short` is the phone bar's wording; `label` the desktop's. W26Q: the
+  // desktop bar uses the short wording (with the stage's full name) below
+  // 1280 px, where the five-tab nav, the Worlds Quiz control and a long
+  // label ("Knockouts in progress") no longer fit one row at 1024 px.
   let label: string;
+  let short: string;
   let tone: "live" | "gold" | "muted" = "gold";
   switch (state.phase) {
     case "pre_event":
-      label = `Starts ${calendarDay(ctx.starts)}`;
+      label = short = `Starts ${calendarDay(ctx.starts)}`;
       break;
     case "between_stages": {
       const done = stageOf(ctx, state.phase_detail?.completed_stage);
-      label = done ? `${stageLabel(done)} ${compact ? "done" : "complete"}` : "Between stages";
+      label = done ? `${stageLabel(done)} complete` : "Between stages";
+      short = done ? `${stageLabel(done)} done` : "Between stages";
       break;
     }
     case "complete":
-      label = compact ? "Complete" : "Event complete";
+      label = "Event complete";
+      short = "Complete";
       tone = "muted";
       break;
     case "unknown":
-      label = compact ? "No schedule" : "Schedule unavailable";
+      label = "Schedule unavailable";
+      short = "No schedule";
       tone = "muted";
       break;
     default: {
       const stage = stageOf(ctx, state.phase);
+      const name = stage ? stageLabel(stage) : "Stage";
       // A phone's bar has room for a short stage name only ("KO live").
-      const name = stage ? (compact && stage.key === "knockout" ? "KO" : stageLabel(stage)) : "Stage";
-      label = `${name} ${live ? "live" : compact ? "now" : "in progress"}`;
+      const phoneName = stage && stage.key === "knockout" ? "KO" : name;
+      label = `${name} ${live ? "live" : "in progress"}`;
+      short = `${compact ? phoneName : name} ${live ? "live" : "now"}`;
       if (live) tone = "live";
     }
   }
@@ -171,7 +181,12 @@ function PhaseChip({ compact = false }: { compact?: boolean }) {
       )}
     >
       {tone === "live" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 motion-reduce:animate-none" aria-hidden="true" />}
-      {label}
+      {compact ? short : (
+        <>
+          <span className="xl:hidden">{short}</span>
+          <span className="hidden xl:inline">{label}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -352,6 +367,47 @@ function NoticeDetails({ lines }: { lines: Notice[] }) {
 
 /* ── the bar ────────────────────────────────────────────────────────────── */
 
+/**
+ * W26Q — the way into the Worlds 2026 Quiz, one fixed-size control in the
+ * bar's right cluster beside the phase chip. It never changes the bar's height
+ * (desktop 56 px, phone rows 44 px), so no screen loses a pixel of workspace
+ * (UX4 zero-scroll). Icon-only on phones, portrait and landscape: at 360 px
+ * the title, this 36 px target and the short phase chip still fit one row.
+ * No motion of its own, so Reduce Motion has nothing to stop.
+ */
+function QuizChip({ compact }: { compact: boolean }) {
+  if (compact) {
+    return (
+      <Link
+        to={PRO_PLAY_WORLDS_QUIZ_ROUTE}
+        aria-label="Worlds 2026 Quiz"
+        title="Worlds 2026 Quiz"
+        data-testid="worlds-quiz-cta"
+        data-layout="compact"
+        className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-[#e3c66f] outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70"
+      >
+        <Brain className="h-4 w-4" aria-hidden="true" />
+      </Link>
+    );
+  }
+  return (
+    <Link
+      to={PRO_PLAY_WORLDS_QUIZ_ROUTE}
+      aria-label="Worlds 2026 Quiz"
+      data-testid="worlds-quiz-cta"
+      data-layout="wide"
+      title="Worlds 2026 Quiz"
+      // Below 1280 px the five-tab nav (shrink-0) and a long phase label
+      // ("Knockouts in progress") leave no room for a word: icon-only there
+      // (measured: the labelled chip met "Discover" at 1024 × 768).
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[#c9a84c]/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#e3c66f] outline-none transition-colors hover:bg-[#c9a84c]/[0.08] focus-visible:ring-1 focus-visible:ring-[#c9a84c]/70 xl:w-auto xl:px-2.5"
+    >
+      <Brain className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="hidden xl:inline">Quiz</span>
+    </Link>
+  );
+}
+
 function Identity({ compact }: { compact: boolean }) {
   const { ctx } = useKit();
   const year = ctx.starts.slice(0, 4);
@@ -396,6 +452,7 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
           <PrimaryNav compact />
         </div>
         {badge}
+        <QuizChip compact />
         <PhaseChip compact />
       </header>
     );
@@ -412,7 +469,8 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Identity compact />
-          <span className="ml-auto flex shrink-0 items-center gap-2">
+          <span className="ml-auto flex shrink-0 items-center gap-1">
+            <QuizChip compact />
             <PhaseChip compact />
           </span>
         </div>
@@ -443,6 +501,7 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
         <FeedChip data={data} refreshFailed={refreshFailed} />
         {tools}
         {badge}
+        <QuizChip compact={false} />
         <PhaseChip />
       </span>
     </header>

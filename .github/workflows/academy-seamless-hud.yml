@@ -1,0 +1,82 @@
+name: academy-seamless-hud
+
+# Seamless top HUD on /lol: before/after review screenshots and acceptance at
+# 1366x768, 1920x1080, 390x844, 320x568 and 740x360, plus a geometry
+# comparison proving the page did not move. Bundled headless Chromium on
+# GitHub's runner only (AGENTS.md). Screenshots: the `academy-seamless-hud-*`
+# artifacts; the seam table is in the run summary.
+on:
+  pull_request:
+    paths:
+      - "src/pages/academy-core/**"
+      - "src/components/Layout.tsx"
+      - "src/components/hud/**"
+      - "e2e/academy-seamless-hud*"
+      - ".github/workflows/academy-seamless-hud.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        label: [before, after]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Use the base branch's app source for the before run (the spec stays from head)
+        if: matrix.label == 'before'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base="${BASE_SHA:-$(git merge-base HEAD origin/main)}"
+          git checkout "$base" -- src
+          rm -f src/pages/academy-core/orrery/academy-core-seamless-hud.css src/pages/academy-core/orrery/academy-core-seamless-hud.test.ts
+          git status --short | head -20
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Seamless HUD capture (${{ matrix.label }})
+        env:
+          SEAMLESS_LABEL: ${{ matrix.label }}
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-seamless-hud.spec.ts --workers=1
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: academy-seamless-hud-${{ matrix.label }}
+          path: test-results/seamless-hud/${{ matrix.label }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  compare:
+    needs: capture
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: academy-seamless-hud-before
+          path: test-results/seamless-hud/before
+      - uses: actions/download-artifact@v4
+        with:
+          name: academy-seamless-hud-after
+          path: test-results/seamless-hud/after
+      - name: Page geometry identical before and after
+        run: node e2e/academy-seamless-hud-compare.mjs test-results/seamless-hud
