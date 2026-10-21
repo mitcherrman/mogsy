@@ -41,6 +41,7 @@ import type {
   PublicRoundView,
   SegmentStateView,
   SettledCardReveal,
+  SettledCardSide,
 } from "@/lib/ranked-public/contracts";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
@@ -129,7 +130,11 @@ function CardArt({ src, alt, large }: { src?: string; alt: string; large: boolea
       data-testid="mr-card-art"
       className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#b9934c]/25 bg-black/25 ${
         large
-          ? "h-24 w-24 sm:h-28 sm:w-28 lg:h-36 lg:w-36 min-[1500px]:h-40 min-[1500px]:w-40"
+          // DV2-A: the card now holds a caption plate's room below the art (see
+          // `ChoiceCard`), so the two sizes that no longer fit it are stepped
+          // down — no `sm` bump (112px; the 144px card holds 104px of art) and
+          // 152px, not 160px, from 1500px up (the 208px card holds 156px).
+          ? "h-24 w-24 lg:h-36 lg:w-36 min-[1500px]:h-[9.5rem] min-[1500px]:w-[9.5rem]"
           : "h-14 w-14 sm:h-16 sm:w-16 lg:h-20 lg:w-20 min-[1500px]:h-24 min-[1500px]:w-24"}`}
     >
       {show ? (
@@ -170,7 +175,8 @@ type Side = "left" | "right";
  *    ("left option"), because any real description would be the answer. The
  *    media URL is never parsed for a name either.
  */
-function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, picked = false }: {
+function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, picked = false,
+  caption = null }: {
   card: MetaReflexCard;
   side: Side;
   selected: boolean;
@@ -190,6 +196,18 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
   reveal?: "correct" | "wrong" | null;
   /** RFX1 — on a settled card, this side is the player's own pick. */
   picked?: boolean;
+  /**
+   * DV2-A — what the SERVER says this side is, once the card has settled; null
+   * while the card is live and for a settled side that has nothing to say (a
+   * pre-RG3 reply, or a card that compares nothing).
+   *
+   * Opaque display text, drawn and spoken as given. A named card's caption is
+   * the compared value ("3,450 gold", "Ranged"); a recognition card has no
+   * value, and its caption is the ability's name, which is disclosed only now
+   * because before settlement the name IS the answer. Nothing is parsed,
+   * re-formatted or subtracted from anything: no gap is derivable from it.
+   */
+  caption?: string | null;
 }) {
   const recognition = card.kind === "recognition";
   const entity = card[side];
@@ -199,6 +217,10 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
       ? (entity as { mediaUrl: string }).mediaUrl
       : (entity as { media: string | null }).media);
   const accessibleName = label ?? `${side === "left" ? "Left" : "Right"} option`;
+  // A recognition card's accessible name was its position so long as the name
+  // was the answer; once it is settled the name is what it was ASKING about.
+  const spoken = recognition && caption
+    ? caption : caption ? `${accessibleName}, ${caption}` : accessibleName;
   return (
     <button
       type="button"
@@ -207,9 +229,9 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
       aria-pressed={selected}
       // The verdict is stated in WORDS to a screen reader, never by colour
       // alone — the same rule the arena's verdict chips follow.
-      aria-label={reveal === "correct" ? `${accessibleName}, ${picked ? "your answer, " : ""}correct answer`
-        : reveal === "wrong" ? `${accessibleName}, your answer, incorrect`
-          : accessibleName}
+      aria-label={reveal === "correct" ? `${spoken}, ${picked ? "your answer, " : ""}correct answer`
+        : reveal === "wrong" ? `${spoken}, your answer, incorrect`
+          : spoken}
       data-testid={`mr-choice-${side}`}
       data-card-id={side === "left" ? card.leftCardId : card.rightCardId}
       data-reveal={reveal ?? undefined}
@@ -217,7 +239,7 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
       // cannot reflow the row: a reveal changes what the rectangle says and
       // never how large it is.
       data-picked={picked || undefined}
-      className={`relative flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:gap-3 lg:p-5
+      className={`relative flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 px-3 pb-6 pt-3 text-center lg:gap-3 lg:px-5 lg:pb-7 lg:pt-5
         transition-[border-color,background-color,transform] duration-150 motion-reduce:transition-none
         disabled:cursor-not-allowed
         enabled:hover:border-[#e8c97a]/70 enabled:active:scale-[0.99]
@@ -232,7 +254,7 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
           and an icon, never colour alone. */}
       {reveal && (
         <span data-testid={`mr-tag-${side}`} aria-hidden
-          className={`pointer-events-none absolute left-1/2 top-1 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase leading-none tracking-[0.14em] text-white lg:text-[10px] ${
+          className={`pointer-events-none absolute left-1/2 top-px flex lg:top-1 -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase leading-none tracking-[0.14em] text-white lg:text-[10px] ${
             reveal === "correct" ? "bg-emerald-700" : "bg-red-700"}`}>
           {reveal === "correct"
             ? <Check className="h-2.5 w-2.5" strokeWidth={4} />
@@ -247,8 +269,32 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
           {label}
         </span>
       )}
-      {/* Nothing else. The compared value, the champion's class and the
-          answer are not client-side facts until the segment settles. */}
+      {/* DV2-A — the settled caption: the compared value (or, on a recognition
+          card, the ability's name), drawn ONLY from the server's reveal.
+          Absolute, in the bottom padding the card reserves in EVERY phase
+          (`pb-6` / `lg:pb-7`, sized for the tallest art-and-label stack), so
+          it adds no height, moves no sibling and never shifts the art or the
+          label between the live card and its reveal. No transition and no
+          animation: it is there in the first paint of the reveal, which is all
+          a 1.5 s hold can afford, and there is nothing for reduced motion to
+          strip. The button's own aria-label speaks it, so this is hidden. */}
+      {caption && (
+        <span data-testid={recognition ? `mr-reveal-label-${side}` : `mr-value-${side}`}
+          aria-hidden title={caption}
+          className={`pointer-events-none absolute inset-x-1.5 bottom-1 flex h-5 items-center justify-center rounded-md bg-black/75 px-1.5 text-[13px] font-black leading-none tabular-nums lg:bottom-1.5 lg:h-6 lg:text-base ${
+            // The plate is a dark chip with light text so it reads on the arena's
+            // parchment as well as on a dark surface (the label beside it takes
+            // the theme's own colour; this must not). The untaken side's whole
+            // button is already dimmed (`disabled:opacity-70`), so its value is
+            // full white rather than dimmed twice.
+            reveal === "correct" ? "text-emerald-200"
+              : reveal === "wrong" ? "text-red-200" : "text-white"}`}>
+          <span className="truncate">{caption}</span>
+        </span>
+      )}
+      {/* Nothing else, and nothing at all before settlement: the compared
+          value, the champion's class and the answer are not client-side facts
+          until the card settles, so a live card has no `caption`. */}
     </button>
   );
 }
@@ -473,6 +519,25 @@ function BlockPhase({ state, cards, actions, skewMs, errorLine }: {
 }
 
 /**
+ * What a settled side SAYS, as the server said it, or null to say nothing.
+ *
+ * A named card (magnitude / classification) already wears its entity's name, so
+ * its caption is the compared value — `valueDisplay`, formatted server-side
+ * ("3,450 gold", "1,984 HP", "Ranged"), never re-formatted, parsed or compared
+ * here. A recognition card wears no name while live, because the name is the
+ * answer; the reveal is what discloses it, so its caption is the `label`.
+ *
+ * Null, not an empty string, for a reply that carries nothing — a reply saved
+ * before the reveal carried display text, or a card that compares nothing — so
+ * the side is simply drawn as it was: omission, never a placeholder.
+ */
+function settledCaption(card: MetaReflexCard, side: SettledCardSide): string | null {
+  const text = card.kind === "recognition" ? side.label : side.valueDisplay;
+  const trimmed = text?.trim();
+  return trimmed ? trimmed : null;
+}
+
+/**
  * The two rectangles of a card that has SETTLED, in the same geometry they had
  * while live.
  *
@@ -498,7 +563,8 @@ function SettledCard({ card, reveal }: {
       {(["left", "right"] as Side[]).map((side) => (
         <ChoiceCard key={side} card={card} side={side} selected={false}
           disabled onPick={() => {}} reveal={stateFor(side)}
-          picked={sideOf(side) === reveal.selectedCardId} />
+          picked={sideOf(side) === reveal.selectedCardId}
+          caption={settledCaption(card, reveal[side])} />
       ))}
     </div>
   );
