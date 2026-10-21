@@ -14,7 +14,9 @@
  *  - nothing here derives a game result: the UI renders `env` as served.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TransportError, type BetweenGameDecisionId, type SeriesChoice, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
+import { TransportError, type BetweenGameDecisionId, type E1Role, type SeriesChoice, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
+import type { E2Lineup } from "./e2contracts";
+import type { E3aActivity, E3aTacticChoice } from "./e3acontracts";
 import { isChoices, newRequestId, type DynastySeriesTransport } from "./transport";
 
 export interface SeriesError { code: TransportErrorCode; message: string; retryable: boolean; action: string }
@@ -110,6 +112,10 @@ export function useDynastySeries(transport: DynastySeriesTransport) {
     answer: (enc: string, index: number, option: number) => run("answer", (rev, requestId) => transport.answerQuestion({ rev, requestId }, enc, index, option)),
     settleObjective: (enc: string) => run("settleObjective", (rev, requestId) => transport.settleObjective({ rev, requestId }, enc)),
     decide: (d: BetweenGameDecisionId, lineupId: string) => run("decide", (rev, requestId) => transport.decide({ rev, requestId }, d, lineupId)),
+    /** UX-6 (E3A): one request each; a Retry resends the identical body, which the server answers `duplicate: true`. */
+    commitPreparation: (activities: E3aActivity[]) => run("commitPreparation", (rev, requestId) => transport.commitPreparation({ rev, requestId }, activities)),
+    lockSquad: (champions: E2Lineup, players: Record<E1Role, string>) => run("lockSquad", (rev, requestId) => transport.lockSquad({ rev, requestId }, champions, players)),
+    chooseTactic: (game: number, choice: E3aTacticChoice) => run("chooseTactic", (rev, requestId) => transport.chooseTactic({ rev, requestId }, game, choice)),
     abandon: async () => { await transport.abandon(); envRef.current = null; setEnv(null); setError(null); setChoices(null); },
   };
 

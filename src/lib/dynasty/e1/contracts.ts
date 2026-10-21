@@ -19,6 +19,9 @@
  *            `authority` marker so the UI can label it.
  */
 
+import type { E2Champion, E2Lineup } from "./e2contracts";
+import type { E3aLineupExtras, E3aManagement } from "./e3acontracts";
+
 export const E1_SNAPSHOT_SCHEMA = "dynasty.combat_v2.events.snapshot.e1" as const;
 
 // ───────────────────────────────────────────── VERIFIED: E1 snapshot
@@ -256,6 +259,25 @@ export interface SeriesChoice {
   updated_at: string;
   /** this browser played it last (the localStorage hint) */
   hinted: boolean;
+  /** UX-6: an E3A management series and its entry scenario */
+  management?: { rules: string; scenario: string } | null;
+}
+
+/**
+ * UX-6 — an E3A management series, exactly as the server serves it (API §3).
+ * Present only for `schema_revision >= 3` with a `management` block; the e2 flow
+ * renders unchanged without it.
+ */
+export interface ManagementView {
+  /** the server phase (`preparation`, `lineup`, `game`, `objective`, `tactics`, `completed`) */
+  phase: string;
+  block: E3aManagement;
+  /** the lineup step (phase `lineup` only) */
+  lineup: ({ game: number; suggested: E2Lineup; opponent: E2Lineup; champion_pool: E2Champion[]; rule: string } & E3aLineupExtras) | null;
+  /** squad players fielded in each game, by game index (from `games[].players`) */
+  players_by_game: Record<number, { you: Record<E1Role, string>; opponent: Record<E1Role, string> }>;
+  /** `expected_seq` of the next action (the series `seq`) */
+  seq: number;
 }
 
 export interface SeriesEnvelope {
@@ -263,6 +285,8 @@ export interface SeriesEnvelope {
   /** latest E1 snapshot of the current (or just finished) game */
   game: E1Snapshot | null;
   objective: ObjectiveSessionView | null;
+  /** UX-6: the E3A management state (live E3A series only) */
+  management?: ManagementView | null;
 }
 
 export type TransportErrorCode =

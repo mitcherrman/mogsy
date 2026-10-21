@@ -20,12 +20,20 @@
  *    nothing is derived: every mark and count is the server's.
  *  - `pool`: the champion catalog from the last `lineup` phase, so champion
  *    names and classes survive into the game screens.
+ *
+ * UX-6: an E3A management series (revision 3) has server phases for
+ * everything `plan`/`decisions` stood in for: `preparation` → prep,
+ * `tactics` → between games. Its status comes from the phase alone, the client
+ * state is not consulted, and the management block is passed through as
+ * `envelope.management` exactly as served.
  */
 import type {
   BetweenGameDecisionId, E1Effect, E1Objective, E1Role, E1Snapshot, FixtureChampion, FixtureLineup,
   ObjectiveQuestionView, ObjectiveSessionView, SeriesEnvelope, SeriesGameView, SeriesStatus, SeriesView,
 } from "./contracts";
-import type { E2Champion, E2Lineup, E2Objective, E2ObjectiveResult, E2Question, E2SeriesSnapshot } from "./e2contracts";
+import type { E2Champion, E2GameSummary, E2Lineup, E2Objective, E2ObjectiveResult, E2Question, E2SeriesSnapshot } from "./e2contracts";
+import { isManaged } from "./e2contracts";
+import type { ManagementView } from "./contracts";
 
 export const ROLES: E1Role[] = ["top", "jng", "mid", "bot", "sup"];
 
@@ -75,6 +83,12 @@ export function lineupIdOf(l: E2Lineup | null | undefined): string | null {
   return LIVE_LINEUPS.find((x) => ROLES.every((r, i) => l[r] === x.champions[i]))?.lineup_id ?? CUSTOM_LINEUP;
 }
 
+/** The lineup id a played game shows: a set id, or `custom-g<n>` (E3A drafts per role, so each game may differ). */
+export const gameLineupId = (g: Pick<E2GameSummary, "game" | "lineup">): string => {
+  const id = lineupIdOf(g.lineup.you) ?? CUSTOM_LINEUP;
+  return id === CUSTOM_LINEUP ? `${CUSTOM_LINEUP}-g${g.game}` : id;
+};
+
 export function lineupChampions(id: string): E2Lineup | null {
   const x = LIVE_LINEUPS.find((l) => l.lineup_id === id);
   return x ? (Object.fromEntries(ROLES.map((r, i) => [r, x.champions[i]])) as E2Lineup) : null;
@@ -84,9 +98,10 @@ function legalLineups(snap: E2SeriesSnapshot, pool: E2Champion[], ratings: [numb
   const inPool = new Set(pool.map((c) => c.key));
   const out = LIVE_LINEUPS.filter((x) => !inPool.size || x.champions.every((k) => inPool.has(k)))
     .map((x) => lineupOf(x.lineup_id, x.title, lineupChampions(x.lineup_id)!, pool, ratings));
-  // A lineup the server actually played that is not one of the sets (never sent by this client today).
+  // Lineups the server actually played that are not one of the sets (E3A per-role drafts), one per game.
   for (const g of snap.games) {
-    if (lineupIdOf(g.lineup.you) === CUSTOM_LINEUP && !out.some((l) => l.lineup_id === CUSTOM_LINEUP)) out.push(lineupOf(CUSTOM_LINEUP, "Custom lineup", g.lineup.you, pool, ratings));
+    const id = gameLineupId(g);
+    if (id.startsWith(CUSTOM_LINEUP) && !out.some((l) => l.lineup_id === id)) out.push(lineupOf(id, `Custom lineup (game ${g.game})`, g.lineup.you, pool, ratings));
   }
   return out;
 }
@@ -94,6 +109,7 @@ function legalLineups(snap: E2SeriesSnapshot, pool: E2Champion[], ratings: [numb
 function status(snap: E2SeriesSnapshot, local: LiveLocal): SeriesStatus {
   if (snap.phase === "completed") return "complete";
   if (snap.phase === "game" || snap.phase === "objective") return "in_game";
+  if (isManaged(snap)) return snap.phase === "preparation" ? "prep" : snap.phase === "tactics" ? "between_games" : "drafting";
   const n = snap.lineup!.game;
   if (n === 1) return local.plan ? "drafting" : "prep";
   return local.decisions[n - 1] ? "drafting" : "between_games";
@@ -154,21 +170,22 @@ export function mapE2ToEnvelope(snap: E2SeriesSnapshot, local: LiveLocal): Serie
   const games: SeriesGameView[] = settledGames.map((g) => {
     const obj = g.objectives.find((o) => o.state === "settled" && o.correct_count !== null);
     return {
-      index: g.game, lineup_id: lineupIdOf(g.lineup.you) ?? CUSTOM_LINEUP, winner: g.winner!, how: g.how!, after_stage: g.after_stage!,
+      index: g.game, lineup_id: gameLineupId(g), winner: g.winner!, how: g.how!, after_stage: g.after_stage!,
       points: g.stages.map((x) => x.you_points), labels: g.stages.map((x) => x.outcome_label),
       objective: obj ? { correct_count: obj.correct_count!, category: obj.category! } : null,
       pending_consequences: consumedEffects(snap, g.game), decision: local.decisions[g.game] ?? null,
     };
   });
   const playing = snap.current_game ? snap.games.find((g) => g.game === snap.current_game!.game_index) : undefined;
-  const currentGame = snap.phase === "completed" ? null : snap.phase === "lineup" ? snap.lineup!.game : snap.current_game!.game_index;
+  const currentGame = snap.phase === "completed" ? null : snap.phase === "lineup" ? snap.lineup!.game
+    : snap.phase === "preparation" ? 1 : snap.phase === "tactics" ? snap.current_game!.game_index + 1 : snap.current_game!.game_index;
   const oppLineup = snap.lineup?.opponent ?? snap.games[0]?.lineup.opponent ?? null;
 
   const series: SeriesView = {
     authority: "e2_series", series_id: snap.series_id, rev: snap.seq, status: st,
     best_of: 5, wins_needed: 3, wins: snap.score.you, losses: snap.score.opponent,
     current_game: currentGame,
-    current_lineup: st === "in_game" ? lineupIdOf(playing?.lineup.you) : null,
+    current_lineup: st === "in_game" && playing ? gameLineupId(playing) : null,
     games, winner: snap.result?.winner ?? null,
     team: { team_id: snap.teams.you.team_id, name: snap.teams.you.name },
     opponent: {
@@ -200,5 +217,17 @@ export function mapE2ToEnvelope(snap: E2SeriesSnapshot, local: LiveLocal): Serie
       }
     }
   }
-  return { series, game, objective };
+  return { series, game, objective, management: managementView(snap) };
+}
+
+/** UX-6: the management block and the E3A lineup step, as served (null for an e2 series). */
+function managementView(snap: E2SeriesSnapshot): ManagementView | null {
+  if (!isManaged(snap)) return null;
+  const l = snap.lineup;
+  const players_by_game: ManagementView["players_by_game"] = {};
+  for (const g of snap.games) if (g.players) players_by_game[g.game] = g.players;
+  return {
+    phase: snap.phase, block: snap.management!, seq: snap.seq, players_by_game,
+    lineup: l && l.players_by_role && l.suggested_players && l.preview ? (l as ManagementView["lineup"]) : null,
+  };
 }

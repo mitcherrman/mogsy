@@ -11,6 +11,11 @@
  *
  * Tile reveal timers and the walkout are presentation only: the controls stay
  * live while they play, and nothing is inferred from them.
+ *
+ * UX-6: on an E3A series each published stage also lists its management-driven
+ * contest components (`modifier:e3a.*`, plus the engine's `proficiency` and
+ * `team:cohesion` terms), linked to the server's `management.combat_inputs`,
+ * and the "Why" sheet groups them under "Management". Values are verbatim.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Info } from "lucide-react";
@@ -31,6 +36,8 @@ import { Btn, Eyebrow, LABEL_TONE, LeadMeter, PLATE, Pips, RANKED_ROLE, SevenPip
 import { Scene, type StadiumVariant } from "../scenes";
 import { WalkoutSequence } from "../walkout";
 import { ServerEffectChip, ServerObjective } from "./ServerObjective";
+import { ManagementInfluence } from "./Management";
+import { componentTitle, splitComponents, starterNames } from "./managementView";
 import { ROLE_ORDER, STAGE_NAME, carryNow, champClass, champNames, lastBeat, lineupById, matchPoint, meterLead, settleReason, shortName } from "./present";
 
 export type ServerGameMood = "early" | "mid" | "late" | "baron" | "victory" | "defeat";
@@ -57,7 +64,18 @@ function RollStrip({ c }: { c: E1Contest }) {
   );
 }
 
+function ComponentRow({ x }: { x: NonNullable<E1Contest["you_components"]>[number] }) {
+  return (
+    <li className="flex items-center justify-between gap-2 px-3 py-1.5 text-[13px]" data-testid="explain-part" data-source={x.source}>
+      <span className="text-white/80">{componentTitle(x)} {x.evidence_type === "management_state" ? <SimTag>Management</SimTag> : <SourceChip kind={x.source.startsWith("modifier:event") ? "event" : "rules"} />}</span>
+      <span className={cn("dyn-num font-semibold", x.value >= 0 ? "text-emerald-300" : "text-rose-300")}>{x.value > 0 ? "+" : ""}{x.value.toFixed(1)}</span>
+    </li>
+  );
+}
+
 function ExplainSheet({ open, onOpenChange, contest, stage }: { open: boolean; onOpenChange: (o: boolean) => void; contest: E1Contest | null; stage: string }) {
+  const parts = contest?.you_components ? splitComponents(contest.you_components) : null;
+  const theirs = contest?.opponent_components ? splitComponents(contest.opponent_components).management : [];
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="dyn-scroll w-full overflow-y-auto border-white/10 bg-[#0b1727] text-white sm:max-w-md" data-testid="explain-sheet">
@@ -68,16 +86,14 @@ function ExplainSheet({ open, onOpenChange, contest, stage }: { open: boolean; o
         {contest ? (
           <div className="mt-4 flex flex-col gap-3">
             <p className="text-sm text-white/80">{contest.kind === "team" ? "Composition contest, worth 2 points" : `${contest.role?.toUpperCase()} contest, worth 1 point`} · {stage}: <b className="text-white">{contest.you_label}</b> vs {contest.opponent_label}.</p>
-            {contest.you_components ? (
+            {parts ? (
               <ul className="flex flex-col divide-y divide-white/10 rounded-lg border border-white/10" data-testid="explain-parts">
-                {contest.you_components.map((x, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 px-3 py-1.5 text-[13px]">
-                    <span className="text-white/80">{x.label} <SourceChip kind={x.source.startsWith("modifier:event") ? "event" : "rules"} /></span>
-                    <span className={cn("dyn-num font-semibold", x.value >= 0 ? "text-emerald-300" : "text-rose-300")}>{x.value > 0 ? "+" : ""}{x.value.toFixed(1)}</span>
-                  </li>
-                ))}
+                {parts.rest.map((x, i) => <ComponentRow key={i} x={x} />)}
+                {parts.management.length ? <li className="bg-white/[0.03] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/60" data-testid="explain-management">Management</li> : null}
+                {parts.management.map((x, i) => <ComponentRow key={`m${i}`} x={x} />)}
                 <li className="flex justify-between px-3 py-1.5 text-[13px] font-semibold text-white"><span>Your power</span><span className="dyn-num">{contest.you_power?.toFixed(1)}</span></li>
                 <li className="flex justify-between px-3 py-1.5 text-[13px] text-white/70"><span>Their power</span><span className="dyn-num">{contest.opponent_power?.toFixed(1)}</span></li>
+                {theirs.length ? <li className="px-3 py-1.5 text-[11.5px] text-white/55" data-testid="explain-their-management">Their management terms: {theirs.map((x) => `${componentTitle(x)} ${x.value > 0 ? "+" : ""}${x.value.toFixed(1)}`).join(" · ")}</li> : null}
               </ul>
             ) : <p className="text-[12.5px] text-white/55">The component breakdown is published with the game's final snapshot.</p>}
             <RollStrip c={contest} />
@@ -209,9 +225,10 @@ export function ServerGame({ s, env, teamName, accent, mono, onResult, onMood }:
 
   const variant: StadiumVariant = losses === 2 || wins === 2 ? "elimination" : "normal";
   const intro = gameNo === 1 && snap.seq === 0 && !walked;
+  const starters = starterNames(env.management);
   const envState: EnvState = {
     accent, mono, team: teamName, opp: oppName,
-    roster: ROLE_ORDER.map((r) => ({ name: `SYN ${series.team.team_id}-${r}`, role: r, kind: "academy" as const })),
+    roster: ROLE_ORDER.map((r) => ({ name: starters[r] ?? `SYN ${series.team.team_id}-${r}`, role: r, kind: "academy" as const })),
     results: series.games.map((g) => (g.winner === "you" ? "W" : "L")), lead, live: !intro, score: `${wins}–${losses}`,
     stageLabel: `Game ${gameNo} · BO5 · ${STAGE_NAME[stage]}`, variant, mood: "neutral",
   };
@@ -292,7 +309,10 @@ export function ServerGame({ s, env, teamName, accent, mono, onResult, onMood }:
 
         {tally && !objectiveLive ? (
           showReveal || settled ? (
-            <TallyPlate tally={tally} revealed={revealed} onSkip={() => setRevealed(6)} onWhy={setWhy} names={names} castKey={`${series.series_id}|g${gameNo}|${stage}`} />
+            <>
+              <TallyPlate tally={tally} revealed={revealed} onSkip={() => setRevealed(6)} onWhy={setWhy} names={names} castKey={`${series.series_id}|g${gameNo}|${stage}`} />
+              {env.management && revealed >= 6 ? <ManagementInfluence tally={tally} mv={env.management} /> : null}
+            </>
           ) : (
             <section aria-label="Stage score" className={cn(PLATE, "flex items-center gap-x-2.5 px-3 py-2 sm:gap-x-3")} data-testid="stage-score">
               <Eyebrow>{STAGE_NAME[stage]} · published</Eyebrow>
@@ -378,6 +398,7 @@ function TallyPlate({ tally, revealed, onSkip, onWhy, names, castKey }: { tally:
 export function ServerLineupStrip({ env, lineupId }: { env: SeriesEnvelope; lineupId?: string }) {
   const motion = useMotionAllowed();
   const l = lineupById(env.series, lineupId ?? env.series.current_lineup);
+  const players = starterNames(env.management);
   if (!l) return null;
   return (
     <div data-testid="lineup-strip" data-lineup={l.lineup_id} className="flex flex-col gap-2">
@@ -390,6 +411,7 @@ export function ServerLineupStrip({ env, lineupId }: { env: SeriesEnvelope; line
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border" style={{ borderColor: `${CLASS_COLOR[cls]}66`, background: `${CLASS_COLOR[cls]}1a` }}><ClassGlyph cls={cls} size={20} /></span>
                 <span className="dyn-title w-full truncate text-[10.5px] font-semibold text-white sm:text-[12px]">{shortName(c.name)}</span>
                 <span className="text-[9px] uppercase tracking-[0.14em] text-white/45">{l.roles[i]}</span>
+                {players[l.roles[i]] ? <span className="w-full truncate text-[9.5px] text-white/60" data-testid="lineup-player">{players[l.roles[i]]}</span> : null}
               </div>
             );
           })}

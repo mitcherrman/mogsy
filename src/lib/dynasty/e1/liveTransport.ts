@@ -20,6 +20,14 @@
  *   choosePlan, decide  client-side until E3 (they never reach the server)
  *   rev, requestId  → expected_seq, action_id
  *
+ * UX-6 — E3A management series (revision 3, backend bc928207; E3A API §2):
+ *
+ *   create             adds {management_rules, entry_scenario} (both or neither) when a scenario is set
+ *   commitPreparation  action commit_preparation {activities}   (the whole plan, applied atomically)
+ *   lockSquad          action lock_lineup {game, champions, players}   (`players` is required on E3A)
+ *   chooseTactic       action choose_tactic {game, choice}   (`game` = the game just settled, from `next`)
+ *   choosePlan, decide, lockLineup  refused on an E3A series: the server owns those steps there
+ *
  * The client sends ids only: never a count, a correctness flag or an outcome.
  * A retried mutation resends the identical body (same action_id), which E2
  * answers with `duplicate: true` and never applies twice.
@@ -27,7 +35,9 @@
 import { ADMIN_API_BASE_URL, buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
 import { readErrorBody } from "@/lib/dynasty/client";
 import { BETWEEN_GAME_DECISIONS, TransportError, type BetweenGameDecisionId, type SeriesChoice, type SeriesEnvelope, type TransportErrorCode } from "./contracts";
-import { E2_API, E2ContractError, readE2SeriesList, readE2Snapshot, type E2ActionKind, type E2Preset, type E2QualificationPolicy, type E2SeriesList, type E2SeriesSnapshot } from "./e2contracts";
+import { E2_API, E2ContractError, isManaged, readE2SeriesList, readE2Snapshot, type E2ActionKind, type E2Lineup, type E2Preset, type E2QualificationPolicy, type E2SeriesList, type E2SeriesSnapshot } from "./e2contracts";
+import { MANAGEMENT_RULES_E3A, type E3aActivity, type E3aScenario, type E3aTacticChoice } from "./e3acontracts";
+import type { E1Role } from "./contracts";
 import { emptyLocal, lineupChampions, mapE2ToEnvelope, type LiveLocal } from "./e2mapper";
 import { memoryStore, type KeyValueStore } from "./fixtureServer";
 import type { DynastySeriesTransport, Mutation, SeriesChoices } from "./transport";
@@ -45,6 +55,8 @@ export interface LiveTransportOptions {
   qualificationPolicy?: E2QualificationPolicy;
   userPreset?: E2Preset;
   opponentPreset?: E2Preset;
+  /** UX-6: create E3A management series with this entry scenario; null/absent creates e2 series */
+  managementScenario?: E3aScenario | null;
 }
 
 class HttpFailure extends Error {
@@ -68,6 +80,7 @@ function choicesOf(list: E2SeriesList, hint: string | null): SeriesChoice[] {
   return list.series.map((r) => ({
     series_id: r.series_id, phase: r.phase, rev: r.seq, wins: r.score.you, losses: r.score.opponent,
     games_started: r.games_started, policy: r.qualification_policy, updated_at: r.updated_at, hinted: r.series_id === hint,
+    management: r.management_rules && r.entry_scenario ? { rules: r.management_rules, scenario: r.entry_scenario } : null,
   }));
 }
 
@@ -79,6 +92,7 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
   private policy: E2QualificationPolicy;
   private userPreset: E2Preset;
   private opponentPreset: E2Preset;
+  private scenario: E3aScenario | null;
   /** the newest e2 snapshot this client has seen */
   private last: E2SeriesSnapshot | null = null;
 
@@ -89,7 +103,12 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     this.policy = opts.qualificationPolicy ?? "narrow_early_mid_combo";
     this.userPreset = opts.userPreset ?? "balanced";
     this.opponentPreset = opts.opponentPreset ?? "balanced2";
+    this.scenario = opts.managementScenario ?? null;
   }
+
+  /** UX-6: the entry scenario for the NEXT created series (null: an e2 series). Existing series keep their pins. */
+  setManagementScenario(scenario: E3aScenario | null) { this.scenario = scenario; }
+  get managementScenario(): E3aScenario | null { return this.scenario; }
 
   // ── persistence (client-side presentation state only; the series lives on the server)
   private load(): Persisted | null {
@@ -221,12 +240,19 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
   async create(m: Omit<Mutation, "rev">, when: "refuse" | "create" = "refuse"): Promise<SeriesEnvelope> {
     try {
       // start_key = the request id: a retried create resumes the same series instead of starting a second one.
-      const snap = await this.http("POST", "/series", { start_key: m.requestId, qualification_policy: this.policy, user_preset: this.userPreset, opponent_preset: this.opponentPreset, when_unfinished_exists: when });
+      const management = this.scenario ? { management_rules: MANAGEMENT_RULES_E3A, entry_scenario: this.scenario } : {};
+      const snap = await this.http("POST", "/series", { start_key: m.requestId, qualification_policy: this.policy, user_preset: this.userPreset, opponent_preset: this.opponentPreset, when_unfinished_exists: when, ...management });
       return this.absorb(this.adopt(snap.series_id), snap);
     } catch (e) { return this.fail(e, null); }
   }
 
+  /** E3A owns preparation, lineup players and between-game decisions: the client-side stand-ins are refused there. */
+  private notManaged(what: string) {
+    if (this.last && isManaged(this.last)) throw new TransportError("NOT_ALLOWED", `${what} is a server action on an E3A series`);
+  }
+
   async choosePlan(m: Mutation, lineupId: string): Promise<SeriesEnvelope> {
+    this.notManaged("the game plan");
     return this.local(m, (p, snap) => {
       if (snap.phase !== "lineup" || snap.lineup?.game !== 1 || p.local.plan) throw new TransportError("NOT_ALLOWED", "the game plan is set before game 1");
       if (!lineupChampions(lineupId)) throw new TransportError("ILLEGAL_LINEUP", `lineup ${lineupId} is not legal`);
@@ -238,7 +264,27 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     const champions = lineupChampions(lineupId);
     if (!champions) throw new TransportError("ILLEGAL_LINEUP", `lineup ${lineupId} is not legal`);
     if (this.last?.phase !== "lineup") throw new TransportError("NOT_ALLOWED", "not drafting");
+    this.notManaged("a lineup without squad players"); // E3A API §5.8: never drop `players`
     return this.act(m, "lock_lineup", { game: this.game(), champions });
+  }
+
+  async lockSquad(m: Mutation, champions: E2Lineup, players: Record<E1Role, string>): Promise<SeriesEnvelope> {
+    const s = this.last;
+    if (!s || !isManaged(s)) throw new TransportError("NOT_ALLOWED", "squad players need an E3A series");
+    // The game being drafted (or, if this client is behind, the one after the shown game): the server refuses a wrong phase itself.
+    const game = s.lineup?.game ?? (s.current_game?.game_index ?? 0) + 1;
+    return this.act(m, "lock_lineup", { game, champions: { ...champions }, players: { ...players } });
+  }
+
+  // No client-side phase check for the two E3A decisions: the server refuses a wrong phase (WRONG_PHASE /
+  // WRONG_GAME, with its own readable message and the fresh state), and an identical retry must reach it.
+  async commitPreparation(m: Mutation, activities: E3aActivity[]): Promise<SeriesEnvelope> {
+    // Exactly the fields each activity takes (anything else is BAD_PREPARATION); the server checks eligibility and budget.
+    return this.act(m, "commit_preparation", { activities: activities.map((a) => ({ ...a })) });
+  }
+
+  async chooseTactic(m: Mutation, game: number, choice: E3aTacticChoice): Promise<SeriesEnvelope> {
+    return this.act(m, "choose_tactic", { game, choice });
   }
 
   async advance(m: Mutation, expectedSeq: number): Promise<SeriesEnvelope> {
@@ -268,6 +314,7 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
   }
 
   async decide(m: Mutation, decision: BetweenGameDecisionId, lineupId: string): Promise<SeriesEnvelope> {
+    this.notManaged("the between-game decision");
     return this.local(m, (p, snap) => {
       const after = snap.phase === "lineup" ? (snap.lineup?.game ?? 1) - 1 : 0;
       if (after < 1 || p.local.decisions[after]) throw new TransportError("NOT_ALLOWED", "not between games");

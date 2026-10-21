@@ -10,6 +10,13 @@
  * E1 machine output served by the in-browser contract double. With
  * `&transport=live` the live E2 series API serves everything instead
  * (`LiveSeriesTransport`); between-game state beyond E2's ledger (E3) stays pending.
+ *
+ * UX-6: a live series created with E3A management (the default for new live
+ * series; `&management=off` keeps the e2 series, `&scenario=fresh` picks the
+ * other entry scenario) adds the headquarters squad, the preparation days, the
+ * squad draft and the backstage tactic, all as server actions
+ * (`./Management.tsx`). The gate is the snapshot itself: revision 3 with a
+ * `management` block. Any other series renders the UX-5 flow unchanged.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { FlaskConical } from "lucide-react";
@@ -18,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { BETWEEN_GAME_DECISIONS, type BetweenGameDecisionId, type FixtureLineup, type SeriesEnvelope, type SeriesGameView } from "@/lib/dynasty/e1/contracts";
 import { FixtureSeriesServer, browserStore } from "@/lib/dynasty/e1/fixtureServer";
 import { LiveSeriesTransport } from "@/lib/dynasty/e1/liveTransport";
+import { ACTIVITY_SCENE, ENTRY_SCENARIOS, SCENARIO_TITLE, playerRow, type E3aActivityKind, type E3aScenario } from "@/lib/dynasty/e1/e3acontracts";
 import type { E2QualificationPolicy } from "@/lib/dynasty/e1/e2contracts";
 import type { DynastySeriesTransport } from "@/lib/dynasty/e1/transport";
 import { useDynastySeries, type DynastySeries } from "@/lib/dynasty/e1/useDynastySeries";
@@ -34,16 +42,37 @@ import { ServerGame, ServerLineupStrip, type ServerGameMood } from "./ServerGame
 import { SeriesAuthorityContext } from "./authority";
 import { ServerEffectChip } from "./ServerObjective";
 import { HOW_TEXT, ROLE_ORDER, STAGE_NAME, champClass, lineupById, matchPoint, shortName } from "./present";
+import { CarryForward, ChangeList, PreparationScreen, SquadDraftScreen, SquadScreen, TacticsScreen } from "./Management";
+import { starterNames } from "./managementView";
 
 const BRAND_KEY = "mogzy.dynasty.ux3.brand";
 /** `?view=bo5&transport=live`: drive the BO5 from the live E2 series API (UX-4). */
 const liveRequested = () => { try { return new URLSearchParams(window.location.search).get("transport") === "live"; } catch { return false; } };
 /** `&policy=broad_mid_win`: the E2 qualification policy for NEW live series (an open owner decision; default narrow, as UX-3). */
 const livePolicy = (): E2QualificationPolicy => { try { return new URLSearchParams(window.location.search).get("policy") === "broad_mid_win" ? "broad_mid_win" : "narrow_early_mid_combo"; } catch { return "narrow_early_mid_combo"; } };
+/** UX-6: new live series are E3A management series unless `&management=off`; `&scenario=fresh` picks the fresh entry state. */
+const liveScenario = (): E3aScenario | null => {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("management") === "off") return null;
+    return q.get("scenario") === "fresh" ? "fresh" : "congested_schedule";
+  } catch { return "congested_schedule"; }
+};
 const readBrand = (): string | null => { try { return window.localStorage.getItem(BRAND_KEY); } catch { return null; } };
 const writeBrand = (id: string | null) => { try { if (id) window.localStorage.setItem(BRAND_KEY, id); else window.localStorage.removeItem(BRAND_KEY); } catch { /* ignore */ } };
 
-export function Bo5Banner({ compact, live }: { compact?: boolean; live?: boolean }) {
+export function Bo5Banner({ compact, live, managed }: { compact?: boolean; live?: boolean; managed?: boolean }) {
+  if (live && managed) {
+    return (
+      <div role="note" data-testid="bo5-banner" data-transport="live" data-managed="true" className={cn("flex items-center gap-2 rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-3 text-[11px] leading-snug text-emerald-50/85", compact ? "py-1" : "py-1.5")}>
+        <FlaskConical className="h-3.5 w-3.5 shrink-0 text-emerald-300" aria-hidden />
+        <span className={cn(compact && "truncate")}>
+          <strong className="font-semibold text-emerald-50">UX-6 · live E3A management series · </strong>
+          Synthetic squad and catalogs; every number provisional and uncalibrated.<span className={cn("hidden", compact ? "md:inline" : "sm:inline")}> The server keeps fatigue, cohesion, proficiency and every decision, plays each game with them and grades the Baron questions.</span>
+        </span>
+      </div>
+    );
+  }
   if (live) {
     return (
       <div role="note" data-testid="bo5-banner" data-transport="live" className={cn("flex items-center gap-2 rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-3 text-[11px] leading-snug text-emerald-50/85", compact ? "py-1" : "py-1.5")}>
@@ -117,7 +146,7 @@ function LineupChoice({ lineups, value, onPick, testPrefix }: { lineups: Fixture
 }
 
 /** VIS-F4 lock-in, fed by the server lineup (presentation only; the lock already landed). */
-function ServerLockSequence({ env, org, onDone }: { env: SeriesEnvelope; org: Org; onDone: () => void }) {
+function ServerLockSequence({ env, org, onDone, names }: { env: SeriesEnvelope; org: Org; onDone: () => void; names?: Partial<Record<string, string>> }) {
   const motion = useMotionAllowed();
   const done = useRef(false);
   const finish = useCallback(() => { if (done.current) return; done.current = true; onDone(); }, [onDone]);
@@ -144,7 +173,7 @@ function ServerLockSequence({ env, org, onDone }: { env: SeriesEnvelope; org: Or
                 <span className="w-full truncate text-[9px] font-bold uppercase tracking-[0.2em] text-white/50">{l.roles[i]}</span>
                 <span className="flex h-11 w-11 items-center justify-center rounded-full border sm:h-14 sm:w-14" style={{ borderColor: `${CLASS_COLOR[cls]}88`, background: `${CLASS_COLOR[cls]}22` }}><ClassGlyph cls={cls} size={24} /></span>
                 <span className="dyn-title w-full truncate text-[11px] font-semibold text-white sm:text-[14px]">{shortName(c.name)}</span>
-                <span className="w-full truncate text-[9.5px] text-white/55 sm:text-[11px]">{env.series.team.team_id}-{l.roles[i]}</span>
+                <span className="w-full truncate text-[9.5px] text-white/55 sm:text-[11px]" data-testid="lock-player">{names?.[l.roles[i]] ?? `${env.series.team.team_id}-${l.roles[i]}`}</span>
                 <span className="dyn-lock-stamp dyn-title rotate-[-8deg] rounded border-2 border-[#e3c66f]/80 px-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#f6dd8f] sm:text-[9px]">Locked</span>
               </div>
             );
@@ -158,7 +187,7 @@ function ServerLockSequence({ env, org, onDone }: { env: SeriesEnvelope; org: Or
   );
 }
 
-function GameRow({ g }: { g: SeriesGameView }) {
+function GameRow({ g, reserves }: { g: SeriesGameView; reserves?: string[] }) {
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[12.5px]" data-testid={`series-game-${g.index}`} data-winner={g.winner}>
       <span className="dyn-title w-14 font-semibold text-white">Game {g.index}</span>
@@ -166,19 +195,22 @@ function GameRow({ g }: { g: SeriesGameView }) {
       <span className="dyn-num text-white/70">{g.points.join(" · ")}</span>
       <span className="text-white/55">{HOW_TEXT[g.how]}</span>
       {g.objective ? <span className="text-violet-200/90">Baron {g.objective.correct_count}/3</span> : null}
-      <span className="ml-auto text-[10.5px] uppercase tracking-[0.12em] text-white/45">{g.lineup_id}{g.decision ? ` · then ${g.decision.replace("_", " ")}` : ""}</span>
+      {reserves?.length ? <span className="text-amber-200/90" data-testid="game-reserves">Reserve: {reserves.join(", ")}</span> : null}
+      <span className="ml-auto text-[10.5px] uppercase tracking-[0.12em] text-white/45">{g.lineup_id.replace(/^custom-g\d+$/, "custom")}{g.decision ? ` · then ${g.decision.replace("_", " ")}` : ""}</span>
     </li>
   );
 }
 
-function PendingConsequences({ games, live }: { games: SeriesGameView[]; live?: boolean }) {
+function PendingConsequences({ games, live, managed }: { games: SeriesGameView[]; live?: boolean; managed?: boolean }) {
   const all = games.flatMap((g) => g.pending_consequences.map((e) => ({ g: g.index, e })));
   return (
     <Plate className="flex flex-col gap-2 p-3" testId="pending-consequences">
-      <div className="flex items-center gap-2"><Eyebrow>Carried-over state</Eyebrow><SimTag>{live ? "E2 ledger" : "E3 pending"}</SimTag></div>
+      <div className="flex items-center gap-2"><Eyebrow>{managed ? "E1 effects consumed" : "Carried-over state"}</Eyebrow><SimTag>{managed ? "E3A" : live ? "E2 ledger" : "E3 pending"}</SimTag></div>
       {all.length ? (
         <>
-          {live ? (
+          {managed ? (
+            <p className="text-[12px] text-white/60">Persistent effects the server <b>consumed once</b> after the game that earned them. In an E3A series they also change contest power (confidence modifiers), shown with the management state.</p>
+          ) : live ? (
             <p className="text-[12px] text-white/60">Persistent effects the server <b>consumed once</b> after the game that earned them. They enter the next game(s) as player conditions and only gate event eligibility; they never change contest power.</p>
           ) : (
             <p className="text-[12px] text-white/60">Typed persistent effects the server recorded. In E1 they are <b>pending and applied to nothing</b>: a future state engine (E3) will consume each once. They did not change any later game.</p>
@@ -193,8 +225,12 @@ function PendingConsequences({ games, live }: { games: SeriesGameView[]; live?: 
 const PHASE_TEXT: Record<string, string> = { lineup: "drafting", game: "in game", objective: "at the Baron", completed: "complete" };
 
 export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
-  const t = useMemo<DynastySeriesTransport>(() => transport ?? (liveRequested() ? new LiveSeriesTransport({ store: browserStore(), qualificationPolicy: livePolicy() }) : new FixtureSeriesServer({ store: browserStore(), delayMs: 140 })), [transport]);
+  const t = useMemo<DynastySeriesTransport>(() => transport ?? (liveRequested() ? new LiveSeriesTransport({ store: browserStore(), qualificationPolicy: livePolicy(), managementScenario: liveScenario() }) : new FixtureSeriesServer({ store: browserStore(), delayMs: 140 })), [transport]);
   const live = t.kind === "live";
+  /** UX-6: the entry scenario for a NEW live series (null: e2). Existing series carry their own pins. */
+  const [scenario, setScenarioState] = useState<E3aScenario | null>(() => (t instanceof LiveSeriesTransport ? t.managementScenario : null));
+  const setScenario = (x: E3aScenario) => { if (t instanceof LiveSeriesTransport) t.setManagementScenario(x); setScenarioState(x); };
+  const [prepFocus, setPrepFocus] = useState<E3aActivityKind | "idle">("idle");
   const s = useDynastySeries(t);
   const sting = useStinger();
   const [brand, setBrand] = useState<string | null>(() => readBrand());
@@ -213,6 +249,9 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
   const env = s.env;
   const org = ORGS.find((o) => o.id === brand) ?? ORGS[0];
   const series = env?.series ?? null;
+  /** UX-6: the E3A management state, exactly as served (null on e2 and fixture series). */
+  const mv = env?.management ?? null;
+  const managed = !!mv;
 
   useEffect(() => installDynastyAudioUnlock(), []);
 
@@ -242,7 +281,7 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
     setResultSeen(series.status === "in_game" || series.status === "drafting" ? n : Math.max(0, n - 1));
     if (series.status !== "prep") setRosterSeen(true);
   }, [series]);
-  const resetLocal = () => { setRosterSeen(false); setResultSeen(0); setGameAck(0); setPlan(null); announced.current = 0; inited.current = false; };
+  const resetLocal = () => { setRosterSeen(false); setResultSeen(0); setGameAck(0); setPlan(null); setPrepFocus("idle"); announced.current = 0; inited.current = false; };
 
   // Series broadcast: fires once per recorded game, from the server tally only.
   useEffect(() => {
@@ -260,10 +299,15 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
 
   const results = series?.games.map((g) => (g.winner === "you" ? "W" as const : "L" as const)) ?? [];
   const last = series?.games[series.games.length - 1];
+  // E3A: the room shows the squad's own starters and the server's cohesion (0.30..0.80 drawn as 0..5 diamonds; display only).
+  const starters = mv ? (mv.lineup?.suggested_players ?? mv.block.combat_inputs?.players?.you ?? null) : null;
   const envState: EnvState = {
     accent: ORG_ACCENT[org.id]?.hex, mono: ORG_ACCENT[org.id]?.mono, team: org.name, opp: series?.opponent.name,
-    roster: ROLE_ORDER.map((r) => ({ name: `SYN ${series?.team.team_id ?? "t_user"}-${r}`, role: r, kind: "academy" as const })),
-    results, cohesion: undefined,
+    roster: ROLE_ORDER.map((r) => {
+      const row = mv ? (starters ? playerRow(mv.block, starters[r]) : mv.block.you.players.find((p) => p.role === r && p.core)) : undefined;
+      return { name: row ? row.name : `SYN ${series?.team.team_id ?? "t_user"}-${r}`, role: r, kind: row?.core ? "signed" as const : "academy" as const };
+    }),
+    results, cohesion: mv ? Math.max(0, Math.min(5, Math.round((mv.block.you.cohesion - 0.3) * 10))) : undefined,
     mood: screen === "result" || screen === "decision" || screen === "series" ? (last?.winner === "you" ? "win" : "loss") : "neutral",
   };
   const teamName = shortName(org.name);
@@ -274,11 +318,21 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
     body = <Plate className="p-4" testId="series-loading"><p className="text-sm text-white/70" role="status">Connecting to the series…</p></Plate>;
   } else if (screen === "home") {
     body = (
-      <Screen testId="bo5-home" eyebrow="Worlds Dynasty · BO5" title="A best-of-five, played by the server" hero kicker={live ? "Every stage, event, Baron question and result below comes from the live E2 series server." : "Every stage, event, Baron and result below is real E1 machine output, replayed through the adapter boundary."}>
+      <Screen testId="bo5-home" eyebrow="Worlds Dynasty · BO5" title="A best-of-five, played by the server" hero kicker={live && scenario ? "Every squad number, preparation day, stage, Baron question and result below comes from the live E3A series server." : live ? "Every stage, event, Baron question and result below comes from the live E2 series server." : "Every stage, event, Baron and result below is real E1 machine output, replayed through the adapter boundary."}>
         <Plate ornate className="flex flex-col gap-2 p-4">
-          <p className="text-sm text-white/80">Choose an organization, prepare for <b>SYN t_opp</b>, draft one of three legal lineups each game, and play until one team has three wins.</p>
+          <p className="text-sm text-white/80">{live && scenario ? <>Choose an organization, prepare your squad for <b>SYN t_opp</b>, pick your five and their champions each game, and play until one team has three wins.</> : <>Choose an organization, prepare for <b>SYN t_opp</b>, draft one of three legal lineups each game, and play until one team has three wins.</>}</p>
           <p className="text-[12px] text-white/55">Qualification policy: <code className="text-white/75">{live ? livePolicy() : "narrow_early_mid_combo"}</code> (candidate; owner decision pending). A three-question Baron appears only when the server qualifies it.</p>
         </Plate>
+        {live && scenario ? (
+          <Plate className="flex flex-col gap-2 p-3" testId="scenario-choice">
+            <div className="flex items-center gap-2"><Eyebrow>Management · entry state</Eyebrow><SimTag>E3A</SimTag></div>
+            <p className="text-[12px] text-white/60">The squad's state entering this series (synthetic). You prepare for three days, choose your five from ten players before every game, and make one adjustment between games; the server applies every consequence.</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Entry scenario">
+              {ENTRY_SCENARIOS.map((x) => <button key={x} type="button" role="radio" aria-checked={scenario === x} data-testid={`scenario-${x}`} onClick={() => setScenario(x)}
+                className={cn("min-h-[40px] rounded-lg border px-3 text-[12.5px]", scenario === x ? "border-[#e3c66f]/70 bg-[#e3c66f]/15 text-white" : "border-white/15 text-white/70 hover:border-white/30")}>{SCENARIO_TITLE[x]}</button>)}
+            </div>
+          </Plate>
+        ) : null}
         <div className="flex justify-end"><Btn primary beckon testId="bo5-new" onClick={() => setPicking(true)}>Start a series</Btn></div>
       </Screen>
     );
@@ -303,6 +357,7 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
                 <b className="dyn-num dyn-title text-[18px] text-white">{c.wins}–{c.losses}</b>
                 <span className="text-[13px] text-white/80">{c.games_started ? `Game ${c.games_started} · ${PHASE_TEXT[c.phase] ?? c.phase}` : "Not started"}</span>
                 {c.hinted ? <SimTag>Last played here</SimTag> : null}
+                {c.management ? <SimTag>E3A · {SCENARIO_TITLE[c.management.scenario as E3aScenario] ?? c.management.scenario}</SimTag> : null}
                 <span className="ml-auto text-[11px] text-white/50">{new Date(c.updated_at).toLocaleString()}</span>
                 <code className="w-full truncate text-[10.5px] text-white/40">{c.series_id} · {c.policy}</code>
               </button>
@@ -312,6 +367,14 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
         <p className="text-[12px] text-white/55" data-testid="pick-note">E2 has no abandon route yet: a series you do not resume stays unfinished on the server and stays listed here.</p>
       </Screen>
     );
+  } else if (screen === "roster" && series && mv) {
+    body = <SquadScreen mv={mv} onNext={() => setRosterSeen(true)} />;
+  } else if (screen === "prep" && series && mv) {
+    body = <PreparationScreen key={series.rev} mv={mv} s={s} onFocus={setPrepFocus} />;
+  } else if (screen === "draft" && series && mv?.lineup) {
+    body = <SquadDraftScreen key={`${series.series_id}|${mv.lineup.game}`} env={env!} mv={mv} s={s} onLocked={() => setLocking(true)} />;
+  } else if (screen === "decision" && series && mv?.block.decisions.tactics) {
+    body = <TacticsScreen key={`${series.series_id}|${series.rev}`} mv={mv} s={s} kicker={matchPoint(series) === "you" ? "Match point. One more win takes the series." : matchPoint(series) === "them" ? "They have match point. Lose this and the series is over." : matchPoint(series) === "both" ? "Two games each: game five decides it." : `Series ${series.wins}–${series.losses}.`} />;
   } else if (screen === "roster" && series) {
     body = (
       <Screen testId="bo5-roster" eyebrow="Starting roster" title="Five on the server roster" kicker="The legal starting five for this series, as the server defines it. Roster assembly (signings, bench) is not hosted yet."
@@ -371,7 +434,8 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
           ))}
           {last.objective ? <p className="text-[12.5px] text-violet-200/90">Baron: {last.objective.correct_count} of 3, {last.objective.category.replace(/_/g, " ")}.</p> : null}
         </Plate>
-        <PendingConsequences games={[last]} live={live} />
+        {mv && mv.phase === "tactics" ? <ChangeList m={mv.block} entries={mv.block.recent_changes.entries} title={`Your squad after game ${last.index}`} testId="result-changes" /> : null}
+        <PendingConsequences games={[last]} live={live} managed={managed} />
       </Screen>
     );
   } else if (screen === "decision" && series) {
@@ -401,15 +465,20 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
         kicker={`First to three, decided by the server's settled games. ${series.games.length} games played.`}
         actions={<Btn testId="series-again" onClick={async () => { await s.abandon(); resetLocal(); }}>New series</Btn>}>
         <BoPips wins={series.wins} losses={series.losses} />
-        <ol className="flex flex-col gap-1.5" data-testid="series-games">{series.games.map((g) => <GameRow key={g.index} g={g} />)}</ol>
-        <PendingConsequences games={series.games} live={live} />
+        <ol className="flex flex-col gap-1.5" data-testid="series-games">{series.games.map((g) => {
+          const fielded = mv?.players_by_game[g.index]?.you;
+          const reserves = fielded ? ROLE_ORDER.filter((r) => playerRow(mv!.block, fielded[r])?.core === false) : undefined;
+          return <GameRow key={g.index} g={g} reserves={reserves} />;
+        })}</ol>
+        {mv ? <><CarryForward m={mv.block} /><ChangeList m={mv.block} entries={mv.block.recent_changes.entries} title="The last game and the settlement" testId="series-changes" /></> : null}
+        <PendingConsequences games={series.games} live={live} managed={managed} />
         <Rule />
         <p className="text-[11.5px] text-white/50" data-testid="series-authority">Series tally: <code>{series.authority}</code>. Policy {series.policy.policy_id} ({series.policy.status}).</p>
       </Screen>
     );
   }
 
-  const sceneId = screen === "game" ? null : screen === "prep" ? "warroom" : screen === "draft" ? "warroom" : screen === "result" || screen === "decision" ? "backstage" : screen === "series" ? (series?.winner === "you" ? "trophy" : "backstage") : "hq";
+  const sceneId = screen === "game" ? null : screen === "prep" ? (mv ? ACTIVITY_SCENE[prepFocus] : "warroom") : screen === "draft" ? "warroom" : screen === "result" || screen === "decision" ? "backstage" : screen === "series" ? (series?.winner === "you" ? "trophy" : "backstage") : "hq";
   const pageMood = screen === "game" ? mood : screen === "result" || screen === "decision" ? (last?.winner === "you" ? "victory" : "defeat") : screen === "series" ? (series?.winner === "you" ? "victory" : "defeat") : "home";
 
   return (
@@ -429,11 +498,11 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
         </div>
       ) : <div className="fixed right-3 top-[3.25rem] z-20"><AmbienceButton /></div>}
       <main ref={mainRef} className="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-8 pt-4" data-testid="dynasty-bo5-main">
-        <Bo5Banner compact={screen === "game"} live={live} />
+        <Bo5Banner compact={screen === "game"} live={live} managed={managed || (!series && live && !!scenario)} />
         <ErrorPanel s={s} />
         {sceneId ? <Scene id={sceneId} caption env={envState} champion={screen === "series" && series?.winner === "you"}>{body}</Scene> : body}
       </main>
-      {locking && env && series?.status === "in_game" ? <ServerLockSequence env={env} org={org} onDone={() => setLocking(false)} /> : null}
+      {locking && env && series?.status === "in_game" ? <ServerLockSequence env={env} org={org} names={mv ? starterNames(mv) : undefined} onDone={() => setLocking(false)} /> : null}
     </div>
     </SeriesAuthorityContext.Provider>
   );

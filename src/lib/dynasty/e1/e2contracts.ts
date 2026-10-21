@@ -11,19 +11,27 @@
  * Rev-1 snapshots (no `schema_revision`) still parse; the rev-2 parts are
  * then simply absent.
  *
+ * Revision 3 (UX-6) is an E3A management series (backend bc928207): the same
+ * schema id with `schema_revision: 3`, a top-level `management` block
+ * (`e3acontracts.ts`), the phases `preparation` and `tactics`, the actions
+ * `commit_preparation` and `choose_tactic`, and lineup players. E2 series stay
+ * revision 2 and are read exactly as before.
+ *
  * Only the fields the live transport reads are typed. `current_game` is the E1
  * game snapshot (`E1Snapshot`) with E2's objective block in place of E1's.
  * `readE2Snapshot` refuses anything that is not this schema, so a drifted
  * response fails loudly instead of rendering half a game.
  */
+import type { E3aLineupExtras, E3aManagement, E3aScenario } from "./e3acontracts";
+import { readE3aManagement } from "./e3acontracts";
 import type { E1Effect, E1ObjectiveCategory, E1ObjectiveOutcome, E1OutcomeLabel, E1Role, E1SettleHow, E1Side, E1Snapshot, E1Stage } from "./contracts";
 
 export const E2_SERIES_SCHEMA = "dynasty.combat_v2.series.snapshot.e2" as const;
 export const E2_SERIES_LIST_SCHEMA = "dynasty.combat_v2.series.list.e2" as const;
 export const E2_API = "/api/admin/dynasty/v2";
 
-export type E2Phase = "lineup" | "game" | "objective" | "completed";
-export type E2ActionKind = "lock_lineup" | "advance" | "open_objective" | "answer_objective";
+export type E2Phase = "lineup" | "game" | "objective" | "completed" | "preparation" | "tactics";
+export type E2ActionKind = "lock_lineup" | "advance" | "open_objective" | "answer_objective" | "commit_preparation" | "choose_tactic";
 export type E2QualificationPolicy = "broad_mid_win" | "narrow_early_mid_combo";
 export type E2Preset = "early" | "scaling" | "balanced" | "balanced2";
 
@@ -96,6 +104,9 @@ export interface E2GameSummary {
   stages: { stage: E1Stage; you_points: number; opponent_points: number; outcome_label: E1OutcomeLabel | null }[];
   objectives: { encounter_id: string; event_id: string; state: "in_progress" | "settled"; correct_count: number | null; category: E1ObjectiveCategory | null }[];
   conditions_at_start: Record<string, unknown>;
+  /** E3A: the squad players fielded and the management inputs at the start of this game */
+  players?: { you: Record<E1Role, string>; opponent: Record<E1Role, string> };
+  management_at_start?: unknown;
 }
 export interface E2Consumed { source: string; effect_id: string; game: number; consumed_for_game: number; duration_games: number; for: E1Side; team_id: string; player_id: string | null; kind: string; value: number; note: string }
 
@@ -114,11 +125,13 @@ export interface E2SeriesSnapshot {
   score: { you: number; opponent: number };
   teams: { you: E2Team; opponent: E2Team };
   games: E2GameSummary[];
-  lineup: { game: number; suggested: E2Lineup; opponent: E2Lineup; champion_pool: E2Champion[]; rule: string } | null;
+  lineup: ({ game: number; suggested: E2Lineup; opponent: E2Lineup; champion_pool: E2Champion[]; rule: string } & Partial<E3aLineupExtras>) | null;
   current_game: E2Game | null;
   between_games: { last: Record<string, unknown> | null; active_conditions: unknown[]; consumed: E2Consumed[]; applies_to_next_game: Record<string, unknown>; note: string };
   result: { winner: E1Side; score: { you: number; opponent: number }; games: { game: number; winner: E1Side; how: E1SettleHow }[] } | null;
   next: { kind: E2ActionKind; payload: Record<string, unknown> } | null;
+  /** revision 3 (E3A series) only */
+  management?: E3aManagement;
   /** action responses only */
   applied?: boolean;
   duplicate?: boolean;
@@ -138,6 +151,9 @@ export interface E2SeriesListRow {
   qualification_policy: string;
   user_preset: string;
   opponent_preset: string;
+  /** E3A series only */
+  management_rules?: string;
+  entry_scenario?: E3aScenario;
   created_at: string;
   updated_at: string;
 }
@@ -158,7 +174,8 @@ export class E2ContractError extends Error {
   constructor(message: string) { super(message); this.name = "E2ContractError"; }
 }
 
-const PHASES: ReadonlySet<string> = new Set(["lineup", "game", "objective", "completed"]);
+const PHASES: ReadonlySet<string> = new Set(["lineup", "game", "objective", "completed", "preparation", "tactics"]);
+const E3A_PHASES: ReadonlySet<string> = new Set(["preparation", "tactics"]);
 
 /** Accept only an e2 series snapshot whose phase-dependent parts are present. */
 export function readE2Snapshot(body: unknown): E2SeriesSnapshot {
@@ -174,11 +191,22 @@ export function readE2Snapshot(body: unknown): E2SeriesSnapshot {
   if (s.phase === "completed" && !s.result) throw new E2ContractError("completed without result");
   if (s.schema_revision !== undefined && typeof s.schema_revision !== "number") throw new E2ContractError("schema_revision is not a number");
   if ((s.schema_revision ?? 1) >= 2 && s.current_game && !Array.isArray(s.current_game.objective_results)) throw new E2ContractError("rev 2 current_game without objective_results");
+  // Revision 3: an E3A management series. The management block must be whole; its phases need it.
+  const managed = (s.schema_revision ?? 1) >= 3;
+  if (managed !== (s.management !== undefined)) throw new E2ContractError(managed ? "rev 3 without management" : "management on a pre-rev-3 snapshot");
+  if (!managed && E3A_PHASES.has(String(s.phase))) throw new E2ContractError(`phase ${s.phase} on a series without management`);
+  if (managed) {
+    try { readE3aManagement(s.management); } catch (e) { throw new E2ContractError(e instanceof Error ? e.message : "unreadable management"); }
+    if (s.phase === "tactics" && !s.current_game) throw new E2ContractError("phase tactics without the settled game");
+    if (s.phase === "lineup" && (!s.lineup?.players_by_role || !s.lineup.suggested_players || !s.lineup.preview)) throw new E2ContractError("E3A lineup without players_by_role/suggested_players/preview");
+  }
   return s as E2SeriesSnapshot;
 }
 
 /** Revision of a snapshot (1 when the field is absent). */
 export const revisionOf = (s: E2SeriesSnapshot): number => s.schema_revision ?? 1;
+/** UX-6 gate (E3A API §5.1): the management UI renders only for revision ≥ 3 with a management block. */
+export const isManaged = (s: E2SeriesSnapshot): boolean => revisionOf(s) >= 3 && !!s.management;
 
 /** Accept only a rev-2 discovery listing whose `resume` agrees with its rows. */
 export function readE2SeriesList(body: unknown): E2SeriesList {

@@ -9,7 +9,9 @@
  *            (UX-4/UX-5; `?view=bo5&transport=live`). E2 hosts the series,
  *            the games and the Baron questions; `choosePlan`/`decide` stay
  *            client-side there until E3, and `settleObjective` is local (the
- *            server applied the grade with the third answer).
+ *            server applied the grade with the third answer). UX-6: on an E3A
+ *            management series (revision 3) `commitPreparation`, `lockSquad`
+ *            and `chooseTactic` are server actions and replace those steps.
  *
  * Contract rules every implementation must keep (the UI relies on them):
  *  - every mutation quotes the series `rev` it was based on; a mismatch is
@@ -19,7 +21,9 @@
  *  - `advance` performs exactly one E1 transition;
  *  - no method accepts a correct count or a game outcome from the client.
  */
-import type { BetweenGameDecisionId, SeriesChoice, SeriesEnvelope } from "./contracts";
+import type { BetweenGameDecisionId, E1Role, SeriesChoice, SeriesEnvelope } from "./contracts";
+import type { E2Lineup } from "./e2contracts";
+import type { E3aActivity, E3aTacticChoice } from "./e3acontracts";
 
 export interface Mutation { rev: number; requestId: string }
 
@@ -53,6 +57,12 @@ export interface DynastySeriesTransport {
   settleObjective(m: Mutation, encounterId: string): Promise<SeriesEnvelope>;
   /** between_games -> drafting. */
   decide(m: Mutation, decision: BetweenGameDecisionId, lineupId: string): Promise<SeriesEnvelope>;
+  /** E3A: the whole preparation plan, applied atomically by the server (live E3A series only). */
+  commitPreparation(m: Mutation, activities: E3aActivity[]): Promise<SeriesEnvelope>;
+  /** E3A: lock champions AND the squad player per role; the server builds the managed roster. */
+  lockSquad(m: Mutation, champions: E2Lineup, players: Record<E1Role, string>): Promise<SeriesEnvelope>;
+  /** E3A: the one between-game decision after `game` (the game just settled). */
+  chooseTactic(m: Mutation, game: number, choice: E3aTacticChoice): Promise<SeriesEnvelope>;
   /** Leave the series on this client (fixture: discard it; live: the server keeps it, there is no abandon route). */
   abandon(): Promise<void>;
 }

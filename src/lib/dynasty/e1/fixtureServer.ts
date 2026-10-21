@@ -334,5 +334,9 @@ export class FixtureSeriesServer implements DynastySeriesTransport {
       st.plan = lineupId; st.status = "drafting";
     });
   }
+  /** UX-6: E3A management is a live-series feature; the recorded E1 double has no management state. */
+  async commitPreparation(): Promise<SeriesEnvelope> { throw new TransportError("NOT_ALLOWED", "management needs a live E3A series"); }
+  async lockSquad(): Promise<SeriesEnvelope> { throw new TransportError("NOT_ALLOWED", "management needs a live E3A series"); }
+  async chooseTactic(): Promise<SeriesEnvelope> { throw new TransportError("NOT_ALLOWED", "management needs a live E3A series"); }
   async abandon() { this.store.remove(STORE_KEY); }
 }
