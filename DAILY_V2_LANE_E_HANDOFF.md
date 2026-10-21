@@ -177,3 +177,15 @@ restored wait does not re-stamp.
 
 Browser acceptance and video: not run (needs a separately approved bounded
 headless Chromium run). Harness in `docs/daily-v2-lane-e/harness/`.
+
+---
+
+## Pass 4 (2026-10-21)
+
+Frontend: `c1feda3f` merges `origin/main` @ `d3854e5f` (Worlds 2026 quiz #104,
+seamless HUD #111, Lovable sync) — clean; no Daily V2 frontend change this pass.
+`tsc`: the 2 errors already on main. Ranked/Daily vitest chunk
+(`src/pages/quiz-ranked src/components/ranked-arena src/lib/ranked-core
+src/lib/daily-v2 src/lib/daily-challenge src/pages/quiz-daily-challenge`):
+17 failing of 2,986, all in the baseline failing set. Backend pass 4 report:
+`League_Combat_Simulator\.worktrees\daily-v2-e\docs\daily_v2_lane_e\READINESS_PASS4_2026-10-21.md`.
