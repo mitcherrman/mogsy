@@ -141,6 +141,14 @@ export const SFX_REGISTRY = {
   "perfect-timing.clock.tick": { group: "perfect-timing", minReplayMs: 600, relativeGain: 0.62, builtInGeneratorId: "sfx.perfect-timing.tick" },
   "perfect-timing.clock.mark": { group: "perfect-timing", minReplayMs: 600, relativeGain: 0.7, builtInGeneratorId: "sfx.perfect-timing.mark" },
   "perfect-timing.lock": { group: "perfect-timing", minReplayMs: 250, relativeGain: 0.86, builtInGeneratorId: "sfx.perfect-timing.lock" },
+  // PT5.3 — THE COUNT-IN of a blind round (3, 2, then a stronger 1), before the
+  // game casts it. Pre-start only: nothing sounds while the round is timed.
+  // The quiz countdown's own voices (its strong and final beats), as separate
+  // events so Audio Studio can rebind them for this mode. Callers pass
+  // `perfect-timing:<round>:<pass>:countin:<n>`, so a re-count after a hold is
+  // heard again and a re-render never is.
+  "perfect-timing.countin": { group: "perfect-timing", minReplayMs: 350, relativeGain: 0.86, builtInGeneratorId: "sfx.quiz.countdown-urgent" },
+  "perfect-timing.countin.final": { group: "perfect-timing", minReplayMs: 350, relativeGain: 0.92, builtInGeneratorId: "sfx.quiz.countdown-final" },
   // Broadcast remains asset-first and session-configured. These entries give
   // its existing vocabulary canonical policy, unlock, mute, cache and dedupe
   // without inventing fallback sounds when an operator has configured none.

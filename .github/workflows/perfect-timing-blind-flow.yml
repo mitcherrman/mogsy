@@ -1,0 +1,133 @@
+name: Perfect Timing blind flow
+
+# PT5.3A — the owner lab's blind automatic flow. Headless Chromium on GitHub's
+# runner only — never a local Edge/Chrome (AGENTS.md). Runs the Perfect Timing
+# unit set, the full browser viewport sweep (the PT5.3 blind block and every
+# PT4.4–PT5.2 spec on the visible flow, each split over two shards) and records
+# the desktop and phone gameplay videos.
+
+on:
+  push:
+    branches:
+      - perfect-timing/pt53a-blind-auto-flow
+  pull_request:
+    paths:
+      - "src/components/perfect-timing/**"
+      - "src/lib/perfect-timing/**"
+      - "src/pages/admin/perfect-timing/**"
+      - "src/lib/audio/sfx-registry.ts"
+      - "e2e/perfect-timing-owner.spec.ts"
+      - "playwright.arena.config.ts"
+      - ".github/workflows/perfect-timing-blind-flow.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit (Perfect Timing, audio, quiz timer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      # The repository lockfile is out of sync with package.json; resolve
+      # ephemerally and leave package.json / package-lock.json untouched.
+      - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Type check the files this change touches
+        # The app project has unrelated, pre-existing typing errors on main;
+        # fail only on errors in the Perfect Timing files.
+        run: |
+          npx tsc -p tsconfig.app.json --noEmit > tsc.log || true
+          if grep -E "perfect-timing|src/lib/audio/sfx-registry" tsc.log; then exit 1; fi
+          echo "no type errors in the touched files"
+      - name: Vitest
+        run: npx vitest run src/lib/perfect-timing src/components/perfect-timing src/pages/admin/perfect-timing src/pages/admin/playtests src/pages/quiz-more-challenges/games/PerfectTimingGame.test.tsx src/lib/audio src/lib/quiz-timer
+
+  browser:
+    name: Browser sweep (${{ matrix.suite }} ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [blind, visible]
+        shard: ["1/2", "2/2"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Name the shard
+        id: name
+        run: echo "tag=${{ matrix.suite }}-$(echo '${{ matrix.shard }}' | tr '/' 'of')" >> "$GITHUB_OUTPUT"
+      - name: Viewport sweep (blind PT5.3 block)
+        if: matrix.suite == 'blind'
+        run: npx playwright test -c playwright.arena.config.ts e2e/perfect-timing-owner.spec.ts --grep "PT5\.3" --grep-invert "PT5\.3 video" --fully-parallel --workers=1 --shard=${{ matrix.shard }}
+        env:
+          PERFECT_TIMING_SHOTS: ${{ github.workspace }}/pt-shots
+      - name: Viewport sweep (PT4.4–PT5.2 specs, visible flow)
+        if: matrix.suite == 'visible'
+        run: npx playwright test -c playwright.arena.config.ts e2e/perfect-timing-owner.spec.ts --grep-invert "PT5\.3" --fully-parallel --workers=1 --shard=${{ matrix.shard }}
+        env:
+          PERFECT_TIMING_SHOTS: ${{ github.workspace }}/pt-shots
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pt53-shots-${{ steps.name.outputs.tag }}
+          path: pt-shots
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pt53-failure-${{ steps.name.outputs.tag }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  video:
+    name: Gameplay videos (desktop + phone)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Record
+        run: npx playwright test -c playwright.arena.config.ts e2e/perfect-timing-owner.spec.ts --grep "PT5\.3 video" --workers=1
+        env:
+          PT_VIDEO: "1"
+          PERFECT_TIMING_VIDEOS: ${{ github.workspace }}/pt-videos
+          PERFECT_TIMING_SHOTS: ${{ github.workspace }}/pt-shots
+      - name: Upload videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pt53-gameplay-videos
+          path: pt-videos
+          if-no-files-found: warn
+          retention-days: 30

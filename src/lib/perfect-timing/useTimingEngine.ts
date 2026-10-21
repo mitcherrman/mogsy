@@ -29,6 +29,7 @@ import {
   reduceTiming,
   type TimingEvent,
   type TimingPhase,
+  type TimingStart,
   type TimingState,
 } from "./timingEngine";
 
@@ -62,6 +63,8 @@ export interface TimingPressSurfaceProps {
 export type TimingDiagnostic =
   | { kind: "press"; source: "pointer" | "key"; t: number; phase: TimingPhase }
   | { kind: "dedupe"; source: "pointer" | "key"; t: number; sincePreviousMs: number }
+  /** PT5.3: a press while the round was still counting in — refused, never a start. */
+  | { kind: "early"; source: "pointer" | "key"; t: number }
   | { kind: "blur"; phase: TimingPhase };
 
 export interface UseTimingEngineOptions {
@@ -121,8 +124,17 @@ export function documentKeyIsForTimer(e: KeyboardEvent): boolean {
 
 export interface UseTimingEngine {
   state: TimingState;
-  /** Begin a round: `armed`, with any previous measurement cleared. */
-  arm: (roundId: string) => void;
+  /**
+   * Begin a round with any previous measurement cleared: `armed` (the player's
+   * press starts it), or with `"auto"` (PT5.3) `countdown` — only `autoStart` starts it.
+   */
+  arm: (roundId: string, start?: TimingStart) => void;
+  /**
+   * PT5.3: start the counted-in round `roundId` at `t`, the `performance.now()`
+   * reading taken when the start is executed. True when it started; false for a
+   * stale or repeated start (another round, not counting in).
+   */
+  autoStart: (roundId: string, t: number) => boolean;
   /** Return to `idle`. */
   reset: () => void;
   press: TimingPressSurfaceProps;
@@ -135,6 +147,7 @@ export interface UseTimingEngine {
 export const PRESS_LABEL: Readonly<Record<TimingPhase, string>> = Object.freeze({
   idle: "Timing not ready",
   armed: "Start timing",
+  countdown: "Timing starts after the countdown",
   running: "Stop timing",
   stopped: "Timing locked",
   interrupted: "Timing interrupted",
@@ -183,6 +196,12 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
         return;
       }
       const phase = stateRef.current.phase;
+      if (phase === "countdown") {
+        // Refused, and NOT remembered as a press: the dedupe window must not
+        // swallow a genuine stop that follows the automatic start.
+        optionsRef.current.onDiagnostic?.({ kind: "early", source, t });
+        return;
+      }
       if (dispatch({ type: "PRESS", t })) {
         lastAcceptedRef.current = t;
         optionsRef.current.onDiagnostic?.({ kind: "press", source, t, phase });
@@ -240,13 +259,15 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
   }, [dispatch]);
 
   // PT4.3: document-level Space/Enter, subscribed only while a press can
-  // count (armed/running), so nothing listens on reveal, results, recovery
-  // or after unmount. Bubble phase: a key the seal (or any control) already
-  // handled arrives defaultPrevented and is skipped.
+  // count (armed/running) — and, PT5.3, while a round counts in, so a key
+  // pressed early is heard and refused (and never scrolls) — so nothing
+  // listens on reveal, results, recovery or after unmount. Bubble phase: a
+  // key the seal (or any control) already handled arrives defaultPrevented
+  // and is skipped.
   const documentKeys = options.documentKeys === true;
   const keyPhase = state.phase;
   useEffect(() => {
-    if (!documentKeys || !acceptsPress(keyPhase)) return;
+    if (!documentKeys || !(acceptsPress(keyPhase) || keyPhase === "countdown")) return;
     const onDocumentKeyDown = (e: KeyboardEvent) => {
       if (!documentKeyIsForTimer(e)) return;
       e.preventDefault(); // Space would scroll; Enter would submit a form
@@ -257,7 +278,8 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
     return () => document.removeEventListener("keydown", onDocumentKeyDown);
   }, [documentKeys, keyPhase, handlePress]);
 
-  const arm = useCallback((roundId: string) => void dispatch({ type: "ARM", roundId }), [dispatch]);
+  const arm = useCallback((roundId: string, start?: TimingStart) => void dispatch({ type: "ARM", roundId, start }), [dispatch]);
+  const autoStart = useCallback((roundId: string, t: number) => dispatch({ type: "AUTO_START", roundId, t }), [dispatch]);
   const reset = useCallback(() => void dispatch({ type: "RESET" }), [dispatch]);
 
   const phase = state.phase;
@@ -273,5 +295,5 @@ export function useTimingEngine(options: UseTimingEngineOptions = {}): UseTiming
     [onPointerDown, onKeyDown, phase],
   );
 
-  return { state, arm, reset, press };
+  return { state, arm, autoStart, reset, press };
 }

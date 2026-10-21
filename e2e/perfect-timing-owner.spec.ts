@@ -33,6 +33,13 @@
  * frozen on exactly the submitted `elapsed_ms`; its pulses move nothing; nothing
  * loops; reduced motion keeps the digits and drops every effect.
  *
+ * PT5.3A: the owner lab's default is now the BLIND automatic flow — every
+ * spec above the "PT5.3" block plays the PT5.2 flow with `flow=visible`; the
+ * PT5.3 block plays the blind one: the game counts each round in and starts it,
+ * the player only stops it, nothing on the stage is a number while it runs,
+ * reveals and slice transitions move on by themselves, Hold pauses between
+ * attempts. `PT_VIDEO=1` also records the desktop and phone gameplay videos.
+ *
  *   npx playwright test -c playwright.arena.config.ts perfect-timing-owner
  */
 import { mkdirSync, readFileSync } from "node:fs";
@@ -46,7 +53,13 @@ type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-ex
 const CAPTURE: Json = JSON.parse(readFileSync(path.resolve("src/lib/perfect-timing/__fixtures__/captureV1.json"), "utf8"));
 const RELEASES: Record<string, Json> = Object.fromEntries(CAPTURE.locks.map((l: Json) => [l.round_id, l.response]));
 /** PT5: the page opens on the mode pick; the PT4.4 specs below play the Random Run directly. */
-const RANDOM_RUN = "/dev/perfect-timing?run=random";
+/**
+ * PT5.3: the owner lab now plays the BLIND automatic flow by default. Every spec down to the
+ * PT5.3 block plays the PT5.2 flow (press to cast, visible stopwatch, Next to continue) with
+ * `flow=visible` — what the public PGM2 game still plays — so its coverage stands unchanged.
+ */
+const RANDOM_RUN = "/dev/perfect-timing?run=random&flow=visible";
+const VISIBLE_PICK = "/dev/perfect-timing?flow=visible";
 
 /** The v1 scoring (handoff §2.3, pt-scoring-0.2: 0 points on a miss), for the stand-in only. */
 function grade(round_id: string, elapsed_ms: number, lie: number | null = null): Json {
@@ -68,7 +81,7 @@ function grade(round_id: string, elapsed_ms: number, lie: number | null = null):
 }
 
 interface Backend { deals: Json[]; locks: { id: string; body: Json }[]; lie: number | null }
-interface BackendOptions { dealStatus?: number; lockStatus?: number; dealDelayMs?: number }
+interface BackendOptions { dealStatus?: number; lockStatus?: number; dealDelayMs?: number; lockDelayMs?: number }
 
 async function standInBackend(page: Page, opts: BackendOptions | number = {}): Promise<Backend> {
   const o: BackendOptions = typeof opts === "number" ? { dealStatus: opts } : opts;
@@ -90,6 +103,7 @@ async function standInBackend(page: Page, opts: BackendOptions | number = {}): P
     if (m) {
       const id = decodeURIComponent(m[1]);
       be.locks.push({ id, body });
+      if (o.lockDelayMs) await new Promise((r) => setTimeout(r, o.lockDelayMs));
       if (o.lockStatus) return json({ detail: { error: { code: "PT_ALREADY_LOCKED", message: "already locked" } } }, o.lockStatus);
       if (!RELEASES[id]) return json({ detail: { error: { code: "PT_ROUND_NOT_FOUND", message: "Unknown or expired round." } } }, 404);
       const keys = Object.keys(body);
@@ -642,7 +656,7 @@ async function passTransition(page: Page, vp: { name: string; touch: boolean }, 
 
 const SLICE: Json = JSON.parse(readFileSync(path.resolve("src/lib/perfect-timing/__fixtures__/sliceCaptureV1.json"), "utf8"));
 const SLICE_RELEASES: Json[] = SLICE.locks.map((l: Json) => l.response);
-const SLICE_RUN = "/dev/perfect-timing?run=slice";
+const SLICE_RUN = "/dev/perfect-timing?run=slice&flow=visible";
 
 interface SliceBackend { deals: Json[]; locks: { slice: string; id: string; body: Json }[]; lie: number | null }
 
@@ -732,7 +746,7 @@ test.describe("PT5 mode pick", () => {
 
   test("the page opens on the two modes; Enter starts a Random Run, the slice tile starts a slice", async ({ page }) => {
     const be = await standInBackend(page);
-    await page.goto("/dev/perfect-timing");
+    await page.goto(VISIBLE_PICK);
     await expect(page.getByTestId("pt-mode-select")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("pt-mode-random")).toBeFocused();
     await assertFits(page, "mode pick");
@@ -757,7 +771,7 @@ for (const vp of [
     test(`a full Mastery Slice by ${vp.touch ? "touch" : "keyboard"}`, async ({ page }) => {
       test.setTimeout(120_000);
       const be = await standInSlices(page);
-      await page.goto("/dev/perfect-timing");
+      await page.goto(VISIBLE_PICK);
       const tile = page.getByTestId("pt-mode-slice");
       if (vp.touch) await tile.tap(); else { await tile.focus(); await page.keyboard.press("Enter"); }
       const seal = page.getByTestId("pt-press-surface");
@@ -829,7 +843,7 @@ test.describe("PT5 every slice state fits and cannot scroll", () => {
       const tag = `${w}x${h}`;
       // mode pick
       await standInBackend(page);
-      await page.goto("/dev/perfect-timing");
+      await page.goto(VISIBLE_PICK);
       await expect(page.getByTestId("pt-mode-select")).toBeVisible({ timeout: 30_000 });
       await assertFits(page, `${tag} mode pick`);
       await assertNothingScrolls(page, `${tag} mode pick`);
@@ -1262,3 +1276,521 @@ test.describe("PT5.2 chronometer: motion, interruption, sound", () => {
     for (const g of r.gaps) { expect(g).toBeGreaterThan(850); expect(g).toBeLessThan(1150); }
   });
 });
+
+// ── PT5.3A: the BLIND automatic flow (the owner lab's default) ─────────────
+//
+// `/dev/perfect-timing` without `flow=visible`. Each round counts in (3, 2, 1)
+// and the GAME starts it; the player only stops it; nothing on the stage is a
+// number while it runs; the reveal (and a slice transition) moves on by itself;
+// Hold pauses between attempts and a held count-in resumes from 3.
+
+const BLIND_PICK = "/dev/perfect-timing";
+const BLIND_RUN = "/dev/perfect-timing?run=random";
+const BLIND_SLICE = "/dev/perfect-timing?run=slice";
+/** The reveal settles (~1.7 s), then dwells 2.5 s before it moves on by itself. */
+const REVEAL_AUTO_MS = 1_700 + 2_500;
+/** A slice transition is ready after ~0.9 s, then dwells 1.5 s. */
+const TRANSITION_AUTO_MS = 900 + 1_500;
+const VIDEOS = process.env.PERFECT_TIMING_VIDEOS ?? path.resolve("test-results/perfect-timing-videos");
+
+/** The cooldown text of a dealt round, as a pattern: it must not be in the DOM before its lock. */
+const truthOf = (roundId: string) => new RegExp(`${RELEASES[roundId].authority.cooldown_raw.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}|target_ms|cooldown_raw`);
+
+/**
+ * While a BLIND round runs: no digit on the stage but the hero's rank plate, no
+ * chronometer reading, no sweep, no truth in the DOM, nothing looping — and,
+ * once the cast's finite flourish is over, nothing in the page animating at all.
+ */
+async function assertBlindWhileRunning(page: Page, truth: RegExp) {
+  const probe = await page.evaluate((src: string) => {
+    const stage = (document.querySelector('[data-testid="pt-stage"]') as HTMLElement).cloneNode(true) as HTMLElement;
+    stage.querySelector('[data-testid="pt-rank"]')?.remove();
+    const anims = document.getAnimations().filter((a) => ((a.effect as KeyframeEffect | null)?.target as Element | null)?.closest?.('[data-testid="perfect-timing-page"]'));
+    return {
+      digits: (stage.textContent ?? "").match(/\d/g) ?? [],
+      reading: document.querySelectorAll('[data-testid="pt-chrono-digits"]').length,
+      sweep: document.querySelectorAll(".pt-chrono-sweep").length,
+      truth: new RegExp(src).test(document.body.innerHTML),
+      looping: anims.filter((a) => a.effect?.getComputedTiming().iterations === Infinity).length,
+      moving: anims.filter((a) => a.playState === "running").map((a) => String(((a.effect as KeyframeEffect).target as Element).className)),
+    };
+  }, truth.source);
+  expect(probe).toEqual({ digits: [], reading: 0, sweep: 0, truth: false, looping: 0, moving: [] });
+}
+
+async function sealCentre(page: Page) {
+  const b = (await page.getByTestId("pt-press-surface").boundingBox())!;
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+}
+
+/** A press the count-in must refuse: Space on the document, or a tap on the seal's centre. */
+async function earlyPress(page: Page, touch: boolean) {
+  if (touch) { const c = await sealCentre(page); await page.touchscreen.tap(c.x, c.y); }
+  else await page.keyboard.press("Space");
+}
+
+/** The player's stop. */
+async function stopPress(page: Page, touch: boolean) {
+  if (touch) { const c = await sealCentre(page); await page.touchscreen.tap(c.x, c.y); }
+  else await page.keyboard.press("Enter");
+}
+
+function hideTab(page: Page) {
+  return page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+function showTab(page: Page) {
+  return page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+for (const vp of VIEWPORTS) {
+  test.describe(`PT5.3 blind ${vp.name}`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch });
+
+    test(`a five-round Random Run by STOPS ONLY (${vp.touch ? "touch" : "keyboard"}): the game starts every round, the results come by themselves`, async ({ page }) => {
+      test.setTimeout(150_000);
+      const be = await standInBackend(page);
+      await page.goto(BLIND_RUN);
+      const seal = page.getByTestId("pt-press-surface");
+      const rounds: Json[] = CAPTURE.deal.response.rounds;
+      for (let i = 0; i < rounds.length; i++) {
+        await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+        await expect(seal).toHaveAttribute("aria-disabled", "true");
+        await expect(page.getByTestId("pt-chrono-count")).toHaveText(/^[321]$/);
+        await expect(page.getByTestId("pt-ability")).toHaveText(rounds[i].ability_name);
+        if (i === 0) {
+          await assertFits(page, `${vp.name} count-in`);
+          await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-countin.png`) });
+        }
+        // A press during the count-in is refused: the game starts the round, never the player.
+        await earlyPress(page, vp.touch);
+        await expect(seal).toHaveAttribute("data-phase", "countdown");
+        await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+        await page.waitForTimeout(1_100); // past the cast's flourish
+        await assertBlindWhileRunning(page, truthOf(rounds[i].round_id));
+        if (i === 0) {
+          await assertFits(page, `${vp.name} blind running`);
+          await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-running.png`) });
+        }
+        await page.waitForTimeout(150 + i * 150);
+        await stopPress(page, vp.touch);
+        await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+        const shownAt = Date.now();
+        await expect(page.getByTestId("pt-reveal-stage")).toContainText(RELEASES[rounds[i].round_id].authority.cooldown_raw);
+        if (i === 0) {
+          await page.waitForTimeout(1_900);
+          await assertFits(page, `${vp.name} blind revealed`);
+          await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-revealed.png`) });
+        }
+        if (i < rounds.length - 1) {
+          // Nobody presses Next: the reveal moves on by itself, after its whole dwell.
+          await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: REVEAL_AUTO_MS + 6_000 });
+          expect(Date.now() - shownAt, "the reveal stays readable for its whole dwell").toBeGreaterThanOrEqual(REVEAL_AUTO_MS - 400);
+        }
+      }
+      await expect(page.getByTestId("pt-results")).toBeVisible({ timeout: REVEAL_AUTO_MS + 6_000 });
+      expect(be.locks.map((l) => l.id), "exactly one lock per round, in order").toEqual(rounds.map((r) => r.round_id));
+      for (const l of be.locks) {
+        expect(Object.keys(l.body)).toEqual(["elapsed_ms"]);
+        expect(Number.isInteger(l.body.elapsed_ms)).toBe(true);
+        expect(l.body.elapsed_ms).toBeGreaterThanOrEqual(1_000);
+      }
+      await page.waitForTimeout(600);
+      await assertFits(page, `${vp.name} blind results`);
+      await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-results.png`) });
+      // The results never start a new run by themselves.
+      await page.waitForTimeout(REVEAL_AUTO_MS);
+      await expect(page.getByTestId("pt-results")).toBeVisible();
+      expect(be.deals).toHaveLength(1);
+    });
+
+    test(`a Mastery Slice by STOPS ONLY (${vp.touch ? "touch" : "keyboard"}): reveal → Rank up → count-in → … → Item equipped → results, every move automatic`, async ({ page }) => {
+      test.setTimeout(150_000);
+      const be = await standInSlices(page);
+      await page.goto(BLIND_SLICE);
+      const seal = page.getByTestId("pt-press-surface");
+      const kinds = ["foundation", "rank_up", "equipped"];
+      for (let i = 0; i < 3; i++) {
+        await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+        await expect(page.getByTestId("pt-round-plate")).toHaveAttribute("data-slice", kinds[i]);
+        if (i > 0) await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-slice-${i + 1}-countin.png`) });
+        await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+        await page.waitForTimeout(1_100);
+        await assertBlindWhileRunning(page, /5\.50 s|5\.00 s|4\.545|target_ms|cooldown_raw|base_cooldown_ms/);
+        await page.waitForTimeout(200 + i * 150);
+        await stopPress(page, vp.touch);
+        await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByTestId("pt-true-time")).toHaveText(["5.50 s", "5.00 s", "4.545 s"][i]);
+        if (i < 2) {
+          const tr = page.getByTestId("pt-transition");
+          await expect(tr).toBeVisible({ timeout: REVEAL_AUTO_MS + 6_000 });
+          await expect(tr).toHaveAttribute("data-kind", i === 0 ? "rank_up" : "equipped");
+          await expect(page.getByTestId("pt-press-surface")).toHaveCount(0);
+          expect(await tr.innerText(), "no duration on the transition").not.toMatch(/\d+(\.\d+)?\s?(ms|s)\b/i);
+          await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5_000 });
+          // (Fit is measured by the matrix below, held, once the entrance has finished: mid-entrance the
+          // effect layers' transforms enlarge the clipped card's scroll box, as in PT5.1.)
+          await page.waitForTimeout(500);
+          await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-slice-transition-${i + 1}.png`) });
+          // Nobody presses Continue: it moves on into the next stage's count-in.
+        }
+      }
+      await expect(page.getByTestId("pt-results")).toHaveAttribute("data-mode", "slice", { timeout: REVEAL_AUTO_MS + 6_000 });
+      expect(be.locks.map((l) => l.id)).toEqual(SLICE.deal.response.stages.map((s: Json) => s.round_id));
+      await page.screenshot({ path: path.join(SHOTS, `pt53-${vp.name}-slice-results.png`) });
+    });
+  });
+}
+
+// ── PT5.3: every blind state fits, at every size ──────────────────────────
+test.describe("PT5.3 blind: every state fits and cannot scroll", () => {
+  for (const { w, h } of FIT_SIZES) {
+    test(`${w}x${h}: count-in, held, running, locked, reveal, held reveal, voided, lock error`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width: w, height: h });
+      const tag = `${w}x${h}`;
+      await standInBackend(page);
+      await page.goto(BLIND_RUN);
+      const seal = page.getByTestId("pt-press-surface");
+      await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+      // Hold at once (deterministic), measure the held count-in, then resume and measure it counting.
+      await page.getByTestId("pt-hold").click();
+      await expect(page.getByTestId("pt-chrono-held")).toBeVisible();
+      await assertFits(page, `${tag} held count-in`);
+      await assertNothingScrolls(page, `${tag} held count-in`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-held.png`) });
+      await page.getByTestId("pt-resume").click();
+      await expect(page.getByTestId("pt-chrono-count")).toHaveText("3");
+      await assertFits(page, `${tag} count-in`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-countin.png`) });
+      await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+      await page.waitForTimeout(1_100);
+      await assertFits(page, `${tag} blind running`);
+      await assertNothingScrolls(page, `${tag} blind running`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-running.png`) });
+      await page.keyboard.press("Space");
+      await expect(seal).toHaveAttribute("data-phase", /stopped|submitting/);
+      await assertFits(page, `${tag} blind locked`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-locked.png`) });
+      await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+      await page.waitForTimeout(1_900);
+      await assertFits(page, `${tag} blind revealed`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-revealed.png`) });
+      await page.getByTestId("pt-hold").click();
+      await expect(page.getByTestId("pt-hold")).toBeDisabled();
+      await assertFits(page, `${tag} blind revealed held`);
+      await assertNothingScrolls(page, `${tag} blind revealed held`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-revealed-held.png`) });
+      await page.waitForTimeout(REVEAL_AUTO_MS);
+      await expect(page.getByTestId("pt-reveal-stage"), "a held reveal waits").toBeVisible();
+      await page.getByTestId("pt-next").click();
+      await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 10_000 });
+      await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+      await hideTab(page);
+      await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided");
+      await showTab(page);
+      await assertFits(page, `${tag} blind voided`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-voided.png`) });
+      await page.unroute("**/api/admin/perfect-timing/**");
+      await standInBackend(page, { lockStatus: 409 });
+      await page.goto(BLIND_RUN);
+      await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 30_000 });
+      await page.waitForTimeout(1_100);
+      await page.keyboard.press("Space");
+      await expect(page.getByTestId("pt-void-continue")).toBeVisible({ timeout: 10_000 });
+      await assertFits(page, `${tag} blind lock error`);
+      await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-lock-error.png`) });
+    });
+
+    test(`${w}x${h}: a slice's count-in, reveals and both transitions (one held)`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width: w, height: h });
+      const tag = `${w}x${h}`;
+      const be = await standInSlices(page);
+      await page.goto(BLIND_SLICE);
+      const seal = page.getByTestId("pt-press-surface");
+      for (let i = 0; i < 3; i++) {
+        be.lie = i === 2 ? 0.02 : null; // the widest verdict on the equipped stage
+        await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+        await assertFits(page, `${tag} slice ${i + 1} count-in`);
+        await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-slice-${i + 1}-countin.png`) });
+        await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+        await page.waitForTimeout(1_100);
+        await page.keyboard.press("Space");
+        await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+        await page.waitForTimeout(1_900);
+        await assertFits(page, `${tag} slice ${i + 1} revealed`);
+        await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-slice-${i + 1}-revealed.png`) });
+        if (i < 2) {
+          const tr = page.getByTestId("pt-transition");
+          await expect(tr).toBeVisible({ timeout: REVEAL_AUTO_MS + 6_000 });
+          await expect(tr).toHaveAttribute("data-ready", "true", { timeout: 5_000 });
+          await expect(page.getByTestId("pt-tr-continue")).toHaveAttribute("data-auto", "running");
+          if (i === 0) await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-slice-transition-auto.png`) });
+          // Hold, so the measurement cannot race the automatic continue; then let the entrance finish
+          // (mid-entrance the effect layers' transforms enlarge the clipped card's scroll box, as in PT5.1).
+          await page.getByTestId("pt-hold").click();
+          await page.waitForTimeout(1_300);
+          await assertFits(page, `${tag} slice transition ${i + 1}`);
+          await assertNothingScrolls(page, `${tag} slice transition ${i + 1}`);
+          await page.screenshot({ path: path.join(SHOTS, `fit-blind-${tag}-slice-transition-${i + 1}.png`) });
+          await page.waitForTimeout(TRANSITION_AUTO_MS);
+          await expect(tr, "a held transition waits").toBeVisible();
+          await page.getByTestId("pt-tr-continue").click();
+        }
+      }
+      await expect(page.getByTestId("pt-results")).toBeVisible({ timeout: REVEAL_AUTO_MS + 6_000 });
+      await page.waitForTimeout(600);
+      await assertFits(page, `${tag} blind slice results`);
+      expect(be.locks, "exactly one lock per stage").toHaveLength(3);
+    });
+  }
+});
+
+// ── PT5.3: the start, the stop, interruptions, motion, network, sound ─────
+test.describe("PT5.3 blind: timing, input and recovery", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("the start is the moment CAST reaches the screen: the lock is measured from it, after a ~3 s count-in", async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __pt: { countAt: number | null; castAt: number | null; keyAt: number | null } };
+      w.__pt = { countAt: null, castAt: null, keyAt: null };
+      new MutationObserver(() => {
+        const seal = document.querySelector('[data-testid="pt-press-surface"]');
+        const phase = seal?.getAttribute("data-phase");
+        if (phase === "countdown" && w.__pt.countAt === null) w.__pt.countAt = performance.now();
+        if (phase === "running" && w.__pt.castAt === null) w.__pt.castAt = performance.now();
+      }).observe(document, { subtree: true, attributes: true, childList: true, attributeFilter: ["data-phase"] });
+      document.addEventListener("keydown", (e) => { if (e.key === "Enter" && w.__pt.castAt !== null && w.__pt.keyAt === null) w.__pt.keyAt = e.timeStamp; }, true);
+    });
+    const be = await standInBackend(page);
+    await page.goto(BLIND_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 30_000 });
+    await page.waitForTimeout(2_200);
+    await page.keyboard.press("Enter");
+    await expect.poll(() => be.locks.length).toBe(1);
+    const t = await page.evaluate(() => (window as unknown as { __pt: { countAt: number; castAt: number; keyAt: number } }).__pt);
+    const countIn = t.castAt - t.countAt;
+    expect(countIn, "the count-in lasts its three beats").toBeGreaterThanOrEqual(2_950);
+    expect(countIn).toBeLessThan(3_600);
+    // The engine's t0 is read as the start executes and the CAST is committed in the same frame:
+    // the interval it sends is the one from the CAST on screen to the key, never backdated.
+    const fromCast = t.keyAt - t.castAt;
+    // (The observer fires right after the commit; the tolerance is the dev-build render time.)
+    expect(Math.abs(be.locks[0].body.elapsed_ms - fromCast), JSON.stringify({ sent: be.locks[0].body.elapsed_ms, fromCast })).toBeLessThanOrEqual(40);
+  });
+
+  test("presses during the count-in never start it, a key held through the start carries nothing over, and one stop locks once", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto(BLIND_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+    await page.keyboard.press("Enter");
+    await seal.dispatchEvent("pointerdown", { button: 0, isPrimary: true, pointerType: "mouse" });
+    await page.keyboard.down("Space");
+    await page.waitForTimeout(400);
+    await page.keyboard.down("Space"); // a held key: delivered with repeat=true
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+    await page.keyboard.down("Space");
+    await page.keyboard.up("Space");
+    await page.waitForTimeout(800);
+    await expect(seal).toHaveAttribute("data-phase", "running");
+    expect(be.locks).toHaveLength(0);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(300);
+    expect(be.locks).toHaveLength(1);
+  });
+
+  test("Hold during the count-in: nothing starts until Resume, which counts in again from 3 with focus on the seal", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto(BLIND_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+    await page.getByTestId("pt-hold").click();
+    await page.waitForTimeout(5_000);
+    await expect(seal).toHaveAttribute("data-phase", "countdown");
+    await expect(page.getByTestId("pt-seal-word")).toHaveText(/held/i);
+    await page.getByTestId("pt-resume").click();
+    await expect(page.getByTestId("pt-chrono-count")).toHaveText("3");
+    await expect(seal).toBeFocused();
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+    expect(be.locks).toHaveLength(0);
+  });
+
+  test("a tab hidden during the count-in re-counts from 3; hidden while it runs voids it, and the void waits for the player", async ({ page }) => {
+    const be = await standInBackend(page);
+    await page.goto(BLIND_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 30_000 });
+    await page.waitForTimeout(2_200); // late in the count-in (on "1"), never past it
+    await expect(seal).toHaveAttribute("data-phase", "countdown");
+    await hideTab(page);
+    await expect(page.getByTestId("pt-chrono-count")).toHaveCount(0);
+    await page.waitForTimeout(4_000);
+    await expect(seal).toHaveAttribute("data-phase", "countdown");
+    await showTab(page);
+    await expect(page.getByTestId("pt-chrono-count")).toHaveText("3");
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+    await hideTab(page);
+    await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided");
+    await showTab(page);
+    await page.waitForTimeout(REVEAL_AUTO_MS + 1_000);
+    await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "voided");
+    await expect(page.getByTestId("pt-continue")).toBeFocused();
+    expect(be.locks).toHaveLength(0);
+    await page.keyboard.press("Enter");
+    await expect(seal).toHaveAttribute("data-phase", "countdown");
+  });
+
+  test("slow network: no count-in before the deal lands; a slow lock holds the stop and never moves on by itself", async ({ page }) => {
+    const be = await standInBackend(page, { dealDelayMs: 2_500, lockDelayMs: 6_000 });
+    await page.goto(BLIND_RUN);
+    await expect(page.getByTestId("perfect-timing-page")).toHaveAttribute("data-stage", "dealing");
+    await expect(page.getByTestId("pt-chrono-count")).toHaveCount(0);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 30_000 });
+    await page.waitForTimeout(1_300);
+    await page.keyboard.press("Space");
+    await expect(seal).toHaveAttribute("data-phase", /stopped|submitting/);
+    await page.waitForTimeout(4_500);
+    await expect(page.getByTestId("pt-reveal-stage")).toHaveCount(0);
+    await expect(page.getByTestId("pt-status")).toContainText("Locked at");
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("pt-press-surface")).toHaveAttribute("data-phase", "countdown", { timeout: REVEAL_AUTO_MS + 6_000 });
+    expect(be.locks).toHaveLength(1);
+  });
+
+  test("reduced motion: the numerals and words stay, nothing in the instrument animates, the reveal still moves on", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await standInBackend(page);
+    await page.goto(BLIND_RUN);
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(page.getByTestId("pt-chrono-count")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("pt-chrono")).toHaveAttribute("data-animate", "false");
+    const moving = () => page.evaluate(() => document.getAnimations().filter((a) => ((a.effect as KeyframeEffect | null)?.target as Element | null)?.closest?.('[data-testid="pt-chrono"]')).length);
+    expect(await moving()).toBe(0);
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 6_000 });
+    expect(await moving()).toBe(0);
+    await page.screenshot({ path: path.join(SHOTS, "pt53-1440x900-reduced-running.png") });
+    await page.waitForTimeout(1_200);
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("pt-auto-fill")).toHaveCount(1, { timeout: 3_000 });
+    expect(await page.evaluate(() => document.getAnimations().filter((a) => ((a.effect as KeyframeEffect | null)?.target as Element | null)?.classList?.contains("pt-auto-fill")).length)).toBe(0);
+    await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: 2_500 + 6_000 });
+  });
+
+  test("sound: three count-in voices and a cast per round, nothing at all while it runs, then the lock", async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __ptFreqs: { f: number; t: number }[]; __ptVoices: number };
+      w.__ptFreqs = [];
+      w.__ptVoices = 0;
+      const set = AudioParam.prototype.setValueAtTime;
+      AudioParam.prototype.setValueAtTime = function (value: number, time: number) {
+        if ([988, 1175, 659.3, 1480, 1174.7].includes(value)) w.__ptFreqs.push({ f: value, t: performance.now() });
+        return set.call(this, value, time);
+      };
+      const osc = AudioContext.prototype.createOscillator;
+      AudioContext.prototype.createOscillator = function () { w.__ptVoices += 1; return osc.call(this); };
+    });
+    await standInBackend(page);
+    await page.goto(BLIND_PICK);
+    await page.getByTestId("pt-mode-random").click(); // a trusted gesture: unlocks audio
+    const seal = page.getByTestId("pt-press-surface");
+    await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 30_000 });
+    const castAt = await page.evaluate(() => performance.now());
+    await page.waitForTimeout(3_550);
+    const stopAt = await page.evaluate(() => performance.now());
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(1_200);
+    const r = await page.evaluate(() => {
+      const w = window as unknown as { __ptFreqs: { f: number; t: number }[]; __ptVoices: number };
+      return { freqs: w.__ptFreqs, voices: w.__ptVoices };
+    });
+    test.skip(r.voices === 0, "SFX engine silent here (Audio Studio config unavailable)");
+    const count = (f: number) => r.freqs.filter((x) => x.f === f).length;
+    expect({ beat: count(988), final: count(1175), cast: count(659.3), tick: count(1480), lock: count(1174.7) }, JSON.stringify(r.freqs))
+      .toEqual({ beat: 2, final: 1, cast: 1, tick: 0, lock: 1 });
+    expect(r.freqs.filter((x) => x.t > castAt + 200 && x.t < stopAt), "nothing sounds while the round is timed").toEqual([]);
+  });
+});
+
+// ── PT5.3: gameplay videos (PT_VIDEO=1, uploaded by CI) ────────────────────
+for (const vp of [
+  { name: "desktop-1440x900", width: 1440, height: 900, touch: false },
+  { name: "mobile-390x844", width: 390, height: 844, touch: true },
+] as const) {
+  test.describe(`PT5.3 video ${vp.name}`, () => {
+    test.skip(!process.env.PT_VIDEO, "recorded only with PT_VIDEO=1");
+
+    test(`blind gameplay: Random Run rounds and a Mastery Slice with its transitions (${vp.name})`, async ({ browser, baseURL }) => {
+      test.setTimeout(240_000);
+      mkdirSync(VIDEOS, { recursive: true });
+      // Its own context: `video` cannot be set per describe group.
+      const size = { width: vp.width, height: vp.height };
+      // Warm the dev server first (unrecorded), so the video opens on the game, not on a cold first load.
+      const warm = await browser.newContext({ baseURL, viewport: size });
+      try {
+        const w = await warm.newPage();
+        await standInBackend(w);
+        await w.goto(BLIND_PICK);
+        await expect(w.getByTestId("pt-mode-select")).toBeVisible({ timeout: 90_000 });
+      } finally {
+        await warm.close();
+      }
+      const context = await browser.newContext({ baseURL, viewport: size, hasTouch: vp.touch, recordVideo: { dir: VIDEOS, size } });
+      const page = await context.newPage();
+      try {
+        await standInBackend(page);
+        await page.goto(BLIND_PICK);
+        await page.waitForTimeout(800);
+        const pick = page.getByTestId("pt-mode-random");
+        if (vp.touch) await pick.tap(); else await pick.click();
+        const seal = page.getByTestId("pt-press-surface");
+        for (let i = 0; i < 3; i++) {
+          await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 30_000 });
+          await page.waitForTimeout([3_100, 1_900, 4_300][i]);
+          await stopPress(page, vp.touch);
+          await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+          if (i === 1) {
+            // Hold once, to show it, then continue.
+            await page.waitForTimeout(2_200);
+            const hold = page.getByTestId("pt-hold");
+            if (vp.touch) await hold.tap(); else await hold.click();
+            await page.waitForTimeout(2_000);
+            const next = page.getByTestId("pt-next");
+            if (vp.touch) await next.tap(); else await next.click();
+          }
+        }
+        await expect(seal).toHaveAttribute("data-phase", "countdown", { timeout: REVEAL_AUTO_MS + 6_000 });
+        await page.waitForTimeout(1_200);
+        await page.unroute("**/api/admin/perfect-timing/**");
+        await standInSlices(page);
+        await page.goto(BLIND_SLICE);
+        for (let i = 0; i < 3; i++) {
+          await expect(seal).toHaveAttribute("data-phase", "running", { timeout: 30_000 });
+          await page.waitForTimeout([4_900, 4_600, 4_200][i]);
+          await stopPress(page, vp.touch);
+          await expect(page.getByTestId("pt-reveal-stage")).toBeVisible({ timeout: 10_000 });
+        }
+        await expect(page.getByTestId("pt-results")).toBeVisible({ timeout: REVEAL_AUTO_MS + 6_000 });
+        await page.waitForTimeout(2_500);
+      } finally {
+        const video = page.video();
+        await page.close();
+        await video?.saveAs(path.join(VIDEOS, `pt53-blind-gameplay-${vp.name}.webm`));
+        await video?.delete();
+        await context.close();
+      }
+    });
+  });
+}

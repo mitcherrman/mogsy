@@ -455,7 +455,8 @@
 }
 
 /* ARMED — the face is warm and lit; the icon is bright. */
-.pt-seal[data-phase="armed"] .pt-seal-ring::after {
+.pt-seal[data-phase="armed"] .pt-seal-ring::after,
+.pt-seal[data-phase="countdown"] .pt-seal-ring::after {
   box-shadow:
     inset 0 0 0 1px rgba(240, 215, 140, 0.35),
     inset 0 3px 18px rgba(0, 0, 0, 0.6),
@@ -718,6 +719,9 @@
    beat, no flash and no travelling sweep. The digits still count. */
 .pt-chrono[data-animate="false"] .pt-chrono-sweep { display: none; }
 .pt-chrono[data-animate="false"] * { animation: none !important; }
+/* PT5.3: and no fades either — under reduced motion every state change of the instrument is instant. */
+.pt-chrono[data-animate="false"],
+.pt-chrono[data-animate="false"] * { transition: none !important; }
 .pt-chrono[data-animate="false"][data-phase="stopped"] .pt-chrono-beat,
 .pt-chrono[data-animate="false"][data-phase="submitting"] .pt-chrono-beat { stroke: var(--pt-gold); opacity: 0.55; stroke-width: 1.6; }
 
@@ -1556,9 +1560,12 @@
 .pt-item-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .pt-item-name { font-weight: var(--pt-heavy, 700); color: var(--pt-text); text-transform: uppercase; }
 .pt-item-haste { font-weight: var(--pt-heavy, 700); letter-spacing: 0.02em; color: var(--pt-gold); text-transform: uppercase; }
-/* The mark's one entrance, ARMED only (a running stage drops it at rest). */
+/* The mark's one entrance, ARMED only (a running stage drops it at rest).
+   PT5.3: or COUNTING IN — the blind round's pre-start, its armed moment. */
 .pt-stage[data-phase="armed"] .pt-rank-value[data-changed="true"],
-.pt-stage[data-phase="armed"] .pt-item-chip[data-changed="true"] {
+.pt-stage[data-phase="armed"] .pt-item-chip[data-changed="true"],
+.pt-stage[data-phase="countdown"] .pt-rank-value[data-changed="true"],
+.pt-stage[data-phase="countdown"] .pt-item-chip[data-changed="true"] {
   animation: pt-changed 900ms var(--pt-ease) both;
 }
 @keyframes pt-changed {
@@ -1568,7 +1575,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .pt-stage[data-phase="armed"] .pt-rank-value[data-changed="true"],
-  .pt-stage[data-phase="armed"] .pt-item-chip[data-changed="true"] { animation: none; }
+  .pt-stage[data-phase="armed"] .pt-item-chip[data-changed="true"],
+  .pt-stage[data-phase="countdown"] .pt-rank-value[data-changed="true"],
+  .pt-stage[data-phase="countdown"] .pt-item-chip[data-changed="true"] { animation: none; }
 }
 @media (max-width: 559px), (max-width: 759px) and (orientation: portrait) {
   .pt-hero[data-compact="true"] .pt-slice-track { display: none; }
@@ -2321,3 +2330,178 @@
   .pt-tr-support { flex-direction: column; align-items: flex-start; font-size: 14.5px; }
   .pt-tr-support .pt-tr-adjust::before { content: none; }
 }
+
+/* ==== PT5.3 — the BLIND automatic flow (owner lab) =========================
+   The same instrument, the same box: everything below lives inside
+   `.pt-seal-face` or the existing hint / way-on rows, so the stage's fit
+   budget is PT5.2's. While a round RUNS nothing here moves on a period and no
+   elapsed time is drawn: there is no sweep, no beat, no digit — only finite
+   effects at the edges (the count-in beats, the cast, the lock). Reduced
+   motion: no beat, no flash, no fill; the information (3, 2, 1, the state
+   words, the locked time) stays. */
+
+/* The count-in: warm, ready; one big numeral per beat, in the quiz countdown's manner
+   (a one-shot scale-and-glow that settles; 1 is the strongest). Keyed per beat. */
+.pt-chrono[data-flow="blind"][data-phase="countdown"] { --pt-chrono-well: rgba(240, 215, 140, 0.16); }
+.pt-chrono[data-flow="blind"][data-phase="countdown"] .pt-chrono-track { stroke: rgba(240, 215, 140, 0.2); }
+.pt-chrono-count {
+  display: block;
+  font-family: var(--pt-display);
+  font-weight: var(--pt-heavy, 700);
+  font-size: calc(var(--pt-seal) * 0.3);
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+  color: var(--pt-gold);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55), 0 0 18px rgba(240, 215, 140, 0.45);
+  transform-origin: 50% 55%;
+}
+.pt-chrono-count[data-final="true"] {
+  color: #fff6dc;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55), 0 0 28px rgba(240, 215, 140, 0.8);
+}
+.pt-chrono[data-animate="true"] .pt-chrono-count { --pt-ci-scale: 1.24; animation: pt-countin-beat 620ms cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.pt-chrono[data-animate="true"] .pt-chrono-count[data-final="true"] { --pt-ci-scale: 1.4; }
+@keyframes pt-countin-beat {
+  0%   { transform: scale(var(--pt-ci-scale, 1.2)); opacity: 0.25; }
+  30%  { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pt-chrono-countring { fill: none; stroke: var(--pt-gold); stroke-width: 1.6; opacity: 0; }
+.pt-chrono-countring[data-final="true"] { stroke: #fff6dc; }
+.pt-chrono[data-animate="true"] .pt-chrono-countring { animation: pt-countin-ring 720ms ease-out both; }
+@keyframes pt-countin-ring {
+  0%   { opacity: 0.95; stroke-width: 4.6; }
+  100% { opacity: 0; stroke-width: 1.4; }
+}
+
+/* Held between attempts: a still pause mark. */
+.pt-chrono-pause { display: flex; gap: calc(var(--pt-seal) * 0.045); padding-top: calc(var(--pt-seal) * 0.04); }
+.pt-chrono-pause i {
+  display: block;
+  width: calc(var(--pt-seal) * 0.045);
+  height: calc(var(--pt-seal) * 0.17);
+  border-radius: 3px;
+  background: rgba(240, 215, 140, 0.75);
+  box-shadow: 0 0 14px rgba(240, 215, 140, 0.3);
+}
+
+/* Running, blind: the face is cold and STILL; the ability's slot letter is
+   engraved in the centre. CAST flashes once as the game starts the round. */
+.pt-chrono-glyph {
+  display: block;
+  font-family: var(--pt-display);
+  font-weight: var(--pt-heavy, 700);
+  font-size: calc(var(--pt-seal) * 0.24);
+  line-height: 1;
+  color: rgba(127, 214, 239, 0.5);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55), 0 0 18px rgba(127, 214, 239, 0.18);
+}
+.pt-chrono-glyph[data-halted="true"] { color: rgba(217, 130, 90, 0.7); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55); }
+.pt-chrono-cast {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  font-family: var(--pt-display);
+  font-weight: var(--pt-heavy, 700);
+  font-size: calc(var(--pt-seal) * 0.16);
+  line-height: calc(var(--pt-seal) * 0.24);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e9fbff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55), 0 0 26px rgba(127, 214, 239, 0.85);
+  opacity: 0;
+}
+.pt-chrono[data-flow="blind"][data-animate="true"][data-phase="running"] .pt-chrono-cast { animation: pt-chrono-castword 760ms var(--pt-ease) both; }
+.pt-chrono[data-flow="blind"][data-animate="true"][data-phase="running"] .pt-chrono-glyph { animation: pt-chrono-glyph-in 420ms var(--pt-ease) 480ms both; }
+@keyframes pt-chrono-castword {
+  0%   { opacity: 1; transform: scale(1.3); }
+  55%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes pt-chrono-glyph-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Locked: the player's own time, gold (the measurement is over). */
+.pt-chrono-digits[data-wide="true"] { font-size: calc(var(--pt-seal) * 0.19); }
+
+/* ---- Hold / Resume: in the hint line during a count-in -------------------
+   Exactly the hint's 24 px line, so the stage does not move; an invisible
+   halo gives a thumb-sized target without growing the row. */
+.pt-hint[data-mode="count-in"],
+.pt-hint[data-mode="held"] { color: var(--pt-gold); }
+.pt-hold {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 111, 0.6);
+  background: rgba(7, 17, 31, 0.62);
+  color: var(--pt-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--pt-heavy, 700);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pt-hold::before { content: ""; position: absolute; inset: -10px -6px; }
+.pt-hold:hover { border-color: var(--pt-brass-bright); }
+.pt-hold:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(247, 239, 217, 0.9), 0 0 0 6px var(--pt-cyan-deep); }
+.pt-hold[data-primary="true"] {
+  border-color: var(--pt-brass-dark);
+  background: linear-gradient(170deg, var(--pt-brass-bright) 0%, var(--pt-brass) 100%);
+  color: #2a2110;
+  padding: 0 18px;
+}
+.pt-hold:disabled { cursor: default; opacity: 0.7; }
+
+/* ---- the way on, moving on by itself (reveal, transition) ---------------- */
+.pt-next-row:not([data-auto-row="true"]) { display: contents; }
+.pt-next-row[data-auto-row="true"] {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: 20rem;
+  margin-inline: auto;
+}
+.pt-next-row[data-auto-row="true"] .pt-next {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin-inline: 0;
+}
+.pt-next-row[data-auto-row="true"] .pt-hold {
+  height: auto;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: clamp(12px, 1.9dvh, 14px);
+}
+.pt-next-row[data-auto-row="true"] .pt-hold::before { display: none; }
+/* In the transition card the row sits where Continue sat: it may shrink with the card, never overflow it. */
+.pt-tr-actions .pt-next-row[data-auto-row="true"] { flex: 0 1 22rem; width: auto; max-width: 100%; min-width: 0; margin-inline: 0; }
+.pt-tr-actions .pt-next-row[data-auto-row="true"] .pt-tr-continue { min-width: 0; }
+.pt-next-label { position: relative; }
+/* The dwell, drawn as a quiet fill along the button (restarted per dwell by its key). */
+.pt-auto-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, rgba(255, 248, 226, 0) 0%, rgba(255, 248, 226, 0.32) 100%);
+  pointer-events: none;
+}
+.pt-reveal[data-animate="true"] .pt-next[data-auto="running"] .pt-auto-fill,
+.pt-transition[data-animate="true"] .pt-next[data-auto="running"] .pt-auto-fill {
+  animation: pt-auto-fill var(--pt-auto-ms, 2500ms) linear both;
+}
+@keyframes pt-auto-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }

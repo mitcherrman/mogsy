@@ -9,7 +9,7 @@
  * (Rank up, Item equipped); `leave()` is that way out, and the "PT5.1" block at
  * the bottom is the transition's own rules.
  */
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import capture from "@/lib/perfect-timing/__fixtures__/sliceCaptureV1.json";
@@ -40,6 +40,10 @@ vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
 });
 
 import PerfectTimingPage from "./PerfectTimingPage";
+
+// PT5.3 CI: these runs wait through the real 420 ms lock hold on a shared runner; the default
+// 1 s wait for the reveal was too tight there (passes locally either way).
+configure({ asyncUtilTimeout: 4_000 });
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -99,7 +103,7 @@ function standIn(override?: Override, mutateDeal?: (deal: Json) => void) {
 
 function mount(be: ReturnType<typeof standIn>, mode?: "slice") {
   const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode={mode} /></MemoryRouter>);
+  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode={mode} flow="visible" /></MemoryRouter>);
 }
 
 function key(el: Element | Document, t: number, init: KeyboardEventInit = {}) {
@@ -162,7 +166,7 @@ describe("Perfect Timing — mode pick", () => {
       return new Response(JSON.stringify(deal), { status: 200, headers: { "Content-Type": "application/json" } });
     });
     const api = perfectTimingApi({ fetchImpl: fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-    render(<MemoryRouter><PerfectTimingPage api={api} /></MemoryRouter>);
+    render(<MemoryRouter><PerfectTimingPage api={api} flow="visible" /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("pt-mode-random"));
     await armed();
     expect(calls).toEqual(['/deal {"count":5}']);

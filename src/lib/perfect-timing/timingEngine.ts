@@ -23,6 +23,17 @@
  * submit anything inside that bound. It is an honest *measurement*, not a
  * tamper-proof one, and nothing built on it may claim otherwise.
  *
+ * PT5.3 — AUTOMATIC START
+ * ───────────────────────
+ * In the blind flow the GAME starts the interval and the player only stops it.
+ * `ARM` with `start: "auto"` puts a round in `countdown`: nothing the player
+ * presses can start or stop it there. `AUTO_START` (round id + the monotonic
+ * timestamp at which the start was actually executed — never a scheduled or
+ * animation time) moves it to `running`. From then on it is the same machine:
+ * one press stops it, `MIN_RUN_MS` swallows a press that bled over from the
+ * count-in, hidden/pagehide void it, `MAX_ELAPSED_MS` bounds it. The default
+ * `ARM` (press to start) is unchanged.
+ *
  * TIMELINE
  * ────────
  * Every timestamp is a `DOMHighResTimeStamp` — milliseconds on the monotonic
@@ -42,7 +53,14 @@ export const MIN_RUN_MS = 250;
  */
 export const MAX_ELAPSED_MS = 600_000;
 
-export type TimingPhase = "idle" | "armed" | "running" | "stopped" | "interrupted";
+/**
+ * `countdown` (PT5.3): armed for an AUTOMATIC start. The game counts the round
+ * in and starts it with `AUTO_START`; a press here is refused.
+ */
+export type TimingPhase = "idle" | "armed" | "countdown" | "running" | "stopped" | "interrupted";
+
+/** How an armed round is started: by the player's press (PT2), or by the game (PT5.3 `AUTO_START`). */
+export type TimingStart = "press" | "auto";
 
 /**
  * Why a running attempt was voided.
@@ -71,6 +89,14 @@ export interface IdleTimingState extends TimingStateBase {
 
 export interface ArmedTimingState extends TimingStateBase {
   readonly phase: "armed";
+  readonly roundId: string;
+  readonly t0: null;
+  readonly elapsedMs: null;
+  readonly interruptReason: null;
+}
+
+export interface CountdownTimingState extends TimingStateBase {
+  readonly phase: "countdown";
   readonly roundId: string;
   readonly t0: null;
   readonly elapsedMs: null;
@@ -110,13 +136,16 @@ export interface InterruptedTimingState extends TimingStateBase {
 export type TimingState =
   | IdleTimingState
   | ArmedTimingState
+  | CountdownTimingState
   | RunningTimingState
   | StoppedTimingState
   | InterruptedTimingState;
 
 export type TimingEvent =
-  | { readonly type: "ARM"; readonly roundId: string }
+  | { readonly type: "ARM"; readonly roundId: string; readonly start?: TimingStart }
   | { readonly type: "PRESS"; readonly t: number }
+  /** PT5.3: the game starts the counted-in round `roundId` at `t` (when the start was executed). */
+  | { readonly type: "AUTO_START"; readonly roundId: string; readonly t: number }
   | { readonly type: "HIDDEN" }
   | { readonly type: "PAGEHIDE" }
   | { readonly type: "RESET" };
@@ -136,7 +165,8 @@ function interrupted(roundId: string, reason: InterruptReason): InterruptedTimin
 /**
  * Whether a press can currently change the state. The hook uses this for
  * `aria-disabled`; it is deliberately about *phase* only — the double-tap
- * guard is a property of a particular event, not of the state.
+ * guard is a property of a particular event, not of the state. A round that
+ * is counting in (`countdown`) refuses presses: only the game starts it.
  */
 export function acceptsPress(phase: TimingPhase): boolean {
   return phase === "armed" || phase === "running";
@@ -157,7 +187,7 @@ export function reduceTiming(state: TimingState, event: TimingEvent): TimingStat
       // the previous measurement.
       if (typeof event.roundId !== "string" || event.roundId.length === 0) return state;
       return {
-        phase: "armed",
+        phase: event.start === "auto" ? "countdown" : "armed",
         roundId: event.roundId,
         t0: null,
         elapsedMs: null,
@@ -180,7 +210,8 @@ export function reduceTiming(state: TimingState, event: TimingEvent): TimingStat
           interruptReason: null,
         };
       }
-      // Idle, stopped and interrupted do not respond to input.
+      // Idle, countdown, stopped and interrupted do not respond to input: a
+      // counted-in round is started by the game, never by a press (PT5.3).
       if (state.phase !== "running") return state;
 
       const delta = t - state.t0;
@@ -201,6 +232,24 @@ export function reduceTiming(state: TimingState, event: TimingEvent): TimingStat
       };
     }
 
+    case "AUTO_START": {
+      // Only the round that is counting in, only once, only at a real reading
+      // of the monotonic clock. A stale start (another round, a re-arm, a
+      // second delivery) is ignored rather than guessed at.
+      if (state.phase !== "countdown" || event.roundId !== state.roundId) return state;
+      const { t } = event;
+      if (!Number.isFinite(t) || t < 0) return state;
+      return {
+        phase: "running",
+        roundId: state.roundId,
+        t0: t,
+        elapsedMs: null,
+        interruptReason: null,
+      };
+    }
+
+    // A counting-in round has measured nothing, so hiding the page cannot void
+    // it; the count-in itself restarts when the page is visible again (PT5.3).
     case "HIDDEN":
       return state.phase === "running" ? interrupted(state.roundId, "hidden") : state;
 
