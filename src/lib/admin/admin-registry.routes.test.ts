@@ -99,12 +99,13 @@ function adminShellBlock(): string {
 const basePath = (p: string) => p.split("?")[0];
 
 describe("registry ⇄ router agreement", () => {
-  it("declares the nine area routes plus the All Tools entry point", () => {
+  it("declares the area routes plus the All Tools entry point", () => {
     for (const path of [
       "/admin",
       "/admin/all-tools",
       "/admin/users",
       "/admin/leaguecraft",
+      "/admin/tournament-arena",
       "/admin/ranked",
       "/admin/simulation",
       "/admin/game-data",

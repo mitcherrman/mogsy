@@ -29,6 +29,7 @@ export const ADMIN_AREA_IDS = [
   "overview",
   "users",
   "leaguecraft",
+  "tournament-arena",
   "simulation",
   "game-data",
   "studio",
@@ -171,6 +172,19 @@ export const ADMIN_AREAS: AdminArea[] = [
           { id: "settings", label: "Ratings & Settings", summary: "Rating policy and the read-only Railway flag mirror." },
         ],
       },
+    ],
+  },
+  {
+    // TOURNAMENT ARENA (admin-only beta). Its own rail entry because the owner
+    // runs live events from it. Not the retired voting product's "arena"
+    // (LEGACY1): a different id, a different path, a current product.
+    id: "tournament-arena",
+    label: "Tournament Arena",
+    path: "/admin/tournament-arena",
+    kind: "live",
+    description: "Create and run duels, custom matches and tournaments on the Ranked engine; players join by link or invitation.",
+    sections: [
+      { id: "events", label: "Events", summary: "Every Arena event, the create portal and each event's organizer console." },
     ],
   },
   {
@@ -1028,6 +1042,30 @@ export const ADMIN_TOOLS: AdminTool[] = [
     developerOnly: true,
     authorization: "Registered in DEV builds only (HUB5): the route and its fixtures are dead-code-eliminated from production builds, where the path 404s. Renders frozen constants and performs no fetch or write.",
     notes: "Demo-only. Its fixtures are imported by this page alone, so no production surface can reach them.",
+  },
+
+  // =========================================================================
+  // TOURNAMENT ARENA
+  // =========================================================================
+  {
+    id: "tournament-arena",
+    title: "Tournament Arena",
+    description:
+      "Service state, every Arena event, the Match Host Portal and each event's organizer console: lock, start, resolve, override, invite, edit and cancel.",
+    area: "tournament-arena",
+    section: "events",
+    kind: "route",
+    path: "/admin/tournament-arena",
+    oldLocation: "New in the Tournament Arena admin-only beta (no previous surface)",
+    disposition: "KEEP",
+    dangerLevel: "mutates-production",
+    warning: "Organizer actions change live events for every player in them; each is recorded in the event's audit trail.",
+    status: "Production",
+    requiredRole: "master_admin",
+    authorization:
+      "AdminRoute (OWN1 owner-only) + AdminAuthGate; every organizer call is refused server-side (ARENA_ORGANIZER_REQUIRED) unless the caller's own Supabase session is the authorized owner (owner_auth_state), and fails closed (503) when that cannot be read. The whole surface is off while ARENA_ENABLED is unset.",
+    notes:
+      "Players never use this area: they join at /quiz/arena/join/:code and play at /quiz/arena/e/:eventId. The create portal (/admin/tournament-arena/new) and organizer console (/admin/tournament-arena/event/:eventId) are full-viewport frames outside the shell, like /admin/quiz-content.",
   },
 
   // =========================================================================
