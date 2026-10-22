@@ -10,7 +10,7 @@ and production verification.
 | repo | branch | head | base |
 |---|---|---|---|
 | backend `League_Combat_Simulator` | `daily-v2/e-admin-release` | §8 | master `df5b7ebd` (merged in `cf5fef1a`) |
-| frontend `mogsy` | `daily-v2/e-admin-release` | §8 | main `f902f5c4` (merged in `1d01ffa7`) |
+| frontend `mogsy` | `daily-v2/e-admin-release` | §8 | main `801462cc` (merged in `15a69896`) |
 
 **Backend.**
 * Lane B/C/E three-act composer, eligibility, V2 exact-ref index, launch
@@ -256,9 +256,9 @@ Safety
 - New: PublicDailyFormatControl.test.tsx (8): server state shown, V2
   unsubmittable, exact confirmation sent, refusals surfaced, Creator Replay
   never calls the public setting.
-- Reconciled with main f902f5c4 (1d01ffa7). No file deleted vs main.
-- Focused baseline-differential vs main f902f5c4 (Daily, arena, admin,
-  ranked-core): base 19 failed / head 19 failed, failure sets identical.
+- Reconciled with main 801462cc (15a69896). No file deleted vs main.
+- Focused baseline-differential vs main 801462cc (Daily, arena, admin,
+  ranked-core): base 20 failed / head 20 failed, failure sets identical.
 - tsc: only the 2 pre-existing errors. Build passes.
 
 Order: either; old FE never calls the new routes, new FE shows a plain
@@ -297,7 +297,7 @@ Full vitest suite in four chunks, base main `e931bc1a` vs head.
 |---|---|---|
 | branch | `daily-v2/e-admin-release` | `daily-v2/e-admin-release` |
 | head | `77e5fae5` | the commit adding this section |
-| upstream merged | master `df5b7ebd` (`cf5fef1a`), 0 behind | main `f902f5c4` (`1d01ffa7`), 0 behind |
+| upstream merged | master `df5b7ebd` (`cf5fef1a`), 0 behind | main `801462cc` (`15a69896`, after `1d01ffa7`), 0 behind |
 | files deleted vs upstream | none | none |
 | PR #46 (public V1 changes) | excluded: `daily_challenge/recipe.py` and #46's tests equal master | — |
 | DREP1 (#68) | preserved (`ddb72607`) | — |
@@ -313,9 +313,14 @@ Full vitest suite in four chunks, base main `e931bc1a` vs head.
 * Frontend: `quiz-daily-challenge`, `daily-challenge`, `daily-v2`,
   `ranked-arena`, `ranked-core`, `ranked-public`, `quiz-ranked`, admin pages
   and components.
-  * Base main `f902f5c4`: 19 failed / 4,039 passed.
-  * Head: 19 failed / 4,159 passed.
+  * Base main `801462cc`: 20 failed / 4,040 passed.
+  * Head: 20 failed / 4,160 passed.
   * Failure sets are **identical**.
+  * The same comparison before main's #119 (Daily rollover countdown):
+    19 / 19, also identical.
+* Frontend `tsc`: only the 2 pre-existing errors. `npm run build` passes;
+  `dist/` has no test persona or harness strings, and both admin panels are
+  bundled.
 * Canonical database copy (no takedown rows), final backend head: golden 5
   passed; `serveable` 30/30 days compose, `certified` 0/30.
 
