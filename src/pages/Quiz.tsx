@@ -866,6 +866,10 @@ export default function Quiz() {
    * inbox.
    *
    * Practice is the one place BOTH identities exist, so both are published.
+   * QKEY1: the pre-answer payload no longer carries `question_key` (it could
+   * spell the answer), so the key is published only where a row still has
+   * one (admin previews). A runtime question's id is an opaque token, not a
+   * `quiz_questions.id`, so it is filed as the runtime id.
    */
   usePublishReportableQuestion(
     phase === "active" && currentQuestion
@@ -873,7 +877,8 @@ export default function Quiz() {
         category: "Leaguecraft",
         mode: "Practice",
         questionKey: currentQuestion.question_key ?? null,
-        staticQuestionId: currentQuestion.id,
+        staticQuestionId: typeof currentQuestion.id === "number" ? currentQuestion.id : null,
+        runtimeQuestionId: typeof currentQuestion.id === "string" ? currentQuestion.id : null,
         prompt: currentQuestion.question_text ?? null,
         choices: (currentQuestion.choices ?? []).map(choice =>
           typeof choice === "string" ? choice : choice.label),

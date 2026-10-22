@@ -19,9 +19,19 @@ export type QuizSet = {
 };
 
 export type QuizQuestion = {
+  /**
+   * A stored row's integer id, or — for a runtime-composed question — an
+   * opaque `rt1.` token (QKEY1). Echo it back untouched; never parse it.
+   */
   id: number | string;
   category: string;
+  /**
+   * QKEY1: no longer served before the answer (the key could spell the
+   * correct option). Only admin review rows still carry it.
+   */
   question_key?: string | null;
+  /** QKEY1: the image IS the question (a recognition family). Server-stated. */
+  requires_media?: boolean;
   question_text?: string | null;
   format: "multiple_choice" | string;
   choices: Array<string | { label: string; raw_stats?: string[] }>;

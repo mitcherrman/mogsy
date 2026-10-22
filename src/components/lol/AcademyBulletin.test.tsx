@@ -768,6 +768,17 @@ describe("media dependence — a text-only card cannot ask about a picture", () 
     expect(isRecognitionFamily({ question_key: "ability_cooldown_flat:Ahri:Q" })).toBe(false);
   });
 
+  it("QKEY1: the server's requires_media wins once the key is no longer served", () => {
+    // A pre-answer row from a QKEY1 backend: no question_key, an opaque id.
+    const keyless = { ...IMAGE_RECOGNITION, question_key: undefined, id: "rt1.opaque" };
+    expect(requiresUnrenderedMedia({ ...keyless, requires_media: true })).toBe(true);
+    expect(isBulletinEligibleQuestion({ ...keyless, requires_media: true })).toBe(false);
+    // An explicit false is believed, even beside a recognition-shaped key.
+    expect(requiresUnrenderedMedia({ ...IMAGE_RECOGNITION, requires_media: false })).toBe(false);
+    // An older backend that sends no flag still gets the family parse.
+    expect(requiresUnrenderedMedia(IMAGE_RECOGNITION)).toBe(true);
+  });
+
   it("still applies the length rule to a text-only question", () => {
     expect(isBulletinEligibleQuestion(LONG_COMPARISON)).toBe(false);
     expect(isBulletinEligibleQuestion(LONG_SCENARIO)).toBe(false);
