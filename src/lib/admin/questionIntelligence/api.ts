@@ -46,6 +46,32 @@ export interface QiPosition {
   pickedWrong: number;
 }
 
+/**
+ * DREP1 split of one ref's repeats, by the Daily child that served each one:
+ * `forced` = the ref was in that child's frozen avoid set (its family had no
+ * unseen question left); `avoidable` = it was not, or the child froze no set;
+ * `outsideScope` = no Standard / Time Trial / Survival child served it;
+ * `unclassified` = past the backend's snapshot read cap. `null` = the backend
+ * did not report the split (not recorded, never zero).
+ */
+export interface QiDrep1Split {
+  forced: number;
+  avoidable: number;
+  outsideScope: number;
+  unclassified: number;
+}
+
+export interface QiDrep1Totals {
+  forced: number;
+  avoidableProtected: number;
+  avoidableUnprotected: number;
+  outsideScope: number;
+  unclassified: number;
+  snapshotsRead: number;
+  childrenNeeded: number;
+  readCap: number;
+}
+
 export interface QiQuestion {
   ref: string;
   namespace: string;
@@ -70,6 +96,7 @@ export interface QiQuestion {
     multiDayPlayers: number;
     maxDaysOnePlayer: number;
     lookbackDays: number;
+    drep1: QiDrep1Split | null;
   };
   positions: {
     positionalExposures: number;
@@ -92,7 +119,13 @@ export interface QiTotals {
   unattributed: number;
   questions: number;
   excludedTestMatches: number;
-  repeats: { returningPlayers: number; repeatVsPreviousDays: number; repeatVsYesterday: number; lookbackDays: number };
+  repeats: {
+    returningPlayers: number;
+    repeatVsPreviousDays: number;
+    repeatVsYesterday: number;
+    lookbackDays: number;
+    drep1: QiDrep1Totals | null;
+  };
 }
 
 export interface QuestionIntelligence {
@@ -126,6 +159,26 @@ function countMap(raw: unknown): Record<string, number> {
   return out;
 }
 
+/** All-or-nothing: a split missing any count is "not recorded", not a partial figure. */
+function readDrep1Split(raw: unknown): QiDrep1Split | null {
+  if (!isObj(raw)) return null;
+  const [forced, avoidable, outsideScope, unclassified] = [raw.forced, raw.avoidable, raw.outside_scope, raw.unclassified].map(num);
+  if (forced === null || avoidable === null || outsideScope === null || unclassified === null) return null;
+  return { forced, avoidable, outsideScope, unclassified };
+}
+
+function readDrep1Totals(raw: unknown): QiDrep1Totals | null {
+  if (!isObj(raw)) return null;
+  const v = [
+    raw.forced, raw.avoidable_protected, raw.avoidable_unprotected, raw.outside_scope,
+    raw.unclassified, raw.snapshots_read, raw.children_needed, raw.read_cap,
+  ].map(num);
+  if (v.some((n) => n === null)) return null;
+  const [forced, avoidableProtected, avoidableUnprotected, outsideScope, unclassified, snapshotsRead, childrenNeeded, readCap] =
+    v as number[];
+  return { forced, avoidableProtected, avoidableUnprotected, outsideScope, unclassified, snapshotsRead, childrenNeeded, readCap };
+}
+
 function readQuestion(raw: unknown): QiQuestion {
   if (!isObj(raw)) throw new QuestionIntelligenceParseError("Question row is not an object");
   const rates = isObj(raw.rates) ? raw.rates : {};
@@ -149,6 +202,7 @@ function readQuestion(raw: unknown): QiQuestion {
       repeatExposures: count(rep.repeat_exposures), repeatPlayers: count(rep.repeat_players),
       multiDayPlayers: count(rep.multi_day_players), maxDaysOnePlayer: count(rep.max_days_one_player),
       lookbackDays: count(rep.lookback_days),
+      drep1: readDrep1Split(rep.drep1),
     },
     positions: {
       positionalExposures: count(pos.positional_exposures),
@@ -187,6 +241,7 @@ export function parseQuestionIntelligence(json: unknown): QuestionIntelligence {
       repeats: {
         returningPlayers: count(tr.returning_players), repeatVsPreviousDays: count(tr.repeat_vs_previous_days),
         repeatVsYesterday: count(tr.repeat_vs_yesterday), lookbackDays: count(tr.lookback_days),
+        drep1: readDrep1Totals(tr.drep1),
       },
     },
     questions: json.questions.map(readQuestion),

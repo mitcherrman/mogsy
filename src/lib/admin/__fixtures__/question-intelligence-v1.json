@@ -16,13 +16,14 @@
     "Segments settled before PQ1 (2026-09-23) are counted only for one-question quiz rounds.",
     "A settled question with no canonical ref is counted in 'unattributed', never matched to another.",
     "Repeats compare exact canonical refs, not semantic similarity; Review and Weak Areas are excluded from repeat counting.",
+    "The DREP1 forced / avoidable split reads at most 60 Daily child snapshots per request; repeats past that are reported unclassified.",
     "The range is bounded by the match's creation time; each exposure keeps the UTC day its round opened."
   ],
   "page": {
     "limit": 50,
     "next_offset": null,
     "offset": 0,
-    "total": 3
+    "total": 4
   },
   "questions": [
     {
@@ -91,6 +92,12 @@
       },
       "ref": "quiz:champion:q1",
       "repeats": {
+        "drep1": {
+          "avoidable": 0,
+          "forced": 1,
+          "outside_scope": 0,
+          "unclassified": 0
+        },
         "lookback_days": 7,
         "max_days_one_player": 2,
         "multi_day_players": 1,
@@ -170,6 +177,12 @@
       },
       "ref": "quiz:item:q2",
       "repeats": {
+        "drep1": {
+          "avoidable": 0,
+          "forced": 0,
+          "outside_scope": 0,
+          "unclassified": 0
+        },
         "lookback_days": 7,
         "max_days_one_player": 1,
         "multi_day_players": 0,
@@ -178,6 +191,86 @@
       },
       "served": 2,
       "stage_kinds": {},
+      "timeout": 0,
+      "unsettled": 0
+    },
+    {
+      "answered": 2,
+      "correct": 2,
+      "family": "item",
+      "first_day": "2026-10-10",
+      "hosts": {
+        "daily": 2,
+        "other": 0,
+        "ranked": 0
+      },
+      "incorrect": 0,
+      "last_day": "2026-10-11",
+      "modules": [
+        "quiz"
+      ],
+      "namespace": "quiz",
+      "players": 1,
+      "positions": {
+        "by_position": [
+          {
+            "picked_correct": 2,
+            "picked_wrong": 0,
+            "position": 1,
+            "shown_correct": 2
+          },
+          {
+            "picked_correct": 0,
+            "picked_wrong": 0,
+            "position": 2,
+            "shown_correct": 0
+          },
+          {
+            "picked_correct": 0,
+            "picked_wrong": 0,
+            "position": 3,
+            "shown_correct": 0
+          },
+          {
+            "picked_correct": 0,
+            "picked_wrong": 0,
+            "position": 4,
+            "shown_correct": 0
+          }
+        ],
+        "non_positional_exposures": 0,
+        "option_counts": {
+          "4": 2
+        },
+        "positional_exposures": 2,
+        "undecoded": 0,
+        "wrong_choices": []
+      },
+      "prompt": "Prompt for quiz:item:q3",
+      "rates": {
+        "answered": 1.0,
+        "correct": 1.0,
+        "incorrect": 0.0,
+        "timeout": 0.0
+      },
+      "ref": "quiz:item:q3",
+      "repeats": {
+        "drep1": {
+          "avoidable": 1,
+          "forced": 0,
+          "outside_scope": 0,
+          "unclassified": 0
+        },
+        "lookback_days": 7,
+        "max_days_one_player": 2,
+        "multi_day_players": 1,
+        "repeat_exposures": 1,
+        "repeat_players": 1
+      },
+      "served": 2,
+      "stage_kinds": {
+        "standard": 2
+      },
       "timeout": 0,
       "unsettled": 0
     },
@@ -230,6 +323,12 @@
       },
       "ref": "reflex:hp:garen-teemo",
       "repeats": {
+        "drep1": {
+          "avoidable": 0,
+          "forced": 0,
+          "outside_scope": 0,
+          "unclassified": 0
+        },
         "lookback_days": 7,
         "max_days_one_player": 1,
         "multi_day_players": 0,
@@ -246,19 +345,29 @@
   ],
   "schema_version": 1,
   "totals": {
-    "answered": 6,
-    "correct": 3,
+    "answered": 8,
+    "correct": 5,
     "excluded_test_matches": 0,
     "incorrect": 3,
-    "questions": 3,
+    "questions": 4,
     "repeats": {
+      "drep1": {
+        "avoidable_protected": 1,
+        "avoidable_unprotected": 0,
+        "children_needed": 1,
+        "forced": 1,
+        "outside_scope": 0,
+        "read_cap": 60,
+        "snapshots_read": 1,
+        "unclassified": 0
+      },
       "lookback_days": 7,
-      "repeat_vs_previous_days": 1,
-      "repeat_vs_yesterday": 1,
-      "returning_player_questions": 1,
+      "repeat_vs_previous_days": 2,
+      "repeat_vs_yesterday": 2,
+      "returning_player_questions": 2,
       "returning_players": 1
     },
-    "served": 7,
+    "served": 9,
     "timeout": 1,
     "unattributed": 0,
     "unsettled": 0

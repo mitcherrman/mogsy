@@ -33,18 +33,18 @@ describe("QI1 panel · hover-synchronised detail", () => {
     expect(screen.getByTestId("qi-row-A1").getAttribute("data-active")).toBe("true");
   });
 
-  it("hovering A3 moves the side panel to A3 and its option grid", async () => {
+  it("hovering A4 moves the side panel to A4 and its option grid", async () => {
     renderPanel();
-    fireEvent.mouseEnter(await screen.findByTestId("qi-row-A3"));
+    fireEvent.mouseEnter(await screen.findByTestId("qi-row-A4"));
     const detail = screen.getByTestId("qi-detail");
     expect(within(detail).getByTestId("qi-detail-ref").textContent).toBe("reflex:hp:garen-teemo");
-    expect(screen.getByTestId("qi-row-A3").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("qi-row-A4").getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("qi-row-A1").getAttribute("data-active")).toBe("false");
-    // A two-option card: A3.1 left, A3.2 right, the wrong pick on the right.
-    expect(screen.getByTestId("qi-cell-A3.1").getAttribute("data-cell")).toBe("left");
-    expect(screen.getByTestId("qi-cell-A3.2").getAttribute("data-cell")).toBe("right");
-    expect(screen.getByTestId("qi-cell-A3.2").textContent).toContain("1 wrong");
-    expect(screen.queryByTestId("qi-cell-A3.3")).toBeNull();
+    // A two-option card: A4.1 left, A4.2 right, the wrong pick on the right.
+    expect(screen.getByTestId("qi-cell-A4.1").getAttribute("data-cell")).toBe("left");
+    expect(screen.getByTestId("qi-cell-A4.2").getAttribute("data-cell")).toBe("right");
+    expect(screen.getByTestId("qi-cell-A4.2").textContent).toContain("1 wrong");
+    expect(screen.queryByTestId("qi-cell-A4.3")).toBeNull();
   });
 
   it("draws A1.1–A1.4 on the 2×2 grid with the wrong pick at bottom-right", async () => {
@@ -68,12 +68,12 @@ describe("QI1 panel · hover-synchronised detail", () => {
     expect(screen.getByTestId("qi-detail-ref").textContent).toBe("quiz:item:q2");
     fireEvent.click(screen.getByTestId("qi-row-A2"));
     fireEvent.mouseEnter(screen.getByTestId("qi-row-A3"));
-    expect(screen.getByTestId("qi-detail-ref").textContent).toBe("reflex:hp:garen-teemo");
+    expect(screen.getByTestId("qi-detail-ref").textContent).toBe("quiz:item:q3");
   });
 
   it("applies filters as one read and continues labels on the next page", async () => {
-    const page2 = { ...DATA, page: { offset: 50, limit: 50, total: 53, nextOffset: null } };
-    const load = vi.fn(async (f: QiFilters) => (f.offset === 50 ? page2 : { ...DATA, page: { ...DATA.page, total: 53, nextOffset: 50 } }));
+    const page2 = { ...DATA, page: { offset: 50, limit: 50, total: 54, nextOffset: null } };
+    const load = vi.fn(async (f: QiFilters) => (f.offset === 50 ? page2 : { ...DATA, page: { ...DATA.page, total: 54, nextOffset: 50 } }));
     renderPanel(load);
     await screen.findByTestId("qi-row-A1");
     fireEvent.change(screen.getByTestId("qi-host"), { target: { value: "daily" } });
@@ -84,7 +84,7 @@ describe("QI1 panel · hover-synchronised detail", () => {
     expect(load.mock.calls[1][0]).toMatchObject({ host: "daily", stageKind: "survival", offset: 0 });
     fireEvent.click(await screen.findByTestId("qi-next"));
     expect(await screen.findByTestId("qi-row-A51")).toBeTruthy();
-    expect(screen.getByTestId("qi-pager").textContent).toContain("A51–A53 of 53");
+    expect(screen.getByTestId("qi-pager").textContent).toContain("A51–A54 of 54");
   });
 
   it("shows a denial as an error, never as an empty table", async () => {
@@ -100,6 +100,26 @@ describe("QI1 panel · hover-synchronised detail", () => {
     const q = { ...DATA.questions[0], positions: { ...DATA.questions[0].positions, byPosition: [], optionCounts: {}, nonPositionalExposures: 4 } };
     renderPanel(vi.fn(async () => ({ ...DATA, questions: [q] })));
     expect((await screen.findByTestId("qi-grid-none")).textContent).toContain("4 exposures");
+  });
+
+  it("shows the DREP1 forced / avoidable split in totals, table and detail", async () => {
+    renderPanel();
+    await screen.findByTestId("qi-row-A1");
+    expect(screen.getByTestId("qi-drep1-totals").textContent).toContain("forced 1 · avoidable 1 (set without it 1, no set 0)");
+    expect(screen.getByTestId("qi-avoidable-A1").textContent).toBe("—");
+    expect(screen.getByTestId("qi-avoidable-A3").textContent).toBe("1");
+    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("Forced1Avoidable0Outside Daily0Unclassified0");
+    fireEvent.mouseEnter(screen.getByTestId("qi-row-A3"));
+    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("Forced0Avoidable1Outside Daily0Unclassified0");
+  });
+
+  it("says the DREP1 split was not reported rather than showing zeros", async () => {
+    const totals = { ...DATA.totals, repeats: { ...DATA.totals.repeats, drep1: null } };
+    const questions = DATA.questions.map((q) => ({ ...q, repeats: { ...q.repeats, drep1: null } }));
+    renderPanel(vi.fn(async () => ({ ...DATA, totals, questions })));
+    expect((await screen.findByTestId("qi-drep1-totals")).textContent).toBe("DREP1 split not reported by this backend.");
+    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("DREP1 split not reported.");
+    expect(screen.getByTestId("qi-avoidable-A1").textContent).toBe("—");
   });
 });
 

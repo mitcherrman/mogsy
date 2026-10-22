@@ -25,14 +25,14 @@ describe("QI1 parser · the backend golden response", () => {
   const parsed = parseQuestionIntelligence(golden);
 
   it("reads totals, paging and limitations", () => {
-    expect(parsed.totals).toMatchObject({ served: 7, answered: 6, correct: 3, incorrect: 3, timeout: 1, questions: 3 });
-    expect(parsed.totals.repeats).toMatchObject({ repeatVsPreviousDays: 1, lookbackDays: 7 });
-    expect(parsed.page).toEqual({ offset: 0, limit: 50, total: 3, nextOffset: null });
+    expect(parsed.totals).toMatchObject({ served: 9, answered: 8, correct: 5, incorrect: 3, timeout: 1, questions: 4 });
+    expect(parsed.totals.repeats).toMatchObject({ repeatVsPreviousDays: 2, lookbackDays: 7 });
+    expect(parsed.page).toEqual({ offset: 0, limit: 50, total: 4, nextOffset: null });
     expect(parsed.limitations.length).toBeGreaterThan(0);
   });
 
   it("keeps the displayed-position distribution exactly as served", () => {
-    const [q1, q2, reflex] = parsed.questions;
+    const [q1, q2, , reflex] = parsed.questions;
     expect(q1.ref).toBe("quiz:champion:q1");
     expect(q1.rates).toEqual({ correct: 0.5, incorrect: 0.25, timeout: 0.25, answered: 0.75 });
     expect(q1.positions.byPosition.map((p) => [p.position, p.shownCorrect, p.pickedCorrect, p.pickedWrong])).toEqual([
@@ -50,7 +50,27 @@ describe("QI1 parser · the backend golden response", () => {
     expect(() => parseQuestionIntelligence({ ...golden, schema_version: 2 })).toThrow(QuestionIntelligenceParseError);
     expect(() => parseQuestionIntelligence({ ...golden, questions: [{ served: 1 }] })).toThrow(/question ref/);
     const extra = parseQuestionIntelligence({ ...golden, future_field: { x: 1 } });
-    expect(extra.questions).toHaveLength(3);
+    expect(extra.questions).toHaveLength(4);
+  });
+
+  it("reads the DREP1 forced / avoidable split per ref and in total", () => {
+    const [q1, q2, q3] = parsed.questions;
+    expect(q1.repeats.drep1).toEqual({ forced: 1, avoidable: 0, outsideScope: 0, unclassified: 0 });
+    expect(q3.ref).toBe("quiz:item:q3");
+    expect(q3.repeats.drep1).toEqual({ forced: 0, avoidable: 1, outsideScope: 0, unclassified: 0 });
+    expect(q2.repeats.drep1).toEqual({ forced: 0, avoidable: 0, outsideScope: 0, unclassified: 0 });
+    expect(parsed.totals.repeats.drep1).toEqual({
+      forced: 1, avoidableProtected: 1, avoidableUnprotected: 0, outsideScope: 0,
+      unclassified: 0, snapshotsRead: 1, childrenNeeded: 1, readCap: 60,
+    });
+  });
+
+  it("reads an absent or partial DREP1 split as not reported, never as zeros", () => {
+    const row = { ...golden.questions[0], repeats: { ...golden.questions[0].repeats, drep1: { forced: 1 } } };
+    const totals = { ...golden.totals, repeats: { ...golden.totals.repeats, drep1: undefined } };
+    const out = parseQuestionIntelligence({ ...golden, questions: [row], totals });
+    expect(out.questions[0].repeats.drep1).toBeNull();
+    expect(out.totals.repeats.drep1).toBeNull();
   });
 
   it("reads a malformed number as not recorded, never as a figure", () => {
@@ -76,7 +96,7 @@ describe("QI1 client · query and errors", () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(golden), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     const out = await fetchQuestionIntelligence(FILTERS);
-    expect(out.questions).toHaveLength(3);
+    expect(out.questions).toHaveLength(4);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url.startsWith("https://railway.test/api/admin/question-intelligence?")).toBe(true);
     expect(init.headers).toEqual({ Authorization: "Bearer owner" });

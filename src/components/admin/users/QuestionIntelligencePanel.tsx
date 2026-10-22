@@ -291,15 +291,29 @@ function Totals({ data }: { data: QuestionIntelligence }) {
     ["repeats", `Player repeats (${t.repeats.lookbackDays}d)`, t.repeats.repeatVsPreviousDays.toLocaleString()],
     ["excluded", "Test matches excluded", t.excludedTestMatches.toLocaleString()],
   ];
+  const d = t.repeats.drep1;
   return (
-    <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" data-testid="qi-totals">
-      {items.map(([id, label, value]) => (
-        <div key={id} className="rounded-md border border-border bg-muted/20 px-3 py-2" data-testid={`qi-total-${id}`}>
-          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
-          <dd className="text-base font-semibold tabular-nums">{value}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="space-y-1">
+      <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" data-testid="qi-totals">
+        {items.map(([id, label, value]) => (
+          <div key={id} className="rounded-md border border-border bg-muted/20 px-3 py-2" data-testid={`qi-total-${id}`}>
+            <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+            <dd className="text-base font-semibold tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-[10px] text-muted-foreground" data-testid="qi-drep1-totals">
+        {d ? (
+          <>
+            DREP1 · forced {d.forced} · avoidable {d.avoidableProtected + d.avoidableUnprotected} (set without it{" "}
+            {d.avoidableProtected}, no set {d.avoidableUnprotected}) · outside Daily {d.outsideScope}
+            {d.unclassified > 0 && ` · unclassified ${d.unclassified} (snapshot read cap ${d.readCap}; narrow the range)`}
+          </>
+        ) : (
+          "DREP1 split not reported by this backend."
+        )}
+      </p>
+    </div>
   );
 }
 
@@ -353,7 +367,8 @@ function QuestionTable({
             <th className="py-1 pr-2 text-right">Wrong</th>
             <th className="py-1 pr-2 text-right">Timeout</th>
             <th className="py-1 pr-2 text-right" title="Daily child / standalone Ranked / other">D·R·O</th>
-            <th className="py-1 text-right" title="Same player, previous days">Repeats</th>
+            <th className="py-1 pr-2 text-right" title="Same player, previous days">Repeats</th>
+            <th className="py-1 text-right" title="DREP1: repeats the Daily child's avoid set did not cover">Avoidable</th>
           </tr>
         </thead>
         <tbody>
@@ -400,7 +415,10 @@ function QuestionTable({
                 <td className="py-1.5 pr-2 text-right tabular-nums text-muted-foreground">
                   {q.hosts.daily}·{q.hosts.ranked}·{q.hosts.other}
                 </td>
-                <td className="py-1.5 text-right tabular-nums">{q.repeats.repeatExposures || "—"}</td>
+                <td className="py-1.5 pr-2 text-right tabular-nums">{q.repeats.repeatExposures || "—"}</td>
+                <td className="py-1.5 text-right tabular-nums" data-testid={`qi-avoidable-${label}`}>
+                  {q.repeats.drep1?.avoidable || "—"}
+                </td>
               </tr>
             );
           })}
@@ -544,6 +562,18 @@ export function QuestionDetail({ question: q, label, pinned }: { question: QiQue
             <Stat label="Players repeated" value={q.repeats.repeatPlayers} />
             <Stat label="Max days, 1 player" value={q.repeats.maxDaysOnePlayer} />
           </div>
+          {q.repeats.drep1 ? (
+            <div className="mt-1.5 grid grid-cols-4 gap-1.5" data-testid="qi-detail-drep1">
+              <Stat label="Forced" value={q.repeats.drep1.forced} />
+              <Stat label="Avoidable" value={q.repeats.drep1.avoidable} />
+              <Stat label="Outside Daily" value={q.repeats.drep1.outsideScope} />
+              <Stat label="Unclassified" value={q.repeats.drep1.unclassified} />
+            </div>
+          ) : (
+            <p className="mt-1 text-[10px] text-muted-foreground" data-testid="qi-detail-drep1">
+              DREP1 split not reported.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-1 text-[10px]" data-testid="qi-detail-hosts">
