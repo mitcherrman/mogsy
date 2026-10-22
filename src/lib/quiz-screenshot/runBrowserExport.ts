@@ -241,7 +241,21 @@ async function createStageFrame(width: number, height: number): Promise<HTMLIFra
     doc.head.appendChild(node.cloneNode(true));
   }
   // The zoom fit measures text, so it must not run against fallback metrics.
+  // A frame's FontFaceSet loads lazily — only once text asks for a face — so
+  // `ready` alone resolves before anything is pending. Ask the frame for every
+  // face this page has already loaded, so the first card that uses a weight
+  // is measured with it, exactly as Playwright's warmed page is.
   try {
+    const wanted: Promise<unknown>[] = [];
+    document.fonts?.forEach((face) => {
+      if (face.status !== "loaded") return;
+      const family = face.family.replace(/^["']|["']$/g, "");
+      // Variable faces report ranges ("100 900"); one value names the face.
+      const weight = face.weight.split(/\s+/)[0];
+      const style = face.style.split(/\s+/)[0];
+      wanted.push(doc.fonts.load(`${style} ${weight} 16px "${family}"`).catch(() => undefined));
+    });
+    await Promise.all(wanted);
     await doc.fonts?.ready;
   } catch {
     /* font API unavailable in this frame — proceed */
