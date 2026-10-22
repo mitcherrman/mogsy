@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RoundTimelineView, TimelineNode } from "@/lib/ranked-core/viewTypes";
-import { projectSetTimeline, readThreeActsPlan, windowSetTimeline } from "./threeActsPlan";
+import {
+  actOpeningTitle, projectSetTimeline, readThreeActsPlan, windowSetTimeline,
+} from "./threeActsPlan";
 import { THREE_ACTS_COMPOSITION } from "./__fixtures__/threeActsComposition";
 
 
@@ -83,5 +85,16 @@ describe("windowSetTimeline (phone)", () => {
   it("re-indexes the current group inside the window", () => {
     const view = windowSetTimeline(projectSetTimeline(timeline(12, 11), plan), 3);
     expect(view.groups[view.currentGroupIndex!].label).toBe("M2");
+  });
+});
+
+describe("act opening titles (owner playtest: Early → Mid → Late)", () => {
+  it("names the act on the first round of its first set, and nowhere else", () => {
+    const plan = readThreeActsPlan(THREE_ACTS_COMPOSITION)!;
+    const titles = Array.from({ length: plan.segments }, (_, i) => actOpeningTitle(plan, i + 1));
+    // Early 1-6, Meta Reflex 7, Mid 8-13, Late 14-19.
+    expect(titles.flatMap((t, i) => (t ? [[i + 1, t]] : []))).toEqual([
+      [1, "Act I · Early"], [8, "Act II · Mid"], [14, "Act III · Late"]]);
+    expect(actOpeningTitle(plan, null)).toBeNull();
   });
 });

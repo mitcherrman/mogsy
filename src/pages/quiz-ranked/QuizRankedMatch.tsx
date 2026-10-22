@@ -34,7 +34,7 @@ import { BonusModeRules } from "@/components/public-modes/BonusModeRules";
 import { isPublicModeId, PUBLIC_MODE_TITLES } from "@/lib/public-modes/contracts";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { rendererForDailyV2Segment } from "@/lib/daily-v2/adapters/modeReuse";
-import { projectSetTimeline } from "@/lib/daily-v2/threeActsPlan";
+import { actOpeningTitle, projectSetTimeline } from "@/lib/daily-v2/threeActsPlan";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
@@ -1685,7 +1685,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // the next one first — the backend publishes nothing about a question it
       // has not generated, which is the same fact that makes every future node
       // on the round rail neutral — so this face runs as the new round arrives.
-      moduleTitle: liveModuleTitle(headerRound ?? m.publicRound),
+      // Daily three acts: the first round of each act names the act instead
+      // ("Act II · Mid") -- the same beat, window and pacing.
+      moduleTitle: (threeActsPlan && actOpeningTitle(threeActsPlan, headerRoundNumber))
+        ?? liveModuleTitle(headerRound ?? m.publicRound),
       moduleEventId: headerRoundNumber,
       // RFX1 2B1 — the title may not outlive the server's own start. A swap
       // that waited for media shortens the title instead of leaving an intro

@@ -179,3 +179,27 @@ export function windowSetTimeline(view: SetTimelineView, size: number): SetTimel
     currentGroupIndex: view.currentGroupIndex === null ? null : view.currentGroupIndex - start,
   };
 }
+
+const ACT_NUMERAL: Record<ThreeActsAct, string> = { early: "I", mid: "II", late: "III" };
+
+/**
+ * The act a round OPENS, as the header's module-title text ("Act II · Mid"), or
+ * null for every other round. An act opens at the first segment of its first
+ * set. This only changes WHICH words the existing module-title beat shows for
+ * three rounds a day: the beat's window, its server-paced start and its
+ * one-shot flip are untouched, so the transition adds no time, motion or
+ * layout of its own.
+ */
+export function actOpeningTitle(plan: ThreeActsPlan, roundNumber: number | null): string | null {
+  if (roundNumber === null) return null;
+  let round = 1;
+  const seen = new Set<ThreeActsAct>();
+  for (const unit of plan.units) {
+    if (unit.kind === "set" && !seen.has(unit.act)) {
+      seen.add(unit.act);
+      if (round === roundNumber) return `Act ${ACT_NUMERAL[unit.act]} · ${ACT_NAME[unit.act]}`;
+    }
+    round += unit.kind === "set" ? 3 : 1;
+  }
+  return null;
+}
