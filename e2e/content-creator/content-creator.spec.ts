@@ -199,17 +199,30 @@ async function assertArchiveMatchesPreviews(page: Page, expectRuns: number) {
   return zip;
 }
 
+/**
+ * Navigate, tolerating the SPA's own client-side redirect interrupting the
+ * load (Firefox reports that as NS_BINDING_ABORTED); the caller asserts where
+ * the app actually landed.
+ */
+async function visit(page: Page, url: string) {
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+  } catch (error) {
+    if (!/NS_BINDING_ABORTED|net::ERR_ABORTED|interrupted by another navigation/.test(String(error))) throw error;
+  }
+}
+
 test.describe("access", () => {
   test("a non-owner is turned away and never sees the creator", async ({ page }) => {
     await hermetic(page, MEMBER);
-    await page.goto("/admin/content-creator");
+    await visit(page, "/admin/content-creator");
     await expect(page).not.toHaveURL(/content-creator/, { timeout: 30_000 });
     await expect(page.getByTestId("admin-content-creator")).toHaveCount(0);
   });
 
   test("a signed-out visitor is turned away", async ({ page }) => {
     await hermetic(page, null);
-    await page.goto("/admin/content-creator");
+    await visit(page, "/admin/content-creator");
     await expect(page).not.toHaveURL(/content-creator/, { timeout: 30_000 });
     await expect(page.getByTestId("cc-bank")).toHaveCount(0);
   });
@@ -360,11 +373,11 @@ test.describe("owner", () => {
 
   test("existing Admin routes still render", async ({ page }) => {
     await hermetic(page, OWNER);
-    await page.goto("/admin/studio?section=video-social");
+    await visit(page, "/admin/studio?section=video-social");
     await expect(page.getByTestId("admin-tool-content-creator")).toBeVisible({ timeout: 30_000 });
-    await page.goto("/admin/quiz-content");
+    await visit(page, "/admin/quiz-content");
     await expect(page.getByText("Quiz Review").first()).toBeVisible({ timeout: 30_000 });
-    await page.goto("/admin/quiz-broadcast");
+    await visit(page, "/admin/quiz-broadcast");
     await expect(page).toHaveURL(/\/admin\/quiz-broadcast/);
   });
 });
