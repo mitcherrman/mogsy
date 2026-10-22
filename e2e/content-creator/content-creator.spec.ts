@@ -373,11 +373,21 @@ test.describe("owner", () => {
 
   test("existing Admin routes still render", async ({ page }) => {
     await hermetic(page, OWNER);
-    await visit(page, "/admin/studio?section=video-social");
-    await expect(page.getByTestId("admin-tool-content-creator")).toBeVisible({ timeout: 30_000 });
-    await visit(page, "/admin/quiz-content");
-    await expect(page.getByText("Quiz Review").first()).toBeVisible({ timeout: 30_000 });
-    await visit(page, "/admin/quiz-broadcast");
-    await expect(page).toHaveURL(/\/admin\/quiz-broadcast/);
+    const routes: Array<[string, RegExp, (p: Page) => Promise<void>]> = [
+      ["/admin/studio?section=video-social", /\/admin\/studio/, (p) => expect(p.getByTestId("admin-tool-content-creator")).toBeVisible({ timeout: 30_000 })],
+      ["/admin/quiz-content", /\/admin\/quiz-content/, (p) => expect(p.getByText("Quiz Review").first()).toBeVisible({ timeout: 30_000 })],
+      ["/admin/quiz-broadcast", /\/admin\/quiz-broadcast/, async () => {}],
+    ];
+    for (const [url, landed, ready] of routes) {
+      // A dev server may answer a first lazy-chunk request with the app's own
+      // retry reload; settle each route before moving to the next.
+      await expect(async () => {
+        await visit(page, url);
+        await expect(page).toHaveURL(landed, { timeout: 10_000 });
+        await ready(page);
+        await page.waitForLoadState("load");
+        await expect(page).toHaveURL(landed);
+      }).toPass({ timeout: 90_000 });
+    }
   });
 });
