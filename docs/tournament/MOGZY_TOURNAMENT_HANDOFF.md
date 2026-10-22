@@ -1,6 +1,6 @@
 # Mogzy Tournament Arena & Match Host Portal — Audit Handoff
 
-**Status:** Audit only. Nothing in this document is implemented. No code, routes, migrations or flags were changed.
+**Status:** §0–§10 are the original audit (2026-10-21). **Update 2026-10-22:** the admin-only production integration is built and locally certified on draft PRs LCS #88 (on #86) and mogsy #122 (on #118) — see §11 (what exists), §12 (owner release runbook), §13 (evidence), §14 (build-order status). Nothing is merged, published, deployed or enabled.
 **Date:** 2026-10-21
 **Audience:**
 - **Primary:** the Fable 5.1 frontend session that will build the animated visual experience.
@@ -885,3 +885,124 @@ The work runs in two tracks. **Track F** (Fable, frontend visuals) needs no back
   - the existence of the referenced FE files;
   - the local-only branch status.
 - One sub-audit claim was corrected: it said HP `ranked_modern` was the public default. It is not; it is `ranked_points_v2`.
+
+---
+
+## 11. Update 2026-10-22 — admin-only production integration (built, not deployed)
+
+The owner asked for the Arena to work for real on mogzy.lol, **reachable only through Admin**: only the owner creates and runs events; signed-in players join by link or invitation and play their own matches; no public directory, no public creation, no home-page entry. That is now built and tested locally on two stacked branches. **Nothing is merged, published, deployed or enabled.**
+
+### 11.1 Where it is
+
+| Repo | Branch | Commits | Stacked on |
+|---|---|---|---|
+| LCS backend | `feat/arena-admin-lifecycle-20261022` — draft PR #88 | `c0438d70` (code), `bc7f8fd2` (docs) | PR #86 `feat/arena-backend-b1b2-20261021` @ `dbf22a72` (base master `77c08167`) |
+| mogsy frontend | `feat/tournament-arena-admin` — draft PR #122 | `fbd8f2b1` (code), `ad795752` (registry test) | PR #118 `feat/tournament-arena-visual` @ `0911d045` |
+| mogsy docs | `docs/tournament-arena-handoff` | this commit | `f3b5d29d` |
+
+Detailed backend notes: LCS `docs/arena/ARENA_BACKEND_B1B2_HANDOFF.md` (B1/B2) and `docs/arena/ARENA_ADMIN_BETA_HANDOFF.md` (B3/B4).
+
+### 11.2 Owner decisions as implemented
+
+| # | Decision | As built |
+|---|---|---|
+| D1 | Rated? | Unrated (`creation_source="arena"`, `rated=false`) |
+| D2 | Who organizes | **Owner only** (this beta). Enforced server-side on every organizer route; players need no privilege |
+| D3 | Size / format | Single elimination, 2–16 entrants (`ARENA_MAX_ENTRANTS`, hard max 32), Bo1/3/5 (earlier rounds Bo3 when the final is Bo5) |
+| D4 | Draws | Replay; after 2 replays the node is flagged and the owner resolves |
+| D5 | Game types | The server catalog: Ranked Quiz, Ranked Mix, Match Grid, Reconstruct, Order Forge, Chronoscope, Roster Lock, Draft Memory. Journey, Role Challenge, Champion Card Duel: later |
+| D6 | Routes | Players `/quiz/arena/*`; owner `/admin/tournament-arena/*` (not `/admin/arena`, which LEGACY1 retired) |
+| D7 | While Ranked is paused | Yes, behind its own `ARENA_ENABLED` + `app_settings.queue_arena_enabled` |
+| D9 | Wording | "Join link" / "Join code" / "Invite"; organizer, never "host" |
+| D10 | No-show deadline | Server-wide `ARENA_READY_DEADLINE_SECONDS` (600 s). One side ready at the deadline wins; nobody ready → the owner resolves |
+
+### 11.3 What exists now
+
+**Backend (B3/B4 on top of B1/B2):** owner-only organizer gate (`ARENA_ORGANIZER_REQUIRED` 403, `ARENA_ADMIN_UNAVAILABLE` 503 fail-closed), no public discovery (`ARENA_PUBLIC_DISABLED`), `viewer_can_manage` projection, the two-sided ready check on `play`, the deadline/abandoned-game sweep (on every read and in the Ranked worker), owner moderation `/api/arena/admin/*` (list, detail + audit, edit open event, remove entrant, override a result while nothing downstream was played), migration v2 (three nullable `arena_nodes` columns, ALTERed in place).
+
+**Frontend:**
+
+| Route | Who | What |
+|---|---|---|
+| `/admin/tournament-arena` | owner (Admin rail entry "Tournament Arena") | Service state read live from the backend (Arena flag, new-starts pause, Ranked engine, servable game types, limits) and every event |
+| `/admin/tournament-arena/new` | owner | Fable's Match Host Portal on the real catalog (no public option; only server-applied settings; organizer-seat choice); Launch creates the event, then invites challenged friends |
+| `/admin/tournament-arena/event/:id` | owner | Fable's event page with organizer controls (Lock, Start, walkovers, override) + **Organizer tools** drawer: join link, invite friends / withdraw, settings until lock, remove player, cancel, audit trail |
+| `/quiz/arena` | signed-in player | Your events + your invitations (accept / decline) |
+| `/quiz/arena/join/:code` | signed-in player | The join link: confirm → join → the event |
+| `/quiz/arena/e/:id` | entrant (or a `link` event's reader) | Lobby (check in) → animated bracket → champion; never organizer controls |
+| `/quiz/arena/e/:id/match/:node` | the node's two players | Fable's VS seats drive the **real ready check**; then the canonical `QuizRankedMatch` mounts as a tournament-hosted match; the result screen shows **only the game the server recorded** ("Recording the result…" until it arrives) |
+
+Fable's visuals and motion are unchanged and reused (bracket, node cards, connectors, stingers, finals intro, champion celebration, launch transition, duel seats, score plate). The DEV fixture harness `/lol/dev/tournament-arena` still runs on the fixture gateway and still marks everything **Simulated**; no simulated score can reach a real page.
+
+### 11.4 Not done (follow-ups, not blockers for the admin beta)
+
+- A GitHub Actions browser workflow (`playwright.tournament-arena.config.ts`) — browser checks were done in the desktop app's built-in browser, not CI.
+- Supabase bell notifications for invitations (inbox polling only).
+- Rate limits on non-Play Arena routes; cohost assignment; per-event ready deadline; same-content rounds; spectating; double elimination.
+- Leaving a live match has no "are you sure" guard in the Arena match room (the Ranked engine's reconnect window applies: absent 20 s, forfeit at 45 s).
+
+---
+
+## 12. Release runbook (owner actions; nothing here has been done)
+
+Claude has no Railway access. Every Railway step below is for the owner in the Railway dashboard. Do the steps in order and stop at any failed check.
+
+**Step 0 — reviews.** Review and merge, in order: LCS PR #86 → LCS PR (this B3/B4 branch, base #86). mogsy PR #118 → mogsy PR (`feat/tournament-arena-admin`, base #118). Merge each base before its stacked PR (or retarget the stacked PR to `master`/`main` after the base merges).
+
+**Step 1 — backend with the Arena OFF.**
+1. Confirm a recent database backup exists (the usual pre-deploy check).
+2. In Railway → the web service → Variables: make sure `ARENA_ENABLED` is **absent** (or `0`). Do not add it yet. Optional, defaults shown: `ARENA_MAX_ENTRANTS=16`, `ARENA_READY_DEADLINE_SECONDS=600`, `ARENA_INVITE_TTL_MINUTES=1440`, `ARENA_MAX_DRAW_REPLAYS=2`.
+3. Let Railway deploy `master`. Startup runs `migrate_arena()` (additive: six `arena_*` tables; on an existing B1 table it only adds three nullable columns).
+
+**Step 2 — verify database and API readiness (Arena still off).**
+- From any terminal: `curl -s https://<backend-host>/api/arena/catalog` must answer **404** `{"detail":{"code":"ARENA_DISABLED","message":"Not found."}}` (the route is deployed and fails closed). Same for `/api/arena/admin/events`.
+- In the Railway dashboard → web service → Shell, run (read-only):
+  ```
+  cd /app && /app/.venv/bin/python -c "import sqlite3;c=sqlite3.connect('file:/data/lol_calc.db?mode=ro',uri=True);print(sorted(r[0] for r in c.execute(\"select name from sqlite_master where name like 'arena_%' and type='table'\")));print([r[1] for r in c.execute('pragma table_info(arena_nodes)') if r[1] in ('ready_a_at','ready_b_at','attention')])"
+  ```
+  Expect `['arena_actions', 'arena_entrants', 'arena_events', 'arena_invites', 'arena_node_games', 'arena_nodes']` and `['ready_a_at', 'ready_b_at', 'attention']`.
+- Ranked is unaffected: an ordinary Ranked/Daily smoke as after any deploy.
+
+**Step 3 — publish the frontend (Arena still off).** Merge to `main`, check Lovable is on `main` at the merge commit, then Publish. Verify on mogzy.lol:
+- `/admin/tournament-arena` (as the owner): the rail shows **Tournament Arena**; Service state says "The Arena is OFF on the backend".
+- `/quiz/arena` (any signed-in account): "The Tournament Arena is not open right now." No hub, home or navigation entry links to the Arena.
+
+**Step 4 — enable.** Railway → Variables: set `ARENA_ENABLED=1` and redeploy. Confirm `RANKED_PUBLIC_ENABLED` is on (Play needs the Ranked engine; Service state shows it). Optional: `RANKED_LIFECYCLE_WORKER_ENABLED=1` makes no-shows resolve with nobody looking (without it they resolve on the next read). To pause new events later without disabling: Supabase `app_settings` row `queue_arena_enabled` = `{"enabled": false}` (absent row = enabled; unreadable = paused).
+- `curl -s https://<backend-host>/api/arena/catalog` now answers **401** `AUTH_REQUIRED` (deployed, on, account required).
+
+**Step 5 — production acceptance on mogzy.lol** (owner + one other real account you control):
+1. Owner: `/admin/tournament-arena` → Service state all **On** → **New event** → Custom duel, Ranked Quiz, 3 questions, "I play in it" → Launch → the console shows the lobby and a join link.
+2. Second account (other browser profile/device): open the join link → Join → lands on the event; it sees **no** organizer controls; `/admin/tournament-arena` is refused for it.
+3. Both press **Play your match** → match room → **I am ready** on each side → the match starts only when both are ready → play it → each sees the same server-recorded score → Back to the bracket shows the champion.
+4. Owner console: audit trail shows create → join → ready → play → game_terminal. Reload both pages (reopen): same final state.
+5. Optional: a 3–4 player tournament with one owner walkover, to see a multi-round bracket advance.
+6. Rollback at any point: unset `ARENA_ENABLED` and redeploy (every Arena route 404s at once; tables and Ranked are untouched). The frontend needs no rollback (it reads the flag).
+
+---
+
+## 13. Verification evidence (2026-10-22)
+
+**Backend** (LCS worktree, `python -m pytest`): `arena/tests` 107 passed (86 B1/B2 updated + 21 new admin-lifecycle tests); `test_ranked_worker_quiescence.py` 13 passed. Broad regression `test_ranked_*.py public_game_modes/tests test_daily_*.py test_stat_check*.py`: branch vs `77c08167` baseline **identical failure sets** (272 failed / 1742 passed / 7 errors on both — this machine's environment), **zero new**.
+
+**Frontend** (`vitest`): `src/features/tournament-arena` 65 passed (31 new); `tsc -p tsconfig.app.json` — only the two pre-existing errors (`connections.ts`, `OnboardingProfile.tsx`). Full suite in four chunks vs a detached baseline (`f60d35f3`, PR #118 + current main): identical failure sets (183 pre-existing failures on both; zero new) after updating two Admin-registry guard tests for the new rail entry (the LEGACY1 guard now allows exactly one "arena" label, *Tournament Arena*; the registry entry says OWN1 owner-only). The rebased branch (on `0911d045`, without the main merge) re-ran tsc and 652 targeted tests with only pre-existing failures, and merges cleanly with `origin/main` `d809f836`. `admin-registry.routes.test.ts`'s two `/admin/knowledge` / Premium Preview regex failures fail identically on the baseline.
+
+**Local integration against the real backend** (copy of the canonical DB, `ARENA_ENABLED=1`, six separately signed local test identities through the backend's own HS256 path, a local stand-in for the Supabase owner/profile/friendship RPCs; real Ranked matches, server-graded):
+- HTTP lifecycle: **44/44** checks — Create → Invite → Join → Configure → Start → Play → Resolve → Advance → Complete → Reopen, a 4-player multi-round bracket, a real 0–0 draw replayed, reconnect after a 12 s drop, unauthorized access on every organizer door, replayed and concurrent presses.
+- Deadlines with `ARENA_READY_DEADLINE_SECONDS=60` and the worker on: **8/8** — worker-applied no-show, one-side-ready walkover, nobody-ready flag → owner resolve, abandoned game → no-contest → replay.
+- Built-in browser (desktop app pane, not local Edge/Chrome automation), dev server in E2E-identity mode: owner created a duel through the real Admin portal; the console polled the second player's join; the owner pressed Play → match room → I am ready (second identity readied over the API) → the **canonical Ranked match** played three real questions in the browser → result screen **Victory 6–3**, identical to the server-recorded game → bracket with champion. Also: Organizer tools (settings save to Bo3/Bo5 reflected and audited; lock and start from the console; a 3-player bracket with a bye and "Winner of SF2"), the player home and a completed 4-player bracket as a participant (no organizer bar, no walkovers, no Simulated badge), phone width 375 px (round pager, no horizontal scroll), reduced motion (no motion classes, no confetti, static champion plate; with motion: 40 confetti pieces). A non-admin identity's direct calls to `/api/arena/admin/events` and `POST /api/arena/events` were refused 403 `ARENA_ORGANIZER_REQUIRED`.
+
+**What is NOT verified:** production (nothing is deployed); real Supabase accounts (the owner's real session through `owner_auth_state`, and real friendships, were stood in for locally — Step 5 above covers them in production); CI browser runs; Lovable publish.
+
+---
+
+## 14. Status of §10's build order
+
+| Phase | Status |
+|---|---|
+| F1–F3, F3b | Done (PR #118, Fable) |
+| B1, B2 | Done (PR #86) |
+| F4 | Done (`feat/tournament-arena-admin`): real gateway, duel flow, match handoff. Invite inbox lives on `/quiz/arena`, not the bell |
+| B3 | Done (ready check, deadlines, sweep) |
+| F5 | Done except Supabase Presence avatars (not built) |
+| B4/F6 | Done (owner moderation + Admin console) |
+| F7 | Partly: flags off by default, fail-closed authorization, local acceptance. Not done: GitHub Actions browser matrix, load test |
