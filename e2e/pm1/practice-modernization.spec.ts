@@ -156,6 +156,16 @@ async function innerScrollers(page: Page, selector: string) {
   }, selector);
 }
 
+/**
+ * PM2 — the tablets' staggered entrance (350ms + 70ms per tablet) slides them
+ * up into place; the one-screen phone folio has no slack for a mid-animation
+ * offset, so geometry is read once the entrance has settled.
+ */
+async function settleEntrance(page: Page) {
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(900);
+}
+
 /** The prompt and every tablet are inside the visible stage, unclipped. */
 async function stageFits(page: Page, desktop: boolean, label: string) {
   const m = await page.evaluate(() => {
@@ -317,6 +327,7 @@ for (const vp of VIEWPORTS) {
         if (typeof q!.choices[0] !== "string") {
           await expect(page.getByRole("group", { name: "Answer options" }).getByRole("img")).toHaveCount(4);
         }
+        await settleEntrance(page);
         await stageFits(page, vp.desktop, `${tag} question`);
         const detailed = q!.id <= 9005 || n === 1;
         if (detailed) await page.screenshot({ path: `${SHOTS}/${tag}-question.png`, fullPage: !vp.desktop });
@@ -346,6 +357,7 @@ for (const vp of VIEWPORTS) {
       await page.getByTestId("practice-missed-cta").click();
       await expect(page.getByTestId("practice-arena")).toBeVisible();
       await expect(page.getByTestId("ranked-header-title")).toContainText("Question 1 / 3");
+      await settleEntrance(page);
       await stageFits(page, vp.desktop, `${vp.name} replay`);
       await page.screenshot({ path: `${SHOTS}/${vp.name}-31-replay-missed.png`, fullPage: !vp.desktop });
       expect(consoleErrors).toEqual([]);
@@ -392,6 +404,7 @@ test.describe("PM1 states", () => {
     await page.goto("/quiz", { waitUntil: "domcontentloaded" });
     await page.getByRole("navigation", { name: "Practice by subject" }).getByRole("button").first().click();
     await expect(page.getByTestId("ranked-question")).toBeVisible();
+    await settleEntrance(page);
     await stageFits(page, true, "reduced-motion");
     await page.screenshot({ path: `${SHOTS}/states-reduced-motion.png` });
   });

@@ -206,7 +206,25 @@ build is green).
 
 ## Commits and PR
 
-<!-- COMMITS -->
+- Branch: `practice/pm2-one-screen-mobile` (from `origin/main` e931bc1a; merges
+  cleanly with main d809f836 as of 2026-10-22).
+- Draft PR: https://github.com/mitcherrman/mogsy/pull/121 (opened through the
+  REST API — `gh` is not installed here). Review is required; nothing merged.
+- Commits:
+  - `f1af31c7` feat: PM2 one-screen mobile Practice with automatic advance
+  - `b11fb3f7` test: video spec at top level; opt-in grading-failure fixture
+  - `1cd3fadc` fix: failed-grade state fits the held box; CI spec fixes;
+    CSS block placed before JUX1 (its guard reads to end of file)
+  - `b48cc4ef` fix: picture choices fit the answer allocation on short phones
+  - `96a03e44` fix: short-phone budget seats three-line prompts at 360x640
+  - `3d3d883d` fix: desktop reveal clears the Community button; this handoff
+  - (next) test: PM1 spec waits for the tablets' entrance before measuring
+- PR checks on `3d3d883d`: every workflow green (PM2 acceptance, mobile
+  recording fit, play-scroll short phone, history review, role challenge,
+  signup, public routes, quiz-hub fit) except PM1's `pm1-browser`, which
+  measured the 360x640 long-answers question mid-entrance (last tablet 4px
+  past the stage; settled it is 9px inside, per PM2's measurement) — the PM1
+  spec now waits 900ms for the entrance, as MVFIT1 and PM2 do.
 
 ## Outstanding concerns
 
