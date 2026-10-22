@@ -110,7 +110,7 @@ export async function viewFromArchive(blob: Blob, fileName: string): Promise<Cre
       if (!file) continue;
       images.push({
         path: slide.file,
-        blob: new Blob([await file.async("uint8array")], { type: "image/png" }),
+        blob: new Blob([await file.async("arraybuffer")], { type: "image/png" }),
         width: slide.width ?? 0,
         height: slide.height ?? 0,
         slide,
