@@ -20170,6 +20170,30 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     display: none;
   }
 }
+/* THE SHORT PHONE'S BUDGET (MVFIT1's band, under 760px tall). A 360x640
+   frame had 14px to spare under ordinary content, and a three-line prompt —
+   an ordinary one, ~60 characters at 18px in a 322px column — needs 30px more
+   than the prompt allocation. Practice pays for it from its OWN boxes: the
+   reveal box drops to 72px (the verdict row and two 12px lines; medium and
+   longer explanations tighten one tier earlier, see `practiceExplanationDensity`)
+   and its art plate's media allocation to 72px. Prompt, tablets and type are
+   untouched; ~36px goes back to the question. */
+@media (max-width: 1023.98px) and (max-height: 760px) {
+  .practice-arena {
+    --practice-reveal-h: 4.5rem;
+  }
+  .practice-arena .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
+    --qs-media-h: 4.5rem;
+  }
+  .practice-arena .practice-explanation[data-explanation-density="medium"] {
+    font-size: 0.6875rem;
+    line-height: 1.15;
+  }
+  .practice-arena .practice-explanation[data-explanation-density="long"] {
+    font-size: 0.65625rem;
+    line-height: 1.15;
+  }
+}
 /* PICTURE CHOICES ON A SHORT PHONE. A picture tablet is its art (80px), a
    label and 12px padding top and bottom — ~135px, so a 2x2 picture grid is
    276px against the stage's 210px answer allocation and pushed a 360x640

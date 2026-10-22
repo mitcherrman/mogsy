@@ -161,7 +161,9 @@ describe("PM2 — the reveal hold and the explanation's density", () => {
 
   it("tiers explanations by length", () => {
     expect(practiceExplanationDensity(null)).toBe("normal");
-    expect(practiceExplanationDensity("x".repeat(150))).toBe("normal");
+    expect(practiceExplanationDensity("x".repeat(100))).toBe("normal");
+    expect(practiceExplanationDensity("x".repeat(101))).toBe("medium");
+    expect(practiceExplanationDensity("x".repeat(150))).toBe("medium");
     expect(practiceExplanationDensity("x".repeat(151))).toBe("long");
     expect(practiceExplanationDensity("x".repeat(220))).toBe("long");
     expect(practiceExplanationDensity("x".repeat(221))).toBe("dense");

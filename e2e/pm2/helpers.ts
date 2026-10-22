@@ -305,7 +305,9 @@ export async function holdReveal(page: Page) {
   await expect(footer).toBeVisible();
   // The box's centre, on screen: its edges can sit under the dock's fixed
   // tabs on desktop, and below the fold on a landscape phone.
-  await footer.scrollIntoViewIfNeeded();
+  // Centred, not merely in view: on a scrolling landscape page the sticky
+  // bottom bar covers the last 50px of the screen.
+  await footer.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const box = (await footer.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();

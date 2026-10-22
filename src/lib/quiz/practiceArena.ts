@@ -195,16 +195,18 @@ export function practiceRevealHoldMs(result: QuizAnswerResult | null): number | 
  * PM2 — the explanation's type tier on a phone, from its length alone (before
  * layout), the same way VISCONT1 tiers prompts and tablets: the reveal box is
  * held at one height and LONGER TEXT TIGHTENS INSIDE IT rather than growing
- * it. Measured against a 360-wide phone's reveal column:
- *   normal (<= 150)  12px — three lines;
- *   long   (151–220) 11px — four lines;
+ * it. Measured against a 360-wide phone's reveal column (index.css, PM2):
+ *   normal (<= 100)  12px everywhere — two lines;
+ *   medium (101–150) 12px (three lines) on a tall phone, 11px on a short one;
+ *   long   (151–220) 11px / 10.5px on a short phone — four lines;
  *   dense  (221+)    10.5px — five lines, up to the bank's longest (~305).
  */
-export type PracticeExplanationDensity = "normal" | "long" | "dense";
+export type PracticeExplanationDensity = "normal" | "medium" | "long" | "dense";
 
 export function practiceExplanationDensity(text: string | null | undefined): PracticeExplanationDensity {
   const n = (text ?? "").trim().length;
-  if (n <= 150) return "normal";
+  if (n <= 100) return "normal";
+  if (n <= 150) return "medium";
   if (n <= 220) return "long";
   return "dense";
 }
