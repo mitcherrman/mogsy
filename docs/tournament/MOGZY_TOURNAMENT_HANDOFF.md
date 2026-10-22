@@ -16,7 +16,7 @@
 **Conventions for reading this doc:**
 - `FE:` means a path in the mogsy repo and `BE:` a path in the LCS repo. Both are relative to the repo root.
 - "Branch-only" means the code exists only on the named branch, and its merged status is stated.
-- **Local-only** means the branch exists only on the owner's PC (`C:/Users/mlmit/OneDrive/Desktop/mogsy` or `.../League_Combat_Simulator`) and has never been pushed.
+- **Backed up 2026-10-21** marks a Dynasty branch that existed only on the owner's PC at audit time. Each was pushed to `origin` as-is that day: no merge, no PR, no force-push. They are **still unmerged** and stale against main. No local-only Dynasty branches remain.
 - **PROPOSED** marks something that does not exist yet and is a recommendation.
 
 **What could not be verified:**
@@ -40,7 +40,7 @@
    - `FE: src/components/pro-play/tournament/TournamentBracket.tsx` provides `SingleElimStage`, `DoubleElimStage`, `BracketMatchCard`, measured SVG `Connectors` and `ChampionBanner`.
    - The Worlds experience adds zero-scroll fitting and framer-motion screen transitions.
    - The bracket itself is static: lines don't draw, winners don't advance, and there is no celebration.
-4. **The best cinematic assets are on local-only, unpushed branches.** These are the Worlds Dynasty visual stack (`ux/ux6-dynasty-management`, which contains `vis/vis-f1…f4`): championship trophy and confetti sequence, finals VS intro, stingers, Bo5 pips and Web-Audio cues. They exist only on the owner's PC (§3.3).
+4. **The best cinematic assets are on unmerged branches.** These are the Worlds Dynasty visual stack (`ux/ux6-dynasty-management`, which contains `vis/vis-f1…f4`): championship trophy and confetti sequence, finals VS intro, stingers, Bo5 pips and Web-Audio cues. They were local-only until they were backed up to `origin` on 2026-10-21. They are still unmerged and 389 commits behind main (§3.3).
 5. **The data must live in the backend.**
    - Tournament state belongs in the LCS backend (SQLite on Railway), next to the Ranked tables, so that bracket advancement and match creation share one transaction.
    - Supabase is used only for identity, friends/blocks, transient presence and (later) notifications.
@@ -106,13 +106,13 @@
   - The only transitions are CSS `border-color`/`box-shadow`.
   - Outcomes render only when `bracket_authority === "standings"` (`TournamentBracket.tsx:91`, `:447`).
 
-### 2.2 Worlds Dynasty visual components (mostly **unmerged, local-only**)
+### 2.2 Worlds Dynasty visual components (mostly **unmerged**; backed up to origin 2026-10-21)
 
 See the branch table in §3.3.
 
 **There is no bracket component in Dynasty.** Its "season path" (`screens.tsx:182` `SeasonScreen`) is an 8-node linear `<ol>`.
 
-The value of the stack is its **ceremony and motion vocabulary**. All of it is CSS `@keyframes` plus inline SVG; there is no framer-motion, canvas, three or Lottie. All paths below are on the local-only branch `ux/ux6-dynasty-management`, under `src/pages/dev/dynasty-v2/`:
+The value of the stack is its **ceremony and motion vocabulary**. All of it is CSS `@keyframes` plus inline SVG; there is no framer-motion, canvas, three or Lottie. All paths below are on the branch `ux/ux6-dynasty-management` (backed up 2026-10-21, unmerged), under `src/pages/dev/dynasty-v2/`:
 - **Championship moment:** `cinematics.tsx:190` `FullFrame kind="championship"`.
   - Sequence: black → flash → trophy rises → rotating conic rays → 36 CSS confetti pieces (`--x/--r/--d`) → title → roster stagger.
   - Audio: `hush(360)` → `playMoment` → crowd roar at 950 ms.
@@ -414,7 +414,7 @@ The value of the stack is its **ceremony and motion vocabulary**. All of it is C
 | `combat-v4/theater-prototype` (#115, draft) | No | `src/lib/combat-theater/useTheaterController.ts` (scrub/step/pin); `src/components/combat-theater/{TheaterTimeline,TheaterTransport}.tsx`. A pattern for "replay the tournament". |
 | `roguelike/rog0-worlds-dynasty-audit` | No | Docs only (bracket plan, line 542) |
 
-### 3.3 Frontend, **local-only** branches (never pushed; only on the owner's PC)
+### 3.3 Frontend, Dynasty visual stack (backed up to origin 2026-10-21; **unmerged**)
 
 All of these form one linear stack forked from `6407559a` (2026-10-16), 389 commits behind `origin/main`. **`ux/ux6-dynasty-management` (`0e187917`, 19 ahead) contains every commit**, apart from the diverged duplicate `vis/vis-f2-support-docs`. Use it as the single source.
 
@@ -429,11 +429,11 @@ All of these form one linear stack forked from `6407559a` (2026-10-16), 389 comm
 | `src/pages/dev/dynasty-v2/{vis,vis-f2,vis-f3,vis-f4}.css` | `dyn-confetti`, `dyn-champ-*`, `dyn-stinger`, `dyn-slide-l/r`, `dyn-stamp`, `dyn-matchpoint`, `dyn-node`, … | Extract chosen keyframes. Rename the prefix (e.g. `ta-`), re-scope from `.dyn`, and keep the "motion only under an opt-in class" rule. |
 | `src/pages/dev/dynasty-v2/bo5/{Bo5Flow,present}.ts(x)` | `Bo5Flow` :227, `matchPoint` :77 | Pattern for series state |
 
-**How to read local-only code without merging.** From the owner's clone `C:/Users/mlmit/OneDrive/Desktop/mogsy`:
+**How to read this code without merging.** From any mogsy clone, after `git fetch origin`:
 
 ```
-git show ux/ux6-dynasty-management:src/pages/dev/dynasty-v2/cinematics.tsx
-git ls-tree -r --name-only ux/ux6-dynasty-management -- src/pages/dev/dynasty-v2
+git show origin/ux/ux6-dynasty-management:src/pages/dev/dynasty-v2/cinematics.tsx
+git ls-tree -r --name-only origin/ux/ux6-dynasty-management -- src/pages/dev/dynasty-v2
 ```
 
 - **Copy** what you need into the new feature folder.
@@ -463,8 +463,8 @@ git ls-tree -r --name-only ux/ux6-dynasty-management -- src/pages/dev/dynasty-v2
 
 | Branch | Location | Merged? | Relevance |
 |---|---|---|---|
-| `roguelike/rog1c1-dynasty-run-foundation` | pushed; **local is 1 commit ahead (`a97559e8`)** | No | Append-only actions with `UNIQUE(run_id, action_id)` and `expected_seq` idempotency. A good pattern for `arena_actions`. |
-| `roguelike/wd-v2-e3a-management` (+ a1/a2/e2-*) | **local-only** | No | Bo5 series service (`dynasty/combat_v2/series/*`). Reference only for series state. Simulated, not human play. |
+| `roguelike/rog1c1-dynasty-run-foundation` | pushed; tip `a97559e8` (the previously unpushed commit was pushed 2026-10-21) | No | Append-only actions with `UNIQUE(run_id, action_id)` and `expected_seq` idempotency. A good pattern for `arena_actions`. |
+| `roguelike/wd-v2-e3a-management` (+ a1/a2/e2-*, e3b-campaign) | backed up 2026-10-21 | No | Bo5 series service (`dynasty/combat_v2/series/*`). Reference only for series state. Simulated, not human play. |
 
 ---
 
@@ -759,11 +759,10 @@ In production, until the backend ships, the gateway must report itself **unavail
     - Use SECURITY DEFINER RPCs for writes, RLS SELECT for reads, and a `supabase/verification/*_verify.sql` / `*_rollback.sql` pair.
     - The generated `src/integrations/supabase/types.ts` (5179 lines) is stale. Use a narrow `(supabase as any).rpc` until it is regenerated.
 11. **Live Worlds UI** depends on `src/components/pro-play/tournament/*` and `worlds-experience/*`. Fork; don't modify.
-12. **Local-only branches:**
-    - The Dynasty visual stack (8 FE branches) and the v2 series backend (8 BE branches) exist only on the owner's PC.
-    - BE `rog1c1` has an unpushed commit (`a97559e8`).
-    - The untracked docs in both clones are also unbacked-up.
-    - Owner decision D8.
+12. **Dynasty branches are backed up but unmerged:**
+    - The Dynasty visual stack (8 FE branches) and the v2 series and data backend (9 BE branches) were pushed to `origin` as-is on 2026-10-21. BE `rog1c1` was fast-forwarded to `a97559e8` the same day.
+    - They are still unmerged and stale: FE is 389 commits behind main, BE about 200 behind master. Copy from them; do not merge them.
+    - The untracked docs in both clones are still uncommitted. The two Dynasty data docs also exist on `roguelike/data3-dynasty-certification`, which is now pushed.
 13. **Truthfulness:** never present projected pairings or outcomes as fact. No real-money prizes or entry fees exist anywhere, and none should be implied.
 14. **Process:** no deploys, no merges to main without review, branch isolation, and test evidence (`CLAUDE.md`).
 
@@ -780,7 +779,7 @@ In production, until the backend ships, the gateway must report itself **unavail
 | D5 | v1 game types | Ranked Quiz (`ranked_points_v2`), Match Grid, Reconstruct, Order Forge, Chronoscope, Roster Lock, Journey. Role Challenge and Champion Card Duel later. |
 | D6 | Route namespace | `/quiz/arena/*` (inherits theme pre-paint) |
 | D7 | Arena while public Ranked is paused? | Yes, behind its own `queue_arena_enabled` |
-| D8 | Back up local-only Dynasty branches (push to origin as-is, no merge)? | **Yes.** They are the only copy of the ceremony assets. This session did *not* push them. |
+| D8 | Back up local-only Dynasty branches (push to origin as-is, no merge)? | **Done 2026-10-21.** The owner approved, and all 17 local-only branches plus the `rog1c1` fast-forward were pushed with no merge or PR. |
 | D9 | Naming of "invite" | Follow COM1 §D: Arena uses "Challenge" (duel) and "Join code" (event); signup links stay "invite links" |
 | D10 | Ready deadline for no-shows | 10 minutes per node in v1, organizer-adjustable |
 
@@ -792,10 +791,10 @@ The work runs in two tracks. **Track F** (Fable, frontend visuals) needs no back
 
 | Phase | Track | Deliverable | Depends on |
 |---|---|---|---|
-| **P0** | Owner | Answer D1–D10; push the local-only branches if D8 = yes | — |
+| **P0** | Owner | Answer D1–D7, D9 and D10 (D8 is done) | — |
 | **F1** | FE | `contracts.ts` (§6), `fixtureArenaGateway`, scenarios, DEV route `/dev/tournament-arena` | — |
 | **F2** | FE | Pure `layout.ts` plus static forked bracket (4/8/16, byes, phone one-round view, landscape, FitCascade) with unit tests | F1 |
-| **F3** | FE | Motion and ceremony: reveal, live node, series pips, advancement glide, round stinger, finals intro, champion celebration, `arena.*` SFX, full reduced-motion parity. A CI Playwright geometry workflow. | F2; reads the local-only branch (§3.3) |
+| **F3** | FE | Motion and ceremony: reveal, live node, series pips, advancement glide, round stinger, finals intro, champion celebration, `arena.*` SFX, full reduced-motion parity. A CI Playwright geometry workflow. | F2; reads `origin/ux/ux6-dynasty-management` (§3.3) |
 | **F3b** | FE | Host Portal UI against the fixture gateway: game-type picker (from `/catalog` shape), rules step (fork of `RankedFormatBuilder` limited to the schema), entrant/invite picker (`useFriends`), organizer console (seed/start/walkover) | F1 |
 | **B1** | BE | `migrate_add_arena.py`, `arena/` package (events, entrants, invites, actions), `ARENA_ENABLED`, `queue_arena_enabled`, `GET /catalog`, create/list/get/join/leave, invite inbox; tests | P0 |
 | **B2** | BE | **Custom duel end-to-end**: `HOST_TOURNAMENT`, `creation_source="arena"`, `POST …/nodes/{id}/play` → `create_match_rows`, terminal hook for a single node; tests | B1 |
@@ -841,7 +840,7 @@ The work runs in two tracks. **Track F** (Fable, frontend visuals) needs no back
 - **Landed by rebase (tip not an ancestor, but the code is on main):** `pw4b/worlds-featured`, `dcgi1/tournament-surface*`.
 - **Unmerged, nothing needed:** `ux3b/worlds-release-acceptance` (docs and test only).
 
-### Dynasty stack (mogsy; local-only unless noted)
+### Dynasty stack (mogsy; all unmerged; backed up to origin 2026-10-21 unless noted)
 
 | Branch | Ahead of main | Last commit |
 |---|---|---|
@@ -863,14 +862,16 @@ The work runs in two tracks. **Track F** (Fable, frontend visuals) needs no back
   - Tournament context: `dcgi1/tournament-context`, `pw4a/worlds-tournament-context`.
   - Host provenance: `host1/hosted-role-context`, `jlib-match-host-identity`.
   - Stat Check: `integ/stat-check-mp`, `integ/stat-check-friend-invites`, `integ/stat-check-invite-switch`.
-- **Unmerged, pushed:** `roguelike/rog1a-dynasty-sim-core`, `roguelike/rog1c1-dynasty-run-foundation` (local copy is 1 commit ahead), `roguelike/data3-registry-fix-rc2`, `audit/pw2-worlds-2026`, `audit/pw3-worlds-intelligence`.
-- **Unmerged, local-only:** `roguelike/wd-v2-combat-a1`, `wd-v2-combat-a2`, `wd-v2-e2-series`, `wd-v2-e2-hardening`, `wd-v2-e3a-management`, `data2-dynasty-catalog`, `data3-dynasty-certification`, `data3-registry-fix-rc`.
+- **Unmerged, pushed before the audit:** `roguelike/rog1a-dynasty-sim-core`, `roguelike/rog1c1-dynasty-run-foundation` (its one unpushed commit, `a97559e8`, was pushed 2026-10-21), `roguelike/data3-registry-fix-rc2`, `audit/pw2-worlds-2026`, `audit/pw3-worlds-intelligence`.
+- **Unmerged, backed up to origin 2026-10-21 (previously local-only):** `roguelike/wd-v2-combat-a1`, `wd-v2-combat-a2`, `wd-v2-e2-series`, `wd-v2-e2-hardening`, `wd-v2-e3a-management`, `wd-v2-e3b-campaign` (same commit as e3a), `data2-dynasty-catalog`, `data3-dynasty-certification`, `data3-registry-fix-rc`.
 
 ## Appendix B: Audit method
 
 - Two clean checkouts were used: mogsy `origin/main` `0fd1bb6a` (this branch's base) and LCS `origin/master` `77c08167` (a detached worktree).
 - Branch code was read with `git show <branch>:<path>`, `git ls-tree`, `git diff --stat` and `git merge-base --is-ancestor`, without checking anything out.
 - Local-only status was confirmed with `git ls-remote --heads origin <branch>`, which returned nothing.
+- After the audit, on the owner's instruction, those branches were pushed as-is (2026-10-21). Every remote tip was then confirmed to equal its local tip.
+  - Before pushing, branch diffs were scanned: no `.db`, `.env` or key files, and nothing over 20 MB.
 - Mogsy PRs came from the public GitHub REST API. LCS PR state is unavailable (private repo, no `gh`).
 - No tests, builds, dev servers or browsers were run. No secrets were read.
 - Sub-audits covered seven areas in parallel.
