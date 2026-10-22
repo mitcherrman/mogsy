@@ -306,6 +306,11 @@ const PerfectTimingPageDev = import.meta.env.DEV
 const PerfectTimingDemo = import.meta.env.DEV
   ? lazy(() => import("./components/perfect-timing/__stories__/PerfectTimingDemo"))
   : null;
+// COMBAT V4: the Combat Theater prototype over committed Team Sim fixtures.
+// Same DEVELOPMENT-ONLY rule; no network, no credits, nothing shared with
+// the public /combat-lab page.
+const CombatTheaterAdmin = lazy(() => import("./pages/dev/combat-theater/CombatTheaterDev"));
+const CombatTheaterDev = import.meta.env.DEV ? CombatTheaterAdmin : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -552,6 +557,8 @@ export const appRouter = createBrowserRouter(
                         true; it is advertised nowhere. */}
                     <Route path="ranked" element={<Navigate to="/admin/leaguecraft?section=ranked" replace />} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
+                    {/* COMBAT V4: fixture-only Theater preview, protected by the parent AdminRoute. */}
+                    <Route path="combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterAdmin /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
                     <Route path="content-atlas" element={<AdminRoute><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
@@ -829,6 +836,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {CombatEstimateLab ? (
                     <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
+                  ) : null}
+                  {CombatTheaterDev ? (
+                    <Route path="/dev/combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterDev /></Suspense>} />
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
