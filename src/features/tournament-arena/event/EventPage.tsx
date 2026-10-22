@@ -197,7 +197,7 @@ function EventFrame({ event, gateway, controls: given, viewerId, duelHref, backH
       {/* organizer / fixture bar */}
       {(manage || fixture) && event.status !== "open" && event.status !== "cancelled" && (
         <div className={cn("flex shrink-0 flex-wrap items-center gap-2 px-4", landscape ? "py-1.5" : "py-3")} data-testid="ta-organizer-bar">
-          {manage && event.status === "locked" && <Btn tone="primary" onClick={() => controls?.start()} disabled={Boolean(controls?.busy)} data-testid="ta-start"><Play className="h-4 w-4" aria-hidden="true" />Start {roundName(1, total)}</Btn>}
+          {(manage || fixture) && event.status === "locked" && <Btn tone="primary" onClick={() => controls?.start()} disabled={Boolean(controls?.busy)} data-testid="ta-start"><Play className="h-4 w-4" aria-hidden="true" />Start {roundName(1, total)}</Btn>}
           {fixture && event.status === "running" && <Btn onClick={() => controls?.stepResult?.()} data-testid="ta-step"><StepForward className="h-4 w-4" aria-hidden="true" />Step next result</Btn>}
           {fixture && <Btn size="sm" onClick={() => { setSelectedId(null); controls?.reset?.(); }} data-testid="ta-reset"><RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />Reset scenario</Btn>}
           <span className="ml-auto hidden text-[10.5px] uppercase tracking-[0.16em] text-[rgba(215,205,180,0.45)] sm:inline">Revision {event.revision}{fixture ? " · fixture gateway" : ""}</span>

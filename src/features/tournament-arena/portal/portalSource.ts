@@ -10,9 +10,10 @@
 import { MODE_ACCENT } from "@/lib/public-modes/gallery";
 
 import {
-  arenaErrorCopy, createArenaEvent, inviteToArenaEvent,
+  arenaErrorCopy, createArenaEvent, inviteToArenaEvent, newArenaActionId,
   type ArenaCatalog, type ArenaCatalogGameType,
 } from "../api/arenaApi";
+import { ownerArenaCall } from "../api/ownerArena";
 import type { ArenaEntrant } from "../contracts";
 import { GAME_TYPES, gameTypeById, type ArenaGameType } from "../fixtures/catalog";
 import type { ArenaGateway } from "../gateway/types";
@@ -108,6 +109,8 @@ export function gameTypeFromCatalog(g: ArenaCatalogGameType): ArenaGameType {
 const SIZES = [2, 4, 6, 8, 12, 16, 24, 32];
 
 export function httpPortalSource(catalog: ArenaCatalog, friends: readonly ArenaEntrant[]): PortalSource {
+  let launchKey: string | null = null;
+  let launchActionId = "";
   const byId = new Map(catalog.game_types.map((g) => [g.id, g]));
   const ttl = catalog.limits.invite_ttl_minutes;
   return {
@@ -125,7 +128,15 @@ export function httpPortalSource(catalog: ArenaCatalog, friends: readonly ArenaE
     organizerSeatChoice: true,
     inviteTtlLabel: ttl % 60 === 0 ? `${ttl / 60}-hour` : `${ttl}-minute`,
     create: async (draft, title) => {
-      const ev = await createArenaEvent({
+      // One idempotency key per configuration: pressing Launch again after a
+      // lost answer returns the SAME event instead of creating a second one.
+      const key = JSON.stringify([draft, title]);
+      if (launchKey !== key) {
+        launchKey = key;
+        launchActionId = newArenaActionId("create");
+      }
+      const actionId = launchActionId;
+      const created = await ownerArenaCall("Creating a Tournament Arena event", () => createArenaEvent({
         kind: draft.kind,
         title,
         game_type: draft.rules.game_type,
@@ -139,7 +150,10 @@ export function httpPortalSource(catalog: ArenaCatalog, friends: readonly ArenaE
         max_entrants: draft.kind === "tournament" ? draft.size : undefined,
         visibility: draft.visibility === "public" ? "link" : draft.visibility,
         organizer_plays: draft.organizerPlays,
-      });
+      }, actionId));
+      if (created.status === "failed") throw created.error;
+      if (created.status === "not_run") throw new Error(created.notice);
+      const ev = created.value;
       const warnings: string[] = [];
       for (const pid of draft.invitees) {
         try {
@@ -151,6 +165,6 @@ export function httpPortalSource(catalog: ArenaCatalog, friends: readonly ArenaE
       }
       return { event_id: ev.event_id, title: ev.title, warnings };
     },
-    errorCopy: arenaErrorCopy,
+    errorCopy: (e) => (e instanceof Error && !("code" in e) ? e.message : arenaErrorCopy(e)),
   };
 }

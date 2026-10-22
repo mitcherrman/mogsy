@@ -180,7 +180,7 @@ export function ArenaMatchRoom({ live, nodeId, viewerUserId, viewerDisplayName, 
         matchId={playedMatch}
         viewerUserId={viewerUserId}
         viewerDisplayName={viewerDisplayName ?? null}
-        entry="recovered"
+        entry={sawReadyCheck.current ? "fresh" : "recovered"}
         host={host}
         chrome={(
           <div className={arenaHeaderRowClass("wide")} data-testid="ta-room-chrome">
@@ -210,9 +210,11 @@ export function ArenaMatchRoom({ live, nodeId, viewerUserId, viewerDisplayName, 
               <DuelSeat entrant={you} side="left" label="You" ready={node.status === "live" ? true : readyYou} onReady={node.status === "ready" && !readyYou && !node.attention && !pressing ? pressReady : undefined} />
               <div className="relative flex flex-col items-center gap-3">
                 <VersusMark size={84} className="sm:!h-[104px] sm:!w-[104px] sm:!text-[36px]" />
+                {/* One stable live region, so screen readers hear every count. */}
+                <span className="sr-only" aria-live="assertive">{phase === "countdown" ? (count === 0 ? "Go" : String(count)) : ""}</span>
                 <AnimatePresence mode="wait">
                   {phase === "countdown" ? (
-                    <fm.p key={count} className={cn("ta-count ta-title--gold text-[72px] sm:text-[110px]", motion && "ta-count--tick")} data-testid="ta-count" aria-live="assertive">{count === 0 ? "GO" : count}</fm.p>
+                    <fm.p key={count} className={cn("ta-count ta-title--gold text-[72px] sm:text-[110px]", motion && "ta-count--tick")} data-testid="ta-count" aria-hidden="true">{count === 0 ? "GO" : count}</fm.p>
                   ) : (
                     <fm.p key="ready-line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-[rgba(215,205,180,0.7)]" aria-live="polite" data-testid="ta-room-state">
                       {node.attention ? "The organizer resolves this match"

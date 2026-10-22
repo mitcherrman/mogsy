@@ -12,7 +12,7 @@
 // goes through `ownerArenaCall` so a lapsed attestation re-verifies instead of
 // failing. Players never come here: they use /quiz/arena/*.
 // ---------------------------------------------------------------------------
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Activity, ExternalLink, Loader2, Plus, RefreshCw, Settings2, Swords, Trophy, X } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -91,9 +91,13 @@ export default function TournamentArenaAdminPage() {
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { reload(); void load(); }} disabled={loading}>
               <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Refresh
             </Button>
-            <Button size="sm" className="gap-1.5" asChild disabled={!catalog}>
-              <Link to={ARENA_ADMIN_NEW} data-testid="admin-arena-new"><Plus className="h-3.5 w-3.5" aria-hidden /> New event</Link>
-            </Button>
+            {catalog ? (
+              <Button size="sm" className="gap-1.5" asChild>
+                <Link to={ARENA_ADMIN_NEW} data-testid="admin-arena-new"><Plus className="h-3.5 w-3.5" aria-hidden /> New event</Link>
+              </Button>
+            ) : (
+              <Button size="sm" className="gap-1.5" disabled data-testid="admin-arena-new"><Plus className="h-3.5 w-3.5" aria-hidden /> New event</Button>
+            )}
           </div>
         </header>
 
@@ -228,6 +232,17 @@ function OrganizerTools({ event, onClose, onApplied, onRefresh }: {
   const name = (pid: string) => event.entrants.find((e) => e.profile_id === pid)?.display_name
     ?? friends.find((f) => f.profile.id === pid)?.profile.display_name ?? "A player";
 
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  // Focus lands on Close when the drawer opens (once); Escape closes it.
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCloseRef.current(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const act = async (id: string, reason: string, call: () => Promise<ArenaEvent | void>) => {
     setBusy(id);
     setNotice(null);
@@ -248,7 +263,7 @@ function OrganizerTools({ event, onClose, onApplied, onRefresh }: {
             <Eyebrow>Organizer tools</Eyebrow>
             <h2 className="ta-title truncate text-[18px] font-bold text-white">{event.title}</h2>
           </div>
-          <Btn size="sm" onClick={onClose} aria-label="Close organizer tools"><X className="h-4 w-4" /></Btn>
+          <button ref={closeRef} type="button" className="ta-btn ta-btn--sm" onClick={onClose} aria-label="Close organizer tools"><X className="h-4 w-4" /></button>
         </div>
         {notice && <p role="alert" className="text-[12px] text-[#f6c3cc]" data-testid="admin-arena-tools-notice">{notice}</p>}
 

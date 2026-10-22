@@ -78,10 +78,21 @@ describe("httpPortalSource", () => {
       { profile_id: "p2", display_name: "Two", seed: null, status: "joined" as const, role: "player" as const },
     ];
     const out = await httpPortalSource(CATALOG, friends).create(draft({ invitees: ["p1", "p2"] }), "Cup");
-    expect(createArenaEvent).toHaveBeenCalledWith(expect.objectContaining({ kind: "tournament", max_entrants: 8, organizer_plays: false, visibility: "private", game_type: "ranked_quiz" }));
+    expect(createArenaEvent).toHaveBeenCalledWith(expect.objectContaining({ kind: "tournament", max_entrants: 8, organizer_plays: false, visibility: "private", game_type: "ranked_quiz" }), expect.stringMatching(/^create_/));
     expect(inviteToArenaEvent).toHaveBeenCalledTimes(2);
     expect(out.event_id).toBe("aev_new");
     expect(out.warnings).toEqual(["Two was not invited: You can only invite accepted friends."]);
+  });
+
+  it("re-sends a Launch with the same idempotency key, so a lost answer cannot create two events", async () => {
+    createArenaEvent.mockResolvedValue(serverEvent({ event_id: "aev_new", title: "Cup", kind: "tournament" }));
+    const s = httpPortalSource(CATALOG, []);
+    await s.create(draft(), "Cup");
+    await s.create(draft(), "Cup");
+    const [first, second] = createArenaEvent.mock.calls.map((c) => c[1]);
+    expect(first).toBe(second);
+    await s.create(draft({ best_of: 5 }), "Cup");
+    expect(createArenaEvent.mock.calls[2][1]).not.toBe(first);
   });
 
   it("maps a catalog entry without inventing a different type's name", () => {

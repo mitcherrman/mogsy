@@ -104,7 +104,9 @@ export function useHttpEventControls(live: LiveArenaEvent, opts: {
         void run(`override:${nodeId}`, "Overriding an Arena result", () => adminOverrideArenaNode(eventId, nodeId, other, note.trim() || null, actionId));
       } : undefined,
       busy,
-      notice,
+      // A failed press says why; a failed READ keeps the last bracket on
+      // screen and says so, instead of looking live while it is not.
+      notice: notice ?? (live.error && ev ? `${arenaErrorCopy(live.error)} The bracket shows the last state received.` : null),
     };
-  }, [ev, manage, openRoom, checkIn, run, busy, notice, confirmFn, promptFn]);
+  }, [ev, live.error, manage, openRoom, checkIn, run, busy, notice, confirmFn, promptFn]);
 }

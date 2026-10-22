@@ -84,6 +84,8 @@ export function HostPortal({ gateway, source: given, onLaunched, backHref }: {
   });
   const [launch, setLaunch] = useState<{ id: string; title: string } | null>(null);
   const [launching, setLaunching] = useState(false);
+  /** Created, with warnings the owner should read before moving on. */
+  const [created, setCreated] = useState<{ id: string; title: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const friends = source.friends;
   const go = (to: Step) => { setDir(to > step ? 1 : -1); setStep(to); };
@@ -105,7 +107,12 @@ export function HostPortal({ gateway, source: given, onLaunched, backHref }: {
     setNotice(null);
     try {
       const out = await source.create(draft, title);
-      if (out.warnings?.length) setNotice(out.warnings.join(" "));
+      if (out.warnings?.length) {
+        // Say what did not go through BEFORE leaving the portal.
+        setNotice(out.warnings.join(" "));
+        setCreated({ id: out.event_id, title: out.title });
+        return;
+      }
       setLaunch({ id: out.event_id, title: out.title });
     } catch (e) {
       setNotice(source.errorCopy(e));
@@ -278,8 +285,9 @@ export function HostPortal({ gateway, source: given, onLaunched, backHref }: {
                     <Review label="Players" rows={[["Field", `${draft.kind === "tournament" ? draft.size : 2} players`], ["Organizer", draft.organizerPlays ? "Plays seat one" : "Runs it only"], ["Challenged", draft.invitees.length ? friends.filter((f) => draft.invitees.includes(f.profile_id)).map((f) => f.display_name).join(", ") : "None yet"], ["Open seats", `${Math.max(0, (draft.kind === "tournament" ? draft.size : 2) - (draft.organizerPlays ? 1 : 0) - draft.invitees.length)} by join ${fixture ? "code" : "link"}`]]} />
                   </div>
                   <div className="flex flex-col items-center gap-2 pt-2">
-                    <Btn tone="primary" size="lg" onClick={doLaunch} disabled={launching} data-testid="ta-launch-btn"><Rocket className="h-5 w-5" aria-hidden="true" />{launching ? "Creating…" : `Launch ${KINDS.find((k) => k.kind === draft.kind)!.title.toLowerCase()}`}</Btn>
+                    <Btn tone="primary" size="lg" onClick={doLaunch} disabled={launching || Boolean(created)} data-testid="ta-launch-btn"><Rocket className="h-5 w-5" aria-hidden="true" />{launching ? "Creating…" : `Launch ${KINDS.find((k) => k.kind === draft.kind)!.title.toLowerCase()}`}</Btn>
                     {notice && <p role="alert" className="max-w-md text-center text-[12px] text-[#f6c3cc]" data-testid="ta-portal-notice">{notice}</p>}
+                    {created && <Btn onClick={() => setLaunch(created)} data-testid="ta-portal-continue">The event was created · open it</Btn>}
                     <p className="text-center text-[11px] text-[rgba(215,205,180,0.5)]">No real-money prizes or entry fees exist in the Arena. {fixture ? "Fixture gateway: the event lives in this tab only." : "The server creates the event; nothing is real until it answers."}</p>
                   </div>
                 </StepFrame>
