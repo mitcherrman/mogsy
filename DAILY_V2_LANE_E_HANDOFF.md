@@ -244,3 +244,7 @@ Open:
 
 Tests: `src/pages/quiz-daily-challenge/run` + `CreatorReplayRunPage`, 255
 passed; `tsc` shows the 2 errors already on main.
+
+**D1 fixed** (owner approved): backend `2576064e`. V2 quiz rounds get their
+full 18/33/48 s (pressure 0), verified live on the playtest stack. No frontend
+change was needed: the clock reads the server deadline.

@@ -2,7 +2,7 @@
 
 **Local only.** V2 stays off publicly. Nothing was pushed, merged, deployed or
 imported. The playtest runs:
-* the backend worktree `daily-v2/e-integration` @ `aa7b5113`;
+* the backend worktree `daily-v2/e-integration` @ `2576064e`;
 * the frontend worktree `daily-v2/e-integration` @ `162ef8ed`;
 * a COPY of the bank (canonical + the 27 takedown rows). The canonical file is
   never opened for writing.
@@ -138,7 +138,7 @@ Screenshots: `docs/daily-v2-lane-e/playtest-*.jpg`.
 
 | id | severity | what | status |
 |---|---|---|---|
-| D1 | **high** | **Quiz rounds run 5 s short.** The server keeps the 18/33/48 s duration, but the bot locks in instantly every round, which applies Ranked's opponent **pressure** (5 s). The answer windows become **13/28/43 s** (`pressure_applied: true`, deadline = start + duration − 5). Order Forge (pressure 0) keeps its full 33 s. | not changed. Proposed fix: `pressure_seconds=0` on V2 quiz segments (one line in `v2_recipe._segment_for`; owner decision, since V1 Daily has the same behaviour) |
+| D1 | **high** | **Quiz rounds run 5 s short.** The server keeps the 18/33/48 s duration, but the bot locks in instantly every round, which applies Ranked's opponent **pressure** (5 s). The answer windows become **13/28/43 s** (`pressure_applied: true`, deadline = start + duration − 5). Order Forge (pressure 0) keeps its full 33 s. | **fixed** (owner approved) in backend `2576064e`: V2 quiz segments declare `pressure_seconds=0`. Live check: rounds 1–6 = 18/33/48/18/33/48 s with the bot locked in |
 | D2 | medium | Round 1 is first visible at 0:08–0:11 of its 13 s: the opening "Daily Challenge" splash overlaps the first question's clock | not changed |
 | D3 | **high** | From a take's result, "Play More Challenges" (and a bonus stage's "More Challenges") opened the **public** catalog, whose "Start Today's Daily" would start an **official** run. The take's own Survival / Time Trial / Review were unreachable. This affected V1 creator replays too | **fixed** FE `162ef8ed` (creator page turns the catalog off; buttons continue in place) + test |
 | D4 | low | Meta Reflex breakdown counts two timed-out cards as "Incorrect 2 · Unanswered 0" while their rows say "No answer" | not changed |
