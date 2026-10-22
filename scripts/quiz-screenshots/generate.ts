@@ -20,62 +20,35 @@ import { execFile } from "node:child_process";
 import { join, resolve } from "node:path";
 import type { ScreenshotCliConfig } from "../../src/lib/quiz-screenshot/cli";
 import { resolveAnswerPlan } from "../../src/lib/quiz-screenshot/states";
+import { runDirName } from "../../src/lib/quiz-screenshot/paths";
 import {
-  questionSlug,
-  runDirName,
-  screenshotFileName,
-  slideFileName,
-} from "../../src/lib/quiz-screenshot/paths";
-import { expandPost, type SlideKind } from "../../src/lib/quiz-screenshot/content-posts";
-import {
-  expandChallenge,
   expandDailyPackage,
-  SUMMARY_TITLES,
-  type ChallengeSlideSpec,
   type MidCtaVariantId,
   type RepeatVariantId,
 } from "../../src/lib/quiz-screenshot/challenge";
-import {
-  resolveQuestionDifficulty,
-} from "../../src/lib/quiz-screenshot/difficulty";
 import type { DifficultyTier } from "../../src/lib/quiz-screenshot/difficulty";
 import type { RenderQuestion, RenderState } from "../../src/lib/quiz-screenshot/types";
 import {
   buildQuestionMetadata,
-  promptPreview,
   type CaptureRecord,
   type QaFinding,
   type QuestionMetadata,
 } from "../../src/lib/quiz-screenshot/metadata";
-import {
-  buildRunManifest,
-  manifestSourceEntry,
-  type ManifestSlide,
-  type RunManifest,
-  type StudioMode,
-} from "../../src/lib/quiz-screenshot/manifest";
-import { buildContactSheet } from "../../src/lib/quiz-screenshot/contact-sheet";
+import type { ManifestSlide, RunManifest, StudioMode } from "../../src/lib/quiz-screenshot/manifest";
 import type { RunFailure } from "../../src/lib/quiz-screenshot/finalize";
+import { planCaptureJobs } from "../../src/lib/quiz-screenshot/captureJobs";
+import { evaluateLayoutStability, type LayoutsByFormat } from "../../src/lib/quiz-screenshot/layoutGates";
+import { buildRunReports } from "../../src/lib/quiz-screenshot/runReport";
+import { pngDimensionsFromBytes } from "../../src/lib/quiz-screenshot/pngInfo";
 import { loadQuestions } from "./source";
 import { ensureServer } from "./server";
-import { captureOne, launchBrowser, type CaptureLayout } from "./capture";
+import { captureOne, launchBrowser } from "./capture";
 
 export const GENERATOR_VERSION = "quiz-screenshots-2";
 
-/** Copy variants currently wired into the slide components (recorded in the
- *  manifest for reproducibility — changing slide copy should bump these). */
-export const COPY_VARIANTS: Record<string, string> = {
-  // CON1 Step 4: the question prompt is derived from the option count
-  // (src/lib/quiz-screenshot/cta.ts) rather than the constant "Comment A, B,
-  // C, or D" the previous id named.
-  question_cta: "comment-by-option-count-v1",
-  app_cta: "prove-it-v2",
-  community: "stack-up-v2",
-  challenge_opening: "test-your-knowledge-v1",
-  challenge_ending: "how-did-you-do-v1",
-  /** CON1 Step 4: the academy shell + type-set Mogzy wordmark. */
-  shell: "mogzy-academy-v1",
-};
+/** Copy variants recorded in every manifest — one table, shared with the
+ *  browser export (src/lib/quiz-screenshot/copyVariants.ts). */
+export { COPY_VARIANTS } from "../../src/lib/quiz-screenshot/copyVariants";
 
 export type GenerationRequest = ScreenshotCliConfig & {
   /** Multi-question challenge mode: ONE carousel across all questions. */
@@ -119,10 +92,7 @@ export type GenerationResult = {
 
 /** Read width/height straight from the PNG IHDR header. */
 export function pngDimensions(buf: Buffer): { width: number; height: number } {
-  if (buf.length < 24 || buf.readUInt32BE(12) !== 0x49484452 /* "IHDR" */) {
-    throw new Error("Not a valid PNG");
-  }
-  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  return pngDimensionsFromBytes(buf);
 }
 
 /** Resolve + guard the run directory inside the export root. */
@@ -143,104 +113,8 @@ function gitCommit(): Promise<string | null> {
   });
 }
 
-/** One capture within a run: a classic state, a post slide, or a challenge slide. */
-type CaptureJob = {
-  slide: SlideKind;
-  state: RenderState;
-  slug: string;
-  index: number;
-  showDifficulty: boolean;
-  question: RenderQuestion;
-  /** Directory (under the run dir) this capture is written into. */
-  dirSlug: string;
-  fileFor: (formatKey: string) => string;
-  extraParams?: Record<string, string>;
-  injectAll?: boolean;
-};
-
-function classicAndPostJobs(
-  config: GenerationRequest,
-  question: RenderQuestion,
-): CaptureJob[] {
-  const override = config.difficultyOverrides?.[String(question.id)] ?? config.difficulty;
-  const hasDifficulty = !!resolveQuestionDifficulty(question.metadata, override);
-  const dirSlug = questionSlug(question.id);
-  if (config.post) {
-    return expandPost(config.post).map((s) => ({
-      slide: s.slideKind,
-      state: s.state,
-      slug: s.slug,
-      index: s.index,
-      showDifficulty: s.showDifficulty && hasDifficulty,
-      question,
-      dirSlug,
-      fileFor: (formatKey: string) => slideFileName(formatKey, s.index, s.slug),
-    }));
-  }
-  return config.states.map((state, i) => ({
-    slide: "quiz" as SlideKind,
-    state,
-    slug: state,
-    index: i + 1,
-    showDifficulty: hasDifficulty,
-    question,
-    dirSlug,
-    fileFor: (formatKey: string) => screenshotFileName(formatKey, state),
-  }));
-}
-
-/** Expand a multi-question challenge into capture jobs (one shared dir). */
-function challengeJobs(
-  config: GenerationRequest,
-  questions: RenderQuestion[],
-  specs: ChallengeSlideSpec[],
-): CaptureJob[] {
-  const dirSlug = questionSlug("challenge");
-  return specs.map((spec) => {
-    // Non-quiz slides anchor on the first question (the harness needs a valid
-    // ?q=); summary slides read the page's questions via qids.
-    const question =
-      spec.questionIndex !== undefined ? questions[spec.questionIndex] : questions[0];
-    const extraParams: Record<string, string> = {};
-    let injectAll = false;
-    if (spec.progress) {
-      extraParams.progress = `${spec.progress.number}of${spec.progress.total}`;
-      if (spec.repeatVariant) extraParams.repeat = String(spec.repeatVariant);
-      if (spec.midCtaVariant) extraParams.mid = String(spec.midCtaVariant);
-    }
-    if (spec.summary) {
-      const pageQuestions = questions.slice(
-        spec.summary.startIndex,
-        spec.summary.startIndex + spec.summary.count,
-      );
-      extraParams.qids = pageQuestions.map((q) => String(q.id)).join(",");
-      extraParams.sumStart = String(spec.summary.startIndex);
-      extraParams.sumPage = String(spec.summary.page);
-      extraParams.sumPages = String(spec.summary.pageCount);
-      injectAll = true;
-    }
-    const override =
-      spec.questionIndex !== undefined
-        ? config.difficultyOverrides?.[String(question.id)] ?? config.difficulty
-        : undefined;
-    const hasDifficulty =
-      spec.showDifficulty && !!resolveQuestionDifficulty(question.metadata, override);
-    return {
-      slide: spec.slideKind,
-      state: spec.state,
-      slug: spec.slug,
-      index: spec.index,
-      showDifficulty: hasDifficulty,
-      question,
-      dirSlug,
-      fileFor: (formatKey: string) => slideFileName(formatKey, spec.index, spec.slug),
-      extraParams: Object.keys(extraParams).length ? extraParams : undefined,
-      injectAll,
-    };
-  });
-}
-
-const END_SLIDES = new Set<string>(["app-cta", "community", "opening", "summary", "ending"]);
+// CC2 — capture-job expansion lives in src/lib/quiz-screenshot/captureJobs.ts,
+// shared with the browser export so the two cannot describe different runs.
 
 export function studioModeOf(config: GenerationRequest): StudioMode {
   if (config.multiQuestion) return "multi-question";
@@ -276,25 +150,26 @@ export async function runGeneration(
   if (!questions.length) throw new Error("No usable questions — nothing to capture.");
 
   // Multi-question runs must keep the requested order and need every question.
-  let challengeSpecs: ChallengeSlideSpec[] | null = null;
   if (config.multiQuestion) {
     if (config.source.mode === "question-id" && questions.length !== config.source.ids.length) {
       throw new Error(
         `Challenge needs every requested question; ${config.source.ids.length - questions.length} were unusable — see skipped list.`,
       );
     }
-    challengeSpecs = expandChallenge({
-      questionCount: questions.length,
-      repeatVariant: config.multiQuestion.repeatVariant ?? null,
-      midCtaVariant: config.multiQuestion.midCtaVariant ?? null,
-    });
   }
 
-  const requestedSlugs = challengeSpecs
-    ? challengeSpecs.map((s) => s.slug)
-    : config.post
-      ? expandPost(config.post).map((s) => s.slug)
-      : config.states;
+  // The ONE expansion (src/lib/quiz-screenshot/captureJobs.ts) — the browser
+  // export plans with the same function.
+  const { groups, challengeSpecs, requestedSlugs } = planCaptureJobs(
+    {
+      states: config.states,
+      post: config.post ?? null,
+      multiQuestion: config.multiQuestion ?? null,
+      difficulty: config.difficulty ?? null,
+      difficultyOverrides: config.difficultyOverrides,
+    },
+    questions,
+  );
 
   emit("plan", `Rendering ${questions.length} question(s) from ${sourceDescription}`);
   if (challengeSpecs) {
@@ -331,22 +206,6 @@ export async function runGeneration(
   let warningCount = 0;
   let captureError: unknown = null;
 
-  // Job groups: per-question groups (classic/post) or one challenge group.
-  const groups: Array<{ dirSlug: string; question: RenderQuestion; jobs: CaptureJob[] }> =
-    challengeSpecs
-      ? [
-          {
-            dirSlug: questionSlug("challenge"),
-            question: questions[0],
-            jobs: challengeJobs(config, questions, challengeSpecs),
-          },
-        ]
-      : questions.map((q) => ({
-          dirSlug: questionSlug(q.id),
-          question: q,
-          jobs: classicAndPostJobs(config, q),
-        }));
-
   const totalCaptures = groups.reduce((n, g) => n + g.jobs.length, 0) * config.formats.length;
   let doneCaptures = 0;
 
@@ -370,7 +229,7 @@ export async function runGeneration(
       const failedRequests: string[] = [];
       const missingAssets: string[] = [];
       // format key -> job slug -> {layout, slide}, for the stability gates.
-      const layoutsByFormat = new Map<string, Map<string, { layout: CaptureLayout; slide: SlideKind }>>();
+      const layoutsByFormat: LayoutsByFormat = new Map();
       // One state-independent zoom per (format) for the classic/post
       // question-correct pair of a SINGLE question. Challenge slides span
       // different questions, so each fits independently (frame parity still
@@ -408,10 +267,6 @@ export async function runGeneration(
           }
         }
 
-        const override =
-          config.difficultyOverrides?.[String(job.question.id)] ?? config.difficulty;
-        const difficultyInfo = resolveQuestionDifficulty(job.question.metadata, override);
-
         for (const format of config.formats) {
           const file = job.fileFor(format.key);
           // Reuse the fitted zoom only for quiz slides of the SAME question +
@@ -430,10 +285,7 @@ export async function runGeneration(
           // explanation is its own publishable card (see the handoff's Part 7),
           // so it fits itself; the parity pair is unaffected because the gate
           // compares question against correct, and neither is this state.
-          const reuseScale =
-            !challengeSpecs && job.slide === "quiz" && job.state !== "explanation"
-              ? scaleByFormat.get(format.key)
-              : undefined;
+          const reuseScale = job.sharesZoom ? scaleByFormat.get(format.key) : undefined;
           try {
             const { png, qa, layout, usedScale } = await captureOne({
               browser,
@@ -446,19 +298,13 @@ export async function runGeneration(
               expectExplanation: expected.showExplanation,
               forcedScale: reuseScale,
               slide: job.slide,
-              difficulty: job.showDifficulty ? difficultyInfo?.tier : undefined,
+              difficulty: job.difficulty ?? undefined,
               injectQuestions: job.injectAll || challengeSpecs ? questions : undefined,
               extraParams: job.extraParams,
               allowIncompletePresentation: config.allowIncompletePresentation === true,
               allowMissingAssets: config.allowMissingAssets === true,
             });
-            if (
-              !challengeSpecs &&
-              job.slide === "quiz" &&
-              job.state !== "explanation" &&
-              !scaleByFormat.has(format.key) &&
-              usedScale !== null
-            ) {
+            if (job.sharesZoom && !scaleByFormat.has(format.key) && usedScale !== null) {
               scaleByFormat.set(format.key, usedScale);
             }
             writeFileSync(join(qDir, file), png);
@@ -481,7 +327,7 @@ export async function runGeneration(
                 : {}),
               width: dims.width,
               height: dims.height,
-              ...(job.showDifficulty && difficultyInfo ? { difficulty: difficultyInfo.tier } : {}),
+              ...(job.difficulty ? { difficulty: job.difficulty } : {}),
             });
 
             consoleErrors.push(...qa.consoleErrors);
@@ -521,81 +367,15 @@ export async function runGeneration(
         }
       }
 
-      // ── Geometry-stability gates ─────────────────────────────────────────
+      // ── Geometry-stability gates (shared with the browser export) ────────
       emit("qa", "  Running geometry-stability gates...");
-      for (const [formatKey, byJob] of layoutsByFormat) {
-        const cmp = (
-          a: CaptureLayout,
-          b: CaptureLayout,
-          parts: readonly string[],
-          label: string,
-        ) => {
-          for (const part of parts) {
-            const ra = (a as Record<string, CaptureLayout[keyof CaptureLayout]>)[part] ?? null;
-            const rb = (b as Record<string, CaptureLayout[keyof CaptureLayout]>)[part] ?? null;
-            if (ra === null && rb === null) continue;
-            const same =
-              !!ra && !!rb &&
-              Math.abs(ra.x - rb.x) <= 1 && Math.abs(ra.y - rb.y) <= 1 &&
-              Math.abs(ra.w - rb.w) <= 1 && Math.abs(ra.h - rb.h) <= 1;
-            if (!same) {
-              runFailures.push({
-                question_id: group.question.id,
-                format: formatKey,
-                state: label,
-                classification: "layout-shift",
-                message: `${part} geometry differs (${label}): ${JSON.stringify(ra)} vs ${JSON.stringify(rb)}`,
-              });
-            }
-          }
-        };
-
-        if (config.post || challengeSpecs) {
-          // Carousel: the composition chrome (deterministic per format) must
-          // be identical across every slide; card/result vary with content.
-          // The top CTA has two deliberate variants — full strip on
-          // quiz-family slides, larger brand wordmark on end slides — so CTA
-          // geometry is gated WITHIN each family, not across them.
-          const entries = [...byJob.entries()];
-          const [firstSlug, first] = entries[0] ?? [];
-          const ctaRefByFamily = new Map<string, CaptureLayout>();
-          if (firstSlug && first) {
-            ctaRefByFamily.set(END_SLIDES.has(first.slide) ? "end" : "quiz", first.layout);
-          }
-          for (let i = 1; i < entries.length; i++) {
-            const [slugB, b] = entries[i];
-            if (first) {
-              cmp(first.layout, b.layout, ["ground", "rail", "qr", "scan"], `frame:${slugB}`);
-            }
-            const family = END_SLIDES.has(b.slide) ? "end" : "quiz";
-            const ctaRef = ctaRefByFamily.get(family);
-            if (ctaRef) cmp(ctaRef, b.layout, ["cta"], `cta:${slugB}`);
-            else ctaRefByFamily.set(family, b.layout);
-          }
-          emit("qa", `  ◻ ${formatKey} post frame parity across ${entries.length} slide(s)`);
-        } else {
-          // Classic: the question and correct states of the SAME card must be
-          // pixel-identical everywhere (≤1px) — the core anti-drift guarantee.
-          const a = byJob.get("question");
-          const b = byJob.get("correct");
-          if (a && b) {
-            cmp(
-              a.layout,
-              b.layout,
-              ["card", "cta", "qr", "ground", "rail", "scan", "resultArea"],
-              "correct",
-            );
-            emit(
-              "qa",
-              `  ◻ ${formatKey} layout parity — ground ${JSON.stringify(a.layout.ground)} | ` +
-                `rail ${JSON.stringify(a.layout.rail)} | ` +
-                `cta ${JSON.stringify(a.layout.cta)} | card ${JSON.stringify(a.layout.card)} | ` +
-                `result ${JSON.stringify(a.layout.resultArea)} | qr ${JSON.stringify(a.layout.qr)} | ` +
-                `scan ${JSON.stringify(a.layout.scan)}`,
-            );
-          }
-        }
-      }
+      const stability = evaluateLayoutStability({
+        layoutsByFormat,
+        carousel: !!(config.post || challengeSpecs),
+        questionId: group.question.id,
+      });
+      runFailures.push(...stability.failures);
+      for (const note of stability.notes) emit("qa", note);
 
       // ── Per-group metadata.json (challenge uses a synthetic group id) ───
       const metaQuestion: RenderQuestion = challengeSpecs
@@ -634,73 +414,41 @@ export async function runGeneration(
   }
 
   // ── Run-level reports (before teardown) ───────────────────────────────────
+  // Assembled by the shared builder (src/lib/quiz-screenshot/runReport.ts), so
+  // a browser run writes the same report shapes.
   emit("finalize", "Writing run reports + manifest...");
   const finishedAt = new Date();
-  const summary = {
-    schema_version: 1,
-    run_id: runId,
-    source: sourceDescription,
-    post: config.post ?? (challengeSpecs ? "multi-question" : null),
+  const { summary, manifest, contactSheetHtml } = buildRunReports({
+    runId,
+    outputDir: runDir,
+    startedAt,
+    finishedAt,
+    mode,
+    sourceDescription,
+    questions,
+    skippedAtLoad: skipped,
+    post: config.post ?? null,
+    challengeSpecs,
+    multiQuestion: config.multiQuestion ?? null,
+    states: config.states,
+    requestedSlugs,
+    formats: config.formats.map((f) => f.key),
     difficulty: config.difficulty ?? null,
-    states_requested: requestedSlugs,
-    formats_requested: config.formats.map((f) => f.key),
-    question_count: questions.length,
-    questions_skipped_at_load: skipped,
-    capture_count: captureCount,
-    success_count: captureCount,
-    failure_count: runFailures.length,
-    warning_count: warningCount,
-    /** CON1 Step 1D — true when this run was made with the diagnostic
-     *  presentation override. A run recorded true is NOT a publishable run. */
-    allow_incomplete_presentation: config.allowIncompletePresentation === true,
-    /** CON1 Step 1E — true when this run was made with the diagnostic asset
-     *  override. Recorded separately so the summary says WHICH class of
-     *  completeness was waived. A run recorded true is NOT publishable. */
-    allow_missing_assets: config.allowMissingAssets === true,
+    difficultyOverrides: config.difficultyOverrides ?? {},
+    manifestSlides,
+    metadata: allMetadata,
+    captureCount,
+    failures: runFailures,
+    warningCount,
     aborted: captureError
       ? String(captureError instanceof Error ? captureError.message : captureError)
       : null,
-    output_dir: runDir,
-    started_at: startedAt.toISOString(),
-    finished_at: finishedAt.toISOString(),
-  };
-
-  const manifest = buildRunManifest({
-    run_id: runId,
-    created_at: startedAt.toISOString(),
-    mode,
-    package_type: config.packageType ?? null,
-    package_prefix: config.packagePrefix ?? null,
-    formats: config.formats.map((f) => f.key),
-    question_ids: questions.map((q) => q.id),
-    // CON1 Step 3B — generated sources stop losing their identity here.
-    sources: questions.map(manifestSourceEntry),
-    questions: questions.map((q) => ({
-      id: q.id,
-      prompt_preview: promptPreview(q.question_text),
-      correct_label: q.choices[q.correct_index]?.label,
-    })),
-    states: config.post || challengeSpecs ? null : config.states,
-    difficulty_default: config.difficulty ?? null,
-    difficulty_overrides: config.difficultyOverrides ?? {},
-    slides: manifestSlides,
-    capture_count: captureCount,
-    failure_count: runFailures.length,
-    warning_count: warningCount,
-    challenge: challengeSpecs
-      ? {
-          question_count: questions.length,
-          repeat_variant: config.multiQuestion?.repeatVariant ?? null,
-          mid_cta_variant: config.multiQuestion?.midCtaVariant ?? null,
-          summary_title: SUMMARY_TITLES[0],
-        }
-      : null,
-    copy_variants: COPY_VARIANTS,
-    allow_incomplete_presentation: config.allowIncompletePresentation === true,
-    allow_missing_assets: config.allowMissingAssets === true,
+    packageType: config.packageType ?? null,
+    packagePrefix: config.packagePrefix ?? null,
     platform: config.platform ?? "generic",
+    allowIncompletePresentation: config.allowIncompletePresentation === true,
+    allowMissingAssets: config.allowMissingAssets === true,
     generator: { version: GENERATOR_VERSION, commit: await gitCommit() },
-    completed: !captureError,
   });
 
   let reportsOk = true;
@@ -715,23 +463,7 @@ export async function runGeneration(
   attempt("summary.json", JSON.stringify(summary, null, 2));
   attempt("failures.json", JSON.stringify(runFailures, null, 2));
   attempt("manifest.json", JSON.stringify(manifest, null, 2));
-  attempt(
-    "index.html",
-    buildContactSheet(
-      {
-        runId,
-        generatedAt: finishedAt.toISOString(),
-        sourceDescription,
-        statesRequested: requestedSlugs,
-        formatsRequested: config.formats.map((f) => f.key),
-        totalQuestions: questions.length,
-        captureCount,
-        failureCount: runFailures.length,
-        warningCount,
-      },
-      allMetadata,
-    ),
-  );
+  attempt("index.html", contactSheetHtml);
 
   // ── Teardown ──────────────────────────────────────────────────────────────
   emit("teardown", "Stopping browser/server...");
@@ -755,7 +487,7 @@ export async function runGeneration(
     warningCount,
     failures: runFailures,
     skippedAtLoad: skipped,
-    aborted: summary.aborted,
+    aborted: summary.aborted as string | null,
     reportsOk,
     manifest,
   };

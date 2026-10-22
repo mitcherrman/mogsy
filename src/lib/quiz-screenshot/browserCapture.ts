@@ -46,7 +46,7 @@
 
 /** Elements whose failure to inline leaves a visible hole in the export. */
 export type CaptureFailure = {
-  code: "unloadable-image" | "raster-failed" | "tainted-canvas" | "empty-stage";
+  code: "unloadable-image" | "raster-failed" | "tainted-canvas" | "empty-stage" | "svg-too-large";
   detail: string;
 };
 
@@ -72,6 +72,17 @@ export type CaptureStyleBundle = {
   css: string;
   /** `url()` targets that could not be inlined; they will not paint. */
   unresolved: string[];
+  /**
+   * CC2 — every custom property the stylesheets declare, by name.
+   *
+   * `seedInheritedContext` re-seeds the `:root`/`body` custom properties by
+   * enumerating `getComputedStyle()`. Chromium's enumeration includes custom
+   * properties; Gecko's historically has not, which would drop the theme
+   * tokens and paint the card in fallback colours. Reading each declared name
+   * explicitly gives the same set on every engine (on Chromium it adds nothing:
+   * a name declared only on a descendant has no value on the root).
+   */
+  customProperties?: string[];
 };
 
 const INHERITED_PROPERTIES = [
@@ -106,6 +117,13 @@ const STATIC_CLOCK_CSS =
   "*,*::before,*::after{animation:none !important;transition:none !important;}";
 
 const URL_PATTERN = /url\((['"]?)([^'")]+)\1\)/g;
+
+/** Custom-property NAMES declared anywhere in a stylesheet (`--x: …`). */
+export function declaredCustomProperties(css: string): string[] {
+  const names = new Set<string>();
+  for (const match of css.matchAll(/(?:^|[{;\s])(--[A-Za-z0-9_-]+)\s*:/g)) names.add(match[1]);
+  return [...names].sort();
+}
 
 async function fetchAsDataUrl(url: string): Promise<string | null> {
   try {
@@ -182,7 +200,7 @@ export async function buildCaptureStyleBundle(doc: Document = document): Promise
     inlined.has(target) ? `url("${inlined.get(target)}")` : match,
   );
 
-  return { css: `${css}\n${STATIC_CLOCK_CSS}`, unresolved };
+  return { css: `${css}\n${STATIC_CLOCK_CSS}`, unresolved, customProperties: declaredCustomProperties(css) };
 }
 
 /**
@@ -193,7 +211,13 @@ export async function buildCaptureStyleBundle(doc: Document = document): Promise
  * default serif while the Cinzel headings — which name their face explicitly —
  * stay correct, which is exactly the half-wrong output that is hardest to spot.
  */
-function seedInheritedContext(wrapper: HTMLElement, stage: HTMLElement, width: number, height: number): void {
+function seedInheritedContext(
+  wrapper: HTMLElement,
+  stage: HTMLElement,
+  width: number,
+  height: number,
+  declared: readonly string[] = [],
+): void {
   const doc = stage.ownerDocument;
   const view = doc.defaultView;
   if (!view) return;
@@ -201,8 +225,17 @@ function seedInheritedContext(wrapper: HTMLElement, stage: HTMLElement, width: n
   for (const element of [doc.documentElement, doc.body]) {
     if (!element) continue;
     const computed = view.getComputedStyle(element);
+    const seen = new Set<string>();
     for (const property of Array.from(computed)) {
-      if (property.startsWith("--")) declarations.push(`${property}:${computed.getPropertyValue(property)}`);
+      if (property.startsWith("--")) {
+        seen.add(property);
+        declarations.push(`${property}:${computed.getPropertyValue(property)}`);
+      }
+    }
+    for (const property of declared) {
+      if (seen.has(property)) continue;
+      const value = computed.getPropertyValue(property);
+      if (value.trim()) declarations.push(`${property}:${value}`);
     }
   }
   const stageComputed = view.getComputedStyle(stage);
@@ -260,6 +293,11 @@ async function inlineImages(
 export async function captureStageToPng(
   stage: HTMLElement,
   bundle: CaptureStyleBundle,
+  options: {
+    /** CC2 — fail with `svg-too-large` above this many data-URL characters
+     *  (set on engines with a URL-length cap; see `browserSupport.ts`). */
+    maxSvgChars?: number;
+  } = {},
 ): Promise<CaptureResult> {
   const warnings: string[] = [];
   const rect = stage.getBoundingClientRect();
@@ -292,7 +330,7 @@ export async function captureStageToPng(
   }
 
   const wrapper = doc.createElementNS("http://www.w3.org/1999/xhtml", "div") as HTMLElement;
-  seedInheritedContext(wrapper, stage, width, height);
+  seedInheritedContext(wrapper, stage, width, height, bundle.customProperties ?? []);
   const styleElement = doc.createElementNS("http://www.w3.org/1999/xhtml", "style");
   styleElement.textContent = bundle.css;
   wrapper.appendChild(styleElement);
@@ -316,6 +354,18 @@ export async function captureStageToPng(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
     `<foreignObject x="0" y="0" width="100%" height="100%">${markup}</foreignObject></svg>`;
   const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  if (options.maxSvgChars !== undefined && svgUrl.length > options.maxSvgChars) {
+    return {
+      outcome: "failed",
+      warnings,
+      failure: {
+        code: "svg-too-large",
+        detail:
+          `the card's inlined markup is ${Math.round(svgUrl.length / 1024 / 1024)} MB, above this ` +
+          `browser's ${Math.round(options.maxSvgChars / 1024 / 1024)} MB URL limit`,
+      },
+    };
+  }
 
   const image = new Image();
   image.width = width;

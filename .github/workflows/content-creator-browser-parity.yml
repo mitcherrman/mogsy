@@ -1,0 +1,103 @@
+name: content-creator-browser-parity
+
+# CC2 — the browser content export (src/lib/quiz-screenshot/contentExport.ts)
+# against the Playwright authority (scripts/quiz-screenshots/capture.ts) for
+# every Content Studio mode: classic, single-question, answer-reveal,
+# multi-question challenge, daily package.
+#
+# Hermetic: VITE_COMBAT_API_URL and VITE_SUPABASE_URL point at a loopback stub
+# (scripts/quiz-screenshots/ci-asset-stub.ts), so no run contacts Railway or
+# Supabase. Bundled headless browsers only, one at a time (AGENTS.md).
+#
+# The Firefox job runs the BROWSER EXPORT in Playwright's bundled Firefox
+# against the Chromium authority. It is informational until it has passed;
+# it never blocks the Chromium verdict.
+on:
+  pull_request:
+    paths:
+      - "src/lib/quiz-screenshot/**"
+      - "src/pages/dev/quiz-render/**"
+      - "scripts/quiz-screenshots/**"
+      - ".github/workflows/content-creator-browser-parity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: content-creator-browser-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parity:
+    name: parity (${{ matrix.exporter }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: ${{ matrix.exporter == 'firefox' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        exporter: [chromium, firefox]
+    env:
+      VITE_COMBAT_API_URL: http://127.0.0.1:8000
+      VITE_SUPABASE_URL: http://127.0.0.1:8000/supabase-stub
+      VITE_SUPABASE_PROJECT_ID: ci-stub
+      VITE_SUPABASE_PUBLISHABLE_KEY: ci-stub-publishable-key
+      VITE_ADS_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install bundled browsers
+        run: |
+          if [ "${{ matrix.exporter }}" = "firefox" ]; then
+            npx playwright install --with-deps chromium firefox
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Start the hermetic backend stub
+        run: |
+          mkdir -p parity-logs
+          nohup npx tsx scripts/quiz-screenshots/ci-asset-stub.ts --port 8000 > parity-logs/asset-stub.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/assets/champions > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/api/assets/champions | head -c 300; echo
+      - name: Start the Vite dev server
+        run: |
+          nohup npx vite --host 127.0.0.1 --port 5199 --strictPort > parity-logs/vite.log 2>&1 &
+          for i in $(seq 1 120); do
+            curl -sf http://127.0.0.1:5199/ > /dev/null && break
+            sleep 1
+          done
+          curl -sf -o /dev/null -w "vite ready: %{http_code}\n" http://127.0.0.1:5199/
+      - name: Browser export parity (${{ matrix.exporter }} exporter, Chromium authority)
+        run: |
+          set -o pipefail
+          timeout 30m npx tsx scripts/quiz-screenshots/verify-browser-export.ts \
+            --base-url http://127.0.0.1:5199 --exporter ${{ matrix.exporter }} \
+            2>&1 | tee parity-logs/parity.log
+      - name: Stop servers
+        if: always()
+        run: |
+          pkill -f "ci-asset-stub.ts" || true
+          pkill -f "vite --host 127.0.0.1 --port 5199" || true
+          sleep 2
+      - name: Upload parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-creator-parity-${{ matrix.exporter }}
+          path: |
+            quiz_content_exports/browser-export-parity/
+            parity-logs/
+          if-no-files-found: warn
+          retention-days: 14
