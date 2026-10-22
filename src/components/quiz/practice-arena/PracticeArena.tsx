@@ -231,10 +231,12 @@ function CompactSourceLink({ metadata }: { metadata?: Record<string, unknown> | 
  * The reveal box's height, held from the first frame of a question, so the
  * reveal draws INTO a box that already exists and nothing above it moves.
  * Below `lg` the height is `--practice-reveal-h` (index.css, PM2); from `lg`
- * it is the verdict row and two lines of explanation (~210 characters at the
- * centre track's width — the bank's 95th percentile is ~185).
+ * it is the verdict row and THREE lines of explanation, which holds the bank's
+ * longest (~305 characters) at the narrowest desktop row, so no reveal grows
+ * the box and moves the tablets (measured: two lines let a ~290-character
+ * explanation shift the grid 7px at 1280x800).
  */
-const REVEAL_SLOT = "practice-reveal-slot w-full min-w-0 lg:min-h-[4.625rem]";
+const REVEAL_SLOT = "practice-reveal-slot w-full min-w-0 lg:min-h-[5.75rem]";
 
 /**
  * What a failed submit says, by why it failed and whether it may be resent.

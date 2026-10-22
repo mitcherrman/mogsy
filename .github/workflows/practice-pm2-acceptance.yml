@@ -102,6 +102,8 @@ jobs:
         run: >-
           npx vitest run
           src/lib/quiz/practiceArena.test.ts
+          src/lib/quiz/api.attemptRetrySafety.test.ts
+          src/lib/quiz/api.write-auth.test.ts
           src/components/quiz/practice-arena
           src/pages/Quiz.practiceMissed.test.tsx
           src/components/ranked-arena/CanonicalArena.questionSurface.test.tsx
