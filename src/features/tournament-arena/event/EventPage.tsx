@@ -26,7 +26,7 @@ import { StingerHost, useStinger } from "../ceremony/RoundStinger";
 import { roundName, type ArenaEvent } from "../contracts";
 import { gameTypeById } from "../fixtures/catalog";
 import type { ArenaGateway } from "../gateway/types";
-import { entrantById } from "../identity";
+import { accentStyle, entrantById } from "../identity";
 import { ease } from "../motion";
 import { Btn, EntrantAvatar, Eyebrow, Pill, SimulatedBadge } from "../ui/parts";
 import { BottomSheet } from "./BottomSheet";
@@ -106,21 +106,23 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
   return (
     <div className={cn("ta ta-stage flex h-[var(--app-viewport-h)] flex-col overflow-clip", motion && "ta--motion")} data-testid="ta-event" data-status={event.status}>
       {/* header */}
-      <header className={cn("flex shrink-0 items-center gap-3 px-4 pt-3", landscape ? "pb-1" : "pb-2")}>
-        <Link to={backHref} className="ta-btn ta-btn--sm !px-2" aria-label="Back to the Arena"><ArrowLeft className="h-4 w-4" /></Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Eyebrow>{event.kind === "duel" ? "Custom duel" : event.kind === "match" ? "Custom match" : "Tournament"} · {game.title} · Bo{event.best_of}</Eyebrow>
-            {fixture && <SimulatedBadge />}
+      <header className={cn("flex shrink-0 flex-col gap-2 px-4 pt-3 sm:flex-row sm:items-center sm:gap-3", landscape ? "pb-1" : "pb-2")}>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <Link to={backHref} className="ta-btn ta-btn--sm !px-2" aria-label="Back to the Arena"><ArrowLeft className="h-4 w-4" /></Link>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <Eyebrow className="truncate">{event.kind === "duel" ? "Custom duel" : event.kind === "match" ? "Custom match" : "Tournament"} · {game.title} · Bo{event.best_of}</Eyebrow>
+              {fixture && <SimulatedBadge className="hidden shrink-0 sm:inline-flex" />}
+            </div>
+            <h1 className={cn("ta-title ta-title--gold truncate font-bold leading-tight", landscape ? "text-[18px]" : "text-[20px] sm:text-[26px]")}>{event.title}</h1>
           </div>
-          <h1 className={cn("ta-title ta-title--gold truncate font-bold leading-tight", landscape ? "text-[18px]" : "text-[20px] sm:text-[26px]")}>{event.title}</h1>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 pl-11 sm:pl-0">
           {statusPill}
           {champion && (
             <Btn size="sm" onClick={() => setCelebrate(`${event.event_id}:champion:replay:${Date.now()}`)} data-testid="ta-replay-champion"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" /><span className="hidden sm:inline">Replay</span></Btn>
           )}
-          {tools}
+          <span className="min-w-0 flex-1 sm:flex-none">{tools}</span>
         </div>
       </header>
 
@@ -133,7 +135,7 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
             <TournamentArenaBracket event={event} viewerId={viewerId} selectedId={selectedId} onSelect={onSelect} beats={beats} />
             {desktop ? (
               <aside className="flex w-[21rem] shrink-0 flex-col" data-testid="ta-side">
-                <AnimatePresence mode="wait" initial={false}>
+                <AnimatePresence mode="popLayout" initial={false}>
                   {selected ? (
                     <fm.div key={selected.node_id} initial={reduced ? { opacity: 0 } : { opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={reduced ? { opacity: 0 } : { opacity: 0, x: 16 }} transition={ease(reduced ? 0.12 : 0.22)} className="ta-plate ta-scroll min-h-0 flex-1 overflow-y-auto p-4">
                       <NodeDetail event={event} node={selected} viewerId={viewerId} actions={actions} onClose={() => setSelectedId(null)} fixture={fixture} />
@@ -239,6 +241,28 @@ function EventSummary({ event, viewerId }: { event: ArenaEvent; viewerId: string
           );
         })}
       </ol>
+      <div>
+        <Eyebrow tone="muted" className="mb-1.5">Still in · {remaining.length}</Eyebrow>
+        <ul className="flex flex-wrap gap-1" aria-label="Players still in">
+          {remaining.map((e) => (
+            <li key={e.profile_id} className="ta-chip !min-h-7 !pl-1 !pr-2 text-[11px]" style={accentStyle(e.profile_id)} title={`Seed ${e.seed ?? "–"}`}>
+              <EntrantAvatar entrant={e} size="xs" crown={false} />{e.display_name}
+            </li>
+          ))}
+        </ul>
+        {event.entrants.some((e) => e.status === "eliminated") && (
+          <>
+            <Eyebrow tone="muted" className="mb-1.5 mt-3">Eliminated</Eyebrow>
+            <ul className="flex flex-wrap gap-1 opacity-55 saturate-50" aria-label="Eliminated players">
+              {event.entrants.filter((e) => e.status === "eliminated").map((e) => (
+                <li key={e.profile_id} className="ta-chip !min-h-7 !pl-1 !pr-2 text-[11px]" style={accentStyle(e.profile_id)}>
+                  <EntrantAvatar entrant={e} size="xs" crown={false} />{e.display_name}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
       <p className="mt-auto text-[11px] leading-snug text-[rgba(215,205,180,0.5)]">Select any match for its detail. Future slots say where their player comes from; nothing is projected.</p>
     </>
   );

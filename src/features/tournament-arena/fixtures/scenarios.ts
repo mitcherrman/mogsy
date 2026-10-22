@@ -92,7 +92,19 @@ export const SCENARIOS: readonly Scenario[] = [
   { id: "lobby-8", label: "Lobby · 8 joined, not locked", build: () => draftEvent({ event_id: "aev_lobby8", title: "Friday Night Quiz Cup", kind: "tournament", entrants: 8, best_of: 3 }) },
   { id: "locked-8", label: "8 · bracket locked", build: () => lockEvent(draftEvent({ event_id: "aev_locked8", title: "Friday Night Quiz Cup", kind: "tournament", entrants: 8, best_of: 3 })) },
   { id: "live-4", label: "4 · semifinal live", build: () => playGames(running("aev_four", "Duo Queue Showdown", 4, 1), 1) },
-  { id: "mid-8", label: "8 · Bo3 at 1–1, QF3 live", build: () => playGames(running("aev_eight", "Friday Night Quiz Cup", 8, 3), 5) },
+  { id: "mid-8", label: "8 · Bo3 at 1–1, QF3 live", build: () => {
+    // QF1 and QF2 decided by script; QF3 live and level at 1–1; QF4 ready.
+    let cur = running("aev_eight", "Friday Night Quiz Cup", 8, 3);
+    for (let guard = 0; guard < 12; guard++) {
+      const node = nextPlayableNode(cur);
+      if (!node || node.node_id === "r1n3") break;
+      cur = playGames(cur, 1);
+    }
+    cur = goLive(cur, "r1n3");
+    cur = recordGame(cur, "r1n3", { winner: 0, score_a: 23, score_b: 19 });
+    cur = recordGame(cur, "r1n3", { winner: 1, score_a: 17, score_b: 21 });
+    return cur;
+  } },
   { id: "byes-6", label: "6 · byes for the top seeds", build: () => running("aev_six", "Patch 26.21 Open", 6, 1) },
   { id: "final-16", label: "16 · final pending", build: () => {
     const ev = running("aev_sixteen", "Summoner's Rift Invitational", 16, 3);

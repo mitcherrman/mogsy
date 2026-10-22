@@ -153,7 +153,7 @@ function Seat({ entrant, side, wins, need, outcome, isViewer, matchPoint, source
   return (
     <div className={cn("flex min-w-0 flex-col items-center gap-1.5 text-center", outcome === "loss" && "opacity-55 saturate-50")} style={accentStyle(entrant?.profile_id)} data-testid={`ta-detail-seat-${side}`}>
       <EntrantAvatar entrant={entrant} size="lg" hex facing={side === "left" ? "right" : "left"} />
-      <p className={cn("ta-title w-full truncate text-[14px] font-semibold", outcome === "win" ? "text-[#f1dc9c]" : "text-white")}>{entrant?.display_name ?? source}</p>
+      <p className={cn("ta-title line-clamp-2 w-full text-[12px] tracking-normal [overflow-wrap:anywhere] font-semibold leading-tight", outcome === "win" ? "text-[#f1dc9c]" : "text-white")}>{entrant?.display_name ?? source}</p>
       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ta-accent)]">
         {entrant?.seed ? `Seed ${entrant.seed}` : "TBD"}{isViewer ? " · You" : ""}
       </p>

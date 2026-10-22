@@ -79,10 +79,10 @@ export const TournamentArenaNodeCard = memo(function TournamentArenaNodeCard({
       className={cn("ta-node", compact && "ta-node--compact", revealDelayMs !== undefined && "ta-rise", className)}
       style={{ ...style, ...(revealDelayMs !== undefined ? ({ "--ta-delay": `${revealDelayMs}ms` } as CSSProperties) : null) }}
     >
-      <span className="ta-node__head">
+      <span className="ta-node__head whitespace-nowrap">
         <b className={cn(isFinal && "text-[#f1dc9c]")}>{isFinal ? "Final" : label}</b>
-        <span className="opacity-70">· Bo{node.best_of}</span>
-        {mp !== null && <span className="ta-matchpoint ml-1">Match point</span>}
+        {!(compact && mp !== null) && <span className="opacity-70">· Bo{node.best_of}</span>}
+        {mp !== null && <span className="ta-matchpoint ml-1">{compact ? "Match pt" : "Match point"}</span>}
         <span className="ml-auto">{pill && <Pill tone={pill.tone}>{pill.label}</Pill>}</span>
       </span>
       {node.slots.map((slot, i) => {

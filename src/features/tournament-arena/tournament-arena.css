@@ -339,6 +339,14 @@
 .ta-node--compact .ta-slot__name { font-size: 11.5px; }
 .ta-node--compact .ta-slot__score { font-size: 13px; }
 
+/* the pannable plane fades out at its clipped edges */
+.ta-plane-fade {
+  background:
+    linear-gradient(90deg, #070f1c 0, rgba(7, 15, 28, 0) 56px),
+    linear-gradient(270deg, #070f1c 0, rgba(7, 15, 28, 0) 56px);
+  opacity: 0.9;
+}
+
 /* ── connectors ───────────────────────────────────────────────────────── */
 .ta-connectors { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
 .ta-connector {

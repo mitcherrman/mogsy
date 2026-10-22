@@ -164,11 +164,12 @@ export function scriptedResult(nodeId: string, gameIndex: number, seedA: number 
   const h = hashString(`${nodeId}:${gameIndex}`);
   const base = 14 + (h % 9);
   const spread = 2 + ((h >>> 8) % 7);
-  // The better seed wins slightly more often than not; a draw is rare.
-  const favourA = (seedA ?? 99) <= (seedB ?? 99);
+  // The better seed wins more often, by the seed gap (never certain); a draw is rare.
+  const gap = (seedB ?? 16) - (seedA ?? 16);
+  const pA = Math.max(28, Math.min(78, 53 + gap * 5));
   const roll = (h >>> 16) % 100;
-  if (roll < 6) return { winner: null, score_a: base, score_b: base };
-  const aWins = roll < (favourA ? 62 : 44);
+  if (roll < 5) return { winner: null, score_a: base, score_b: base };
+  const aWins = roll < pA;
   return aWins ? { winner: 0, score_a: base + spread, score_b: base } : { winner: 1, score_a: base, score_b: base + spread };
 }
 

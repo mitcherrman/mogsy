@@ -165,7 +165,7 @@ export function DuelExperience({ you, opponent, title, kicker, bestOf = 1, seed,
       <header className="flex shrink-0 items-center gap-3 px-4 pt-3 pb-1">
         <Link to={backHref} className="ta-btn ta-btn--sm !px-2" aria-label="Back"><ArrowLeft className="h-4 w-4" /></Link>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><Eyebrow>{kicker ?? "Arena duel"} · Bo{bestOf}</Eyebrow><SimulatedBadge label="Simulated match" /></div>
+          <div className="flex min-w-0 items-center gap-2"><Eyebrow className="truncate">{kicker ?? "Arena duel"} · Bo{bestOf}</Eyebrow><SimulatedBadge label="Simulated" className="hidden shrink-0 sm:inline-flex" /></div>
           <h1 className="ta-title ta-title--gold truncate text-[18px] font-bold leading-tight sm:text-[22px]">{title}</h1>
         </div>
         <p className="ta-num hidden text-[11px] uppercase tracking-[0.16em] text-[rgba(215,205,180,0.5)] sm:block">{phase === "match" ? `Round ${Math.min(shown + 1, rounds.length)} of ${rounds.length}` : phase}</p>
@@ -226,10 +226,12 @@ export function DuelExperience({ you, opponent, title, kicker, bestOf = 1, seed,
                 {outcome.winner === 0 ? "Victory" : outcome.winner === 1 ? "Defeat" : "Draw"}
               </p>
               <span className="ta-rule w-[min(28rem,70%)]" aria-hidden="true" />
-              <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-8">
-                <Seat entrant={you} side="left" label="You" won={outcome.winner === 0} lost={outcome.winner === 1} action={outcome.winner === 0 ? "celebrate" : outcome.winner === 1 ? "hit" : "focus"} />
-                <ScorePlate a={outcome.scoreA} b={outcome.scoreB} winner={outcome.winner} />
-                <Seat entrant={opponent} side="right" label="Opponent" won={outcome.winner === 1} lost={outcome.winner === 0} action={outcome.winner === 1 ? "celebrate" : outcome.winner === 0 ? "hit" : "focus"} />
+              <div className="flex w-full flex-col items-center gap-3 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-8">
+                <div className="order-first sm:order-none sm:col-start-2 sm:row-start-1"><ScorePlate a={outcome.scoreA} b={outcome.scoreB} winner={outcome.winner} /></div>
+                <div className="grid w-full grid-cols-2 gap-3 sm:contents">
+                  <div className="sm:col-start-1 sm:row-start-1"><Seat entrant={you} side="left" label="You" won={outcome.winner === 0} lost={outcome.winner === 1} action={outcome.winner === 0 ? "celebrate" : outcome.winner === 1 ? "hit" : "focus"} /></div>
+                  <div className="sm:col-start-3 sm:row-start-1"><Seat entrant={opponent} side="right" label="Opponent" won={outcome.winner === 1} lost={outcome.winner === 0} action={outcome.winner === 1 ? "celebrate" : outcome.winner === 0 ? "hit" : "focus"} /></div>
+                </div>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                 {allowRematch && <Btn tone="primary" onClick={restart} data-testid="ta-rematch"><RefreshCw className="h-4 w-4" aria-hidden="true" />Rematch</Btn>}
@@ -296,7 +298,7 @@ function ScoreRail({ you, opponent, a, b, max }: { you: ArenaEntrant; opponent: 
       </div>
       <VersusMark size={34} />
       <div className="flex flex-col gap-1" style={accentStyle(opponent.profile_id)}>
-        <span className="flex justify-between text-[11px] font-bold uppercase tracking-[0.14em]"><span className="ta-num text-[#f1dc9c]">{b}</span><span className="truncate text-white">{opponent.display_name}</span></span>
+        <span className="flex justify-between gap-2 text-[11px] font-bold uppercase tracking-[0.14em]"><span className="ta-num text-[#f1dc9c]">{b}</span><span className="truncate text-white">{opponent.display_name}</span></span>
         <span className="ta-bar"><span className="ta-bar__fill" style={{ transform: `scaleX(${b / max})`, transformOrigin: "100% 50%" }} /></span>
       </div>
       <EntrantAvatar entrant={opponent} size="sm" crown={false} facing="left" />
@@ -308,7 +310,7 @@ function Verdict({ hit, pts, ms, pop, align }: { hit: boolean | null; pts: numbe
   return (
     <span className={cn("flex items-center gap-2", align === "right" && "flex-row-reverse")}>
       <span className={cn("ta-verdict", hit === null ? "bg-white/5" : hit ? "ta-verdict--hit" : "ta-verdict--miss", pop && "ta-verdict--pop")} aria-label={hit === null ? "pending" : hit ? "correct" : "wrong"}>{hit === null ? "" : hit ? "✓" : "✕"}</span>
-      <span className="ta-num text-[12px] text-[rgba(215,205,180,0.6)]">{hit === null ? "" : `${(ms / 1000).toFixed(1)}s`}</span>
+      <span className="ta-num hidden text-[12px] text-[rgba(215,205,180,0.6)] sm:inline">{hit === null ? "" : `${(ms / 1000).toFixed(1)}s`}</span>
       <span className={cn("ta-num ml-auto text-[13px] font-bold", align === "right" && "ml-0 mr-auto", pts > 0 ? "text-[#f1dc9c]" : "text-[rgba(215,205,180,0.35)]")}>{hit === null ? "" : `+${pts}`}</span>
     </span>
   );

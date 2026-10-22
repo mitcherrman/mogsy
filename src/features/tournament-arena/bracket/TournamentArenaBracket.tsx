@@ -102,7 +102,8 @@ function DesktopPlane({ event, viewerId, selectedId, onSelect, beats, revealing,
   const compact = useMemo(() => layoutBracket(bracket, CARD_COMPACT), [bracket]);
   const pad = 24;
   const w = Math.max(0, box.w - pad * 2);
-  const h = Math.max(0, box.h - pad * 2);
+  // The round headers sit 28px above the plane and count against the fit.
+  const h = Math.max(0, box.h - pad * 2 - 28);
   const fullScale = fitScale(full, w, h, 0);
   const compactScale = fitScale(compact, w, h, 0);
   const level: 0 | 1 | 2 = box.w === 0 ? 0 : fullScale >= 1 ? 0 : compactScale >= 0.78 ? 1 : 2;
@@ -156,6 +157,18 @@ function DesktopPlane({ event, viewerId, selectedId, onSelect, beats, revealing,
 
   const cards = (
     <>
+      {/* round headers live INSIDE the plane, so they pan and scale with it */}
+      <div className="pointer-events-none absolute inset-x-0 z-[2] h-6" style={{ top: -28 }} aria-hidden="true" data-testid="ta-round-headers">
+        {Array.from({ length: bracket.rounds }, (_, i) => (
+          <span
+            key={i}
+            className={cn("absolute top-0 truncate text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(243,233,207,0.55)]", revealing && "ta-rise")}
+            style={{ left: plane.boxes.find((b) => b.round === i + 1)?.x ?? 0, width: plane.boxes[0]?.width ?? 0, "--ta-delay": `${i * stepMs}ms` } as CSSProperties}
+          >
+            {roundName(i + 1, bracket.rounds)}
+          </span>
+        ))}
+      </div>
       <TournamentArenaConnectors plane={plane} nodes={bracket.nodes} entrants={event.entrants} glides={beats.glides} drawing={revealing} revealStepMs={stepMs} />
       {plane.boxes.map((b) => {
         const n = bracket.nodes.find((x) => x.node_id === b.node_id)!;
@@ -182,18 +195,7 @@ function DesktopPlane({ event, viewerId, selectedId, onSelect, beats, revealing,
 
   return (
     <div ref={ref} className={cn("relative min-h-0 min-w-0 flex-1 overflow-clip", className)} data-testid="ta-bracket" data-level={level} data-scale={scale.toFixed(2)}>
-      {/* round headers */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-6" style={{ transform: `translateX(${offsetX}px)` }} aria-hidden="true">
-        {Array.from({ length: bracket.rounds }, (_, i) => (
-          <span
-            key={i}
-            className={cn("absolute top-0 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[rgba(243,233,207,0.55)]", revealing && "ta-rise")}
-            style={{ left: (plane.boxes.find((b) => b.round === i + 1)?.x ?? 0) * scale, width: (plane.boxes[0]?.width ?? 0) * scale, "--ta-delay": `${i * stepMs}ms` } as CSSProperties}
-          >
-            {roundName(i + 1, bracket.rounds)}
-          </span>
-        ))}
-      </div>
+      {level === 2 && <span aria-hidden="true" className="ta-plane-fade pointer-events-none absolute inset-0 z-[2]" />}
       {level === 2 ? (
         <fm.div
           ref={dragRef}
@@ -204,14 +206,14 @@ function DesktopPlane({ event, viewerId, selectedId, onSelect, beats, revealing,
           animate={{ x: pan.x, y: pan.y }}
           transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 260, damping: 32 }}
           onDragEnd={(_, info) => setPan((p) => ({ x: Math.min(0, Math.max(constraints.left, p.x + info.offset.x)), y: Math.min(0, Math.max(constraints.top, p.y + info.offset.y)) }))}
-          className="ta-plane absolute left-6 top-8 cursor-grab active:cursor-grabbing"
+          className="ta-plane absolute left-6 top-10 cursor-grab active:cursor-grabbing"
           style={{ width: plane.width, height: plane.height, scale }}
           data-testid="ta-plane"
         >
           {cards}
         </fm.div>
       ) : (
-        <div className="ta-plane absolute" style={{ left: pad + offsetX, top: pad + 8 + Math.max(0, offsetY - 8), width: plane.width, height: plane.height, transform: `scale(${scale})` }} data-testid="ta-plane">
+        <div className="ta-plane absolute" style={{ left: pad + offsetX, top: pad + 20 + Math.max(0, offsetY - 20), width: plane.width, height: plane.height, transform: `scale(${scale})` }} data-testid="ta-plane">
           {cards}
         </div>
       )}
@@ -219,7 +221,7 @@ function DesktopPlane({ event, viewerId, selectedId, onSelect, beats, revealing,
         <div className="absolute bottom-3 left-1/2 z-[3] flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-[hsl(214_50%_7%/0.92)] p-1 shadow-lg backdrop-blur" data-testid="ta-round-jump">
           <button type="button" aria-label="Previous round" className="ta-btn ta-btn--sm !min-h-8 !px-2" onClick={() => { const r = Math.max(1, round - 1); setRound(r); centreOn(null, r); }}><ChevronLeft className="h-4 w-4" /></button>
           {Array.from({ length: bracket.rounds }, (_, i) => (
-            <button key={i} type="button" aria-pressed={round === i + 1} className={cn("ta-chip !min-h-8", round === i + 1 && "")} onClick={() => { setRound(i + 1); centreOn(null, i + 1); }}>
+            <button key={i} type="button" aria-pressed={round === i + 1} className="ta-chip !min-h-8 whitespace-nowrap" onClick={() => { setRound(i + 1); centreOn(null, i + 1); }}>
               {roundName(i + 1, bracket.rounds)}
             </button>
           ))}

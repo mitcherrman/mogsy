@@ -3,11 +3,9 @@
  * event, fight a duel) and the event cards. Fixture data throughout.
  */
 import { useMemo, type CSSProperties } from "react";
-import { motion as fm } from "framer-motion";
 import { ArrowRight, Crown, Swords, Trophy, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useMotionAllowed } from "@/lib/motion/useReveal";
 import { cn } from "@/lib/utils";
 
@@ -15,30 +13,28 @@ import { roundName, type ArenaEvent } from "@/features/tournament-arena/contract
 import { gameTypeById } from "@/features/tournament-arena/fixtures/catalog";
 import type { ArenaGateway } from "@/features/tournament-arena/gateway/types";
 import { entrantById } from "@/features/tournament-arena/identity";
-import { ease } from "@/features/tournament-arena/motion";
 import { Trophy as Cup } from "@/features/tournament-arena/ceremony/Trophy";
 import { EntrantAvatar, Eyebrow, Pill, SimulatedBadge } from "@/features/tournament-arena/ui/parts";
 
 export function ArenaHome({ gateway, base }: { gateway: ArenaGateway; base: string }) {
   const motion = useMotionAllowed();
-  const reduced = useReducedMotionPreference();
   const events = useMemo(() => gateway.listEvents(), [gateway]);
-  const rise = (i: number) => ({ initial: reduced ? { opacity: 0 } : { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: ease(0.42, 0.08 + i * 0.07) });
+  const rise = (i: number) => ({ className: "ta-rise", style: { "--ta-delay": `${80 + i * 70}ms` } as CSSProperties });
   return (
     <div className={cn("ta ta-stage min-h-[var(--app-viewport-h)] pb-10", motion && "ta--motion")} data-testid="ta-home">
       {/* hero */}
       <section className="relative overflow-hidden px-4 pt-8 pb-6 sm:pt-12">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-full opacity-70" aria-hidden="true" style={{ background: "radial-gradient(60% 50% at 50% 0%, rgba(227,198,111,0.22), transparent 70%)" }} />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-3 text-center">
-          <fm.div {...rise(0)} className="flex items-center gap-2"><Eyebrow>Tournament Arena</Eyebrow><SimulatedBadge label="Prototype · fixture data" /></fm.div>
-          <fm.h1 {...rise(1)} className="ta-title ta-title--gold text-[38px] font-black uppercase leading-[0.95] tracking-[0.08em] sm:text-[64px]">Prove it<br className="sm:hidden" /> in the Arena</fm.h1>
-          <fm.p {...rise(2)} className="max-w-xl text-[14px] leading-relaxed text-[rgba(215,205,180,0.75)] sm:text-[15px]">
+          <div {...rise(0)} className="ta-rise flex items-center gap-2"><Eyebrow>Tournament Arena</Eyebrow><SimulatedBadge label="Prototype · fixture data" /></div>
+          <h1 {...rise(1)} className="ta-rise ta-title ta-title--gold text-[38px] font-black uppercase leading-[0.95] tracking-[0.08em] sm:text-[64px]">Prove it<br className="sm:hidden" /> in the Arena</h1>
+          <p {...rise(2)} className="ta-rise max-w-xl text-[14px] leading-relaxed text-[rgba(215,205,180,0.75)] sm:text-[15px]">
             Brackets for your friends. Custom duels with your rules. Every match plays on the Ranked engine: server-graded, fair inside a node, nothing projected.
-          </fm.p>
-          <fm.div {...rise(3)} className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          </p>
+          <div {...rise(3)} className="ta-rise mt-2 flex flex-wrap items-center justify-center gap-2">
             <Link to={`${base}/host`} className="ta-btn ta-btn--primary ta-btn--lg" data-testid="ta-home-host"><Crown className="h-4 w-4" aria-hidden="true" />Run an event</Link>
             <Link to={`${base}/duel`} className="ta-btn ta-btn--lg" data-testid="ta-home-duel"><Swords className="h-4 w-4" aria-hidden="true" />Fight a duel</Link>
-          </fm.div>
+          </div>
         </div>
       </section>
 
@@ -67,10 +63,9 @@ export function ArenaHome({ gateway, base }: { gateway: ArenaGateway; base: stri
 }
 
 function Door({ to, icon, title, blurb, i }: { to: string; icon: React.ReactNode; title: string; blurb: string; i: number }) {
-  const reduced = useReducedMotionPreference();
   return (
-    <fm.div initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={ease(0.42, 0.3 + i * 0.08)}>
-      <Link to={to} className="ta-option group flex items-center gap-3 p-4 outline-none" data-testid="ta-door">
+    <div className="ta-rise" style={{ "--ta-delay": `${300 + i * 80}ms` } as CSSProperties}>
+      <Link to={to} aria-label={`${title}: ${blurb}`} className="ta-option group flex items-center gap-3 p-4 outline-none" data-testid="ta-door">
         <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(201,168,76,0.14)] text-[#f1dc9c] transition-transform duration-300 group-hover:scale-105">{icon}</span>
         <span className="min-w-0 flex-1">
           <span className="ta-title block text-[15px] font-bold text-white">{title}</span>
@@ -78,12 +73,11 @@ function Door({ to, icon, title, blurb, i }: { to: string; icon: React.ReactNode
         </span>
         <ArrowRight className="h-4 w-4 shrink-0 text-[rgba(215,205,180,0.5)] transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
       </Link>
-    </fm.div>
+    </div>
   );
 }
 
 function EventCard({ event, to, i }: { event: ArenaEvent; to: string; i: number }) {
-  const reduced = useReducedMotionPreference();
   const game = gameTypeById(event.game_type);
   const total = event.bracket?.rounds ?? 0;
   const live = event.bracket?.nodes.filter((n) => n.status === "live") ?? [];
@@ -91,8 +85,8 @@ function EventCard({ event, to, i }: { event: ArenaEvent; to: string; i: number 
   const players = event.entrants.filter((e) => e.status !== "invited" && e.status !== "withdrawn");
   const liveRound = live[0] ? roundName(live[0].round, total) : null;
   return (
-    <fm.div initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={ease(0.42, 0.5 + i * 0.05)} className="h-full">
-      <Link to={to} className="ta-plate group flex h-full flex-col gap-3 p-4 outline-none transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-[rgba(201,168,76,0.45)] focus-visible:ring-2 focus-visible:ring-[#c9a84c]" data-testid="ta-event-card" data-event={event.event_id}>
+    <div className="ta-rise h-full" style={{ "--ta-delay": `${500 + i * 50}ms` } as CSSProperties}>
+      <Link to={to} aria-label={`${event.title}, ${players.length} players, ${event.status}`} className="ta-plate group flex h-full flex-col gap-3 p-4 outline-none transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-[rgba(201,168,76,0.45)] focus-visible:ring-2 focus-visible:ring-[#c9a84c]" data-testid="ta-event-card" data-event={event.event_id}>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <Eyebrow tone="muted">{event.kind === "duel" ? "Custom duel" : event.kind === "match" ? "Custom match" : "Tournament"} · {game.title}</Eyebrow>
@@ -115,6 +109,6 @@ function EventCard({ event, to, i }: { event: ArenaEvent; to: string; i: number 
           )}
         </div>
       </Link>
-    </fm.div>
+    </div>
   );
 }
