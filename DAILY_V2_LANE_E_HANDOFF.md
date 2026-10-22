@@ -212,3 +212,35 @@ Owner entry point (unchanged): `/admin/creator-replay` → **Play a three-act ta
 Backend pass 5 report:
 `League_Combat_Simulator\.worktrees\daily-v2-e\docs\daily_v2_lane_e\READINESS_PASS5_2026-10-21.md`
 (§9 has the exact local and private-preview steps).
+
+---
+
+## Owner playtest (2026-10-21)
+
+**Guide: `docs/daily-v2-lane-e/OWNER_PLAYTEST_2026-10-21.md`.** It covers the
+URL, sign-in, flags, start and reset commands, the 21 interactions, defects and
+the preview plan. Screenshots are `docs/daily-v2-lane-e/playtest-*.jpg`.
+
+| SHA | What |
+|---|---|
+| `162ef8ed` | Creator takes continue into their OWN Survival / Time Trial / Review. PGM1's catalog buttons had sent them to the public catalog, which starts the official run. `DailyRunPage.moreChallengesCatalog` defaults on; the creator page turns it off. Test in `CreatorReplayRunPage.test.tsx` |
+| (this commit) | Playtest guide, screenshots, this section |
+
+What was played:
+* Two full takes in the browser pane on a copy of the bank: desktop, then
+  390 / 360 / 320 px.
+* Everything renders and grades: the three-option and two-option questions,
+  minion XP and wave in Act 1, Order Forge (portraits, arrows, drag, lock), the
+  Meta Reflex breakdown values, wrong answers, timeouts, results, resume after
+  reload, and Review re-asking a V2-index miss.
+* 0 official runs and 0 rating rows were created.
+
+Open:
+* **D1:** the bot's instant lock applies the 5 s opponent pressure, so quiz
+  windows are 13/28/43 s, not 18/33/48 s. Owner decision on
+  `pressure_seconds=0`.
+* **D2:** the opening splash overlaps round 1's clock.
+* Touch is unverified: the pane sends mouse events.
+
+Tests: `src/pages/quiz-daily-challenge/run` + `CreatorReplayRunPage`, 255
+passed; `tsc` shows the 2 errors already on main.
