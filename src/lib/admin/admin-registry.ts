@@ -1520,10 +1520,26 @@ export const ADMIN_TOOLS: AdminTool[] = [
     notes: "Produces published assets, so it is administration rather than a prototype. Now listed in production.",
   },
   {
-    id: "content-post-studio",
-    title: "Content Post Studio",
+    id: "content-creator",
+    title: "Content Creator",
     description:
-      "Generates social content packages from real quiz questions, driving the loopback studio server.",
+      "Owner-only social content from the question bank: classic cards, single-question and reveal posts, multi-question challenges and daily packages, rendered in the browser with previews, PNG/ZIP downloads, manifest and contact sheet.",
+    area: "studio",
+    section: "video-social",
+    kind: "route",
+    path: "/admin/content-creator",
+    oldLocation: "New (CC3) — the production successor of the local Content Post Studio",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    authorization:
+      "AdminRoute (owner, MFA step-up) via the /admin shell, plus AdminAuthGate; question reads use the owner's own token. Read-only: nothing writes to the question bank.",
+  },
+  {
+    id: "content-post-studio",
+    title: "Content Post Studio (local)",
+    description:
+      "Generates social content packages from real quiz questions, driving the loopback studio server. Developer tool; use Content Creator in production.",
     area: "studio",
     section: "video-social",
     kind: "route",
@@ -1534,7 +1550,8 @@ export const ADMIN_TOOLS: AdminTool[] = [
     legacyRoutes: ["/dev/content-studio"],
     dangerLevel: "none",
     status: "Internal",
-    authorization: "UNCHANGED — no route gate; inert without the local server.",
+    authorization:
+      "Dev builds only. Production builds redirect /dev/content-studio to /admin/content-creator (owner-gated).",
   },
   {
     id: "graph1-explorer",

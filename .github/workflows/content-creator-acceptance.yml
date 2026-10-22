@@ -1,0 +1,101 @@
+name: content-creator-acceptance
+
+# CC3 — the owner-only /admin/content-creator page, end to end.
+# Hermetic: placeholder Supabase host and a loopback asset stub; the specs
+# answer every API call. Bundled headless browsers, one worker (AGENTS.md).
+on:
+  pull_request:
+    paths:
+      - "src/pages/admin/AdminContentCreator.tsx"
+      - "src/components/admin/content-creator/**"
+      - "src/lib/content-creator/**"
+      - "src/lib/quiz-screenshot/**"
+      - "src/lib/admin/admin-registry.ts"
+      - "src/App.tsx"
+      - "e2e/content-creator/**"
+      - "e2e/content-creator-prod/**"
+      - "playwright.content-creator*.config.ts"
+      - ".github/workflows/content-creator-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: content-creator-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Content Creator, Content Factory and Admin unit tests
+        run: npx vitest run src/lib/content-creator src/lib/quiz-screenshot src/lib/admin src/pages/admin/AdminQuizReview src/components/admin/GenerateContentPanel --exclude "**/command.parser.test.ts" --exclude "**/command.reviewKey.test.ts"
+      - name: Production build (placeholder backends)
+        env:
+          VITE_SUPABASE_URL: https://e2e-supabase.test
+          VITE_SUPABASE_PUBLISHABLE_KEY: e2e-placeholder-key
+          VITE_SUPABASE_PROJECT_ID: e2e
+          VITE_COMBAT_API_URL: http://127.0.0.1:8000
+        run: npx vite build
+      - name: The production bundle carries no E2E identity seam
+        run: |
+          if grep -rl "mogsy_e2e_identity" dist/assets; then echo "E2E seam leaked into the production bundle"; exit 1; fi
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Production-build gates
+        run: npx playwright test -c playwright.content-creator-prod.config.ts
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-creator-prod-gates
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  e2e:
+    name: e2e (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: ${{ matrix.browser == 'firefox' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Content Creator acceptance (${{ matrix.browser }})
+        run: npx playwright test -c playwright.content-creator.config.ts --project=${{ matrix.browser }}
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-creator-e2e-${{ matrix.browser }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14

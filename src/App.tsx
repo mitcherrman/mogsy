@@ -153,6 +153,9 @@ const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulati
 const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPage"));
 const ContentAtlasPage = lazy(() => import("./pages/admin/ContentAtlasPage"));
 const AdminStudioPage = lazy(() => import("./pages/admin/areas/AdminStudioPage"));
+// Content Creator — owner-only social content from the question bank, rendered
+// in the browser with the CC2 engine. Inherits the /admin AdminRoute gate.
+const AdminContentCreator = lazy(() => import("./pages/admin/AdminContentCreator"));
 const AdminOperationsPage = lazy(() => import("./pages/admin/areas/AdminOperationsPage"));
 const AdminDeveloperPage = lazy(() => import("./pages/admin/areas/AdminDeveloperPage"));
 
@@ -562,6 +565,7 @@ export const appRouter = createBrowserRouter(
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
                     <Route path="content-atlas" element={<AdminRoute><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
+                    <Route path="content-creator" element={<Suspense fallback={<RouteFallback />}><AdminContentCreator /></Suspense>} />
                     <Route path="operations" element={<Suspense fallback={<RouteFallback />}><AdminOperationsPage /></Suspense>} />
                     <Route path="developer" element={<Suspense fallback={<RouteFallback />}><AdminDeveloperPage /></Suspense>} />
                     {/* LEGACY1 — the Audio Studio's own home. It used to be the
@@ -892,7 +896,10 @@ export const appRouter = createBrowserRouter(
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
                 <Route path="/broadcast/live-view" element={<Suspense fallback={<RouteLoader />}><BroadcastLiveView /></Suspense>} />
                 <Route path="/dev/quiz-render" element={<Suspense fallback={<RouteLoader />}><QuizRenderPage /></Suspense>} />
-                <Route path="/dev/content-studio" element={<Suspense fallback={<RouteLoader />}><ContentStudioPage /></Suspense>} />
+                {/* The local Content Workspace drives a loopback server, so it is a
+                    dev-build tool only. In production the path forwards to the owner-only
+                    Content Creator, which inherits the /admin gate (CC1 audit finding). */}
+                <Route path="/dev/content-studio" element={import.meta.env.DEV ? <Suspense fallback={<RouteLoader />}><ContentStudioPage /></Suspense> : <Navigate to="/admin/content-creator" replace />} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
     </Route>,
