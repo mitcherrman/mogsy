@@ -421,6 +421,56 @@ const renderers = {
     tone(context, output, startAt, { at: 0.035, dur: 0.22, peak: 0.026, freq: 1174.7, type: "triangle" });
     tone(context, output, startAt, { at: 0.035, dur: 0.28, peak: 0.01, freq: 2349.3 });
   },
+  // ── TOURNAMENT ARENA (ported from the Dynasty prototype's MOMENT_CUES) ──
+  // A soft rising swell as the bracket draws itself: filtered noise opening
+  // upward under a high fifth. Short, so a reveal of five rounds reads as one
+  // gesture rather than five chimes.
+  arenaBracketReveal(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.55, peak: 0.05, from: 500, to: 2600, q: 0.9, attack: 0.5 });
+    tone(context, output, startAt, { at: 0.18, dur: 0.42, peak: 0.05, freq: 523.25, type: "triangle", attack: 0.3 });
+    tone(context, output, startAt, { at: 0.26, dur: 0.46, peak: 0.045, freq: 783.99, type: "triangle", attack: 0.3 });
+  },
+  // A winner's chip landing in the next slot: two quick notes a fifth apart
+  // (the Dynasty "series point" shape) with a muted tap underneath.
+  arenaAdvance(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.14, peak: 0.07, freq: 523.25 });
+    tone(context, output, startAt, { at: 0.13, dur: 0.3, peak: 0.07, freq: 783.99 });
+    tone(context, output, startAt, { dur: 0.09, peak: 0.08, freq: 150, slideTo: 70, type: "sine" });
+  },
+  // A round closing: a brass-ish triad that lands and holds a moment.
+  arenaRoundComplete(context, output, startAt) {
+    for (const [i, f] of [392, 493.88, 587.33].entries()) {
+      tone(context, output, startAt, { at: i * 0.03, dur: 0.7, peak: 0.045, freq: f, type: "sawtooth", attack: 0.12 });
+    }
+    noise(context, output, startAt, { at: 0.02, dur: 0.3, peak: 0.03, from: 900, to: 2200, q: 1.2 });
+  },
+  // The championship: a flash hit, then a major chord blooming over a crowd
+  // swell. Under the Ranked victory cue in level, above everything else here.
+  arenaChampion(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.5, peak: 0.1, freq: 110, slideTo: 50, type: "sine" });
+    noise(context, output, startAt, { dur: 0.25, peak: 0.07, from: 2400, to: 600, q: 0.7, attack: 0.05 });
+    for (const [i, f] of [392, 493.88, 587.33, 783.99].entries()) {
+      tone(context, output, startAt, { at: 0.12 + i * 0.05, dur: 1.5, peak: 0.055, freq: f, type: "triangle", attack: 0.2 });
+    }
+    noise(context, output, startAt, { at: 0.45, dur: 1.6, peak: 0.045, from: 300, to: 1400, q: 0.5, attack: 0.4 });
+  },
+  // The Host Portal's launch: a rising sweep that resolves on a bright octave.
+  arenaLaunch(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.7, peak: 0.06, from: 200, to: 3200, q: 1.1, attack: 0.6 });
+    tone(context, output, startAt, { at: 0.55, dur: 0.5, peak: 0.07, freq: 659.25, type: "triangle" });
+    tone(context, output, startAt, { at: 0.6, dur: 0.6, peak: 0.06, freq: 1318.5, type: "sine" });
+  },
+  // A ready check ticking green: one clean high note.
+  arenaReady(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.16, peak: 0.06, freq: 987.77, type: "triangle" });
+    tone(context, output, startAt, { at: 0.08, dur: 0.22, peak: 0.04, freq: 1318.5, type: "sine" });
+  },
+  // The VS stamp: a low impact with a short metallic ring.
+  arenaVersus(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.35, peak: 0.12, freq: 90, slideTo: 45, type: "sine" });
+    noise(context, output, startAt, { dur: 0.18, peak: 0.06, from: 3000, to: 900, q: 0.8, attack: 0.03 });
+    tone(context, output, startAt, { at: 0.05, dur: 0.6, peak: 0.035, freq: 1760, type: "triangle", attack: 0.02 });
+  },
   scribble(context, output, startAt, options) {
     const duration = Math.min(MAX_SCRIBBLE_MS, Math.max(0, options.durationMs ?? 0)) / 1000;
     if (duration <= 0) return;
@@ -525,6 +575,13 @@ export const SFX_GENERATORS = {
   "sfx.perfect-timing.tick": renderers.perfectTimingTick,
   "sfx.perfect-timing.mark": renderers.perfectTimingMark,
   "sfx.perfect-timing.lock": renderers.perfectTimingLock,
+  "sfx.arena.bracket-reveal": renderers.arenaBracketReveal,
+  "sfx.arena.advance": renderers.arenaAdvance,
+  "sfx.arena.round-complete": renderers.arenaRoundComplete,
+  "sfx.arena.champion": renderers.arenaChampion,
+  "sfx.arena.launch": renderers.arenaLaunch,
+  "sfx.arena.ready": renderers.arenaReady,
+  "sfx.arena.versus": renderers.arenaVersus,
   "sfx.legacy.welcome-scribble": renderers.scribble,
   "sfx.legacy.welcome-page-turn": renderers.pageTurn,
 } as const satisfies Record<string, SfxSynthRenderer>;

@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward" | "quiz" | "perfect-timing";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward" | "quiz" | "perfect-timing" | "arena";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -152,6 +152,19 @@ export const SFX_REGISTRY = {
   // Broadcast remains asset-first and session-configured. These entries give
   // its existing vocabulary canonical policy, unlock, mute, cache and dedupe
   // without inventing fallback sounds when an operator has configured none.
+  // TOURNAMENT ARENA — the bracket's ceremony beats. Built-in voices ported
+  // from the Dynasty prototype's moment cues (crowd swell, series point,
+  // championship), quieter than the Ranked match result so a bracket that
+  // advances every few seconds never shouts. Callers pass
+  // `arena:<eventId>:<beat>:<key>` ids: the engine's dedupe is what keeps a
+  // revision poll, a re-render or a revisit from replaying a beat.
+  "arena.bracket.reveal": { group: "arena", minReplayMs: 800, relativeGain: 0.7, builtInGeneratorId: "sfx.arena.bracket-reveal" },
+  "arena.advance": { group: "arena", minReplayMs: 300, relativeGain: 0.72, builtInGeneratorId: "sfx.arena.advance" },
+  "arena.round.complete": { group: "arena", minReplayMs: 800, relativeGain: 0.8, builtInGeneratorId: "sfx.arena.round-complete" },
+  "arena.champion": { group: "arena", minReplayMs: 1500, relativeGain: 0.92, builtInGeneratorId: "sfx.arena.champion" },
+  "arena.launch": { group: "arena", minReplayMs: 800, relativeGain: 0.86, builtInGeneratorId: "sfx.arena.launch" },
+  "arena.ready": { group: "arena", minReplayMs: 200, relativeGain: 0.62, builtInGeneratorId: "sfx.arena.ready" },
+  "arena.versus": { group: "arena", minReplayMs: 800, relativeGain: 0.84, builtInGeneratorId: "sfx.arena.versus" },
   "broadcast.question.start": { group: "broadcast", minReplayMs: 120, relativeGain: 1 },
   "broadcast.countdown.tick": { group: "broadcast", minReplayMs: 120, relativeGain: 1 },
   "broadcast.reveal": { group: "broadcast", minReplayMs: 180, relativeGain: 1 },

@@ -55,11 +55,12 @@ const ERADICATED_PATHS = [
 ];
 
 describe("admin registry — structure", () => {
-  it("declares the eight-area architecture in order, Users beside Overview", () => {
+  it("declares the nine-area architecture in order, Users beside Overview", () => {
     expect(ADMIN_AREAS.map((a) => a.label)).toEqual([
       "Overview",
       "Users",
       "Leaguecraft",
+      "Tournament Arena",
       "Simulation",
       "Game Data",
       "Studio",

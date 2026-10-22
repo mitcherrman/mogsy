@@ -274,6 +274,13 @@ const ProPlayArenaDev = import.meta.env.DEV
 const WorldsExperienceDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/worlds-experience/WorldsExperienceDev"))
   : null;
+// TOURNAMENT ARENA: the animated bracket, Match Host Portal and duel
+// experience prototype over a fixture gateway. Same DEVELOPMENT-ONLY rule:
+// no /api/arena/* exists yet, and the path 404s in production. Under /lol/
+// for the LoL theme, as the planned /quiz/arena/* routes will be.
+const TournamentArenaDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/tournament-arena/TournamentArenaDev"))
+  : null;
 // GM-M1: the Match Grid visual-diagnosis lab. DEVELOPMENT-ONLY; the path
 // 404s in production. The production path is the `match` Ranked module.
 const MatchGridLab = import.meta.env.DEV
@@ -306,6 +313,11 @@ const PerfectTimingPageDev = import.meta.env.DEV
 const PerfectTimingDemo = import.meta.env.DEV
   ? lazy(() => import("./components/perfect-timing/__stories__/PerfectTimingDemo"))
   : null;
+// COMBAT V4: the Combat Theater prototype over committed Team Sim fixtures.
+// Same DEVELOPMENT-ONLY rule; no network, no credits, nothing shared with
+// the public /combat-lab page.
+const CombatTheaterAdmin = lazy(() => import("./pages/dev/combat-theater/CombatTheaterDev"));
+const CombatTheaterDev = import.meta.env.DEV ? CombatTheaterAdmin : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -326,6 +338,19 @@ const WordPuzzleLab = import.meta.env.DEV
 // Estimate) plays at /admin/playtests/:mode, launched from Ranked → Playtests.
 // The chunk carries no round or answer; the backend deals and reveals them.
 const OwnerPlaytestPage = lazy(() => import("./pages/admin/playtests/OwnerPlaytestPage"));
+// TOURNAMENT ARENA (admin-only beta). The organizer dashboard sits inside the
+// Admin shell; the create portal and the organizer console are full-viewport
+// frames outside it (like /admin/quiz-content), under the same AdminRoute.
+// The player routes live under /quiz/arena/* (LoL theme pre-paint) and are
+// linked from nowhere: a player arrives by join link or invitation. Every
+// organizer call is authorized server-side from the owner's own session.
+const TournamentArenaAdminPage = lazy(() => import("./pages/admin/tournament-arena/TournamentArenaAdmin"));
+const TournamentArenaAdminCreate = lazy(() => import("./pages/admin/tournament-arena/TournamentArenaAdmin").then((m) => ({ default: m.TournamentArenaAdminCreate })));
+const TournamentArenaAdminConsole = lazy(() => import("./pages/admin/tournament-arena/TournamentArenaAdmin").then((m) => ({ default: m.TournamentArenaAdminConsole })));
+const ArenaPlayerHome = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaPlayerHome })));
+const ArenaJoinRoute = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaJoinRoute })));
+const ArenaEventRoute = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaEventRoute })));
+const ArenaMatchRoute = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaMatchRoute })));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -552,6 +577,8 @@ export const appRouter = createBrowserRouter(
                         true; it is advertised nowhere. */}
                     <Route path="ranked" element={<Navigate to="/admin/leaguecraft?section=ranked" replace />} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
+                    {/* COMBAT V4: fixture-only Theater preview, protected by the parent AdminRoute. */}
+                    <Route path="combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterAdmin /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
                     <Route path="content-atlas" element={<AdminRoute><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
@@ -575,7 +602,11 @@ export const appRouter = createBrowserRouter(
                         /admin layout gate, and its backend endpoints are behind
                         the same require_admin every other admin read uses. */}
                     <Route path="ranked/generator-lab" element={<Suspense fallback={<RouteFallback />}><MasteryGeneratorLab /></Suspense>} />
+                    {/* TOURNAMENT ARENA — the organizer dashboard (admin-only beta). */}
+                    <Route path="tournament-arena" element={<Suspense fallback={<RouteFallback />}><TournamentArenaAdminPage /></Suspense>} />
                   </Route>
+                  <Route path="/admin/tournament-arena/new" element={<AdminRoute><Suspense fallback={<RouteFallback />}><TournamentArenaAdminCreate /></Suspense></AdminRoute>} />
+                  <Route path="/admin/tournament-arena/event/:eventId" element={<AdminRoute><Suspense fallback={<RouteFallback />}><TournamentArenaAdminConsole /></Suspense></AdminRoute>} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Notifications /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
@@ -664,6 +695,11 @@ export const appRouter = createBrowserRouter(
                       Public, like the catalog: its session route decides. */}
                   <Route path="/quiz/more-challenges/:mode" element={<Suspense fallback={<RouteFallback />}><BonusSessionPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
+                  {/* TOURNAMENT ARENA — player routes (signed-in accounts; no directory, no hub entry). */}
+                  <Route path="/quiz/arena" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaPlayerHome /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/arena/join/:code" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaJoinRoute /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/arena/e/:eventId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaEventRoute /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/arena/e/:eventId/match/:nodeId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaMatchRoute /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   {/* Layout is already mounted here and already painting the
                       League base colour, so the hub needs nothing but its height
@@ -815,6 +851,12 @@ export const appRouter = createBrowserRouter(
                       <Route path="/dev/worlds-experience" element={<Navigate to="/lol/dev/worlds-experience" replace />} />
                     </>
                   ) : null}
+                  {TournamentArenaDev ? (
+                    <>
+                      <Route path="/lol/dev/tournament-arena/*" element={<Suspense fallback={<RouteFallback />}><TournamentArenaDev /></Suspense>} />
+                      <Route path="/dev/tournament-arena" element={<Navigate to="/lol/dev/tournament-arena" replace />} />
+                    </>
+                  ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
                   ) : null}
@@ -829,6 +871,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {CombatEstimateLab ? (
                     <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
+                  ) : null}
+                  {CombatTheaterDev ? (
+                    <Route path="/dev/combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterDev /></Suspense>} />
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
