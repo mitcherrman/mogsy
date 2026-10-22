@@ -274,6 +274,13 @@ const ProPlayArenaDev = import.meta.env.DEV
 const WorldsExperienceDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/worlds-experience/WorldsExperienceDev"))
   : null;
+// TOURNAMENT ARENA: the animated bracket, Match Host Portal and duel
+// experience prototype over a fixture gateway. Same DEVELOPMENT-ONLY rule:
+// no /api/arena/* exists yet, and the path 404s in production. Under /lol/
+// for the LoL theme, as the planned /quiz/arena/* routes will be.
+const TournamentArenaDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/tournament-arena/TournamentArenaDev"))
+  : null;
 // GM-M1: the Match Grid visual-diagnosis lab. DEVELOPMENT-ONLY; the path
 // 404s in production. The production path is the `match` Ranked module.
 const MatchGridLab = import.meta.env.DEV
@@ -813,6 +820,12 @@ export const appRouter = createBrowserRouter(
                     <>
                       <Route path="/lol/dev/worlds-experience/*" element={<Suspense fallback={<RouteFallback />}><WorldsExperienceDev /></Suspense>} />
                       <Route path="/dev/worlds-experience" element={<Navigate to="/lol/dev/worlds-experience" replace />} />
+                    </>
+                  ) : null}
+                  {TournamentArenaDev ? (
+                    <>
+                      <Route path="/lol/dev/tournament-arena/*" element={<Suspense fallback={<RouteFallback />}><TournamentArenaDev /></Suspense>} />
+                      <Route path="/dev/tournament-arena" element={<Navigate to="/lol/dev/tournament-arena" replace />} />
                     </>
                   ) : null}
                   {MatchGridLab ? (
