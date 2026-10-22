@@ -75,6 +75,17 @@ describe("probe · quiz.v2 (standalone MCQ)", () => {
     // The question projection is the existing one; no answer is on the public round.
     expect(quizModule.projectQuestion(view)?.prompt).toBe("Which item grants Immolate?");
   });
+
+  it("a two-option round (Daily three acts, pass 5) projects exactly its two options", () => {
+    const body = publicRoundV2();
+    const payload = body.payload as Record<string, unknown>;
+    payload.question = {
+      question_id: "q2", prompt: "At rank 1, which cooldown is shorter?",
+      options: ["Ahri Q", "Annie Q"], category: "abilities" };
+    const question = quizModule.projectQuestion(readPublicRound(body));
+    expect(question?.options.map((o) => o.label)).toEqual(["Ahri Q", "Annie Q"]);
+    expect(question?.options.map((o) => o.id)).toEqual(["0", "1"]);
+  });
 });
 
 describe("probe · item_cost_duel.v5 (Meta Reflex, 3-card sprint)", () => {
