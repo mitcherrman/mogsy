@@ -326,6 +326,13 @@ const WordPuzzleLab = import.meta.env.DEV
 // Estimate) plays at /admin/playtests/:mode, launched from Ranked → Playtests.
 // The chunk carries no round or answer; the backend deals and reveals them.
 const OwnerPlaytestPage = lazy(() => import("./pages/admin/playtests/OwnerPlaytestPage"));
+// ROG1-D1: Worlds Dynasty, the owner-only run prototype. Every offer, roll and
+// score comes from /api/admin/dynasty (DYNASTY_ENABLED + require_admin).
+const DynastyRunPage = lazy(() => import("./pages/admin/dynasty/DynastyRunPage"));
+// DEV-only: the same page replaying recorded backend responses (no gate, no API).
+const DynastyPreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/dynasty/DynastyPreview"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -583,6 +590,8 @@ export const appRouter = createBrowserRouter(
                   {/* UGMP — the owner-only lab modes, launched from Ranked → Playtests.
                       The retired lab URLs redirect there; they mount nothing. */}
                   <Route path="/admin/playtests/:mode" element={<AdminRoute><Suspense fallback={<RouteFallback />}><OwnerPlaytestPage /></Suspense></AdminRoute>} />
+                  {/* ROG1-D1 — Worlds Dynasty owner prototype; full-screen, outside the admin shell. */}
+                  <Route path="/admin/dynasty" element={<AdminRoute><Suspense fallback={<RouteFallback />}><DynastyRunPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/interaction-labs" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/interaction-labs/:lab" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
@@ -817,6 +826,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {MatchGridLab ? (
                     <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
+                  ) : null}
+                  {DynastyPreview ? (
+                    <Route path="/dev/dynasty" element={<Suspense fallback={<RouteFallback />}><DynastyPreview /></Suspense>} />
                   ) : null}
                   {RangefinderLab ? (
                     <Route path="/dev/rangefinder" element={<Suspense fallback={<RouteFallback />}><RangefinderLab /></Suspense>} />
