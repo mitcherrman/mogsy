@@ -1,9 +1,14 @@
-# CC1 — Content Creator in production Admin: architecture audit
+# Content Creator in production Admin — handoff (CC1 audit + CC2 engine)
 
-Status: **READ-ONLY AUDIT COMPLETE. Nothing implemented.**
-Audited tree: `origin/main` @ `e931bc1a` (2026-10-22), in worktree
-`.worktrees/content-creator-cc1-audit` on branch `docs/content-creator-cc1-audit`
-(this file is the only change; uncommitted).
+| Phase | State |
+| --- | --- |
+| CC1 — architecture audit | **Done** (sections 1–8 below, unchanged except this header) |
+| CC2 — browser generation engine | **Implemented, unit-verified, pushed. Browser parity NOT yet verified** — the CI parity workflow runs once the PR is opened (section 9) |
+| CC3 — `/admin/content-creator` page | Not started |
+
+CC1 audited `origin/main` @ `e931bc1a` (2026-10-22). CC2 is built on
+`origin/main` @ `d809f836` in worktree `.worktrees/content-creator-cc2`, branch
+`feat/content-creator-cc2-browser-engine`.
 
 > The primary checkout (`docs/combat-v4-visual-prep`) is **761 commits behind
 > `origin/main`** and was not used for any finding. It was not touched.
@@ -288,5 +293,194 @@ production calls, no Railway access, nothing committed or pushed.
 **Can a working first version ship without Railway access from Claude? Yes** —
 Tier A uses only the existing production Admin auth and backend reads.
 
-**Exact next task:** CC2 — browser-engine parity for multi-question and daily
-package (see prompt in the final report).
+**Exact next task (as of CC1):** CC2 — browser-engine parity for
+multi-question and daily package. Done; see section 9.
+
+---
+
+## 9. CC2 — browser generation engine (implementation record)
+
+### What CC2 delivers
+
+A production-compatible, in-browser generation engine for **every** Content
+Studio mode — classic states, single-question post, answer-reveal post,
+multi-question challenge (2–10, paginated answers, repeat/mid copy variants)
+and the daily package — with the same slide order, slide kinds, question and
+answer anchoring, difficulty badges, harness parameters, zoom-envelope rules and
+capture-time QA as the Playwright Content Factory, plus `manifest.json`,
+`summary.json`, `failures.json`, per-group `metadata.json`, the `index.html`
+contact sheet and one ZIP in the CLI's `runs/` layout. No Admin page yet (CC3).
+
+CC3 entry point: `runContentExport({ request, questions, onProgress, signal })`
+in `src/lib/quiz-screenshot/contentExport.ts`, with plans from
+`buildExportPlan` / `buildDailyPackagePlan` (`exportPlan.ts`).
+
+### Implementation decisions
+
+1. **One specification, not two.** The generator's private job builders
+   (`classicAndPostJobs`, `challengeJobs`) moved verbatim into
+   `src/lib/quiz-screenshot/captureJobs.ts` (`planCaptureJobs`). `generate.ts`
+   and `exportPlan.ts` both call it; the browser plan crosses it with the
+   formats in the generator's own loop order (group → slide → format).
+2. **Shared QA, not re-implemented QA.** `captureOne`'s DOM sweep and its
+   findings rules moved verbatim into `domQa.ts` (`collectDomQa` /
+   `evaluateDomQa`). Playwright runs `page.evaluate(collectDomQa, attrs)`; the
+   browser runs it against the export iframe. The geometry-stability gates moved
+   into `layoutGates.ts`, run reports into `runReport.ts`, the copy-variant table
+   into `copyVariants.ts`, the PNG IHDR reader into `pngInfo.ts`. Before CC2 the
+   browser path ran only the two publishing gates and a broken-image check.
+3. **Fail-closed in the browser.** Any failing QA finding withholds the card (the
+   CLI writes the PNG and records the failure; Admin must not hand out a
+   publishable-looking file). Overflow findings are recorded, not failing, as in
+   the CLI.
+4. **Parity fixes to the existing `/admin/quiz-content` exporter**, found while
+   unifying. These are intentional behaviour changes, all toward the generator:
+   - the difficulty badge (`?difficulty=`) was never passed; now it is, when a
+     run tier, override or question metadata names one;
+   - the zoom envelope was applied to every card of a question+format, including
+     `explanation`, `recap` and end slides; now only where the generator shares
+     it (quiz slides, never explanation, never challenge slides);
+   - multi-state × multi-format plans are now in generator order (state outer)
+     rather than format outer; file names are unchanged;
+   - a harness refusal is now a **failure** (`harness-error`, as in the CLI); the
+     generator's own answer plan decides skips first.
+   The panel's delivery (single PNG, or CLI-layout ZIP) is unchanged.
+5. **Honest reporting.** `buildBrowserRunReport` lists only captured cards in
+   `manifest.slides`. Every failed card, failing finding, layout shift,
+   unreadable PNG or wrong-size PNG (real IHDR vs the format) is a failures.json
+   row. Status is `failed` when anything failed, nothing was captured, or the run
+   was aborted (`manifest.completed=false`). Provenance:
+   `generator.version = "browser-export-1"`, never the CLI's id.
+6. **Browser compatibility.** `browserSupport.ts` detects the engine (every iOS
+   browser is WebKit) and checks the required APIs. `unsupported` refuses to
+   start; Chromium is `verified`; Firefox and Safari are `unverified` with notes.
+   Firefox review findings guarded in code: custom properties re-seeded by
+   declared name (Gecko may not enumerate them in `getComputedStyle`), an
+   explicit `svg-too-large` failure above a 32 MiB data-URL ceiling on Gecko, and
+   a replaced iframe `about:blank` fails fast instead of timing out. WebKit's
+   historical canvas tainting is reported (`tainted-canvas`), not worked around.
+7. **Cancel.** `signal` stops between cards; the rest are reported `cancelled`.
+8. **Hermetic CI.** `ci-asset-stub.ts` serves deterministic PNGs and a champion
+   manifest on loopback. The workflow points `VITE_COMBAT_API_URL` and
+   `VITE_SUPABASE_URL` at it, so CI never touches Railway or Supabase. The
+   authority and the exporter load the same stub images.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `src/lib/quiz-screenshot/captureJobs.ts` | **new**: shared job expansion |
+| `src/lib/quiz-screenshot/domQa.ts` | **new**: shared DOM QA sweep and rules |
+| `src/lib/quiz-screenshot/layoutGates.ts` | **new**: shared geometry gates |
+| `src/lib/quiz-screenshot/runReport.ts` | **new**: shared summary, manifest, contact sheet |
+| `src/lib/quiz-screenshot/copyVariants.ts`, `pngInfo.ts` | **new**: moved from `generate.ts` |
+| `src/lib/quiz-screenshot/browserRun.ts` | **new**: browser run report, ZIP, daily package manifest |
+| `src/lib/quiz-screenshot/contentExport.ts` | **new**: `runContentExport` (CC3 entry point) |
+| `src/lib/quiz-screenshot/browserSupport.ts` | **new**: engine and API support assessment |
+| `src/lib/quiz-screenshot/exportPlan.ts` | modes, challenge, difficulty, canonical order, `buildDailyPackagePlan` |
+| `src/lib/quiz-screenshot/runBrowserExport.ts` | params, answer plan, shared QA, cancel, guards, richer outcomes |
+| `src/lib/quiz-screenshot/browserCapture.ts` | custom-property names, `svg-too-large` guard |
+| `scripts/quiz-screenshots/generate.ts` | uses the shared builder, gates and reports (behaviour unchanged) |
+| `scripts/quiz-screenshots/capture.ts` | uses the shared `domQa` (behaviour unchanged) |
+| `scripts/quiz-screenshots/verify-browser-export.ts` | every mode vs `captureOne`; `--exporter firefox`; verdicts; job summary |
+| `scripts/quiz-screenshots/ci-asset-stub.ts` | **new**: hermetic backend stub for CI |
+| `.github/workflows/content-creator-browser-parity.yml` | **new**: `pull_request` + `workflow_dispatch`; Chromium (blocking) and Firefox (informational) |
+| `captureJobs`, `exportPlan.equivalence`, `domQa`, `layoutGates`, `browserRun`, `browserSupport`, `contentExport` `.test.ts` | **new**: 69 tests |
+
+Untouched: `scripts/content-studio/*`, `src/pages/dev/content-studio/*`,
+`GenerateContentPanel.tsx`, the render harness, `package.json` (no new
+dependencies), Supabase, Railway, question data.
+
+### Tests (local, Windows; no browser launched, per AGENTS.md)
+
+| Check | Before CC2 | After CC2 |
+| --- | --- | --- |
+| `tsc -p tsconfig.app.json` | 0 errors | 0 errors |
+| scripts typecheck (ad-hoc config over `scripts/quiz-screenshots`, `scripts/content-studio`) | not recorded | only 3 pre-existing errors, in untouched `content-studio/server.ts` |
+| eslint on every changed file | — | clean |
+| scoped vitest (`src/lib/quiz-screenshot src/pages/admin src/components/admin src/pages/dev/quiz-render src/pages/dev/content-studio src/lib/content-handoff src/lib/content-studio scripts`) | 1360 passed / 8 failed | **1429 passed / 8 failed**, the same 8 |
+| full vitest | 18651 passed / 200 failed (49 files) | **not obtained**: two post-change full runs died with a vitest worker out-of-memory on this PC. Every importer of a changed module is inside the scoped set above |
+
+The 8 scoped baseline failures are not CC2's: 6 in `command.parser.test.ts` and
+1 in `command.reviewKey.test.ts` need `/bin/sh` (absent on Windows), and 1 in
+`AdminPlatformPolicies.test.tsx`.
+
+What the unit tests prove: `planCaptureJobs` equals a verbatim copy of the
+pre-CC2 generator builders across 11 configurations, so the CLI is unchanged;
+the browser plan equals the canonical captures for every mode (count, order,
+slide kind, state, question and correct answer, difficulty, harness params,
+zoom sharing, path), plus daily-package composition; and the QA rules, layout
+gates, honest run reports, ZIP contents, engine detection and guards behave as
+specified.
+
+### Browser verification: NOT YET RUN
+
+`content-creator-browser-parity` triggers on `pull_request`, and on
+`workflow_dispatch` once the file is on `main` (GitHub only dispatches workflows
+that exist on the default branch). The PR was not opened from this session (no
+GitHub CLI here, and the built-in browser is signed out); **the owner opens
+it**, which starts the run. Until the Chromium job passes, CC2's browser parity
+is unverified and CC2 is not complete.
+
+What the run does: 15 scenarios (the 10 CON1 classic cases, a single-question
+post with a gold badge, an answer-reveal post, a challenge of 5 with copy
+variants, a challenge of 7 in landscape, and a daily package) through
+`runContentExport`, each card compared against `captureOne` driven by the same
+`planCaptureJobs`; then 5 behaviour checks (asset gate blocks; the
+`/admin/quiz-content` ZIP is unchanged; the Admin document is untouched; a
+blocked challenge slide fails the run honestly; no local renderer contacted).
+Hard failures: MISSING, NO OUTPUT, LEAKED, DIMENSIONS, DIVERGED (aligned Δ > 10),
+ORDER, COUNT, SKIP-MISMATCH, PLAN ERROR. Evidence (PNG pairs, `parity.json`,
+`archives.json`, `behaviour.json`, Vite and stub logs) is uploaded as
+`content-creator-parity-chromium` and `content-creator-parity-firefox`.
+
+Things that could go wrong in that first run (predictions, not observations):
+- `collectDomQa` is now serialised from a module (`page.evaluate(fn)`) instead of
+  an inline arrow; a tsx `__name` wrapper would break the authority side. A unit
+  test guards the obvious forms; CI proves it.
+- The stub champion manifest is derived from the fixture by pattern; a missing
+  name shows as `unresolved-subject-image` on both sides (BOTH-REFUSED).
+- First-request Vite compile time (a warm-up step is included).
+
+### Known issues and gaps
+
+- The browser export cannot observe console errors, page errors or failed
+  network requests (Playwright hooks); `metadata.json` records them as empty.
+- Audit formats remain CLI-only, by design.
+- Firefox is guarded but unverified until the Firefox job passes. Safari and iOS
+  are unverified and likely to fail with `tainted-canvas`.
+- CON1's measured residuals (≤15px vertical drift; `vq-12` zoom 2.06 vs 2.02)
+  are expected to persist. Untested hypothesis for later: the export iframe's
+  initial `about:blank` renders in quirks mode while the authority page is in
+  standards mode, which may explain part of the drift.
+- Full local vitest could not complete after the change (OOM); the evidence is
+  the scoped run.
+
+### Current state
+
+Commits on `feat/content-creator-cc2-browser-engine`: `0e4ec21d` (CC1 handoff),
+`8c960913` (CC2 engine), and this handoff update. Pushed. PR not yet opened; not
+merged; nothing deployed. No Railway, Supabase or production access was used.
+
+### CC3 prerequisites
+
+1. Open the PR (base `main`) and get a **green Chromium parity job**; review its
+   artifacts, especially the challenge and daily-package PNG pairs. Fix any hard
+   failure in CC2 before CC3 builds on it.
+2. Merge CC2 into `main` (owner decision). Optionally run `workflow_dispatch`
+   from `main` afterwards.
+3. Owner's signed-in production spot check of the existing `/admin/quiz-content`
+   export once the CC2 parity changes ship (difficulty badge, zoom rule).
+
+### Exact next task: CC3
+
+Build `/admin/content-creator`: an AdminShell child route (inherits
+`AdminRoute`; wrap it in `AdminAuthGate` like `/admin/quiz-content`), lazy via
+`route-prefetch.ts`, registered in `admin-registry.ts` (repoint
+`content-post-studio`). UI: a question picker over the existing owner-JWT
+`quizApi` review endpoints, plus intake from the Admin Quiz Review handoff; a
+mode composer (classic, posts, challenge, daily) reusing ContentStudioPage's
+presentational pieces; the readiness preflight; generation via
+`runContentExport` with progress and cancel; ordered slide previews from the
+report's image blobs; per-PNG and ZIP download; the `browserSupport` notes.
+History (IndexedDB) is CC4. Gate `/dev/content-studio` behind `AdminRoute` or DEV.
