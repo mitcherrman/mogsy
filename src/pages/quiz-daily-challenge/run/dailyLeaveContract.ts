@@ -6,14 +6,14 @@ import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 
 export const DAILY_RUN_PATH = "/quiz/daily-challenge";
 
-const NORMAL_BODY = "Your completed stages are saved. You can resume before the Daily resets. This is your one run for today.";
-const LIVE_BODY = "Your completed stages are saved, but this stage is still live. Leaving does not forfeit immediately. Return within about 45 seconds or the stage may end, and there is no second Daily run today.";
+const NORMAL_BODY = "Everything you've earned is saved. You can return any time while today's Daily is available.";
+const LIVE_BODY = "Everything you've earned is saved, including this stage's answers. Leaving will not forfeit the Daily, and you can resume later.";
 const RESULT_WARNING = "This stage result screen will not be shown again when you return.";
 
 // DV2-P2A — a v5 day before its MAIN Daily (Standard) is complete. Nothing is
 // "completed" yet, so the legacy "completed stages are saved" is not said.
-const MAIN_NORMAL_BODY = "Today's Challenge isn't finished yet. You can resume before the Daily resets. This is your one run for today.";
-const MAIN_LIVE_BODY = "Today's Challenge is still live. Leaving does not forfeit immediately. Return within about 45 seconds or it may end, and there is no second Daily run today.";
+const MAIN_NORMAL_BODY = "Today's Challenge isn't finished yet, but everything you've earned is saved. You can resume later.";
+const MAIN_LIVE_BODY = "Today's Challenge is still in progress. Leaving will not forfeit it; your answers and progress are saved for later.";
 
 export function isActiveDailyRun(run: DailyRun | null): boolean {
   return run?.status === "active";
@@ -78,7 +78,7 @@ export function dailyLeaveCopy(
     }
     return {
       title: `Leave ${label}?`,
-      body: `Today's Daily is complete and saved. ${label} is still live: leaving does not forfeit immediately, but return within about 45 seconds or it may end.`,
+      body: `Today's Daily is complete and saved. ${label} will stay available to resume later.`,
       stayLabel: "Keep playing",
       leaveLabel: "Leave",
     };

@@ -26,6 +26,7 @@ import { countdownDataAttrs } from "@/lib/quiz-timer/countdownFeedback";
 import { useCountdownSfx, useServerTimeoutSfx } from "@/lib/quiz-timer/useCountdownFeedback";
 import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { StageTag } from "./StageTag";
+import { NextDailyCountdown } from "./NextDailyCountdown";
 
 const LEAGUECRAFT_HREF = "/quiz";
 
@@ -209,6 +210,7 @@ export function DailyStageChrome({
       <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
         {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase}
           survival={survival} strikesFloor={strikesFloor} />}
+        <NextDailyCountdown nextDailyAt={run.nextDailyAt} serverNow={run.serverNow} />
         <a data-testid="daily-screenshot-cta" href="https://mogzy.lol"
           target="_blank" rel="noopener noreferrer" aria-label="Play now at mogzy.lol"
           className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[9px] min-[400px]:text-[10px] min-[500px]:text-xs">

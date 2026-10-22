@@ -65,6 +65,7 @@ const MAX_SYNC_ATTEMPTS = 6;
 const SYNC_RETRY_MS = 1000;
 /** Floor between live ruleset reads during a stage. */
 const LIVE_READ_MIN_GAP_MS = 400;
+const ACTIVITY_LEASE_RENEW_MS = 30_000;
 
 export interface DailyRunState {
   load: DailyRunLoad;
@@ -303,6 +304,37 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
 
   // ── the stage tag, and the launch it covers ───────────────────────────────
   const stage = run ? currentStage(run) : null;
+
+  // Keep a server-authoritative lease while this parent page is genuinely
+  // open.  This protects an across-midnight player from a second tab/device
+  // (and the worker) mistaking the run for abandoned.  No gameplay state is
+  // sent, and fixture transports without the optional method remain valid.
+  const leaseRunId = run?.runId ?? null;
+  const leaseRunStatus = run?.status ?? null;
+  useEffect(() => {
+    if (!leaseRunId || leaseRunStatus !== "active" || !transport.noteActivity) return;
+    const controller = new AbortController();
+    const renew = async () => {
+      try {
+        const next = await transport.noteActivity!(leaseRunId, controller.signal);
+        if (!mounted.current) return;
+        if (next.status === "incomplete") {
+          const today = await transport.startToday(controller.signal);
+          adopt(today);
+        } else {
+          adopt(next);
+        }
+      } catch (e) {
+        // A lease is best-effort. Gameplay reads/answers remain authoritative,
+        // and the next renewal or ordinary Daily request retries it.
+        if (!isDailyRunAborted(e)) return;
+      }
+    };
+    void renew();
+    const id = window.setInterval(() => { void renew(); }, ACTIVITY_LEASE_RENEW_MS);
+    return () => { controller.abort(); window.clearInterval(id); };
+  }, [leaseRunId, leaseRunStatus, transport, adopt]);
+
   useEffect(() => {
     if (!stage || dailyIntroUp || resultFor || settledChild || optionalEntryUp) return;
     if (introduced.current.has(stage.id)) return;
