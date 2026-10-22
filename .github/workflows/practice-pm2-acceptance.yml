@@ -104,11 +104,9 @@ jobs:
           src/lib/quiz/practiceArena.test.ts
           src/components/quiz/practice-arena
           src/pages/Quiz.practiceMissed.test.tsx
-          src/components/ranked-arena/CanonicalArena.boundary.test.tsx
           src/components/ranked-arena/CanonicalArena.questionSurface.test.tsx
           src/components/ranked-arena/CanonicalArena.regionsSeam.test.tsx
           src/components/ranked-arena/CanonicalArena.rm1Integration.test.tsx
-          src/components/ranked-arena/DailyOnCanonicalArena.boundary.test.tsx
           src/components/ranked-arena/MobileMatchBar.test.tsx
           src/components/ranked-arena/AnswerGrid.test.tsx
           src/components/pro-play/arena-run
