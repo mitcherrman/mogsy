@@ -128,10 +128,10 @@ and production verification.
 
 ### 3a. Merge the PRs
 
-* Backend: <https://github.com/mitcherrman/League_Combat_Simulator/compare/master...daily-v2/e-admin-release?expand=1>
-  → base `master`. Title and body: §5.
-* Frontend: <https://github.com/mitcherrman/mogsy/compare/main...daily-v2/e-admin-release?expand=1>
-  → base `main`. Title and body: §5.
+* Backend: [League_Combat_Simulator#91](https://github.com/mitcherrman/League_Combat_Simulator/pull/91) → `master`.
+* Frontend: [mogsy#127](https://github.com/mitcherrman/mogsy/pull/127) → `main`.
+* Both were opened 2026-10-22 and were mergeable against current upstream.
+  Their checks show "unstable" because GitHub Actions is billing-blocked.
 
 Either order is safe:
 * the old frontend never calls the new routes;
@@ -295,6 +295,7 @@ Full vitest suite in four chunks, base main `e931bc1a` vs head.
 
 | | backend | frontend |
 |---|---|---|
+| PR | [League_Combat_Simulator#91](https://github.com/mitcherrman/League_Combat_Simulator/pull/91) → `master` | [mogsy#127](https://github.com/mitcherrman/mogsy/pull/127) → `main` |
 | branch | `daily-v2/e-admin-release` | `daily-v2/e-admin-release` |
 | head | `77e5fae5` | the commit adding this section |
 | upstream merged | master `df5b7ebd` (`cf5fef1a`), 0 behind | main `801462cc` (`15a69896`, after `1d01ffa7`), 0 behind |
@@ -326,4 +327,4 @@ Full vitest suite in four chunks, base main `e931bc1a` vs head.
 
 ## 7. Production status
 
-Not merged, not deployed, not verified. Waiting for §3.
+PRs open (#91, #127). Not merged, not deployed, not verified. Waiting for §3.
