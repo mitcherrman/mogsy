@@ -1,6 +1,6 @@
 /**
  * Owner takes (Creator Replay, including Daily three acts): a run that is NOT
- * the player's official Daily. Its score, streak, history and ratings are never
+ * the player's official Daily. Its score, streak and history are never
  * recorded as official, so its result surfaces must not say "Today's
  * Challenge" or "Daily score". The creator replay page provides `true`; every
  * official Daily surface keeps the default and is unchanged.
@@ -15,7 +15,7 @@ export const useOwnerTake = (): boolean => useContext(OwnerTakeContext);
 export const OWNER_TAKE_LABELS = {
   headline: "Owner take",
   scoreLabel: "Take score",
-  note: "Not official — no Daily score, streak, history or rating is recorded.",
+  note: "Not official — your Daily score, streak and history are untouched.",
 } as const;
 
 /** The main result's hero relabelled for an owner take (same figures). */
