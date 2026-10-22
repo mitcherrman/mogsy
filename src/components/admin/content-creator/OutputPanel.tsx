@@ -5,7 +5,7 @@
  * single-PNG downloads; nothing is re-rendered for display, so a preview is the
  * file the operator will publish.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -41,9 +41,14 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Failed or incomplete",
 };
 
+/** Object URLs for the images, owned by an effect so each one is revoked exactly once. */
 function useObjectUrls(images: readonly CreatorImage[]): Map<string, string> {
-  const urls = useMemo(() => new Map(images.map((i) => [i.path, URL.createObjectURL(i.blob)])), [images]);
-  useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
+  const [urls, setUrls] = useState<Map<string, string>>(() => new Map());
+  useEffect(() => {
+    const next = new Map(images.map((i) => [i.path, URL.createObjectURL(i.blob)]));
+    setUrls(next);
+    return () => next.forEach((u) => URL.revokeObjectURL(u));
+  }, [images]);
   return urls;
 }
 
@@ -99,7 +104,8 @@ function RunResult({ run, onZoom }: { run: CreatorRunView["runs"][number]; onZoo
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4" data-testid="cc-previews">
         {run.images.map((img) => {
-          const url = urls.get(img.path)!;
+          const url = urls.get(img.path);
+          if (!url) return <div key={img.path} className="aspect-square animate-pulse rounded-lg bg-muted/30" />;
           return (
             <figure key={img.path} className="group overflow-hidden rounded-lg border border-border/60 bg-black/40">
               <button type="button" className="block w-full" onClick={() => onZoom(img, url)} aria-label={`Preview ${img.path}`}>
