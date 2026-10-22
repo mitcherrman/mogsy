@@ -14,6 +14,7 @@
  */
 import type React from "react";
 import type { PtClockReading } from "./chronometer";
+import type { CountInBeat } from "./countIn";
 
 // ---------------------------------------------------------------------------
 // §1 — agreed contracts (handoff §4.2). Do not change without updating the
@@ -23,6 +24,8 @@ import type { PtClockReading } from "./chronometer";
 export type PtPhase =
   | "loading"
   | "armed"
+  /** PT5.3: a blind round counting in (3, 2, 1); presses are refused until the game starts it. */
+  | "countdown"
   | "running"
   | "stopped"
   | "submitting"
@@ -129,7 +132,7 @@ export interface PtStageModel {
   /** Non-null exactly while `phase === "revealed"`. */
   reveal: PtRevealView | null;
   /** Advance past the reveal. `"key"` when Space/Enter did it (PT4.4: the page then guards the next round's keys briefly). */
-  onNext: (source?: "key") => void;
+  onNext: (source?: "key" | "auto") => void;
   /** Flank and round-rail content; absent flanks draw the quiet defaults. */
   hud?: PtRunHud | null;
   /**
@@ -138,6 +141,34 @@ export interface PtStageModel {
    * nothing reads a value back out of the stopwatch. Absent = it shows 0.00.
    */
   clock?: PtClockReading | null;
+  /**
+   * PT5.3: present only in the BLIND automatic flow (the owner lab). The game
+   * counts each round in and starts it; the chronometer shows no elapsed time
+   * while it runs; reveals and transitions move on by themselves. Absent = the
+   * PT5.2 flow (press to cast, visible stopwatch, Next to continue).
+   */
+  flow?: PtBlindFlowView | null;
+}
+
+/**
+ * PT5.3 — what the blind flow adds to the stage model. Pacing and the hold are
+ * the page's; the presenters only draw them and report the player's choice.
+ */
+export interface PtBlindFlowView {
+  /** The count-in beat on screen while the round counts in, or null. */
+  countIn: CountInBeat | null;
+  /** This count-in pass (`<round>:<n>`): a re-count after a hold or a hidden tab is a new pass. */
+  countInId: string | null;
+  /**
+   * The player asked to hold BETWEEN attempts: no count-in runs and no reveal
+   * or transition moves on by itself until they resume. Never while a round is
+   * being timed.
+   */
+  held: boolean;
+  /** Hold the run (only offered between attempts). */
+  onHold: () => void;
+  /** Resume a held count-in: it starts over from 3. */
+  onResume: () => void;
 }
 
 export type { PtClockReading };

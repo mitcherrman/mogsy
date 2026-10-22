@@ -231,31 +231,119 @@ orphan.
   workflow's path filter); on recent branches it failed 8 of 8 runs. The fix
   belongs to the Perfect Timing owners. #97 does not change it.
 
+## Lovable ⇄ GitHub synchronization audit (2026-10-21)
+
+Context: #97 is merged into `main` as `7a4ebed2`, and the production migration
+has been applied and verified. Lovable, however, reports commit `4d588792` and
+calls it "diverged" from GitHub `main`. That commit does not contain the
+Notifications 2.0 API files. The investigation was read-only: git history,
+GitHub REST events, and a plain HTTP fetch of mogzy.lol.
+
+### Findings
+
+1. **`4d588792` is strictly *behind* GitHub `main`. From GitHub's side nothing
+   has diverged.** It is an ancestor of `main` (`608f9312` at audit time),
+   59 commits behind and 0 ahead.
+2. **GitHub `main` was never at `4d588792`.** The commit is not on `main`'s
+   first-parent line. It was round 1 of the masthead redesign on the PR #102
+   feature branch `academy/orrery-first-header` (2026-10-20 04:42Z, "Academy
+   masthead: keep the desktop column width…"). It first entered `main` inside
+   the #102 merge `f6835049` (09:58Z), which came after the #97 merge.
+   **Lovable is therefore pinned to a feature-branch snapshot, not to `main`**,
+   most likely because its editor was switched to the #102 branch for review and
+   never switched back. A non-`main` editor branch is the only state consistent
+   with a SHA that was never a `main` tip.
+3. **No history was rewritten.** Every push to `main` in GitHub's event window
+   (2026-10-17 → 2026-10-21) was a fast-forward. No force-push happened on
+   either side.
+4. **Every commit Lovable itself authored is already on `main`.** The latest
+   `gpt-engineer-app[bot]` commit is `edc96f7d` ("Connected overview journeys",
+   2026-10-20 01:33Z). It, and every earlier bot commit, is an ancestor of both
+   `4d588792` and `main`. No Lovable-authored commit after `4d588792` exists on
+   any GitHub ref.
+5. **Lovable's divergence precedent.** On 2026-10-18 Lovable diverged and pushed
+   its local state to a recovery branch, `lovable-sync-1792282109`, whose
+   content matches what #67 merged (`3d5cb057`). No such branch has been created
+   since then. So if Lovable holds edits made after `4d588792`, they exist
+   **only inside Lovable** and must be surfaced before switching, never
+   discarded. The older `lovable-sync` (2026-10-06, 4 OWN1 test/registry
+   commits) and `lovable-sync-1792282109` branches are stale artifacts, not part
+   of this release. Leave them alone.
+6. **GitHub `main` carries all of Notifications 2.0**, every file byte-identical
+   to the CI-verified #97 head `e86cc962`:
+   - the `src/lib/notifications/` module (`api`, `policy`, `sync`, `focus`,
+     `useAdminInbox`, `usePlayerInbox`);
+   - `AdminNotifications`, `RecordFocusNotice`, `MogzyIdentityMenu`, and
+     `pages/Notifications`;
+   - the `/notifications` route in `App.tsx` and `route-prefetch.ts`;
+   - the migration.
+
+   `4d588792` lacks the whole `notifications` module, `RecordFocusNotice`, the
+   page, the route and the migration, and has the pre-v2 `AdminNotifications`
+   and `MogzyIdentityMenu`.
+7. **mogzy.lol still serves pre-v2** (`/assets/index-B6rLDjpV.js` on
+   2026-10-21 11:13Z): "No notifications yet" and direct `user_notification_reads`
+   reads are present, and `get_my_notifications` and "History, saved" are absent.
+   This is safe in the interim, because the migration was built to keep the old
+   frontend working against the new schema.
+
+### What must be preserved
+
+- **GitHub side:** all of `main`. It is a superset of `4d588792` and includes
+  #97, #100, #102, #103, #104 and #107–#110. Nothing on GitHub needs rewriting.
+- **Lovable side:** only edits made inside Lovable after `4d588792`, if any.
+  None are visible on GitHub. Check Lovable's history before switching.
+
+### Safe synchronization (no force-push, no reset, nothing overwritten)
+
+1. In Lovable → Project settings → GitHub, read which **branch** the project is
+   connected to and whether Lovable lists unpushed changes.
+2. **If Lovable has local changes after `4d588792`:** let Lovable push them. By
+   precedent it creates a `lovable-sync-<timestamp>` branch on GitHub. Review
+   that branch against `main` in a PR and merge or cherry-pick what is still
+   wanted. Do not discard it.
+3. **Switch Lovable's branch to `main`.** Because `main` is a strict superset of
+   `4d588792`, this is a fast-forward for Lovable and needs no git
+   reconciliation.
+4. **If Lovable stays on an old commit after that,** re-signal it with a commit
+   on `main`, as on 2026-10-18 (`1394b7ae`, `2151fcd6`, `6e697566`). Merging the
+   docs-only PR carrying this section does exactly that.
+5. **Verify inside Lovable before publishing.** The commit shown must equal
+   GitHub `main` HEAD (≥ `608f9312`), and these files must be present:
+   - `src/lib/notifications/api.ts`
+   - `src/lib/notifications/focus.ts`
+   - `src/pages/Notifications.tsx`
+   - `src/components/admin/RecordFocusNotice.tsx`
+   - the `/notifications` route in `src/App.tsx`
+6. **Publish** in Lovable. Then confirm the release from the live bundle with a
+   plain HTTP fetch, no browser:
+   - the entry hash changes from `index-B6rLDjpV.js`;
+   - the bundle contains `get_my_notifications` and "History, saved";
+   - "No notifications yet" is gone.
+
+   Then do the behavioural checks listed under next actions.
+
 ## Current state
 
-- Branch: `notifications/v2`, PR [#97](https://github.com/mitcherrman/mogsy/pull/97),
-  up to date with `main` @ `2a7fa911`. Final SHA and its CI run are in the PR
-  thread.
-- **Not merged, not deployed.** The migration has **not** been applied to
-  production. The PR stays unmerged by instruction.
+- #97 merged as `7a4ebed2`. The production migration is applied and verified
+  (by ChatGPT through the connected database).
+- GitHub `main` holds the full release. **Lovable is not synced** (pinned at
+  `4d588792`), and **mogzy.lol still serves the pre-v2 frontend.**
 
 ## Remaining blockers / next actions
 
-1. After CI is green, ChatGPT (connected database) will:
-   - re-run the preflight and confirm `missing_subject_notifications` lists only
-     `e1819840-…`;
-   - apply the migration in one transaction;
-   - run verify: every `*_ok` must be true and `orphans_kept` must be 1.
-   Rollback: `notifications_v2_rollback.sql`.
-2. Merge #97, then Lovable deploys.
+1. The owner checks Lovable's connected branch and pending changes (steps 1–2
+   above), then switches the editor to `main`.
+2. Confirm that Lovable shows `main` HEAD and the Notifications 2.0 files
+   (step 5). Then publish.
 3. Verify on `mogzy.lol`:
    - the bell badge and panel;
    - Clear all and Dismiss persist across reload;
    - admin inbox tabs and counters;
    - a feedback status change resolves its item and notifies the player;
    - one deep link per type (refresh, Back/Forward, a deleted id);
-   - the orphan appears under Completed as "Record deleted".
+   - the orphan `e1819840-…` appears under Completed as "Record deleted".
 4. Follow-ups, not required for this issue:
    - regenerate Supabase types;
-   - the Perfect Timing owners update `e2e/interaction-labs-access.spec.ts`
-     for PT4.4.
+   - the Perfect Timing owners land their access-spec fix
+     (`fix/interaction-labs-pt-portal-assertion`, `8a438810`).

@@ -14,7 +14,9 @@ export {
 export {
   PRO_PLAY_ARENA_MODE,
   PRO_PLAY_REPORT_IDENTITY,
+  proPlayModeLabel,
   projectProPlayArena,
+  type ProPlayArenaProjectionOptions,
   projectProPlayOptions,
   projectProPlayQuestion,
   projectProPlayReportable,

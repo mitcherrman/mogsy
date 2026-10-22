@@ -97,6 +97,7 @@ import "@/pages/academy-core/academy-core.css";
 import "./orrery/academy-core-v35.css";
 import "./orrery/academy-core-masthead.css";
 import "./orrery/academy-core-phone-fit.css";
+import "./orrery/academy-core-seamless-hud.css";
 
 import OrreryCore from "./orrery/OrreryCore";
 import OrreryEnvironment from "./orrery/OrreryEnvironment";

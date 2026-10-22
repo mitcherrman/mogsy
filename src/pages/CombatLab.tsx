@@ -118,6 +118,8 @@ import {
   type TargetDefenseMetadata,
   type CombatLabCreditStatus,
   CombatLabCreditsExhaustedError,
+  capabilityBadge,
+  type Capability,
 } from "@/lib/combat-lab/api";
 import CombatLabToolbar from "@/components/combat-lab/CombatLabToolbar";
 import { useInputHistory } from "@/hooks/useInputHistory";
@@ -130,6 +132,10 @@ import {
 } from "@/lib/combat-lab/inputHistory";
 
 const STORAGE_KEY = "combat-lab:last-config";
+// The one item active Combat Lab exposes as its own button (backend registry key).
+const GUNBLADE_ITEM = "Hextech Gunblade";
+const GUNBLADE_ACTIVE_ID = "item_hextech_gunblade";
+const GUNBLADE_ACTIVE_LABEL = "Gunblade · Lightning Bolt";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
 const ALLOWED_CRIT_MODES = CRIT_MODES;
 
@@ -458,7 +464,14 @@ function SearchSelect<T extends { name: string }>({
   );
 }
 
-function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
+function MultiSelect<T extends {
+  name: string;
+  tree?: string;
+  type?: string;
+  capability?: Capability;
+  capability_label?: string;
+  simulation_warnings?: string[];
+}>({
   label,
   placeholder,
   values,
@@ -485,6 +498,18 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   const filtered = useMemo(
     () => options.filter((o) => (o?.name ?? "").toLowerCase().includes(query.toLowerCase())),
     [options, query]
+  );
+  // Every current ranked item and rune is selectable, modeled or not, so a
+  // selected entry's limitations are always spelled out under the picker.
+  const capabilityWarnings = useMemo(
+    () => values.flatMap((value) =>
+      options
+        .filter((option) => option.name.toLowerCase() === String(value).toLowerCase())
+        .flatMap((option) => (option.simulation_warnings ?? []).map(
+          (warning) => ({ item: value, warning })
+        ))
+    ),
+    [options, values]
   );
   const groups = useMemo(() => {
     if (!grouped) return null;
@@ -543,6 +568,13 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
           </div>
         )}
       </button>
+      {capabilityWarnings.length > 0 && (
+        <div role="status" className="mt-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-200">
+          {capabilityWarnings.map(({ item, warning }) => (
+            <p key={item + warning}><strong>{item}:</strong> {warning}</p>
+          ))}
+        </div>
+      )}
       {open && (
         <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl">
           <div className="flex items-center gap-2 border-b border-border/60 px-2">
@@ -590,7 +622,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                             {withIcons && <IconBubble name={o.name} size="sm" />}
                             <span className="truncate">{o.name}</span>
                           </span>
-                          {selected && <span className="text-xs">✓</span>}
+                          <CapabilityTag option={o} selected={selected} />
                         </button>
                       );
                     })}
@@ -611,7 +643,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                         {withIcons && <IconBubble name={o.name} size="sm" />}
                         <span className="truncate">{o.name}</span>
                       </span>
-                      {selected && <span className="text-xs">✓</span>}
+                      <CapabilityTag option={o} selected={selected} />
                     </button>
                   );
                 })}
@@ -619,6 +651,57 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Collapsed-row summary for an item or rune selection. The picker (and its
+ * limitation notes) only renders when the row is opened, so the summary says
+ * up front how many selected entries are not fully simulated.
+ */
+function SelectionSummary({
+  values,
+  options,
+}: {
+  values: string[];
+  options: { name: string; capability?: Capability }[];
+}) {
+  if (values.length === 0) return <>None</>;
+  const limited = values.filter((value) => {
+    const option = options.find((o) => o.name.toLowerCase() === String(value).toLowerCase());
+    return option?.capability != null && option.capability !== "fully_modeled";
+  }).length;
+  return (
+    <>
+      {values.join(" · ")}
+      {limited > 0 && (
+        <span className="text-amber-300/90"> · {limited} not fully simulated</span>
+      )}
+    </>
+  );
+}
+
+/** Option-row tail: a capability badge for anything not fully modeled, then the check. */
+function CapabilityTag({
+  option,
+  selected,
+}: {
+  option: { capability?: Capability; capability_label?: string };
+  selected: boolean;
+}) {
+  const badge = capabilityBadge(option.capability);
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      {badge && (
+        <span
+          title={option.capability_label ?? badge}
+          className="rounded border border-amber-500/40 px-1 py-px text-[10px] text-amber-300/90"
+        >
+          {badge}
+        </span>
+      )}
+      {selected && <span className="text-xs">✓</span>}
+    </span>
   );
 }
 
@@ -726,6 +809,49 @@ export default function CombatLab() {
       cancelled = true;
     };
   }, []);
+
+  // Every current ranked item and rune is selectable, so the only names a saved
+  // build can hold that the catalog lacks are ones League no longer has
+  // (Phase Rush, Luden's Companion, ...) or corrupt entries. When the catalog
+  // loads, drop those and say so rather than simulating a dead name.
+  useEffect(() => {
+    if (metaLoading || runes.length === 0) return;
+    const current = new Set(runes.map((r) => r.name.toLowerCase()));
+    // A corrupt saved build can hold a non-array or non-string entries.
+    const isCurrent = (name: unknown): name is string =>
+      typeof name === "string" && current.has(name.toLowerCase());
+    const saved: unknown[] = Array.isArray(config.runes) ? config.runes : [];
+    if (Array.isArray(config.runes) && saved.every(isCurrent)) return;
+    setConfig((prev) => ({
+      ...prev,
+      runes: (Array.isArray(prev.runes) ? prev.runes : []).filter(isCurrent),
+    }));
+    const removed = saved.filter((name) => !isCurrent(name)).map(String);
+    if (removed.length === 0) return;
+    toast({
+      title: removed.length === 1 ? "Retired rune removed" : "Retired runes removed",
+      description: `Not in the current ranked roster: ${removed.join(", ")}.`,
+    });
+  }, [metaLoading, runes, config.runes]);
+
+  useEffect(() => {
+    if (metaLoading || items.length === 0) return;
+    const current = new Set(items.map((i) => i.name.toLowerCase()));
+    const isCurrent = (name: unknown): name is string =>
+      typeof name === "string" && current.has(name.toLowerCase());
+    const saved: unknown[] = Array.isArray(config.items) ? config.items : [];
+    if (Array.isArray(config.items) && saved.every(isCurrent)) return;
+    setConfig((prev) => ({
+      ...prev,
+      items: (Array.isArray(prev.items) ? prev.items : []).filter(isCurrent),
+    }));
+    const removed = saved.filter((name) => !isCurrent(name)).map(String);
+    if (removed.length === 0) return;
+    toast({
+      title: removed.length === 1 ? "Retired item removed" : "Retired items removed",
+      description: `Not in the current ranked roster: ${removed.join(", ")}.`,
+    });
+  }, [metaLoading, items, config.items]);
 
   const critModes = useMemo<readonly CritMode[]>(() => {
     const fromApi = (options?.crit_modes || []).filter((m): m is CritMode =>
@@ -2779,6 +2905,8 @@ function InteractiveSandbox({
         }
         payload = {
           champion_name: config.champion,
+          item_names: config.items,
+          rune_names: config.runes,
           attacker_stats,
           target_stats,
           state: safeState,
@@ -2825,6 +2953,7 @@ function InteractiveSandbox({
           ? "Basic Attack"
           : (() => {
               const a = (typeof action_id === "string" && action_id) || "Active";
+              if (a === GUNBLADE_ACTIVE_ID) return GUNBLADE_ACTIVE_LABEL;
               const found = actions.find((x) => x.id === a);
               return found?.label || found?.name || a;
             })();
@@ -3418,7 +3547,7 @@ function InteractiveSandbox({
             <div className="border-t border-border/25">
             <ConfigRow
               label="Items"
-              summary={config.items.length > 0 ? config.items.join(" · ") : "None"}
+              summary={<SelectionSummary values={config.items} options={items} />}
             >
               <MultiSelect
                 label="Items (max 6)"
@@ -3446,7 +3575,7 @@ function InteractiveSandbox({
             >
             <ConfigRow
               label="Runes"
-              summary={config.runes.length > 0 ? config.runes.join(" · ") : "None"}
+              summary={<SelectionSummary values={config.runes} options={runes} />}
             >
               <MultiSelect
                 label="Runes"
@@ -3657,6 +3786,35 @@ function InteractiveSandbox({
               disabled={!!busy || offline}
               onClick={() => sendStep("basic-attack")}
             />
+            {config.items.includes(GUNBLADE_ITEM) && (
+              <div className="border-t border-border/25 pt-2">
+                <ActionButton
+                  label={GUNBLADE_ACTIVE_LABEL}
+                  hint={
+                    targetSetup.targetMode === "target_champion"
+                      ? "Single-target magic damage, 25% slow · 60s cooldown"
+                      : "Select an enemy champion to use Lightning Bolt"
+                  }
+                  icon={Zap}
+                  tone="accent"
+                  busy={busy === GUNBLADE_ACTIVE_ID}
+                  disabled={
+                    !!busy || offline || !config.champion ||
+                    targetSetup.targetMode !== "target_champion"
+                  }
+                  onClick={() => sendStep("active", GUNBLADE_ACTIVE_ID)}
+                />
+                {/* The Items row is collapsed by default, so the backend's
+                    stated limits are repeated beside the cast itself. */}
+                {(items.find((item) => item.name === GUNBLADE_ITEM)?.simulation_warnings ?? []).map(
+                  (warning) => (
+                    <p key={warning} className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                      {warning}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
             {visibleActions.length > 0 && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/25 pt-2">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -4771,9 +4929,7 @@ function DefenderPanel({
             <div className="border-t border-border/25">
             <ConfigRow
               label="Items"
-              summary={
-                setup.targetItemNames.length > 0 ? setup.targetItemNames.join(" · ") : "None"
-              }
+              summary={<SelectionSummary values={setup.targetItemNames} options={items} />}
             >
               <MultiSelect
                 label="Defender items"
@@ -4802,9 +4958,7 @@ function DefenderPanel({
             >
             <ConfigRow
               label="Runes"
-              summary={
-                setup.targetRuneNames.length > 0 ? setup.targetRuneNames.join(" · ") : "None"
-              }
+              summary={<SelectionSummary values={setup.targetRuneNames} options={runes} />}
             >
               <MultiSelect
                 label="Defender runes"

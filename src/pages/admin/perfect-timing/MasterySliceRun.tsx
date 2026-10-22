@@ -19,6 +19,15 @@
  * revealed / voided / failed stage goes through `stageRef`, so a double press
  * or a stale callback moves the run at most one state.
  *
+ * PT5.3 — BLIND AUTOMATIC FLOW (`flow="blind"`, the owner lab default). Each
+ * stage counts in (3, 2, 1) and the game starts it; the player only stops it.
+ * Its reveal moves on by itself after `REVEAL_DWELL_MS`, the Rank up / Item
+ * equipped transition after `TRANSITION_DWELL_MS`, straight into the next
+ * stage's count-in. Hold (count-in, reveal, transition — never while a stage
+ * is timed) stops every automatic move until the player continues; a held
+ * count-in resumes from 3. Voided, failed and expired stages never move on by
+ * themselves: their recovery stays the player's.
+ *
  * RECOVERY (handoff PT5 §5).
  *  - Interrupted (hidden / pagehide / clock / timeout): the stage is voided and
  *    never sent; Next goes on to the next stage of the SAME ability. The server
@@ -36,14 +45,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { PerfectTimingArena } from "@/components/perfect-timing/PerfectTimingArena";
 import { PerfectTimingResults } from "@/components/perfect-timing/PerfectTimingResults";
 import { PerfectTimingBar, PerfectTimingScreen } from "@/components/perfect-timing/PerfectTimingScreen";
-import { hasTransition } from "@/components/perfect-timing/presentation";
+import { TRANSITION_DWELL_MS, hasTransition } from "@/components/perfect-timing/presentation";
 import { SliceTransition } from "@/components/perfect-timing/SliceTransition";
 import { PerfectTimingApiError, type PerfectTimingApi } from "@/lib/perfect-timing/api";
 import { SLICE_STAGES, type PtSliceDeal, type PtSliceRelease } from "@/lib/perfect-timing/sliceContract";
 import { useSplashManifest } from "@/lib/perfect-timing/useSplashManifest";
+import { useCountIn } from "@/lib/perfect-timing/useCountIn";
 import { useTimingEngine } from "@/lib/perfect-timing/useTimingEngine";
-import type { PtPhase, PtRevealView, PtRunHud, PtRunSummary, PtStageModel, PtTier } from "@/lib/perfect-timing/viewModel";
-import { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS, VOID_TEXT, dealErrorText } from "./runShared";
+import type { PtBlindFlowView, PtPhase, PtRevealView, PtRunHud, PtRunSummary, PtStageModel, PtTier } from "@/lib/perfect-timing/viewModel";
+import { ADVANCE_KEY_GUARD_MS, SUBMITTING_DELAY_MS, VOID_TEXT, dealErrorText, type PtFlow } from "./runShared";
 import { toSliceRevealView, toSliceRoundView } from "./sliceView";
 
 interface StageSlot {
@@ -77,11 +87,14 @@ const expiredText = (deal: PtSliceDeal, i: number) =>
   `Slice expired — re-dealing ${deal.champion} ${deal.ability_name} from ${STAGE_NAME[i] ?? "this stage"}.`;
 const CHANGED_TEXT = "This ability's data changed since the slice was dealt, so it cannot continue. Start a new slice.";
 
-export function MasterySliceRun({ api, lead, onChangeMode }: {
+export function MasterySliceRun({ api, lead, onChangeMode, flow = "blind" }: {
   api: PerfectTimingApi;
   lead: ReactNode;
   onChangeMode: () => void;
+  /** PT5.3: the blind automatic flow (default) or the PT5.2 visible flow. */
+  flow?: PtFlow;
 }) {
+  const blind = flow === "blind";
   const manifest = useSplashManifest();
   const [run, setRun] = useState<SliceRun | null>(null);
   const [index, setIndex] = useState(0);
@@ -93,6 +106,8 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
   // the keyboard player's focus goes to the seal, as it does after a reveal.
   const cameFromTransition = useRef(false);
   const [showSubmitting, setShowSubmitting] = useState(false);
+  // PT5.3: the player's hold between attempts (blind flow only).
+  const [held, setHeld] = useState(false);
 
   // The same async guards as the Random Run: mounted, same run, same round.
   const alive = useRef(true);
@@ -162,7 +177,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
   }, [submit]);
 
   const engine = useTimingEngine({ onStopped, documentKeys: stage.kind === "play", keyGuard, pointerGuard });
-  const { arm, reset } = engine;
+  const { arm, reset, autoStart } = engine;
 
   // ---------------------------------------------------------------- stages
   const beginStage = useCallback((i: number, r: SliceRun) => {
@@ -175,8 +190,9 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     }
     currentRoundId.current = roundId;
     setStage({ kind: "play" });
-    arm(roundId);
-  }, [arm, setStage]);
+    // PT5.3: blind stages count in and are started by the game, not by a press.
+    arm(roundId, blind ? "auto" : "press");
+  }, [arm, blind, setStage]);
 
   /** Re-deal the SAME ability from stage `i` (0-based); earlier results stay. */
   const resume = useCallback(async (i: number) => {
@@ -224,6 +240,7 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     reset();
     commitRun(null);
     setIndex(0);
+    setHeld(false);
     setStage({ kind: "dealing", message: null });
     try {
       const deal = await api.dealSlice();
@@ -258,6 +275,17 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     setStage({ kind: "voided", message: VOID_TEXT[interruptReason ?? "hidden"] });
   }, [stage.kind, enginePhase, interruptReason, index, setSlot, setStage]);
 
+  // PT5.3 — the count-in (see the Random Run): only for the stage on screen.
+  const onCountInStart = useCallback((roundId: string, t: number) => {
+    if (roundId !== currentRoundId.current || stageRef.current.kind !== "play") return;
+    autoStart(roundId, t);
+  }, [autoStart]);
+  const countIn = useCountIn({
+    roundId: engine.state.phase === "countdown" ? engine.state.roundId : null,
+    active: blind && stage.kind === "play" && enginePhase === "countdown" && !held,
+    onStart: onCountInStart,
+  });
+
   useEffect(() => {
     if (stage.kind !== "submitting") return;
     const t = window.setTimeout(() => setShowSubmitting(true), SUBMITTING_DELAY_MS);
@@ -272,6 +300,8 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     // run already somewhere else and does nothing.
     const at = stageRef.current.kind;
     if (at !== "revealed" && at !== "voided" && at !== "lock-error") return;
+    // Moving on is the player continuing (or a dwell they did not hold): the hold is over.
+    setHeld(false);
     if (index + 1 >= SLICE_STAGES) { currentRoundId.current = null; setStage({ kind: "complete" }); return; }
     const next = index + 1;
     if (hasTransition(r.deal.stages[next]?.kind)) {
@@ -293,10 +323,20 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     keyGuardUntil.current = until;
     pointerGuardUntil.current = until;
     cameFromTransition.current = true;
+    setHeld(false);
     beginStage(at.to, r);
   }, [beginStage]);
 
-  const onReveal = useCallback((source?: "key") => {
+  // PT5.3 — hold between attempts only: a stage counting in, a reveal, a transition.
+  const enginePhaseRef = useRef(enginePhase);
+  enginePhaseRef.current = enginePhase;
+  const hold = useCallback(() => {
+    const at = stageRef.current.kind;
+    if (at === "revealed" || at === "transition" || (at === "play" && enginePhaseRef.current === "countdown")) setHeld(true);
+  }, []);
+  const resumeHeld = useCallback(() => setHeld(false), []);
+
+  const onReveal = useCallback((source?: "key" | "auto") => {
     if (source === "key") keyGuardUntil.current = performance.now() + ADVANCE_KEY_GUARD_MS;
     advance();
   }, [advance]);
@@ -330,6 +370,14 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     }
   })();
 
+  const flowView: PtBlindFlowView | null = blind ? {
+    countIn: countIn.beat,
+    countInId: countIn.passId,
+    held,
+    onHold: hold,
+    onResume: resumeHeld,
+  } : null;
+
   const statusText = stage.kind === "dealing" ? stage.message
     : stage.kind === "deal-error" || stage.kind === "lock-error" || stage.kind === "voided" ? stage.message
     : null;
@@ -353,7 +401,9 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
     onNext: onReveal,
     hud,
     // PT5.2: the visible stopwatch draws the engine's own readings; it never measures.
+    // PT5.3: the blind chronometer draws only the locked value.
     clock: { t0: engine.state.t0, elapsedMs: engine.state.elapsedMs },
+    flow: flowView,
   };
 
   const summary: PtRunSummary | null = run && stage.kind === "complete" ? {
@@ -404,7 +454,8 @@ export function MasterySliceRun({ api, lead, onChangeMode }: {
       {summary ? (
         <PerfectTimingResults summary={summary} onPlayAgain={() => void startSlice()} onExit={onChangeMode} exitLabel="Change mode" />
       ) : transitionRound ? (
-        <SliceTransition key={transitionRound.roundId} round={transitionRound} onContinue={continueFromTransition} />
+        <SliceTransition key={transitionRound.roundId} round={transitionRound} onContinue={continueFromTransition}
+          autoAdvanceMs={blind ? TRANSITION_DWELL_MS : null} held={held} onHold={hold} />
       ) : (
         <PerfectTimingArena model={model} actions={actions} nextLabel={lastStage ? "See results" : "Next stage"}
           autoFocusSeal={cameFromTransition.current && stage.kind === "play" ? true : undefined} />

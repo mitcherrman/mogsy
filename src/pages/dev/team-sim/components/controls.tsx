@@ -137,6 +137,11 @@ export type PickerEntry = {
   /** Rendered next to a disabled entry so "why not" is visible. */
   reason?: string;
   group?: string;
+  /** Accepted but not fully simulated ("Partial", "Not simulated", ...). */
+  badge?: string;
+  capabilityLabel?: string;
+  /** Limitations, listed under the picker once the entry is selected. */
+  warnings?: string[];
 };
 
 /**
@@ -180,6 +185,13 @@ export function CatalogPicker({
   }, [entries, query, showUnsupported]);
 
   const atLimit = selected.length >= max;
+  // Every current ranked item and rune is accepted, simulated or not, so the
+  // limitations of whatever is selected are always spelled out.
+  const selectedWarnings = useMemo(() => {
+    const byName = new Map(entries.map((e) => [e.name, e]));
+    return selected.flatMap((name) =>
+      (byName.get(name)?.warnings ?? []).map((warning) => ({ name, warning })));
+  }, [entries, selected]);
 
   return (
     <div className="space-y-2" data-testid={testId}>
@@ -217,6 +229,16 @@ export function CatalogPicker({
         <p className="text-[11px] text-muted-foreground">{emptyLabel}</p>
       )}
 
+      {selectedWarnings.length > 0 ? (
+        <div role="status" className="space-y-0.5 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px]">
+          {selectedWarnings.map(({ name, warning }) => (
+            <p key={name + warning} className="break-words">
+              <strong>{name}:</strong> {warning}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
       <input
         type="search"
         className={FIELD_CLASS}
@@ -237,7 +259,7 @@ export function CatalogPicker({
                   type="button"
                   disabled={blocked}
                   onClick={() => onToggle(entry.name)}
-                  title={entry.name}
+                  title={entry.capabilityLabel ? `${entry.name} — ${entry.capabilityLabel}` : entry.name}
                   className={cn(
                     "flex w-full items-center justify-between gap-2 px-2 py-1 text-left text-xs",
                     isSelected ? "bg-primary/15 font-medium" : "hover:bg-muted",
@@ -253,7 +275,7 @@ export function CatalogPicker({
                   <span className="max-w-[45%] shrink-0 truncate text-[10px] text-muted-foreground">
                     {!entry.supported
                       ? (entry.reason ?? "not simulated")
-                      : (entry.group ?? "")}
+                      : [entry.badge, entry.group].filter(Boolean).join(" · ")}
                   </span>
                 </button>
               </li>

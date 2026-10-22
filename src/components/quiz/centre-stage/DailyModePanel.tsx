@@ -94,17 +94,17 @@ export default function DailyModePanel({
   const answered = daily?.known && typeof daily.answered === "number" ? daily.answered : null;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col items-center text-center" data-testid="daily-mode-panel">
+    <div className="lc-daily-panel flex h-full min-h-0 w-full flex-col items-center text-center" data-testid="daily-mode-panel">
       {/* ── Header: the same display title every mode opens with ───────── */}
-      <div className="w-full shrink-0">
+      <div className="lc-daily-panel__head w-full shrink-0">
         <h2
-          className="lc-scroll-title whitespace-nowrap font-black uppercase leading-none tracking-[0.13em]"
+          className="lc-daily-panel__title lc-scroll-title whitespace-nowrap font-black uppercase leading-none tracking-[0.13em]"
           style={{ color: INK.strong, textShadow: INK.press }}
         >
           Today's Challenge
         </h2>
         <p
-          className="mx-auto mt-1.5 max-w-[19rem] text-[12.5px] font-semibold leading-snug"
+          className="lc-daily-panel__status mx-auto mt-1.5 max-w-[19rem] text-[12.5px] font-semibold leading-snug"
           style={{ color: INK.body }}
           data-testid="daily-mode-status"
         >
@@ -116,7 +116,10 @@ export default function DailyModePanel({
              height the stage has left and Mogzy is drawn to fit it, so the
              sheet's box is never asked to grow. A finished day gets the
              cheering pose; every other state the scholar with his book. ── */}
-      <div className="lc-daily-hero relative mt-1 w-full min-h-[5.5rem] flex-1" data-testid="daily-mode-hero">
+      <div
+        className={`lc-daily-hero relative mt-1 w-full min-h-[5.5rem] flex-1${copy.completed ? " lc-daily-hero--complete" : ""}`}
+        data-testid="daily-mode-hero"
+      >
         <span aria-hidden="true" className="lc-daily-hero__aura" />
         <span aria-hidden="true" className="lc-daily-hero__plinth" />
         <MogzyMascot
@@ -140,7 +143,7 @@ export default function DailyModePanel({
 
       {/* ── Today's record: three ruled figures, the Ranked ledger rhythm ── */}
       <dl
-        className="grid w-full shrink-0 grid-cols-3 border-y py-1.5"
+        className="lc-daily-panel__stats grid w-full shrink-0 grid-cols-3 border-y py-1.5"
         style={{ borderColor: INK.rule }}
         data-testid="daily-mode-stats"
       >
@@ -155,7 +158,7 @@ export default function DailyModePanel({
 
       {/* ── The action. Protected: never shrinks, always last, always inside
              the sheet's safe area above the foot roller. ─────────────────── */}
-      <div className="mt-2 flex w-full shrink-0 flex-col items-center" data-testid="daily-mode-cta">
+      <div className="lc-daily-panel__cta mt-2 flex w-full shrink-0 flex-col items-center" data-testid="daily-mode-cta">
         {copy.seal ? (
           <>
             <RankedPlayGem
@@ -167,7 +170,7 @@ export default function DailyModePanel({
             {/* The seal's art says PLAY; this line says exactly which play. */}
             <span
               aria-hidden="true"
-              className="mt-0.5 text-[11px] font-extrabold uppercase tracking-[0.18em]"
+              className="lc-daily-panel__caption mt-0.5 text-[11px] font-extrabold uppercase tracking-[0.18em]"
               style={{ color: INK.accent, textShadow: INK.press }}
             >
               {displayCopy.action}
@@ -178,7 +181,7 @@ export default function DailyModePanel({
             type="button"
             onClick={onPlay}
             disabled={!onPlay}
-            className="mb-1 rounded-lg px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-sm disabled:opacity-50"
+            className="lc-daily-panel__results mb-1 rounded-lg px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-sm disabled:opacity-50"
             style={{ background: "linear-gradient(180deg, #6b4510 0%, #3f2706 100%)", border: "1px solid #2a1a04" }}
             data-testid="daily-results-button"
           >

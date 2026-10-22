@@ -8,6 +8,7 @@
  * constants live in the backend's `scoring.py`, and a copy here would go stale
  * the first time the owner tunes them.
  */
+import type { CountInBeat } from "@/lib/perfect-timing/countIn";
 import type { PtPhase, PtRevealView, PtRoundView, PtRunSummary, PtSliceKind, PtTier } from "@/lib/perfect-timing/viewModel";
 
 // ------------------------------------------------------------------ tiers
@@ -103,6 +104,7 @@ export interface PhaseFace {
 export const PHASE_FACE: Record<PtPhase, PhaseFace> = {
   loading: { word: "Dealing", sub: "the archive is choosing", status: "Dealing the next ability.", tone: "plain" },
   armed: { word: "Cast", sub: "press to cast", status: "Press to cast. Stop the clock when the ability is back up.", tone: "plain" },
+  countdown: { word: "Get ready", sub: "the game casts it", status: "Get ready. It casts on its own — stop the clock when the ability is back up.", tone: "plain" },
   running: { word: "Press to stop", sub: "press when it is back", status: "Press the moment the ability is back up.", tone: "plain" },
   stopped: { word: "Locked", sub: "your stop is in", status: "Locked. Checking the archive.", tone: "plain" },
   submitting: { word: "Locked", sub: "checking the archive", status: "Locked. Checking the archive.", tone: "plain" },
@@ -126,6 +128,47 @@ export function lockedStatusText(elapsedMs: number): string {
  * stop before the reveal replaces it, so the lock reads. Presentation only.
  */
 export const LOCK_HOLD_MS = 420;
+
+// --------------------------------------------------------- PT5.3 blind flow
+
+/**
+ * PT5.3: the blind flow's own words where they differ from `PHASE_FACE`. The
+ * chronometer shows no elapsed time while the round runs, so nothing here (or
+ * anywhere on the running stage) is a number.
+ */
+export const BLIND_FACE: Partial<Record<PtPhase, PhaseFace>> = {
+  countdown: PHASE_FACE.countdown,
+  running: { word: "Press to stop", sub: "press when it is back", status: "Press the moment the ability is back up.", tone: "plain" },
+};
+
+/** PT5.3: a count-in the player put on hold (between attempts only). */
+export const HELD_FACE: PhaseFace = {
+  word: "Held", sub: "on hold", status: "On hold. Resume when you are ready — the count-in starts again from 3.", tone: "plain",
+};
+
+/** PT5.3: what the centre of the blind instrument shows (count-in beat, pause, still face, locked time, voided). */
+export type BlindReadout = "idle" | "count" | "held" | "blind" | "locked" | "halted";
+
+export function blindReadoutFor(phase: PtPhase, held: boolean, countIn: CountInBeat | null, elapsedMs: number | null): BlindReadout {
+  if (phase === "countdown") return held ? "held" : countIn !== null ? "count" : "idle";
+  if (phase === "running") return "blind";
+  if ((phase === "stopped" || phase === "submitting" || phase === "error") && elapsedMs !== null) return "locked";
+  if (phase === "interrupted" || phase === "error") return "halted";
+  return "idle";
+}
+
+/** The word the instrument flashes as the game starts the round. */
+export const CAST_WORD = "Cast";
+
+/**
+ * PT5.3 pacing (initial playtest values, handoff PT53 §A — tune here only).
+ * The reveal moves on by itself this long AFTER its choreography has settled
+ * (≈ 1.7 s), so a result stays readable for the whole dwell; a Mastery Slice
+ * transition moves on this long after its entrance is ready (≈ 0.9 s).
+ * The count-in itself is `COUNT_IN_MS` (lib/perfect-timing/countIn.ts).
+ */
+export const REVEAL_DWELL_MS = 2_500;
+export const TRANSITION_DWELL_MS = 1_500;
 
 /** The press surface accepts input only in these phases. Presentation only: PT2's hook is the authority. */
 export const PRESS_LIVE_PHASES: ReadonlySet<PtPhase> = new Set<PtPhase>(["armed", "running"]);

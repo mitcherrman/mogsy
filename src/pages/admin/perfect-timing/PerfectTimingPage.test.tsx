@@ -9,7 +9,7 @@
  * stamped at exactly the captured `elapsed_ms`, so the stand-in can answer
  * with the captured release verbatim.
  */
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import capture from "@/lib/perfect-timing/__fixtures__/captureV1.json";
@@ -38,6 +38,10 @@ vi.mock("@/hooks/useChampionAssets", async (importOriginal) => {
 });
 
 import PerfectTimingPage from "./PerfectTimingPage";
+
+// PT5.3 CI: these runs wait through the real 420 ms lock hold on a shared runner; the default
+// 1 s wait for the reveal was too tight there (passes locally either way).
+configure({ asyncUtilTimeout: 4_000 });
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -85,7 +89,7 @@ function standIn(override?: Override) {
 
 function mount(be: ReturnType<typeof standIn>) {
   const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode="random" /></MemoryRouter>);
+  return render(<MemoryRouter><PerfectTimingPage api={api} initialMode="random" flow="visible" /></MemoryRouter>);
 }
 
 function key(el: Element, t: number, init: KeyboardEventInit = {}) {
@@ -328,7 +332,7 @@ describe("PerfectTimingPage — the integrated owner run", () => {
   it("PT4.1: hosted from the Playtests hub, the top bar leads with the way back instead of Exit", async () => {
     const be = standIn();
     const api = perfectTimingApi({ fetchImpl: be.fetchImpl as unknown as typeof fetch, sleep: async () => {} });
-    render(<MemoryRouter><PerfectTimingPage api={api} initialMode="random" lead={<a data-testid="hub-lead" href="/hub">Playtests</a>} /></MemoryRouter>);
+    render(<MemoryRouter><PerfectTimingPage api={api} initialMode="random" flow="visible" lead={<a data-testid="hub-lead" href="/hub">Playtests</a>} /></MemoryRouter>);
     await armed();
     const chrome = screen.getByTestId("pt-chrome");
     expect(chrome.firstElementChild).toBe(screen.getByTestId("hub-lead"));

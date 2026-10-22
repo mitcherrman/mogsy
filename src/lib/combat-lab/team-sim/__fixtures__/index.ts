@@ -73,6 +73,8 @@ import sim1v1FirstMeta from "./sim_1v1_first.meta.json";
 import sim1v1Replayed from "./sim_1v1_replayed.json";
 import sim1v1ReplayedMeta from "./sim_1v1_replayed.meta.json";
 import catalogPhase7a from "./catalog_phase7a.json";
+import catalogRoster from "./catalog_roster.json";
+import catalogRosterMeta from "./catalog_roster.meta.json";
 import catalogPhase7aMeta from "./catalog_phase7a.meta.json";
 import simTraceSummary from "./sim_1v1_trace_summary.json";
 import simTraceStandard from "./sim_1v1_trace_standard.json";
@@ -101,6 +103,17 @@ export const REAL_CATALOG_ETAG = (catalogMeta as { etag: string }).etag;
  * simulation. Against REAL_CATALOG_PHASE7A it must send the selected level.
  */
 export const REAL_CATALOG_PHASE7A = catalogPhase7a as unknown as TeamSimCatalog;
+
+/**
+ * Universal ranked roster (2026-10-20). Captured from
+ * `feat/universal-item-rune-catalog-20261020` by GET-ing the real route
+ * in-process against a local copy of the database: every current ranked item
+ * (221) and rune (62) is `supported`, each with `capability` and
+ * `simulation_warnings`; only names League no longer has are unsupported.
+ * Kept beside the older captures so both shapes stay exercised.
+ */
+export const REAL_CATALOG_ROSTER = catalogRoster as unknown as TeamSimCatalog;
+export const REAL_CATALOG_ROSTER_ETAG = (catalogRosterMeta as { etag: string }).etag;
 export const REAL_CATALOG_PHASE7A_ETAG =
   (catalogPhase7aMeta as { etag: string }).etag;
 

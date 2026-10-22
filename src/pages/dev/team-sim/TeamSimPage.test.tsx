@@ -12,6 +12,8 @@ import {
   REAL_2V2_TRUNCATED,
   REAL_ACTION_FAILED,
   REAL_CATALOG,
+  REAL_CATALOG_ROSTER,
+  REAL_CATALOG_ROSTER_ETAG,
   REAL_ERRORS,
 } from "@/lib/combat-lab/team-sim/__fixtures__";
 import { UNCERTAIN_STATUS_WARNING } from "@/lib/combat-lab/team-sim/errors";
@@ -113,6 +115,22 @@ describe("catalog states", () => {
       .getAllByRole("button")
       .find((b) => b.textContent?.includes("no_simulator_stat_or_effect_rows"));
     expect(unsupportedRow).toBeDisabled();
+  });
+
+  it("offers a current item the simulator does not model, marked and explained", async () => {
+    await loadedPage({
+      catalog: { status: 200, body: REAL_CATALOG_ROSTER, headers: { etag: REAL_CATALOG_ROSTER_ETAG } },
+    });
+    const picker = within(screen.getByTestId("items-A1"));
+    fireEvent.change(picker.getByLabelText("Search Items"), {
+      target: { value: "Luden's Echo" },
+    });
+    const echo = picker.getByRole("button", { name: /Luden's Echo/ });
+    expect(echo).not.toBeDisabled();
+    expect(echo.textContent).toContain("Partial");
+    fireEvent.click(echo);
+    const status = await picker.findByRole("status");
+    expect(status.textContent).toContain("Echo is not simulated");
   });
 
   it("truncates long catalog names instead of widening the card", async () => {
