@@ -20170,6 +20170,25 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     display: none;
   }
 }
+/* PICTURE CHOICES ON A SHORT PHONE. A picture tablet is its art (80px), a
+   label and 12px padding top and bottom — ~135px, so a 2x2 picture grid is
+   276px against the stage's 210px answer allocation and pushed a 360x640
+   screen 51px past the fold. Below 760px tall (MVFIT1's short-phone band) the
+   art draws at 56px — a champion or item icon is still unmistakable at that
+   size — with tighter padding, so the grid is ~192px and sits inside the same
+   allocation as four text tablets. Taller phones keep the full-size art. */
+@media (max-width: 1023.98px) and (max-height: 760px) {
+  .practice-arena .ranked-shell[data-phone-arena="true"] [data-answers-state] [data-quiz-choice]:has(img) {
+    gap: 0.25rem;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    line-height: 1.2;
+  }
+  .practice-arena .ranked-shell[data-phone-arena="true"] [data-answers-state] [data-quiz-choice] img {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+}
 
 /* The reveal's countdown: a hairline along the box's bottom edge that drains
    over the hold (`--practice-hold-ms`) and stops while the hold is paused.

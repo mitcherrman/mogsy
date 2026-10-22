@@ -95,8 +95,8 @@ for (const vp of VIEWPORTS) {
         // (a dense explanation may grow its box a little; never the grid much).
         const dense = q.id === 9106;
         expect(Math.abs(after.grid.top - before.grid.top), `${tag}: grid moved on reveal`).toBeLessThanOrEqual(dense ? 10 : 1);
-        if (before.reveal && after.reveal) {
-          expect(Math.abs(after.reveal.top - before.reveal.top), `${tag}: reveal box moved`).toBeLessThanOrEqual(dense ? 10 : 1);
+        if (before.revealDocTop !== null && after.revealDocTop !== null) {
+          expect(Math.abs(after.revealDocTop - before.revealDocTop), `${tag}: reveal box moved`).toBeLessThanOrEqual(dense ? 10 : 1);
         }
         await expect(page.getByTestId("practice-explanation")).toBeVisible();
         if (WRONG.has(q.id) && q.id !== 9106) await expect(page.getByTestId("practice-explanation")).toContainText(CORRECT[q.id]);

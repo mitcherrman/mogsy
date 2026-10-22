@@ -202,6 +202,7 @@ export interface Geometry {
   grid: { top: number };
   tablets: Array<{ top: number; bottom: number; left: number; right: number; h: number; clipped: boolean }>;
   reveal: { top: number; bottom: number; height: number } | null;
+  revealDocTop: number | null;
   bar: { top: number; bottom: number } | null;
   matchBottom: number;
   scrollers: string[];
@@ -246,7 +247,9 @@ export async function measure(page: Page): Promise<Geometry> {
       chrome: { top: c.top, bottom: c.bottom, height: c.height, oneLine },
       brand: { visible: b.height > 0 && b.top >= 0 && b.bottom <= window.innerHeight && b.right <= window.innerWidth + 1, text: brandEl.textContent ?? "" },
       stage: box(stageEl), prompt: { ...box(promptEl), clipped: promptEl.scrollHeight > promptEl.clientHeight + 2 },
-      grid: { top: box(stageEl.querySelector('[data-testid="answer-grid"]')!).top },
+      // Document coordinates: holding the reveal may scroll a landscape page.
+      grid: { top: box(stageEl.querySelector('[data-testid="answer-grid"]')!).top + window.scrollY },
+      revealDocTop: revealEl ? box(revealEl).top + window.scrollY : null,
       tablets,
       reveal: revealEl ? box(revealEl) : null,
       bar: barEl ? box(barEl) : null,
