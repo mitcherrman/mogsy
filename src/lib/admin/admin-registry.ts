@@ -1063,7 +1063,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     requiredRole: "master_admin",
     authorization:
-      "AdminRoute + AdminAuthGate; every organizer call is refused server-side (ARENA_ORGANIZER_REQUIRED) unless the caller's own Supabase session is the authorized owner (owner_auth_state), and fails closed (503) when that cannot be read. The whole surface is off while ARENA_ENABLED is unset.",
+      "AdminRoute (OWN1 owner-only) + AdminAuthGate; every organizer call is refused server-side (ARENA_ORGANIZER_REQUIRED) unless the caller's own Supabase session is the authorized owner (owner_auth_state), and fails closed (503) when that cannot be read. The whole surface is off while ARENA_ENABLED is unset.",
     notes:
       "Players never use this area: they join at /quiz/arena/join/:code and play at /quiz/arena/e/:eventId. The create portal (/admin/tournament-arena/new) and organizer console (/admin/tournament-arena/event/:eventId) are full-viewport frames outside the shell, like /admin/quiz-content.",
   },
