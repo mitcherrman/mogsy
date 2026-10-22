@@ -10,7 +10,7 @@ and production verification.
 | repo | branch | head | base |
 |---|---|---|---|
 | backend `League_Combat_Simulator` | `daily-v2/e-admin-release` | `37c5e735` | master `77c08167` |
-| frontend `mogsy` | `daily-v2/e-admin-release` | see §6 | main `e931bc1a` |
+| frontend `mogsy` | `daily-v2/e-admin-release` | the commit adding §6's results (code `e045edb0`, harness removal `4c5b8f13`) | main `e931bc1a` |
 
 **Backend.**
 * Lane B/C/E three-act composer, eligibility, V2 exact-ref index, launch
@@ -157,8 +157,9 @@ Either order is safe:
 
 ### 3c. Lovable — publish the frontend
 
-1. In Lovable, confirm the editor is on `main` at the merge commit (see
-   [[lovable-github-sync-diagnosis]] if it shows an older SHA).
+1. In Lovable, confirm the editor is on `main` at the merge commit. If it shows
+   an older or "diverged" SHA, the editor is pinned off `main`: switch it
+   back to `main` first.
 2. Press **Publish**.
 
 ## 4. Production verification (done by Claude after 3a–3c)
@@ -242,7 +243,8 @@ Safety
 - New: PublicDailyFormatControl.test.tsx (8): server state shown, V2
   unsubmittable, exact confirmation sent, refusals surfaced, Creator Replay
   never calls the public setting.
-- Baseline-differential vs main e931bc1a: see the handoff.
+- Baseline-differential vs main e931bc1a (full vitest, 4 chunks): no new
+  failures; 9 head-only failures under load all pass in isolation.
 - tsc: only the 2 pre-existing errors. Build passes.
 
 Order: either; old FE never calls the new routes, new FE shows a plain
@@ -254,7 +256,26 @@ Handoff: docs/daily-v2-lane-e/ADMIN_PRODUCTION_ROLLOUT.md
 
 ## 6. Frontend baseline-differential
 
-Pending at the time of writing; filled in by the commit that adds this line.
+Full vitest suite in four chunks, base main `e931bc1a` vs head.
+
+| run | pages | lib | components | rest |
+|---|---|---|---|---|
+| base | 119 failed / 5,362 passed | 24 / 6,556 | 17 / 4,806 | 22 / 1,626 |
+| head | 127 failed / 5,361 passed | 24 / 6,652 | 16 / 4,824 | 23 / 1,625 |
+
+* Nine failures appeared only in head. All five of their files pass in
+  isolation on head (211/212), so they were timing flakes: the backend suites
+  ran concurrently. The one failure in that isolated run ("Meta Reflex gets
+  its own mark") fails in the base run too.
+* One failure appears only in base (`rulesScroll.boundary`).
+* `tsc -p tsconfig.app.json`: only the 2 pre-existing errors (OnboardingProfile,
+  identity/connections).
+* `npm run build`: passes.
+* The built `dist/` contains no `owner@e2e.test` and no harness strings.
+* The new screens are in `AdminPlatformPolicies-*.js` and
+  `CreatorReplayPage-*.js`.
+* Targeted: the admin tests (`PublicDailyFormatControl`, `CreatorReplayPage`,
+  `AdminPlatformPolicies`) pass, except one test that also fails on main.
 
 ## 7. Production status
 
