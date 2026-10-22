@@ -248,7 +248,9 @@ function PracticeRevealFooter({
       data-advance-paused={paused ? "true" : "false"}
       className={cn(
         REVEAL_SLOT,
-        "relative flex flex-col gap-0.5 overflow-hidden rounded-lg border px-3 py-1.5 text-left lg:py-2",
+        // `lg:pl-8`: on desktop the signed-in Community button floats over
+        // this row's left end (lifted above the Report tab); the text clears it.
+        "relative flex flex-col gap-0.5 overflow-hidden rounded-lg border px-3 py-1.5 text-left lg:py-2 lg:pl-8",
         TONE[tone],
       )}
     >
