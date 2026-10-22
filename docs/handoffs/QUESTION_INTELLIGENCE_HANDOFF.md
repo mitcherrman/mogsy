@@ -1,5 +1,20 @@
 # QI1 — Question Intelligence: handoff (frontend)
 
+**Current state (2026-10-22, QI2 release review):** branch
+`admin/qi2-integration-20261022` (worktree `C:\Users\mlmit\mogzy-wt\qi2-fe`)
+= QI1 + main `0fd1bb6a` + the DREP1 split `b076f333` + review fix
+`82af16f3`; draft PR mitcherrman/mogsy#117. **GO**, merge only after the
+backend (#85) is live; then Lovable Publish. Not merged, not published.
+Review fixes: the Avoidable column distinguishes `—` (nothing to split) /
+`0` / `N?` (past the backend's read cap); the totals line states snapshot
+coverage; served / answered / outcome counts are required by the parser
+(refused as unreadable, never drawn as 0); admin-registry entry
+`users-question-intelligence` (master_admin) makes the view findable in All
+Tools. Full review, evidence and deployment sequence:
+`QUESTION_INTELLIGENCE_QI2_PLAN.md` §6 (copy of the backend plan, in this
+folder). The sections below describe the original QI1 pass; Evidence, Build
+and Screenshots are brought up to date.
+
 **State (2026-10-20):** local branch `admin/question-intelligence-qi1`
 (worktree `.claude/worktrees/intelligent-grothendieck-937b71`), base
 `origin/main` f6835049. Not pushed, no PR, not merged, not published.
@@ -42,6 +57,12 @@ Supabase `analytics_events` has no per-question fact, so nothing here touches
 
 ## Evidence
 
+**QI2 release review (82af16f3):** QI set 77 passed (panel 13, parser 14,
+notation 9, page 3, registry 36, IA guard 2). Admin-wide (`src/components/admin
+src/pages/admin src/lib/admin src/test/guards`) 1,186 passed vs 1,147 on a
+detached main `0fd1bb6a`, the same 7 pre-existing failures on both. tsc: the
+same 2 pre-existing errors. ESLint clean. QI1 figures follow.
+
 - `npx vitest run src/lib/admin/questionIntelligence src/components/admin/users/QuestionIntelligencePanel.test.tsx src/pages/admin/areas/AdminUsersPage.questions.test.tsx` → 31 passed.
 - Admin-wide run (`src/components/admin/users src/lib/admin src/pages/admin src/test/guards`):
   1011 passed, 7 failed — the same 7 fail on clean `origin/main` (registry
@@ -54,27 +75,32 @@ Supabase `analytics_events` has no per-question fact, so nothing here touches
 
 ## Build
 
-`npm run build` (never pnpm in worktrees) exited 0 on 1940a98b: vite build,
-prerender and the 173-URL sitemap verify passed. The rewritten
+`npm run build` (never pnpm in worktrees) exited 0 on 1940a98b and again on
+82af16f3: vite build, prerender and the 173-URL sitemap verify passed; the
+panel ships in the `AdminUsersPage` chunk. The rewritten
 `public/sitemap.xml` was restored afterwards.
 
 ## Screenshots
 
-**PENDING owner approval.** AGENTS.md forbids local browser automation
-without explicit approval, and GitHub Actions is billing-blocked. The request
-(one bundled headless Chromium run, 1 worker, 1280 + 1440, fixture harness)
-is with the owner. Once approved or once Actions works, run:
+**Captured 2026-10-22 (owner-approved local run, AGENTS.md exception):**
+bundled headless Chromium (headless shell 1248) on the owner's PC, 1 worker,
+3 cases (1280 / 1440 / 1920), fixture harness, no visible window; the
+Playwright-owned dev server was torn down. **3/3 passed.** Files (git-ignored):
+`test-results/question-intelligence/qi1-{1280,1440,1920}.png`, the
+`-cell-hover` variants and `qi2-{1280,1440,1920}-drep1-partial.png`.
+
+The shared `@swc/core` fails here, so the run used an uncommitted local
+config that imports `playwright.question-intelligence.config.ts` and swaps
+only the dev-server command for a no-swc scratch Vite config. On a normal
+machine or in CI:
 
 ```bash
 npx playwright test -c playwright.question-intelligence.config.ts
 ```
 
-That writes `test-results/question-intelligence/qi1-{1280,1440}.png` and the
-`-cell-hover` variants. In CI, the `question-intelligence` workflow uploads
-them as an artifact. Nothing was captured in this pass.
-
 ## Open / next
 
-- Owner review of the panel; push + PR on approval (Actions billing needed for CI).
-- Backend must deploy before the panel has data; until then the view shows
-  "could not be reached" / an HTTP error, never an empty table.
+- Merge after the backend (#85) is live; then Lovable Publish. Order and
+  checks: `QUESTION_INTELLIGENCE_QI2_PLAN.md` §6.6.
+- Until the backend is live, the view shows "could not be reached" / an HTTP
+  error, never an empty table.
