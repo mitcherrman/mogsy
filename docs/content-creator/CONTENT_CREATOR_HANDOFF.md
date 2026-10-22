@@ -3,7 +3,7 @@
 | Phase | State |
 | --- | --- |
 | CC1 — architecture audit | **Done** (sections 1–8 below, unchanged except this header) |
-| CC2 — browser generation engine | **Implemented, unit-verified, pushed. Browser parity NOT yet verified** — the CI parity workflow runs once the PR is opened (section 9) |
+| CC2 — browser generation engine | **Verified.** Chromium 55/55 and Firefox 55/55 cards match the Playwright authority, 5/5 behaviour checks each, PR mitcherrman/mogsy#124 @ `c81228e2` (section 9) |
 | CC3 — `/admin/content-creator` page | Not started |
 
 CC1 audited `origin/main` @ `e931bc1a` (2026-10-22). CC2 is built on
@@ -413,74 +413,58 @@ zoom sharing, path), plus daily-package composition; and the QA rules, layout
 gates, honest run reports, ZIP contents, engine detection and guards behave as
 specified.
 
-### Browser verification: NOT YET RUN
+### Browser verification: PASSED (GitHub Actions, PR mitcherrman/mogsy#124)
 
-`content-creator-browser-parity` triggers on `pull_request`, and on
-`workflow_dispatch` once the file is on `main` (GitHub only dispatches workflows
-that exist on the default branch). The PR was not opened from this session (no
-GitHub CLI here, and the built-in browser is signed out); **the owner opens
-it**, which starts the run. Until the Chromium job passes, CC2's browser parity
-is unverified and CC2 is not complete.
+`content-creator-browser-parity` runs on `pull_request` (and on
+`workflow_dispatch` once it is on `main`). 15 scenarios (the 10 CON1 classic
+cases, a single-question post with a gold badge, an answer-reveal post, a
+challenge of 5 with copy variants, a challenge of 7 in landscape, a daily
+package) go through `runContentExport`, and every card is compared with
+`captureOne` driven by the same `planCaptureJobs`; then 5 behaviour checks.
+Hermetic: loopback asset stub, placeholder Supabase. Bundled headless browsers,
+one at a time.
 
-What the run does: 15 scenarios (the 10 CON1 classic cases, a single-question
-post with a gold badge, an answer-reveal post, a challenge of 5 with copy
-variants, a challenge of 7 in landscape, and a daily package) through
-`runContentExport`, each card compared against `captureOne` driven by the same
-`planCaptureJobs`; then 5 behaviour checks (asset gate blocks; the
-`/admin/quiz-content` ZIP is unchanged; the Admin document is untouched; a
-blocked challenge slide fails the run honestly; no local renderer contacted).
-Hard failures: MISSING, NO OUTPUT, LEAKED, DIMENSIONS, DIVERGED (aligned Δ > 10),
-ORDER, COUNT, SKIP-MISMATCH, PLAN ERROR. Evidence (PNG pairs, `parity.json`,
-`archives.json`, `behaviour.json`, Vite and stub logs) is uploaded as
-`content-creator-parity-chromium` and `content-creator-parity-firefox`.
+| Run | Head | Chromium exporter | Firefox exporter |
+| --- | --- | --- | --- |
+| [39859968077](https://github.com/mitcherrman/mogsy/actions/runs/39859968077) | `1de57cad` | 53/55 MATCH, 2 DIVERGED; 5/5 behaviour | 54/55 MATCH, 1 DIVERGED; 5/5 behaviour |
+| [39863027760](https://github.com/mitcherrman/mogsy/actions/runs/39863027760) (PR #126, + standards mode) | `6e1a0cb2` | 54/55, 1 DIVERGED | **55/55** |
+| [39863883994](https://github.com/mitcherrman/mogsy/actions/runs/39863883994) | `c81228e2` | **55/55 MATCH; 5/5 behaviour** | **55/55 MATCH; 5/5 behaviour** |
 
-Things that could go wrong in that first run (predictions, not observations):
-- `collectDomQa` is now serialised from a module (`page.evaluate(fn)`) instead of
-  an inline arrow; a tsx `__name` wrapper would break the authority side. A unit
-  test guards the obvious forms; CI proves it.
-- The stub champion manifest is derived from the fixture by pattern; a missing
-  name shows as `unresolved-subject-image` on both sides (BOTH-REFUSED).
-- First-request Vite compile time (a warm-up step is included).
+Two genuine export defects were found and fixed by the runs:
+
+1. **Quirks-mode export surface** (`2e27f97f`). The export iframe used its
+   initial `about:blank` (no doctype → quirks mode) while the authority page is
+   in standards mode; the daily package's Pro Play Q2 fitted a 4.5% larger zoom
+   and crowded the brand strip and QR. The surface is now a `srcdoc` document
+   with a doctype, and the export waits for its own load.
+2. **Fonts measured in the wrong document** (`c81228e2`). The harness waited on
+   the global document's `fonts.ready` before fitting the zoom; in the export
+   the stage lives in an iframe whose fonts load independently, so a card that
+   first used a weight was measured with fallback metrics (vq-09: 2.08 vs
+   1.985). The harness now waits on the stage's own document (identical under
+   Playwright) and the export frame preloads every loaded face. This also
+   removed CON1's long-standing `vq-12` zoom outlier (now the same zoom as the
+   authority; aligned Δ 8.6 → 1.3).
+
+Artifacts (PNG pairs, `parity.json`, `archives.json`, `behaviour.json`, logs):
+`content-creator-parity-chromium` / `-firefox` on each run.
 
 ### Known issues and gaps
 
 - The browser export cannot observe console errors, page errors or failed
   network requests (Playwright hooks); `metadata.json` records them as empty.
 - Audit formats remain CLI-only, by design.
-- Firefox is guarded but unverified until the Firefox job passes. Safari and iOS
-  are unverified and likely to fail with `tainted-canvas`.
-- CON1's measured residuals (≤15px vertical drift; `vq-12` zoom 2.06 vs 2.02)
-  are expected to persist. Untested hypothesis for later: the export iframe's
-  initial `about:blank` renders in quirks mode while the authority page is in
-  standards mode, which may explain part of the drift.
-- Full local vitest could not complete after the change (OOM); the evidence is
-  the scoped run.
+- Safari / iOS (WebKit) are not tested; WebKit has historically tainted a canvas
+  drawn from SVG `foreignObject`, which the export reports as `tainted-canvas`.
+- Residual sub-pixel drift (≤ 24px vertical band shift in landscape, aligned
+  Δ ≤ 7 of 255) remains; every card fits the authority's zoom.
+- Full local vitest could not complete after the change (worker OOM on the
+  owner's PC); the evidence is the scoped run plus CI.
 
 ### Current state
 
-Commits on `feat/content-creator-cc2-browser-engine`: `0e4ec21d` (CC1 handoff),
-`8c960913` (CC2 engine), and this handoff update. Pushed. PR not yet opened; not
-merged; nothing deployed. No Railway, Supabase or production access was used.
-
-### CC3 prerequisites
-
-1. Open the PR (base `main`) and get a **green Chromium parity job**; review its
-   artifacts, especially the challenge and daily-package PNG pairs. Fix any hard
-   failure in CC2 before CC3 builds on it.
-2. Merge CC2 into `main` (owner decision). Optionally run `workflow_dispatch`
-   from `main` afterwards.
-3. Owner's signed-in production spot check of the existing `/admin/quiz-content`
-   export once the CC2 parity changes ship (difficulty badge, zoom rule).
-
-### Exact next task: CC3
-
-Build `/admin/content-creator`: an AdminShell child route (inherits
-`AdminRoute`; wrap it in `AdminAuthGate` like `/admin/quiz-content`), lazy via
-`route-prefetch.ts`, registered in `admin-registry.ts` (repoint
-`content-post-studio`). UI: a question picker over the existing owner-JWT
-`quizApi` review endpoints, plus intake from the Admin Quiz Review handoff; a
-mode composer (classic, posts, challenge, daily) reusing ContentStudioPage's
-presentational pieces; the readiness preflight; generation via
-`runContentExport` with progress and cancel; ordered slide previews from the
-report's image blobs; per-PNG and ZIP download; the `browserSupport` notes.
-History (IndexedDB) is CC4. Gate `/dev/content-studio` behind `AdminRoute` or DEV.
+PR mitcherrman/mogsy#124, branch `feat/content-creator-cc2-browser-engine`:
+`0e4ec21d` (CC1 handoff), `8c960913` (engine), `1de57cad` (handoff), `05f7b7bd`
+(Quiz Review export carries difficulty), `2e27f97f` (standards mode),
+`c81228e2` (fonts), `d9822cd7` (test fixture typing), plus this update. CC3 is
+stacked on it (section 10).
