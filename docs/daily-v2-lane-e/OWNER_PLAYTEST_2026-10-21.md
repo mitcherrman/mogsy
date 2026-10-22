@@ -2,8 +2,8 @@
 
 **Local only.** V2 stays off publicly. Nothing was pushed, merged, deployed or
 imported. The playtest runs:
-* the backend worktree `daily-v2/e-integration` @ `2576064e`;
-* the frontend worktree `daily-v2/e-integration` @ `162ef8ed`;
+* the backend worktree `daily-v2/e-integration` @ `b1e13524` (merges master `77c08167`);
+* the frontend worktree `daily-v2/e-integration` @ the commit recording this guide (merges main `0fd1bb6a`);
 * a COPY of the bank (canonical + the 27 takedown rows). The canonical file is
   never opened for writing.
 
@@ -134,20 +134,74 @@ the owner is the remaining step.
 
 Screenshots: `docs/daily-v2-lane-e/playtest-*.jpg`.
 
+## 3b. Verification pass (after the playtest fixes, 2026-10-21)
+
+Two more controlled full takes in the browser pane on the playtest copy (local
+backend restarted on each fix), plus a smoke take on the merged heads.
+
+**Six-question Review (D10).** The take had 13 replayable Standard misses in 6
+play units (rounds 1, 2 · 5, 6 · 7×3 · 8 · 14, 16 · 17, 18, 19) and 7 more in
+Survival / Time Trial.
+* First take (before `712530f9`): 6 distinct items, but Survival and Time Trial
+  each took a slot first, so the Standard part stopped at round 8. That was a
+  defect in the new policy itself, so it was fixed: the main Daily fills first.
+* Second take (after the fix): Review froze **rounds 1, 5, 7 (Meta Reflex card),
+  8, 14, 17** = Early, Early, Meta Reflex, Mid, Late, Late, in play order.
+  All from the main Daily, no duplicates, all replayable. The 7 bonus-stage
+  misses take slots only when the Standard leaves some empty.
+* Grading: the UI result (3/6) matches the server's per-item outcomes (correct
+  quiz, correct Meta Reflex card, timeouts). Incorrect grading was shown
+  separately (Survival strikes; earlier takes).
+* A shorter Review is intentional: it holds only misses Review can re-ask today
+  (e.g. generated summoner Mastery refs are skipped), at most 6.
+
+**Act labels (D7).**
+* Desktop: "Act I · Early" on the opening tag (round 1). "Act II · Mid" at
+  round 8 and "Act III · Late" at round 14 in the header's title beat, shown
+  ~1 s in the server-paced lead-in. The clock then starts at a full 0:18, so no
+  answer time is used.
+* **Phones (<768 px) show only Act I** (on the tag) and the E/M/L set bar: the
+  arena's phone header has no module-title face at all (existing design).
+  Owner decision whether phones need more.
+
+**Endings (D9).**
+* Survival ended by `strikes_exhausted` (3 strikes). Time Trial ended by
+  `time_bank_exhausted` (4 timeouts drained 90 s).
+* Both showed the final round's result, then the stage result.
+* **0** `[ranked] … failed to adapt / parse` console errors over a whole take;
+  the first playtest logged dozens. Remaining console noise is local only:
+  `/api/stat-check/invites` 503 (needs Supabase) and 401s from calls made before
+  the test sign-in.
+
+**Labels, accessibility and phones.**
+* Meta Reflex: a real settlement with three timed-out cards (`incorrect 3`)
+  displays as 0 incorrect, 3 unanswered.
+* Recap reads "Owner take complete", "Take score" and the not-official note
+  (the section heading "Today's Challenge" remains; minor).
+* Answer names are covered by a test (2/3/4 options).
+* 320 / 360 / 390 px: page width = viewport (no horizontal scroll); at 360 the
+  four answers end at 635 of 740 px.
+* The scenario badge is hidden in the 116–127 px phone card band (no overlap).
+* At 390 px a mid-round reload shows the existing dimmed resume beat first.
+
+**Timers:** every quiz window 18/33/48 s in both takes and the merged smoke
+(`started_at` → `active_deadline`). Isolation: 11 owner takes, 0 official
+runs, 0 rating rows; all 23 children `creator_replay`, none rating-eligible.
+
 ## 4. Defects and observations
 
 | id | severity | what | status |
 |---|---|---|---|
 | D1 | **high** | **Quiz rounds run 5 s short.** The server keeps the 18/33/48 s duration, but the bot locks in instantly every round, which applies Ranked's opponent **pressure** (5 s). The answer windows become **13/28/43 s** (`pressure_applied: true`, deadline = start + duration − 5). Order Forge (pressure 0) keeps its full 33 s. | **fixed** (owner approved) in backend `2576064e`: V2 quiz segments declare `pressure_seconds=0`. Live check: rounds 1–6 = 18/33/48/18/33/48 s with the bot locked in |
-| D2 | medium | Round 1 is first visible at 0:08–0:11 of its 13 s: the opening "Daily Challenge" splash overlaps the first question's clock | not changed |
+| D2 | medium | Round 1 seemed first visible at 0:08–0:11 | **not a defect** (measured in the browser): tag 0.3–2.3 s after the click, question visible and locked at 2.3 s, round answerable at 4.6 s with the clock at a full 0:18. The 0:08 was the old 5 s pressure (D1) plus screenshot latency |
 | D3 | **high** | From a take's result, "Play More Challenges" (and a bonus stage's "More Challenges") opened the **public** catalog, whose "Start Today's Daily" would start an **official** run. The take's own Survival / Time Trial / Review were unreachable. This affected V1 creator replays too | **fixed** FE `162ef8ed` (creator page turns the catalog off; buttons continue in place) + test |
-| D4 | low | Meta Reflex breakdown counts two timed-out cards as "Incorrect 2 · Unanswered 0" while their rows say "No answer" | not changed |
-| D5 | low | Quiz answer tablets have no accessible name in the accessibility tree (screen readers hear "button") | pre-existing arena; not changed |
-| D6 | low | At 360 px the "Combat calculation" badge overlaps the top of the champion name | not changed |
-| D7 | observation | No act-boundary beat: the acts show only in the timeline groups (E1 E2 MR M1 M2 L1 L2) and the category heading | design question |
-| D8 | observation | The take's result says "Today's Challenge · Daily score". It is an owner take and changes nothing official, but the wording does not say so | design question |
-| D9 | observation | In a take, Time Trial ended after 4 questions ("The bank ran out") on this dev bank. The console logged `completion_reason "time_bank_exhausted"` (unknown to the FE adapter) and segment-transcript parse errors (`players.<id>.correct must be a number`). Survival / Time Trial are V1 stages | not V2; flag for the V1 owner |
-| D10 | observation | Review re-asked 1 of 20 misses (V1 Review sizing rule) | not changed |
+| D4 | low | Meta Reflex breakdown counts two timed-out cards as "Incorrect 2 · Unanswered 0" while their rows say "No answer" | **fixed** FE `583bc998`: timed-out cards read as Unanswered (verified on a real settlement: server `incorrect 3, timed_out [T,T,T]` → shown `0 incorrect, 3 unanswered`) |
+| D5 | low | Quiz answer tablets looked unnamed in the pane's tree | **not a defect**: the name is computed from the tablet's content ("A. 10.9 seconds"); the pane's printer only shows `aria-label`. Pinned by a test for 2/3/4 options (FE `583bc998`) |
+| D6 | low | At 360 px the "Combat calculation" badge overlaps the top of the champion name | **fixed** FE `583bc998`: in a card ≤128 px tall (phone band) the label-only badge yields; verified at 360 (116 px card) and 390 (127 px) |
+| D7 | observation | No act-boundary beat | **added**: the opening tag names "Act I · Early" (FE `615eac29`); the header's existing title beat names "Act II · Mid" at round 8 and "Act III · Late" at round 14 (FE `9214a9eb`), shown ~1 s in the lead-in, then the clock starts at a full 0:18. **Phones (<768 px) do not show the header title beat at all** (existing arena design), so on phones only Act I (tag) and the set bar show the acts |
+| D8 | observation | The take's result said "Today's Challenge · Daily score" | **fixed** FE `73dc093d`: "Owner take" / "Take score" + "Not official…" note on the main result, optional-entry beat and recap. The recap's SECTION heading still reads "Today's Challenge" (minor) |
+| D9 | observation | Time Trial "ended after 4 questions" with console errors | the ending was **correct** (4 timeouts drained the 90 s bank → `time_bank_exhausted`). The two console errors were real and are **fixed** FE `583bc998`; verified in the browser: Survival → `strikes_exhausted` and Time Trial → `time_bank_exhausted`, final round shown, **0** `[ranked]` errors over a full take (was dozens) |
+| D10 | medium | Review re-asked 1 of 20 misses | **fixed** BE `a22c97c5` + `712530f9`: three-act takes re-ask up to 6 replayable misses, the main Daily first, one per play unit in play order (see §3b). V1 unchanged |
 | D11 | — | In take 1, Review sat on its intro while its question expired. Caused by my hot-reload edits landing mid-flow; it did not reproduce on a clean take | not a product defect |
 | — | info | Local console noise: `/api/stat-check/invites` → 503 (needs Supabase) | harmless locally |
 
@@ -179,3 +233,17 @@ Screenshots: `docs/daily-v2-lane-e/playtest-*.jpg`.
    `/admin/creator-replay` → **Play a three-act take**.
 5. Rollback: unset `DAILY_THREE_ACTS_V2`. The route returns 404 and nothing
    else changes.
+
+## 7. Remaining release blockers (owner review gate)
+
+| # | blocker | owner |
+|---|---|---|
+| 1 | V2 is local and owner-only: both `daily-v2/e-integration` branches are **unpushed**; any preview needs §6 | owner approval to push / deploy a non-production preview |
+| 2 | Takedown rows exist only in the dev copy; the economy manifest is verified to 26.15 only | re-verify 26.20/26.21, then import (gate 8) |
+| 3 | Serveable scope for the owner playtest only (gate 9); strict CERTIFIED scope composes 0 days (no certified Late-Medium content) | owner |
+| 4 | Phones show only Act I and the set bar (no header title beat < 768 px) | owner: accept, or ask for a phone act beat |
+| 5 | The recap section heading still says "Today's Challenge" on owner takes | minor; owner |
+| 6 | VISION42: 13 rows flagged for a wiki recheck; Role Quest and Surprise Finder have no servable rows | content owner |
+| 7 | Chronoscope / Match Grid / Reconstruct record no durable child refs (Review cannot replay them) | module change, not started |
+| 8 | Shared-day repeats 15–21% vs per-player freshness | owner product decision |
+| 9 | GitHub Actions billing-blocked: all evidence here is local; CI absence is not a pass | — |

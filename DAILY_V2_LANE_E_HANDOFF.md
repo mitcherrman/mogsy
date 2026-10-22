@@ -248,3 +248,40 @@ passed; `tsc` shows the 2 errors already on main.
 **D1 fixed** (owner approved): backend `2576064e`. V2 quiz rounds get their
 full 18/33/48 s (pressure 0), verified live on the playtest stack. No frontend
 change was needed: the clock reads the server deadline.
+
+---
+
+## Playtest fixes and verification (2026-10-21)
+
+| SHA | What |
+|---|---|
+| `583bc998` | Settlement adapter accepts `time_bank_exhausted` / `strikes_exhausted`; a points-scored quiz `segment_reveal` reads as no transcript; per-card Meta Reflex timeouts count as Unanswered; answer-name test (2/3/4 options); scenario badge yields in a ≤128 px card |
+| `73dc093d` | `OwnerTakeContext` (creator page): "Owner take" / "Take score" + not-official note on the main result, optional-entry beat and recap |
+| `9214a9eb` | Header title beat names "Act II · Mid" (round 8) / "Act III · Late" (round 14) on three-act takes |
+| `615eac29` | Opening tag names "Act I · Early" (round 1 has no title beat) |
+| `c639bb69` | Badge rule moved before the JUX1 section (which must stay last); owner note reworded to stay inside the Daily's source vocabulary (boundary test) |
+| `ca60bb87` | Merge `origin/main` @ `0fd1bb6a` (PT5.3A, admin Perfect Timing only). Dry run clean |
+
+Not changed, with evidence:
+* the opening splash does not consume round 1's clock (question visible at
+  2.3 s, answerable at 4.6 s with a full 0:18);
+* answer tablets already had accessible names.
+
+**Browser verification:** owner guide §3b (`docs/daily-v2-lane-e/OWNER_PLAYTEST_2026-10-21.md`).
+
+**Regression** (full Vitest suite in 4 chunks, baseline `d3854e5f` = merged main):
+* base 180 failing tests, head 179;
+* 3 head-only failures were mine (JUX1 stylesheet order ×2, boundary word);
+  all fixed in `c639bb69` and re-run green;
+* 4 base-only failures are load-sensitive flakes (lobby preview performance,
+  tome geometry, play-mode card): run in isolation they fail on BOTH
+  checkouts (8 base / 9 head);
+* everything else matches the baseline.
+
+**After the main merge:**
+* `tsc`: the 2 errors already on main;
+* admin + Daily + ranked-public + ranked-core backend + Daily V2 suites: 1,426
+  passed, 2 failed, both in the baseline failing set;
+* `npm run build`: OK (sitemap restored).
+
+The local test token (`harness/persona.json`) stays untracked.
