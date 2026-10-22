@@ -190,8 +190,14 @@ function useRenderReady(
     if (!enabled || !format) return;
     let cancelled = false;
     (async () => {
+      // CC2 — the fonts of the document the stage is IN. Under Playwright that
+      // is this page's own document (unchanged); in the Admin browser export
+      // the stage lives in an export iframe whose fonts load independently of
+      // the parent's, and measuring before they arrive fitted some cards with
+      // fallback metrics (a 4–5% zoom difference in the CC2 parity run).
+      const fontDocument = stageRef.current?.ownerDocument ?? document;
       try {
-        await document.fonts?.ready;
+        await fontDocument.fonts?.ready;
       } catch {
         /* font API unavailable — proceed */
       }
