@@ -20263,3 +20263,13 @@ html.reduce-motion .play-scroll .lc-scroll__content {
 html.reduce-motion .play-scroll .lc-scroll__sheet {
   --lc-unfurl: 0%;
 }
+
+/* Daily three acts playtest (360px): in the phone question band a scenario
+   card's size container is ~116px tall and the card's bottom information stack
+   (title, subject, loadout) reaches the top-left identity badge, overlapping
+   the champion name. The badge is a LABEL only -- the category heading under
+   the card names the same thing -- so in that band it yields instead of the
+   stack being squeezed. */
+@container (max-height: 128px) {
+  [data-scenario-badge] { display: none; }
+}

@@ -2852,6 +2852,12 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   const o = rec(raw, "segment_reveal");
   const challenges = Array.isArray(o.challenges) ? o.challenges : [];
   const moduleId = str(o.module_id, "segment_reveal.module_id");
+  // A points-scored quiz round (RP1) also settles a `segment_reveal`, but it
+  // is ONE question: answer index and points per player, no card tallies. Its
+  // verdict is the settlement adapter's (`module_points`); there is no segment
+  // transcript to draw, so it reads as none -- exactly as a quiz round without
+  // the block always did -- instead of failing on the card fields.
+  if (moduleId === "quiz") return null;
   const isOrderForge = moduleId === ORDER_FORGE_MODULE_ID;
   const isReconstruct = moduleId === RECONSTRUCT_MODULE_ID;
   const isMatch = moduleId === MATCH_MODULE_ID;
@@ -2880,12 +2886,24 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
       };
       continue;
     }
+    // A per-card block (Meta Reflex v3+) grades a card whose own clock ran
+    // out as wrong -- `incorrect` counts it -- and says so separately in
+    // `timed_out` / `timed_out_count`. For the player a timeout is "no
+    // answer", so those cards move from Incorrect to Unanswered here, once,
+    // for every surface that shows the tallies. Blocks without the fields
+    // (v1/v2, the single block clock) are unchanged.
+    const incorrectRaw = num(p.incorrect, `players.${pid}.incorrect`);
+    const unansweredRaw = num(p.unanswered, `players.${pid}.unanswered`);
+    const timedOut = Array.isArray(p.timed_out)
+      ? p.timed_out.filter((t) => t === true).length
+      : nnum(p.timed_out_count, `players.${pid}.timed_out_count`) ?? 0;
+    const moved = Math.max(0, Math.min(incorrectRaw, timedOut - unansweredRaw));
     players[pid] = {
       segmentResult: result && _SEGMENT_RESULTS.has(result)
         ? (result as SegmentResult) : null,
       correct: num(p.correct, `players.${pid}.correct`),
-      incorrect: num(p.incorrect, `players.${pid}.incorrect`),
-      unanswered: num(p.unanswered, `players.${pid}.unanswered`),
+      incorrect: incorrectRaw - moved,
+      unanswered: unansweredRaw + moved,
       totalResponseMs: num(p.total_response_ms, `players.${pid}.total_response_ms`),
       perChallengeMs: (Array.isArray(p.per_challenge_ms) ? p.per_challenge_ms : [])
         .map((ms, i) => nnum(ms, `players.${pid}.per_challenge_ms[${i}]`)),
