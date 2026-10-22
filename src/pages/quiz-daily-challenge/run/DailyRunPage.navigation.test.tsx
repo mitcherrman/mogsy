@@ -70,7 +70,7 @@ describe("DailyRunPage navigation ownership", () => {
     const router = harness();
     render(<RouterProvider router={router} />);
     await act(() => router.navigate(-1));
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Your completed stages are saved");
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Everything you've earned is saved");
     fireEvent.click(screen.getByRole("button", { name: "Continue Daily" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(router.state.location.pathname).toBe("/quiz/daily-challenge");
@@ -110,11 +110,11 @@ describe("DailyRunPage navigation ownership", () => {
     const router = harness(["/quiz/daily-challenge"], 0);
     const rendered = render(<RouterProvider router={router} />);
     fireEvent.click(screen.getByRole("link", { name: "HUD Home" }));
-    expect(await screen.findByRole("alertdialog")).not.toHaveTextContent("still live");
+    expect(await screen.findByRole("alertdialog")).not.toHaveTextContent("including this stage's answers");
     const live = readDailyRun(wireRun(FOUR_STAGE_DAY, {}, { 0: { status: "in_progress", child_match_id: "child-0" } }));
     act(() => setDaily(live, "stage-play"));
     rendered.rerender(<RouterProvider router={router} />);
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("still live");
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("including this stage's answers");
     fireEvent.click(screen.getByRole("button", { name: "Exit Daily Challenge" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/lol"));
   });

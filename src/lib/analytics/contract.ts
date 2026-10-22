@@ -78,6 +78,7 @@ export const MACRO_EVENTS = [
   "mastery_completed",
   "dsa_started",
   "dsa_completed",
+  "daily_incomplete",
 
   // Conversion
   "signup_viewed",

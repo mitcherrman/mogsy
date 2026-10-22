@@ -120,7 +120,7 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     // The launch is in flight and the snapshot still has no child.
     expect(t.wire().stages).toMatchObject({ 1: { status: "pending", child_match_id: null } });
     // Back (POP) and a HUD link (PUSH) are both blocked — said as STARTING,
-    // never as a live child with a 45-second clock.
+    // never as a live child whose resumable state is already established.
     await act(() => router.navigate(-1));
     const starting = await screen.findByRole("alertdialog");
     expect(starting).toHaveTextContent("Leave Time Trial?");
@@ -132,14 +132,14 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     // The launch binds a child while the player is deciding: the copy becomes
     // the live child's, and the original destination is kept.
     await gate.release("ok");
-    await waitFor(() => expect(screen.getByRole("alertdialog")).toHaveTextContent("about 45 seconds"));
+    await waitFor(() => expect(screen.getByRole("alertdialog")).toHaveTextContent("stay available to resume later"));
     expect(screen.getByRole("alertdialog")).not.toHaveTextContent("is starting");
     fireEvent.click(screen.getByRole("button", { name: "Keep playing" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
 
     // Still live: still guarded.
     leaveVia();
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("about 45 seconds");
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("stay available to resume later");
     fireEvent.click(screen.getByRole("button", { name: "Leave" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/lol"));
   });
@@ -202,7 +202,7 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     await waitFor(() => expect(phase()).toBe("stage-play"), { timeout: 5000 });
     expect(screen.getByTestId("fake-stage-match")).toHaveAttribute("data-entry", "fresh");
     leaveVia();
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("about 45 seconds");
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("stay available to resume later");
   });
 
   it("a failed launch whose re-read also fails stays guarded (the outcome is unknown)", async () => {
@@ -255,7 +255,7 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     expect(t.calls).toEqual(before);
   });
 
-  it("v4: guards and copy are unchanged (no latch can exist)", async () => {
+  it("v4: the whole-run guard uses the lenient resume copy (no latch can exist)", async () => {
     const legacy = wireRun(FOUR_STAGE_DAY, { plan_version: 4, current_stage_index: 1 },
       { 0: { status: "completed", child_match_id: "m0", result: wireResult() } });
     expect(optionalLaunchTarget(readDailyRun(legacy))).toBeNull();
@@ -266,7 +266,7 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     leaveVia();
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("Exit Daily Challenge?");
-    expect(dialog).toHaveTextContent("Your completed stages are saved. You can resume before the Daily resets.");
+    expect(dialog).toHaveTextContent("Everything you've earned is saved. You can return any time while today's Daily is available.");
     expect(dialog).not.toHaveTextContent("is starting");
     expect(router.state.location.pathname).toBe("/quiz/daily-challenge");
   });
@@ -298,6 +298,6 @@ describe("DV2-P2A.1 — the pure seam", () => {
     expect(String(dailyLeaveCopy(r, null, true).body)).not.toContain("45 seconds");
     const live = run({ 1: { status: "in_progress", child_match_id: "child-1" } });
     const flow = { phase: "stage-play" as const, stage: live.stages[1], childMatchId: "child-1" };
-    expect(String(dailyLeaveCopy(live, flow, true).body)).toContain("about 45 seconds");
+    expect(String(dailyLeaveCopy(live, flow, true).body)).toContain("stay available to resume later");
   });
 });

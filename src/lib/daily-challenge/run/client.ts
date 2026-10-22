@@ -27,6 +27,8 @@ export interface DailyRunTransport {
    */
   startToday(signal?: AbortSignal): Promise<DailyRun>;
   readRun(runId: string, signal?: AbortSignal): Promise<DailyRun>;
+  /** Renew the cross-rollover activity lease; carries no gameplay input. */
+  noteActivity?(runId: string, signal?: AbortSignal): Promise<DailyRun>;
   /**
    * Create (or return) the current stage's child match. Idempotent per stage.
    * `interactionId` is the ONE logical launch's id, reused by the caller on
@@ -128,6 +130,8 @@ export const httpDailyRunTransport: DailyRunTransport = {
   startToday: (signal) => request(`${BASE_PATH}/today`, readDailyRun, "POST", signal,
     withBrowserCorrelation({})),
   readRun: (runId, signal) => request(`${BASE_PATH}/${enc(runId)}`, readDailyRun, "GET", signal),
+  noteActivity: (runId, signal) => request(
+    `${BASE_PATH}/${enc(runId)}/activity`, readDailyRun, "POST", signal),
   launchStage: (runId, stageIndex, signal, interactionId) => request(
     `${BASE_PATH}/${enc(runId)}/stages/${stageIndex}/launch`, readDailyRun, "POST", signal,
     withBrowserCorrelation({}, interactionId)),

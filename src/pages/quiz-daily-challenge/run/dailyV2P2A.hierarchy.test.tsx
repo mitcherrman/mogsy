@@ -528,7 +528,7 @@ describe("E — leaving", () => {
     expect(copy.title).toBe("Exit Daily Challenge?");
     expect(String(copy.body)).toContain("Today's Challenge isn't finished yet");
     const live = fixtureV5Run(V5_ELIGIBLE_DAY, {}, { 0: { status: "in_progress", child_match_id: "child-0" } });
-    expect(String(dailyLeaveCopy(live, view(live, "stage-play")).body)).toContain("about 45 seconds");
+    expect(String(dailyLeaveCopy(live, view(live, "stage-play")).body)).toContain("will not forfeit");
   });
 
   it.each(["stage-result", "optional-entry", "stage-intro"] as const)(
@@ -538,7 +538,7 @@ describe("E — leaving", () => {
       expect(shouldGuardDailyLeave(run, view(run, p))).toBe(false);
     });
 
-  it("a live optional child is still guarded, with the 45-second consequence", () => {
+  it("a live optional child is still guarded, with truthful resume copy", () => {
     const run = readDailyRun(mainCompleteWire({}, { 1: { status: "in_progress", child_match_id: "child-1" } }));
     for (const p of ["stage-intro", "stage-play"] as const) {
       expect(shouldGuardDailyLeave(run, view(run, p))).toBe(true);
@@ -546,7 +546,7 @@ describe("E — leaving", () => {
     const copy = dailyLeaveCopy(run, view(run, "stage-play"));
     expect(copy.title).toBe("Leave Time Trial?");
     expect(String(copy.body)).toContain("Today's Daily is complete and saved");
-    expect(String(copy.body)).toContain("about 45 seconds");
+    expect(String(copy.body)).toContain("stay available to resume later");
     // A Survival child hidden while it settles is live; a plain handback is not.
     expect(shouldGuardDailyLeave(run, view(run, "stage-settling", "child-1"))).toBe(true);
     expect(shouldGuardDailyLeave(run, view(run, "stage-settling"))).toBe(false);

@@ -32,7 +32,7 @@ describe("Daily parent leave contract", () => {
     expect(hasLiveDailyChild(daily, flow("daily-intro", daily))).toBe(false);
     expect(dailyLeaveCopy(daily, flow("daily-intro", daily))).toEqual({
       title: "Exit Daily Challenge?",
-      body: "Your completed stages are saved. You can resume before the Daily resets. This is your one run for today.",
+      body: "Everything you've earned is saved. You can return any time while today's Daily is available.",
       stayLabel: "Continue Daily",
       leaveLabel: "Exit Daily Challenge",
     });
@@ -42,7 +42,7 @@ describe("Daily parent leave contract", () => {
     const daily = run({}, { 0: { status: "in_progress", child_match_id: "child-0" } });
     const view = flow(phaseName, daily);
     expect(hasLiveDailyChild(daily, view)).toBe(true);
-    expect(String(dailyLeaveCopy(daily, view).body)).toContain("about 45 seconds");
+    expect(String(dailyLeaveCopy(daily, view).body)).toContain("will not forfeit");
   });
 
   it("treats a hidden Survival child as live but a terminal handback awaiting sync as normal", () => {

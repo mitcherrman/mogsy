@@ -39,7 +39,7 @@ export type DailyRulesetId = "standard" | "time_trial" | "survival";
 export type DailyStageStatus =
   | "pending" | "launching" | "in_progress" | "completed" | "skipped";
 
-export type DailyRunStatus = "active" | "completed";
+export type DailyRunStatus = "active" | "completed" | "incomplete";
 
 /** `perfect` = Review had nothing to review, so it was skipped. */
 export type DailyRunOutcome = "reviewed" | "perfect";
@@ -155,6 +155,9 @@ export interface DailyRun {
   currentStageIndex: number | null;
   /** B+ — server clock at projection, for skew. Null → no skew correction. */
   serverNow: string | null;
+  /** The backend's next UTC rollover instant; presentation counts down locally. */
+  nextDailyAt: string | null;
+  incompleteReason: "rollover_incomplete" | null;
   stages: DailyStage[];
   reviewItemCount: number;
   /**
@@ -351,7 +354,7 @@ export function readDailyRun(json: unknown): DailyRun {
   if (reviews.length !== 1 || stages[stages.length - 1].kind !== "review") {
     fail("Review must be the one and final stage");
   }
-  const status = oneOf(r.status, ["active", "completed"] as const, "status");
+  const status = oneOf(r.status, ["active", "completed", "incomplete"] as const, "status");
   const currentStageIndex = optInt(r.current_stage_index, "current_stage_index");
   if (status === "active" && (currentStageIndex === null || currentStageIndex >= stages.length)) {
     fail("an active run names a current stage that exists");
@@ -370,6 +373,9 @@ export function readDailyRun(json: unknown): DailyRun {
     outcome,
     currentStageIndex: status === "active" ? currentStageIndex : null,
     serverNow: optStr(r.server_now, "server_now"),
+    nextDailyAt: optStr(r.next_daily_at, "next_daily_at"),
+    incompleteReason: r.incomplete_reason === null || r.incomplete_reason === undefined
+      ? null : oneOf(r.incomplete_reason, ["rollover_incomplete"] as const, "incomplete_reason"),
     stages,
     reviewItemCount: Array.isArray(r.review_items) ? r.review_items.length : 0,
     ...main,
