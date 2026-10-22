@@ -189,3 +189,26 @@ seamless HUD #111, Lovable sync) — clean; no Daily V2 frontend change this pas
 src/lib/daily-v2 src/lib/daily-challenge src/pages/quiz-daily-challenge`):
 17 failing of 2,986, all in the baseline failing set. Backend pass 4 report:
 `League_Combat_Simulator\.worktrees\daily-v2-e\docs\daily_v2_lane_e\READINESS_PASS4_2026-10-21.md`.
+
+---
+
+## Pass 5 (2026-10-21)
+
+The backend now serves two- and three-option quiz rounds and Order Forge v2
+boards inside three-act takes. No renderer change is needed:
+* the answer grid is count-agnostic (`data-answer-count`, the two-way "pair"
+  layout, already covered by `CanonicalArena.regionsSeam.test.tsx`);
+* `order_forge@2` was already in lane D's Daily V2 allow-list.
+
+| SHA | What |
+|---|---|
+| `c374a28e` | `modeReuse.test.ts`: a two-option Daily V2 quiz round reads and projects exactly its two options |
+| (this commit) | Harness `server.py`: the launch config (strict caps + pass-5 quotas), no cap override; `E_DB` picks the database copy. This section |
+
+Tests: `src/lib/daily-v2` + the arena seam: 64 passed.
+
+Owner entry point (unchanged): `/admin/creator-replay` → **Play a three-act take**.
+
+Backend pass 5 report:
+`League_Combat_Simulator\.worktrees\daily-v2-e\docs\daily_v2_lane_e\READINESS_PASS5_2026-10-21.md`
+(§9 has the exact local and private-preview steps).

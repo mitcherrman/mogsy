@@ -1,8 +1,10 @@
 """LOCAL-ONLY Daily three-acts playtest backend (lane E scratch; never committed).
 
 Runs the backend worktree's real app against a COPY of the canonical DB with:
-  * DAILY_THREE_ACTS_V2=owner and the playtest config (serveable scope,
-    caps 2/act 6/day) -- a measured proposal, not an approved config;
+  * DAILY_THREE_ACTS_V2=owner, serveable scope (owner gate 9) and lane E's
+    launch config (strict caps 1/act 2/day + pass-5 quotas; no override);
+  * E_DB selects the database COPY (default: ../dbcopy/lol_calc.db); point it
+    at a dev copy that also holds the takedown rows to play those too;
   * HS256 test tokens (SUPABASE_ALLOW_HS256 + a random per-run secret), the
     repo's own e2e path; SUPABASE_URL is removed, so nothing reaches Supabase;
   * require_admin overridden to the local test owner (the real check is a
@@ -19,7 +21,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 WT = r"C:\Users\mlmit\OneDrive\Desktop\League_Combat_Simulator\.worktrees\daily-v2-e"
-DB = str(HERE.parent / "dbcopy" / "lol_calc.db")
+DB = os.environ.get("E_DB") or str(HERE.parent / "dbcopy" / "lol_calc.db")
 PORT = int(os.environ.get("E_PORT", "8711"))
 OWNER = "0e2e7a5e-0000-4000-8000-00000000e2e1"   # local test owner id
 SECRET = secrets.token_hex(32)
@@ -37,8 +39,6 @@ os.environ.update({
     "RANKED_BOT_ENABLED": "1",
     "DAILY_THREE_ACTS_V2": "owner",
     "DAILY_THREE_ACTS_CERT_SCOPE": "serveable",
-    "DAILY_THREE_ACTS_CONFIG": json.dumps({"max_family_per_act": 2,
-                                           "max_family_per_day": 6}),
     "SUPABASE_ALLOW_HS256": "1",
     "SUPABASE_JWT_SECRET": SECRET,
     "SUPABASE_VERIFY_ISSUER": "0",
