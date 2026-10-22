@@ -47,7 +47,7 @@ export function hasLiveDailyChild(run: DailyRun | null, flow: DailyFlowView | nu
  *   * a v5 day whose MAIN Daily is complete: only while an optional child is
  *     actually live. Today's Challenge is saved, and More Challenges / Review
  *     resume later, so stepping away between them is not an exit from an
- *     unfinished Daily. A live child still has the ~45-second consequence.
+ *     unfinished Daily. A live child remains guarded, but can resume later.
  */
 export function shouldGuardDailyLeave(
   run: DailyRun | null, flow: DailyFlowView | null, optionalLaunchPending = false,
@@ -65,7 +65,7 @@ export function dailyLeaveCopy(
   if (run && isMainDailyComplete(run)) {
     // Only reachable while an optional launch is in flight or its child is
     // live (`shouldGuardDailyLeave`). A launch in flight is NOT a live child:
-    // it is said as starting, without the live child's 45-second consequence.
+    // it is said as starting, rather than as an already-resumable live child.
     const stage = currentStage(run);
     const label = stage ? stageIdentity(stage).label : "This activity";
     if (!live && optionalLaunchPending) {
