@@ -1185,6 +1185,8 @@ export default function LolHub() {
                     // <=167 CSS px wide; the 512px plate is 3x headroom and is
                     // the same file the Landing already loaded.
                     scale="medium"
+                    interactive
+                    triggerLabel="Mogzy, Academy guide"
                     onDismiss={dismissGuide}
                   />
                 )}
