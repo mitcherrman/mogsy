@@ -11,6 +11,12 @@
  * Everything a step validates is also what the backend would validate
  * server-side (`RankedFormat.validate`, `apply_ruleset`); the portal never
  * decides a rule the server would refuse.
+ *
+ * The portal draws from a `PortalSource`: the fixture gateway in the DEV
+ * harness, or the real `GET /api/arena/catalog` and the owner's friends in
+ * Admin. On a real source the steps show only what the server applies (no
+ * public visibility, no content filters it does not honour yet, its own
+ * timer bounds and no-show deadline), and Launch waits for the server.
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion as fm } from "framer-motion";
@@ -28,6 +34,7 @@ import { GAME_TYPES, gameTypeById, TOPICS, type ArenaGameType } from "../fixture
 import { DEFAULT_RULES } from "../fixtures/scenarios";
 import type { ArenaGateway } from "../gateway/types";
 import { accentStyle } from "../identity";
+import { fixturePortalSource, type PortalSource } from "./portalSource";
 import { ease, slideTransition, slideVariants } from "../motion";
 import { Btn, EntrantAvatar, Eyebrow, SimulatedBadge } from "../ui/parts";
 
@@ -40,6 +47,8 @@ export interface HostDraft {
   size: number;
   invitees: string[];
   readyDeadlineMin: number;
+  /** The organizer also takes a seat (a real event asks; the fixture assumes). */
+  organizerPlays: boolean;
 }
 
 const STEPS = ["Event", "Game", "Rules", "Players", "Launch"] as const;
@@ -51,8 +60,11 @@ const KINDS: { kind: ArenaEventKind; title: string; blurb: string; icon: ReactNo
   { kind: "tournament", title: "Tournament", blurb: "Four to thirty-two players in a single-elimination bracket. Byes for the top seeds.", icon: <Trophy className="h-5 w-5" />, size: 8, best_of: 3 },
 ];
 
-export function HostPortal({ gateway, onLaunched, backHref }: {
-  gateway: ArenaGateway;
+export function HostPortal({ gateway, source: given, onLaunched, backHref }: {
+  /** The DEV harness's fixture gateway (used when `source` is absent). */
+  gateway?: ArenaGateway;
+  /** Where the catalog, friends and Launch come from. */
+  source?: PortalSource;
   /** Called after the launch transition with the created event's id. */
   onLaunched: (eventId: string) => void;
   backHref: string;
@@ -60,36 +72,46 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const reduced = useReducedMotionPreference();
   const motion = useMotionAllowed();
+  const source = useMemo(() => given ?? fixturePortalSource(gateway as ArenaGateway), [given, gateway]);
+  const fixture = source.source === "fixture";
+  const gameTypes = source.gameTypes.length ? source.gameTypes : GAME_TYPES;
   const [step, setStep] = useState<Step>(0);
   const [dir, setDir] = useState(0);
-  const [draft, setDraft] = useState<HostDraft>({ kind: "tournament", title: "", visibility: "private", rules: { ...DEFAULT_RULES }, best_of: 3, size: 8, invitees: [], readyDeadlineMin: 10 });
+  const [draft, setDraft] = useState<HostDraft>(() => {
+    const first = gameTypes.find((g) => g.availability === "eligible") ?? gameTypes[0];
+    const rules = fixture ? { ...DEFAULT_RULES } : { ...DEFAULT_RULES, game_type: first.id, modules: first.defaultModules, question_seconds: null, topics: [] };
+    return { kind: "tournament", title: "", visibility: "private", rules, best_of: 3, size: Math.min(8, source.sizes[source.sizes.length - 1] ?? 8), invitees: [], readyDeadlineMin: source.readyDeadlineMinutes ?? 10, organizerPlays: fixture };
+  });
   const [launch, setLaunch] = useState<{ id: string; title: string } | null>(null);
-  const friends = useMemo(() => gateway.friends(), [gateway]);
-  const fixture = gateway.availability().source === "fixture";
+  const [launching, setLaunching] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const friends = source.friends;
   const go = (to: Step) => { setDir(to > step ? 1 : -1); setStep(to); };
   const patch = (p: Partial<HostDraft>) => setDraft((d) => ({ ...d, ...p }));
   const patchRules = (p: Partial<ArenaRules>) => setDraft((d) => ({ ...d, rules: { ...d.rules, ...p } }));
-  const game = gameTypeById(draft.rules.game_type);
+  const game = gameTypes.find((g) => g.id === draft.rules.game_type) ?? gameTypeById(draft.rules.game_type);
+  const [secMin, secMax] = source.secondsRange(game.id);
   const title = draft.title.trim() || defaultTitle(draft, game);
   const valid: Record<Step, boolean> = {
     0: true,
-    1: game.availability === "eligible" && draft.rules.topics.length > 0,
+    1: game.availability === "eligible" && (!source.contentApplied || draft.rules.topics.length > 0),
     2: draft.rules.modules >= game.modulesRange[0] && draft.rules.modules <= game.modulesRange[1],
-    3: draft.kind === "tournament" ? draft.size >= 4 : true,
-    4: true,
+    3: draft.kind === "tournament" ? draft.size >= Math.min(4, source.sizes[0] ?? 4) : true,
+    4: !launching,
   };
-  const doLaunch = () => {
-    const ev = gateway.createEvent({
-      event_id: `aev_host_${Date.now().toString(36)}`,
-      title,
-      kind: draft.kind,
-      entrants: draft.size,
-      best_of: draft.best_of,
-      rules: draft.rules,
-      visibility: draft.visibility,
-      invitees: draft.invitees,
-    });
-    setLaunch({ id: ev.event_id, title: ev.title });
+  const doLaunch = async () => {
+    if (launching) return;
+    setLaunching(true);
+    setNotice(null);
+    try {
+      const out = await source.create(draft, title);
+      if (out.warnings?.length) setNotice(out.warnings.join(" "));
+      setLaunch({ id: out.event_id, title: out.title });
+    } catch (e) {
+      setNotice(source.errorCopy(e));
+    } finally {
+      setLaunching(false);
+    }
   };
 
   return (
@@ -97,7 +119,7 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
       <header className="flex items-center gap-3 px-4 pt-3 pb-2">
         <Link to={backHref} className="ta-btn ta-btn--sm !px-2" aria-label="Back to the Arena"><ArrowLeft className="h-4 w-4" /></Link>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><Eyebrow>Match Host Portal</Eyebrow>{fixture && <SimulatedBadge label="Fixture gateway" />}</div>
+          <div className="flex items-center gap-2"><Eyebrow>Match Host Portal</Eyebrow>{fixture ? <SimulatedBadge label="Fixture gateway" /> : <span className="ta-pill ta-pill--muted">Admin · real event</span>}</div>
           <h1 className="ta-title ta-title--gold truncate text-[20px] font-bold leading-tight sm:text-[26px]">Create an event</h1>
         </div>
       </header>
@@ -137,7 +159,7 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
                         <span className="ta-option__check"><Check className="h-3 w-3" /></span>
                         <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(201,168,76,0.14)] text-[#f1dc9c]">{k.icon}</span>
                         <span className="ta-title text-[16px] font-bold text-white">{k.title}</span>
-                        <span className="text-[12px] leading-snug text-[rgba(215,205,180,0.7)]">{k.blurb}</span>
+                        <span className="text-[12px] leading-snug text-[rgba(215,205,180,0.7)]">{k.kind === "tournament" && !fixture ? `Up to ${source.sizes[source.sizes.length - 1] ?? 16} players in a single-elimination bracket. Byes for the top seeds.` : k.blurb}</span>
                       </button>
                     ))}
                   </div>
@@ -146,8 +168,8 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
                   </Field>
                   <Field label="Who can find it">
                     <div className="flex flex-wrap gap-2">
-                      {(["private", "link", "public"] as const).map((v) => (
-                        <button key={v} type="button" aria-pressed={draft.visibility === v} className="ta-chip" onClick={() => patch({ visibility: v })}>{v === "private" ? "Invite only" : v === "link" ? "Anyone with the code" : "Public"}</button>
+                      {(source.allowPublic ? (["private", "link", "public"] as const) : (["private", "link"] as const)).map((v) => (
+                        <button key={v} type="button" aria-pressed={draft.visibility === v} className="ta-chip" onClick={() => patch({ visibility: v })} data-testid="ta-visibility">{v === "private" ? "Invite only" : v === "link" ? (fixture ? "Anyone with the code" : "Anyone with the link can watch") : "Public"}</button>
                       ))}
                     </div>
                   </Field>
@@ -156,10 +178,14 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
               {step === 1 && (
                 <StepFrame title="Game and content" blurb="One game type for the whole event, so every match is the same test. Then the knowledge it draws on.">
                   <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-                    {GAME_TYPES.map((g) => (
-                      <GameCard key={g.id} game={g} pressed={draft.rules.game_type === g.id} onPick={() => patchRules({ game_type: g.id, modules: g.defaultModules, question_seconds: g.defaultSeconds, ruleset: "standard" })} />
+                    {gameTypes.map((g) => (
+                      <GameCard key={g.id} game={g} pressed={draft.rules.game_type === g.id} onPick={() => patchRules({ game_type: g.id, modules: g.defaultModules, question_seconds: fixture ? g.defaultSeconds : null, ruleset: "standard" })} />
                     ))}
                   </div>
+                  {!source.contentApplied && (
+                    <p className="text-[12px] leading-snug text-[rgba(215,205,180,0.6)]" data-testid="ta-content-note">Content draws on the game type's standard pool. Topic and difficulty filters are not applied by the server yet, so they are not offered.</p>
+                  )}
+                  {source.contentApplied && <>
                   <Field label="Question content" hint="At least one topic. Mixed topics keep a bracket fair across matches.">
                     <div className="flex flex-wrap gap-2">
                       {TOPICS.map((t) => {
@@ -173,6 +199,7 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
                       {(["mixed", "easy", "hard"] as const).map((d) => <button key={d} type="button" aria-pressed={draft.rules.difficulty === d} className="ta-chip capitalize" onClick={() => patchRules({ difficulty: d })}>{d === "mixed" ? "Mixed · ladder weighting" : d}</button>)}
                     </div>
                   </Field>
+                  </>}
                 </StepFrame>
               )}
               {step === 2 && (
@@ -181,8 +208,11 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
                     <Field label={`Length · ${draft.rules.modules} ${game.unit}`} hint={`${game.modulesRange[0]}–${game.modulesRange[1]} ${game.unit}`}>
                       <input type="range" className="ta-range" min={game.modulesRange[0]} max={game.modulesRange[1]} value={draft.rules.modules} onChange={(e) => patchRules({ modules: Number(e.target.value) })} aria-label="Modules" data-testid="ta-modules" />
                     </Field>
-                    <Field label={`Timer · ${draft.rules.question_seconds ?? game.defaultSeconds}s each`} hint="Server-authoritative; the client timer is display only.">
-                      <input type="range" className="ta-range" min={5} max={90} step={5} value={draft.rules.question_seconds ?? game.defaultSeconds} onChange={(e) => patchRules({ question_seconds: Number(e.target.value) })} aria-label="Seconds per question" />
+                    <Field label={draft.rules.question_seconds == null && !fixture ? "Timer · format default" : `Timer · ${draft.rules.question_seconds ?? game.defaultSeconds}s each`} hint="Server-authoritative; the client timer is display only.">
+                      <input type="range" className="ta-range" min={secMin} max={secMax} step={5} value={Math.min(secMax, Math.max(secMin, draft.rules.question_seconds ?? game.defaultSeconds))} onChange={(e) => patchRules({ question_seconds: Number(e.target.value) })} aria-label="Seconds per question" />
+                      {!fixture && (
+                        <button type="button" aria-pressed={draft.rules.question_seconds == null} className="ta-chip self-start" onClick={() => patchRules({ question_seconds: draft.rules.question_seconds == null ? Math.min(secMax, Math.max(secMin, game.defaultSeconds)) : null })} data-testid="ta-timer-default">Format default</button>
+                      )}
                     </Field>
                   </div>
                   <Field label="Series" hint={draft.kind === "tournament" ? "Rounds before the final play one game shorter when the final is Bo5." : undefined}>
@@ -211,8 +241,10 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
                         <button type="button" aria-pressed={draft.rules.speed_bonus} className="ta-chip" onClick={() => patchRules({ speed_bonus: !draft.rules.speed_bonus })}>Speed bonus {draft.rules.speed_bonus ? "on" : "off"}</button>
                       </div>
                     </Field>
-                    <Field label={`No-show deadline · ${draft.readyDeadlineMin} min`} hint="A player who never presses Play forfeits the node.">
-                      <input type="range" className="ta-range" min={2} max={30} step={1} value={draft.readyDeadlineMin} onChange={(e) => patch({ readyDeadlineMin: Number(e.target.value) })} aria-label="Ready deadline in minutes" />
+                    <Field label={`No-show deadline · ${draft.readyDeadlineMin} min`} hint={source.readyDeadlineMinutes != null ? "Set by the server for every event. If only one player is ready at the deadline, they advance; if neither is, you resolve the match." : "A player who never presses Play forfeits the node."}>
+                      {source.readyDeadlineMinutes == null && (
+                        <input type="range" className="ta-range" min={2} max={30} step={1} value={draft.readyDeadlineMin} onChange={(e) => patch({ readyDeadlineMin: Number(e.target.value) })} aria-label="Ready deadline in minutes" />
+                      )}
                     </Field>
                   </div>
                 </StepFrame>
@@ -222,24 +254,33 @@ export function HostPortal({ gateway, onLaunched, backHref }: {
                   {draft.kind === "tournament" && (
                     <Field label="Field size" hint="Byes go to the top seeds when the field is not a power of two.">
                       <div className="flex flex-wrap gap-2">
-                        {[4, 6, 8, 12, 16, 24, 32].map((n) => <button key={n} type="button" aria-pressed={draft.size === n} className="ta-chip" onClick={() => patch({ size: n })} data-testid="ta-size">{n} players</button>)}
+                        {source.sizes.map((n) => <button key={n} type="button" aria-pressed={draft.size === n} className="ta-chip" onClick={() => patch({ size: n })} data-testid="ta-size">{n} players</button>)}
                       </div>
                     </Field>
                   )}
-                  <InvitePicker friends={friends} picked={draft.invitees} max={draft.size - 1} onChange={(invitees) => patch({ invitees })} />
+                  {source.organizerSeatChoice && (
+                    <Field label="Your seat" hint={draft.kind === "tournament" ? "Run the bracket without playing, or take seat one yourself." : "A duel or match is you against one other player, or two players you admit."}>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" aria-pressed={draft.organizerPlays} className="ta-chip" onClick={() => patch({ organizerPlays: true })} data-testid="ta-organizer-plays">I play in it</button>
+                        <button type="button" aria-pressed={!draft.organizerPlays} className="ta-chip" onClick={() => patch({ organizerPlays: false })} data-testid="ta-organizer-runs">I only run it</button>
+                      </div>
+                    </Field>
+                  )}
+                  <InvitePicker friends={friends} picked={draft.invitees} max={draft.size - (draft.organizerPlays ? 1 : 0)} onChange={(invitees) => patch({ invitees })} ttlLabel={source.inviteTtlLabel} />
                 </StepFrame>
               )}
               {step === 4 && (
                 <StepFrame title="Review and launch" blurb="Everything below is frozen into the event when you launch. The server owns the bracket from there.">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Review label="Event" rows={[["Name", title], ["Kind", KINDS.find((k) => k.kind === draft.kind)!.title], ["Visibility", draft.visibility], ["Rated", "No · for fun"]]} />
-                    <Review label="Game" rows={[["Type", game.title], ["Topics", draft.rules.topics.map((t) => TOPICS.find((x) => x.id === t)?.label).join(", ")], ["Difficulty", draft.rules.difficulty]]} />
-                    <Review label="Rules" rows={[["Series", `Best of ${draft.best_of}`], ["Length", `${draft.rules.modules} ${game.unit}`], ["Timer", `${draft.rules.question_seconds ?? game.defaultSeconds}s`], ["Ruleset", draft.rules.ruleset.replace("_", " ")], ["Speed bonus", draft.rules.speed_bonus ? "On" : "Off"], ["No-show", `${draft.readyDeadlineMin} min`]]} />
-                    <Review label="Players" rows={[["Field", `${draft.size} players`], ["Challenged", draft.invitees.length ? friends.filter((f) => draft.invitees.includes(f.profile_id)).map((f) => f.display_name).join(", ") : "None yet"], ["Open seats", `${Math.max(0, draft.size - 1 - draft.invitees.length)} by join code`]]} />
+                    <Review label="Game" rows={source.contentApplied ? [["Type", game.title], ["Topics", draft.rules.topics.map((t) => TOPICS.find((x) => x.id === t)?.label).join(", ")], ["Difficulty", draft.rules.difficulty]] : [["Type", game.title], ["Content", "Standard pool"]]} />
+                    <Review label="Rules" rows={[["Series", `Best of ${draft.best_of}`], ["Length", `${draft.rules.modules} ${game.unit}`], ["Timer", draft.rules.question_seconds == null && !fixture ? "Format default" : `${draft.rules.question_seconds ?? game.defaultSeconds}s`], ["Ruleset", draft.rules.ruleset.replace("_", " ")], ["Speed bonus", draft.rules.speed_bonus ? "On" : "Off"], ["No-show", `${draft.readyDeadlineMin} min`]]} />
+                    <Review label="Players" rows={[["Field", `${draft.kind === "tournament" ? draft.size : 2} players`], ["Organizer", draft.organizerPlays ? "Plays seat one" : "Runs it only"], ["Challenged", draft.invitees.length ? friends.filter((f) => draft.invitees.includes(f.profile_id)).map((f) => f.display_name).join(", ") : "None yet"], ["Open seats", `${Math.max(0, (draft.kind === "tournament" ? draft.size : 2) - (draft.organizerPlays ? 1 : 0) - draft.invitees.length)} by join ${fixture ? "code" : "link"}`]]} />
                   </div>
                   <div className="flex flex-col items-center gap-2 pt-2">
-                    <Btn tone="primary" size="lg" onClick={doLaunch} data-testid="ta-launch-btn"><Rocket className="h-5 w-5" aria-hidden="true" />Launch {KINDS.find((k) => k.kind === draft.kind)!.title.toLowerCase()}</Btn>
-                    <p className="text-center text-[11px] text-[rgba(215,205,180,0.5)]">No real-money prizes or entry fees exist in the Arena. {fixture ? "Fixture gateway: the event lives in this tab only." : ""}</p>
+                    <Btn tone="primary" size="lg" onClick={doLaunch} disabled={launching} data-testid="ta-launch-btn"><Rocket className="h-5 w-5" aria-hidden="true" />{launching ? "Creating…" : `Launch ${KINDS.find((k) => k.kind === draft.kind)!.title.toLowerCase()}`}</Btn>
+                    {notice && <p role="alert" className="max-w-md text-center text-[12px] text-[#f6c3cc]" data-testid="ta-portal-notice">{notice}</p>}
+                    <p className="text-center text-[11px] text-[rgba(215,205,180,0.5)]">No real-money prizes or entry fees exist in the Arena. {fixture ? "Fixture gateway: the event lives in this tab only." : "The server creates the event; nothing is real until it answers."}</p>
                   </div>
                 </StepFrame>
               )}
@@ -308,7 +349,7 @@ function GameCard({ game, pressed, onPick }: { game: ArenaGameType; pressed: boo
   );
 }
 
-function InvitePicker({ friends, picked, max, onChange }: { friends: ArenaEntrant[]; picked: string[]; max: number; onChange: (ids: string[]) => void }) {
+function InvitePicker({ friends, picked, max, onChange, ttlLabel }: { friends: readonly ArenaEntrant[]; picked: string[]; max: number; onChange: (ids: string[]) => void; ttlLabel: string }) {
   const [q, setQ] = useState("");
   const shown = friends.filter((f) => f.display_name.toLowerCase().includes(q.trim().toLowerCase()));
   const toggle = (id: string) => {
@@ -316,7 +357,7 @@ function InvitePicker({ friends, picked, max, onChange }: { friends: ArenaEntran
     else if (picked.length < max) onChange([...picked, id]);
   };
   return (
-    <Field label={`Challenge friends · ${picked.length}/${max}`} hint="Friends only; blocks fail closed; 15-minute challenge TTL.">
+    <Field label={`Challenge friends · ${picked.length}/${max}`} hint={`Friends only; blocks fail closed; ${ttlLabel} challenge TTL.`}>
       <div className="flex flex-wrap gap-1.5" aria-live="polite">
         {picked.map((id) => {
           const f = friends.find((x) => x.profile_id === id);

@@ -333,6 +333,19 @@ const WordPuzzleLab = import.meta.env.DEV
 // Estimate) plays at /admin/playtests/:mode, launched from Ranked → Playtests.
 // The chunk carries no round or answer; the backend deals and reveals them.
 const OwnerPlaytestPage = lazy(() => import("./pages/admin/playtests/OwnerPlaytestPage"));
+// TOURNAMENT ARENA (admin-only beta). The organizer dashboard sits inside the
+// Admin shell; the create portal and the organizer console are full-viewport
+// frames outside it (like /admin/quiz-content), under the same AdminRoute.
+// The player routes live under /quiz/arena/* (LoL theme pre-paint) and are
+// linked from nowhere: a player arrives by join link or invitation. Every
+// organizer call is authorized server-side from the owner's own session.
+const TournamentArenaAdminPage = lazy(() => import("./pages/admin/tournament-arena/TournamentArenaAdmin"));
+const TournamentArenaAdminCreate = lazy(() => import("./pages/admin/tournament-arena/TournamentArenaAdmin").then((m) => ({ default: m.TournamentArenaAdminCreate })));
+const TournamentArenaAdminConsole = lazy(() => import("./pages/admin/tournament-arena/TournamentArenaAdmin").then((m) => ({ default: m.TournamentArenaAdminConsole })));
+const ArenaPlayerHome = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaPlayerHome })));
+const ArenaJoinRoute = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaJoinRoute })));
+const ArenaEventRoute = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaEventRoute })));
+const ArenaMatchRoute = lazy(() => import("./pages/arena/ArenaPlayerPages").then((m) => ({ default: m.ArenaMatchRoute })));
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -582,7 +595,11 @@ export const appRouter = createBrowserRouter(
                         /admin layout gate, and its backend endpoints are behind
                         the same require_admin every other admin read uses. */}
                     <Route path="ranked/generator-lab" element={<Suspense fallback={<RouteFallback />}><MasteryGeneratorLab /></Suspense>} />
+                    {/* TOURNAMENT ARENA — the organizer dashboard (admin-only beta). */}
+                    <Route path="tournament-arena" element={<Suspense fallback={<RouteFallback />}><TournamentArenaAdminPage /></Suspense>} />
                   </Route>
+                  <Route path="/admin/tournament-arena/new" element={<AdminRoute><Suspense fallback={<RouteFallback />}><TournamentArenaAdminCreate /></Suspense></AdminRoute>} />
+                  <Route path="/admin/tournament-arena/event/:eventId" element={<AdminRoute><Suspense fallback={<RouteFallback />}><TournamentArenaAdminConsole /></Suspense></AdminRoute>} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Notifications /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
@@ -671,6 +688,11 @@ export const appRouter = createBrowserRouter(
                       Public, like the catalog: its session route decides. */}
                   <Route path="/quiz/more-challenges/:mode" element={<Suspense fallback={<RouteFallback />}><BonusSessionPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
+                  {/* TOURNAMENT ARENA — player routes (signed-in accounts; no directory, no hub entry). */}
+                  <Route path="/quiz/arena" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaPlayerHome /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/arena/join/:code" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaJoinRoute /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/arena/e/:eventId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaEventRoute /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/arena/e/:eventId/match/:nodeId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><ArenaMatchRoute /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   {/* Layout is already mounted here and already painting the
                       League base colour, so the hub needs nothing but its height

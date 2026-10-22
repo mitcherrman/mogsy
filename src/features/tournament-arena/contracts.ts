@@ -1,8 +1,8 @@
 /**
  * TOURNAMENT ARENA — the frontend ↔ backend contract (handoff §6).
  *
- * PROPOSED, NOT SERVED. No `/api/arena/*` route exists yet; this is the shape
- * the visual layer is written against, so the backend session and this one
+ * SERVED by the LCS backend (`/api/arena/*`, `arena/projection.py`); the
+ * fixture gateway produces the same shape for the DEV harness, so both sides
  * meet on one document. It mirrors the pro-play `SlotSource` graph on purpose
  * (edges stored on the TARGET slot), so the forked bracket logic carries over.
  *
@@ -25,6 +25,8 @@ export type ArenaSlotSource =
   | { kind: "bye" };
 
 export type ArenaNodeStatus = "pending" | "ready" | "live" | "complete" | "walkover" | "bye";
+/** Why the organizer must act on a node (backend B3), else null. */
+export type ArenaNodeAttention = "no_show" | "draw_cap";
 export type ArenaEntrantStatus = "invited" | "joined" | "checked_in" | "withdrawn" | "eliminated" | "champion";
 export type ArenaEntrantRole = "organizer" | "cohost" | "player";
 export type ArenaRoleEmblem = "top" | "jungle" | "mid" | "adc" | "support";
@@ -71,6 +73,13 @@ export interface ArenaNode {
   /** Only the viewer's own node carries one, so the viewer can jump into play. */
   current_match_id: string | null;
   ready_deadline: string | null;
+  /**
+   * The two-sided ready check (backend B3): who has pressed Play on a ready
+   * node. Absent on fixture projections.
+   */
+  ready_profile_ids?: string[];
+  /** Set when the organizer must resolve the node. */
+  attention?: ArenaNodeAttention | null;
   games: ArenaGame[];
 }
 
@@ -108,13 +117,47 @@ export interface ArenaEvent {
   organizer_profile_id: string;
   viewer_profile_id: string | null;
   viewer_role: ArenaViewerRole;
-  /** Organizer only. */
+  /** Organizer view only. */
   join_code?: string;
+  /**
+   * True only when the backend answered with the organizer view: the caller
+   * holds organizer authority (the Mogzy owner, admin-only beta). Absent on
+   * fixture projections, where the organizer seat stands in for it.
+   */
+  viewer_can_manage?: boolean;
+  /** Organizer view only: pending invitations by recipient profile id. */
+  invites?: ArenaPendingInvite[];
+  /** The owner's admin read only: the event's audit trail, newest first. */
+  audit?: ArenaAuditEntry[];
   entrants: ArenaEntrant[];
   bracket: ArenaBracket | null;
   champion_profile_id: string | null;
   /** Anchors client clocks, as the Ranked timer does. */
   server_now: string;
+}
+
+export interface ArenaPendingInvite {
+  invite_id: string;
+  recipient_profile_id: string;
+  status: "pending";
+  expires_at: string;
+}
+
+export interface ArenaAuditEntry {
+  kind: string;
+  revision: number | null;
+  at: string;
+  /** null for a system action (a terminal result, a deadline). */
+  actor_profile_id: string | null;
+  system: boolean;
+  payload: Record<string, unknown>;
+}
+
+/** May this viewer run the event? The backend's word when it gave one; on a
+ *  fixture projection, the organizer seat. */
+export function canManageEvent(ev: Pick<ArenaEvent, "viewer_can_manage" | "viewer_role">): boolean {
+  if (typeof ev.viewer_can_manage === "boolean") return ev.viewer_can_manage;
+  return ev.viewer_role === "organizer" || ev.viewer_role === "cohost";
 }
 
 /* ── validation (the style of `src/lib/ranked-public/contracts.ts`) ─────── */

@@ -2,16 +2,16 @@
  * Expanded match detail for one bracket node: the two entrants face to face,
  * the series score, every game played, and the actions the viewer may take.
  *
- * "Play" / "Enter match" leads to the duel experience. In production that is
- * where `QuizRankedMatch host="tournament"` mounts (handoff §7.3 "Match
- * handoff"); here it is the fixture duel, which commits a scripted result to
- * this node when it ends.
+ * "Play" / "Enter match" leads to the match room. On a real event that is
+ * the ready check and then `QuizRankedMatch` hosted by the tournament
+ * (handoff §7.3 "Match handoff"); under the fixture it is the simulated duel,
+ * which commits a scripted result to this node when it ends.
  */
 import { Swords, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { nodeLabel, roundName, slotSourceLabel, type ArenaEntrant, type ArenaEvent, type ArenaNode } from "../contracts";
+import { canManageEvent, nodeLabel, roundName, slotSourceLabel, type ArenaEntrant, type ArenaEvent, type ArenaNode } from "../contracts";
 import { winsNeeded } from "../engine/advance";
 import { accentStyle, entrantById } from "../identity";
 import { matchPoint, SeriesPips } from "../ceremony/SeriesPips";
@@ -22,6 +22,8 @@ export interface NodeActions {
   onEnterMatch: (nodeId: string) => void;
   onStepResult: (nodeId: string) => void;
   onWalkover: (nodeId: string, side: 0 | 1) => void;
+  /** Owner correction of a decided node (real events). */
+  onOverride?: (nodeId: string) => void;
   onReplayFinals?: () => void;
 }
 
@@ -39,7 +41,10 @@ export function NodeDetail({ event, node, viewerId, actions, onClose, fixture }:
   const a = entrantById(event.entrants, node.slots[0].profile_id);
   const b = entrantById(event.entrants, node.slots[1].profile_id);
   const viewerIn = Boolean(viewerId) && node.slots.some((s) => s.profile_id === viewerId);
-  const organizer = event.viewer_role === "organizer" || event.viewer_role === "cohost";
+  const organizer = canManageEvent(event);
+  const readyIds = node.status === "ready" ? node.ready_profile_ids ?? [] : [];
+  const viewerReady = Boolean(viewerId) && readyIds.includes(viewerId as string);
+  const readyNames = readyIds.map((id) => entrantById(event.entrants, id)?.display_name).filter(Boolean) as string[];
   const isFinal = node.round === total;
   const need = winsNeeded(node.best_of);
   const mp = node.status === "live" ? matchPoint(node.slots[0].wins, node.slots[1].wins, node.best_of) : null;
@@ -79,6 +84,10 @@ export function NodeDetail({ event, node, viewerId, actions, onClose, fixture }:
         {node.status === "bye" && <Pill tone="muted">Bye</Pill>}
         {node.status === "walkover" && <Pill tone="muted">Walkover</Pill>}
         {node.status === "complete" && <Pill tone="gold">Final</Pill>}
+        {node.attention && <Pill tone="sim">{node.attention === "no_show" ? "No-show · organizer resolves" : "Too many draws · organizer resolves"}</Pill>}
+        {node.status === "ready" && readyNames.length > 0 && !node.attention && (
+          <span data-testid="ta-ready-state">{viewerReady ? (readyNames.length > 1 ? "Both ready" : "You are ready · waiting for your opponent") : `${readyNames.join(" and ")} ${readyNames.length > 1 ? "are" : "is"} ready`}</span>
+        )}
         {winner && (
           <span className="inline-flex items-center gap-1.5 font-semibold text-[#f1dc9c]"><Trophy className="h-3.5 w-3.5" aria-hidden="true" />{winner.display_name} advances{isFinal ? " as champion" : ""}</span>
         )}
@@ -106,8 +115,8 @@ export function NodeDetail({ event, node, viewerId, actions, onClose, fixture }:
 
       {/* actions */}
       <div className="flex flex-wrap items-center gap-2" data-testid="ta-node-actions">
-        {viewerIn && node.status === "ready" && (
-          <Btn tone="primary" onClick={() => actions.onPlay(node.node_id)} data-testid="ta-play"><Swords className="h-4 w-4" aria-hidden="true" />Play your match</Btn>
+        {viewerIn && node.status === "ready" && !node.attention && (
+          <Btn tone="primary" onClick={() => actions.onPlay(node.node_id)} data-testid="ta-play"><Swords className="h-4 w-4" aria-hidden="true" />{viewerReady ? "Back to the match room" : "Play your match"}</Btn>
         )}
         {viewerIn && node.status === "live" && (
           <Btn tone="primary" onClick={() => actions.onEnterMatch(node.node_id)} data-testid="ta-enter"><Swords className="h-4 w-4" aria-hidden="true" />Enter the match</Btn>
@@ -115,17 +124,20 @@ export function NodeDetail({ event, node, viewerId, actions, onClose, fixture }:
         {isFinal && actions.onReplayFinals && (node.status === "ready" || node.status === "live") && (
           <Btn onClick={actions.onReplayFinals} data-testid="ta-replay-finals">Finals intro</Btn>
         )}
-        {organizer && !settled && a && b && (
+        {organizer && !settled && a && b && (fixture || node.status !== "live") && (
           <>
-            <Btn size="sm" tone="danger" onClick={() => actions.onWalkover(node.node_id, 0)}>Walkover · {a.display_name}</Btn>
-            <Btn size="sm" tone="danger" onClick={() => actions.onWalkover(node.node_id, 1)}>Walkover · {b.display_name}</Btn>
+            <Btn size="sm" tone="danger" onClick={() => actions.onWalkover(node.node_id, 0)} data-testid="ta-walkover-a">Walkover · {a.display_name}</Btn>
+            <Btn size="sm" tone="danger" onClick={() => actions.onWalkover(node.node_id, 1)} data-testid="ta-walkover-b">Walkover · {b.display_name}</Btn>
           </>
+        )}
+        {organizer && actions.onOverride && (node.status === "complete" || node.status === "walkover") && (
+          <Btn size="sm" onClick={() => actions.onOverride?.(node.node_id)} data-testid="ta-override">Override result</Btn>
         )}
         {fixture && !settled && a && b && (
           <Btn size="sm" onClick={() => actions.onStepResult(node.node_id)} data-testid="ta-step-node" title="Fixture: commit the next scripted game">Step result</Btn>
         )}
       </div>
-      {viewerIn && (node.status === "ready" || node.status === "live") && (
+      {fixture && viewerIn && (node.status === "ready" || node.status === "live") && (
         <p className="text-[11px] leading-snug text-[rgba(215,205,180,0.55)]">
           In production this mounts the Ranked match UI with <code className="text-[#f1dc9c]">host="tournament"</code>; the result returns here and the bracket advances.
         </p>

@@ -44,6 +44,16 @@ export const TOPICS: readonly { id: string; label: string }[] = [
   { id: "runes", label: "Runes" },
 ];
 
+/** Server game types the DEV catalog does not list, for display only. */
+const DISPLAY_ONLY: readonly ArenaGameType[] = [
+  { id: "ranked_mix", title: "Ranked Mix", blurb: "The full Ranked rhythm: quiz modules with Meta Reflex blocks between them.", accent: "#d9b45a", unit: "modules", defaultModules: 10, modulesRange: [4, 20], defaultSeconds: 20, rulesets: ["standard"], availability: "eligible" },
+  { id: "draft_memory", title: "Draft Memory", blurb: "Seat a historical draft's five champions in their positions.", accent: MODE_ACCENT.roster_lock, unit: "drafts", defaultModules: 3, modulesRange: [1, 9], defaultSeconds: 45, rulesets: ["standard"], availability: "eligible" },
+];
+
 export function gameTypeById(id: string): ArenaGameType {
-  return GAME_TYPES.find((g) => g.id === id) ?? GAME_TYPES[0];
+  const known = GAME_TYPES.find((g) => g.id === id) ?? DISPLAY_ONLY.find((g) => g.id === id);
+  if (known) return known;
+  // An id this client has never heard of keeps its own name, never another type's.
+  const title = id.split("_").map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(" ");
+  return { ...GAME_TYPES[0], id, title, blurb: "", unit: "modules" };
 }

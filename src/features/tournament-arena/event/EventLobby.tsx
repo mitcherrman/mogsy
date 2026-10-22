@@ -15,28 +15,35 @@ import { gameTypeById } from "../fixtures/catalog";
 import { accentStyle } from "../identity";
 import { Btn, EntrantAvatar, Eyebrow, Pill } from "../ui/parts";
 
-export function EventLobby({ event, viewerId, onLock, onToggleReady, readyIds }: {
+export function EventLobby({ event, viewerId, onLock, onToggleReady, readyIds, manage, fixture = true, joinHref = null }: {
   event: ArenaEvent;
   viewerId: string | null;
   onLock: () => void;
   onToggleReady: (profileId: string) => void;
-  /** Fixture ready-state (the backend would carry `checked_in`). */
+  /** Ready state: the fixture's toggles, or the server's `checked_in`. */
   readyIds: ReadonlySet<string>;
+  /** Organizer controls (the backend's organizer view, or the fixture seat). */
+  manage?: boolean;
+  /** Fixture lobbies let the organizer toggle anyone; a real one only you. */
+  fixture?: boolean;
+  /** The join link for a real event (organizer view). */
+  joinHref?: string | null;
 }) {
   const sfx = useSfx();
-  const [copied, setCopied] = useState(false);
-  const organizer = event.viewer_role === "organizer";
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const organizer = manage ?? event.viewer_role === "organizer";
   const joined = event.entrants.filter((e) => e.status !== "invited" && e.status !== "withdrawn");
   const invited = event.entrants.filter((e) => e.status === "invited");
   const readyCount = joined.filter((e) => readyIds.has(e.profile_id)).length;
   const game = gameTypeById(event.game_type);
-  const copy = async () => {
+  const copy = async (what: "code" | "link") => {
     try {
-      await navigator.clipboard.writeText(event.join_code ?? "");
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
+      await navigator.clipboard.writeText(what === "link" ? joinHref ?? "" : event.join_code ?? "");
+      setCopied(what);
+      window.setTimeout(() => setCopied(null), 1400);
     } catch { /* clipboard unavailable */ }
   };
+  const canToggle = (id: string) => (fixture ? id === viewerId || organizer : id === viewerId && !readyIds.has(id));
   const toggle = (id: string) => {
     onToggleReady(id);
     if (!readyIds.has(id)) sfx.play(ARENA_SFX.ready, { eventId: arenaEventId(event.event_id, "ready", `${id}:${Date.now()}`) });
@@ -58,7 +65,7 @@ export function EventLobby({ event, viewerId, onLock, onToggleReady, readyIds }:
         <ul className="ta-stagger grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" aria-label="Entrants">
           {joined.map((e, i) => (
             <li key={e.profile_id} style={{ "--i": i } as CSSProperties}>
-              <EntrantCard entrant={e} ready={readyIds.has(e.profile_id)} isViewer={e.profile_id === viewerId} onToggle={e.profile_id === viewerId || organizer ? () => toggle(e.profile_id) : undefined} />
+              <EntrantCard entrant={e} ready={readyIds.has(e.profile_id)} isViewer={e.profile_id === viewerId} onToggle={canToggle(e.profile_id) ? () => toggle(e.profile_id) : undefined} />
             </li>
           ))}
           {invited.map((e, i) => (
@@ -76,14 +83,27 @@ export function EventLobby({ event, viewerId, onLock, onToggleReady, readyIds }:
         </ul>
       </section>
       <aside className="flex flex-col gap-3">
-        <div className="ta-plate ta-plate--gold p-4">
-          <Eyebrow>Join code</Eyebrow>
-          <div className="mt-2 flex items-center gap-2">
-            <code className="ta-title flex-1 text-[22px] font-bold tracking-[0.16em] text-[#f1dc9c]" data-testid="ta-join-code">{event.join_code ?? "——"}</code>
-            <Btn size="sm" onClick={copy} aria-label="Copy join code">{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copied" : "Copy"}</Btn>
+        {(fixture || event.join_code) ? (
+          <div className="ta-plate ta-plate--gold p-4">
+            <Eyebrow>Join code</Eyebrow>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="ta-title flex-1 text-[22px] font-bold tracking-[0.16em] text-[#f1dc9c]" data-testid="ta-join-code">{event.join_code ?? "——"}</code>
+              <Btn size="sm" onClick={() => copy("code")} aria-label="Copy join code">{copied === "code" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied === "code" ? "Copied" : "Copy"}</Btn>
+            </div>
+            {joinHref && (
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate text-[11.5px] text-[rgba(243,233,207,0.75)]" data-testid="ta-join-link" title={joinHref}>{joinHref}</code>
+                <Btn size="sm" onClick={() => copy("link")} aria-label="Copy join link">{copied === "link" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied === "link" ? "Copied" : "Link"}</Btn>
+              </div>
+            )}
+            <p className="mt-2 text-[11.5px] leading-snug text-[rgba(215,205,180,0.6)]">{fixture ? "Friends join with the code. " : "Players join with the link or the code, signed in. "}{event.visibility === "public" ? "Anyone can find this event." : event.visibility === "link" ? "Anyone with the link can read the bracket." : "Invite-only."}</p>
           </div>
-          <p className="mt-2 text-[11.5px] leading-snug text-[rgba(215,205,180,0.6)]">Friends join with the code. {event.visibility === "public" ? "Anyone can find this event." : event.visibility === "link" ? "Anyone with the link can join." : "Invite-only."}</p>
-        </div>
+        ) : (
+          <div className="ta-plate p-4">
+            <Eyebrow tone="muted">You are in</Eyebrow>
+            <p className="mt-2 text-[12.5px] leading-snug text-[rgba(215,205,180,0.75)]">{readyIds.has(viewerId ?? "") ? "You are checked in." : "Tap your card to check in so the organizer knows you are here."}</p>
+          </div>
+        )}
         <div className="ta-plate p-4">
           <Eyebrow tone="muted">Format</Eyebrow>
           <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px]">
