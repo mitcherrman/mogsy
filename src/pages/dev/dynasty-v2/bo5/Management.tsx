@@ -202,12 +202,13 @@ export function EffectsPanel({ m, testId = "effects-panel" }: { m: E3aManagement
   );
 }
 
-/** Series result: what would carry into the next series. A preview: no campaign links series yet. */
+/** Series result: what would carry into the next series. A preview, except in a campaign series (UX-7), where the campaign carries exactly this at settlement. */
 export function CarryForward({ m }: { m: E3aManagement }) {
   const c = m.carry_over.carry_out;
+  const campaign = m.entry_scenario.key === "campaign";
   return (
-    <Plate className="flex flex-col gap-2 p-3" testId="carry-forward">
-      <div className="flex items-center gap-2"><Eyebrow>What carries forward</Eyebrow><SimTag>Preview</SimTag></div>
+    <Plate className="flex flex-col gap-2 p-3" testId="carry-forward" data-campaign={campaign}>
+      <div className="flex items-center gap-2"><Eyebrow>What carries forward</Eyebrow><SimTag>{campaign ? "Carried at settlement" : "Preview"}</SimTag></div>
       <p className="text-[12px] text-white/60">{c.note}</p>
       <div className="grid gap-2 sm:grid-cols-3 text-[11.5px]">
         <div className="flex flex-col gap-0.5" data-testid="carry-permanent"><b className="text-[10px] uppercase tracking-[0.14em] text-white/70">Permanent</b>

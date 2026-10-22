@@ -17,6 +17,12 @@
  * squad draft and the backstage tactic, all as server actions
  * (`./Management.tsx`). The gate is the snapshot itself: revision 3 with a
  * `management` block. Any other series renders the UX-5 flow unchanged.
+ *
+ * UX-7: inside a campaign (`campaign` prop) the series is the campaign's open
+ * checkpoint, pinned by `CampaignSeriesTransport`. The flow is the same; only
+ * the frame changes: the run bar names the round, "Leave" returns to
+ * headquarters (the series stays open), and the series screen hands the
+ * completed series to the campaign to record (`settle_series`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { FlaskConical } from "lucide-react";
@@ -44,8 +50,8 @@ import { ServerEffectChip } from "./ServerObjective";
 import { HOW_TEXT, ROLE_ORDER, STAGE_NAME, champClass, lineupById, matchPoint, shortName } from "./present";
 import { CarryForward, ChangeList, PreparationScreen, SquadDraftScreen, SquadScreen, TacticsScreen } from "./Management";
 import { starterNames } from "./managementView";
+import { readBrand, writeBrand } from "./brand";
 
-const BRAND_KEY = "mogzy.dynasty.ux3.brand";
 /** `?view=bo5&transport=live`: drive the BO5 from the live E2 series API (UX-4). */
 const liveRequested = () => { try { return new URLSearchParams(window.location.search).get("transport") === "live"; } catch { return false; } };
 /** `&policy=broad_mid_win`: the E2 qualification policy for NEW live series (an open owner decision; default narrow, as UX-3). */
@@ -58,8 +64,6 @@ const liveScenario = (): E3aScenario | null => {
     return q.get("scenario") === "fresh" ? "fresh" : "congested_schedule";
   } catch { return "congested_schedule"; }
 };
-const readBrand = (): string | null => { try { return window.localStorage.getItem(BRAND_KEY); } catch { return null; } };
-const writeBrand = (id: string | null) => { try { if (id) window.localStorage.setItem(BRAND_KEY, id); else window.localStorage.removeItem(BRAND_KEY); } catch { /* ignore */ } };
 
 export function Bo5Banner({ compact, live, managed }: { compact?: boolean; live?: boolean; managed?: boolean }) {
   if (live && managed) {
@@ -222,9 +226,23 @@ function PendingConsequences({ games, live, managed }: { games: SeriesGameView[]
   );
 }
 
+/** UX-7: the campaign frame around a campaign series (presentation and hand-offs only). */
+export interface Bo5CampaignFrame {
+  /** run-bar label, e.g. "Split week 2 · must-win" */
+  label: string;
+  /** shown in place of the series banner */
+  banner: ReactNode;
+  /** back to headquarters; the series stays open on the server */
+  onExit: () => void;
+  /** the series is completed: hand it to the campaign (it records it with `settle_series`) */
+  onSeriesDone: () => void;
+  /** the campaign is busy recording */
+  busy?: boolean;
+}
+
 const PHASE_TEXT: Record<string, string> = { lineup: "drafting", game: "in game", objective: "at the Baron", completed: "complete" };
 
-export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
+export function Bo5Flow({ transport, campaign }: { transport?: DynastySeriesTransport; campaign?: Bo5CampaignFrame }) {
   const t = useMemo<DynastySeriesTransport>(() => transport ?? (liveRequested() ? new LiveSeriesTransport({ store: browserStore(), qualificationPolicy: livePolicy(), managementScenario: liveScenario() }) : new FixtureSeriesServer({ store: browserStore(), delayMs: 140 })), [transport]);
   const live = t.kind === "live";
   /** UX-6: the entry scenario for a NEW live series (null: e2). Existing series carry their own pins. */
@@ -237,7 +255,8 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
   const [picking, setPicking] = useState(false);
   /** the owner asked for a new series from the resume picker: create explicitly, not with "refuse" */
   const [startNew, setStartNew] = useState(false);
-  const [rosterSeen, setRosterSeen] = useState(false);
+  // UX-7: in a campaign, headquarters (the squad) is the campaign hub, shown before entering the series.
+  const [rosterSeen, setRosterSeen] = useState(!!campaign);
   const [resultSeen, setResultSeen] = useState<number>(0);
   /** games whose final in-game frame the player has left (the settled game stays on stage until then) */
   const [gameAck, setGameAck] = useState<number>(0);
@@ -254,6 +273,9 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
   const managed = !!mv;
 
   useEffect(() => installDynastyAudioUnlock(), []);
+  // UX-7: the campaign ended (abandoned elsewhere): its series refuses actions. Back to headquarters, which re-reads the run.
+  const closed = s.error?.message.startsWith("CAMPAIGN_SERIES_CLOSED") ?? false;
+  useEffect(() => { if (closed) campaign?.onExit(); }, [closed, campaign]);
 
   const screen = !env ? (s.loading ? "loading" : s.choices ? "pick" : picking ? "org" : "home")
     : series!.status === "prep" ? (rosterSeen ? "prep" : "roster")
@@ -463,7 +485,9 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
     body = (
       <Screen testId="bo5-series" eyebrow="Series complete" title={won ? `Series won ${series.wins}–${series.losses}` : `Series lost ${series.wins}–${series.losses}`} hero={won}
         kicker={`First to three, decided by the server's settled games. ${series.games.length} games played.`}
-        actions={<Btn testId="series-again" onClick={async () => { await s.abandon(); resetLocal(); }}>New series</Btn>}>
+        actions={campaign
+          ? <Btn primary beckon testId="series-record" disabled={!!campaign.busy} onClick={campaign.onSeriesDone}>{campaign.busy ? "Recording…" : "Record the result"}</Btn>
+          : <Btn testId="series-again" onClick={async () => { await s.abandon(); resetLocal(); }}>New series</Btn>}>
         <BoPips wins={series.wins} losses={series.losses} />
         <ol className="flex flex-col gap-1.5" data-testid="series-games">{series.games.map((g) => {
           const fielded = mv?.players_by_game[g.index]?.you;
@@ -489,16 +513,18 @@ export function Bo5Flow({ transport }: { transport?: DynastySeriesTransport }) {
           <div className="mx-auto flex h-11 max-w-4xl items-center gap-2.5 px-4 text-xs">
             <Crest org={org} size={26} />
             <span className="dyn-title hidden truncate text-[13px] font-semibold text-white sm:inline">{teamName}</span>
-            <span className="hidden text-white/50 sm:inline">BO5 vs {shortName(series.opponent.name)}</span>
+            <span className="hidden truncate text-white/50 sm:inline" data-testid="run-bar-round">{campaign ? campaign.label : `BO5 vs ${shortName(series.opponent.name)}`}</span>
             <span data-testid="run-bar-series" className="whitespace-nowrap text-white/70">Series <b className="dyn-num text-white">{series.wins}–{series.losses}</b></span>
             <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-white/55"><Pips n={series.wins} max={3} label="Your wins" /></span>
             <AmbienceButton />
-            <Btn testId="series-leave" className="min-h-[32px] px-2 py-1 text-[11px]" onClick={async () => { await s.abandon(); resetLocal(); }}>Leave</Btn>
+            {campaign
+              ? <Btn testId="series-hq" className="min-h-[32px] px-2 py-1 text-[11px]" onClick={campaign.onExit}>HQ</Btn>
+              : <Btn testId="series-leave" className="min-h-[32px] px-2 py-1 text-[11px]" onClick={async () => { await s.abandon(); resetLocal(); }}>Leave</Btn>}
           </div>
         </div>
       ) : <div className="fixed right-3 top-[3.25rem] z-20"><AmbienceButton /></div>}
       <main ref={mainRef} className="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-8 pt-4" data-testid="dynasty-bo5-main">
-        <Bo5Banner compact={screen === "game"} live={live} managed={managed || (!series && live && !!scenario)} />
+        {campaign ? campaign.banner : <Bo5Banner compact={screen === "game"} live={live} managed={managed || (!series && live && !!scenario)} />}
         <ErrorPanel s={s} />
         {sceneId ? <Scene id={sceneId} caption env={envState} champion={screen === "series" && series?.winner === "you"}>{body}</Scene> : body}
       </main>

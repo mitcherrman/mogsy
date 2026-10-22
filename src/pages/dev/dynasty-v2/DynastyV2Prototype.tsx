@@ -7,6 +7,7 @@
  *        `?seed=abc`          start with a given run seed.
  *        `?view=bo5`          UX-3: the server-driven BO5 (recorded E1 machine output).
  *        `?view=bo5&transport=live[&policy=broad_mid_win]`  UX-4: the same BO5 on the live E2 series API.
+ *        `?view=campaign[&policy=narrow_early_mid_combo]`  UX-7: the live E3B campaign (split → playoffs → Worlds).
  *
  * This is a flow prototype. It is NOT connected to the authoritative Combat
  * v2 / Event E0 simulator, any backend, auth or real data. See `engine.ts`.
@@ -47,6 +48,8 @@ import {
 
 // UX-3: the server-driven BO5 (recorded E1 output through the adapter boundary). Lazy: it carries the fixture.
 const Bo5Flow = lazy(() => import("./bo5/Bo5Flow").then((m) => ({ default: m.Bo5Flow })));
+// UX-7: the E3B campaign journey around the UX-6 BO5 (live backend only).
+const CampaignFlow = lazy(() => import("./campaign/CampaignFlow").then((m) => ({ default: m.CampaignFlow })));
 
 type ScreenId = "home" | "org" | "stars" | "roster" | "season" | "recruit" | "prep" | "scout" | "draft" | "game" | "result" | "tactic" | "series" | "end";
 
@@ -55,6 +58,7 @@ export default function DynastyV2Prototype() {
   const view = params.get("view");
   if (view === "objectives") return <ObjectiveGallery />;
   if (view === "showcase") return <Showcase />;
+  if (view === "campaign") return <StingerHost><Suspense fallback={<div className="dyn min-h-screen pt-11" data-testid="campaign-boot" />}><CampaignFlow /></Suspense></StingerHost>;
   if (view === "bo5") return <StingerHost><Suspense fallback={<div className="dyn min-h-screen pt-11" data-testid="bo5-loading" />}><Bo5Flow /></Suspense></StingerHost>;
   return <StingerHost><Flow initialSeed={params.get("seed") ?? "ux1-0001"} /></StingerHost>;
 }

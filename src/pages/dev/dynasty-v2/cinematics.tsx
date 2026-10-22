@@ -187,7 +187,9 @@ function TrophyArt({ accent = G }: { accent?: string }) {
   );
 }
 
-export function FullFrame({ kind, org, opp, team, roster, score, onDone, cue, holdMs }: { kind: FullFrameKind; org: Org; opp?: string; team: string; roster?: string[]; score?: string; onDone: () => void; cue?: MomentId; holdMs?: number }) {
+export function FullFrame({ kind, org, opp, team, roster, score, onDone, cue, holdMs, detail }: { kind: FullFrameKind; org: Org; opp?: string; team: string; roster?: string[]; score?: string; onDone: () => void; cue?: MomentId; holdMs?: number;
+  /** UX-7: the finals intro's format line, when the default does not describe the series (e.g. no Fearless draft) */
+  detail?: ReactNode }) {
   const motion = useMotionAllowed();
   const [gone, setGone] = useState(false);
   const done = useRef(false);
@@ -224,7 +226,7 @@ export function FullFrame({ kind, org, opp, team, roster, score, onDone, cue, ho
             <div className="dyn-cine-right flex flex-col items-center gap-2"><OppCrest name={opp ?? ""} size={76} /><span className="dyn-title max-w-[9rem] truncate text-[14px] font-semibold text-white/90 sm:text-[16px]">{(opp ?? "").replace(/^SYN /, "")}</span></div>
           </div>
           <h2 className="dyn-title dyn-cine-title text-[30px] font-bold uppercase tracking-[0.18em] text-white sm:text-[44px]">Worlds Final</h2>
-          <p className="dyn-cine-rows text-[12.5px] text-white/70">Best of five · Fearless draft · <span data-slot="season.worlds_mark" className="text-[#c9a7ff]">✦ original Worlds mark</span></p>
+          <p className="dyn-cine-rows text-[12.5px] text-white/70">{detail ?? "Best of five · Fearless draft"} · <span data-slot="season.worlds_mark" className="text-[#c9a7ff]">✦ original Worlds mark</span></p>
         </div>
       ) : (
         <div className="relative flex w-full max-w-3xl flex-col items-center gap-2 px-6 text-center" data-slot="frame.championship">

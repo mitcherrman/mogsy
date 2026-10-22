@@ -57,6 +57,8 @@ export interface LiveTransportOptions {
   opponentPreset?: E2Preset;
   /** UX-6: create E3A management series with this entry scenario; null/absent creates e2 series */
   managementScenario?: E3aScenario | null;
+  /** UX-7: where the per-series presentation state lives (campaign series keep their own key) */
+  storeKey?: string;
 }
 
 class HttpFailure extends Error {
@@ -87,6 +89,7 @@ function choicesOf(list: E2SeriesList, hint: string | null): SeriesChoice[] {
 export class LiveSeriesTransport implements DynastySeriesTransport {
   readonly kind = "live" as const;
   private store: KeyValueStore;
+  private storeKey: string;
   private fetchImpl: typeof fetch;
   private base: string;
   private policy: E2QualificationPolicy;
@@ -98,6 +101,7 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
 
   constructor(opts: LiveTransportOptions = {}) {
     this.store = opts.store ?? memoryStore();
+    this.storeKey = opts.storeKey ?? LIVE_STORE_KEY;
     this.fetchImpl = opts.fetchImpl ?? ((i, init) => fetch(i, init));
     this.base = `${(opts.baseUrl ?? ADMIN_API_BASE_URL).replace(/\/+$/, "")}${E2_API}`;
     this.policy = opts.qualificationPolicy ?? "narrow_early_mid_combo";
@@ -112,7 +116,7 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
 
   // ── persistence (client-side presentation state only; the series lives on the server)
   private load(): Persisted | null {
-    const raw = this.store.get(LIVE_STORE_KEY);
+    const raw = this.store.get(this.storeKey);
     if (!raw) return null;
     try {
       const p = JSON.parse(raw) as Persisted;
@@ -121,7 +125,7 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
       return { v: 1, seriesId: p.seriesId, local: { plan, decisions, acked, pool } };
     } catch { return null; }
   }
-  private save(p: Persisted) { this.store.set(LIVE_STORE_KEY, JSON.stringify(p)); }
+  private save(p: Persisted) { this.store.set(this.storeKey, JSON.stringify(p)); }
   private need(): Persisted {
     const p = this.load();
     if (!p) throw new TransportError("NOT_ALLOWED", "no series: create one first");
@@ -222,10 +226,10 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
     if (!hint) return null;
     try {
       const snap = await this.http("GET", `/series/${encodeURIComponent(hint.seriesId)}`);
-      if (snap.status !== "completed") { this.store.remove(LIVE_STORE_KEY); return null; } // listing is the authority for unfinished series
+      if (snap.status !== "completed") { this.store.remove(this.storeKey); return null; } // listing is the authority for unfinished series
       return this.absorb(hint, snap);
     } catch (e) {
-      if (e instanceof HttpFailure && e.code === "DYNASTY_SERIES_NOT_FOUND") { this.store.remove(LIVE_STORE_KEY); return null; }
+      if (e instanceof HttpFailure && e.code === "DYNASTY_SERIES_NOT_FOUND") { this.store.remove(this.storeKey); return null; }
       return this.fail(e, null);
     }
   }
@@ -329,5 +333,5 @@ export class LiveSeriesTransport implements DynastySeriesTransport {
   }
 
   /** Forget the series on this client. E2 has no abandon route: the server keeps it and discovery lists it again. */
-  async abandon(): Promise<void> { this.store.remove(LIVE_STORE_KEY); this.last = null; }
+  async abandon(): Promise<void> { this.store.remove(this.storeKey); this.last = null; }
 }
