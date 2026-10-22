@@ -1,8 +1,21 @@
 # QI2 — Question Intelligence into Admin Analytics: integration plan
 
-Set up 2026-10-22. **Local only:** nothing pushed, no PR, nothing merged or
-deployed. This follows DREP1 (backend PR #68, merged as master `77c08167`,
-**not yet verified live**: `DAILY_REPEAT_HANDOFF.md` §9).
+Set up 2026-10-22. This follows DREP1 (backend PR #68, merged as master
+`77c08167`, **not yet verified live**: `DAILY_REPEAT_HANDOFF.md` §9).
+
+**Status (2026-10-22):** work item 1 (the DREP1 split) is DONE. The owner
+approved option (a), the capped read.
+* Backend `0f363554`: `MAX_AVOIDANCE_READS = 60`. Only children behind a
+  repeat are read, Standard first, by primary key via `json_extract`. An
+  unreadable snapshot counts as unclassified. 32/32 tests.
+* Frontend `b076f333`: an absent split shows "not reported", never zeros.
+  The panel gains a DREP1 totals line, an Avoidable column and a detail grid.
+  35/35 tests; tsc shows only the 2 pre-existing errors.
+* The golden is regenerated on both sides, byte-identical.
+
+Both branches are pushed as draft PRs. Item 2 (screenshots) is skipped for
+now at the owner's call; item 3 (the admin-wide regression and
+`npm run build`) has not been re-run. Nothing is merged or deployed.
 
 ## 1. Where things are
 
