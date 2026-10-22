@@ -200,8 +200,9 @@ async function stageFits(page: Page, desktop: boolean, label: string) {
  */
 async function holdReveal(page: Page) {
   const footer = page.locator("[data-practice-reveal-footer]");
+  await footer.scrollIntoViewIfNeeded();
   const box = (await footer.boundingBox())!;
-  await page.mouse.move(box.x + 8, box.y + box.height / 2);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await expect(footer).toHaveAttribute("data-advance-paused", "true");
   return async () => { await page.mouse.up(); };

@@ -20111,6 +20111,96 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
   }
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   PM2 — PRACTICE ON THE PHONE ONE-SCREEN ARENA.
+
+   Practice opts into the RMOB2 phone frame (`phoneOneScreen`, so the arena
+   carries `data-phone-arena` and every RMOB2 / VISCONT1 / MVFIT1 rule above
+   applies to it unchanged). What follows is ONLY what Practice has and the
+   duel does not: its reveal box, its own art plate, and no evidence line.
+   Scoped to `.practice-arena`; no Ranked, Daily or Pro Play DOM carries it.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Practice never mounts the evidence line — its explanation is drawn in its
+   own reveal box under the stage — so the stack's held two-line evidence slot
+   (`::after`, ~41px with its gap) was a reserve for nothing. Released at every
+   width; the desktop centring arithmetic reads the same token. */
+.practice-arena .ranked-question-stage {
+  --qs-feedback-h: 0px;
+}
+.practice-arena .ranked-shell .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack::after {
+  content: none;
+}
+
+/* The reveal box's height on a phone, held from the question's first frame
+   (the reserve) through the reveal (the footer), so grading moves nothing.
+   92px seats the verdict row and three 12px explanation lines — the bank's
+   median explanation is ~94 characters, two lines at 360 wide — and the
+   density tiers below fit the long tail into the same box. */
+.practice-arena {
+  --practice-reveal-h: 5.75rem;
+}
+@media (max-width: 1023.98px) {
+  .practice-arena .ranked-shell[data-phone-arena="true"] .practice-reveal-slot {
+    min-height: var(--practice-reveal-h);
+  }
+  /* TEXT DENSITY, the VISCONT1 rule applied to the explanation: the box stays
+     put and longer text tightens inside it (tiers: `practiceExplanationDensity`).
+       long  (151–220)  11px / 1.2  — four lines;
+       dense (221+)     10.5px / 1.2 — five lines (the bank's longest is ~305). */
+  .practice-arena .practice-explanation[data-explanation-density="long"] {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+  }
+  .practice-arena .practice-explanation[data-explanation-density="dense"] {
+    font-size: 0.65625rem;
+    line-height: 1.2;
+  }
+  /* Practice's art plate (`PracticeQuestionMedia`) takes the stage's media
+     allocation — the same box the cinematic band gets — instead of its own
+     fixed 112px, so a short phone's MVFIT1 allocation (88px at 640 tall)
+     reaches it and the art scales with the region rather than overrunning it. */
+  .practice-arena .ranked-shell[data-phone-arena="true"] [data-testid="practice-question-media"] {
+    height: var(--qs-media-h, 7rem);
+  }
+  /* The Community trigger floats over the bottom-left of the screen, which on
+     this frame is the bottom bar's Report tab. During a Practice question it
+     waits, as the radio's first-visit nudge does on the phone Ranked arena. */
+  body:has(.practice-arena [data-phone-arena="true"]) [data-testid="friends-drawer-trigger"] {
+    display: none;
+  }
+}
+
+/* The reveal's countdown: a hairline along the box's bottom edge that drains
+   over the hold (`--practice-hold-ms`) and stops while the hold is paused.
+   Decorative — the timer itself is `usePracticeAutoAdvance` — and absent for
+   a reader who asked for reduced motion. */
+.practice-advance-meter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(240, 215, 140, 0.7);
+  transform-origin: left center;
+  animation: practice-advance-drain var(--practice-hold-ms, 1500ms) linear forwards;
+}
+.practice-advance-meter[data-paused="true"] {
+  animation-play-state: paused;
+}
+@keyframes practice-advance-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .practice-advance-meter {
+    display: none;
+  }
+}
+.reduce-motion .practice-advance-meter {
+  display: none;
+}
+
 
 /* ──────────────────────────────────────────────────────────────────────────
    JUX1 — THE COMPACT (TOP-AND-BOTTOM) BOARD, REFINED.
@@ -20262,95 +20352,4 @@ html.reduce-motion .play-scroll .lc-scroll__content {
 }
 html.reduce-motion .play-scroll .lc-scroll__sheet {
   --lc-unfurl: 0%;
-}
-
-
-/* ───────────────────────────────────────────────────────────────────────────
-   PM2 — PRACTICE ON THE PHONE ONE-SCREEN ARENA.
-
-   Practice opts into the RMOB2 phone frame (`phoneOneScreen`, so the arena
-   carries `data-phone-arena` and every RMOB2 / VISCONT1 / MVFIT1 rule above
-   applies to it unchanged). What follows is ONLY what Practice has and the
-   duel does not: its reveal box, its own art plate, and no evidence line.
-   Scoped to `.practice-arena`; no Ranked, Daily or Pro Play DOM carries it.
-   ─────────────────────────────────────────────────────────────────────────── */
-
-/* Practice never mounts the evidence line — its explanation is drawn in its
-   own reveal box under the stage — so the stack's held two-line evidence slot
-   (`::after`, ~41px with its gap) was a reserve for nothing. Released at every
-   width; the desktop centring arithmetic reads the same token. */
-.practice-arena .ranked-question-stage {
-  --qs-feedback-h: 0px;
-}
-.practice-arena .ranked-shell .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack::after {
-  content: none;
-}
-
-/* The reveal box's height on a phone, held from the question's first frame
-   (the reserve) through the reveal (the footer), so grading moves nothing.
-   92px seats the verdict row and three 12px explanation lines — the bank's
-   median explanation is ~94 characters, two lines at 360 wide — and the
-   density tiers below fit the long tail into the same box. */
-.practice-arena {
-  --practice-reveal-h: 5.75rem;
-}
-@media (max-width: 1023.98px) {
-  .practice-arena .ranked-shell[data-phone-arena="true"] .practice-reveal-slot {
-    min-height: var(--practice-reveal-h);
-  }
-  /* TEXT DENSITY, the VISCONT1 rule applied to the explanation: the box stays
-     put and longer text tightens inside it (tiers: `practiceExplanationDensity`).
-       long  (151–220)  11px / 1.2  — four lines;
-       dense (221+)     10.5px / 1.2 — five lines (the bank's longest is ~305). */
-  .practice-arena .practice-explanation[data-explanation-density="long"] {
-    font-size: 0.6875rem;
-    line-height: 1.2;
-  }
-  .practice-arena .practice-explanation[data-explanation-density="dense"] {
-    font-size: 0.65625rem;
-    line-height: 1.2;
-  }
-  /* Practice's art plate (`PracticeQuestionMedia`) takes the stage's media
-     allocation — the same box the cinematic band gets — instead of its own
-     fixed 112px, so a short phone's MVFIT1 allocation (88px at 640 tall)
-     reaches it and the art scales with the region rather than overrunning it. */
-  .practice-arena .ranked-shell[data-phone-arena="true"] [data-testid="practice-question-media"] {
-    height: var(--qs-media-h, 7rem);
-  }
-  /* The Community trigger floats over the bottom-left of the screen, which on
-     this frame is the bottom bar's Report tab. During a Practice question it
-     waits, as the radio's first-visit nudge does on the phone Ranked arena. */
-  body:has(.practice-arena [data-phone-arena="true"]) [data-testid="friends-drawer-trigger"] {
-    display: none;
-  }
-}
-
-/* The reveal's countdown: a hairline along the box's bottom edge that drains
-   over the hold (`--practice-hold-ms`) and stops while the hold is paused.
-   Decorative — the timer itself is `usePracticeAutoAdvance` — and absent for
-   a reader who asked for reduced motion. */
-.practice-advance-meter {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: rgba(240, 215, 140, 0.7);
-  transform-origin: left center;
-  animation: practice-advance-drain var(--practice-hold-ms, 1500ms) linear forwards;
-}
-.practice-advance-meter[data-paused="true"] {
-  animation-play-state: paused;
-}
-@keyframes practice-advance-drain {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .practice-advance-meter {
-    display: none;
-  }
-}
-.reduce-motion .practice-advance-meter {
-  display: none;
 }

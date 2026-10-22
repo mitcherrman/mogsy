@@ -102,8 +102,9 @@ export interface PracticeArenaProps {
 
 /** See ProPlayArenaRun: the frame's glow bleed is trimmed at the page edge. */
 const FRAME_CLIP = "overflow-x-clip";
-/** 40px controls inside the reveal box, which is short by design. */
-const ACTION_BOX = "h-10 shrink-0 gap-1.5 px-3 lg:h-9";
+/** 36px controls inside the reveal box, which is short by design; an invisible
+ *  `::before` extends each one's hit area to 44px tall. */
+const ACTION_BOX = "relative h-9 shrink-0 gap-1.5 px-3 before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']";
 
 /** Focus was left nowhere on purpose (the body, or the now-locked grid). */
 function focusStranded(): boolean {
@@ -270,7 +271,13 @@ function PracticeRevealFooter({
       {/* No "Correct answer:" line: the revealed grid already marks the right
           tablet, as on Ranked and the Daily, and the line cost the box a row
           on every miss. The results review still lists it per question. */}
-      {explanation && (
+      {unverified ? (
+        // Short on purpose: with the two actions it has to sit inside the same
+        // held box as an ordinary reveal on a 360x640 phone.
+        <p data-testid="practice-unverified-note" className="text-[11px] leading-snug text-[#f0e6d2]/85">
+          Couldn't check your answer — check your connection.
+        </p>
+      ) : explanation && (
         <p data-testid="practice-explanation" data-explanation-density={practiceExplanationDensity(explanation)}
           className="practice-explanation text-xs leading-snug text-[#f0e6d2]/85">
           {explanation}
@@ -282,7 +289,7 @@ function PracticeRevealFooter({
         </div>
       )}
       {unverified && (
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-0.5">
           <Button type="button" variant="outline" data-testid="practice-skip" onClick={onSkip}
             className={cn(ACTION_BOX, "border-white/20 bg-transparent")}>
             <SkipForward aria-hidden className="h-4 w-4" />

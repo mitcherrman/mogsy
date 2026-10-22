@@ -111,7 +111,12 @@ for (const vp of VIEWPORTS) {
       await page.waitForTimeout(3000);
       const titles = await page.evaluate(() => (window as unknown as { __pm2Titles: string[] }).__pm2Titles);
       const expected = [...QUESTIONS.map((_, i) => `Question ${i + 1} / ${QUESTIONS.length}`), "RESULTS"];
-      expect(titles.filter((t) => t.startsWith("Question") || t === "RESULTS"), "advance sequence").toEqual(expected);
+      // The title also carries the running score (" · 3 correct"), which ticks
+      // on a grade; the POSITION must step 1, 2, … N, then the results, once each.
+      const positions = titles.filter((t) => t.startsWith("Question") || t === "RESULTS")
+        .map((t) => t.split(" · ")[0])
+        .filter((t, i, all) => i === 0 || all[i - 1] !== t);
+      expect(positions, "advance sequence").toEqual(expected);
       expect(counters.completions, "session completed more than once").toBe(1);
       expect(counters.attempts[FAIL_FIRST], "the failed submit was retried once").toBe(2);
       for (const q of QUESTIONS) if (q.id !== FAIL_FIRST) expect(counters.attempts[q.id], `attempts for ${q.id}`).toBe(1);

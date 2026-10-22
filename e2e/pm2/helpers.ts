@@ -300,8 +300,11 @@ export function assertFits(vp: Viewport, q: Q, m: Geometry, label: string) {
 export async function holdReveal(page: Page) {
   const footer = page.locator("[data-practice-reveal-footer]");
   await expect(footer).toBeVisible();
+  // The box's centre, on screen: its edges can sit under the dock's fixed
+  // tabs on desktop, and below the fold on a landscape phone.
+  await footer.scrollIntoViewIfNeeded();
   const box = (await footer.boundingBox())!;
-  await page.mouse.move(box.x + 6, box.y + box.height / 2);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await expect(footer).toHaveAttribute("data-advance-paused", "true");
   return async () => { await page.mouse.up(); };
