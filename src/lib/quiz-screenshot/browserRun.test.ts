@@ -15,7 +15,7 @@ function pngBlob(width: number, height: number): Blob {
   const view = new DataView(bytes.buffer);
   view.setUint32(16, width);
   view.setUint32(20, height);
-  return new Blob([bytes], { type: "image/png" });
+  return new Blob([bytes.buffer as ArrayBuffer], { type: "image/png" });
 }
 
 const Q: RenderQuestion[] = [101, 102, 103].map((id, i) => ({
