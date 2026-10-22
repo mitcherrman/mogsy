@@ -195,7 +195,18 @@ async function waitForHarness(
  * The stylesheets are copied in rather than re-fetched so the frame is styled by
  * the same CSS this page is running, and the theme classes are mirrored because
  * the harness's own effect puts them on the TOP-level document.
+ *
+ * CC2 — STANDARDS MODE. An iframe's initial `about:blank` has no doctype, so it
+ * lays out in QUIRKS mode, while the page Playwright captures (`index.html`)
+ * is in standards mode. Quirks line-height and box rules made the harness
+ * measure some cards taller and fit a smaller zoom (CC2 parity run: two cards
+ * 4–5% smaller than the authority). The surface is therefore a `srcdoc`
+ * document with a doctype, and the export waits for THAT document's load — not
+ * the transient `about:blank` that precedes it — which also removes Gecko's
+ * replaced-initial-document hazard.
  */
+const STAGE_FRAME_SRCDOC = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body></body></html>";
+
 async function createStageFrame(width: number, height: number): Promise<HTMLIFrameElement> {
   const frame = document.createElement("iframe");
   frame.setAttribute("data-content-export-frame", "");
@@ -207,16 +218,18 @@ async function createStageFrame(width: number, height: number): Promise<HTMLIFra
   // and the harness fits its zoom by MEASURING what it laid out.
   frame.style.cssText =
     `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;border:0;pointer-events:none;`;
-  document.body.appendChild(frame);
-
-  await new Promise<void>((resolve) => {
-    if (frame.contentDocument?.readyState === "complete") resolve();
-    else frame.addEventListener("load", () => resolve(), { once: true });
-    // about:blank can be complete before the listener attaches.
-    if (frame.contentDocument?.readyState === "complete") resolve();
+  const loaded = new Promise<void>((resolve) => {
+    frame.addEventListener("load", () => resolve(), { once: true });
   });
+  frame.srcdoc = STAGE_FRAME_SRCDOC;
+  document.body.appendChild(frame);
+  await loaded;
 
   const doc = frame.contentDocument!;
+  if (doc.compatMode !== "CSS1Compat") {
+    frame.remove();
+    throw new Error("the export surface did not load in standards mode");
+  }
   // Layout.tsx's own rule for the LoL section, applied to the export surface:
   // strip any sitewide `theme-*` the operator happens to be using, then assert
   // the League theme. Copying Admin's classes verbatim would let an operator's
@@ -346,7 +359,13 @@ export async function runBrowserExport(args: {
 
       let surface = frames.get(card.formatKey);
       if (!surface) {
-        const frame = await createStageFrame(format.width, format.height);
+        let frame: HTMLIFrameElement;
+        try {
+          frame = await createStageFrame(format.width, format.height);
+        } catch (error) {
+          fail("export-surface", error instanceof Error ? error.message : String(error));
+          continue;
+        }
         const doc = frame.contentDocument!;
         surface = { frame, root: createRoot(doc.body), host: doc.body, doc };
         frames.set(card.formatKey, surface);
