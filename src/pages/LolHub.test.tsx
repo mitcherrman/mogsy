@@ -920,11 +920,43 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
     expect(facing(container).contains(mascot(container))).toBe(true);
   });
 
-  it("desktop Mogzy is decorative: no button, no focus stop ahead of the cards", () => {
+  it("desktop Mogzy is a labelled interaction that retriggers, settles, and has no product side effects", () => {
     const { container } = renderHub();
+    const trigger = screen.getByTestId("mogzy-guide-hub-trigger");
+    const reaction = react(container);
+
+    expect(trigger).toHaveAttribute("aria-label", "Mogzy, Academy guide");
+    expect(trigger.tagName).toBe("BUTTON");
+    expect(trigger).toHaveAttribute("type", "button");
+    expect(mascot(container).closest("button")).toBe(trigger);
     expect(mascot(container).closest("a")).toBeNull();
-    expect(mascot(container).closest("button")).toBeNull();
-    expect(screen.queryByTestId("mogzy-guide-hub-trigger")).toBeNull();
+
+    // The reaction is presentation-only: no navigation intent, analytics,
+    // audio, update read or additional warm-up is coupled to the click.
+    mocks.prefetchRoute.mockClear();
+    mocks.trackFunnelEvent.mockClear();
+    mocks.trackSurface.mockClear();
+    mocks.sfxPlay.mockClear();
+    mocks.canonicalSfxPlay.mockClear();
+    const warmCount = mocks.warmAcademyHub.mock.calls.length;
+    const updateReadCount = academyStore.listPublishedUpdates.mock.calls.length;
+
+    fireEvent.click(trigger);
+    expect(reaction).toHaveClass("mogzy-click-react");
+    fireEvent.click(trigger);
+    fireEvent.click(trigger);
+    expect(reaction.className.split(/\s+/).filter((c) => c === "mogzy-click-react"))
+      .toHaveLength(1);
+
+    fireEvent.animationEnd(reaction);
+    expect(reaction).not.toHaveClass("mogzy-click-react");
+    expect(mocks.prefetchRoute).not.toHaveBeenCalled();
+    expect(mocks.trackFunnelEvent).not.toHaveBeenCalled();
+    expect(mocks.trackSurface).not.toHaveBeenCalled();
+    expect(mocks.sfxPlay).not.toHaveBeenCalled();
+    expect(mocks.canonicalSfxPlay).not.toHaveBeenCalled();
+    expect(mocks.warmAcademyHub).toHaveBeenCalledTimes(warmCount);
+    expect(academyStore.listPublishedUpdates).toHaveBeenCalledTimes(updateReadCount);
   });
 
   it("hovering a card leans Mogzy toward it on the dedicated lean layer", () => {
@@ -980,8 +1012,10 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
       }) as unknown as MediaQueryList) as typeof window.matchMedia;
     try {
       const { container } = renderHub();
+      const trigger = screen.getByTestId("mogzy-guide-hub-trigger");
       expect(screen.getByTestId("mogzy-guide-hub").getAttribute("data-motion")).toBe("still");
       expect(container.querySelector(".academy-mogzy-float")).toBeNull();
+      fireEvent.click(trigger);
       expect(react(container).className).not.toContain("mogzy-click-react");
     } finally {
       window.matchMedia = original;
