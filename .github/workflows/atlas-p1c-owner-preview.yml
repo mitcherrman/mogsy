@@ -1,0 +1,37 @@
+name: atlas-p1c-owner-preview
+# ATL-P1-C-002 — the Atlas prototype must stay owner-only and fixture-only.
+# Runs the prototype's model, page, route-map and rendered-gate suites, then a
+# production Vite build (no prerender scripts, no network) and checks that the
+# DEV-only twin left no route behind in the bundle. No browser automation.
+on:
+  pull_request:
+    paths:
+      - 'src/lib/atlas-p1c/**'
+      - 'src/pages/dev/atlas-p1c/**'
+      - 'src/App.tsx'
+      - 'src/App.atlasP1c*.test.ts*'
+      - 'src/components/Layout.tsx'
+      - 'src/components/AdminRoute.tsx'
+      - 'src/hooks/useOwnerAuth.ts'
+      - '.github/workflows/atlas-p1c-owner-preview.yml'
+jobs:
+  owner-only-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false
+      - name: Atlas model, page, route-map and rendered-gate suites
+        run: npx vitest run src/lib/atlas-p1c src/pages/dev/atlas-p1c src/App.atlasP1cRoute.test.ts src/App.atlasP1cSecurity.test.tsx src/components/AdminRoute.owner.test.tsx
+      - name: Production Vite build
+        run: npx vite build --outDir dist-atlas-ci --emptyOutDir
+      - name: Production bundle carries no development twin route
+        run: |
+          if grep -rl 'path:"/lol/dev/atlas-p1c"' dist-atlas-ci/assets; then
+            echo "The DEV-only Atlas route leaked into the production bundle" >&2
+            exit 1
+          fi
+          echo "No /lol/dev/atlas-p1c in the production bundle"

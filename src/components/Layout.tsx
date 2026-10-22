@@ -123,8 +123,9 @@ export default function Layout() {
     // PAV1 — the Pro Play Assembly lab mounts the arena's own frame, so it gets the same page frame as Ranked.
     || pathname === "/dev/pro-play-assembly"
     // ATL-P1-C — the Atlas prototype is a spatial workspace with its own
-    // deck, gutters and background (development-only route).
-    || pathname === "/lol/dev/atlas-p1c"
+    // deck, gutters and background. The DEV guard matches the route's own
+    // gate in App.tsx, so a production bundle carries no trace of the path.
+    || (import.meta.env.DEV && pathname === "/lol/dev/atlas-p1c")
     // PPQ2-E — the production Pro Play Quiz IS that arena now (it was a
     // max-w-2xl reading column). Already in the LoL section for its theme.
     || pathname === PRO_PLAY_QUIZ_ROUTE
