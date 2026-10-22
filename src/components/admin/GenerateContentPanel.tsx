@@ -407,6 +407,10 @@ export function GenerateContentPanel({
   // derived from the selection and the configuration rather than written
   // beside them: a label that counts cards independently is a label that can
   // be wrong.
+  //
+  // CC2 — the plan also carries the difficulty choice and the adapted rows,
+  // so the browser export draws the same badge the CLI command above would
+  // (run tier, else each question's own `metadata.content_difficulty`).
   const plan = useMemo(
     () =>
       buildExportPlan({
@@ -415,8 +419,12 @@ export function GenerateContentPanel({
         states,
         post,
         runId,
+        difficulty,
+        questions: selection
+          .map((q) => adaptScreenshotQuestion(q.row))
+          .filter((r): r is RenderQuestion => typeof r !== "string"),
       }),
-    [selection, formats, states, post, runId],
+    [selection, formats, states, post, runId, difficulty],
   );
 
   const [exporting, setExporting] = useState(false);
