@@ -19,7 +19,7 @@
  */
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { browserStore } from "@/lib/dynasty/e1/fixtureServer";
-import { STAGE_IDENTITY, STAGE_TITLE, oppShort, type CampaignPolicy, type CampaignSnapshot } from "@/lib/dynasty/e1/campaignContracts";
+import { oppShort, stageIdentity, stageTitle, type CampaignPolicy, type CampaignSnapshot } from "@/lib/dynasty/e1/campaignContracts";
 import { CampaignSeriesTransport, LiveCampaignClient } from "@/lib/dynasty/e1/campaignTransport";
 import { useDynastyCampaign, type DynastyCampaign } from "@/lib/dynasty/e1/useDynastyCampaign";
 import { cn } from "@/lib/utils";
@@ -101,7 +101,7 @@ export function CampaignFlow({ client }: { client?: LiveCampaignClient }) {
   const prevStage = useRef<string | null>(null);
   useEffect(() => {
     if (!run) { prevStage.current = null; return; }
-    if (prevStage.current && prevStage.current !== stage && run.status === "active") sting({ id: `stage.${stage}`, kicker: "The run moves on", title: STAGE_TITLE[stage], sub: cs?.round_title, tone: stage === "worlds" ? "violet" : stage === "playoffs" ? "ember" : "ice", ms: 2400, cue: "dynasty.season.segment" });
+    if (prevStage.current && prevStage.current !== stage && run.status === "active") sting({ id: `stage.${stage}`, kicker: "The run moves on", title: stageTitle(stage), sub: cs?.round_title, tone: stage === "worlds" ? "violet" : stage === "playoffs" ? "ember" : "ice", ms: 2400, cue: "dynasty.season.segment" });
     prevStage.current = stage;
   }, [stage, run, cs?.round_title, sting]);
 
@@ -121,7 +121,7 @@ export function CampaignFlow({ client }: { client?: LiveCampaignClient }) {
   } : null;
 
   const accent = ORG_ACCENT[org.id]?.hex;
-  const id = STAGE_IDENTITY[stage];
+  const id = stageIdentity(stage);
   const env: EnvState = {
     accent, mono: ORG_ACCENT[org.id]?.mono, team: org.name, opp: run?.next_opponent?.name ?? run?.ending?.opponent?.name,
     roster: ROLE_ORDER.map((r) => {
@@ -136,7 +136,9 @@ export function CampaignFlow({ client }: { client?: LiveCampaignClient }) {
   // ── the BO5 itself: UX-6, unchanged, inside the campaign frame
   if (screen === "series" && run && cs && seriesTransport && frame) {
     return <div style={{ ...accentStyle(org.id), ["--dyn-stage" as string]: id.accent }} data-testid="dynasty-campaign" data-screen="series" data-phase={run.phase} data-seq={run.seq} data-stage={stage} data-series={cs.series_index} data-series-id={cs.series_id}>
-      <Bo5Flow key={cs.series_id} transport={seriesTransport} campaign={frame} />
+      <RunBoundary key={cs.series_id} testId="campaign-series-error" text="The series screen could not be drawn from the server's data. Nothing was changed on the server; the series stays open." action="Back to headquarters" onAction={frame.onExit}>
+        <Bo5Flow transport={seriesTransport} campaign={frame} />
+      </RunBoundary>
     </div>;
   }
 
@@ -223,7 +225,7 @@ export function CampaignFlow({ client }: { client?: LiveCampaignClient }) {
     sceneId = "hq";
     if (final && !seen(run.campaign_id, `finals${cs.series_index}`)) cine = <FullFrame key={`finals${cs.series_index}`} kind="finals_intro" org={org} team={org.name.replace(/^SYN /, "")} opp={cs.opponent.name} cue="dyn.series.finals_intro" detail={`Best of ${run.format.best_of} · series ${cs.series_index} of this run`} onDone={() => mark(`finals${cs.series_index}`)} />;
     body = (
-      <Screen testId="campaign-hq" eyebrow={`Headquarters · ${STAGE_TITLE[cs.stage]}`} title={started ? `${cs.round_title} in progress` : `Preparing for ${cs.round_title}`}
+      <Screen testId="campaign-hq" eyebrow={`Headquarters · ${stageTitle(cs.stage)}`} title={started ? `${cs.round_title} in progress` : `Preparing for ${cs.round_title}`}
         kicker={<>Series {cs.series_index} · vs <b className="text-white/85">{oppShort(cs.opponent.name)}</b>{started ? <> · {cs.series.score.you}–{cs.series.score.opponent} after {cs.series.games_played} game{cs.series.games_played === 1 ? "" : "s"}</> : null}</>}
         actions={<>
           {c.busy ? <span className="text-[11px] text-white/50" role="status">Talking to the server…</span> : null}
@@ -291,7 +293,7 @@ export function CampaignFlow({ client }: { client?: LiveCampaignClient }) {
         <div className="sticky top-11 z-20 border-b border-white/10 bg-[#07111f]/90 backdrop-blur" data-testid="campaign-bar">
           <div className="mx-auto flex h-11 max-w-4xl items-center gap-2.5 px-4 text-xs">
             <Crest org={org} size={26} />
-            <span className={cn("truncate text-[10.5px] font-bold uppercase tracking-[0.16em]", id.ink)} data-testid="campaign-bar-stage">{STAGE_TITLE[stage]}</span>
+            <span className={cn("truncate text-[10.5px] font-bold uppercase tracking-[0.16em]", id.ink)} data-testid="campaign-bar-stage">{stageTitle(stage)}</span>
             <span className="hidden sm:inline"><StandingLine c={run} stage={stage} /></span>
             <span className="ml-auto whitespace-nowrap text-white/60" data-testid="campaign-bar-series">Series {cs?.series_index ?? run.ending?.series_played ?? run.history.length}</span>
             <AmbienceButton />
@@ -324,6 +326,39 @@ class ScreenBoundary extends Component<{ children: ReactNode; onReload: () => vo
       </Plate>
     );
   }
+}
+
+/**
+ * RC0: a failure outside one screen (the campaign shell, its bar, or the BO5 inside it) says so and
+ * offers a way back, instead of unmounting the whole app (the routes have no boundary above this).
+ */
+class RunBoundary extends Component<{ children: ReactNode; testId: string; text: string; action: string; onAction: () => void }, { failed: string | null }> {
+  state = { failed: null as string | null };
+  static getDerivedStateFromError(e: unknown) { return { failed: e instanceof Error ? e.message : String(e) }; }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="dyn min-h-screen pt-11">
+        <main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-8 pt-4">
+          <Plate className="flex flex-col gap-2 p-4" testId={this.props.testId}>
+            <p className="text-sm text-white/80">{this.props.text}</p>
+            <code className="break-words text-[11px] text-white/45">{this.state.failed}</code>
+            <Btn primary testId={`${this.props.testId}-action`} className="self-start" onClick={() => { this.setState({ failed: null }); this.props.onAction(); }}>{this.props.action}</Btn>
+          </Plate>
+        </main>
+      </div>
+    );
+  }
+}
+
+/** The campaign route: the flow inside its run boundary; "Reload the run" remounts it, which re-reads the server. */
+export function CampaignRoute() {
+  const [take, setTake] = useState(0);
+  return (
+    <RunBoundary testId="campaign-route-error" text="The campaign could not be drawn from the server's data. Nothing was changed on the server." action="Reload the run" onAction={() => setTake((x) => x + 1)}>
+      <CampaignFlow key={take} />
+    </RunBoundary>
+  );
 }
 
 /** Finished runs (the legacy shelf): each opens its ending, read from the server. */

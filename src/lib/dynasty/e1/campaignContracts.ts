@@ -289,6 +289,9 @@ export const STAGE_IDENTITY: Record<CampaignStage, { accent: string; tone: "gold
   playoffs: { accent: "#ff9a5c", tone: "gold", kicker: "Knockout playoffs", ink: "text-orange-200" },
   worlds: { accent: "#b39cff", tone: "gold", kicker: "Worlds", ink: "text-violet-200" },
 };
+/** A stage the client does not know (a future format) keeps its served key and the split's look, instead of crashing. */
+export const stageTitle = (s: string): string => STAGE_TITLE[s as CampaignStage] ?? s;
+export const stageIdentity = (s: string) => STAGE_IDENTITY[s as CampaignStage] ?? STAGE_IDENTITY.regular;
 export const MAP_STATUS_TEXT: Record<MapStatus, string> = {
   won: "Won", lost: "Lost", current: "Now", upcoming: "Ahead", skipped_bye: "Bye", not_reached: "Not reached", closed: "Closed",
 };

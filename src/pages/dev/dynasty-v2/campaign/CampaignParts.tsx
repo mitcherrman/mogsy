@@ -8,7 +8,7 @@ import { useState, type ReactNode } from "react";
 import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  MAP_STATUS_TEXT, STAGE_IDENTITY, STAGE_TITLE, champName, isActivityList, oppShort,
+  MAP_STATUS_TEXT, champName, stageIdentity, stageTitle, isActivityList, oppShort,
   type BetweenSeries, type CampaignOpponent, type CampaignSnapshot, type CampaignStage, type Ending, type HistoryEntry, type MapNode, type RosterPlayer, type StoryBeat, type Transition,
 } from "@/lib/dynasty/e1/campaignContracts";
 import type { E1Role } from "@/lib/dynasty/e1/contracts";
@@ -67,13 +67,13 @@ export function CampaignMap({ c, compact }: { c: CampaignSnapshot; compact?: boo
       <div className="flex flex-wrap items-center gap-2"><Eyebrow>The road</Eyebrow><span className="text-[11px] text-white/50">{c.format.title}</span><SimTag>{c.format.length.min_series}–{c.format.length.max_series} series</SimTag></div>
       <div className={cn("grid gap-3", !compact && "md:grid-cols-3")}>
         {stages.map((stage) => {
-          const id = STAGE_IDENTITY[stage];
+          const id = stageIdentity(stage);
           const nodes = c.map.filter((n) => n.stage === stage);
           return (
-            <section key={stage} aria-label={STAGE_TITLE[stage]} className="flex min-w-0 flex-col gap-1.5" data-testid={`map-stage-${stage}`}>
+            <section key={stage} aria-label={stageTitle(stage)} className="flex min-w-0 flex-col gap-1.5" data-testid={`map-stage-${stage}`}>
               <div className="flex items-center gap-2">
                 <span aria-hidden className="h-2 w-2 rotate-45" style={{ background: id.accent }} />
-                <span className={cn("text-[10.5px] font-bold uppercase tracking-[0.18em]", id.ink)}>{STAGE_TITLE[stage]}</span>
+                <span className={cn("text-[10.5px] font-bold uppercase tracking-[0.18em]", id.ink)}>{stageTitle(stage)}</span>
                 <span className="ml-auto"><StandingLine c={c} stage={stage} /></span>
               </div>
               <ol className="flex flex-col gap-1.5">
@@ -131,7 +131,7 @@ export function OpponentCard({ c, o }: { c: CampaignSnapshot; o: CampaignOpponen
 export function StakesPlate({ c }: { c: CampaignSnapshot }) {
   const cs = c.current_series;
   if (!cs) return null;
-  const id = STAGE_IDENTITY[cs.stage];
+  const id = stageIdentity(cs.stage);
   return (
     <Plate ornate className="flex flex-col gap-2 p-3" testId="stakes" data-elimination={cs.elimination_if_lost} data-bye={cs.bye} style={{ borderColor: `${id.accent}66` }}>
       <div className="flex flex-wrap items-center gap-2">
@@ -287,7 +287,7 @@ export function TransitionPanel({ c, t }: { c: CampaignSnapshot; t: Transition }
           <p className="text-[13px] text-white/80">Next: <b className="text-white">{c.map.find((n) => n.round === (t.decided as { round: string }).round)?.title ?? t.decided.round}</b>
             {t.decided.byes.length ? <span className="text-sky-100/90" data-testid="transition-bye"> · bye: {t.decided.byes.map((r) => c.map.find((n) => n.round === r)?.title ?? r).join(", ")} skipped</span> : null}</p>
         ) : <p className="text-[13px] text-white/80">{t.decided.ending.text}</p>}
-        <div className="flex flex-wrap gap-x-4 gap-y-1">{(Object.keys(t.standing) as CampaignStage[]).filter((s) => t.standing[s]?.played).map((s) => <span key={s} className="text-[11.5px] text-white/60">{STAGE_TITLE[s]} <StandingLine c={{ ...c, standing: t.standing }} stage={s} /></span>)}</div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">{(Object.keys(t.standing) as CampaignStage[]).filter((s) => t.standing[s]?.played).map((s) => <span key={s} className="text-[11.5px] text-white/60">{stageTitle(s)} <StandingLine c={{ ...c, standing: t.standing }} stage={s} /></span>)}</div>
       </Plate>
       {car ? (
         <Plate className="flex flex-col gap-2 p-3" testId="carried">
@@ -320,7 +320,7 @@ export function LegacyRecap({ c, e }: { c: CampaignSnapshot; e: Ending }) {
       <Plate ornate className="flex flex-col gap-2 p-3" testId="legacy-record">
         <Eyebrow>Legacy</Eyebrow>
         <div className="flex flex-wrap gap-x-5 gap-y-1">
-          {(["regular", "playoffs", "worlds"] as CampaignStage[]).map((s) => e.record[s] ? <span key={s} className="text-[12.5px] text-white/75">{STAGE_TITLE[s]} <b className="dyn-num text-white">{e.record[s]!.wins}–{e.record[s]!.losses}</b></span> : null)}
+          {(["regular", "playoffs", "worlds"] as CampaignStage[]).map((s) => e.record[s] ? <span key={s} className="text-[12.5px] text-white/75">{stageTitle(s)} <b className="dyn-num text-white">{e.record[s]!.wins}–{e.record[s]!.losses}</b></span> : null)}
           <span className="text-[12.5px] text-white/75">Series played <b className="dyn-num text-white">{e.series_played}</b></span>
           {o ? <span className="text-[12.5px] text-violet-200/90" data-testid="legacy-baron">Baron: {o.correct} of {o.questions} answers, {o.perfect} perfect</span> : null}
         </div>

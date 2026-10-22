@@ -314,7 +314,8 @@ export function ServerGame({ s, env, teamName, accent, mono, onResult, onMood }:
               {env.management && revealed >= 6 ? <ManagementInfluence tally={tally} mv={env.management} /> : null}
             </>
           ) : (
-            <section aria-label="Stage score" className={cn(PLATE, "flex items-center gap-x-2.5 px-3 py-2 sm:gap-x-3")} data-testid="stage-score">
+            // RC0: wraps on phones; at 360 px the label, the seven pips and the score need ~400 px on one line
+            <section aria-label="Stage score" className={cn(PLATE, "flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3 py-2 sm:gap-x-3")} data-testid="stage-score">
               <Eyebrow>{STAGE_NAME[stage]} · published</Eyebrow>
               <span className="dyn-title dyn-num whitespace-nowrap text-[18px] font-bold leading-none" data-testid="stage-points"><span className="text-[#f2dc98]">{tally.you_points}</span><span className="mx-0.5 text-white/35">–</span><span className="text-white/70">{tally.opponent_points}</span></span>
               <SevenPips lanes={orderContests(tally).lanes.map((c) => c.winner === "you")} team={orderContests(tally).team?.winner === "you"} size="sm" />
@@ -382,7 +383,8 @@ function TallyPlate({ tally, revealed, onSkip, onWhy, names, castKey }: { tally:
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <StageScore you={tally.you_points} them={tally.opponent_points} />
             <SevenPips lanes={lanes.map((c) => c.winner === "you")} team={team?.winner === "you"} />
-            <span className="ml-auto">{late
+            {/* RC0: the stamp grows leftwards from the right edge (centred, its 1.45x entrance overflowed a 360 px page) */}
+            <span className="ml-auto [&_.dyn-stamp]:origin-right">{late
               ? <span className={cn("dyn-title inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[13px] font-bold uppercase tracking-[0.14em]", tally.winner === "you" ? LABEL_TONE.Winning : LABEL_TONE.Losing, motion && "dyn-stamp")} data-testid="late-verdict">{tally.winner === "you" ? "Game won" : "Game lost"}</span>
               : tally.outcome_label ? <StateLabel label={tally.outcome_label} stamp size="lg" /> : null}</span>
           </div>

@@ -306,9 +306,11 @@ const WordPuzzleLab = import.meta.env.DEV
 // Estimate) plays at /admin/playtests/:mode, launched from Ranked → Playtests.
 // The chunk carries no round or answer; the backend deals and reveals them.
 const OwnerPlaytestPage = lazy(() => import("./pages/admin/playtests/OwnerPlaytestPage"));
-// ROG1-D1: Worlds Dynasty, the owner-only run prototype. Every offer, roll and
-// score comes from /api/admin/dynasty (DYNASTY_ENABLED + require_admin).
-const DynastyRunPage = lazy(() => import("./pages/admin/dynasty/DynastyRunPage"));
+// RC0: Worlds Dynasty, the owner-only E3B campaign (UX-7). Every result, Baron
+// grade and progression step comes from /api/admin/dynasty/v2 (DYNASTY_ENABLED +
+// require_admin). The ROG1-D1 run page needs the v1 /runs routes, which the E3B
+// backend does not serve; it stays in the DEV fixture preview (/dev/dynasty).
+const DynastyCampaignPage = lazy(() => import("./pages/admin/dynasty/DynastyCampaignPage"));
 // DEV-only: the same page replaying recorded backend responses (no gate, no API).
 const DynastyPreview = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/dynasty/DynastyPreview"))
@@ -560,7 +562,7 @@ export const appRouter = createBrowserRouter(
                       The retired lab URLs redirect there; they mount nothing. */}
                   <Route path="/admin/playtests/:mode" element={<AdminRoute><Suspense fallback={<RouteFallback />}><OwnerPlaytestPage /></Suspense></AdminRoute>} />
                   {/* ROG1-D1 — Worlds Dynasty owner prototype; full-screen, outside the admin shell. */}
-                  <Route path="/admin/dynasty" element={<AdminRoute><Suspense fallback={<RouteFallback />}><DynastyRunPage /></Suspense></AdminRoute>} />
+                  <Route path="/admin/dynasty" element={<AdminRoute><Suspense fallback={<RouteFallback />}><DynastyCampaignPage /></Suspense></AdminRoute>} />
                   <Route path="/admin/interaction-labs" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/interaction-labs/:lab" element={<InteractionLabsRedirect />} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />

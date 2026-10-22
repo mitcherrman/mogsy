@@ -49,7 +49,7 @@ import {
 // UX-3: the server-driven BO5 (recorded E1 output through the adapter boundary). Lazy: it carries the fixture.
 const Bo5Flow = lazy(() => import("./bo5/Bo5Flow").then((m) => ({ default: m.Bo5Flow })));
 // UX-7: the E3B campaign journey around the UX-6 BO5 (live backend only).
-const CampaignFlow = lazy(() => import("./campaign/CampaignFlow").then((m) => ({ default: m.CampaignFlow })));
+const CampaignFlow = lazy(() => import("./campaign/CampaignFlow").then((m) => ({ default: m.CampaignRoute })));
 
 type ScreenId = "home" | "org" | "stars" | "roster" | "season" | "recruit" | "prep" | "scout" | "draft" | "game" | "result" | "tactic" | "series" | "end";
 
