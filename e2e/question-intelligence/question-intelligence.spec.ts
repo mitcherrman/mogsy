@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-// QI1 acceptance: the panel at the two owner desk widths, A1 hovered and one
+// QI1 acceptance: the panel at three owner desk widths, A1 hovered and one
 // option cell hovered, with no sideways page scroll. Screenshots are written
 // to test-results/question-intelligence/ for the handoff.
-for (const width of [1280, 1440]) {
+for (const width of [1280, 1440, 1920]) {
   test(`question intelligence at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/e2e/question-intelligence/harness.html");
@@ -23,5 +23,16 @@ for (const width of [1280, 1440]) {
     await page.getByTestId("qi-cell-A1.2").hover();
     await expect(page.getByTestId("qi-grid-caption")).toContainText("A1.2 · top-right");
     await page.screenshot({ path: `test-results/question-intelligence/qi1-${width}-cell-hover.png` });
+    // QI2: the DREP1 column says 0 / nothing to split / partial, never one "—" for all three.
+    await expect(page.getByTestId("qi-avoidable-A1")).toHaveText("0");
+    await expect(page.getByTestId("qi-avoidable-A2")).toHaveText("—");
+    await expect(page.getByTestId("qi-avoidable-A6")).toHaveText("1?");
+    await expect(page.getByTestId("qi-drep1-totals")).toContainText("unclassified 1 (read 60 of 61");
+    await page.getByTestId("qi-row-A6").hover();
+    await expect(page.getByTestId("qi-detail-drep1")).toHaveText("Forced0Avoidable1Outside DREP10Unclassified1");
+    await expect(page.getByTestId("qi-row-A6")).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("qi-row-A1")).toHaveAttribute("data-active", "false");
+    await page.waitForTimeout(400); // let the row / cell colour transitions settle
+    await page.screenshot({ path: `test-results/question-intelligence/qi2-${width}-drep1-partial.png` });
   });
 }

@@ -306,8 +306,9 @@ function Totals({ data }: { data: QuestionIntelligence }) {
         {d ? (
           <>
             DREP1 · forced {d.forced} · avoidable {d.avoidableProtected + d.avoidableUnprotected} (set without it{" "}
-            {d.avoidableProtected}, no set {d.avoidableUnprotected}) · outside Daily {d.outsideScope}
-            {d.unclassified > 0 && ` · unclassified ${d.unclassified} (snapshot read cap ${d.readCap}; narrow the range)`}
+            {d.avoidableProtected}, no set {d.avoidableUnprotected}) · outside DREP1 scope {d.outsideScope}
+            {d.unclassified > 0 &&
+              ` · unclassified ${d.unclassified} (read ${d.snapshotsRead} of ${d.childrenNeeded} Daily child snapshots, cap ${d.readCap}, this page first; narrow the range or filters)`}
           </>
         ) : (
           "DREP1 split not reported by this backend."
@@ -318,6 +319,17 @@ function Totals({ data }: { data: QuestionIntelligence }) {
 }
 
 // ------------------------------------------------------------------ table
+
+/** The Avoidable cell: "—" only when there is nothing to split, "?" marks repeats past the read cap. */
+function avoidableCell(q: QiQuestion): { text: string; title: string } {
+  const d = q.repeats.drep1;
+  if (!d) return { text: "—", title: "DREP1 split not reported" };
+  if (q.repeats.repeatExposures === 0) return { text: "—", title: "No repeats" };
+  if (d.unclassified > 0) {
+    return { text: `${d.avoidable}?`, title: `${d.avoidable} avoidable, ${d.unclassified} unclassified (snapshot read cap)` };
+  }
+  return { text: String(d.avoidable), title: `${d.avoidable} avoidable of ${q.repeats.repeatExposures} repeats` };
+}
 
 function OutcomeBar({ q, className }: { q: QiQuestion; className?: string }) {
   const settled = q.correct + q.incorrect + q.timeout;
@@ -368,13 +380,14 @@ function QuestionTable({
             <th className="py-1 pr-2 text-right">Timeout</th>
             <th className="py-1 pr-2 text-right" title="Daily child / standalone Ranked / other">D·R·O</th>
             <th className="py-1 pr-2 text-right" title="Same player, previous days">Repeats</th>
-            <th className="py-1 text-right" title="DREP1: repeats the Daily child's avoid set did not cover">Avoidable</th>
+            <th className="py-1 text-right" title="DREP1: repeats it promised to avoid but did not (? = some unclassified)">Avoidable</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((q, i) => {
             const label = labelOf(i);
             const on = i === focus;
+            const avoidable = avoidableCell(q);
             return (
               <tr
                 key={q.ref}
@@ -416,8 +429,8 @@ function QuestionTable({
                   {q.hosts.daily}·{q.hosts.ranked}·{q.hosts.other}
                 </td>
                 <td className="py-1.5 pr-2 text-right tabular-nums">{q.repeats.repeatExposures || "—"}</td>
-                <td className="py-1.5 text-right tabular-nums" data-testid={`qi-avoidable-${label}`}>
-                  {q.repeats.drep1?.avoidable || "—"}
+                <td className="py-1.5 text-right tabular-nums" data-testid={`qi-avoidable-${label}`} title={avoidable.title}>
+                  {avoidable.text}
                 </td>
               </tr>
             );
@@ -566,7 +579,7 @@ export function QuestionDetail({ question: q, label, pinned }: { question: QiQue
             <div className="mt-1.5 grid grid-cols-4 gap-1.5" data-testid="qi-detail-drep1">
               <Stat label="Forced" value={q.repeats.drep1.forced} />
               <Stat label="Avoidable" value={q.repeats.drep1.avoidable} />
-              <Stat label="Outside Daily" value={q.repeats.drep1.outsideScope} />
+              <Stat label="Outside DREP1" value={q.repeats.drep1.outsideScope} />
               <Stat label="Unclassified" value={q.repeats.drep1.unclassified} />
             </div>
           ) : (

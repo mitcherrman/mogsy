@@ -10,7 +10,10 @@
 //
 // The parser follows dailyHistoryApi: an unknown `schema_version` is refused,
 // unknown extra keys are ignored, and a number is accepted only if it is a
-// finite number, so a malformed field reads as "not recorded", never 0.
+// finite number. The served / answered / outcome counts are required: a
+// response missing one is refused as unreadable rather than drawn as 0. A
+// malformed rate reads as "not recorded" (—), and an absent DREP1 split as
+// "not reported".
 // ---------------------------------------------------------------------------
 
 import { ADMIN_API_BASE_URL, buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
@@ -47,12 +50,14 @@ export interface QiPosition {
 }
 
 /**
- * DREP1 split of one ref's repeats, by the Daily child that served each one:
+ * DREP1 split of one ref's repeats, by the Daily child that served each one.
+ * Only a repeat DREP1 promised to avoid is classified (the player met the ref
+ * earlier in an official Daily Standard / Time Trial / Survival child):
  * `forced` = the ref was in that child's frozen avoid set (its family had no
  * unseen question left); `avoidable` = it was not, or the child froze no set;
- * `outsideScope` = no Standard / Time Trial / Survival child served it;
- * `unclassified` = past the backend's snapshot read cap. `null` = the backend
- * did not report the split (not recorded, never zero).
+ * `unclassified` = past the backend's snapshot read cap. `outsideScope` =
+ * every other repeat (Ranked, other hosts, or first met outside official
+ * Daily). `null` = the backend did not report the split (never zero).
  */
 export interface QiDrep1Split {
   forced: number;
@@ -149,6 +154,15 @@ function need<T>(value: T | null, what: string): T {
   return value;
 }
 
+/** The figures every row and the totals must carry; never defaulted to 0. */
+function coreCounts(raw: Obj, where: string) {
+  const req = (key: string) => need(num(raw[key]), `${where} ${key}`);
+  return {
+    served: req("served"), answered: req("answered"), correct: req("correct"),
+    incorrect: req("incorrect"), timeout: req("timeout"),
+  };
+}
+
 function countMap(raw: unknown): Record<string, number> {
   const out: Record<string, number> = {};
   if (!isObj(raw)) return out;
@@ -191,9 +205,8 @@ function readQuestion(raw: unknown): QiQuestion {
     family: str(raw.family),
     modules: Array.isArray(raw.modules) ? raw.modules.filter((m): m is string => typeof m === "string") : [],
     prompt: str(raw.prompt),
-    served: count(raw.served), answered: count(raw.answered),
-    correct: count(raw.correct), incorrect: count(raw.incorrect),
-    timeout: count(raw.timeout), unsettled: count(raw.unsettled), players: count(raw.players),
+    ...coreCounts(raw, "a question's"),
+    unsettled: count(raw.unsettled), players: count(raw.players),
     rates: { correct: num(rates.correct), incorrect: num(rates.incorrect), timeout: num(rates.timeout), answered: num(rates.answered) },
     hosts: { daily: count(hosts.daily), ranked: count(hosts.ranked), other: count(hosts.other) },
     stageKinds: countMap(raw.stage_kinds),
@@ -234,8 +247,7 @@ export function parseQuestionIntelligence(json: unknown): QuestionIntelligence {
   return {
     generatedAt: str(json.generated_at) ?? "",
     totals: {
-      served: count(t.served), answered: count(t.answered), correct: count(t.correct),
-      incorrect: count(t.incorrect), timeout: count(t.timeout), unsettled: count(t.unsettled),
+      ...coreCounts(t, "the total"), unsettled: count(t.unsettled),
       unattributed: count(t.unattributed), questions: count(t.questions),
       excludedTestMatches: count(t.excluded_test_matches),
       repeats: {

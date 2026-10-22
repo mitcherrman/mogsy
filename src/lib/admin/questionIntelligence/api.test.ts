@@ -73,11 +73,18 @@ describe("QI1 parser · the backend golden response", () => {
     expect(out.totals.repeats.drep1).toBeNull();
   });
 
-  it("reads a malformed number as not recorded, never as a figure", () => {
-    const q = { ...golden.questions[0], rates: { correct: "50%", incorrect: null }, served: "4" };
+  it("reads a malformed rate as not recorded, never as a figure", () => {
+    const q = { ...golden.questions[0], rates: { correct: "50%", incorrect: null } };
     const parsedRow = parseQuestionIntelligence({ ...golden, questions: [q] }).questions[0];
     expect(parsedRow.rates.correct).toBeNull();
-    expect(parsedRow.served).toBe(0);
+    expect(parsedRow.rates.incorrect).toBeNull();
+  });
+
+  it("refuses a row or total missing a served / outcome count instead of drawing 0", () => {
+    const row = { ...golden.questions[0], served: "4" };
+    expect(() => parseQuestionIntelligence({ ...golden, questions: [row] })).toThrow(/served/);
+    const { timeout: _dropped, ...totals } = golden.totals;
+    expect(() => parseQuestionIntelligence({ ...golden, totals })).toThrow(/total timeout/);
   });
 });
 

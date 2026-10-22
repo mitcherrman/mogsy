@@ -106,11 +106,47 @@ describe("QI1 panel · hover-synchronised detail", () => {
     renderPanel();
     await screen.findByTestId("qi-row-A1");
     expect(screen.getByTestId("qi-drep1-totals").textContent).toContain("forced 1 · avoidable 1 (set without it 1, no set 0)");
-    expect(screen.getByTestId("qi-avoidable-A1").textContent).toBe("—");
+    // A1 repeated once and it was forced: 0 avoidable, not "nothing to say".
+    expect(screen.getByTestId("qi-avoidable-A1").textContent).toBe("0");
+    expect(screen.getByTestId("qi-avoidable-A2").textContent).toBe("—"); // no repeats
     expect(screen.getByTestId("qi-avoidable-A3").textContent).toBe("1");
-    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("Forced1Avoidable0Outside Daily0Unclassified0");
+    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("Forced1Avoidable0Outside DREP10Unclassified0");
     fireEvent.mouseEnter(screen.getByTestId("qi-row-A3"));
-    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("Forced0Avoidable1Outside Daily0Unclassified0");
+    expect(screen.getByTestId("qi-detail-drep1").textContent).toBe("Forced0Avoidable1Outside DREP10Unclassified0");
+  });
+
+  it("marks a split past the snapshot read cap as partial, never as 0 avoidable", async () => {
+    const [q1, ...rest] = DATA.questions;
+    const capped = { ...q1, repeats: { ...q1.repeats, drep1: { forced: 0, avoidable: 0, outsideScope: 0, unclassified: 1 } } };
+    const drep1 = { ...DATA.totals.repeats.drep1!, forced: 0, unclassified: 1, snapshotsRead: 60, childrenNeeded: 75 };
+    const totals = { ...DATA.totals, repeats: { ...DATA.totals.repeats, drep1 } };
+    renderPanel(vi.fn(async () => ({ ...DATA, totals, questions: [capped, ...rest] })));
+    const cell = await screen.findByTestId("qi-avoidable-A1");
+    expect(cell.textContent).toBe("0?");
+    expect(cell.getAttribute("title")).toContain("1 unclassified");
+    expect(screen.getByTestId("qi-drep1-totals").textContent).toContain(
+      "unclassified 1 (read 60 of 75 Daily child snapshots, cap 60, this page first",
+    );
+  });
+
+  it("says when the service cannot be reached, never an empty table", async () => {
+    renderPanel(vi.fn(async () => {
+      throw new QuestionIntelligenceReadError("unavailable", "The Question Intelligence service could not be reached.");
+    }));
+    const err = await screen.findByTestId("qi-error");
+    expect(err.getAttribute("data-kind")).toBe("unavailable");
+    expect(err.textContent).toContain("could not be reached");
+    expect(screen.queryByTestId("qi-table")).toBeNull();
+    expect(screen.queryByTestId("qi-totals")).toBeNull();
+  });
+
+  it("shows an empty range as an explicit empty state with zero totals", async () => {
+    const totals = { ...DATA.totals, served: 0, answered: 0, correct: 0, incorrect: 0, timeout: 0, questions: 0 };
+    renderPanel(vi.fn(async () => ({ ...DATA, totals, questions: [], page: { offset: 0, limit: 50, total: 0, nextOffset: null } })));
+    expect((await screen.findByTestId("qi-table-empty")).textContent).toContain("No question was served");
+    expect(screen.getByTestId("qi-detail-empty")).toBeTruthy();
+    expect(screen.getByTestId("qi-pager").textContent).toContain("No questions");
+    expect(screen.getByTestId("qi-total-served").textContent).toContain("0");
   });
 
   it("says the DREP1 split was not reported rather than showing zeros", async () => {

@@ -16,7 +16,7 @@
     "Segments settled before PQ1 (2026-09-23) are counted only for one-question quiz rounds.",
     "A settled question with no canonical ref is counted in 'unattributed', never matched to another.",
     "Repeats compare exact canonical refs, not semantic similarity; Review and Weak Areas are excluded from repeat counting.",
-    "The DREP1 forced / avoidable split reads at most 60 Daily child snapshots per request; repeats past that are reported unclassified.",
+    "The DREP1 forced / avoidable split covers only repeats DREP1 promises to avoid (an earlier official Daily Standard / Time Trial / Survival sighting); the rest are 'outside scope'. It reads at most 60 Daily child snapshots per request, this page's questions first; repeats past that are reported unclassified.",
     "The range is bounded by the match's creation time; each exposure keeps the UTC day its round opened."
   ],
   "page": {

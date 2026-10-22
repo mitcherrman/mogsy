@@ -23,6 +23,14 @@ const SYNTHETIC: Array<[string, string, number, number, number, number, number[]
   ["quiz:summoner:ignite-gw", "Which summoner spell applies Grievous Wounds?", 118, 101, 12, 5, [5, 0, 4, 3], 0],
 ];
 
+// DREP1 splits for the synthetic repeats: forced, avoidable, one row past the
+// snapshot read cap (shown as "1?"), the rest outside DREP1's scope.
+const DREP1: Record<string, NonNullable<QiQuestion["repeats"]["drep1"]>> = {
+  "quiz:item:boots-ms": { forced: 2, avoidable: 0, outsideScope: 1, unclassified: 0 },
+  "quiz:champion:hp-l18": { forced: 3, avoidable: 2, outsideScope: 1, unclassified: 0 },
+  "mastery:item:bork-passive": { forced: 0, avoidable: 1, outsideScope: 0, unclassified: 1 },
+};
+
 function synthetic(i: number, row: (typeof SYNTHETIC)[number]): QiQuestion {
   const [ref, prompt, served, correct, incorrect, timeout, wrong, repeats] = row;
   const settled = correct + incorrect + timeout;
@@ -38,7 +46,10 @@ function synthetic(i: number, row: (typeof SYNTHETIC)[number]): QiQuestion {
     hosts: { daily: Math.round(served * 0.7), ranked: served - Math.round(served * 0.7) - (i % 3), other: i % 3 },
     stageKinds: { standard: Math.round(served * 0.5), time_trial: Math.round(served * 0.12), survival: Math.round(served * 0.08) },
     firstDay: "2026-10-14", lastDay: "2026-10-20",
-    repeats: { repeatExposures: repeats, repeatPlayers: Math.min(repeats, 2), multiDayPlayers: Math.min(repeats, 2), maxDaysOnePlayer: repeats ? 2 : 1, lookbackDays: 7 },
+    repeats: {
+      repeatExposures: repeats, repeatPlayers: Math.min(repeats, 2), multiDayPlayers: Math.min(repeats, 2), maxDaysOnePlayer: repeats ? 2 : 1, lookbackDays: 7,
+      drep1: DREP1[ref] ?? { forced: 0, avoidable: 0, outsideScope: repeats, unclassified: 0 },
+    },
     positions: {
       positionalExposures: served, nonPositionalExposures: 0, undecoded: 0,
       optionCounts: { [String(n)]: served },
@@ -62,7 +73,18 @@ const data: QuestionIntelligence = {
     timeout: rows.reduce((s, q) => s + q.timeout, 0),
     questions: rows.length,
     excludedTestMatches: 14,
-    repeats: { ...base.totals.repeats, repeatVsPreviousDays: rows.reduce((s, q) => s + q.repeats.repeatExposures, 0) },
+    repeats: {
+      ...base.totals.repeats,
+      repeatVsPreviousDays: rows.reduce((s, q) => s + q.repeats.repeatExposures, 0),
+      drep1: {
+        forced: rows.reduce((s, q) => s + (q.repeats.drep1?.forced ?? 0), 0),
+        avoidableProtected: rows.reduce((s, q) => s + (q.repeats.drep1?.avoidable ?? 0), 0) - 1,
+        avoidableUnprotected: 1,
+        outsideScope: rows.reduce((s, q) => s + (q.repeats.drep1?.outsideScope ?? 0), 0),
+        unclassified: rows.reduce((s, q) => s + (q.repeats.drep1?.unclassified ?? 0), 0),
+        snapshotsRead: 60, childrenNeeded: 61, readCap: 60,
+      },
+    },
   },
   questions: rows,
   page: { offset: 0, limit: 50, total: rows.length, nextOffset: null },
