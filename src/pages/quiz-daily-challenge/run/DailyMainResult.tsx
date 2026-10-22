@@ -51,6 +51,7 @@ import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { currentStage, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
 import { dailySection, dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { buildDailyMainResult, optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
+import { OWNER_TAKE_LABELS, ownerTakeResult, useOwnerTake } from "@/lib/daily-challenge/run/ownerTake";
 import { DAILY_DISCOVERY_HOLD_MS, DailyDiscoveries } from "./DailyDiscoveries";
 import {
   RESULT_FOCUS_CLEARANCE, RESULT_FRAME_GAP, RESULT_HERO_DENSITY, RESULT_SNAPSHOT_3COL, RESULT_TAG_DENSITY,
@@ -118,7 +119,9 @@ export function DailyMainResult({
   onSaveScore?: () => void;
 }) {
   const settled = isMainDailyComplete(run) && stage.status === "completed";
-  const model = buildDailyMainResult(run, stage);
+  const ownerTake = useOwnerTake();
+  const official = buildDailyMainResult(run, stage);
+  const model = ownerTake ? ownerTakeResult(official) : official;
   const optional = dailySections(run).filter((g) => g.id !== "today");
   const next = currentStage(run);
   const toCatalog = !!onMoreChallenges && next !== null && dailySection(next) === "more";
@@ -151,7 +154,7 @@ export function DailyMainResult({
 
   return (
     <section
-      aria-label="Today's Challenge result"
+      aria-label={ownerTake ? `${OWNER_TAKE_LABELS.headline} result` : "Today's Challenge result"}
       aria-live="polite"
       data-testid="daily-main-result"
       data-stage-kind={stage.kind}
@@ -164,6 +167,12 @@ export function DailyMainResult({
         <StageTag stage={stage} size="lg" />
       </div>
       <ResultHero model={model} reserveScore revealScore pendingPose="thinking" />
+      {ownerTake && (
+        <p data-testid="daily-owner-take-note"
+          className="text-center text-xs text-[var(--ranked-muted,#a8a29e)]">
+          {OWNER_TAKE_LABELS.note}
+        </p>
+      )}
 
       <div data-testid="daily-main-result-snapshot-slot"
         className={`${MAIN_SNAPSHOT_FLOOR} ${RESULT_SNAPSHOT_3COL}`}>
@@ -219,7 +228,8 @@ export function DailyMainResult({
           <p className="text-center">
             <span className="ranked-eyebrow">Optional</span>
             <span className="block pt-1 text-xs text-[var(--ranked-muted,#a8a29e)]">
-              Keep playing if you like. Nothing here changes your Daily score.
+              {ownerTake ? "Keep playing if you like. Nothing here changes this take's score."
+                : "Keep playing if you like. Nothing here changes your Daily score."}
             </span>
           </p>
           <ul className="flex flex-col items-center gap-2.5 max-sm:gap-1.5 sm:flex-row sm:items-start sm:justify-center sm:gap-8">
