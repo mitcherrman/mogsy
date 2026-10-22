@@ -26,6 +26,10 @@
  * time to be read (`useSettledAdvance`): then focus moves to it and Space/Enter
  * anywhere continue, once, never on a repeat. Before that nothing advances, so
  * the key that left the reveal cannot also leave this screen.
+ *
+ * PT5.3 (blind flow, `autoAdvanceMs`): once ready it also continues by itself
+ * after the dwell — straight into the next stage's count-in — unless the run is
+ * held; Hold sits beside Continue while that move is coming.
  */
 import { useRef, useState, type CSSProperties } from "react";
 import { SubjectArt } from "@/components/interaction-grammar/shared";
@@ -66,21 +70,27 @@ function RankPips({ from, to, count }: { from: number; to: number; count: number
   );
 }
 
-function TransitionBody({ round, slice, onContinue, continueLabel }: {
+function TransitionBody({ round, slice, onContinue, continueLabel, autoAdvanceMs, held, onHold }: {
   round: PtRoundView;
   slice: PtSliceStageView & { kind: "rank_up" | "equipped" };
-  onContinue: (source?: "key") => void;
+  onContinue: (source?: "key" | "auto") => void;
   continueLabel: string;
+  autoAdvanceMs: number | null;
+  held: boolean;
+  onHold?: () => void;
 }) {
   const reducedMotion = useReducedMotionPreference();
   const animate = !reducedMotion;
   const coarse = useCoarsePointer();
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { settled, advanceFromClick } = useSettledAdvance({
+  const { settled, advanceFromClick, autoPass } = useSettledAdvance({
     buttonRef,
     settleMs: animate ? TRANSITION_READY_MS : TRANSITION_READY_REDUCED_MS,
     onAdvance: onContinue,
+    autoAdvanceMs,
+    paused: held,
   });
+  const auto = autoAdvanceMs !== null;
 
   const kind = slice.kind;
   const to = round.rank ?? 0;
@@ -147,11 +157,23 @@ function TransitionBody({ round, slice, onContinue, continueLabel }: {
           </p>
 
           <div className="pt-tr-actions">
-            <button ref={buttonRef} type="button" className="pt-next pt-tr-continue" data-testid="pt-tr-continue"
-              aria-disabled={!settled} data-ready={settled ? "true" : "false"}
-              onClick={(e) => advanceFromClick(e.detail)}>
-              {continueLabel}
-            </button>
+            <div className="pt-next-row" data-auto-row={auto ? "true" : undefined}>
+              <button ref={buttonRef} type="button" className="pt-next pt-tr-continue" data-testid="pt-tr-continue"
+                aria-disabled={!settled} data-ready={settled ? "true" : "false"}
+                data-auto={auto ? (held ? "held" : autoPass > 0 ? "running" : "waiting") : undefined}
+                style={auto ? { "--pt-auto-ms": `${autoAdvanceMs}ms` } as CSSProperties : undefined}
+                onClick={(e) => advanceFromClick(e.detail)}>
+                {autoPass > 0 ? <span key={autoPass} className="pt-auto-fill" data-testid="pt-auto-fill" aria-hidden /> : null}
+                <span className="pt-next-label">{continueLabel}</span>
+              </button>
+              {auto ? (
+                <button type="button" className="pt-hold" data-testid="pt-hold" data-held={held ? "true" : undefined}
+                  disabled={held} aria-label={held ? "Held: continue when ready" : "Hold: stop the automatic continue"}
+                  onClick={() => { onHold?.(); buttonRef.current?.focus({ preventScroll: true }); }}>
+                  {held ? "Held" : "Hold"}
+                </button>
+              ) : null}
+            </div>
             <p className="pt-tr-hint" data-testid="pt-tr-hint" data-live={settled ? "true" : "false"}>
               <kbd className="pt-kbd">Space</kbd><span>or</span><kbd className="pt-kbd">Enter</kbd>
               <span>{coarse ? "· or tap" : "· or click"}</span>
@@ -164,13 +186,19 @@ function TransitionBody({ round, slice, onContinue, continueLabel }: {
   );
 }
 
-export function SliceTransition({ round, onContinue, continueLabel = "Continue" }: {
+export function SliceTransition({ round, onContinue, continueLabel = "Continue", autoAdvanceMs = null, held = false, onHold }: {
   /** The stage being entered. */
   round: PtRoundView;
-  onContinue: (source?: "key") => void;
+  onContinue: (source?: "key" | "auto") => void;
   continueLabel?: string;
+  /** PT5.3: continue by itself this long after it is ready. Null: wait for the player. */
+  autoAdvanceMs?: number | null;
+  /** PT5.3: the run is held — no automatic continue. */
+  held?: boolean;
+  onHold?: () => void;
 }) {
   const slice = round.slice ?? null;
   if (!slice || !hasTransition(slice.kind)) return null;
-  return <TransitionBody round={round} slice={slice as PtSliceStageView & { kind: "rank_up" | "equipped" }} onContinue={onContinue} continueLabel={continueLabel} />;
+  return <TransitionBody round={round} slice={slice as PtSliceStageView & { kind: "rank_up" | "equipped" }} onContinue={onContinue}
+    continueLabel={continueLabel} autoAdvanceMs={autoAdvanceMs} held={held} onHold={onHold} />;
 }

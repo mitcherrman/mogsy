@@ -5,6 +5,15 @@
  */
 import type { InterruptReason } from "@/lib/perfect-timing/timingEngine";
 
+/**
+ * PT5.3: how a run is played. `blind` — the owner lab's automatic flow: the
+ * game counts each round in and starts it, the player only stops it, no
+ * elapsed time is shown while it runs, results move on by themselves. `visible`
+ * — the PT5.2 flow (press to cast, visible stopwatch, Next to continue), kept
+ * for the public PGM2 game until the owner approves the rollout.
+ */
+export type PtFlow = "blind" | "visible";
+
 /** PT4.4: after a KEY advances the reveal, Space/Enter are ignored this long, so a double-tap cannot also start the round it armed. */
 export const ADVANCE_KEY_GUARD_MS = 250;
 
