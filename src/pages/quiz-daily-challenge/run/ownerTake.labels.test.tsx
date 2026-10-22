@@ -58,5 +58,9 @@ describe("owner-take result labels", () => {
     expect(screen.getByTestId("daily-run-complete-title")).toHaveTextContent("Owner take complete");
     expect(screen.getByTestId("daily-run-complete-note")).toHaveTextContent(/Not official/);
     expect(screen.getByTestId("daily-recap-main-score")).toHaveTextContent(OWNER_TAKE_LABELS.scoreLabel);
+    // No section heading reads as the official Daily either.
+    const recap = screen.getByTestId("daily-run-complete").textContent ?? "";
+    expect(recap).toContain(OWNER_TAKE_LABELS.section);
+    expect(recap.replace(OWNER_TAKE_LABELS.note, "")).not.toMatch(/Today's Challenge|Today's Daily/);
   });
 });

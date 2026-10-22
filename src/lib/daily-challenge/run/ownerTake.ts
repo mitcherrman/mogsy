@@ -15,6 +15,8 @@ export const useOwnerTake = (): boolean => useContext(OwnerTakeContext);
 export const OWNER_TAKE_LABELS = {
   headline: "Owner take",
   scoreLabel: "Take score",
+  /** Replaces the "Today's Challenge" section heading on a take. */
+  section: "Owner preview",
   note: "Not official — your Daily score, streak and history are untouched.",
 } as const;
 

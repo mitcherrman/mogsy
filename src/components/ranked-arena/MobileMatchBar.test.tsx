@@ -78,3 +78,25 @@ describe("MobileMatchBar", () => {
     expect(screen.getByTestId("mobile-timer-value")).toHaveAttribute("data-timer-state", "urgent");
   });
 });
+
+describe("Daily three acts on phones (act openings)", () => {
+  it("shows an act opening on the position line for the title beat, then the position", async () => {
+    const { act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers();
+    try {
+      mount(header({ title: "8 / 19", moduleTitle: "Act II · Mid", moduleEventId: 8, moduleTitleWindowMs: 1000 }));
+      const line = screen.getByTestId("mobile-module-position");
+      expect(line).toHaveTextContent("Act II · Mid");
+      expect(line).toHaveAttribute("data-act", "true");
+      act(() => { vi.advanceTimersByTime(1200); });
+      expect(line).toHaveTextContent("8 / 19");
+      expect(line).not.toHaveAttribute("data-act");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("keeps ordinary module titles off the phone line", () => {
+    mount(header({ title: "9 / 19", moduleTitle: "Itemization", moduleEventId: 9, moduleTitleWindowMs: 1000 }));
+    expect(screen.getByTestId("mobile-module-position")).toHaveTextContent("9 / 19");
+  });
+});

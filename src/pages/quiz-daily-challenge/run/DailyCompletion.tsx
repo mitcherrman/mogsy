@@ -92,10 +92,11 @@ export function DailyCompletion({ run, saveRequired = false }: {
           <div className="flex w-full max-w-xl flex-col gap-3 pt-2 max-sm:gap-2 max-sm:pt-0" data-testid="daily-run-recap">
             {dailySections(run).map((g) => (
               <section key={g.id} data-testid={`daily-recap-section-${g.id}`} data-section={g.id}
-                aria-label={g.label} className="flex flex-col gap-1.5">
+                aria-label={ownerTake && g.id === "today" ? OWNER_TAKE_LABELS.section : g.label}
+                className="flex flex-col gap-1.5">
                 <h3 className={`text-left text-[0.625rem] font-semibold uppercase tracking-[0.2em] ${
                   g.id === "today" ? "text-[#f0d78c]" : "text-[var(--ranked-muted,#a8a29e)]"}`}>
-                  {g.label}
+                  {ownerTake && g.id === "today" ? OWNER_TAKE_LABELS.section : g.label}
                 </h3>
                 <ol className="flex flex-col gap-2">
                   {g.stages.map((s) => (
