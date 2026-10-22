@@ -1,0 +1,119 @@
+/*
+ * VIS-F4 — cinematic production. Same scoping as vis.css / vis-f3.css:
+ * `.dyn` only, `dyn-` keyframes, resting frame = final design, every loop
+ * gated by `.dyn-scene--motion` / `--motion` classes so reduced motion
+ * freezes it. Cinematic text stays compositor-only (opacity + transform).
+ */
+
+/* ---------- environment life ---------- */
+.dyn-mon-b, .dyn-mon-c { opacity: 0; }
+.dyn-scene--motion .dyn-monitor .dyn-mon-b { animation: dyn-mon-b 9s steps(1, end) infinite; animation-delay: calc(var(--i, 0) * -1.7s); }
+.dyn-scene--motion .dyn-monitor .dyn-mon-c { animation: dyn-mon-c 9s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.7s); }
+@keyframes dyn-mon-b { 0%, 44% { opacity: 0; } 45%, 100% { opacity: 1; } }
+@keyframes dyn-mon-c { 0%, 90% { opacity: 0; } 93% { opacity: 0.8; } 96% { opacity: 0; } 100% { opacity: 0; } }
+.dyn-scene--motion .dyn-lamp { animation: dyn-lamp 6s ease-in-out infinite; }
+@keyframes dyn-lamp { 0%, 100% { opacity: 0.9; } 47% { opacity: 0.8; } 50% { opacity: 1; } 53% { opacity: 0.85; } }
+.dyn-vod { transform: scaleX(0.3); }
+.dyn-scene--motion .dyn-vod { animation: dyn-vod 14s linear infinite; }
+@keyframes dyn-vod { from { transform: scaleX(0.02); } to { transform: scaleX(1); } }
+.dyn-scan { transform: translateY(0); }
+.dyn-scene--motion .dyn-scan { animation: dyn-scan 5s linear infinite; }
+@keyframes dyn-scan { from { transform: translateY(0); opacity: 0.9; } 90% { opacity: 0.6; } to { transform: translateY(222px); opacity: 0; } }
+.dyn-phone { opacity: calc(0.15 + var(--crowd, 0.4) * 0.6); }
+.dyn-scene--motion .dyn-phone { animation: dyn-phone calc(4.5s - var(--crowd, 0.4) * 2.5s) ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.31s); }
+@keyframes dyn-phone { 0%, 100% { opacity: 0.1; } 50% { opacity: calc(0.4 + var(--crowd, 0.4) * 0.6); } }
+.dyn-scene--motion .dyn-pyro { animation: dyn-pyro 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes dyn-pyro { 0%, 100% { transform: scaleY(0.6); opacity: 0.5; } 50% { transform: scaleY(1); opacity: 1; } }
+.dyn-scene--motion .dyn-walk .dyn-walker { animation: dyn-walker 1.1s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.22s); }
+@keyframes dyn-walker { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.dyn-scene--motion .dyn-walk { animation: dyn-walk 18s linear both; }
+@keyframes dyn-walk { from { transform: translateY(40px) scale(1.08); transform-origin: 50% 40%; } to { transform: translateY(0) scale(1); } }
+.dyn-scene--motion .dyn-cup { animation: dyn-cup-glow 3s ease-in-out infinite; }
+@keyframes dyn-cup-glow { 0%, 100% { filter: drop-shadow(0 0 10px rgba(227,198,111,0.5)); } 50% { filter: drop-shadow(0 0 26px rgba(227,198,111,0.95)); } }
+
+/* ---------- Baron hero pit ---------- */
+.dyn-baron { position: relative; }
+.dyn-baron-layer { position: absolute; inset: 0; }
+.dyn-spect--motion .dyn-baron-mist { animation: dyn-mist calc(7s - var(--tense, 0) * 1.2s) ease-in-out infinite; }
+.dyn-spect--motion .dyn-baron-eye { animation: dyn-baron-eye calc(3.6s - var(--tense, 0) * 0.7s) ease-in-out infinite; }
+@keyframes dyn-baron-eye { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+.dyn-spect--motion .dyn-baron-rise { animation: dyn-baron-rise 1.6s var(--dyn-ease) both; }
+@keyframes dyn-baron-rise { from { transform: translateY(70px); opacity: 0.2; } to { transform: translateY(0); opacity: 1; } }
+.dyn-spect--motion .dyn-baron-loom { animation: dyn-baron-loom 5s ease-in-out infinite; }
+@keyframes dyn-baron-loom { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.015); } }
+.dyn-spect--motion .dyn-baron-pulse { animation: dyn-baron-pulse calc(2.4s - var(--tense, 0) * 0.5s) ease-in-out infinite; transform-origin: 50% 50%; }
+@keyframes dyn-baron-pulse { 0%, 100% { opacity: 0.25; transform: scale(0.96); } 50% { opacity: 0.7; transform: scale(1.04); } }
+.dyn-spect--motion .dyn-baron-rays { animation: dyn-rotate 40s linear infinite; transform-origin: 500px 300px; }
+/* outcomes */
+.dyn-spect--motion .dyn-out-fall { animation: dyn-out-fall 1.3s var(--dyn-ease) both; }
+@keyframes dyn-out-fall { 0% { transform: translateY(0); opacity: 1; } 30% { transform: translateY(-8px); } 100% { transform: translateY(110px); opacity: 0.25; } }
+.dyn-spect--motion .dyn-out-burst { animation: dyn-out-burst 1.2s var(--dyn-ease) both; transform-origin: 500px 260px; }
+@keyframes dyn-out-burst { 0% { transform: scale(0.2); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+.dyn-spect--motion .dyn-out-sink { animation: dyn-out-sink 1.4s var(--dyn-ease) both; }
+@keyframes dyn-out-sink { from { transform: translateY(0); } to { transform: translateY(60px); opacity: 0.55; } }
+.dyn-spect--motion .dyn-out-roar { animation: dyn-out-roar 1.1s var(--dyn-ease) both; transform-origin: 500px 240px; }
+@keyframes dyn-out-roar { 0% { transform: scale(1); } 35% { transform: scale(1.12) translateY(-10px); } 100% { transform: scale(1.06) translateY(-4px); } }
+.dyn-spect--motion .dyn-out-shake { animation: dyn-out-shake 600ms ease-in-out both; }
+@keyframes dyn-out-shake { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-4px, 2px); } 40% { transform: translate(4px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(2px, -1px); } }
+.dyn-spect--motion .dyn-out-ember { animation: dyn-ember 2.4s ease-out infinite; animation-delay: calc(var(--i, 0) * -0.3s); }
+.dyn-spect--motion .dyn-out-shard { animation: dyn-shard 1.4s var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes dyn-shard { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx, 0px), var(--dy, -80px)) rotate(var(--r, 90deg)); opacity: 0; } }
+.dyn-spect--motion .dyn-out-wipe { animation: dyn-fade 900ms var(--dyn-ease) both; }
+/* tension ring under the header */
+.dyn-tense-ring { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.dyn-tense-ring > span { display: block; height: 100%; background: linear-gradient(90deg, hsl(var(--dyn-light) / 0.6), hsl(var(--dyn-light) / 1)); transform-origin: 0 50%; transition: transform 600ms var(--dyn-ease); }
+.dyn-consequence { border-top: 1px solid rgba(227,198,111,0.25); }
+
+/* ---------- walkout sequence ---------- */
+.dyn-walkout { position: relative; overflow: hidden; border-radius: 1rem; border: 1px solid rgba(227,198,111,0.35); box-shadow: inset 0 0 0 1px rgba(227,198,111,0.08), 0 24px 48px -32px rgba(0,0,0,0.95); }
+.dyn-walkout > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.dyn-walkout-beat { position: absolute; inset: 0; }
+.dyn-walkout--motion .dyn-walkout-beat[data-beat="tunnel"] { animation: dyn-fade 500ms var(--dyn-ease) both; }
+.dyn-walkout--motion .dyn-walkout-beat[data-beat="stage"] { animation: dyn-reveal 900ms var(--dyn-ease) both; }
+@keyframes dyn-reveal { from { opacity: 0; transform: scale(1.06); } 40% { opacity: 1; } to { opacity: 1; transform: scale(1); } }
+.dyn-walkout--motion .dyn-walkout-flash { animation: dyn-flash 700ms var(--dyn-ease) both; }
+.dyn-walkout--motion .dyn-walkout-names > * { animation: dyn-rise 420ms var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 110ms + 250ms); }
+.dyn-walkout--motion .dyn-walkout-board { animation: dyn-cine-word 700ms var(--dyn-ease) 350ms both; }
+.dyn-walkout-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,0.08); }
+.dyn-walkout-progress > span { display: block; height: 100%; background: #e3c66f; transform-origin: 0 50%; }
+.dyn-walkout--motion .dyn-walkout-progress > span { animation: dyn-tension var(--hold, 3s) linear both; }
+
+/* ---------- draft lock sequence ---------- */
+.dyn-lock { position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; background: radial-gradient(80% 60% at 50% 40%, hsl(var(--dyn-light, 44 90% 62%) / 0.22), rgba(5,8,15,0) 70%), rgba(5,8,15,0.94); }
+.dyn-lock--in { animation: dyn-fade 250ms var(--dyn-ease) both; }
+.dyn-lock-tile { position: relative; }
+.dyn-lock--motion .dyn-lock-tile { animation: dyn-lock-tile 420ms var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 160ms + 150ms); }
+@keyframes dyn-lock-tile { from { opacity: 0; transform: translateY(26px) scale(0.92); } 60% { transform: translateY(-4px) scale(1.03); } to { opacity: 1; transform: none; } }
+.dyn-lock-stamp { position: absolute; right: 6px; top: 6px; }
+.dyn-lock--motion .dyn-lock-stamp { animation: dyn-stamp 360ms var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 160ms + 420ms); }
+.dyn-lock--motion .dyn-lock-identity { animation: dyn-cine-word 600ms var(--dyn-ease) 1150ms both; }
+.dyn-lock--motion .dyn-lock-sub { animation: dyn-rise 500ms var(--dyn-ease) 1500ms both; }
+
+/* ---------- championship payoff ---------- */
+.dyn-cine--motion .dyn-champ-black { animation: dyn-champ-black 700ms linear both; }
+@keyframes dyn-champ-black { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+.dyn-cine--motion .dyn-champ-flash { animation: dyn-champ-flash 900ms var(--dyn-ease) 380ms both; }
+@keyframes dyn-champ-flash { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+.dyn-cine--motion .dyn-champ-trophy { animation: dyn-champ-trophy 1000ms var(--dyn-ease) 420ms both; }
+@keyframes dyn-champ-trophy { from { opacity: 0; transform: translateY(80px) scale(0.6); } 70% { transform: translateY(-8px) scale(1.04); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.dyn-cine--motion .dyn-champ-rays { animation: dyn-rotate 30s linear infinite, dyn-fade 800ms var(--dyn-ease) 500ms both; transform-origin: 50% 50%; }
+.dyn-cine--motion .dyn-champ-title { animation: dyn-cine-word 600ms var(--dyn-ease) 1100ms both; }
+.dyn-cine--motion .dyn-champ-team { animation: dyn-rise 500ms var(--dyn-ease) 1500ms both; }
+.dyn-cine--motion .dyn-champ-roster > * { animation: dyn-rise 420ms var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 90ms + 1750ms); }
+.dyn-cine--motion .dyn-confetti { animation-delay: calc(900ms + var(--d, 0) * 1ms); }
+
+/* ---------- player spotlight ---------- */
+.dyn-spotlight-plate { position: relative; overflow: hidden; }
+.dyn-spotlight-plate::before { content: ""; position: absolute; inset: -40% -20% auto; height: 120%; background: radial-gradient(50% 60% at 50% 0%, hsl(var(--dyn-light, 44 90% 62%) / 0.28), transparent 70%); pointer-events: none; }
+
+/* ---------- phone encounter compaction (360 clearance) ---------- */
+@media (max-width: 639px) {
+  .dyn-encounter-compact .dyn-game-head { font-size: 18px; }
+  .dyn-encounter-compact [data-testid="led-ribbon"] { display: none; }
+}
+
+/* ---------- dragon tempo / wings ---------- */
+.dyn-spect--motion .dyn-wing { animation: dyn-wing calc(2.6s - var(--tense, 0) * 0.5s) ease-in-out infinite; }
+@keyframes dyn-wing { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.82) translateY(10px); } }
+.dyn-spect--motion .dyn-tempo { animation: dyn-tempo calc(3s - var(--tense, 0) * 0.6s) linear infinite; }
+@keyframes dyn-tempo { from { transform: translateX(-120px); } to { transform: translateX(0); } }

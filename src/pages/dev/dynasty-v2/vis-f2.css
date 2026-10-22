@@ -1,0 +1,97 @@
+/*
+ * VIS-F2 — locations, broadcast layer, story beats, cards and map moments.
+ * Same scoping rules as vis.css: everything lives under `.dyn`, every
+ * keyframe is prefixed `dyn-`, and the reduced-motion rules in vis.css
+ * (which match every `.dyn` descendant, including the fixed scene layer and
+ * the stinger host) freeze all of it to the resting frame.
+ */
+
+/* ---------- scenes (fixed layer above the atmosphere, below content) ---------- */
+.dyn-scene-art { opacity: 0.22; filter: saturate(0.8) brightness(0.8); -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.15) 100%); mask-image: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.15) 100%); }
+.dyn-scene-wash { background: radial-gradient(120% 90% at 50% 40%, rgba(7,17,31,0) 45%, rgba(4,10,20,0.75) 100%); }
+.dyn-scene--hq .dyn-scene-wash { background: linear-gradient(180deg, rgba(7,17,31,0.25) 0%, rgba(7,17,31,0.55) 50%, rgba(7,17,31,0.92) 100%); }
+.dyn-scene--practice .dyn-scene-art { opacity: 0.18; filter: saturate(0.6) hue-rotate(-10deg) brightness(0.75); }
+.dyn-scene--practice .dyn-scene-wash { background: linear-gradient(180deg, rgba(7,17,31,0.3) 0%, rgba(7,17,31,0.6) 55%, rgba(7,17,31,0.92) 100%); }
+.dyn-scene--warroom .dyn-scene-wash { background: linear-gradient(180deg, rgba(7,17,31,0.1) 0%, rgba(7,17,31,0.35) 60%, rgba(7,17,31,0.9) 100%); }
+.dyn-scene--tunnel .dyn-scene-wash { background: linear-gradient(180deg, rgba(7,17,31,0.2) 0%, rgba(7,17,31,0.2) 55%, rgba(7,17,31,0.92) 100%); }
+.dyn-scene--stadium .dyn-scene-wash { background: linear-gradient(180deg, rgba(7,17,31,0.05) 0%, rgba(7,17,31,0.35) 50%, rgba(7,17,31,0.9) 100%); }
+.dyn-scene--backstage .dyn-scene-wash { background: linear-gradient(180deg, rgba(20,12,6,0.25) 0%, rgba(7,17,31,0.55) 45%, rgba(7,17,31,0.92) 100%); }
+.dyn-scene--trophy .dyn-scene-wash { background: linear-gradient(180deg, rgba(7,17,31,0.05) 0%, rgba(7,17,31,0.35) 60%, rgba(7,17,31,0.9) 100%); }
+
+.dyn-crowd {
+  background-image:
+    radial-gradient(circle at 10px 12px, rgba(12,22,40,0.95) 7px, transparent 8px),
+    radial-gradient(circle at 26px 6px, rgba(10,19,34,0.95) 7px, transparent 8px),
+    radial-gradient(circle at 4px 2px, rgba(8,15,28,0.95) 6px, transparent 7px);
+  background-size: 34px 22px, 34px 22px, 22px 18px;
+  background-position: 0 0, 0 8px, 11px 4px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+}
+.dyn-crowd::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(227,198,111,0) 0 40px, rgba(227,198,111,0.08) 40px 42px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 20%, #000 100%); mask-image: linear-gradient(180deg, transparent 20%, #000 100%);
+}
+.dyn-scene--motion .dyn-beam { transform-origin: 50% 24px; animation: dyn-beam 9s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.7s); }
+@keyframes dyn-beam { 0%, 100% { transform: rotate(-3deg); opacity: 0.8; } 50% { transform: rotate(3deg); opacity: 1; } }
+
+/* ---------- stingers ---------- */
+.dyn-stinger { color: #f5ecd3; background: linear-gradient(180deg, hsl(213 48% 12% / 0.96), hsl(214 52% 7% / 0.96)); border-color: rgba(227,198,111,0.5); backdrop-filter: blur(6px); }
+.dyn-stinger .dyn-stinger-bar { background: #e3c66f; box-shadow: 0 0 14px rgba(227,198,111,0.8); }
+.dyn-stinger--violet { border-color: rgba(179,156,255,0.6); } .dyn-stinger--violet .dyn-stinger-bar { background: #b39cff; box-shadow: 0 0 14px rgba(179,156,255,0.8); }
+.dyn-stinger--ember { border-color: rgba(255,154,92,0.6); } .dyn-stinger--ember .dyn-stinger-bar { background: #ff9a5c; box-shadow: 0 0 14px rgba(255,154,92,0.8); }
+.dyn-stinger--ice { border-color: rgba(126,230,255,0.6); } .dyn-stinger--ice .dyn-stinger-bar { background: #7ee6ff; box-shadow: 0 0 14px rgba(126,230,255,0.8); }
+.dyn-stinger--red { border-color: rgba(244,63,94,0.6); } .dyn-stinger--red .dyn-stinger-bar { background: #fb7185; box-shadow: 0 0 14px rgba(244,63,94,0.8); }
+.dyn-stinger--neutral { border-color: rgba(255,255,255,0.25); } .dyn-stinger--neutral .dyn-stinger-bar { background: #cfd8e3; box-shadow: none; }
+.dyn-stinger--in { animation: dyn-stinger 1.7s var(--dyn-ease) both; }
+@keyframes dyn-stinger {
+  0% { opacity: 0; transform: translate3d(0, -14px, 0) scale(0.98); }
+  12% { opacity: 1; transform: none; }
+  85% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translate3d(0, -8px, 0); }
+}
+
+/* ---------- caster pop-in ---------- */
+.dyn-caster--in { animation: dyn-caster 420ms var(--dyn-ease) both; }
+@keyframes dyn-caster { from { opacity: 0; transform: translate3d(-10px, 6px, 0); } to { opacity: 1; transform: none; } }
+
+/* ---------- chat ---------- */
+.dyn-chat-line { animation: dyn-chat 320ms var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 260ms + 200ms); }
+@keyframes dyn-chat { from { opacity: 0; transform: translate3d(0, 6px, 0); } to { opacity: 1; transform: none; } }
+
+/* ---------- crowd meter ---------- */
+.dyn-crowd-bar { animation: dyn-crowd-bar 1.1s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -90ms); transform-origin: 50% 100%; }
+@keyframes dyn-crowd-bar { 0%, 100% { transform: scaleY(0.75); opacity: 0.8; } 50% { transform: scaleY(1); opacity: 1; } }
+
+/* ---------- story beats (comic panels) ---------- */
+.dyn-story { background: linear-gradient(180deg, hsl(213 48% 11% / 0.9), hsl(214 52% 7% / 0.92)); box-shadow: inset 0 1px 0 hsl(42 70% 70% / 0.1), 0 24px 48px -32px rgba(0,0,0,0.95); }
+.dyn-panel { box-shadow: inset 0 0 0 1px rgba(227,198,111,0.08), 0 10px 24px -18px rgba(0,0,0,0.9); }
+.dyn-panel--in { animation: dyn-panel 460ms var(--dyn-ease) both; animation-delay: calc(var(--i, 0) * 420ms); }
+@keyframes dyn-panel { 0% { opacity: 0; transform: translate3d(0, 10px, 0) rotate(-0.6deg) scale(0.98); } 100% { opacity: 1; transform: none; } }
+
+/* ---------- cards ---------- */
+.dyn-spotlight { animation: dyn-spotlight 900ms var(--dyn-ease) both; }
+@keyframes dyn-spotlight { 0% { box-shadow: 0 0 0 0 rgba(227,198,111,0); } 45% { box-shadow: 0 0 0 4px rgba(227,198,111,0.35), 0 0 48px rgba(227,198,111,0.4); } 100% { box-shadow: 0 0 0 0 rgba(227,198,111,0), 0 0 30px -8px rgba(227,198,111,0.35); } }
+.dyn-ccard { position: relative; }
+.dyn-ccard::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; border-radius: 3px 0 0 3px; background: var(--cls, #e3c66f); opacity: 0.7; }
+
+/* ---------- objective map moments ---------- */
+.dyn-pit { position: relative; overflow: hidden; border-radius: 1rem; }
+.dyn-pit-sky { position: absolute; inset: 0; background: radial-gradient(70% 70% at 50% 100%, hsl(var(--dyn-light) / 0.5) 0%, hsl(var(--dyn-light) / 0.12) 40%, rgba(7,17,31,0) 75%); }
+.dyn-pit-mist { position: absolute; inset: auto 0 0 0; height: 55%; background: repeating-radial-gradient(ellipse at 50% 120%, hsl(var(--dyn-light) / 0.14) 0 12px, transparent 12px 28px); -webkit-mask-image: linear-gradient(180deg, transparent, #000 70%); mask-image: linear-gradient(180deg, transparent, #000 70%); }
+.dyn-pit-ring { position: absolute; left: 50%; bottom: -30%; width: 140%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; border: 1px solid hsl(var(--dyn-light) / 0.35); box-shadow: inset 0 0 60px hsl(var(--dyn-light) / 0.18); }
+.dyn-pit--motion .dyn-pit-mist { animation: dyn-mist 6s ease-in-out infinite; }
+@keyframes dyn-mist { 0%, 100% { transform: translateY(0); opacity: 0.8; } 50% { transform: translateY(-4px); opacity: 1; } }
+.dyn-pit-wash--great { background: radial-gradient(80% 60% at 50% 0%, rgba(246,221,143,0.35), transparent 70%); }
+.dyn-pit-wash--good { background: radial-gradient(80% 60% at 50% 0%, rgba(52,211,153,0.3), transparent 70%); }
+.dyn-pit-wash--mixed { background: radial-gradient(80% 60% at 50% 0%, rgba(251,191,36,0.3), transparent 70%); }
+.dyn-pit-wash--bad { background: radial-gradient(80% 60% at 50% 0%, rgba(244,63,94,0.35), transparent 70%); }
+
+/* ---------- LED ribbon (stadium header) ---------- */
+.dyn-ribbon { background: linear-gradient(90deg, rgba(227,198,111,0), rgba(227,198,111,0.12) 20%, rgba(227,198,111,0.12) 80%, rgba(227,198,111,0)); border-top: 1px solid rgba(227,198,111,0.3); border-bottom: 1px solid rgba(227,198,111,0.3); }
+
+/* ---------- trophy ---------- */
+.dyn-trophy-glow { filter: drop-shadow(0 0 18px rgba(246,221,143,0.65)); }
+.dyn-trophy-rise { animation: dyn-trophy 1.1s var(--dyn-ease) both; }
+@keyframes dyn-trophy { 0% { opacity: 0; transform: translate3d(0, 24px, 0) scale(0.9); } 60% { opacity: 1; transform: translate3d(0, -4px, 0) scale(1.02); } 100% { transform: none; } }
