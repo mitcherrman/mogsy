@@ -16,6 +16,7 @@ import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
 import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
+import { isTournamentArenaFrame } from "@/features/tournament-arena/routes";
 import { StartupSurface } from "@/components/startup/StartupShells";
 import { getAcademyStartup } from "@/lib/academy-startup/veil-store";
 
@@ -132,6 +133,9 @@ export default function Layout() {
     || pathname.startsWith("/lol/dev/worlds-experience")
     // TOURNAMENT ARENA — the same application frame (development-only route).
     || pathname.startsWith("/lol/dev/tournament-arena")
+    // ...and its real surfaces: the player routes and the owner's create
+    // portal / organizer console (the dashboard keeps the Admin shell).
+    || isTournamentArenaFrame(pathname)
     // UX3A — the same frame at the Worlds URL, only while its build flag is
     // on. Off, the published Worlds page keeps the reading column.
     || isWorldsExperienceSurface(pathname)
@@ -157,7 +161,7 @@ export default function Layout() {
   // corner holds controls (pagers, steppers, the detail's actions), and
   // nothing in it scrolls out from under a floating button. Like the
   // tabletop, it does not host the floating trigger; the global HUD stays.
-  const isWorldsFixedViewport = isWorldsExperienceSurface(pathname) || pathname.startsWith("/lol/dev/worlds-experience") || pathname.startsWith("/lol/dev/tournament-arena");
+  const isWorldsFixedViewport = isWorldsExperienceSurface(pathname) || pathname.startsWith("/lol/dev/worlds-experience") || pathname.startsWith("/lol/dev/tournament-arena") || isTournamentArenaFrame(pathname);
   const showFriendsDrawer = !isChampionCardDuelSurface && !isAdminConsole && !isWorldsFixedViewport;
 
   // After first paint, warm the chunks the user is most likely to visit next.

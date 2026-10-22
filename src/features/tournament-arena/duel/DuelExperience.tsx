@@ -345,3 +345,7 @@ function ScorePlate({ a, b, winner }: { a: number; b: number; winner: 0 | 1 | nu
 }
 
 export const duelStyle = (id: string): CSSProperties => accentStyle(id);
+
+/** The duel's seat and score plate, for the real match room (`live/ArenaMatchRoom`),
+ *  which drives them from the server instead of a scripted rundown. */
+export { Seat as DuelSeat, ScorePlate as DuelScorePlate };

@@ -23,9 +23,10 @@ import { useBracketBeats } from "../bracket/useBracketBeats";
 import { ChampionCelebration } from "../ceremony/ChampionCelebration";
 import { FinalsIntro } from "../ceremony/FinalsIntro";
 import { StingerHost, useStinger } from "../ceremony/RoundStinger";
-import { roundName, type ArenaEvent } from "../contracts";
+import { canManageEvent, roundName, type ArenaEvent } from "../contracts";
 import { gameTypeById } from "../fixtures/catalog";
 import type { ArenaGateway } from "../gateway/types";
+import { fixtureEventControls, type ArenaEventControls } from "./controls";
 import { accentStyle, entrantById } from "../identity";
 import { ease } from "../motion";
 import { Btn, EntrantAvatar, Eyebrow, Pill, SimulatedBadge } from "../ui/parts";
@@ -35,7 +36,10 @@ import { NodeDetail } from "./NodeDetail";
 
 export interface EventPageProps {
   event: ArenaEvent;
-  gateway: ArenaGateway;
+  /** The DEV harness's fixture gateway (used when `controls` is absent). */
+  gateway?: ArenaGateway;
+  /** What the viewer's presses do; the real pages pass HTTP-backed controls. */
+  controls?: ArenaEventControls;
   viewerId: string | null;
   /** Where the duel experience lives; receives `?event=&node=`. */
   duelHref: (eventId: string, nodeId: string) => string;
@@ -43,6 +47,8 @@ export interface EventPageProps {
   /** The user came back from a duel for this node: play its advancement. */
   returnedFromNode?: string | null;
   tools?: React.ReactNode;
+  /** The join link players open (organizer view of a real event). */
+  joinHref?: string | null;
 }
 
 export function EventPage(props: EventPageProps) {
@@ -54,7 +60,7 @@ export function EventPage(props: EventPageProps) {
   );
 }
 
-function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFromNode, tools }: EventPageProps) {
+function EventFrame({ event, gateway, controls: given, viewerId, duelHref, backHref, returnedFromNode, tools, joinHref }: EventPageProps) {
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const landscape = useMediaQuery(LANDSCAPE_QUERY);
   const reduced = useReducedMotionPreference();
@@ -62,10 +68,20 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
   const fire = useStinger();
   const beats = useBracketBeats(event, motion);
   const [selectedId, setSelectedId] = useState<string | null>(returnedFromNode ?? null);
-  const [readyIds, setReadyIds] = useState<Set<string>>(() => new Set(viewerId ? [viewerId] : []));
+  const [fixtureReady, setFixtureReady] = useState<Set<string>>(() => new Set(viewerId ? [viewerId] : []));
   const [finals, setFinals] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<string | null>(null);
-  const fixture = gateway.availability().source === "fixture";
+  const controls = useMemo(
+    () => given ?? (gateway ? fixtureEventControls(gateway, event, duelHref) : null),
+    [given, gateway, event, duelHref],
+  );
+  const fixture = controls?.source === "fixture";
+  const manage = canManageEvent(event);
+  // Lobby readiness: the fixture's local toggles, or the server's check-ins.
+  const readyIds = useMemo<ReadonlySet<string>>(
+    () => (fixture ? fixtureReady : new Set(event.entrants.filter((e) => e.status === "checked_in").map((e) => e.profile_id))),
+    [fixture, fixtureReady, event.entrants],
+  );
   const bracket = event.bracket;
   const total = bracket?.rounds ?? 0;
   const finalNode = useMemo(() => bracket?.nodes.find((n) => n.round === total) ?? null, [bracket, total]);
@@ -91,12 +107,25 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
   }, [event.status, event.revision, event.entrants, total, fire, lastStatus]);
 
   const actions = useMemo(() => ({
-    onPlay: (nodeId: string) => { gateway.play(event.event_id, nodeId); },
-    onEnterMatch: (nodeId: string) => { window.location.assign(duelHref(event.event_id, nodeId)); },
-    onStepResult: (nodeId: string) => { gateway.stepResult(event.event_id, nodeId); },
-    onWalkover: (nodeId: string, side: 0 | 1) => { gateway.walkover(event.event_id, nodeId, side); },
+    onPlay: (nodeId: string) => { controls?.play(nodeId); },
+    onEnterMatch: (nodeId: string) => { controls?.enterMatch(nodeId); },
+    onStepResult: (nodeId: string) => { controls?.stepResult?.(nodeId); },
+    onWalkover: (nodeId: string, side: 0 | 1) => { controls?.walkover(nodeId, side); },
+    onOverride: controls?.override ? (nodeId: string) => { controls.override?.(nodeId); } : undefined,
     onReplayFinals: () => setFinals(`${event.event_id}:finals:replay:${Date.now()}`),
-  }), [gateway, event.event_id, duelHref]);
+  }), [controls, event.event_id]);
+  const onToggleReady = useCallback((id: string) => {
+    if (fixture) {
+      setFixtureReady((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    } else if (id === viewerId && !readyIds.has(id)) {
+      controls?.checkIn?.();
+    }
+  }, [fixture, viewerId, readyIds, controls]);
+  const onLock = useCallback(() => {
+    // The fixture seeds ready players first; a real lock seeds in join order.
+    if (fixture) controls?.lock([...readyIds, ...event.entrants.map((e) => e.profile_id)]);
+    else controls?.lock();
+  }, [fixture, controls, readyIds, event.entrants]);
 
   const onSelect = useCallback((id: string | null) => setSelectedId(id), []);
   const game = gameTypeById(event.game_type);
@@ -119,6 +148,7 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
         </div>
         <div className="flex shrink-0 items-center gap-2 pl-11 sm:pl-0">
           {statusPill}
+          {controls?.busy && <Pill tone="muted">Working…</Pill>}
           {champion && (
             <Btn size="sm" onClick={() => setCelebrate(`${event.event_id}:champion:replay:${Date.now()}`)} data-testid="ta-replay-champion"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" /><span className="hidden sm:inline">Replay</span></Btn>
           )}
@@ -126,10 +156,18 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
         </div>
       </header>
 
+      {controls?.notice && (
+        <p role="status" className="mx-4 mb-1 shrink-0 rounded-lg border border-[rgba(240,122,142,0.35)] bg-[rgba(240,122,142,0.08)] px-3 py-1.5 text-[12px] text-[#f6c3cc]" data-testid="ta-notice">{controls.notice}</p>
+      )}
+
       {/* body */}
       <div className={cn("flex min-h-0 flex-1 gap-4 px-4", desktop ? "flex-row" : "flex-col")}>
-        {event.status === "open" ? (
-          <EventLobby event={event} viewerId={viewerId} readyIds={readyIds} onToggleReady={(id) => setReadyIds((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })} onLock={() => gateway.lock(event.event_id, [...readyIds, ...event.entrants.map((e) => e.profile_id)])} />
+        {event.status === "cancelled" ? (
+          <div className="flex flex-1 items-center justify-center" data-testid="ta-cancelled">
+            <p className="ta-plate px-5 py-4 text-center text-[13px] text-[rgba(215,205,180,0.8)]">This event was cancelled. Nothing further will be played.</p>
+          </div>
+        ) : event.status === "open" ? (
+          <EventLobby event={event} viewerId={viewerId} readyIds={readyIds} onToggleReady={onToggleReady} onLock={onLock} manage={manage} fixture={fixture} joinHref={joinHref ?? null} />
         ) : bracket ? (
           <>
             <TournamentArenaBracket event={event} viewerId={viewerId} selectedId={selectedId} onSelect={onSelect} beats={beats} />
@@ -157,11 +195,11 @@ function EventFrame({ event, gateway, viewerId, duelHref, backHref, returnedFrom
       </div>
 
       {/* organizer / fixture bar */}
-      {(event.viewer_role === "organizer" || fixture) && event.status !== "open" && (
+      {(manage || fixture) && event.status !== "open" && event.status !== "cancelled" && (
         <div className={cn("flex shrink-0 flex-wrap items-center gap-2 px-4", landscape ? "py-1.5" : "py-3")} data-testid="ta-organizer-bar">
-          {event.status === "locked" && <Btn tone="primary" onClick={() => gateway.start(event.event_id)} data-testid="ta-start"><Play className="h-4 w-4" aria-hidden="true" />Start {roundName(1, total)}</Btn>}
-          {fixture && event.status === "running" && <Btn onClick={() => gateway.stepResult(event.event_id)} data-testid="ta-step"><StepForward className="h-4 w-4" aria-hidden="true" />Step next result</Btn>}
-          {fixture && <Btn size="sm" onClick={() => { setSelectedId(null); gateway.reset(event.event_id); }} data-testid="ta-reset"><RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />Reset scenario</Btn>}
+          {(manage || fixture) && event.status === "locked" && <Btn tone="primary" onClick={() => controls?.start()} disabled={Boolean(controls?.busy)} data-testid="ta-start"><Play className="h-4 w-4" aria-hidden="true" />Start {roundName(1, total)}</Btn>}
+          {fixture && event.status === "running" && <Btn onClick={() => controls?.stepResult?.()} data-testid="ta-step"><StepForward className="h-4 w-4" aria-hidden="true" />Step next result</Btn>}
+          {fixture && <Btn size="sm" onClick={() => { setSelectedId(null); controls?.reset?.(); }} data-testid="ta-reset"><RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />Reset scenario</Btn>}
           <span className="ml-auto hidden text-[10.5px] uppercase tracking-[0.16em] text-[rgba(215,205,180,0.45)] sm:inline">Revision {event.revision}{fixture ? " · fixture gateway" : ""}</span>
         </div>
       )}

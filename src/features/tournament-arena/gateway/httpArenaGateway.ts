@@ -1,9 +1,11 @@
 /**
- * The REAL gateway, as far as it exists: nothing serves `/api/arena/*` yet
- * (handoff §5 is PROPOSED), so in production the Arena reports itself
- * unavailable with finished copy and never pretends. The day the backend
- * lands, this file gains fetches against `getBackendAuthHeaders()` and the
- * `isArenaEvent` validator; nothing that renders changes.
+ * The synchronous `ArenaGateway` seam's real-service twin, kept for the DEV
+ * harness's contract tests. It reports itself unavailable and never pretends.
+ *
+ * The REAL backend is not reached through this interface: it is asynchronous
+ * and polled, so the production pages use `api/arenaApi.ts` (the HTTP client),
+ * `api/useLiveArenaEvent.ts` (revision polling) and `live/useHttpEventControls`
+ * (presses), all rendering the same `EventPage` / `HostPortal` / duel visuals.
  */
 import type { ArenaGateway } from "./types";
 
