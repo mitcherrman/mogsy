@@ -34,5 +34,7 @@ export default function CreatorReplayRunPage({
   }
   // No wrapper and no extra header. The shared Ranked ArenaShell sizes itself
   // against the exact same viewport, HUD and mobile breakpoints as official Daily.
-  return <DailyRunPage transport={transport} />;
+  // The public More Challenges catalog plays the OFFICIAL run's bonus stages,
+  // so a take continues into its OWN Survival / Time Trial / Review in place.
+  return <DailyRunPage transport={transport} moreChallengesCatalog={false} />;
 }
