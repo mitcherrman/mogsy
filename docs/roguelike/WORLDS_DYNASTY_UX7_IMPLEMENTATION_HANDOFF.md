@@ -163,4 +163,18 @@ Hidden-pane traps (as before): screenshots lag and catch fades; add `html.reduce
 
 ## 9. Commit record
 
-The implementation commit and this handoff's SHA record follow; see §9 of the next commit.
+The implementation commit is **`6df022bb`**, "UX-7: the complete Worlds Dynasty campaign on the live E3B backend".
+- It is on `ux/ux7-dynasty-campaign`; its parent is the UX-6 SHA record `0e187917`.
+- It is local only: nothing is pushed or merged. This SHA record is the commit after it.
+
+Its 18 files:
+- **New:**
+  - `src/lib/dynasty/e1/{campaignContracts,campaignTransport,useDynastyCampaign}.ts`, `campaignTransport.test.ts`
+  - `src/lib/dynasty/e1/fixtures/{e3b-campaign-samples,e3b-live-capture}.json`
+  - `src/pages/dev/dynasty-v2/campaign/{CampaignFlow.tsx,CampaignFlow.test.tsx,CampaignParts.tsx,campaignView.ts}`
+  - `src/pages/dev/dynasty-v2/bo5/brand.ts`
+  - `scripts/dynasty/capture_ux7_e3b_live.py`
+  - this handoff
+- **Modified:** `src/lib/dynasty/e1/liveTransport.ts`, `src/pages/dev/dynasty-v2/{DynastyV2Prototype,cinematics}.tsx`, `src/pages/dev/dynasty-v2/bo5/{Bo5Flow,Management}.tsx`
+
+Checks at commit time: vitest 178/178 (baseline 158/158), tsc only the 2 baseline errors, eslint 0 problems.
