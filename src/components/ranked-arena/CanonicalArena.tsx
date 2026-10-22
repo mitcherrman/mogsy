@@ -770,6 +770,8 @@ export function CanonicalArena({
                   permissions={questionSurface.permissions}
                   onSelectOption={questionSurface.onSelectOption}
                   variant="competitive"
+                  // PM2 — a mode's presentation overrides; absent → defaults.
+                  settings={questionSurface.surfaceSettings ?? undefined}
                   scenarioSource={null}
                   reveal={questionSurface.reveal}
                   mediaNode={questionSurface.regions?.media ?? null}

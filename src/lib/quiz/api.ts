@@ -3,6 +3,7 @@ import {
   ensureBackendAuthToken,
   getExistingBackendAuthToken,
 } from "@/lib/backend-auth";
+import { markQuizRequestNotSent } from "@/lib/quiz/requestErrors";
 import type { AssetStatus } from "./assetStatus";
 import type { RenderProvenance } from "@/lib/quiz-screenshot/types";
 import { withBrowserCorrelation } from "@/lib/analytics/correlation";
@@ -45,6 +46,15 @@ export type QuizAnswerResult = {
     description?: string;
     icon_path?: string;
   }>;
+  /**
+   * PM2 — present only once the backend honours `client_attempt_id`
+   * (League_Combat_Simulator `quiz/attempt-idempotency`): the key is echoed,
+   * `attempt_idempotent` says a resend with the same key cannot record twice,
+   * and `attempt_replayed` marks a response served from the stored receipt.
+   */
+  client_attempt_id?: string;
+  attempt_idempotent?: boolean;
+  attempt_replayed?: boolean;
 };
 
 export type QuizStats = {
@@ -230,7 +240,12 @@ export function resolveQuizAssetUrl(path?: string | null): string | undefined {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const authHeaders = await getBackendAuthHeaders();
+  let authHeaders: Awaited<ReturnType<typeof getBackendAuthHeaders>>;
+  try {
+    authHeaders = await getBackendAuthHeaders();
+  } catch (err) {
+    throw markQuizRequestNotSent(err);
+  }
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -246,7 +261,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // Response body unreadable; fall back to statusText below.
     }
-    throw new Error(`Quiz API ${res.status}: ${detail || res.statusText}`);
+    const err = new Error(`Quiz API ${res.status}: ${detail || res.statusText}`);
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
   }
   return (await res.json()) as T;
 }
@@ -289,10 +306,15 @@ export async function authedRequest<T>(path: string, init?: RequestInit): Promis
   // "sign-in required". A guest WRITING still gets an identity, which is the
   // guest-first guarantee this helper was built for.
   const method = (init?.method ?? "GET").toUpperCase();
-  const token = method === "GET"
-    ? await getExistingBackendAuthToken()
-    : await ensureBackendAuthToken();
-  if (!token) throw new QuizAuthRequiredError(path);
+  let token: string | null;
+  try {
+    token = method === "GET"
+      ? await getExistingBackendAuthToken()
+      : await ensureBackendAuthToken();
+  } catch (err) {
+    throw markQuizRequestNotSent(err);
+  }
+  if (!token) throw markQuizRequestNotSent(new QuizAuthRequiredError(path));
   return request<T>(path, {
     ...init,
     // Spread last in `request`, so this wins over getBackendAuthHeaders().
@@ -761,6 +783,12 @@ export const quizApi = {
     selected_answer: string;
     time_taken_ms?: number;
     session_id?: number;
+    /**
+     * PM2 — one id per question attempt, reused when the same answer is sent
+     * again. Ignored by a backend without idempotent attempts (unknown fields
+     * are dropped by its schema); honoured by one that has them.
+     */
+    client_attempt_id?: string;
   }) =>
     authedRequest<QuizAnswerResult>("/api/quiz/attempts", {
       method: "POST",

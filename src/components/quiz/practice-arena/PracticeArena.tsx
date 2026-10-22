@@ -37,7 +37,7 @@
  * question id and a question key) and the arena must not publish a second,
  * poorer one over it.
  */
-import { useEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Database, RotateCcw, SkipForward, Sparkles, TriangleAlert, XCircle } from "lucide-react";
 
@@ -58,6 +58,7 @@ import {
   practiceXpLabel,
   projectPracticeArena,
   type PracticeOutcome,
+  type PracticeSubmitFailure,
 } from "@/lib/quiz/practiceArena";
 import { SITE_DOMAIN } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,12 @@ export interface PracticeArenaProps {
   runKey?: string;
   /** PM2 — leave the graded question (next one, or the results after the last). */
   onAdvance: () => void;
+  /**
+   * PM2 — why the answer on stage failed to grade, and whether sending it
+   * again is safe (`classifyPracticeSubmitFailure`). Try again is offered only
+   * when `retryable`; Skip always is.
+   */
+  submitFailure?: PracticeSubmitFailure | null;
   /** PM2 — send the same answer again after a failed submit. */
   onRetryAnswer: () => void;
   /** PM2 — leave a question whose submit failed, ungraded. */
@@ -105,6 +112,28 @@ const FRAME_CLIP = "overflow-x-clip";
 /** 36px controls inside the reveal box, which is short by design; an invisible
  *  `::before` extends each one's hit area to 44px tall. */
 const ACTION_BOX = "relative h-9 shrink-0 gap-1.5 px-3 before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']";
+
+/**
+ * PM2 — the short phone: the arena's phone regime (below `lg`) on a screen
+ * under 760px tall, MVFIT1's short-phone band and the same query index.css
+ * uses for Practice's short-phone budget. Off in jsdom (no `matchMedia`).
+ */
+export const PRACTICE_SHORT_PHONE_QUERY = "(max-width: 1023.98px) and (max-height: 760px)";
+
+function useShortPhone(): boolean {
+  const [short, setShort] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      && window.matchMedia(PRACTICE_SHORT_PHONE_QUERY).matches);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(PRACTICE_SHORT_PHONE_QUERY);
+    const sync = () => setShort(mq.matches);
+    sync();
+    mq.addEventListener?.("change", sync);
+    return () => mq.removeEventListener?.("change", sync);
+  }, []);
+  return short;
+}
 
 /** Focus was left nowhere on purpose (the body, or the now-locked grid). */
 function focusStranded(): boolean {
@@ -208,11 +237,30 @@ function CompactSourceLink({ metadata }: { metadata?: Record<string, unknown> | 
 const REVEAL_SLOT = "practice-reveal-slot w-full min-w-0 lg:min-h-[4.625rem]";
 
 /**
+ * What a failed submit says, by why it failed and whether it may be resent.
+ * One line each: with the actions they share the held reveal box.
+ */
+const UNVERIFIED_NOTE: Record<PracticeSubmitFailure["kind"], { retry: string; skip: string }> = {
+  "not-sent": {
+    retry: "Not sent — check your connection, then try again.",
+    skip: "Not sent — check your connection.",
+  },
+  rejected: {
+    retry: "Not accepted, so nothing was recorded.",
+    skip: "Not accepted, so nothing was recorded.",
+  },
+  unknown: {
+    retry: "Couldn't confirm it — trying again is safe.",
+    skip: "Couldn't confirm it was saved, so it won't be resent.",
+  },
+};
+
+/**
  * The reveal footer. Built only from the backend's grade (or, for a failed
  * submit, from the honest "could not verify" notice — never a verdict).
  */
 function PracticeRevealFooter({
-  result, unverified, question, holdMs, paused, footerRef, onRetryAnswer, onSkip, isLast,
+  result, unverified, question, holdMs, paused, footerRef, failure, onRetryAnswer, onSkip, isLast,
 }: {
   result: QuizAnswerResult;
   unverified: boolean;
@@ -220,6 +268,7 @@ function PracticeRevealFooter({
   holdMs: number | null;
   paused: boolean;
   footerRef: RefObject<HTMLDivElement>;
+  failure: PracticeSubmitFailure | null;
   onRetryAnswer: () => void;
   onSkip: () => void;
   isLast: boolean;
@@ -276,8 +325,9 @@ function PracticeRevealFooter({
       {unverified ? (
         // Short on purpose: with the two actions it has to sit inside the same
         // held box as an ordinary reveal on a 360x640 phone.
-        <p data-testid="practice-unverified-note" className="text-[11px] leading-snug text-[#f0e6d2]/85">
-          Couldn't check your answer — check your connection.
+        <p data-testid="practice-unverified-note" data-failure-kind={failure?.kind ?? "unknown"}
+          className="text-[11px] leading-snug text-[#f0e6d2]/85">
+          {UNVERIFIED_NOTE[failure?.kind ?? "unknown"][failure?.retryable ? "retry" : "skip"]}
         </p>
       ) : explanation && (
         <p data-testid="practice-explanation" data-explanation-density={practiceExplanationDensity(explanation)}
@@ -297,10 +347,12 @@ function PracticeRevealFooter({
             <SkipForward aria-hidden className="h-4 w-4" />
             {isLast ? "Skip to results" : "Skip question"}
           </Button>
-          <Button type="button" data-testid="practice-retry-answer" onClick={onRetryAnswer} className={ACTION_BOX}>
-            <RotateCcw aria-hidden className="h-4 w-4" />
-            Try again
-          </Button>
+          {failure?.retryable && (
+            <Button type="button" data-testid="practice-retry-answer" onClick={onRetryAnswer} className={ACTION_BOX}>
+              <RotateCcw aria-hidden className="h-4 w-4" />
+              Try again
+            </Button>
+          )}
         </div>
       )}
       {holdMs !== null && (
@@ -362,11 +414,12 @@ function FramePanel({ testId, children }: { testId: string; children: ReactNode 
 export default function PracticeArena({
   phase, questions, currentIndex, selectedAnswer, answerResult, outcomes, score,
   subject, subjectIcon, runKind, sessionXp, progression, errorMessage,
-  fillBlankValue, onFillBlankChange, onSelectAnswer, runKey = "0", onAdvance, onRetryAnswer, onSkip,
+  fillBlankValue, onFillBlankChange, onSelectAnswer, runKey = "0", onAdvance, submitFailure, onRetryAnswer, onSkip,
   onRetry, exitTo = "/lol",
 }: PracticeArenaProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+  const shortPhone = useShortPhone();
   const projection = projectPracticeArena({
     questions, currentIndex, selectedAnswer, answerResult, outcomes, score, subject,
   });
@@ -393,11 +446,17 @@ export default function PracticeArena({
       ...surfaceData,
       onSelectOption,
       regions: visual ? { media: <PracticeQuestionMedia key={`${currentIndex}:${visual.src}`} visual={visual} /> } : null,
+      // PM2 — a question with no art of its own gets the surface's decorative
+      // category band in its media region. On a short phone that band is the
+      // room a long prompt or long answers need, so it is not drawn there: the
+      // category moves onto the prompt's own line (the surface's rule for a
+      // band-less question) and real League art is never dropped.
+      surfaceSettings: shortPhone && !visual ? { mediaScale: "none" } : null,
     };
     const hudAction = answerResult ? (
       <PracticeRevealFooter result={answerResult} unverified={projection.unverified}
         question={question} holdMs={holdMs} paused={paused} footerRef={footerRef}
-        onRetryAnswer={onRetryAnswer} onSkip={onSkip} isLast={projection.isLast} />
+        failure={submitFailure ?? null} onRetryAnswer={onRetryAnswer} onSkip={onSkip} isLast={projection.isLast} />
     ) : (
       <PracticeHudReserve question={question} checking={selectedAnswer !== null}
         fillBlankValue={fillBlankValue} onFillBlankChange={onFillBlankChange}

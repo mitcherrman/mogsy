@@ -74,16 +74,22 @@ for (const vp of VIEWPORTS) {
         await tablet(page, pick).click();
 
         if (q.id === FAIL_FIRST) {
-          // A grade the backend never gave is never drawn as one, and nothing advances.
+          // A grade the backend never gave is never drawn as one, nothing
+          // advances, and — against a backend without idempotent attempts — a
+          // 5xx (the server may have recorded it) is NEVER resent: Skip only.
           const footer = page.locator("[data-practice-reveal-footer]");
           await expect(footer).toHaveAttribute("data-verdict-tone", "neutral");
           await expect(footer).toContainText("Answer not verified");
+          await expect(page.getByTestId("practice-unverified-note")).toHaveAttribute("data-failure-kind", "unknown");
+          await expect(page.getByTestId("practice-retry-answer")).toHaveCount(0);
           await expect(page.getByTestId("practice-advance-meter")).toHaveCount(0);
           await page.waitForTimeout(4000);
           await expect(page.getByTestId("ranked-header-title")).toContainText(`Question ${n} / ${QUESTIONS.length}`);
           assertFits(vp, q, await measure(page), `${tag} unverified`);
           await page.screenshot({ path: `${SHOTS}/${tag}-unverified.png` });
-          await page.getByTestId("practice-retry-answer").click();
+          await page.getByTestId("practice-skip").click();
+          await expectAdvanced(page, n + 1, QUESTIONS.length);
+          continue;
         }
 
         const release = await holdReveal(page);
@@ -91,12 +97,15 @@ for (const vp of VIEWPORTS) {
         await page.waitForTimeout(400);
         const after = await measure(page);
         assertFits(vp, q, after, `${tag} revealed`);
-        // Revealing draws INTO held boxes: the grid and the reveal box hold still
-        // (a dense explanation may grow its box a little; never the grid much).
+        // Revealing draws INTO held boxes: the tablets never move under the
+        // player's finger. The reveal box holds still too, except that on a
+        // short phone (72px box) the densest explanation may grow it upward
+        // into the spare parchment above it — never moving the grid.
         const dense = q.id === 9106;
-        expect(Math.abs(after.grid.top - before.grid.top), `${tag}: grid moved on reveal`).toBeLessThanOrEqual(dense ? 10 : 1);
-        if (before.revealDocTop !== null && after.revealDocTop !== null) {
-          expect(Math.abs(after.revealDocTop - before.revealDocTop), `${tag}: reveal box moved`).toBeLessThanOrEqual(dense ? 10 : 1);
+        const shortPhone = vp.width < 1024 && vp.height <= 760;
+        expect(Math.abs(after.grid.top - before.grid.top), `${tag}: grid moved on reveal`).toBeLessThanOrEqual(1);
+        if (before.revealDocTop !== null && after.revealDocTop !== null && !(dense && shortPhone)) {
+          expect(Math.abs(after.revealDocTop - before.revealDocTop), `${tag}: reveal box moved`).toBeLessThanOrEqual(1);
         }
         await expect(page.getByTestId("practice-explanation")).toBeVisible();
         if (WRONG.has(q.id) && q.id !== 9106) await expect(page.getByTestId("practice-explanation")).toContainText(CORRECT[q.id]);
@@ -118,14 +127,17 @@ for (const vp of VIEWPORTS) {
         .filter((t, i, all) => i === 0 || all[i - 1] !== t);
       expect(positions, "advance sequence").toEqual(expected);
       expect(counters.completions, "session completed more than once").toBe(1);
-      expect(counters.attempts[FAIL_FIRST], "the failed submit was retried once").toBe(2);
-      for (const q of QUESTIONS) if (q.id !== FAIL_FIRST) expect(counters.attempts[q.id], `attempts for ${q.id}`).toBe(1);
+      // Every question sent exactly once — the failed one too: it was skipped,
+      // never resent — and each with its own client_attempt_id.
+      for (const q of QUESTIONS) expect(counters.attempts[q.id], `attempts for ${q.id}`).toBe(1);
+      expect(new Set(counters.keys).size, "one client_attempt_id per question").toBe(QUESTIONS.length);
       const ev = (name: string) => counters.analytics.filter((e) => e === name).length;
       console.log(`[pm2] ${vp.name} analytics ${JSON.stringify({ opened: ev("practice_quiz_opened"),
         answered: ev("quiz_question_answered"), completed: ev("quiz_completed") })}`);
       if (counters.analytics.length > 0) {
         expect(ev("practice_quiz_opened")).toBe(1);
-        expect(ev("quiz_question_answered")).toBe(QUESTIONS.length);
+        // The skipped (unverified) question was never graded.
+        expect(ev("quiz_question_answered")).toBe(QUESTIONS.length - 1);
         expect(ev("quiz_completed")).toBe(1);
       }
       await page.screenshot({ path: `${SHOTS}/${vp.name}-results.png`, fullPage: true });
@@ -243,6 +255,47 @@ test.describe("PM2 states @ 390x844", () => {
     expect(JSON.stringify(counters.attempts)).toBe(attempts);
     await expect(page).toHaveURL(/\/lol/);
     expect(counters.completions).toBe(0);
+  });
+
+  test("a lost response is retried safely only against an idempotent backend: same key, recorded once", async ({ page }) => {
+    // The 2nd POST is recorded by the server and its response lost (503).
+    // The 1st graded response already proved `attempt_idempotent`, so Try
+    // again is offered, resends the SAME client_attempt_id, and the backend
+    // replays its receipt instead of recording (and paying) a second time.
+    const counters = await prepare(page, { idempotent: true, loseResponseOfPost: 2 });
+    await startPractice(page);
+    for (let n = 1; n <= 2; n += 1) {
+      await settle(page);
+      const q = await onStage(page);
+      await tablet(page, q.choices.map((c) => (typeof c === "string" ? c : c.label))[0]).click();
+      if (n === 1) { await expectAdvanced(page, 2, QUESTIONS.length); continue; }
+      await expect(page.getByTestId("practice-unverified-note")).toHaveAttribute("data-failure-kind", "unknown");
+      await page.screenshot({ path: `${SHOTS}/states-idempotent-retry-offered.png` });
+      await page.getByTestId("practice-retry-answer").click();
+      await expect(page.locator("[data-practice-reveal-footer]")).not.toHaveAttribute("data-verdict-tone", "neutral");
+      await expectAdvanced(page, 3, QUESTIONS.length);
+      expect(counters.attempts[q.id], "sent twice").toBe(2);
+      expect(counters.recorded[q.id], "recorded ONCE").toBe(1);
+      expect(counters.keys[1]).toBe(counters.keys[2]);
+      expect(counters.keys[0]).not.toBe(counters.keys[1]);
+    }
+  });
+
+  test("offline: the answer is not sent, Try again is the first real send", async ({ page, context }) => {
+    const counters = await prepare(page);
+    await startPractice(page);
+    await settle(page);
+    const q = await onStage(page);
+    await context.setOffline(true);
+    await tablet(page, q.choices.map((c) => (typeof c === "string" ? c : c.label))[0]).click();
+    await expect(page.getByTestId("practice-unverified-note")).toHaveAttribute("data-failure-kind", "not-sent");
+    expect(counters.attempts[q.id] ?? 0, "nothing sent while offline").toBe(0);
+    await page.screenshot({ path: `${SHOTS}/states-offline-not-sent.png` });
+    await context.setOffline(false);
+    await page.getByTestId("practice-retry-answer").click();
+    await expectAdvanced(page, 2, QUESTIONS.length);
+    expect(counters.attempts[q.id]).toBe(1);
+    expect(counters.recorded[q.id]).toBe(1);
   });
 
   test("all six Quick Study subjects launch the one-screen arena", async ({ page }) => {

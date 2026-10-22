@@ -10,6 +10,7 @@ import { REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS } from "@/lib/ranked-core/pacin
 import {
   PRACTICE_REVEAL_HOLD_MAX_MS,
   UNVERIFIED_ANSWER,
+  classifyPracticeSubmitFailure,
   practiceExplanationDensity,
   practiceRevealHoldMs,
   practiceOptionIdForLabel,
@@ -167,5 +168,31 @@ describe("PM2 — the reveal hold and the explanation's density", () => {
     expect(practiceExplanationDensity("x".repeat(151))).toBe("long");
     expect(practiceExplanationDensity("x".repeat(220))).toBe("long");
     expect(practiceExplanationDensity("x".repeat(221))).toBe("dense");
+  });
+});
+
+describe("PM2 — a failed submit is retried only when that cannot record it twice", () => {
+  const classify = (notSent: boolean, status: number | null, idempotentAttempts = false) =>
+    classifyPracticeSubmitFailure({ notSent, status, idempotentAttempts });
+
+  it("never sent → retry is the first real send", () => {
+    expect(classify(true, null)).toEqual({ kind: "not-sent", retryable: true });
+  });
+
+  it("refused before the handler records (auth, validation, rate limit) → retry is safe", () => {
+    for (const status of [400, 401, 403, 404, 422, 429]) {
+      expect(classify(false, status)).toEqual({ kind: "rejected", retryable: true });
+    }
+  });
+
+  it("outcome unknown (dropped connection, 5xx, timeouts) → no retry against a backend without idempotency", () => {
+    for (const status of [null, 500, 502, 503, 504, 408, 409]) {
+      expect(classify(false, status)).toEqual({ kind: "unknown", retryable: false });
+    }
+  });
+
+  it("outcome unknown → retry once the backend has proved it dedupes the same client_attempt_id", () => {
+    expect(classify(false, 503, true)).toEqual({ kind: "unknown", retryable: true });
+    expect(classify(false, null, true)).toEqual({ kind: "unknown", retryable: true });
   });
 });

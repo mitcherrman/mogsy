@@ -99,7 +99,8 @@ describe("PM2 — the reveal advances by itself", () => {
   });
 
   it("never advances after a failed submit", () => {
-    const p = props({ selectedAnswer: "160", answerResult: UNVERIFIED_ANSWER });
+    const p = props({ selectedAnswer: "160", answerResult: UNVERIFIED_ANSWER,
+      submitFailure: { kind: "not-sent", retryable: true } });
     render(tree(p));
     act(() => { vi.advanceTimersByTime(60_000); });
     expect(p.onAdvance).not.toHaveBeenCalled();
@@ -217,5 +218,79 @@ describe("PM2 — the one-line chrome and the phone frame", () => {
     render(tree(props({ selectedAnswer: "120", answerResult: { ...EXPLAINED, explanation: long } })));
     expect(screen.getByTestId("practice-explanation").getAttribute("data-explanation-density")).toBe("long");
     expect(document.querySelector("[data-practice-reveal-footer]")?.className).toContain("practice-reveal-slot");
+  });
+});
+
+describe("PM2 — Try again only where a resend cannot record the answer twice", () => {
+  beforeEach(() => { vi.useRealTimers(); });
+
+  const cases = [
+    { failure: { kind: "not-sent", retryable: true }, retry: true, note: /Not sent/ },
+    { failure: { kind: "rejected", retryable: true }, retry: true, note: /nothing was recorded/ },
+    { failure: { kind: "unknown", retryable: false }, retry: false, note: /won't be resent/ },
+    { failure: { kind: "unknown", retryable: true }, retry: true, note: /trying again is safe/ },
+  ] as const;
+  for (const c of cases) {
+    it(`${c.failure.kind}, retryable=${c.failure.retryable}: ${c.retry ? "offers" : "withholds"} Try again; Skip always`, () => {
+      const p = props({ selectedAnswer: "160", answerResult: UNVERIFIED_ANSWER, submitFailure: { ...c.failure } });
+      render(tree(p));
+      const note = screen.getByTestId("practice-unverified-note");
+      expect(note.getAttribute("data-failure-kind")).toBe(c.failure.kind);
+      expect(note.textContent).toMatch(c.note);
+      expect(screen.queryByTestId("practice-retry-answer") !== null).toBe(c.retry);
+      fireEvent.click(screen.getByTestId("practice-skip"));
+      expect(p.onSkip).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it("with no classified failure, withholds Try again (fails safe)", () => {
+    render(tree(props({ selectedAnswer: "160", answerResult: UNVERIFIED_ANSWER, submitFailure: null })));
+    expect(screen.queryByTestId("practice-retry-answer")).toBeNull();
+    expect(screen.getByTestId("practice-skip")).toBeTruthy();
+  });
+});
+
+describe("PM2 — a question with no art loses only the decorative band, and only on a short phone", () => {
+  const ART_Q: QuizQuestion = {
+    id: 53, category: "Item Components", question_text: "Which component builds into this item?",
+    format: "multiple_choice", choices: ["B. F. Sword", "Pickaxe"], image_path: "assets/items/3031.png",
+    metadata: { item_name: "Infinity Edge" },
+  };
+  let restore: (() => void) | null = null;
+  function viewport(short: boolean) {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: short && query.includes("max-height: 760px") ? true : !short ? false : query.includes("max-width"),
+      media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    restore = () => { window.matchMedia = original; };
+  }
+  beforeEach(() => { vi.useRealTimers(); });
+  afterEach(() => { restore?.(); restore = null; });
+
+  it("short phone + text-only question: no media region, the category on the prompt line", () => {
+    viewport(true);
+    render(tree(props()));
+    const surface = screen.getByTestId("scenario-surface");
+    expect(surface.getAttribute("data-media")).toBe("none");
+    expect(surface.querySelector('[data-surface-region="media"]')).toBeNull();
+    expect(surface.querySelector('[data-surface-region="prompt"] .scenario-category')?.textContent).toMatch(/objectives/i);
+  });
+
+  it("short phone + real League art: the art plate stays", () => {
+    viewport(true);
+    render(tree(props({ questions: [ART_Q], currentIndex: 0 })));
+    expect(screen.getByTestId("scenario-surface").getAttribute("data-media")).not.toBe("none");
+    expect(screen.getByTestId("practice-question-media")).toBeTruthy();
+  });
+
+  it("tall phone or desktop + text-only question: the surface's band stays", () => {
+    viewport(false);
+    render(tree(props()));
+    const surface = screen.getByTestId("scenario-surface");
+    expect(surface.getAttribute("data-media")).not.toBe("none");
+    expect(surface.querySelector('[data-surface-region="media"]')).not.toBeNull();
   });
 });

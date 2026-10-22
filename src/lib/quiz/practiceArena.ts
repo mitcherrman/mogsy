@@ -55,6 +55,53 @@ export function isUnverifiedAnswer(result: QuizAnswerResult | null): boolean {
   return result === UNVERIFIED_ANSWER;
 }
 
+/**
+ * PM2 — WHY A SUBMIT FAILED, and whether sending it again is SAFE.
+ *
+ * `POST /api/quiz/attempts` records the attempt and awards XP in one
+ * transaction. A resend after a failure the server may have completed would
+ * record it twice — two attempts, two XP awards — so "Try again" exists only
+ * where that cannot happen:
+ *
+ *  - `not-sent`  the request never reached `fetch` (the browser was offline,
+ *                no session could be established, the auth headers could not
+ *                be read). Nothing can have been recorded: retry is safe.
+ *  - `rejected`  the server answered with a status that refuses the request
+ *                before the handler records anything (auth, validation, rate
+ *                limit). Nothing was recorded: retry is safe.
+ *  - `unknown`   the request may have been completed (the connection dropped
+ *                mid-flight, a 5xx, a proxy timeout). Retry is safe ONLY when
+ *                the backend has proved it dedupes resends of the same
+ *                `client_attempt_id` (a graded response carried
+ *                `attempt_idempotent: true`); otherwise the player can only
+ *                skip, and the answer is never sent again.
+ */
+export type PracticeSubmitFailureKind = "not-sent" | "rejected" | "unknown";
+
+export interface PracticeSubmitFailure {
+  kind: PracticeSubmitFailureKind;
+  /** A resend of the same answer cannot record it twice. */
+  retryable: boolean;
+}
+
+/** Statuses the backend returns before its handler records an attempt. */
+export const PRACTICE_REJECTED_STATUSES: ReadonlySet<number> = new Set([400, 401, 403, 404, 405, 413, 415, 422, 429]);
+
+export function classifyPracticeSubmitFailure(input: {
+  /** The request failed before it was handed to `fetch`. */
+  notSent: boolean;
+  /** The failed response's HTTP status, or null. */
+  status: number | null;
+  /** The backend has shown it dedupes resends of one `client_attempt_id`. */
+  idempotentAttempts: boolean;
+}): PracticeSubmitFailure {
+  if (input.notSent) return { kind: "not-sent", retryable: true };
+  if (input.status !== null && PRACTICE_REJECTED_STATUSES.has(input.status)) {
+    return { kind: "rejected", retryable: true };
+  }
+  return { kind: "unknown", retryable: input.idempotentAttempts };
+}
+
 type Choice = QuizQuestion["choices"][number];
 
 function choiceLabel(choice: Choice): string {

@@ -20134,11 +20134,12 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
 
 /* The reveal box's height on a phone, held from the question's first frame
    (the reserve) through the reveal (the footer), so grading moves nothing.
-   92px seats the verdict row and three 12px explanation lines — the bank's
-   median explanation is ~94 characters, two lines at 360 wide — and the
-   density tiers below fit the long tail into the same box. */
+   100px seats the verdict row and three 12px explanation lines — the bank's
+   median explanation is ~94 characters, two lines at 360 wide — and, with the
+   density tiers below, the bank's longest (~305 characters, five 10.5px
+   lines), so on a tall phone no reveal grows its box. */
 .practice-arena {
-  --practice-reveal-h: 5.75rem;
+  --practice-reveal-h: 6.25rem;
 }
 @media (max-width: 1023.98px) {
   .practice-arena .ranked-shell[data-phone-arena="true"] .practice-reveal-slot {
@@ -20193,7 +20194,19 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
     font-size: 0.65625rem;
     line-height: 1.15;
   }
+  /* TOP-ANCHORED, not centred. The short phone's 72px box cannot hold the
+     longest explanations, so a reveal may grow it — into the folio's spare
+     parchment, which on a short phone is BELOW the stack once it sits at the
+     top. Centred, the same growth re-centred the stack and moved the tablets
+     under the player's finger on the reveal. */
+  .practice-arena .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > div {
+    margin-block: 0 auto;
+  }
 }
+/* A QUESTION WITH NO ART OF ITS OWN, on a short phone, is drawn without the
+   surface's decorative category band (`surfaceSettings: { mediaScale: "none" }`
+   from PracticeArena — the category moves onto the prompt's line). Long
+   prompts and long answers take that room. Real League art keeps its plate. */
 /* PICTURE CHOICES ON A SHORT PHONE. A picture tablet is its art (80px), a
    label and 12px padding top and bottom — ~135px, so a 2x2 picture grid is
    276px against the stage's 210px answer allocation and pushed a 360x640

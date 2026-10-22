@@ -467,22 +467,70 @@ describe("Practice — PM2 automatic advance", () => {
     expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.quiz.complete")).toHaveLength(1);
   });
 
-  it("never auto-advances an unverified answer; Try again resubmits the same answer", async () => {
-    submitAnswerMock.mockRejectedValueOnce(new Error("offline"));
+  it("an unknown outcome (the request may have been recorded) is never resent: Skip only", async () => {
+    submitAnswerMock.mockRejectedValueOnce(Object.assign(new Error("Quiz API 502: upstream"), { status: 502 }));
     await startActiveDataPractice();
     fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
     await screen.findByText("Answer not verified");
     expect(autoAdvance.latest?.revealKey ?? null).toBeNull();
-    expect(document.querySelector("[data-practice-reveal-footer]")?.getAttribute("data-verdict-tone")).toBe("neutral");
+    expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("unknown");
+    expect(screen.queryByTestId("practice-retry-answer")).toBeNull();
+    fireEvent.click(screen.getByTestId("practice-skip"));
+    await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+  });
 
+  it("offline: nothing is sent, and Try again is the first real send", async () => {
+    const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      await startActiveDataPractice();
+      fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+      await screen.findByText("Answer not verified");
+      expect(submitAnswerMock).not.toHaveBeenCalled();
+      expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("not-sent");
+      online.mockReturnValue(true);
+      fireEvent.click(screen.getByTestId("practice-retry-answer"));
+      await waitFor(() => expect(document.querySelector("[data-practice-reveal-footer]")?.getAttribute("data-verdict-tone")).toBe("negative"));
+      expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+      expect(submitAnswerMock.mock.calls[0][0]).toMatchObject({ question_id: 11, selected_answer: "Alpha" });
+      // The retry is not a second lock-in.
+      expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.answer.lock")).toHaveLength(1);
+      await advanceReveal();
+      await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("refused before recording (429): Try again resends the same answer with the same client_attempt_id", async () => {
+    submitAnswerMock.mockRejectedValueOnce(Object.assign(new Error("Quiz API 429: slow down"), { status: 429 }));
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await screen.findByText("Answer not verified");
+    expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("rejected");
     fireEvent.click(screen.getByTestId("practice-retry-answer"));
-    await waitFor(() => expect(document.querySelector("[data-practice-reveal-footer]")?.getAttribute("data-verdict-tone")).toBe("negative"));
-    expect(submitAnswerMock).toHaveBeenCalledTimes(2);
-    expect(submitAnswerMock.mock.calls[1][0]).toMatchObject({ question_id: 11, selected_answer: "Alpha" });
-    // The retry is not a second lock-in.
-    expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.answer.lock")).toHaveLength(1);
+    await waitFor(() => expect(submitAnswerMock).toHaveBeenCalledTimes(2));
+    const [first, second] = submitAnswerMock.mock.calls.map(([payload]) => payload as { client_attempt_id?: string });
+    expect(first.client_attempt_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(second.client_attempt_id).toBe(first.client_attempt_id);
+  });
+
+  it("unknown outcome after the backend proved idempotency: Try again, same key; each question its own key", async () => {
+    submitAnswerMock
+      .mockResolvedValueOnce({ is_correct: false, correct_answer: "Beta", explanation: "", attempt_idempotent: true } as never)
+      .mockRejectedValueOnce(Object.assign(new Error("Quiz API 503: busy"), { status: 503 }));
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
     await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
+    await screen.findByText("Answer not verified");
+    expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("unknown");
+    fireEvent.click(screen.getByTestId("practice-retry-answer"));
+    await waitFor(() => expect(submitAnswerMock).toHaveBeenCalledTimes(3));
+    const keys = submitAnswerMock.mock.calls.map(([payload]) => (payload as { client_attempt_id?: string }).client_attempt_id);
+    expect(keys[1]).toBe(keys[2]);
+    expect(keys[0]).not.toBe(keys[1]);
   });
 
   it("Skip leaves an unverified question ungraded", async () => {

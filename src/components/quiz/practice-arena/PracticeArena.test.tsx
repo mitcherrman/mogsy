@@ -154,7 +154,8 @@ describe("PracticeArena — Practice in the canonical arena", () => {
   });
 
   it("never shows a verdict for an answer the backend could not verify, and offers Try again / Skip", () => {
-    const { props } = renderArena({ selectedAnswer: "240", answerResult: UNVERIFIED_ANSWER });
+    const { props } = renderArena({ selectedAnswer: "240", answerResult: UNVERIFIED_ANSWER,
+      submitFailure: { kind: "not-sent", retryable: true } });
     const footer = document.querySelector<HTMLElement>("[data-practice-reveal-footer]")!;
     expect(footer.getAttribute("data-verdict-tone")).toBe("neutral");
     expect(footer.getAttribute("data-auto-advance")).toBe("held");

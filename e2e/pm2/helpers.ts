@@ -81,10 +81,32 @@ export interface Counters {
   analytics: string[];
   /** Question requests since the last launch (reset it before each launch). */
   served: number;
+  /** Attempts the fixture backend actually RECORDED (XP paid), per question. */
+  recorded: Record<number, number>;
+  /** Every `client_attempt_id` sent, in order. */
+  keys: string[];
 }
 
-export async function prepare(page: Page, opts: { failFirst?: boolean } = {}): Promise<Counters> {
-  const counters: Counters = { attempts: {}, completions: 0, analytics: [], served: 0 };
+export interface PrepareOptions {
+  /** The FAIL_FIRST question's first submit fails with a 500 (nothing recorded). */
+  failFirst?: boolean;
+  /**
+   * Behave like the idempotent backend (League_Combat_Simulator
+   * `quiz/attempt-idempotency`): dedupe by `client_attempt_id`, replay the
+   * stored response, and say `attempt_idempotent: true`.
+   */
+  idempotent?: boolean;
+  /**
+   * The Nth attempt POST (1-based) is RECORDED and then answered 503 — a
+   * response lost after the write, the case a blind resend would double.
+   */
+  loseResponseOfPost?: number;
+}
+
+export async function prepare(page: Page, opts: PrepareOptions = {}): Promise<Counters> {
+  const counters: Counters = { attempts: {}, completions: 0, analytics: [], served: 0, recorded: {}, keys: [] };
+  const receipts = new Map<string, Record<string, unknown>>();
+  let posts = 0;
   await page.addInitScript(({ identity }) => {
     sessionStorage.setItem("quiz:gate:hub_visited", "1");
     localStorage.setItem("mogsy_e2e_identity", JSON.stringify(identity));
@@ -126,19 +148,32 @@ export async function prepare(page: Page, opts: { failFirst?: boolean } = {}): P
     if (p === "/api/quiz/attempts") {
       const body = JSON.parse(request.postData() ?? "{}");
       const id = Number(body.question_id);
+      const key = typeof body.client_attempt_id === "string" ? body.client_attempt_id : "";
+      posts += 1;
       counters.attempts[id] = (counters.attempts[id] ?? 0) + 1;
+      counters.keys.push(key);
       if (opts.failFirst && id === FAIL_FIRST && counters.attempts[id] === 1) {
         return route.fulfill({ status: 500, json: { detail: "fixture grading failure" } });
+      }
+      if (opts.idempotent && key && receipts.has(key)) {
+        return route.fulfill({ json: { ...receipts.get(key), attempt_replayed: true } });
       }
       const correct = CORRECT[id] ?? "";
       const ok = body.selected_answer === correct;
       const explanation = id === 9106 ? DENSE_EXPLANATION
         : ok ? "That's right."
           : `The answer is ${correct}. Practice explanations can run to a couple of sentences, and the reveal box holds them.`;
-      return route.fulfill({ json: {
+      const response: Record<string, unknown> = {
         is_correct: ok, correct_answer: correct, explanation,
         xp_earned: ok ? 12 : 2, current_xp: 1240, current_streak: ok ? 3 : 0, rank: "Gold",
-      } });
+        ...(opts.idempotent && key ? { client_attempt_id: key, attempt_idempotent: true, attempt_replayed: false } : {}),
+      };
+      counters.recorded[id] = (counters.recorded[id] ?? 0) + 1;
+      if (opts.idempotent && key) receipts.set(key, response);
+      if (opts.loseResponseOfPost === posts) {
+        return route.fulfill({ status: 503, json: { detail: "fixture: recorded, response lost" } });
+      }
+      return route.fulfill({ json: response });
     }
     if (p === "/api/quiz/sessions") return route.fulfill({ json: { ok: true, session_id: 77 } });
     if (/\/api\/quiz\/sessions\/77\/complete$/.test(p)) {
@@ -282,7 +317,9 @@ export function assertFits(vp: Viewport, q: Q, m: Geometry, label: string) {
     expect(t.right).toBeLessThanOrEqual(m.stage.right + 1);
     expect(t.h, `${label}: tablet below a touch target`).toBeGreaterThanOrEqual(40);
   }
-  const mustFit = vp.kind === "portrait" && !(vp.height < 700 && q.stress);
+  // Every fixture — the long prompt and the long answers included — fits a
+  // portrait phone, 360x640 too (PM2 follow-up). Landscape scrolls by nature.
+  const mustFit = vp.kind === "portrait";
   if (mustFit) {
     expect(m.vOverflow, `${label}: the page scrolls`).toBeLessThanOrEqual(1);
     expect(m.brand.visible, `${label}: mogzy.lol off screen`).toBe(true);

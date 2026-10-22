@@ -25,7 +25,12 @@ import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { QUIZ_CATEGORY_ICONS, resolveCategoryIconUrl } from "@/components/quiz/QuizCategoryStrip";
 import PracticeArena from "@/components/quiz/practice-arena/PracticeArena";
-import { UNVERIFIED_ANSWER } from "@/lib/quiz/practiceArena";
+import {
+  UNVERIFIED_ANSWER,
+  classifyPracticeSubmitFailure,
+  type PracticeSubmitFailure,
+} from "@/lib/quiz/practiceArena";
+import { markQuizRequestNotSent, quizRequestNotSent, quizRequestStatus } from "@/lib/quiz/requestErrors";
 import { getCategoryStyle } from "@/components/quiz/practice-arena/practiceCategoryStyle";
 import {
   loadPracticeCategoryQuestions,
@@ -168,6 +173,19 @@ import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question
 
 /* PM1 — the per-category badge styles moved to
    `components/quiz/practice-arena/practiceCategoryStyle` with the active card. */
+
+/** PM2 — a fresh `client_attempt_id` (a v4 UUID, the backend's accepted shape). */
+function newClientAttemptId(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  const b = new Uint8Array(16);
+  if (c && typeof c.getRandomValues === "function") c.getRandomValues(b);
+  else for (let i = 0; i < 16; i += 1) b[i] = Math.floor(Math.random() * 256);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 
 /** Local per-session record so we can render a category breakdown + review list. */
 type SessionAnswer = {
@@ -910,6 +928,16 @@ export default function Quiz() {
   const submittingRef = useRef<string | null>(null);
   /** The last question advanced from — one advance per question. */
   const advancedRef = useRef<string | null>(null);
+  /**
+   * PM2 — one `client_attempt_id` per question of a run, created on the first
+   * send and REUSED by a resend, so a backend with idempotent attempts records
+   * that answer at most once however many times it arrives.
+   */
+  const attemptIdsRef = useRef(new Map<string, string>());
+  /** Set once a graded response proves the backend dedupes a resent key. */
+  const idempotentAttemptsRef = useRef(false);
+  /** Why the question on stage failed to grade (see `classifyPracticeSubmitFailure`). */
+  const [submitFailure, setSubmitFailure] = useState<{ key: string; failure: PracticeSubmitFailure } | null>(null);
 
   const submitPracticeAnswer = useCallback(async (choice: string, { retry = false } = {}) => {
     const key = liveQuestionKey;
@@ -918,14 +946,26 @@ export default function Quiz() {
     const sfxEventBase = `leaguecraft:${sfxSessionRunRef.current}:${currentIndex}:${currentQuestion.id}`;
     if (!retry) canonicalSfx.play("leaguecraft.answer.lock", { eventId: `${sfxEventBase}:lock` });
     setSelectedAnswer(choice);
+    let clientAttemptId = attemptIdsRef.current.get(key);
+    if (!clientAttemptId) {
+      clientAttemptId = newClientAttemptId();
+      attemptIdsRef.current.set(key, clientAttemptId);
+    }
     try {
+      // Offline: do not send at all, so the answer provably was not recorded
+      // and Try again (the first real send) is safe.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        throw markQuizRequestNotSent(new Error("offline"));
+      }
       const result: QuizAnswerResult = await quizApi.submitAnswer({
         user_id: userId,
         question_id: currentQuestion.id,
         selected_answer: choice,
         session_id: sessionIdRef.current ?? undefined,
+        client_attempt_id: clientAttemptId,
       });
       if (liveQuestionRef.current !== key) return;
+      if (result.attempt_idempotent === true) idempotentAttemptsRef.current = true;
       setAnswerResult(result);
       canonicalSfx.play(
         result.is_correct ? "leaguecraft.answer.correct" : "leaguecraft.answer.incorrect",
@@ -988,12 +1028,22 @@ export default function Quiz() {
       if (Array.isArray(unlocked) && unlocked.length > 0) {
         loadAchievements();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (liveQuestionRef.current !== key) return;
       // A failed submit is never a verdict. The sentinel is the same object
       // the legacy card built inline; PM1 names it so the arena can say "not
-      // verified", and PM2 holds the run there — no auto-advance — until the
-      // player retries the same answer or skips the question.
+      // verified", and PM2 holds the run there — no auto-advance. Whether the
+      // player may send it again depends on whether the server can have
+      // recorded it (see `classifyPracticeSubmitFailure`): never a resend that
+      // could record a second attempt or award XP twice.
+      setSubmitFailure({
+        key,
+        failure: classifyPracticeSubmitFailure({
+          notSent: quizRequestNotSent(err),
+          status: quizRequestStatus(err),
+          idempotentAttempts: idempotentAttemptsRef.current,
+        }),
+      });
       setAnswerResult(UNVERIFIED_ANSWER);
     } finally {
       if (submittingRef.current === key) submittingRef.current = null;
@@ -1005,12 +1055,20 @@ export default function Quiz() {
     await submitPracticeAnswer(choice);
   }, [answerResult, selectedAnswer, submitPracticeAnswer]);
 
-  /** PM2 — Try again after a failed submit: the SAME answer, sent again. */
+  /** The failure of the question on stage, while its answer stands unverified. */
+  const practiceSubmitFailure = answerResult === UNVERIFIED_ANSWER && submitFailure?.key === liveQuestionKey
+    ? submitFailure.failure : null;
+
+  /**
+   * PM2 — Try again after a failed submit: the SAME answer, with the same
+   * `client_attempt_id`, sent again — and only when that cannot record it twice.
+   */
   const handleRetryAnswer = useCallback(() => {
     if (answerResult !== UNVERIFIED_ANSWER || selectedAnswer === null) return;
+    if (!practiceSubmitFailure?.retryable) return;
     setAnswerResult(null);
     void submitPracticeAnswer(selectedAnswer, { retry: true });
-  }, [answerResult, selectedAnswer, submitPracticeAnswer]);
+  }, [answerResult, selectedAnswer, practiceSubmitFailure, submitPracticeAnswer]);
 
   /**
    * Leaves the question on stage: the next one, or the results after the last.
@@ -1774,6 +1832,7 @@ export default function Quiz() {
           runKey={String(practiceRunId)}
           onSelectAnswer={(label) => { void handleSelectAnswer(label); }}
           onAdvance={handleNext}
+          submitFailure={practiceSubmitFailure}
           onRetryAnswer={handleRetryAnswer}
           onSkip={handleNext}
           onRetry={handleRetry}

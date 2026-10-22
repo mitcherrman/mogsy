@@ -381,6 +381,13 @@ export interface ArenaQuestionSurface {
    * the legacy Pro Play payload field the arena must never read.)
    */
   regions?: QuestionSurfaceRegions | null;
+  /**
+   * PM2 — presentation settings relayed to the canonical surface over its
+   * competitive defaults (e.g. `mediaScale: "none"` for a question with no art
+   * of its own on a short phone, where the decorative band costs the prompt
+   * and the tablets their room). Absent for every existing caller.
+   */
+  surfaceSettings?: Partial<SurfaceSettings> | null;
 }
 
 /** PPQ2-C (proposed) — mode-supplied presentation for the stage's regions. */
