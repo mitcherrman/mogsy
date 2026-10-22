@@ -32,6 +32,7 @@ import { DAILY_SECTION_LABEL, dailySection } from "@/lib/daily-challenge/run/sta
 import { optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import { stageContentLine, stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 import { ResultActions } from "@/components/game-results/ResultActions";
+import { actOpeningTitle } from "@/lib/daily-v2/threeActsPlan";
 import { OWNER_TAKE_LABELS, useOwnerTake } from "@/lib/daily-challenge/run/ownerTake";
 import { SectionLadder, StageLadder, StageTag } from "./StageTag";
 
@@ -120,6 +121,14 @@ export function StageIntroBeat({ run, stage, error, onRetry, busy }: {
       <Beat testId="daily-stage-intro" intensity="major" ms={STAGE_INTRO_MIN_MS}
         extra={{ "data-stage-kind": stage.kind, "data-section": "today", "data-opening": "main" }}>
         <h2 className="ranked-title ranked-beat__title" data-testid="daily-opening-title">Daily Challenge</h2>
+        {/* Daily three acts: round 1 has no module-title beat (this tag covers
+            its lead-in), so Act I is named here; Mid and Late are named by the
+            header at their first rounds (`actOpeningTitle`). Same tag time. */}
+        {stage.content?.plan && (
+          <p className="ranked-beat__meta" data-testid="daily-opening-act">
+            {actOpeningTitle(stage.content.plan, 1)}
+          </p>
+        )}
         {error && <LaunchError error={error} onRetry={onRetry} busy={busy} />}
       </Beat>
     );
