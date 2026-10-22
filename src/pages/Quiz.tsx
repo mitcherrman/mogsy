@@ -580,7 +580,16 @@ export default function Quiz() {
   // the background on quiz start; null means play proceeds untracked.
   const sessionIdRef = useRef<number | null>(null);
 
+  /**
+   * PM2 — WHICH RUN IS ON STAGE. Every run start (a set, a subject, a replay
+   * of the misses, Play again) opens a new history session, so it bumps this
+   * id there. With the position it names one question of one run — the key the
+   * auto-advance, the one-advance guard and the stale-grade guard all compare.
+   */
+  const [practiceRunId, setPracticeRunId] = useState(0);
+
   const startHistorySession = useCallback((mode: string, category?: string) => {
+    setPracticeRunId((id) => id + 1);
     sessionIdRef.current = null;
     quizApi
       .startSession({ mode, category })
@@ -886,10 +895,28 @@ export default function Quiz() {
       : null,
   );
 
-  const handleSelectAnswer = useCallback(async (choice: string) => {
-    if (!currentQuestion || answerResult) return;
+  /**
+   * PM2 — the question on stage, as `run:position`, or null when no question
+   * is (the hub, results, loading, an error, after unmount). Written during
+   * render so an awaited grade can ask "is my question still the one on
+   * stage?" — a grade for a question the player has left (a replay, a new
+   * session, the hub) is dropped, never applied to whatever replaced it.
+   */
+  const liveQuestionKey = phase === "active" && currentQuestion ? `${practiceRunId}:${currentIndex}` : null;
+  const liveQuestionRef = useRef<string | null>(null);
+  liveQuestionRef.current = liveQuestionKey;
+  useEffect(() => () => { liveQuestionRef.current = null; }, []);
+  /** The question whose grade is in flight — one submission per question. */
+  const submittingRef = useRef<string | null>(null);
+  /** The last question advanced from — one advance per question. */
+  const advancedRef = useRef<string | null>(null);
+
+  const submitPracticeAnswer = useCallback(async (choice: string, { retry = false } = {}) => {
+    const key = liveQuestionKey;
+    if (!currentQuestion || key === null || submittingRef.current === key) return;
+    submittingRef.current = key;
     const sfxEventBase = `leaguecraft:${sfxSessionRunRef.current}:${currentIndex}:${currentQuestion.id}`;
-    canonicalSfx.play("leaguecraft.answer.lock", { eventId: `${sfxEventBase}:lock` });
+    if (!retry) canonicalSfx.play("leaguecraft.answer.lock", { eventId: `${sfxEventBase}:lock` });
     setSelectedAnswer(choice);
     try {
       const result: QuizAnswerResult = await quizApi.submitAnswer({
@@ -898,6 +925,7 @@ export default function Quiz() {
         selected_answer: choice,
         session_id: sessionIdRef.current ?? undefined,
       });
+      if (liveQuestionRef.current !== key) return;
       setAnswerResult(result);
       canonicalSfx.play(
         result.is_correct ? "leaguecraft.answer.correct" : "leaguecraft.answer.incorrect",
@@ -961,14 +989,40 @@ export default function Quiz() {
         loadAchievements();
       }
     } catch (err: any) {
-      // Even if submit fails, let the user continue. The sentinel is the same
-      // object the legacy card built inline; PM1 names it so the arena can say
-      // "not verified" instead of drawing a verdict the backend never gave.
+      if (liveQuestionRef.current !== key) return;
+      // A failed submit is never a verdict. The sentinel is the same object
+      // the legacy card built inline; PM1 names it so the arena can say "not
+      // verified", and PM2 holds the run there — no auto-advance — until the
+      // player retries the same answer or skips the question.
       setAnswerResult(UNVERIFIED_ANSWER);
+    } finally {
+      if (submittingRef.current === key) submittingRef.current = null;
     }
-  }, [currentQuestion, currentIndex, answerResult, userId, loadProgress, loadAchievements, canonicalSfx]);
+  }, [currentQuestion, currentIndex, liveQuestionKey, userId, loadProgress, loadAchievements, canonicalSfx]);
 
+  const handleSelectAnswer = useCallback(async (choice: string) => {
+    if (answerResult || selectedAnswer !== null) return;
+    await submitPracticeAnswer(choice);
+  }, [answerResult, selectedAnswer, submitPracticeAnswer]);
+
+  /** PM2 — Try again after a failed submit: the SAME answer, sent again. */
+  const handleRetryAnswer = useCallback(() => {
+    if (answerResult !== UNVERIFIED_ANSWER || selectedAnswer === null) return;
+    setAnswerResult(null);
+    void submitPracticeAnswer(selectedAnswer, { retry: true });
+  }, [answerResult, selectedAnswer, submitPracticeAnswer]);
+
+  /**
+   * Leaves the question on stage: the next one, or the results after the last.
+   * PM2 calls it from the reveal's auto-advance (and from Skip after a failed
+   * submit), so it is guarded to run ONCE per question of a run — a timer that
+   * fired twice, or a Skip pressed as the timer fires, cannot skip a question
+   * or complete the session twice.
+   */
   const handleNext = useCallback(() => {
+    const key = liveQuestionKey;
+    if (key === null || advancedRef.current === key) return;
+    advancedRef.current = key;
     if (currentIndex + 1 >= questions.length) {
       completeHistorySession();
       canonicalSfx.play("leaguecraft.quiz.complete", {
@@ -1001,7 +1055,7 @@ export default function Quiz() {
       setFillBlankValue("");
       setAnswerResult(null);
     }
-  }, [currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score, canonicalSfx]);
+  }, [liveQuestionKey, currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score, canonicalSfx]);
 
   /**
    * PT1.7A — REMEDIATION, BOUNDED TO THE SESSION THAT JUST ENDED.
@@ -1717,8 +1771,11 @@ export default function Quiz() {
           errorMessage={errorMsg}
           fillBlankValue={fillBlankValue}
           onFillBlankChange={setFillBlankValue}
+          runKey={String(practiceRunId)}
           onSelectAnswer={(label) => { void handleSelectAnswer(label); }}
-          onNext={handleNext}
+          onAdvance={handleNext}
+          onRetryAnswer={handleRetryAnswer}
+          onSkip={handleNext}
           onRetry={handleRetry}
         />
       )}

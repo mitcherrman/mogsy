@@ -6,8 +6,12 @@
  */
 import { describe, expect, it } from "vitest";
 import type { QuizAnswerResult, QuizQuestion } from "@/lib/quiz/api";
+import { REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS } from "@/lib/ranked-core/pacing";
 import {
+  PRACTICE_REVEAL_HOLD_MAX_MS,
   UNVERIFIED_ANSWER,
+  practiceExplanationDensity,
+  practiceRevealHoldMs,
   practiceOptionIdForLabel,
   projectPracticeArena,
   projectPracticeOptions,
@@ -128,5 +132,38 @@ describe("practice arena projection", () => {
     expect(practiceOptionIdForLabel(Q1, "180s")).toBe("2");
     expect(practiceOptionIdForLabel(Q1, "nope")).toBeNull();
     expect(practiceOptionIdForLabel(Q1, null)).toBeNull();
+  });
+});
+
+describe("PM2 — the reveal hold and the explanation's density", () => {
+  const graded = (explanation: string): QuizAnswerResult => ({ is_correct: true, correct_answer: "x", explanation });
+
+  it("never advances by itself without a grade, or after a failed submit", () => {
+    expect(practiceRevealHoldMs(null)).toBeNull();
+    expect(practiceRevealHoldMs(UNVERIFIED_ANSWER)).toBeNull();
+  });
+
+  it("takes the arena's short beat for a verdict with nothing to read", () => {
+    expect(practiceRevealHoldMs(graded(""))).toBe(REVEAL_HOLD_MS);
+    expect(practiceRevealHoldMs(graded("   "))).toBe(REVEAL_HOLD_MS);
+  });
+
+  it("takes at least the long beat with an explanation, longer for longer text, and is capped", () => {
+    const short = practiceRevealHoldMs(graded("Yes."))!;
+    const median = practiceRevealHoldMs(graded("x".repeat(94)))!;
+    const longest = practiceRevealHoldMs(graded("x".repeat(305)))!;
+    expect(short).toBe(REVEAL_HOLD_LEVEL_UP_MS);
+    expect(median).toBeGreaterThan(REVEAL_HOLD_LEVEL_UP_MS);
+    expect(longest).toBeGreaterThan(median);
+    expect(longest).toBeLessThanOrEqual(PRACTICE_REVEAL_HOLD_MAX_MS);
+    expect(practiceRevealHoldMs(graded("x".repeat(5000)))).toBe(PRACTICE_REVEAL_HOLD_MAX_MS);
+  });
+
+  it("tiers explanations by length", () => {
+    expect(practiceExplanationDensity(null)).toBe("normal");
+    expect(practiceExplanationDensity("x".repeat(150))).toBe("normal");
+    expect(practiceExplanationDensity("x".repeat(151))).toBe("long");
+    expect(practiceExplanationDensity("x".repeat(220))).toBe("long");
+    expect(practiceExplanationDensity("x".repeat(221))).toBe("dense");
   });
 });
