@@ -160,9 +160,8 @@ Survival / Time Trial.
   round 8 and "Act III · Late" at round 14 in the header's title beat, shown
   ~1 s in the server-paced lead-in. The clock then starts at a full 0:18, so no
   answer time is used.
-* **Phones (<768 px) show only Act I** (on the tag) and the E/M/L set bar: the
-  arena's phone header has no module-title face at all (existing design).
-  Owner decision whether phones need more.
+* Phones (<768 px): see §3c (FE `fa16010c`). The phone match bar now shows
+  every act opening on its position line.
 
 **Endings (D9).**
 * Survival ended by `strikes_exhausted` (3 strikes). Time Trial ended by
@@ -177,7 +176,7 @@ Survival / Time Trial.
 * Meta Reflex: a real settlement with three timed-out cards (`incorrect 3`)
   displays as 0 incorrect, 3 unanswered.
 * Recap reads "Owner take complete", "Take score" and the not-official note
-  (the section heading "Today's Challenge" remains; minor).
+  (the section heading now reads "Owner preview": §3c).
 * Answer names are covered by a test (2/3/4 options).
 * 320 / 360 / 390 px: page width = viewport (no horizontal scroll); at 360 the
   four answers end at 635 of 740 px.
@@ -187,6 +186,31 @@ Survival / Time Trial.
 **Timers:** every quiz window 18/33/48 s in both takes and the merged smoke
 (`started_at` → `active_deadline`). Isolation: 11 owner takes, 0 official
 runs, 0 rating rows; all 23 children `creator_replay`, none rating-eligible.
+
+## 3c. Owner preview preparation (FE `fa16010c`, 2026-10-21)
+
+* **Phone act openings.** `MobileMatchBar`'s position line uses the same
+  `useCentralStage` title beat as the desktop header. Only `Act …` titles are
+  shown. For the beat window, the line reads e.g. "Act II · Mid" in gold, then
+  "8 / 19". There is no new element, so no layout shift or scroll, and no added
+  delay.
+* **Owner wording.** On owner takes, the recap's section heading and the
+  ladder's label read "Owner preview" (was "Today's Challenge"). Official runs
+  are unchanged.
+* **Browser pane, 390×844, a full take on the playtest copy:**
+  * the line showed "Act I · Early" (1.2 s) → "1 / 19", "Act II · Mid"
+    (1.2 s) → "8 / 19", and "Act III · Late" (1.6 s) → "14 / 19";
+  * horizontal overflow was sampled every 400 ms: 0;
+  * server windows: 18 s ×6, 33 s ×6, 48 s ×6 (plus the Meta Reflex sprint's
+    own 21 s).
+  * 320 and 360 px were not re-run: the change adds no element, only text
+    on an existing line.
+* **Tests:**
+  * targeted vitest (`MobileMatchBar`, `quiz-daily-challenge/run`,
+    `daily-challenge/run`): 25 files, 293 tests passed;
+  * the broad suite's verbose output showed no failures;
+  * `tsc -p tsconfig.app.json`: 0 errors;
+  * `npm run build`: passes (sitemap restored).
 
 ## 4. Defects and observations
 
@@ -198,8 +222,8 @@ runs, 0 rating rows; all 23 children `creator_replay`, none rating-eligible.
 | D4 | low | Meta Reflex breakdown counts two timed-out cards as "Incorrect 2 · Unanswered 0" while their rows say "No answer" | **fixed** FE `583bc998`: timed-out cards read as Unanswered (verified on a real settlement: server `incorrect 3, timed_out [T,T,T]` → shown `0 incorrect, 3 unanswered`) |
 | D5 | low | Quiz answer tablets looked unnamed in the pane's tree | **not a defect**: the name is computed from the tablet's content ("A. 10.9 seconds"); the pane's printer only shows `aria-label`. Pinned by a test for 2/3/4 options (FE `583bc998`) |
 | D6 | low | At 360 px the "Combat calculation" badge overlaps the top of the champion name | **fixed** FE `583bc998`: in a card ≤128 px tall (phone band) the label-only badge yields; verified at 360 (116 px card) and 390 (127 px) |
-| D7 | observation | No act-boundary beat | **added**: the opening tag names "Act I · Early" (FE `615eac29`); the header's existing title beat names "Act II · Mid" at round 8 and "Act III · Late" at round 14 (FE `9214a9eb`), shown ~1 s in the lead-in, then the clock starts at a full 0:18. **Phones (<768 px) do not show the header title beat at all** (existing arena design), so on phones only Act I (tag) and the set bar show the acts |
-| D8 | observation | The take's result said "Today's Challenge · Daily score" | **fixed** FE `73dc093d`: "Owner take" / "Take score" + "Not official…" note on the main result, optional-entry beat and recap. The recap's SECTION heading still reads "Today's Challenge" (minor) |
+| D7 | observation | No act-boundary beat | **added**: the opening tag names "Act I · Early" (FE `615eac29`); the header's existing title beat names "Act II · Mid" at round 8 and "Act III · Late" at round 14 (FE `9214a9eb`), shown ~1 s in the lead-in, then the clock starts at a full 0:18. Phones: the match bar's position line shows the same beat in gold (FE `fa16010c`, §3c) |
+| D8 | observation | The take's result said "Today's Challenge · Daily score" | **fixed** FE `73dc093d`: "Owner take" / "Take score" + "Not official…" note on the main result, optional-entry beat and recap. The recap's section heading now reads "Owner preview" (FE `fa16010c`) |
 | D9 | observation | Time Trial "ended after 4 questions" with console errors | the ending was **correct** (4 timeouts drained the 90 s bank → `time_bank_exhausted`). The two console errors were real and are **fixed** FE `583bc998`; verified in the browser: Survival → `strikes_exhausted` and Time Trial → `time_bank_exhausted`, final round shown, **0** `[ranked]` errors over a full take (was dozens) |
 | D10 | medium | Review re-asked 1 of 20 misses | **fixed** BE `a22c97c5` + `712530f9`: three-act takes re-ask up to 6 replayable misses, the main Daily first, one per play unit in play order (see §3b). V1 unchanged |
 | D11 | — | In take 1, Review sat on its intro while its question expired. Caused by my hot-reload edits landing mid-flow; it did not reproduce on a clean take | not a product defect |
@@ -218,21 +242,66 @@ runs, 0 rating rows; all 23 children `creator_replay`, none rating-eligible.
 | Vision | possible E slots | rows present; none drawn on this day |
 | Summoner-spell Slice, Chronoscope, Match Grid, Reconstruct | not available | module/content gaps (pass 5 report §5) |
 
-## 6. If the owner cannot use this computer: minimal private preview (needs approval)
+## 6. Private preview from the owner's own browser and phone (NOT DONE; needs owner authorization)
 
-1. Push both `daily-v2/e-integration` branches. Deploy them to a
-   **non-production** backend and frontend (a Railway preview service plus a
-   Lovable/Vite preview). Nothing goes to `main`/`master`.
-2. Backend env:
-   * `DAILY_THREE_ACTS_V2=owner` and `DAILY_THREE_ACTS_CERT_SCOPE=serveable`;
-   * the six `RANKED_*` flags above;
-   * that environment's own database copy (never production's).
-3. Optional: the takedown rows. Re-verify the economy manifest for 26.20/26.21
-   first (gate 8), then run the generator import against the preview database.
-4. The owner signs in normally (real Supabase owner) and opens
-   `/admin/creator-replay` → **Play a three-act take**.
-5. Rollback: unset `DAILY_THREE_ACTS_V2`. The route returns 404 and nothing
-   else changes.
+Nothing below has been run. Every step is a remote change. Stop and get the
+owner's explicit approval first: no branch is pushed, nothing is deployed and
+nothing is merged until then.
+
+**Heads to deploy:** backend `daily-v2/e-integration` @ `0a11e502`; frontend
+`daily-v2/e-integration` @ the commit recording this guide (code `fa16010c`).
+
+1. **Target.** A new Railway environment `dv2-owner-preview` in the existing
+   Railway project, holding two new services. Production services, volumes and
+   variables are not touched.
+   * `dv2-preview-api`: the backend branch, using the existing `Procfile`
+     (`uvicorn api_server:app`).
+   * `dv2-preview-web`: the frontend branch, `npm ci && npm run build`, then a
+     static serve of `dist/` with SPA fallback.
+   * Lovable and `main`/`master` are not used.
+2. **Isolated database.** A new volume attached only to `dv2-preview-api`,
+   with `LOL_CALC_DB_PATH` pointing at it. It is seeded from a copy of the
+   playtest copy (`scratchpad/playtest/lol_calc.db`, already verified), never
+   from the production volume.
+   * **Owner decision:** that copy contains canonical content and production
+     user rows from the read-only snapshot. Either approve it as is, or strip
+     user tables first (`daily_runs`, `ranked_*` history, profiles).
+   * No production content import is run: no generator, no manifest import.
+3. **Backend variables:**
+   * `DAILY_THREE_ACTS_V2=owner`;
+   * `DAILY_THREE_ACTS_CERT_SCOPE=serveable`;
+   * `DAILY_THREE_ACTS_CONFIG` unset;
+   * `RANKED_PUBLIC_ENABLED`, `RANKED_FORMATS_ENABLED`, `RANKED_SHARED_BANK_ENABLED`,
+     `RANKED_MODULE_ITEM_COST_DUEL_ENABLED`, `RANKED_MASTERY_SLICES_ENABLED`,
+     `RANKED_BOT_ENABLED` = `1`;
+   * `RANKED_LIFECYCLE_WORKER_ENABLED=0`;
+   * `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_JWT_SECRET` (or
+     the issuer settings) copied from production, so the backend verifies real
+     owner sign-ins. These are read-only for auth.
+   * No `VITE_E2E_AUTH`, no harness and no test token.
+4. **Frontend build variables:**
+   * `VITE_COMBAT_API_URL=https://<dv2-preview-api domain>`;
+   * the production Supabase URL and publishable key;
+   * `VITE_E2E_AUTH` unset.
+5. **Access protection.**
+   * The three-act take is served only by the admin route (`require_admin`);
+     V2 is `owner`, so no public Daily serves it.
+   * The owner signs in with their real Supabase account.
+   * The preview's Supabase redirect URL is added to the auth allow-list. This
+     is a remote config change and needs approval; remove it at teardown.
+   * Railway's generated domains are unlisted. Do not share them.
+   * Residual risk: the API's CORS is `*`, and V1 public modes on the preview
+     database are reachable by anyone who has the API URL. Writes land only in
+     the preview volume.
+6. **Play.** On desktop and phone, open `https://<dv2-preview-web domain>/`,
+   sign in, and go to `/admin/creator-replay` → **Play a three-act take**.
+   §2 covers repeat takes.
+7. **Rollback and teardown.**
+   * **Instant:** unset `DAILY_THREE_ACTS_V2` on `dv2-preview-api` (the route
+     returns 404).
+   * **Full:** delete the `dv2-owner-preview` environment (both services and
+     the volume), and remove the redirect URL from Supabase.
+   * Production is never changed, so there is nothing to roll back there.
 
 ## 7. Remaining release blockers (owner review gate)
 
@@ -242,7 +311,7 @@ runs, 0 rating rows; all 23 children `creator_replay`, none rating-eligible.
 | 2 | Takedown rows exist only in the dev copy; the economy manifest is verified to 26.15 only | re-verify 26.20/26.21, then import (gate 8) |
 | 3 | Serveable scope for the owner playtest only (gate 9); strict CERTIFIED scope composes 0 days (no certified Late-Medium content) | owner |
 | 4 | Phones show only Act I and the set bar (no header title beat < 768 px) | owner: accept, or ask for a phone act beat |
-| 5 | The recap section heading still says "Today's Challenge" on owner takes | minor; owner |
+| 5 | ~~The recap section heading still says "Today's Challenge" on owner takes~~ | fixed FE `fa16010c` |
 | 6 | VISION42: 13 rows flagged for a wiki recheck; Role Quest and Surprise Finder have no servable rows | content owner |
 | 7 | Chronoscope / Match Grid / Reconstruct record no durable child refs (Review cannot replay them) | module change, not started |
 | 8 | Shared-day repeats 15–21% vs per-player freshness | owner product decision |
