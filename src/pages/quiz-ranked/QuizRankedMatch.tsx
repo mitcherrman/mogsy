@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { withInlineOrderForgeReveal } from "@/lib/ranked-core/orderForgeLockReveal";
+import { withJourneyAckReveal } from "@/lib/ranked-core/journeyAckReveal";
 import { withSettledTimeoutReveal } from "@/lib/ranked-core/reconstructTimeoutReveal";
 import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -1047,11 +1048,14 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // (from the resolved round's settlement, the viewer's own entry only).
   const surfaceSegmentState = useMemo(
     () => withSettledTimeoutReveal(
-      withInlineOrderForgeReveal(surfaceRound?.segmentState ?? null,
+      withInlineOrderForgeReveal(
+        // QRT1 — a Journey answer's reveal from its submit response, until a
+        // snapshot that carries it arrives (a no-op on every other segment).
+        withJourneyAckReveal(surfaceRound?.segmentState ?? null, m.journeyAckReveal, matchId),
         m.orderForgeLockReveal, matchId),
       { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber },
       viewerUserId),
-    [surfaceRound, m.orderForgeLockReveal, matchId,
+    [surfaceRound, m.orderForgeLockReveal, m.journeyAckReveal, matchId,
       m.lastSegmentSettlement, m.lastSegmentRoundNumber, viewerUserId]);
   const segmentActions = useMemo(() => ({
     submitChallenge: m.submitSegmentChallenge,

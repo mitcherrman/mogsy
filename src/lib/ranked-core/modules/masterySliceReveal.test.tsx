@@ -11,13 +11,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MASTERY_REVEAL_DURATION_MS } from "@/features/mastery/interactions/revealState";
+import { MASTERY_REVEAL_DURATION_MS, useRevealAutoAdvance } from "@/features/mastery/interactions/revealState";
 import { RankedPublicParseError, readPublicRound } from "@/lib/ranked-public/contracts";
 import type { SegmentStateView } from "@/lib/ranked-public/contracts";
 import { publicRoundV2 } from "@/lib/ranked-public/fixtures";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { masterySliceModule } from "./masterySliceModule";
 import type { ModuleSegmentActions } from "./types";
+
+// The real hook, observed: QRT1 must not hand the block-clocked (non-Journey)
+// slice an end instant — its hold stays the plain full-window delay.
+vi.mock("@/features/mastery/interactions/revealState", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/features/mastery/interactions/revealState")>();
+  return { ...real, useRevealAutoAdvance: vi.fn(real.useRevealAutoAdvance) };
+});
 
 const OPTIONS = ["9", "12", "6", "5"];
 
@@ -245,6 +252,17 @@ describe("mastery_slice renderer — the reveal hold", () => {
       .not.toHaveAttribute("data-revealing");
     expect(screen.getByTestId("mastery-submit-button")).toBeTruthy();
     void rerender;
+  });
+
+  it("QRT1: arms the hold as a plain full-window delay, never against an end instant", () => {
+    vi.mocked(useRevealAutoAdvance).mockClear();
+    renderModule(answeredState());
+    const held = vi.mocked(useRevealAutoAdvance).mock.calls.filter(([key]) => key === 0);
+    expect(held.length).toBeGreaterThan(0);
+    for (const [, , delayMs, endsAtMs] of held) {
+      expect(delayMs).toBe(MASTERY_REVEAL_DURATION_MS);
+      expect(endsAtMs).toBeNull();
+    }
   });
 
   it("a repeated poll cannot re-open a reveal already watched", () => {

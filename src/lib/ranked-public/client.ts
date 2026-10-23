@@ -100,6 +100,55 @@ export interface SegmentChallengeAck {
    * module, which only the caller knows (`contracts.readOwnChallengeReveal`).
    */
   challengeReveal: unknown;
+  /**
+   * QRT1 — a Journey answer's reveal phase, as the server derived it at the
+   * instant it accepted the answer (`challenge_reveal_timing`), or null: every
+   * non-Journey ack, every ack from a backend before QRT1, and any malformed
+   * block. It lets the reveal begin from this response rather than a poll
+   * later; it never lengthens one (`revealUntil` is when the next clock runs).
+   */
+  revealTiming: JourneyAckRevealTiming | null;
+}
+
+/** QRT1 — `challenge_reveal_timing`, read fail-closed (any bad field → null). */
+export interface JourneyAckRevealTiming {
+  revealingCardIndex: number;
+  revealUntil: string;
+  revealWindowMs: number;
+  nextChallengeIndex: number;
+  nextCardStartedAt: string | null;
+  nextCardDeadline: string | null;
+  challengesCompleted: number;
+  finished: boolean;
+}
+
+const isInstant = (v: unknown): v is string =>
+  typeof v === "string" && !Number.isNaN(Date.parse(v));
+const isCount = (v: unknown): v is number =>
+  typeof v === "number" && Number.isInteger(v) && v >= 0;
+
+/** QRT1 — the ack's reveal timing, or null. Never throws: it is presentation. */
+export function readJourneyAckRevealTiming(v: unknown): JourneyAckRevealTiming | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const optInstant = (x: unknown) => (x === null || x === undefined ? null : isInstant(x) ? x : undefined);
+  const nextStart = optInstant(o.next_card_started_at);
+  const nextDeadline = optInstant(o.next_card_deadline);
+  if (!isCount(o.revealing_card_index) || !isInstant(o.reveal_until)
+    || !isCount(o.reveal_window_ms) || o.reveal_window_ms === 0
+    || !isCount(o.next_challenge_index) || !isCount(o.challenges_completed)
+    || typeof o.finished !== "boolean"
+    || nextStart === undefined || nextDeadline === undefined) return null;
+  return {
+    revealingCardIndex: o.revealing_card_index,
+    revealUntil: o.reveal_until,
+    revealWindowMs: o.reveal_window_ms,
+    nextChallengeIndex: o.next_challenge_index,
+    nextCardStartedAt: nextStart,
+    nextCardDeadline: nextDeadline,
+    challengesCompleted: o.challenges_completed,
+    finished: o.finished,
+  };
 }
 
 /** A 429 throttle is transient — back off and retry, never fatal. */
@@ -558,6 +607,7 @@ const readChallengeAck = (json: unknown): SegmentChallengeAck => {
     segmentResolved: o.segment_resolved === true,
     nextChallengeIndex: o.next_challenge_index,
     challengeReveal: o.challenge_reveal ?? null,
+    revealTiming: readJourneyAckRevealTiming(o.challenge_reveal_timing),
   };
 };
 

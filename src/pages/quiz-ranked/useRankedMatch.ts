@@ -8,7 +8,7 @@
  * no participant token or admin key.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
   swapMediaWaitMs,
@@ -31,12 +31,13 @@ import type {
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import {
-  META_REFLEX_MIXED_VERSION, readOwnChallengeReveal, readResolvedPresentationMs,
+  MASTERY_SLICE_MODULE_ID, META_REFLEX_MIXED_VERSION, readOwnChallengeReveal, readResolvedPresentationMs,
   readSegmentSettlement,
 } from "@/lib/ranked-public/contracts";
 import {
   INLINE_LOCK_REVEAL_MODULES, SERVER_PACED_REVEAL_MODULES, type OrderForgeLockRevealRef,
 } from "@/lib/ranked-core/orderForgeLockReveal";
+import { withJourneyAckReveal, type JourneyAckRevealRef } from "@/lib/ranked-core/journeyAckReveal";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
 import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
@@ -241,6 +242,14 @@ export interface MatchController {
    * (`withInlineOrderForgeReveal`).
    */
   orderForgeLockReveal: OrderForgeLockRevealRef | null;
+  /**
+   * QRT1 — the reveal phase of the viewer's last ACCEPTED Journey answer, from
+   * the submit response, tagged with its match and segment, or null. Already
+   * applied to `segmentState`; the host applies it to the presented segment
+   * too (`withJourneyAckReveal`), so the reveal starts from the response
+   * rather than a poll later.
+   */
+  journeyAckReveal: JourneyAckRevealRef | null;
   /** Transcript of the last resolved multi-challenge segment, or null. */
   lastSegmentSettlement: SegmentSettlementView | null;
   /**
@@ -369,6 +378,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     useState<SegmentSettlementView | null>(null);
   const [orderForgeLockReveal, setOrderForgeLockReveal] =
     useState<OrderForgeLockRevealRef | null>(null);
+  const [journeyAckReveal, setJourneyAckReveal] =
+    useState<JourneyAckRevealRef | null>(null);
   const [lastSegmentRoundNumber, setLastSegmentRoundNumber] =
     useState<number | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
@@ -1059,6 +1070,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     setLastSegmentSettlement(null);
     setLastSegmentRoundNumber(null);
     setOrderForgeLockReveal(null);
+    setJourneyAckReveal(null);
     setAnsweredSelection(null);
     (async () => {
       // RB3.2 — RECOVERY IS EXCEPTIONAL, and a fresh entry is not it.
@@ -1204,7 +1216,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   // the next authoritative snapshot is the only thing that moves the segment
   // forward, which is what makes a refresh mid-segment land correctly.
 
-  const segmentState = publicRound?.segmentState ?? null;
+  // QRT1 — the last accepted Journey answer's reveal, on a snapshot that has
+  // not caught up with it yet (a no-op once one has). The Journey poll
+  // scheduling below therefore keys off the reveal from the response itself.
+  const segmentState = useMemo(
+    () => withJourneyAckReveal(publicRound?.segmentState ?? null, journeyAckReveal, matchId),
+    [publicRound, journeyAckReveal, matchId]);
   const segmentNumber = segmentState?.segmentNumber ?? null;
 
   /**
@@ -1255,6 +1272,21 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     const id = window.setTimeout(poke, delay + 60);
     return () => window.clearTimeout(id);
   }, [journeyRevealUntil, skewMs, poke]);
+  // QRT1 — and one poll AT the open card's deadline. A child that expires
+  // unanswered is settled by the server at that instant and its reveal starts
+  // there, but nothing told this client until the ordinary cadence came round
+  // — up to 1.5 s of a 2.25 s reveal gone before it was drawn. Scheduling
+  // only, like the two above: the expiry, and what it reveals, are the
+  // server's.
+  const journeyCardDeadline = segmentState?.journey && !segmentState.ownFinished
+    ? segmentState.ownCardDeadline : null;
+  useEffect(() => {
+    if (!journeyCardDeadline) return;
+    const delay = msUntilServerInstant(journeyCardDeadline, skewMs, Date.now());
+    if (delay <= 0) return;
+    const id = window.setTimeout(poke, delay + 60);
+    return () => window.clearTimeout(id);
+  }, [journeyCardDeadline, skewMs, poke]);
 
   /**
    * JOURNEY5-LIVE — resolves `true` when the server ACCEPTED the action and
@@ -1341,6 +1373,25 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
           });
           return;
         }
+        // QRT1 — a Journey answer's reveal phase, straight from the ack. A
+        // malformed or absent block (an older backend, a non-Journey segment)
+        // leaves the reveal to the next poll, exactly as before.
+        if (segmentState?.moduleId === MASTERY_SLICE_MODULE_ID && segmentState.journey) {
+          const ack = response as api.SegmentChallengeAck;
+          if (ack.revealTiming && ack.challengeReveal !== null && ack.segmentNumber === segment) {
+            try {
+              setJourneyAckReveal({
+                matchId: matchId!, segmentNumber: segment, timing: ack.revealTiming,
+                reveal: readOwnChallengeReveal(
+                  ack.challengeReveal, ack.revealTiming.nextChallengeIndex, MASTERY_SLICE_MODULE_ID),
+              });
+            } catch (e) {
+              // Presentation only: the next poll carries the same reveal.
+              console.error("[ranked] journey answer reveal failed to parse", e);
+            }
+          }
+          return;
+        }
         if (segmentState?.moduleId !== "item_cost_duel"
             || segmentState.moduleVersion < META_REFLEX_MIXED_VERSION) return;
         playSfx("ranked.meta.action", {
@@ -1392,7 +1443,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     connectionInterrupted, error, contractError, retry, roundLive, answer, selectAbility,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
-    submitSegmentChallenge, revealHold, orderForgeLockReveal,
+    submitSegmentChallenge, revealHold, orderForgeLockReveal, journeyAckReveal,
     // READY, not merely claimed. The phase holds the end screen off from the
     // instant the completion is observed; the PRESENTATION only begins once
     // there is something to present, so the beat cannot announce the end of
