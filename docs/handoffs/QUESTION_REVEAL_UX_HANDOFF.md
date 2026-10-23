@@ -52,7 +52,7 @@ The visible reveal = `reveal_until` − the moment the client first draws it. Be
 3. **Poll at the open child's deadline** (Journey only, scheduling only), so a timeout's reveal arrives about one read after the server settles it.
 4. **Hold against the end instant.** `useRevealAutoAdvance(key, cb, delayMs, endsAtMs)` measures the wait when the timer is armed. Browser-measured end overshoot went from +138 ms to +22–25 ms (just the render after the timer fires).
 5. **No server-side "latency allowance".** Adding slack to the window would hand fast clients a longer reveal than the owner's target and still not bound slow ones. The client minimises delivery loss instead. Residual loss: answer = one-way ack latency; timeout = 60 ms + one read.
-6. **Equation Unfold fold point unchanged (3.2 s).** I tried moving it to 4.2 s (so the added second went to the expanded derivation), but that rewrites a measured, test-pinned JP5 design across ~9 tests, so I reverted it. With 7000 ms the derivation is expanded for 3.2 s, then the compact chain is shown for 3.8 s (was 2.8 s) and can be tapped open. **Owner decision pending:** move the fold to 4.2 s?
+6. **Equation Unfold fold point unchanged (3.2 s).** I tried moving it to 4.2 s (so the added second went to the expanded derivation), but that rewrites a measured, test-pinned JP5 design across ~9 tests, so I reverted it. With 7000 ms the derivation is expanded for 3.2 s, then the compact chain is shown for 3.8 s (was 2.8 s) and can be tapped open. **Owner decision (2026-10-22): keep the fold at the measured 3.2 s for Phase 1.**
 7. **Click acknowledgment** is unchanged and verified. A tap marks the tablet `selected`, locks the grid, and paints no correct or wrong until the server's reveal arrives. A refused submit releases the lock.
 
 ## Changes
@@ -148,6 +148,6 @@ Open question for the owner before Phase 2: the server-paced modules deliberatel
 
 ## Next phase
 
-* Owner: decide on the 4.2 s fold (Decision 6) and the outcome-blind question above.
+* Owner: decide the outcome-blind question above (the fold stays at 3.2 s, decided 2026-10-22).
 * After both PRs merge and deploy: on a live Journey, measure `reveal_until − first paint` for an answer and a timeout (expect about one-way latency, and about 60 ms + one read). If the Railway env still sets `RANKED_MASTERY_REVEAL_WINDOW_MS`, confirm new Journey segments freeze 2250.
 * Phase 2 per the recommendation above, in separate PRs.
