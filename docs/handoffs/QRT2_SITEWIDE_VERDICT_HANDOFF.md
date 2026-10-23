@@ -1,6 +1,6 @@
 # QRT2 — sitewide verdict clarity and readable reveal timing
 
-State: **Phase 2A implemented** (Ranked + hosted Daily answer-result presentation), draft PR open, nothing merged, published or deployed. Frontend branch `qrt2/sitewide-verdict-clarity`, forked from `main` `18a33eff` on 2026-10-22 (still `main`'s tip on 2026-10-23: no drift). The sections after the Phase 2A report are the original scope notes and remain the plan for later phases. This is the durable handoff for a **fresh Claude instance**; start here and inspect current code/history before edits.
+State: **Phase 2A implemented** (Ranked + hosted Daily answer-result presentation), draft PR [mitcherrman/mogsy#136](https://github.com/mitcherrman/mogsy/pull/136) (head `8977797f`), nothing merged, published or deployed. QRT1 companions stay as they were: frontend #134, backend #97 (both still draft). Frontend branch `qrt2/sitewide-verdict-clarity`, forked from `main` `18a33eff` on 2026-10-22 (still `main`'s tip on 2026-10-23: no drift). The sections after the Phase 2A report are the original scope notes and remain the plan for later phases. This is the durable handoff for a **fresh Claude instance**; start here and inspect current code/history before edits.
 
 # PHASE 2A REPORT (2026-10-23)
 
