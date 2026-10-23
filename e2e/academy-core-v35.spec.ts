@@ -292,8 +292,10 @@ test.describe("desktop: the books genuinely orbit", () => {
 
 test.describe("desktop: interaction", () => {
   test("hover selects the book: emphasised at once, the whole orbit brings it front-centre and holds it; the others support it; the crystal projects its room", async ({ page }) => {
-    await open(page, 1366, 768);
+    // Verify each independently in a free-running orbit: after a selection the
+    // previous book remains held and can occlude a different book behind the Core.
     for (const id of ["combat-lab", "leaguecraft"] as const) {
+      await open(page, 1366, 768);
       await reachBook(page, id);
       await heldAt(page, id);
       expect(await isFrontCentre(page, id), `${id} front-centre`).toBe(true);
@@ -826,7 +828,9 @@ test.describe("selector: two arrows beneath the Core", () => {
     await open(page, 1366, 768);
     const a = await boxes(page);
     await arrow(page, "left").click();
-    await page.waitForTimeout(450);
+    // Headless Chromium on CI may advance only a few orbit frames in 450 ms.
+    // Observe a meaningful portion of the turn, then still assert its endpoint.
+    await page.waitForTimeout(1200);
     const mid = await boxes(page);
     // every book moves mid-turn (a short first turn moves the books at the orbit's ends only a few px)
     for (const id of IDS) expect(dist(a[id], mid[id]), `${id} turned with the orbit`).toBeGreaterThan(1.5);
@@ -1306,7 +1310,24 @@ test.describe("hover-to-front", () => {
       await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-mode", "composed");
       await expect(page.getByTestId("academy-veil")).toHaveCount(0);
       await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
-      await page.getByTestId("academy-core-slot-combat-lab").getByRole("link").tap();
+      // CSS levitation makes Playwright's locator.tap() wait indefinitely for
+      // geometric stability; a real touchscreen tap does not require that.
+      // Choose a currently unobstructed point on the actual link.
+      const target = await page.evaluate(() => {
+        const link = document.querySelector<HTMLAnchorElement>('[data-testid="academy-core-slot-combat-lab"] a');
+        if (!link) return null;
+        const r = link.getBoundingClientRect();
+        for (const fy of [0.5, 0.35, 0.65, 0.2, 0.8]) {
+          for (const fx of [0.5, 0.3, 0.7]) {
+            const x = r.x + r.width * fx;
+            const y = r.y + r.height * fy;
+            if (link.contains(document.elementFromPoint(x, y))) return { x, y };
+          }
+        }
+        return null;
+      });
+      expect(target, "a visible, unobstructed mobile book tap target").not.toBeNull();
+      await page.touchscreen.tap(target!.x, target!.y);
       await page.waitForURL(/\/combat-lab$/);
     } finally {
       await ctx.close();
