@@ -19,6 +19,7 @@ import SEOHead from "@/components/SEOHead";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
+import { PublicDailyFormatControl } from "@/components/admin/PublicDailyFormatControl";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateAppSettings } from "@/hooks/useAppSettings";
 import {
@@ -407,6 +408,9 @@ export default function AdminPlatformPolicies() {
                 </section>
               );
             })}
+
+            {/* Not an app_settings row: the Daily backend owns and enforces it. */}
+            <PublicDailyFormatControl />
 
             <p className="flex items-start gap-2 pt-2 text-[11px] text-muted-foreground">
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />

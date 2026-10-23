@@ -10,6 +10,7 @@
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
 import { hasMainDaily } from "@/lib/daily-challenge/run/contracts";
 import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
+import { OWNER_TAKE_LABELS, useOwnerTake } from "@/lib/daily-challenge/run/ownerTake";
 import { specialStageRulesetLabel, stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 
 export function StageTag({ stage, size = "sm" }: {
@@ -99,15 +100,16 @@ export function SectionLadder({ run, highlight = null, reserveMarks = false }: {
   highlight?: string | null;
   reserveMarks?: boolean;
 }) {
+  const ownerTake = useOwnerTake();
   return (
-    <div data-testid="daily-section-ladder" aria-label="Today's Daily"
+    <div data-testid="daily-section-ladder" aria-label={ownerTake ? OWNER_TAKE_LABELS.section : "Today's Daily"}
       className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-center sm:gap-x-5">
       {dailySections(run).map((g) => (
         <section key={g.id} data-testid={`daily-section-${g.id}`} data-section={g.id}
           className="flex flex-col items-center gap-1">
           <h3 className={`text-[0.625rem] font-semibold uppercase tracking-[0.2em] ${
             g.id === "today" ? "text-[#f0d78c]" : "text-[var(--ranked-muted,#a8a29e)]"}`}>
-            {g.label}
+            {ownerTake && g.id === "today" ? OWNER_TAKE_LABELS.section : g.label}
             {g.id !== "today" && <span className="font-normal opacity-75"> · Optional</span>}
           </h3>
           <ol className="flex flex-wrap items-center justify-center gap-1.5">

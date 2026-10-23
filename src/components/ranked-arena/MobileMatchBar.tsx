@@ -19,6 +19,7 @@
 import { CheckCircle2, Hourglass, Lock, ShieldCheck, XCircle } from "lucide-react";
 import { RoleMascot } from "@/components/mascot/RoleMascot";
 import { CountdownDigits } from "@/components/quiz-timer/CountdownDigits";
+import { useCentralStage } from "./CentralStage";
 import { countdownDataAttrs } from "@/lib/quiz-timer/countdownFeedback";
 import type { ArenaHeaderView, ArenaRail } from "@/lib/ranked-core/arenaView";
 import type { CombatantView, TimerView } from "@/lib/ranked-core/viewTypes";
@@ -172,6 +173,13 @@ function Side({ rail, progressionEnabled }: { rail: CombatantRail; progressionEn
 
 function Clock({ timer, header }: { timer: TimerView | null; header: ArenaHeaderView }) {
   const expired = timer !== null && timer.remainingSeconds <= 0;
+  // Daily three acts: the desktop title beat's own timing (`useCentralStage`)
+  // puts an act opening ("Act II · Mid") on the position line for that same
+  // window. Same line, same height; other module titles stay desktop-only.
+  const stage = useCentralStage({ result: header.centralResult ?? null,
+    moduleTitle: header.moduleTitle ?? null, moduleEventId: header.moduleEventId ?? null,
+    moduleTitleWindowMs: header.moduleTitleWindowMs });
+  const act = stage.kind === "module" && /^Act /.test(stage.title) ? stage.title : null;
   return (
     <div data-testid="mobile-clock"
       className="flex min-w-[3.25rem] flex-col items-center justify-center gap-0.5">
@@ -189,9 +197,10 @@ function Clock({ timer, header }: { timer: TimerView | null; header: ArenaHeader
         <span data-testid="mobile-timer-value" aria-hidden
           className="font-mono text-[1.25rem] font-black leading-none text-muted-foreground/50">–:––</span>
       )}
-      <span data-testid="mobile-module-position"
-        className="whitespace-nowrap text-[10px] font-bold uppercase leading-none tracking-[0.12em] tabular-nums text-muted-foreground">
-        {header.title}
+      <span data-testid="mobile-module-position" data-act={act ? "true" : undefined}
+        className={`whitespace-nowrap text-[10px] font-bold uppercase leading-none tracking-[0.12em] tabular-nums ${
+          act ? "text-[#e8c97a]" : "text-muted-foreground"}`}>
+        {act ?? header.title}
       </span>
     </div>
   );

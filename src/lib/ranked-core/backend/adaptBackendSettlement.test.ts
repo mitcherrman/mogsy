@@ -250,6 +250,21 @@ describe("adaptBackendSettlement — exact projection pass-through", () => {
     expect(a.completionReason).toBe("segments_complete");
   });
 
+  /**
+   * Daily ruleset stages end on their own terms: a Time Trial whose time bank
+   * ran dry, a Survival whose strikes ran out. Rejected, the stage's LAST
+   * round never reached the settlement log (owner playtest, 2026-10-21).
+   */
+  it.each(["time_bank_exhausted", "strikes_exhausted"])(
+    "accepts a Daily ruleset stage's final round ending `%s`", (reason) => {
+      const f = pointsFinal(null);
+      (f as { completion_reason: string }).completion_reason = reason;
+      const a = adapt(f);
+      expect(a.matchOver).toBe(true);
+      expect(a.completionReason).toBe(reason);
+      expect(a.modulePoints?.[FIXTURE_P1_ID]?.basePoints).toBe(2);
+    });
+
   it("accepts a `segments_complete` DRAW with no winner", () => {
     const a = adapt(pointsFinal(null));
     expect(a.matchOver).toBe(true);

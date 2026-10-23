@@ -1,5 +1,6 @@
 /**
  * PM1 — Practice presented in the canonical Ranked arena.
+ * PM2 — the phone one-screen frame, the one-line chrome, and no Next.
  *
  * The page keeps every behaviour; these fence the PRESENTATION contract:
  * the run renders through `CanonicalArena`'s real question stage and answer
@@ -77,7 +78,10 @@ function renderArena(over: Partial<PracticeArenaProps> = {}) {
     fillBlankValue: "",
     onFillBlankChange: vi.fn(),
     onSelectAnswer: vi.fn(),
-    onNext: vi.fn(),
+    runKey: "1",
+    onAdvance: vi.fn(),
+    onRetryAnswer: vi.fn(),
+    onSkip: vi.fn(),
     onRetry: vi.fn(),
     ...over,
   };
@@ -116,11 +120,11 @@ describe("PracticeArena — Practice in the canonical arena", () => {
     expect(screen.getByText("Checking your answer…")).toBeTruthy();
   });
 
-  it("shows the backend's reveal: tablets, verdict, explanation, XP and Next", () => {
+  it("shows the backend's reveal: tablets, verdict, explanation and XP — and no Next", () => {
     const result: QuizAnswerResult = {
       is_correct: false, correct_answer: "300", explanation: "Flash is on a 300 second cooldown.", xp_earned: 3,
     };
-    const { props } = renderArena({
+    renderArena({
       selectedAnswer: "240", answerResult: result, outcomes: [{ position: 0, isCorrect: false }],
     });
     const grid = screen.getByTestId("answer-grid");
@@ -129,32 +133,42 @@ describe("PracticeArena — Practice in the canonical arena", () => {
     expect(grid.querySelector('[data-choice-state="incorrect-selected"]')?.textContent).toContain("240");
     const footer = document.querySelector<HTMLElement>("[data-practice-reveal-footer]")!;
     expect(within(footer).getByText("Incorrect")).toBeTruthy();
-    expect(within(footer).getByText("300")).toBeTruthy();
+    // The revealed grid marks the right tablet; the box does not repeat it.
+    expect(within(footer).queryByText(/Correct answer/)).toBeNull();
     expect(screen.getByTestId("practice-explanation").textContent).toBe(result.explanation);
     expect(screen.getByTestId("practice-xp-earned").textContent).toContain("+3 XP");
     expect(screen.getByTestId("central-result").getAttribute("aria-label")).toBe("INCORRECT, +3 XP");
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
-    expect(props.onNext).toHaveBeenCalledTimes(1);
+    expect(footer.getAttribute("data-auto-advance")).toBe("pending");
+    expect(screen.getByTestId("practice-advance-meter")).toBeTruthy();
+    expect(screen.queryByTestId("practice-next")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Next question|See results/ })).toBeNull();
   });
 
-  it("offers See results on the last question", () => {
+  it("has no See results button on the last question either", () => {
     renderArena({
       currentIndex: 1, selectedAnswer: "Long Sword",
       answerResult: { is_correct: true, correct_answer: "Long Sword", explanation: "" },
     });
-    expect(screen.getByRole("button", { name: /See results/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /See results|Next question/ })).toBeNull();
     expect(within(document.querySelector<HTMLElement>("[data-practice-reveal-footer]")!).getByText("Correct!")).toBeTruthy();
   });
 
-  it("never shows a verdict for an answer the backend could not verify", () => {
-    renderArena({ selectedAnswer: "240", answerResult: UNVERIFIED_ANSWER });
+  it("never shows a verdict for an answer the backend could not verify, and offers Try again / Skip", () => {
+    const { props } = renderArena({ selectedAnswer: "240", answerResult: UNVERIFIED_ANSWER,
+      submitFailure: { kind: "not-sent", retryable: true } });
     const footer = document.querySelector<HTMLElement>("[data-practice-reveal-footer]")!;
     expect(footer.getAttribute("data-verdict-tone")).toBe("neutral");
+    expect(footer.getAttribute("data-auto-advance")).toBe("held");
     expect(within(footer).getByText("Answer not verified")).toBeTruthy();
     expect(within(footer).queryByText(/Incorrect|Correct!/)).toBeNull();
     expect(screen.getByTestId("answer-grid").querySelector('[data-choice-state="correct"]')).toBeNull();
     expect(screen.queryByTestId("central-result")).toBeNull();
-    expect(screen.getByRole("button", { name: /Next question/ })).toBeTruthy();
+    expect(screen.queryByTestId("practice-advance-meter")).toBeNull();
+    fireEvent.click(screen.getByTestId("practice-retry-answer"));
+    expect(props.onRetryAnswer).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /Skip question/ }));
+    expect(props.onSkip).toHaveBeenCalledTimes(1);
+    expect(props.onAdvance).not.toHaveBeenCalled();
   });
 
   it("draws the question's own art in the stage's media region", () => {

@@ -17,7 +17,7 @@
  * Every dependency is faked at its boundary so the assertions are about the
  * page's own behaviour.
  */
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RankedRole } from "@/lib/ranked-public/roles";
@@ -64,6 +64,18 @@ vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
   getExistingBackendAuthToken: async () => "test-token",
 }));
+
+/**
+ * PM2 — the Practice reveal advances by itself after a hold of seconds. The
+ * timer hook is replaced by one that records what the arena asked for, and
+ * `advanceReveal()` plays the timer's part (see Quiz.practiceMissed.test.tsx).
+ */
+type AutoAdvanceArgs = { revealKey: string | null; onAdvance: () => void };
+const autoAdvance = vi.hoisted(() => ({ latest: null as AutoAdvanceArgs | null }));
+vi.mock("@/components/quiz/practice-arena/usePracticeAutoAdvance", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/components/quiz/practice-arena/usePracticeAutoAdvance")>();
+  return { ...real, usePracticeAutoAdvance: (args: AutoAdvanceArgs) => { autoAdvance.latest = args; } };
+});
 vi.mock("@/lib/audio/usePlaySfx", () => ({ usePlaySfx: () => ({ play: vi.fn() }) }));
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: vi.fn() }) }));
 
@@ -201,10 +213,17 @@ async function startPractice() {
 
 async function answerFirst() {
   fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
-  await waitFor(() => expect(screen.getByRole("button", { name: /Next question/ })).toBeTruthy());
+  await waitFor(() => expect(autoAdvance.latest?.revealKey ?? null).not.toBeNull());
+}
+
+/** Wait for a graded reveal with a pending auto-advance, then let it fire. */
+async function advanceReveal() {
+  await waitFor(() => expect(autoAdvance.latest?.revealKey ?? null).not.toBeNull());
+  act(() => { autoAdvance.latest!.onAdvance(); });
 }
 
 beforeEach(() => {
+  autoAdvance.latest = null;
   track.mockClear();
   selectRole.mockClear();
   auth.user = { id: "g1", is_anonymous: true };
@@ -311,10 +330,10 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     expect(gate.count).toBe(1);
     expect(screen.queryByText(/Sign up to save your XP/)).toBeNull();
     expect(signupGuide()).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText("Quiz Complete")).toBeTruthy());
     expect(signupGuide()).toBeNull();
     expect(screen.queryByText(/Sign up to save your XP/)).toBeNull();
@@ -332,10 +351,10 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     expect(screen.queryByRole("button", { name: "Keep Playing as Guest" })).toBeNull();
     expect(screen.getByRole("button", { name: /Sign up/ })).toBeTruthy();
     // It is shown once per session, and the soft nudge never arms the hard one.
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText("Quiz Complete")).toBeTruthy());
     expect(signupGuide()).toBeNull();
     expect(screen.queryByRole("button", { name: "Keep Playing as Guest" })).toBeNull();
@@ -351,11 +370,11 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     expect(signupGuide()).toBeNull();
     expect(screen.queryByRole("button", { name: "Create Account" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
     expect(signupGuide()).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
 
     await waitFor(() => expect(signupGuide()).not.toBeNull());
     // 2/2 correct.
@@ -381,10 +400,10 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     await renderHub();
     await startPractice();
     await answerFirst();
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await waitFor(() => expect(signupGuide()).not.toBeNull());
 
     fireEvent.click(screen.getByRole("button", { name: "Keep Playing as Guest" }));
@@ -402,10 +421,10 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     await renderHub();
     await startPractice();
     await answerFirst();
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await waitFor(() => expect(signupGuide()).not.toBeNull());
 
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
@@ -421,10 +440,10 @@ describe("Leaguecraft — signup conversion keeps the existing policy", () => {
     await startPractice();
     await answerFirst();
     expect(gate.count).toBe(10);
-    fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await waitFor(() => expect(screen.getByText("Quiz Complete")).toBeTruthy());
     expect(signupGuide()).toBeNull();
     expect(screen.queryByRole("button", { name: "Create Account" })).toBeNull();

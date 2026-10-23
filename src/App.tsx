@@ -321,6 +321,12 @@ const PerfectTimingDemo = import.meta.env.DEV
 // the public /combat-lab page.
 const CombatTheaterAdmin = lazy(() => import("./pages/dev/combat-theater/CombatTheaterDev"));
 const CombatTheaterDev = import.meta.env.DEV ? CombatTheaterAdmin : null;
+// ATL-P1-C: the Atlas flagship interaction prototype over memory-only DEMO
+// fixtures. Same rule as Combat Theater: owner-only in production behind the
+// parent AdminRoute, and a development-only twin under /lol/dev so it carries
+// the League theme. No backend adapter, no persistence, nothing shared.
+const AtlasP1CAdmin = lazy(() => import("./pages/dev/atlas-p1c/AtlasP1CPage"));
+const AtlasP1CDev = import.meta.env.DEV ? AtlasP1CAdmin : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -582,6 +588,8 @@ export const appRouter = createBrowserRouter(
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
                     {/* COMBAT V4: fixture-only Theater preview, protected by the parent AdminRoute. */}
                     <Route path="combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterAdmin /></Suspense>} />
+                    {/* ATL-P1-C: fixture-only Atlas prototype, protected by the parent AdminRoute. */}
+                    <Route path="atlas-p1c" element={<Suspense fallback={<RouteFallback />}><AtlasP1CAdmin /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
                     <Route path="content-atlas" element={<AdminRoute><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
@@ -878,6 +886,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {CombatTheaterDev ? (
                     <Route path="/dev/combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterDev /></Suspense>} />
+                  ) : null}
+                  {AtlasP1CDev ? (
+                    <Route path="/lol/dev/atlas-p1c" element={<Suspense fallback={<RouteFallback />}><AtlasP1CDev /></Suspense>} />
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />

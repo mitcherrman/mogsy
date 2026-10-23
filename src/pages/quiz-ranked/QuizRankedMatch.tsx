@@ -33,6 +33,8 @@ import { RankedRulesScroll } from "@/components/ranked-rules/RankedRulesScroll";
 import { BonusModeRules } from "@/components/public-modes/BonusModeRules";
 import { isPublicModeId, PUBLIC_MODE_TITLES } from "@/lib/public-modes/contracts";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
+import { rendererForDailyV2Segment } from "@/lib/daily-v2/adapters/modeReuse";
+import { actOpeningTitle, projectSetTimeline } from "@/lib/daily-v2/threeActsPlan";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
@@ -633,6 +635,8 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   /** RFX1 — the card that was already revealing when this mount first saw the
    *  match (`undefined` until then). Restored, never replayed. */
   const cardBaselineRef = useRef<string | null | undefined>(undefined);
+  /** The last card this mount watched being revealed (see `heldFinal`). */
+  const watchedCardKeyRef = useRef<string | null>(null);
   const settlementAwards = useMemo((): Record<string, AwardEvent> => {
     const round = m.lastResolved?.roundNumber ?? null;
     if (round === null) return {};
@@ -770,7 +774,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * ledger the two duelist columns read. Nothing new is fetched and nothing is
    * recomputed.
    */
-  const timeline = useMemo(() => (m.publicRound ? projectRoundTimeline({
+  // Daily three acts (V2): the host's server-published set plan. It groups the
+  // SAME timeline by set; nothing about a round is derived from its ordinal.
+  const threeActsPlan = host?.threeActsPlan ?? null;
+  const roundTimeline = useMemo(() => (m.publicRound ? projectRoundTimeline({
     roundNumber: m.roundNumber,
     completedRounds: m.publicRound.completedRounds,
     segmentRoundNumber,
@@ -787,12 +794,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     totalRounds: plannedRoundTotal(m.publicRound),
   }) : null),
   [m.publicRound, m.roundNumber, m.damageLog, segmentRoundNumber, nextObservedKinds]);
+  const timeline = useMemo(
+    () => (roundTimeline && threeActsPlan
+      ? { ...roundTimeline, sets: projectSetTimeline(roundTimeline, threeActsPlan) }
+      : roundTimeline),
+    [roundTimeline, threeActsPlan]);
   // The active segment's module renderer. A v2 payload or a legacy round has
   // no discriminator and resolves to quiz.v1 — the module those rounds were
   // created under — so behaviour is unchanged. null = unknown module.
+  // A three-act stage resolves ONLY the Daily V2 allow-list (lane D): an
+  // off-list pair renders the shell's neutral unsupported state.
   const renderer = useMemo(
-    () => (surfaceRound ? rendererForSegment(surfaceRound.segment) : null),
-    [surfaceRound]);
+    () => (!surfaceRound ? null : threeActsPlan
+      ? rendererForDailyV2Segment(surfaceRound.segment?.moduleId, surfaceRound.segment?.moduleVersion)
+      : rendererForSegment(surfaceRound.segment)),
+    [surfaceRound, threeActsPlan]);
   const question = useMemo(
     () => (surfaceRound && renderer ? renderer.projectQuestion(surfaceRound) : null),
     [surfaceRound, renderer]);
@@ -1489,7 +1505,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     ? cardBeat : null;
   const cardKey = revealingCard ? `${revealingCard.roundNumber}:${revealingCard.challengeIndex}` : null;
   if (cardBaselineRef.current === undefined) cardBaselineRef.current = cardKey;
-  const liveCard = revealingCard && cardKey !== cardBaselineRef.current ? revealingCard : null;
+  const watchedCard = revealingCard && cardKey !== cardBaselineRef.current ? revealingCard : null;
+  if (watchedCard) watchedCardKeyRef.current = cardKey;
+  // The LAST card of a finished block keeps its verdict on the centre stamp
+  // until the block settles. Its reveal window ends long before the opponent
+  // does, and the header's per-card plate is `md:` and up only, so on a phone
+  // the final verdict otherwise vanished while the player waited (the defect
+  // draft PR #108 patched with a second verdict word in the waiting line).
+  // Same element, same event id: nothing re-announces, and only a card this
+  // mount watched being revealed — a restored wait stays restored.
+  const segState = surfaceRound?.segmentState ?? null;
+  const heldFinal = cardBeat && segState?.ownFinished === true
+    && segState.ownRevealingCardIndex === null
+    && `${cardBeat.roundNumber}:${cardBeat.challengeIndex}` === watchedCardKeyRef.current
+    ? cardBeat : null;
+  const liveCard = watchedCard ?? heldFinal;
   const resultFeedback = projectResultFeedback({
     matchId, viewerId: viewerUserId, opponentId: opponentPlayerId,
     revealing, presentedRoundNumber: surfaceRoundNumber,
@@ -1655,7 +1685,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // the next one first — the backend publishes nothing about a question it
       // has not generated, which is the same fact that makes every future node
       // on the round rail neutral — so this face runs as the new round arrives.
-      moduleTitle: liveModuleTitle(headerRound ?? m.publicRound),
+      // Daily three acts: the first round of each act names the act instead
+      // ("Act II · Mid") -- the same beat, window and pacing.
+      moduleTitle: (threeActsPlan && actOpeningTitle(threeActsPlan, headerRoundNumber))
+        ?? liveModuleTitle(headerRound ?? m.publicRound),
       moduleEventId: headerRoundNumber,
       // RFX1 2B1 — the title may not outlive the server's own start. A swap
       // that waited for media shortens the title instead of leaving an intro

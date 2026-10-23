@@ -381,6 +381,13 @@ export interface ArenaQuestionSurface {
    * the legacy Pro Play payload field the arena must never read.)
    */
   regions?: QuestionSurfaceRegions | null;
+  /**
+   * PM2 — presentation settings relayed to the canonical surface over its
+   * competitive defaults (e.g. `mediaScale: "none"` for a question with no art
+   * of its own on a short phone, where the decorative band costs the prompt
+   * and the tablets their room). Absent for every existing caller.
+   */
+  surfaceSettings?: Partial<SurfaceSettings> | null;
 }
 
 /** PPQ2-C (proposed) — mode-supplied presentation for the stage's regions. */
@@ -534,6 +541,17 @@ export interface ArenaViewModel {
    * from it yet; Phase 2B2's entry intro is built on it.
    */
   entryPhase?: "match-unresolved" | "preparing" | "ready" | "live";
+  /**
+   * PM2 — the mode asks for the RMOB2 phone ONE-SCREEN composition although
+   * its flanks are not the duel's banners. Below `lg` the arena then becomes
+   * the same viewport-tall frame Ranked uses (`data-phone-arena`): the header
+   * strip gives way, the panels stay hidden, and the phone's bottom bar
+   * (Report · timeline window · Rules) replaces the full Module Rail. Nothing
+   * replaces the duel's match bar — a mode that opts in carries its identity in
+   * its own `chrome` row. Absent (Ranked, the Daily, Pro Play) leaves every
+   * existing composition exactly as it was; desktop is untouched either way.
+   */
+  phoneOneScreen?: boolean;
 }
 
 /** The terminal frame, when the match is over. */

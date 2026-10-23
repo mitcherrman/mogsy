@@ -281,6 +281,10 @@ export function CanonicalArena({
   // banners; a card flank (Daily, staff duel) or a mode panel is left alone.
   const mobileDuel = [view.left, view.right].every((r) =>
     r.kind === "combatant" && r.presentation === "banner");
+  // PM2 — the phone one-screen frame, for the duel OR for a mode that asks for
+  // it (`phoneOneScreen`). Only the duel draws the match bar; everything else
+  // of RMOB2 (the frame, the density pass, the bottom bar) keys off this.
+  const phoneArena = mobileDuel || view.phoneOneScreen === true;
   // JSPACE1: only a real Journey state gets condensed mobile chrome.
   const journeyMobile = mobileDuel && moduleSurface?.segmentState?.journey != null;
   // PPQ2-A — a `panel` flank is a DESKTOP flank. Below `lg` the arena stacks,
@@ -324,10 +328,10 @@ export function CanonicalArena({
    * banner had no other caller and is deleted outright.
    */
   return (
-    <ArenaShell size="wide" header={chrome} phoneArena={mobileDuel}
+    <ArenaShell size="wide" header={chrome} phoneArena={phoneArena}
       // PPQ2-A — a live arena whose flanks are not both duel banners stacks
       // on a phone; only the frame's bleed rule depends on knowing that.
-      phoneStacked={!mobileDuel && (view.left.kind === "panel" || view.right.kind === "panel")}>
+      phoneStacked={!phoneArena && (view.left.kind === "panel" || view.right.kind === "panel")}>
     {/* RG1 — THE STABLE SHELL.
        The shell hands this element one region (see `ArenaShell`'s stage floor)
        and the four bands below divide it: the top strip, the arena grid, the
@@ -355,10 +359,10 @@ export function CanonicalArena({
     <div className={`relative ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0 ${
       // RMOB2 — the phone arena hosts the dock tabs in its own bottom bar, so
       // it needs no clearance for them; other arenas keep RMOB1's.
-      mobileDuel ? "" : "pb-[var(--mogzy-dock-clearance)] lg:pb-0"}`}
+      phoneArena ? "" : "pb-[var(--mogzy-dock-clearance)] lg:pb-0"}`}
       data-testid="ranked-match"
       // RMOB2 — the phone one-screen composition keys off this (index.css).
-      data-phone-arena={mobileDuel ? "true" : undefined}
+      data-phone-arena={phoneArena ? "true" : undefined}
       data-mobile-journey={journeyMobile ? "true" : undefined}
       data-reveal-hold={view.revealHold ? "true" : "false"}
       // RFX1 2B1 — the presentation the arena is in, observable without
@@ -431,7 +435,7 @@ export function CanonicalArena({
         // this strip is desktop-only there.
         className={`ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1 sm:gap-x-4 sm:px-4
           lg:grid lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:gap-3 lg:px-0
-          min-[1500px]:gap-4${mobileDuel ? " max-lg:hidden" : ""}`}>
+          min-[1500px]:gap-4${phoneArena ? " max-lg:hidden" : ""}`}>
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
         {/* LEFT — the match's own hierarchy, three quiet lines.
             WHAT this is, WHO it is against, HOW FAR through it is. Each was
@@ -766,6 +770,8 @@ export function CanonicalArena({
                   permissions={questionSurface.permissions}
                   onSelectOption={questionSurface.onSelectOption}
                   variant="competitive"
+                  // PM2 — a mode's presentation overrides; absent → defaults.
+                  settings={questionSurface.surfaceSettings ?? undefined}
                   scenarioSource={null}
                   reveal={questionSurface.reveal}
                   mediaNode={questionSurface.regions?.media ?? null}
@@ -927,7 +933,7 @@ export function CanonicalArena({
           timeline · Rules. Mounted only on a phone viewport (see the bar). The
           strip below stays the arena's last child and the desktop floor; on a
           phone Ranked arena CSS hides it in favour of the bar. */}
-      {mobileDuel && timeline && <MobileBottomBar timeline={timeline} journeyCompact={journeyMobile} className="lg:hidden" />}
+      {phoneArena && timeline && <MobileBottomBar timeline={timeline} journeyCompact={journeyMobile} className="lg:hidden" />}
       {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
 
       {/* RFX1 2B3 — the PRESENTATION OVERLAY. LAST, so it lays over everything

@@ -71,6 +71,23 @@ vi.mock("@/lib/backend-auth", () => ({
   getExistingBackendAuthToken: async () => "test-token",
 }));
 
+/**
+ * PM2 — the reveal advances by itself after a hold of seconds. These page
+ * tests do not wait out real time: the timer hook is replaced by one that
+ * records what the arena asked for, and `advanceReveal()` plays the timer's
+ * part — firing the page's own advance for the reveal on stage. The timer
+ * itself is fenced in `PracticeArena.pm2.test.tsx`.
+ */
+type AutoAdvanceArgs = { revealKey: string | null; holdMs: number | null; paused: boolean; onAdvance: () => void };
+const autoAdvance = vi.hoisted(() => ({ latest: null as AutoAdvanceArgs | null }));
+vi.mock("@/components/quiz/practice-arena/usePracticeAutoAdvance", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/components/quiz/practice-arena/usePracticeAutoAdvance")>();
+  return {
+    ...real,
+    usePracticeAutoAdvance: (args: AutoAdvanceArgs) => { autoAdvance.latest = args; },
+  };
+});
+
 const SETS = [
   { id: 3, name: "Champion Basics", description: "Kits", question_count: 522 },
 ];
@@ -168,6 +185,12 @@ async function startSetPractice() {
   fireEvent.click(within(empty).getByRole("button", { name: /Start practising/ }));
 }
 
+/** Wait for a graded reveal with a pending auto-advance, then let it fire. */
+async function advanceReveal() {
+  await waitFor(() => expect(autoAdvance.latest?.revealKey ?? null).not.toBeNull());
+  act(() => { autoAdvance.latest!.onAdvance(); });
+}
+
 /** Start a pack, answer both questions, and land on the results screen. */
 async function playASessionWithOneMiss() {
   render(
@@ -181,13 +204,11 @@ async function playASessionWithOneMiss() {
   await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
 
   fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
-  await waitFor(() => expect(screen.getByRole("button", { name: /Next question/ })).toBeTruthy());
-  fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
+  await advanceReveal();
 
   await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
   fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
-  await waitFor(() => expect(screen.getByRole("button", { name: /See results/ })).toBeTruthy());
-  fireEvent.click(screen.getByRole("button", { name: /See results/ }));
+  await advanceReveal();
 
   await waitFor(() => expect(screen.getByText("Quiz Complete")).toBeTruthy());
 }
@@ -195,6 +216,7 @@ async function playASessionWithOneMiss() {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear?.();
+  autoAdvance.latest = null;
 });
 afterEach(cleanup);
 
@@ -223,7 +245,7 @@ describe("Practice — remediating the run you just played", () => {
     await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
 
     fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /Next question/ })).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Answer not verified")).toBeTruthy());
 
     expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.answer.lock")).toHaveLength(1);
     expect(sfx.play).not.toHaveBeenCalledWith("leaguecraft.answer.correct", expect.anything());
@@ -249,7 +271,8 @@ describe("Practice — remediating the run you just played", () => {
     // the run rather than advancing to the one that was already correct.
     expect(screen.queryByText(QUESTIONS[1].question_text)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Beta/ }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /See results/ })).toBeTruthy());
+    await advanceReveal();
+    await waitFor(() => expect(screen.getByText("Quiz Complete")).toBeTruthy());
 
     // No refetch: the replay is served from the answers already in memory.
     expect(questionsMock).not.toHaveBeenCalled();
@@ -322,11 +345,9 @@ describe("Practice — NAV1-P1 exit safety", () => {
 
   it("guards header and same-route hash/search departures, but not terminal result", async () => {
     const router = await startActiveDataPractice();
-    // PM1: the arena carries the way back twice — beside the HUD hat below
-    // `lg`, in the subject panel from `lg` — and CSS shows exactly one. jsdom
-    // applies no CSS, so both are here; both go through the same guard.
+    // PM2: the way back is in Practice's one header row, at every width.
     const backLinks = screen.getAllByRole("link", { name: "Back to League hub" });
-    expect(backLinks).toHaveLength(2);
+    expect(backLinks).toHaveLength(1);
     expect(backLinks.every((l) => l.getAttribute("href") === "/lol")).toBe(true);
     fireEvent.click(backLinks[0]);
     expect(await screen.findAllByRole("alertdialog", { name: "Leave practice?" })).toHaveLength(1);
@@ -345,9 +366,9 @@ describe("Practice — NAV1-P1 exit safety", () => {
     expect(add.mock.calls.some(([name]) => name === "beforeunload")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     fireEvent.click(await screen.findByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await screen.findByText("Quiz Complete");
     expect(remove.mock.calls.some(([name]) => name === "beforeunload")).toBe(true);
     add.mockRestore();
@@ -362,9 +383,9 @@ describe("Practice — NAV1-P1 exit safety", () => {
     }));
     const router = await startActiveDataPractice();
     fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Next question/ }));
+    await advanceReveal();
     fireEvent.click(await screen.findByRole("button", { name: /Gamma/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await advanceReveal();
     await screen.findByText("Quiz Complete");
 
     fireEvent.click(screen.getByRole("button", { name: "Review your questions" }));
@@ -410,10 +431,142 @@ describe("Practice — NAV1-P1 exit safety", () => {
     expect(snapshot?.canonicalAnswer ?? null).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
-    await screen.findByRole("button", { name: /Next question/ });
+    await screen.findByTestId("practice-explanation");
+    expect(screen.queryByRole("button", { name: /Next question|See results/ })).toBeNull();
     expect(submitAnswerMock).toHaveBeenCalledTimes(1);
     expect(submitAnswerMock.mock.calls[0][0]).toMatchObject({ question_id: 11, selected_answer: "Alpha", session_id: 7 });
     await waitFor(() => expect(snapshot?.canonicalAnswer).toBe("Beta"));
     expect(screen.getByTestId("practice-explanation").textContent).toBe("Beta has more.");
+  });
+});
+
+describe("Practice — PM2 automatic advance", () => {
+  it("advances exactly once per question, even if the advance fires twice", async () => {
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await waitFor(() => expect(autoAdvance.latest?.revealKey ?? null).not.toBeNull());
+    const fire = autoAdvance.latest!.onAdvance;
+    act(() => { fire(); fire(); });
+    // Question 2 — not past the end of a two-question run, not the results.
+    await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    expect(screen.queryByText("Quiz Complete")).toBeNull();
+    expect(screen.getByTestId("ranked-header-title").textContent).toContain("Question 2 / 2");
+  });
+
+  it("enters the results exactly once from the final answer", async () => {
+    const { trackFunnelEvent } = await import("@/lib/funnel-analytics");
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await advanceReveal();
+    fireEvent.click(await screen.findByRole("button", { name: /Gamma/ }));
+    await waitFor(() => expect(autoAdvance.latest?.revealKey ?? null).not.toBeNull());
+    const fire = autoAdvance.latest!.onAdvance;
+    act(() => { fire(); fire(); });
+    await screen.findByText("Quiz Complete");
+    expect(vi.mocked(trackFunnelEvent).mock.calls.filter(([name]) => name === "quiz_completed")).toHaveLength(1);
+    expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.quiz.complete")).toHaveLength(1);
+  });
+
+  it("an unknown outcome (the request may have been recorded) is never resent: Skip only", async () => {
+    submitAnswerMock.mockRejectedValueOnce(Object.assign(new Error("Quiz API 502: upstream"), { status: 502 }));
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await screen.findByText("Answer not verified");
+    expect(autoAdvance.latest?.revealKey ?? null).toBeNull();
+    expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("unknown");
+    expect(screen.queryByTestId("practice-retry-answer")).toBeNull();
+    fireEvent.click(screen.getByTestId("practice-skip"));
+    await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("offline: nothing is sent, and Try again is the first real send", async () => {
+    const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      await startActiveDataPractice();
+      fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+      await screen.findByText("Answer not verified");
+      expect(submitAnswerMock).not.toHaveBeenCalled();
+      expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("not-sent");
+      online.mockReturnValue(true);
+      fireEvent.click(screen.getByTestId("practice-retry-answer"));
+      await waitFor(() => expect(document.querySelector("[data-practice-reveal-footer]")?.getAttribute("data-verdict-tone")).toBe("negative"));
+      expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+      expect(submitAnswerMock.mock.calls[0][0]).toMatchObject({ question_id: 11, selected_answer: "Alpha" });
+      // The retry is not a second lock-in.
+      expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.answer.lock")).toHaveLength(1);
+      await advanceReveal();
+      await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("refused before recording (429): Try again resends the same answer with the same client_attempt_id", async () => {
+    submitAnswerMock.mockRejectedValueOnce(Object.assign(new Error("Quiz API 429: slow down"), { status: 429 }));
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await screen.findByText("Answer not verified");
+    expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("rejected");
+    fireEvent.click(screen.getByTestId("practice-retry-answer"));
+    await waitFor(() => expect(submitAnswerMock).toHaveBeenCalledTimes(2));
+    const [first, second] = submitAnswerMock.mock.calls.map(([payload]) => payload as { client_attempt_id?: string });
+    expect(first.client_attempt_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(second.client_attempt_id).toBe(first.client_attempt_id);
+  });
+
+  it("unknown outcome after the backend proved idempotency: Try again, same key; each question its own key", async () => {
+    submitAnswerMock
+      .mockResolvedValueOnce({ is_correct: false, correct_answer: "Beta", explanation: "", attempt_idempotent: true } as never)
+      .mockRejectedValueOnce(Object.assign(new Error("Quiz API 503: busy"), { status: 503 }));
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await advanceReveal();
+    await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
+    await screen.findByText("Answer not verified");
+    expect(screen.getByTestId("practice-unverified-note").getAttribute("data-failure-kind")).toBe("unknown");
+    fireEvent.click(screen.getByTestId("practice-retry-answer"));
+    await waitFor(() => expect(submitAnswerMock).toHaveBeenCalledTimes(3));
+    const keys = submitAnswerMock.mock.calls.map(([payload]) => (payload as { client_attempt_id?: string }).client_attempt_id);
+    expect(keys[1]).toBe(keys[2]);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it("Skip leaves an unverified question ungraded", async () => {
+    submitAnswerMock.mockRejectedValueOnce(new Error("offline"));
+    await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    fireEvent.click(await screen.findByTestId("practice-skip"));
+    await waitFor(() => expect(screen.getByText(QUESTIONS[1].question_text)).toBeTruthy());
+    expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("submits once however many times an answer is pressed", async () => {
+    let resolve!: (v: unknown) => void;
+    submitAnswerMock.mockImplementationOnce(() => new Promise((r) => { resolve = r; }) as never);
+    await startActiveDataPractice();
+    const alpha = screen.getByRole("button", { name: /Alpha/ });
+    fireEvent.click(alpha);
+    fireEvent.click(alpha);
+    fireEvent.click(screen.getByRole("button", { name: /Beta/ }));
+    expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+    await act(async () => { resolve({ is_correct: false, correct_answer: "Beta", explanation: "" }); });
+    await waitFor(() => expect(document.querySelector("[data-practice-reveal-footer]")?.getAttribute("data-verdict-tone")).toBe("negative"));
+    expect(submitAnswerMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a grade that arrives after the player has left the run", async () => {
+    const { trackFunnelEvent } = await import("@/lib/funnel-analytics");
+    let resolve!: (v: unknown) => void;
+    submitAnswerMock.mockImplementationOnce(() => new Promise((r) => { resolve = r; }) as never);
+    const router = await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await act(() => router.navigate(-1));
+    fireEvent.click(await screen.findByRole("button", { name: "Leave Practice" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/origin"));
+    await act(async () => { resolve({ is_correct: true, correct_answer: "Alpha", explanation: "" }); });
+    expect(vi.mocked(trackFunnelEvent).mock.calls.some(([name]) => name === "quiz_question_answered")).toBe(false);
+    expect(sfx.play).not.toHaveBeenCalledWith("leaguecraft.answer.correct", expect.anything());
   });
 });

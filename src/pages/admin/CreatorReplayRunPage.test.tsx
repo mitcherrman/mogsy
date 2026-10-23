@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   normalToday: vi.fn(),
   normalStart: vi.fn(),
   transport: null as DailyRunTransport | null,
+  moreChallengesCatalog: undefined as boolean | undefined,
 }));
 vi.mock("@/lib/daily-challenge/run/client", () => ({
   httpDailyRunTransport: {
@@ -21,8 +22,11 @@ vi.mock("@/lib/daily-challenge/run/client", () => ({
   },
 }));
 vi.mock("@/pages/quiz-daily-challenge/run/DailyRunPage", () => ({
-  DailyRunPage: ({ transport }: { transport: DailyRunTransport }) => {
+  DailyRunPage: ({ transport, moreChallengesCatalog }: {
+    transport: DailyRunTransport; moreChallengesCatalog?: boolean;
+  }) => {
     mocks.transport = transport;
+    mocks.moreChallengesCatalog = moreChallengesCatalog;
     return <div data-testid="canonical-daily-run">Canonical Daily</div>;
   },
 }));
@@ -58,6 +62,9 @@ describe("creator replay run viewer", () => {
     await mocks.transport!.startToday();
     expect(mocks.readRun).toHaveBeenNthCalledWith(1, ID);
     expect(mocks.readRun).toHaveBeenNthCalledWith(2, ID);
+    // The public catalog plays the OFFICIAL run's bonus stages: a take
+    // continues into its own Survival / Time Trial / Review in place.
+    expect(mocks.moreChallengesCatalog).toBe(false);
     expect(mocks.normalToday).not.toHaveBeenCalled();
     expect(mocks.normalStart).not.toHaveBeenCalled();
   });

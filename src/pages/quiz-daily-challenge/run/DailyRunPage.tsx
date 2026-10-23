@@ -72,6 +72,7 @@ export function DailyRunPage({
   viewerUserId: viewerOverride,
   stageResultPlacement,
   startOnMount = false,
+  moreChallengesCatalog = true,
 }: {
   transport?: DailyRunTransport;
   StageMatch?: ComponentType<StageMatchProps>;
@@ -84,6 +85,13 @@ export function DailyRunPage({
   stageResultPlacement?: StageResultPlacement;
   /** Parent-host entry seam; PLAY1 starts the canonical Daily without the Hub route state. */
   startOnMount?: boolean;
+  /**
+   * PGM1's "Play More Challenges" → public More Challenges catalog. That
+   * catalog launches the OFFICIAL run's bonus stages, so a host playing a
+   * different run (an owner creator take) turns it off and the button goes
+   * on into this run's own next stage instead.
+   */
+  moreChallengesCatalog?: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -101,6 +109,8 @@ export function DailyRunPage({
   const { user } = useAuth();
   const viewerUserId = viewerOverride ?? user?.id ?? null;
   const { onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus } = dc;
+  // Daily three acts (V2): the hosted stage's server-published set plan.
+  const threeActsPlan = dc.flow?.stage?.content?.plan ?? null;
 
   const host = useMemo<MatchHost>(() => ({
     eyebrow: DAILY_EYEBROW,
@@ -109,7 +119,8 @@ export function DailyRunPage({
     onPresentationPhase: onChildPhase,
     onPlayerFinished: onChildPlayerFinished,
     onSurvivalStatus: onChildSurvivalStatus,
-  }), [onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus]);
+    threeActsPlan,
+  }), [onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus, threeActsPlan]);
 
   const run = dc.run;
   const flow = dc.flow;
@@ -233,14 +244,16 @@ export function DailyRunPage({
         main ? (
           <DailyMainResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={doneForNow} placement={stageResultPlacement}
-            onMoreChallenges={flow.phase === "stage-result" ? toMoreChallenges : undefined}
+            onMoreChallenges={moreChallengesCatalog && flow.phase === "stage-result"
+              ? toMoreChallenges : undefined}
             onReviewDiscoveries={reviewDiscoveries}
             guestSaveEligible={user?.is_anonymous === true}
             onSaveScore={() => navigate(authHref("/quiz/daily-challenge", { mode: "signup" }))} />
         ) : (
           <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
             onProceed={onProceed} onDone={hasMainDaily(run) ? doneForNow : undefined}
-            onMoreChallenges={hasMainDaily(run) && flow.phase === "stage-result" ? toMoreChallenges : undefined}
+            onMoreChallenges={moreChallengesCatalog && hasMainDaily(run) && flow.phase === "stage-result"
+              ? toMoreChallenges : undefined}
             placement={stageResultPlacement} onReviewDiscoveries={reviewDiscoveries} />
         ),
         <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} strikesFloor={strikesFloor} />);
