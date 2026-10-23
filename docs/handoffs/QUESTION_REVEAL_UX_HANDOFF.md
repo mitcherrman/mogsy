@@ -11,7 +11,7 @@ Last updated: 2026-10-22.
 |---|---|
 | Backend branch | `reveal/qrt1-backend` (off `origin/master` `b3814e26`) |
 | Frontend branch | `reveal/qrt1-frontend` (off `origin/main` `a5d97120`) |
-| PRs | opened, **not merged**; see "PRs" below |
+| PRs | branches pushed; PRs to be opened from the compare links below. Not merged. |
 | Deploy / production data | none. Railway was unavailable, so nothing was deployed and no production env was read. |
 | Phase 2 (sitewide answer-result component) | not started; inventory and recommendation below |
 
@@ -110,8 +110,12 @@ At 375 px the full derivation (85 → 24 → 100/(100+24) → 0.806 → 19.4% �
 
 ## PRs
 
-* Backend: see the PR on `reveal/qrt1-backend` (link in the PR list / session report).
-* Frontend: see the PR on `reveal/qrt1-frontend`.
+Both branches are pushed. The PRs were **not opened by the agent**: no GitHub CLI was installed and the browser was not signed in. Open them from:
+
+* Backend: https://github.com/mitcherrman/League_Combat_Simulator/compare/master...reveal/qrt1-backend?expand=1 (base `master`)
+* Frontend: https://github.com/mitcherrman/mogsy/compare/main...reveal/qrt1-frontend?expand=1 (base `main`)
+
+Merge and deploy order: frontend, then backend (see above). Neither is merged or deployed.
 
 ## Phase 2: inventory of answer-result components (read-only)
 
