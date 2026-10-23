@@ -291,7 +291,10 @@ describe("6 · LEGACY1 · the retired voting product is gone from Admin", () => 
     renderAdmin("/admin");
     const nav = await screen.findByTestId("admin-shell-nav");
     expect(within(nav).queryByTestId("admin-nav-arena")).toBeNull();
-    expect(within(nav).queryByText(/arena/i)).toBeNull();
+    // The one "arena" on the rail is the current Tournament Arena area (a
+    // different product, id and path); the retired one advertises nothing.
+    expect(within(nav).queryAllByText(/arena/i).map((n) => n.textContent)).toEqual(["Tournament Arena"]);
+    expect(within(nav).getByTestId("admin-nav-tournament-arena").getAttribute("href")).toBe("/admin/tournament-arena");
 
     cleanup();
     renderAdmin("/admin/all-tools");

@@ -52,8 +52,9 @@ function rejected(input: unknown) {
 // ---------------------------------------------------------------- vocabulary
 
 describe("the approved vocabulary", () => {
-  it("accepts each of the eight authoritative events and nothing else", () => {
+  it("accepts each authoritative event and nothing else", () => {
     expect([...ALLOWED_EVENTS].sort()).toEqual([
+      "daily_incomplete",
       "dsa_completed",
       "dsa_started",
       "mastery_completed",
@@ -63,6 +64,16 @@ describe("the approved vocabulary", () => {
       "ranked_completed",
       "ranked_started",
     ]);
+  });
+
+  it("accepts the Daily rollover terminal fact", () => {
+    const row = ok(good({
+      event_name: "daily_incomplete",
+      source_entity_type: "daily_run",
+      source_entity_id: "dr_example",
+    }));
+    expect(row.source_entity_type).toBe("daily_run");
+    expect(row.source_entity_id).toBe("dr_example");
   });
 
   it.each([...ALLOWED_EVENTS])("accepts %s", (name) => {
@@ -119,9 +130,9 @@ describe("fields the caller does not get to choose", () => {
 // ---------------------------------------------------------------- entities
 
 describe("the entity model", () => {
-  it("accepts exactly the four Railway owns", () => {
+  it("accepts exactly the entity types Railway owns", () => {
     expect([...ALLOWED_ENTITY_TYPES].sort()).toEqual([
-      "dsa_run", "mastery_session", "quiz_session", "ranked_participant",
+      "daily_run", "dsa_run", "mastery_session", "quiz_session", "ranked_participant",
     ]);
   });
 

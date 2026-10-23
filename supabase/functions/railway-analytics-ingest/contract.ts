@@ -98,10 +98,11 @@ export const ALLOWED_EVENTS = new Set([
   "dsa_completed",
   "mastery_started",
   "mastery_completed",
+  "daily_incomplete",
 ]);
 
 /**
- * Entity types, pinned to the four Railway owns. `ranked_participant` — not
+ * Entity types, pinned to those Railway owns. `ranked_participant` — not
  * `ranked_match` — is load-bearing: the unique index is
  * (source_system, event_name, source_entity_type, source_entity_id), so a
  * match-level key would silently collapse both duellists into one row.
@@ -111,6 +112,7 @@ export const ALLOWED_ENTITY_TYPES = new Set([
   "ranked_participant",
   "dsa_run",
   "mastery_session",
+  "daily_run",
 ]);
 
 export const SUPPORTED_EVENT_VERSIONS = new Set([1]);
