@@ -76,7 +76,11 @@ describe("one user-facing question reporter", () => {
     expect(quiz).toContain("usePublishReportableQuestion");
     // Practice is the one mode holding BOTH identities; both must be sent.
     expect(quiz).toContain("questionKey: currentQuestion.question_key");
-    expect(quiz).toContain("staticQuestionId: currentQuestion.id");
+    // QKEY1: an integer id is a row id; a string id is an opaque runtime token.
+    expect(quiz).toContain(
+      'staticQuestionId: typeof currentQuestion.id === "number" ? currentQuestion.id : null');
+    expect(quiz).toContain(
+      'runtimeQuestionId: typeof currentQuestion.id === "string" ? currentQuestion.id : null');
   });
 });
 

@@ -191,10 +191,17 @@ export function isBulletinSuitableQuestion(text: string | null | undefined): boo
    Verified against 347 keyed live rows: it catches all 55 recognition rows,
    rejects nothing outside those three families, and misses no row that reads
    as picture-dependent. 11 of the 19 subjects still supply a question.
+
+   QKEY1: the backend stopped serving `question_key` before the answer (for
+   the item recipe families it spelled the correct option), and states the
+   same fact as `requires_media` instead. That field wins whenever it is
+   present; the family parse remains only for a backend that predates it and
+   for admin preview rows, which still carry the key.
 --------------------------------------------------------------------------- */
 
 /** A question row, as far as Bulletin eligibility is concerned. */
-type BulletinCandidate = Pick<QuizQuestion, "question_text" | "image_path" | "question_key">;
+type BulletinCandidate = Pick<
+  QuizQuestion, "question_text" | "image_path" | "question_key" | "requires_media">;
 
 /** `item_recognition:Sapphire Crystal` → `item_recognition`. */
 function questionFamily(question: BulletinCandidate): string {
@@ -219,6 +226,7 @@ export function isRecognitionFamily(question: BulletinCandidate): boolean {
  * dependency.
  */
 export function requiresUnrenderedMedia(question: BulletinCandidate): boolean {
+  if (typeof question.requires_media === "boolean") return question.requires_media;
   const hasImage = !!question.image_path && question.image_path.trim() !== "";
   return hasImage && isRecognitionFamily(question);
 }
