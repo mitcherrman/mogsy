@@ -178,6 +178,27 @@ describe("abilityViewsFromPrivatePlayer", () => {
   });
 });
 
+describe("questionViewFromPublicQuestion source patch", () => {
+  const source = {
+    questionId: "role-quest-1",
+    prompt: "How much percentage magic penetration does Spellslinger's Shoes grant?",
+    options: ["8%", "5%", "10%", "12%"],
+    category: "Role Quests",
+  };
+  it("carries only correctly shaped backend-frozen source versions", () => {
+    const good = questionViewFromPublicQuestion({
+      ...source, presentation: { source_patch: "26.20" },
+    });
+    expect(good.sourcePatch).toBe("26.20");
+    const old = questionViewFromPublicQuestion({ ...source });
+    expect(old.sourcePatch).toBeUndefined();
+    const bad = questionViewFromPublicQuestion({
+      ...source, presentation: { source_patch: "Current!" },
+    });
+    expect(bad.sourcePatch).toBeUndefined();
+  });
+});
+
 describe("questionViewFromPublicQuestion", () => {
   it("maps options to stable index-based ids and carries no correctness", () => {
     const view = questionViewFromPublicQuestion({

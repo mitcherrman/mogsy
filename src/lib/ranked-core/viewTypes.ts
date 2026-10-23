@@ -202,6 +202,8 @@ export interface QuestionView {
   prompt: string;
   options: AnswerOptionView[];
   category: string | null;
+  /** Source-certified patch frozen with this question; not a claim of live freshness. */
+  sourcePatch?: string;
   /**
    * RQ1 — the League role(s) this QUESTION applies to (`topic.roles`), for the
    * small role emblem beside the category. Absent for a neutral question. It

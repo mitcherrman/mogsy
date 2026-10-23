@@ -312,6 +312,10 @@ export function InteractiveScenarioSurface({
       )}
 
       <header data-surface-region="prompt" className="space-y-1">
+        {/* Source patch uses the question's frozen provenance, never the
+            device date or a guessed current game version. */}
+        {((question.category && bandProfile !== "compact") || question.sourcePatch) && (
+          <div className="flex min-w-0 items-center justify-between gap-2">
         {/* Category shows once: in the compact band when that is shown, else here. */}
         {question.category && bandProfile !== "compact" && (
           // `scenario-category` is a styling HOOK, not new behaviour: the label
@@ -337,6 +341,17 @@ export function InteractiveScenarioSurface({
               {formatCategoryLabel(question.category)}
             </span>
           )
+        )}
+            {question.sourcePatch && (
+              <span
+                data-testid="question-patch-label"
+                aria-label={`Question verified for patch ${question.sourcePatch}`}
+                className="shrink-0 rounded-md border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              >
+                Patch {question.sourcePatch}
+              </span>
+            )}
+          </div>
         )}
         <h2 className={`${promptSize} font-semibold leading-snug`}>{promptNode ?? question.prompt}</h2>
         {context && <p data-testid="scenario-context" className="text-sm text-muted-foreground">{context}</p>}
