@@ -95,7 +95,8 @@ function scenarioClause(ps: MasteryPromptSemantics): string {
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
-function abilityLabel(ps: MasteryPromptSemantics): string {
+/** The ability as the recall sentence names it ("Ahri Q (Orb of Deception)"). */
+export function abilityLabel(ps: MasteryPromptSemantics): string {
   const ref = `${ps.championDisplay} ${ps.subjectRef}`.trim();
   // The parenthetical exists to name the ability behind a slot letter
   // ("Ahri Q (Orb of Deception)"). A generated candidate whose `ability_name`

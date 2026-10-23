@@ -52,7 +52,8 @@ function hasBaseQualifier(metric: string): boolean {
   return metric.startsWith("base_");
 }
 
-function abilitySubjectLabel(
+/** One side of an ability comparison as the sentence names it ("Aatrox W (Infernal Chains)"). */
+export function abilitySubjectLabel(
   cs: MasteryComparisonSemantics,
   championDisplay: string,
   abilityName: string,
