@@ -51,7 +51,14 @@ const PLAIN = ROWS.filter((r) => ["vq-01", "vq-02", "vq-08", "vq-10"].includes(F
 
 type Backend = { writes: string[]; listQueries: URLSearchParams[] };
 
-async function hermetic(page: Page, persona: Json | null): Promise<Backend> {
+/**
+ * Answers the review API the way `routes/quiz_review.py` does: `review_status`
+ * and `is_active` filter EXACTLY, and `filter-options.review_statuses` is the
+ * DISTINCT set actually present in the bank. `status` relabels every row, to
+ * model a bank whose rows are not "approved".
+ */
+async function hermetic(page: Page, persona: Json | null, opts: { status?: string } = {}): Promise<Backend> {
+  const rows = ROWS.map((r) => (opts.status ? { ...r, review_status: opts.status } : r));
   const be: Backend = { writes: [], listQueries: [] };
   await page.addInitScript((p) => {
     localStorage.setItem("lol:ranked-rules:seen_version", "1");
@@ -89,7 +96,7 @@ async function hermetic(page: Page, persona: Json | null): Promise<Backend> {
           categories: [...new Set(ROWS.map((r) => r.category))].sort(),
           source_types: [],
           formats: ["multiple_choice"],
-          review_statuses: ["approved", "needs_fix", "rejected", "unreviewed"],
+          review_statuses: [...new Set(rows.map((r) => r.review_status))].sort(),
           packs: [],
         });
       }
@@ -99,8 +106,14 @@ async function hermetic(page: Page, persona: Json | null): Promise<Backend> {
         const category = url.searchParams.get("category");
         const page = Number(url.searchParams.get("page") ?? 1);
         const size = Number(url.searchParams.get("page_size") ?? 20);
-        const hits = ROWS.filter(
-          (r) => (!category || r.category === category) && (!search || String(r.question_text).toLowerCase().includes(search)),
+        const status = url.searchParams.get("review_status");
+        const active = url.searchParams.get("is_active");
+        const hits = rows.filter(
+          (r) =>
+            (!category || r.category === category) &&
+            (!status || r.review_status === status) &&
+            (active === null || (r.is_active ? 1 : 0) === Number(active)) &&
+            (!search || String(r.question_text).toLowerCase().includes(search)),
         );
         return json(route, {
           ok: true, total: hits.length, page, page_size: size, pages: Math.max(1, Math.ceil(hits.length / size)),
@@ -240,8 +253,38 @@ test.describe("owner", () => {
       const id = Number((await row.getAttribute("data-testid"))!.replace("cc-bank-row-", ""));
       expect(byId.get(id)!.category).toBe("items");
     }
-    expect(be.listQueries[0].get("review_status")).toBe("approved");
+    // Opens on every review status, like Quiz Review.
+    expect(be.listQueries[0].get("review_status")).toBeNull();
+    await expect(page.getByTestId("cc-bank-status")).toHaveValue("");
     expect(be.writes).toEqual([]);
+  });
+
+  test("a bank with no 'approved' rows still lists its questions, and the status label tells the truth", async ({ page }) => {
+    // Regression: the first release forced review_status=approved while the
+    // dropdown (built only from the bank's statuses) displayed "Any review
+    // status", so a bank of unreviewed questions showed "0 matches".
+    const be = await hermetic(page, OWNER, { status: "unreviewed" });
+    await page.goto("/admin/content-creator");
+    await expect(page.getByTestId("cc-bank-state")).toHaveAttribute("data-state", "results", { timeout: 30_000 });
+    await expect(page.getByTestId("cc-bank-total")).toContainText(`${ROWS.length} matches`);
+    await expect(page.getByTestId(`cc-bank-row-${ROWS[0].id}`)).toBeVisible();
+    expect(be.listQueries[0].get("review_status")).toBeNull();
+    // Choosing a status the bank has filters exactly and the label shows it.
+    await page.getByTestId("cc-bank-status").selectOption("unreviewed");
+    await expect(page.getByTestId("cc-bank-status")).toHaveValue("unreviewed");
+    await expect(page.getByTestId("cc-bank-total")).toContainText(`${ROWS.length} matches`);
+  });
+
+  test("an empty result says which filters produced it and can be cleared", async ({ page }) => {
+    await hermetic(page, OWNER);
+    await page.goto("/admin/content-creator");
+    await expect(page.getByTestId("cc-bank-state")).toHaveAttribute("data-state", "results", { timeout: 30_000 });
+    await page.getByTestId("cc-bank-search").fill("no-such-question-text");
+    await page.getByTestId("cc-bank-search").press("Enter");
+    await expect(page.getByTestId("cc-bank-state")).toHaveAttribute("data-state", "empty");
+    await expect(page.getByTestId("cc-bank-empty")).toContainText('search "no-such-question-text"');
+    await page.getByTestId("cc-bank-clear").click();
+    await expect(page.getByTestId("cc-bank-state")).toHaveAttribute("data-state", "results");
   });
 
   test("single-question post: previews match the ZIP and a single PNG downloads", async ({ page }) => {
