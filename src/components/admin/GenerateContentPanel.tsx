@@ -712,6 +712,15 @@ export function GenerateContentPanel({
           Rendered here, through the same production components and the same
           readiness gates the local renderer uses — no local server needed.
         </p>
+        {questions.length > 0 && reviewItems.length === 0 && (
+          <a
+            className="inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
+            href={`/admin/content-creator?ids=${questions.map((q) => q.id).slice(0, 25).join(",")}`}
+            data-testid="generate-content-open-creator"
+          >
+            Challenges, daily packages and previews → open this selection in Content Creator
+          </a>
+        )}
 
         {plan.errors.length > 0 && (
           <ul className="space-y-0.5" data-testid="generate-content-export-errors">

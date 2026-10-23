@@ -227,8 +227,10 @@ describe("Admin — current Pro Play specimens", () => {
     await openUniverse();
     fireEvent.click(screen.getByTestId(`universe-generate-${PRO_KEY}`));
     await waitFor(() => expect(getReviewUniverseItem).toHaveBeenCalled());
+    // The command renders after the resolver answers; wait for it rather than
+    // racing the render (this read used to be synchronous and flaked on CI).
+    await waitFor(() => expect(document.body.textContent ?? "").toContain("--review-key"));
     const page = document.body.textContent ?? "";
-    expect(page).toContain("--review-key");
     for (const flag of NEVER_EMITTED_FLAGS) expect(page).not.toContain(flag);
     // The admin key must never reach a copyable command.
     expect(page).not.toContain("test-key");

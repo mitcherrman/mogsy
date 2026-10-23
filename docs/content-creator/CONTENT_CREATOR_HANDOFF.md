@@ -4,7 +4,8 @@
 | --- | --- |
 | CC1 — architecture audit | **Done** (sections 1–8 below, unchanged except this header) |
 | CC2 — browser generation engine | **Verified.** Chromium 55/55 and Firefox 55/55 cards match the Playwright authority, 5/5 behaviour checks each, PR mitcherrman/mogsy#124 @ `c81228e2` (section 9) |
-| CC3 — `/admin/content-creator` page | Not started |
+| CC3 — `/admin/content-creator` page | **Built and accepted in CI** (Chromium 13/13, Firefox 13/13, production gates 2/2), PR mitcherrman/mogsy#126 @ `026546bc` (section 10) |
+| Merge and production | **Not merged, not deployed.** The owner merges #124 then #126 and publishes in Lovable (section 10) |
 
 CC1 audited `origin/main` @ `e931bc1a` (2026-10-22). CC2 is built on
 `origin/main` @ `d809f836` in worktree `.worktrees/content-creator-cc2`, branch
@@ -468,3 +469,124 @@ PR mitcherrman/mogsy#124, branch `feat/content-creator-cc2-browser-engine`:
 (Quiz Review export carries difficulty), `2e27f97f` (standards mode),
 `c81228e2` (fonts), `d9822cd7` (test fixture typing), plus this update. CC3 is
 stacked on it (section 10).
+
+---
+
+## 10. CC3 — `/admin/content-creator` (implementation record)
+
+### What the owner gets
+
+`https://mogzy.lol/admin/content-creator` (once merged and published): a
+three-column workspace inside the Admin shell.
+
+- **Question bank**: the real bank through the owner-token review GETs
+  (`quizApi.getReviewQuestions`, `getReviewFilterOptions`, `getReviewQuestion`).
+  Search; category, difficulty (1–5), review status (default *approved*), pack,
+  live-only and artwork filters; pagination. Every row shows the prompt, the
+  correct answer, category/difficulty/badge tier and the Content Factory
+  readiness verdict; blocked rows cannot be added. Nothing on the page can write
+  to the bank (the e2e suite asserts zero non-GET calls to `/api/quiz/admin`).
+- **Composer**: ordered selection (reorder, remove, clear), featured ★ for the
+  daily package, per-question badge override; the five formats (classic,
+  single-question post, answer reveal, multi-question challenge 2–10, daily
+  package); the four social sizes with dimensions; classic card states; run
+  difficulty badge or each question's own; the approved repeat-opener and
+  mid-challenge copy variants; reuse-featured-as-opener; platform; run or
+  package name.
+- **Output**: one Generate button (disabled with the reasons listed until the
+  plan is runnable), progress with the current slide, **Cancel**; previews that
+  are the exported bytes themselves; per-image PNG download, ZIP download (all
+  runs + manifest + contact sheet + failures + metadata + package manifest),
+  manifest download, contact sheet opened with live image links; failures,
+  skips and aborts listed per run; a browser-support note on non-Chromium
+  engines.
+- **History**: the last 12 runs (≤ 400 MB) in this browser's IndexedDB, reopened
+  from the stored ZIP itself; fails soft in private windows.
+- **Hand-off**: `/admin/content-creator?ids=1,2,3` preselects; Quiz Review's
+  Generate Content panel links there with the current selection.
+
+### Security
+
+- Route: an AdminShell child (`App.tsx`, `path="content-creator"`), so the
+  `/admin` **AdminRoute** gate applies (owner via `owner_auth_state`, MFA
+  step-up); the page also wraps its workspace in **AdminAuthGate** (the
+  account-bound Railway admin session) before any question is read.
+- Credentials: only the owner's own Supabase token, attached by the existing
+  `adminRequest`; no admin key, no new endpoint, no Supabase/Railway change.
+- `/dev/content-studio` (CC1 finding: ungated in production): now dev-build
+  only; production redirects it to `/admin/content-creator`. Verified against a
+  real `vite build` + `vite preview` in CI. The local Content Studio is
+  unchanged in dev.
+- CI asserts the E2E identity seam (`mogsy_e2e_identity`) is absent from the
+  production bundle.
+
+### Changed files (CC3)
+
+| File | Change |
+| --- | --- |
+| `src/pages/admin/AdminContentCreator.tsx` | **new**: page, generation, history, hand-off |
+| `src/components/admin/content-creator/{QuestionBank,Composer,OutputPanel}.tsx` | **new**: the three panels |
+| `src/lib/content-creator/creatorState.ts` | **new**: settings → CC2 request (pure) |
+| `src/lib/content-creator/runView.ts` | **new**: one view of a run, from a result or from its ZIP |
+| `src/lib/content-creator/history.ts` | **new**: IndexedDB history, capped, fails soft |
+| `src/lib/content-creator/{creatorState,runView}.test.ts` | **new**: 13 tests |
+| `src/App.tsx` | route; `/dev/content-studio` dev-only with production redirect |
+| `src/lib/admin/admin-registry.ts` | `content-creator` tool; local studio relabelled |
+| `src/components/admin/GenerateContentPanel.tsx` | link into the Content Creator |
+| `src/pages/admin/AdminQuizReview.proPlay.test.tsx` | removed a render race that flaked on CI |
+| `e2e/content-creator/content-creator.spec.ts`, `e2e/content-creator-prod/prod-gate.spec.ts` | **new**: acceptance |
+| `playwright.content-creator{,-prod}.config.ts`, `.github/workflows/content-creator-acceptance.yml` | **new** |
+
+### Acceptance evidence (GitHub Actions, PR mitcherrman/mogsy#126 @ `026546bc`)
+
+[`content-creator-acceptance` run 39868419485](https://github.com/mitcherrman/mogsy/actions/runs/39868419485):
+
+| Job | Result |
+| --- | --- |
+| unit-and-build | TypeScript gate: only the 2 documented baseline errors; 582/582 unit tests (content creator, Content Factory, Quiz Review, panel, registry); registry⇄router 14 passed / 2 baseline skipped; `vite build`; no E2E seam in bundle; **production gates 2/2** (`/dev/content-studio` not served; signed-out visitor refused) |
+| e2e (chromium) | **13/13** |
+| e2e (firefox) | **13/13** |
+
+The 13 e2e tests: non-owner refused; signed-out refused; bank loads, filters,
+answers and eligibility, zero writes; single-question post (previews ≡ ZIP by
+SHA-256, single PNG valid 1080×1080); classic; answer reveal; challenge with
+copy variants (slide order + manifest); daily package (3 runs + package
+manifest); a QA failure reported and withheld; cancel; history across reload;
+`?ids=` hand-off; existing Admin routes (studio, quiz-content, quiz-broadcast).
+Every archive check also asserts `manifest.questions[].correct_label` equals
+the bank's correct answer and every PNG's real size equals its manifest entry.
+
+Other workflows the PR triggers: `creator-replay-frontend` green;
+`interaction-labs-integration` fails one test
+(`/admin/perfect-timing` owner bookmark) identically on every recent branch
+(8/8 runs checked) — pre-existing, not this change.
+
+Earlier runs on #126 found and fixed: a `Uint8Array`→`Blob` typing error under
+CI's newer TypeScript; a first-generation layout-shift in both engines (fixed by
+the CC2 font fix); a Firefox navigation race in the routes test; a racy Quiz
+Review unit test.
+
+### Current state
+
+- PR mitcherrman/mogsy#124 (CC2): green, mergeable (clean). **Not merged.**
+- PR mitcherrman/mogsy#126 (CC3), stacked on #124's branch: green. **Not merged.**
+- **Production: not deployed.** Nothing is live at `/admin/content-creator`
+  until both PRs are on `main` and Lovable publishes.
+
+### Remaining owner actions (in order)
+
+1. Merge **#124** into `main` (this session's permission rules blocked the
+   merge).
+2. Retarget **#126** to `main` (Edit → base), let its checks re-run, merge it.
+3. **Publish in Lovable** (production deploys through Lovable's Publish, as
+   CON1 did).
+4. Signed in as owner on `https://mogzy.lol/admin/content-creator`: generate one
+   single-question post and one daily package; open the ZIP; spot-check
+   `/admin/quiz-content` export (it now draws the difficulty badge).
+
+### Not done / known limits
+
+- Safari/iOS untested (WebKit `foreignObject` canvas tainting).
+- Generated (review-key) questions are not offered in the bank browser; they
+  still export from Quiz Review's Generate Content panel.
+- History is per browser and per device.
