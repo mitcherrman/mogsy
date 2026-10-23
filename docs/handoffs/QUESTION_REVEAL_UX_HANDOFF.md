@@ -12,7 +12,7 @@ Last updated: 2026-10-23 (release certification, see "Release certification").
 | Backend branch | `reveal/qrt1-backend`: master `890534c5` merged in (`f45e97da`); code unchanged since the original pass |
 | Frontend branch | `reveal/qrt1-frontend`: main `18a33eff` merged in (`f7bf7747`), plus certification fix `dbf50e55` |
 | PRs | [Frontend #134](https://github.com/mitcherrman/mogsy/pull/134) and [backend #97](https://github.com/mitcherrman/League_Combat_Simulator/pull/97), drafts; neither merged or deployed. |
-| Verdict | **CONDITIONAL GO**: the owner accepted local backend evidence in place of CI (2026-10-23); open: owner review of `dbf50e55` |
+| Verdict | **GO** (2026-10-23): the owner accepted local backend evidence in place of CI and approved `dbf50e55`. Merge, publish and deploy are still the owner's to do |
 | Deploy / production data | none. Nothing was deployed or published, and no production data or env was read or written. |
 | Phase 2 (sitewide answer-result component) | not started; inventory and recommendation below |
 
@@ -112,10 +112,10 @@ At 375 px the full derivation (85 → 24 → 100/(100+24) → 0.806 → 19.4% �
 
 ## Release certification (2026-10-23)
 
-**Verdict: CONDITIONAL GO.** The code is release-ready on current defaults. Conditions, all owner-side:
+**Verdict: GO** (2026-10-23; was CONDITIONAL GO until both owner conditions below were met). The code is release-ready on current defaults. Merging, publishing and deploying remain owner actions; none has been done.
 
 1. ~~**Backend CI cannot run** (GitHub billing, below).~~ **Resolved 2026-10-23 by owner decision:** "I accept the local backend evidence in place of CI for PR #97." The local run of the six workflows' exact commands (below) stands in for CI.
-2. **Review certification fix `dbf50e55`** (frontend; two small QRT1-introduced deviations corrected, below). It changes no owner-approved timing.
+2. ~~**Review certification fix `dbf50e55`**~~ **Approved 2026-10-23 by the owner:** "I approve certification fix dbf50e55 (pooled-clock remainder during ack reveal; end-instant hold for Journeys only)."
 3. **Release order unchanged:** publish frontend first, then deploy backend; then measure live (see "Next phase").
 
 ### Reconciliation (isolated worktrees, merge not rebase: the PRs are open)
