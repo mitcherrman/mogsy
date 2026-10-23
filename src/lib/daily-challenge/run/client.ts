@@ -16,6 +16,7 @@
 import { ensureBackendAuthToken, getBackendAuthHeaders } from "@/lib/backend-auth";
 import { withBrowserCorrelation } from "@/lib/analytics/correlation";
 import { DailyRun, DailyRunParseError, readDailyRun, readDailyToday } from "./contracts";
+import { recordRequestTiming, recordTiming, timingNow } from "@/lib/gameplay-timing/recorder";
 
 export interface DailyRunTransport {
   /** Today's run for this caller, or null. Never writes. */
@@ -56,7 +57,8 @@ const KNOWN: ReadonlySet<string> = new Set<DailyRunErrorCode>([
 
 export class DailyRunApiError extends Error {
   constructor(
-    public kind: "backend" | "invalid_response" | "network" | "aborted",
+    /** GR1 — `timeout`: this client stopped waiting; the server may still have acted. */
+    public kind: "backend" | "invalid_response" | "network" | "timeout" | "aborted",
     public status: number,
     message: string,
     public code: DailyRunErrorCode | null = null,
@@ -68,6 +70,35 @@ export class DailyRunApiError extends Error {
 
 export const isDailyRunAborted = (e: unknown): boolean =>
   e instanceof DailyRunApiError ? e.kind === "aborted" : (e as { name?: string })?.name === "AbortError";
+
+/**
+ * GR1 — the service was unreachable, not unwilling: no response, a client
+ * timeout, a gateway/availability status, a throttle, or an UNCODED 404/5xx
+ * (the platform, or a route this backend does not have yet). Every Daily
+ * write is idempotent server-side (start, per-stage launch, sync), so these
+ * are safe to repeat; a coded refusal is not one of them.
+ */
+export const isDailyRunTransient = (e: unknown): boolean => {
+  if (!(e instanceof DailyRunApiError)) return false;
+  if (e.kind === "network" || e.kind === "timeout") return true;
+  if (e.kind !== "backend") return false;
+  if (e.status === 502 || e.status === 504 || e.status === 429 || e.status === 408) return true;
+  // A KNOWN code is the application's own verdict (e.g. 503
+  // DAILY_RUN_CHILD_UNAVAILABLE) and is surfaced; unknown codes are already
+  // folded to null by `request`, so an uncoded 503/5xx/404 is the platform.
+  return e.code === null && (e.status >= 500 || e.status === 404);
+};
+
+/** GR1 — the Daily transport's request deadlines (see `ranked-public/client.ts`). */
+export const DAILY_REQUEST_TIMEOUT_MS = { read: 8000, write: 12000 } as const;
+
+/** `/api/daily-run/<run>/stages/2/launch` → `daily:POST:/:run/stages/:n/launch`. */
+function dailyTimingName(method: string, path: string): string {
+  const rest = path.slice(BASE_PATH.length);
+  const template = rest.startsWith("/today") ? rest
+    : rest.replace(/^\/[^/]+/, "/:run").replace(/\/stages\/\d+/, "/stages/:n");
+  return `daily:${method}:${template}`;
+}
 
 export const DAILY_RUN_API_BASE =
   (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ?? "http://127.0.0.1:8000";
@@ -81,22 +112,46 @@ async function request<T>(path: string, parse: (json: unknown) => T,
   // runs on the Leaguecraft hub for every visitor, so minting here was one of
   // the page-load paths that filled auth.users. A POST is the person starting
   // or advancing a run, which is a genuine write boundary.
+  const handledAt = timingNow();
   if (method === "POST") await ensureBackendAuthToken();
   const headers: Record<string, string> = { ...(await getBackendAuthHeaders()) };
-  const init: RequestInit = { method, headers, signal };
+  // GR1 — a deadline composed with the caller's signal. Hand-rolled: there is
+  // no `AbortSignal.any` on every browser this site supports.
+  const controller = new AbortController();
+  let timedOut = false;
+  const onCallerAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", onCallerAbort, { once: true });
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); },
+    method === "GET" ? DAILY_REQUEST_TIMEOUT_MS.read : DAILY_REQUEST_TIMEOUT_MS.write);
+  const done = () => { clearTimeout(timer); signal?.removeEventListener("abort", onCallerAbort); };
+  const name = dailyTimingName(method, path);
+  const init: RequestInit = { method, headers, signal: controller.signal };
   if (method === "POST" && body !== undefined) {
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
   let response: Response;
+  const sentAt = timingNow();
+  if (method === "POST") recordTiming({ name, category: "frontend", ms: sentAt - handledAt });
   try {
     response = await fetch(`${DAILY_RUN_API_BASE}${path}`, init);
   } catch (e) {
+    done();
+    const deadline = timedOut && !signal?.aborted;
+    recordTiming({ name, category: "network", ms: timingNow() - sentAt,
+      detail: { outcome: deadline ? "timeout" : "failed" } });
+    if (deadline) {
+      throw new DailyRunApiError("timeout", 0, "the Daily Challenge service took too long to answer");
+    }
     if ((e as { name?: string })?.name === "AbortError") {
       throw new DailyRunApiError("aborted", 0, "request aborted");
     }
     throw new DailyRunApiError("network", 0, "could not reach the Daily Challenge service");
   }
+  done();
+  recordRequestTiming(name, timingNow() - sentAt,
+    response.headers?.get?.("server-timing") ?? null, { status: response.status });
   if (!response.ok) {
     let code: DailyRunErrorCode | null = null;
     let message = `request failed (${response.status})`;

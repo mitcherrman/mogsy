@@ -178,6 +178,12 @@ function revealNames(settlement: ResolvedRoundView,
  */
 const AGAIN_HREF = "/quiz?play=1";
 const LOBBY_HREF = "/quiz";
+/**
+ * GR1 — the status while an answer whose outcome is unknown is re-sent
+ * UNCHANGED (`useRankedMatch.answerReconciling`). Honest on purpose: it
+ * never says the answer was saved, only that it is being sent.
+ */
+export const ANSWER_RECONCILING_TEXT = "Reconnecting — sending your answer…";
 
 export interface QuizRankedMatchProps {
   matchId: string;
@@ -1060,8 +1066,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // card…" while the backend has stopped for a volume-backed deployment.
     // Neither regrades nor retries submissions; normal snapshot polling is
     // already idempotent and is what advances the authoritative card.
-    error: m.connectionInterrupted ? "Connection lost — reconnecting…" : m.actionError,
-  }), [m.submitSegmentChallenge, m.submitting, m.actionError, m.connectionInterrupted]);
+    // GR1 — an answer whose outcome is unknown is being re-sent unchanged;
+    // the copy says so without claiming it was saved.
+    error: m.answerReconciling ? ANSWER_RECONCILING_TEXT
+      : m.connectionInterrupted ? "Connection lost — reconnecting…" : m.actionError,
+  }), [m.submitSegmentChallenge, m.submitting, m.actionError, m.connectionInterrupted,
+    m.answerReconciling]);
   void tick;
 
   // ── Ranked-only failure states ─────────────────────────────────────────
@@ -1776,12 +1786,13 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // doing. What is left is the row's real job: the transient states.
       // Empty string, not a removed row: the box stays reserved, so a
       // submission or an error still appears without moving the arena.
-      text: m.connectionInterrupted ? "Connection lost — reconnecting…"
+      text: m.answerReconciling ? ANSWER_RECONCILING_TEXT
+        : m.connectionInterrupted ? "Connection lost — reconnecting…"
         : m.actionError ? m.actionError
         : m.submitting ? "Submitting…"
           : m.phase === "locked" ? "Answer locked — waiting for opponent…"
             : "",
-      isError: m.actionError !== null || m.connectionInterrupted,
+      isError: m.actionError !== null || m.connectionInterrupted || m.answerReconciling,
     },
     // RG1 — the arena's quiet control. Ranked's is Forfeit Match: the ONE
     // intent signal Ranked has, since a route change, a closed tab, a reload

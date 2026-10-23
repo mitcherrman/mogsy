@@ -194,7 +194,14 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     await waitFor(() => expect(phase()).toBe("optional-entry"));
     fireEvent.click(screen.getByTestId("daily-optional-continue"));
     await gate.release("lost");
-    await waitFor(() => expect(t.calls.at(-1)).toBe("readRun"));
+    // GR1 — a lost response is UNREACHABLE, not refused: the SAME launch (one
+    // interaction id; idempotent per stage on the server) is re-sent after a
+    // short backoff, and the server answers with the child the first send
+    // created. The latch holds throughout; the run re-read remains the path
+    // for a launch that keeps failing past the outage budget.
+    await act(async () => { await new Promise((r) => setTimeout(r, 1100)); });
+    await gate.release("ok");
+    expect(new Set(t.launchInteractions).size).toBe(1);
     expect(t.wire().stages).toMatchObject({ 1: { status: "in_progress", child_match_id: "child-1" } });
     // The launch did succeed: no failure is left on screen, and the child this
     // press created plays as a FRESH entry once its tag has held.

@@ -10,7 +10,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
+  REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MIN_MS, REVEAL_HOLD_MS,
+  anchoredRevealHoldMs,
   swapMediaWaitMs,
   MATCH_OUTRO_MS, PRESENTATION_HEADROOM_MS, REVEAL_ABSORB_CAP_MS,
   specialTransitionBudgetMs, serverPacedHoldMs, finalServerPacedHoldMs,
@@ -42,9 +43,24 @@ import { snapshotSkewMs } from "./rankedViews";
 import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
 import { msUntilServerInstant } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { useSfx } from "@/lib/audio/useSfx";
+import { recordPaint, recordTiming, timingNow } from "@/lib/gameplay-timing/recorder";
 
 const POLL_MS = 1500;
+/** Backoff ceiling while the server is THROTTLING us (429): back right off. */
 const MAX_BACKOFF_MS = 8000;
+/**
+ * GR1 — backoff ceiling while the server is merely UNREACHABLE (502, timeout,
+ * dropped connection). A Railway redeploy is ~10 s of 502s; at the old 8 s
+ * ceiling the arena noticed the recovery up to 8 s late, on a clock that was
+ * already running. 3 s is one cheap read per tab per 3 s during an outage.
+ */
+export const INTERRUPTED_BACKOFF_CAP_MS = 3000;
+/**
+ * GR1 — re-send cadence for an AMBIGUOUS answer (sent, outcome unknown). The
+ * SAME answer is re-sent, never a different one; the backend's idempotency
+ * makes a duplicate harmless. The last value repeats until the round closes.
+ */
+export const RECONCILE_BACKOFF_MS = [500, 1000, 2000, 3000] as const;
 export const HEARTBEAT_MS = 10000;
 
 /**
@@ -208,6 +224,15 @@ export interface MatchController {
    * Never changes grading, cards or submission authority; clears on the next
    * successful server snapshot. */
   connectionInterrupted: boolean;
+  /**
+   * GR1 — an answer was SENT and its outcome is unknown (the connection
+   * dropped, timed out or answered 5xx). The chosen option stays selected and
+   * every other option stays closed while the controller re-sends the SAME
+   * answer; it ends on the server's acknowledgement, on a snapshot that shows
+   * the submission, or when the round closes. Never a claim that the answer
+   * was saved — only that it is being confirmed.
+   */
+  answerReconciling: boolean;
   error: string | null;
   /**
    * R3: one click. Submits the answer immediately and irrevocably; there is no
@@ -387,6 +412,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [connectionInterrupted, setConnectionInterrupted] = useState(false);
+  const [answerReconciling, setAnswerReconciling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contractError, setContractError] = useState<string | null>(null);
   const [revealHold, setRevealHold] = useState(false);
@@ -445,6 +471,21 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   // so a stale-closure check would let the second one through.
   const answeringRef = useRef(false);
   const abilityRef = useRef(false);
+  /** GR1 — the segment path's synchronous guard (it read `submitting` state). */
+  const segmentActionRef = useRef(false);
+  /** GR1 — the match this mount is driving NOW, for loops that outlive a render. */
+  const matchIdRef = useRef(matchId);
+  matchIdRef.current = matchId;
+  /** GR1 — was the last poll failure a throttle (429) rather than an outage? */
+  const rateLimitedRef = useRef(false);
+  /**
+   * GR1 — a settled round whose `/resolved` read FAILED at the boundary. The
+   * boundary is only ever seen once (`activeRoundRef` moves on), so without
+   * this the round's reveal, transcript and ledger row were lost for good.
+   */
+  const pendingCaptureRef = useRef<number | null>(null);
+  /** GR1 timing: the answer awaiting its confirming snapshot. */
+  const answerTimingRef = useRef<{ round: number; ackAt: number } | null>(null);
 
   const opponentUserId =
     publicRound?.players.find((p) => p.playerId !== viewerUserId)?.playerId ?? null;
@@ -453,6 +494,34 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     (privatePlayer?.ownerPlayerId === viewerUserId && privatePlayer?.players.find(
       (p) => p.playerId === viewerUserId)?.hasSubmitted) || ownPublic?.hasSubmitted || false;
   const matchOver = publicRound?.matchOver || result !== null;
+  /**
+   * GR1 — the latest SERVER truth, for the reconciliation loops, which run
+   * across renders and must not read the closure they started in.
+   *
+   * Written where a snapshot ARRIVES (poll, private read, resume), not during
+   * render: a reconciliation must see the server's answer the moment it lands,
+   * independent of when React gets round to committing it.
+   */
+  const serverTruthRef = useRef<{
+    activeRound: number | null; hasSubmitted: boolean; segment: SegmentStateView | null;
+    matchOver: boolean;
+  }>({ activeRound: null, hasSubmitted: false, segment: null, matchOver: false });
+  const noteServerTruth = useCallback((view: PublicRoundView, source: "public" | "private") => {
+    const own = view.players.find((p) => p.playerId === viewerUserId)?.hasSubmitted ?? false;
+    const active = view.activeRound?.roundNumber ?? null;
+    if (source === "private") {
+      // The private read is the viewer's own echo; it may only ADD the
+      // submission fact for the round the public truth is already on.
+      if (own && active !== null && active === serverTruthRef.current.activeRound) {
+        serverTruthRef.current = { ...serverTruthRef.current, hasSubmitted: true };
+      }
+      return;
+    }
+    serverTruthRef.current = {
+      activeRound: active, hasSubmitted: own, segment: view.segmentState ?? null,
+      matchOver: !!view.matchOver,
+    };
+  }, [viewerUserId]);
 
   const phase: MatchPhase = (() => {
     if (error) return "fatal";
@@ -558,6 +627,10 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       if (holdTokenRef.current !== token) return;
       if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
+      // GR1 — INTENTIONAL reading time, recorded so it is never mistaken for
+      // latency (and never treated as something to shave).
+      recordTiming({ name: "reveal_hold", category: "presentation", ms: Date.now() - heldAt,
+        detail: { planned_ms: hold } });
       setRevealHold(false);
     };
     revealTimerRef.current = window.setTimeout(() => {
@@ -600,18 +673,20 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       /** RFX1 2B3 — the medium beat the NEXT round is owed, if any. */
       special?: { tailMs: number } | null;
     } = {},
-  ) => {
-    if (resolvedRef.current === round) return;
-    if (!ids) return;  // opponent not in the snapshot yet — a real not-ready
+  ): Promise<"captured" | "retry" | "skip"> => {
+    if (resolvedRef.current === round) return "skip";
+    if (!ids) return "retry";  // opponent not in the snapshot yet — a real not-ready
 
     let env: Awaited<ReturnType<typeof api.getResolvedRound>>;
     try {
       env = await api.getResolvedRound(matchId!, round, signal);
     } catch (e) {
-      if (!api.isAborted(e)) { /* resolved not ready yet; the next poll retries */ }
-      return;
+      // GR1 — not ready, or the read failed (502/timeout). The caller keeps
+      // the round as PENDING and asks again on a later poll; it used to be
+      // dropped, because the boundary that triggered this is seen only once.
+      return api.isAborted(e) ? "skip" : "retry";
     }
-    if (signal.aborted) return;
+    if (signal.aborted) return "skip";
 
     let settlement: ResolvedRoundView | null = null;
     try {
@@ -663,6 +738,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         ? null : nextStart - Date.now() - (opts.skewMs ?? 0), opts.special ?? null,
         serverPaced, serverPaced ? readResolvedPresentationMs(env.payload) : null);
     }
+    return "captured";
   }, [matchId, beginRevealHold]);
 
   /**
@@ -720,7 +796,10 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     void (async () => {
       try {
         const next = await api.getPrivatePlayer(matchId, signal);
-        if (!stoppedRef.current) setPrivatePlayer(next);
+        if (!stoppedRef.current) {
+          noteServerTruth(next, "private");
+          setPrivatePlayer(next);
+        }
       } catch (e) {
         if (api.isAborted(e)) return;
         if (api.isContractError(e)) { failContract("private player", e); return; }
@@ -732,7 +811,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         if (privateDirtyRef.current && !stoppedRef.current && !signal.aborted) readPrivate(signal);
       }
     })();
-  }, [matchId, failContract]);
+  }, [matchId, failContract, noteServerTruth]);
 
   const poll = useCallback(async () => {
     if (!matchId || stoppedRef.current) return;
@@ -766,7 +845,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
           metaReflexModuleId: META_REFLEX_MODULE_ID,
           metaReflexMinVersion: META_REFLEX_MIXED_VERSION,
         });
-        await captureResolved(previous, controller.signal,
+        const captured = await captureResolved(previous, controller.signal,
           idMappingFromRound(pub, viewerUserId),
           {
             nextStartedAt: pub.activeRound?.startedAt ?? null, skewMs: pubSkewMs,
@@ -786,6 +865,24 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         // new round's draft happens to equal the old one.
         setSelectedOptionId(null); setSelectedAbilityId(null);
         serverAbilityRef.current = null;
+        pendingCaptureRef.current = captured === "retry" ? previous : null;
+      } else if (pendingCaptureRef.current !== null && active !== null
+                 && resolvedRef.current !== pendingCaptureRef.current) {
+        // GR1 — the boundary's `/resolved` read failed; ask again now. The
+        // reveal BEAT is replayed only while it still fits before the next
+        // round is answerable (the same ceiling `anchoredRevealHoldMs`
+        // applies); later than that, a held reveal would spend the player's
+        // answer time, so the settlement, transcript and ledger row are
+        // restored without holding input.
+        const pending = pendingCaptureRef.current;
+        const nextStart = pub.activeRound?.startedAt ? Date.parse(pub.activeRound.startedAt) : NaN;
+        const msUntil = nextStart - Date.now() - pubSkewMs;
+        const holdable = active === pending + 1 && !Number.isNaN(msUntil)
+          && msUntil - MODULE_TITLE_MS >= REVEAL_HOLD_MIN_MS;
+        const late = await captureResolved(pending, controller.signal,
+          idMappingFromRound(pub, viewerUserId),
+          { hold: holdable, nextStartedAt: pub.activeRound?.startedAt ?? null, skewMs: pubSkewMs });
+        if (late !== "retry") pendingCaptureRef.current = null;
       }
       if (active !== null) {
         activeRoundRef.current = active;
@@ -796,10 +893,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         // number is still the right thing to show in the header.
         setRoundNumber(pub.segment.segmentNumber);
       }
+      noteServerTruth(pub, "public");
       setPublicRound(pub);
       setError(null);
       setConnectionInterrupted(false); // only a successful authoritative read restores online status
       failuresRef.current = 0;
+      rateLimitedRef.current = false;
 
       // RB3.2 — THE SERVER RE-DECIDES WHETHER THIS WAS A FRESH ENTRY.
       //
@@ -890,6 +989,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       if (api.isContractError(e)) { failContract("public round", e); return; }
       if (api.isFatal(e)) { setError((e as RankedApiError).message); stoppedRef.current = true; return; }
       failuresRef.current += 1;
+      rateLimitedRef.current = api.isRateLimited(e);
       setConnectionInterrupted(true);
       setError(null);
       setActionError(null);
@@ -908,10 +1008,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         const runNext = () => void pollRef.current?.();
         if (rerunRef.current) { rerunRef.current = false; timerRef.current = window.setTimeout(runNext, 0); }
         else timerRef.current = window.setTimeout(
-          runNext, Math.min(POLL_MS * 2 ** failuresRef.current, MAX_BACKOFF_MS));
+          runNext, Math.min(POLL_MS * 2 ** failuresRef.current,
+            rateLimitedRef.current ? MAX_BACKOFF_MS : INTERRUPTED_BACKOFF_CAP_MS));
       }
     }
-  }, [matchId, captureResolved, viewerUserId, readPrivate]);
+  }, [matchId, captureResolved, viewerUserId, readPrivate, noteServerTruth]);
 
   // Keep `pollRef` on the latest `poll`. Declared BEFORE the mount effect so it
   // is populated by the time that effect kicks the loop off.
@@ -935,6 +1036,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     abortRef.current = controller;
     try {
       const resume = await api.resumeMatch(matchId, controller.signal);
+      noteServerTruth(resume.public, "public");
       setPublicRound(resume.public);
       setPrivatePlayer(resume.private);
       setResult(resume.result);
@@ -978,8 +1080,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     } catch (e) {
       if (api.isContractError(e)) { failContract("resume", e); return; }
       if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
+      // GR1 — a transient failure (a reload during a redeploy) recovered
+      // NOTHING, so it must not count as the one recovery this match gets.
+      // The poll loop re-runs it from the first snapshot that shows settled
+      // rounds (`completedRounds > 0`).
+      if (!api.isAborted(e)) recoveredRef.current = false;
     }
-  }, [matchId, viewerUserId, backfillDamageLog, failContract]);
+  }, [matchId, viewerUserId, backfillDamageLog, failContract, noteServerTruth]);
 
   // Held in a ref for the same reason `poll` is: the mount effect and the poll
   // loop both reach it, and neither may be pinned to the closure that existed
@@ -1125,27 +1232,131 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   }, [serverAbilityId]);
 
   /**
+   * GR1 — SEND, AND IF THE OUTCOME IS UNKNOWN, RECONCILE; NEVER RE-CHOOSE.
+   *
+   * One write, re-sent IDENTICALLY while its outcome is ambiguous
+   * (`api.isAmbiguousFailure`: no response, a timeout, a 5xx, an edge 404).
+   * Between attempts the poll is poked, because the snapshot is the other way
+   * to learn the truth: `owed()` reads the latest server state and says
+   * whether the write is still owed, already visible (`confirmed`), or moot
+   * because the round/segment it belongs to has closed (`gone`).
+   *
+   * Ends on: an acknowledgement, a definitive refusal (a 4xx with a backend
+   * code, returned to the caller to handle exactly as before), a confirming
+   * snapshot, the round closing, or the match/mount going away. Nothing here
+   * grades, times or stores anything; the backend's idempotency (identical
+   * retry → `idempotent: true`) is what makes a duplicate harmless.
+   */
+  const reconcileWrite = useCallback(async <T,>(
+    send: (signal: AbortSignal) => Promise<T>, owed: () => "owed" | "confirmed" | "gone",
+  ): Promise<
+    | { kind: "acked"; value: T; attempts: number }
+    | { kind: "confirmed" | "gone"; attempts: number }
+    | { kind: "refused"; error: unknown; attempts: number }
+  > => {
+    let attempts = 0;
+    try {
+      for (;;) {
+        attempts += 1;
+        // While a send is in flight, keep reading the server truth: a SLOW
+        // send whose card expired, or whose answer the snapshot already
+        // shows, must not keep the input locked until the request deadline.
+        // A Stat Check card is ~6 s; the write deadline is 10 s.
+        const controller = new AbortController();
+        let settledBy: "confirmed" | "gone" | null = null;
+        const watch = window.setInterval(() => {
+          const state = owed();
+          if (state !== "owed") { settledBy = state; controller.abort(); }
+        }, 250);
+        try {
+          return { kind: "acked", value: await send(controller.signal), attempts };
+        } catch (e) {
+          if (settledBy) return { kind: settledBy, attempts };
+          if (api.isAborted(e)) return { kind: "gone", attempts };
+          if (!api.isAmbiguousFailure(e)) return { kind: "refused", error: e, attempts };
+          setAnswerReconciling(true);
+          poke();
+          // Back off before the identical re-send, but wake EARLY when the
+          // server truth settles it (the round closed, the snapshot shows the
+          // answer): a 3 s nap must not hold the input past that moment.
+          const delay = RECONCILE_BACKOFF_MS[Math.min(attempts - 1, RECONCILE_BACKOFF_MS.length - 1)];
+          const state = await new Promise<"owed" | "confirmed" | "gone">((res) => {
+            const startedAt = Date.now();
+            const check = window.setInterval(() => {
+              const s = owed();
+              if (s !== "owed" || Date.now() - startedAt >= delay) {
+                window.clearInterval(check);
+                res(s);
+              }
+            }, Math.min(250, delay));
+          });
+          if (state !== "owed") return { kind: state, attempts };
+        } finally {
+          window.clearInterval(watch);
+        }
+      }
+    } finally {
+      setAnswerReconciling(false);
+    }
+  }, [poke]);
+
+  /**
    * R3 one-click answer. The click IS the submission: it goes straight to the
    * authoritative route with no confirm step and no local lock. `submitting`
    * disables every option while the request is in flight, which is what makes
    * a double-click safe on top of the backend's own idempotency.
+   *
+   * GR1 — and it stays disabled while an AMBIGUOUS send is reconciled
+   * (`reconcileWrite`): the grid used to be released on any failure, so a
+   * dropped response let the player send a DIFFERENT answer to a round the
+   * server may already have recorded.
    */
   const answer = useCallback((optionId: string, answerIndex: number) => {
     if (!matchId || answeringRef.current) return;
     const rn = publicRound?.activeRound?.roundNumber;
     if (rn === undefined) return;
     answeringRef.current = true;
+    const mid = matchId;
+    const clickedAt = timingNow();
     setSelectedOptionId(optionId);  // shows WHICH option is in flight, not a lock
     setAnsweredSelection({ roundNumber: rn, optionId });
     setSubmitting(true); setActionError(null);
+    const owed = () => {
+      if (matchIdRef.current !== mid || stoppedRef.current) return "gone" as const;
+      const truth = serverTruthRef.current;
+      if (truth.activeRound === rn && truth.hasSubmitted) return "confirmed" as const;
+      if (truth.matchOver || (truth.activeRound !== null && truth.activeRound !== rn)) {
+        return "gone" as const;
+      }
+      return "owed" as const;
+    };
     (async () => {
       try {
-        await api.submitRound(matchId, rn, answerIndex);
-        playSfx("ranked.answer.lock", {
-          eventId: `ranked:${matchId}:round:${rn}:lock`,
-        });
-        poke();  // the next snapshot is what actually flips the UI to locked
-      } catch (e) {
+        const outcome = await reconcileWrite(
+          (signal) => api.submitRound(mid, rn, answerIndex, signal), owed);
+        if (outcome.attempts > 1 || outcome.kind === "confirmed" || outcome.kind === "gone") {
+          recordTiming({ name: "answer.reconcile", category: "network",
+            ms: timingNow() - clickedAt,
+            detail: { attempts: outcome.attempts, outcome: outcome.kind, surface: "round" } });
+        }
+        if (outcome.kind === "acked" || outcome.kind === "confirmed") {
+          playSfx("ranked.answer.lock", {
+            eventId: `ranked:${mid}:round:${rn}:lock`,
+          });
+          answerTimingRef.current = { round: rn, ackAt: timingNow() };
+          poke();  // the next snapshot is what actually flips the UI to locked
+          return;
+        }
+        if (outcome.kind === "gone") {
+          // The round closed while the outcome was unknown. Whether the answer
+          // landed is the settlement's to say; drop the local echo so nothing
+          // on screen claims a pick the server may never have recorded.
+          setSelectedOptionId(null);
+          setAnsweredSelection((cur) => (cur?.roundNumber === rn ? null : cur));
+          return;
+        }
+        // `strict: false` does not narrow the union on `kind`; read it by shape.
+        const e = "error" in outcome ? outcome.error : null;
         // Release the grid so the player can answer again.
         setSelectedOptionId(null);
         setAnsweredSelection((cur) => (cur?.roundNumber === rn ? null : cur));
@@ -1163,7 +1374,18 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         setSubmitting(false);
       }
     })();
-  }, [matchId, publicRound, poke, playSfx]);
+  }, [matchId, publicRound, poke, playSfx, reconcileWrite]);
+
+  // GR1 timing — POLLING: an acknowledged answer waits for the snapshot that
+  // shows it before the arena reads "locked"; then RENDER: that state's paint.
+  useEffect(() => {
+    const pending = answerTimingRef.current;
+    if (phase !== "locked" || !pending || pending.round !== roundNumber) return;
+    answerTimingRef.current = null;
+    recordTiming({ name: "answer.ack_to_locked", category: "polling",
+      ms: timingNow() - pending.ackAt });
+    recordPaint("answer.locked_paint");
+  }, [phase, roundNumber]);
 
   /**
    * Arm, change, or clear the round's ability. Independent of the answer in
@@ -1262,16 +1484,57 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
    * local "Locking in…" state can release it and let the player answer again.
    */
   const runSegmentAction = useCallback(
-    (action: (segment: number) => Promise<unknown>,
-     onAccepted?: (segment: number, response: unknown) => void): Promise<boolean> => {
-      if (!matchId || submitting || segmentNumber === null) return Promise.resolve(false);
+    (action: (segment: number, signal: AbortSignal) => Promise<unknown>,
+     onAccepted?: (segment: number, response: unknown) => void,
+     /**
+      * GR1 — which challenge this action answers. With it, an AMBIGUOUS
+      * failure is reconciled (the identical choice re-sent) instead of
+      * released for a different one; the server's own index moving past it
+      * is the confirming signal.
+      */
+     challengeIndex?: number): Promise<boolean> => {
+      // GR1 — a REF guard, as the round path has: two activations in one
+      // React batch both read the pre-update `submitting` state.
+      if (!matchId || segmentActionRef.current || submitting || segmentNumber === null) {
+        return Promise.resolve(false);
+      }
+      segmentActionRef.current = true;
+      const mid = matchId;
+      const segment = segmentNumber;
+      const clickedAt = timingNow();
       setSubmitting(true);
       setActionError(null);
+      const owed = () => {
+        if (matchIdRef.current !== mid || stoppedRef.current) return "gone" as const;
+        const seg = serverTruthRef.current.segment;
+        if (!seg || seg.segmentNumber !== segment) return "gone" as const;
+        if (challengeIndex !== undefined && seg.ownNextChallengeIndex > challengeIndex) {
+          return "confirmed" as const;
+        }
+        return "owed" as const;
+      };
       return (async () => {
         try {
-          const response = await action(segmentNumber);
-          onAccepted?.(segmentNumber, response);
-          return true;
+          const outcome = await reconcileWrite((signal) => action(segment, signal),
+            challengeIndex === undefined
+              // No index to confirm against: one attempt, the old behaviour.
+              ? () => "gone" as const : owed);
+          if (outcome.attempts > 1 || outcome.kind === "confirmed"
+              || (outcome.kind === "gone" && challengeIndex !== undefined)) {
+            recordTiming({ name: "answer.reconcile", category: "network",
+              ms: timingNow() - clickedAt,
+              detail: { attempts: outcome.attempts, outcome: outcome.kind, surface: "segment" } });
+          }
+          if (outcome.kind === "acked") {
+            onAccepted?.(segment, outcome.value);
+            return true;
+          }
+          // The snapshot shows the server already holds this card's answer
+          // (or the card closed): nothing is left to send, and the module's
+          // own marker is cleared by that same snapshot.
+          if (outcome.kind === "confirmed") return true;
+          if (outcome.kind === "gone") return false;
+          throw "error" in outcome ? outcome.error : new Error("action failed");
         } catch (e) {
           // A stale phase/index means the server already moved on — re-poll
           // rather than surfacing a transient race as an error.
@@ -1298,11 +1561,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
           }
           return false;
         } finally {
+          segmentActionRef.current = false;
           setSubmitting(false);
           poke();
         }
       })();
-    }, [matchId, submitting, segmentNumber, poke]);
+    }, [matchId, submitting, segmentNumber, poke, reconcileWrite]);
 
   // R3: no segment ability actions. Item Cost Duel has no ability interaction,
   // so the only segment command a module can issue is a challenge submission.
@@ -1310,8 +1574,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   // module's business, and this controller only relays it.
   const submitSegmentChallenge = useCallback(
     (challengeIndex: number, choice: api.SegmentChoice): Promise<boolean> => {
-      return runSegmentAction((segment) =>
-        api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice),
+      return runSegmentAction((segment, signal) =>
+        api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice, signal),
       (segment, response) => {
         // OF3-F2 - Order Forge's one card locks with the light Ranked lock,
         // only now that the server has accepted it. The module plays nothing.
@@ -1346,7 +1610,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         playSfx("ranked.meta.action", {
           eventId: `ranked:${matchId}:segment:${segment}:card:${challengeIndex}:action`,
         });
-      });
+      }, challengeIndex);
     }, [runSegmentAction, matchId, segmentState, playSfx]);
 
   const forfeit = useCallback(() => {
@@ -1389,7 +1653,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, answeredSelection, selectedAbilityId, submitting, abilityBusy, actionError,
-    connectionInterrupted, error, contractError, retry, roundLive, answer, selectAbility,
+    connectionInterrupted, answerReconciling, error, contractError, retry, roundLive, answer,
+    selectAbility,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
     submitSegmentChallenge, revealHold, orderForgeLockReveal,
