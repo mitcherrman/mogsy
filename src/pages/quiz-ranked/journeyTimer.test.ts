@@ -1,11 +1,11 @@
 /**
  * JOURNEY-UI3 — the Journey clock (`projectJourneyTimer`) on REAL J3 captures.
  *
- * Standard's module 10 pools 150 s of ACTIVE answer time. The server owns it:
- * `active_time_remaining_ms` is what is left now, `active_time_running` says
- * whether a card is open, and `own_card_deadline` is the open card's (or the
- * next card's) open + remainder. The projection renders those — it pauses
- * nothing, and it never reads the round's projected block deadline.
+ * Historical Standard J3 captures use the frozen 150 s ACTIVE-answer pool.
+ * New Standard F09 instead uses the existing per-child 30 s contract already
+ * proven by Survival. Both clocks are projection-only, server-authoritative:
+ * no client local zero settles a question, and the round deadline is never
+ * substituted for the Journey's own timer.
  */
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -27,7 +27,7 @@ const at = (n: string, label: string, plusMs = 0) => {
   return { round, t: projectJourneyTimer(round.segmentState, 0, Date.parse(s.at) + plusMs) };
 };
 
-describe("Standard: one pooled 150 s clock, server-authoritative", () => {
+describe("Historical frozen Standard: one pooled 150 s clock, server-authoritative", () => {
   it("counts down while the card is open", () => {
     const { t } = at("zed.standard", "child0-live");
     expect(t).toMatchObject({ durationSeconds: 150, remainingSeconds: 148, paused: false });
@@ -70,6 +70,65 @@ describe("Standard: one pooled 150 s clock, server-authoritative", () => {
     const { round, t } = at("voli.standard.exhaust", "child1-timeout");
     expect(round.segmentState!.ownFinished).toBe(true);
     expect(t).toMatchObject({ remainingSeconds: 0, paused: false });
+  });
+});
+
+/**
+ * F09 compatibility proof. Until a captured Standard run with the NEW recipe
+ * exists, adapt the genuine historical Standard captures by replacing only
+ * their clock fields with the server's documented v2 per-card contract.
+ * This is a FRONTEND WIRE TEST, not a claim to have exercised the new backend
+ * or production database; original historical snapshots remain untouched.
+ */
+function newStandardCardClock(label: string, plusMs = 0) {
+  const s = snap("zed.standard", label);
+  const envelope = JSON.parse(JSON.stringify(s.envelope));
+  const seg = envelope.payload.segment_state as Record<string, unknown>;
+  const opensAt = Date.parse(seg.own_card_started_at as string);
+  if (!Number.isFinite(opensAt)) throw new Error(`missing server card opening: ${label}`);
+  seg.card_timer_ms = 30_000;
+  seg.active_time_ms = null;
+  seg.active_time_remaining_ms = null;
+  seg.active_time_running = null;
+  seg.own_card_deadline = new Date(opensAt + 30_000).toISOString();
+  const state = readPublicRound(envelope).segmentState;
+  return { state, timer: projectJourneyTimer(state, 0, Date.parse(s.at) + plusMs) };
+}
+
+describe("F09 — new Standard: the existing per-card Journey UI accepts the new wire shape", () => {
+  it("shows 30 seconds per child and counts from that child's SERVER deadline", () => {
+    const start = newStandardCardClock("child0-live");
+    expect(start.state?.cardTimerMs).toBe(30_000);
+    expect(start.state?.activeTimeMs).toBeNull();
+    expect(start.timer).toMatchObject({ durationSeconds: 30, remainingSeconds: 28, paused: false });
+    expect(newStandardCardClock("child0-live", 3_000).timer)
+      .toMatchObject({ durationSeconds: 30, remainingSeconds: 25 });
+  });
+
+  it("holds at the full 30 seconds during the reveal, then starts at the NEXT child's opening", () => {
+    expect(newStandardCardClock("child0-reveal").timer).toMatchObject({
+      durationSeconds: 30, remainingSeconds: 30,
+    });
+    expect(newStandardCardClock("child0-reveal", 1_000).timer?.remainingSeconds).toBe(30);
+    expect(newStandardCardClock("child0-reveal", 2_500).timer?.remainingSeconds).toBe(29);
+  });
+
+  it("holds through a Journey transition beat without spending the upcoming child's clock", () => {
+    expect(newStandardCardClock("child3-beat").timer?.remainingSeconds).toBe(30);
+    expect(newStandardCardClock("child3-beat", 1_000).timer?.remainingSeconds).toBe(30);
+    expect(newStandardCardClock("child3-beat", 2_500).timer?.remainingSeconds).toBe(29);
+  });
+
+  it("a locally expired card displays zero but does not claim any backend settlement", () => {
+    const x = newStandardCardClock("child0-live", 29_000);
+    expect(x.timer).toMatchObject({ durationSeconds: 30, remainingSeconds: 0, urgent: false });
+    expect(x.state?.ownFinished).toBe(false); // server still owns settlement
+  });
+
+  it("historical frozen Standard still uses the pooled contract, not the new card configuration", () => {
+    const old = at("zed.standard", "child0-live");
+    expect(old.round.segmentState?.cardTimerMs).toBeNull();
+    expect(old.t).toMatchObject({ durationSeconds: 150, remainingSeconds: 148 });
   });
 });
 
