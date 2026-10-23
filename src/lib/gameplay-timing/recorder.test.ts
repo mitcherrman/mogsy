@@ -6,7 +6,7 @@ import {
 
 beforeEach(() => clearTimingRecords());
 
-describe("GR1 gameplay timing recorder", () => {
+describe("GRES1 gameplay timing recorder", () => {
   it("parses only the app metric's duration from Server-Timing", () => {
     expect(serverAppMs("app;dur=12.5")).toBe(12.5);
     expect(serverAppMs("db;dur=3, app;desc=\"handler\";dur=7")).toBe(7);

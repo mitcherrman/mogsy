@@ -1,5 +1,5 @@
 /**
- * GR1 — fault injection for the live-match controller.
+ * GRES1 — fault injection for the live-match controller.
  *
  * A small STATEFUL fake of the backend's submission contract (identical
  * retry → `idempotent: true`; a different answer after one is stored →
@@ -233,7 +233,7 @@ async function mountMatch() {
 }
 
 // ───────────────────────────────────────────────────────── ordinary questions
-describe("GR1 ordinary questions — submission reconciliation", () => {
+describe("GRES1 ordinary questions — submission reconciliation", () => {
   it("ambiguous success (stored, response lost): keeps the pick, re-sends the SAME answer, never releases", async () => {
     server.submitFaults = ["drop"];
     const { result } = await mountMatch();
@@ -324,7 +324,7 @@ describe("GR1 ordinary questions — submission reconciliation", () => {
   });
 });
 
-describe("GR1 ordinary questions — polling through an outage", () => {
+describe("GRES1 ordinary questions — polling through an outage", () => {
   it("a hung snapshot read ends at the read deadline and surfaces 'reconnecting'", async () => {
     const { result } = await mountMatch();
     server.readFaults = ["hang"];
@@ -403,7 +403,7 @@ describe("GR1 ordinary questions — polling through an outage", () => {
 });
 
 // ─────────────────────────────────────────────────────────────── Stat Check
-describe("GR1 Stat Check (Meta Reflex cards) — submission reconciliation", () => {
+describe("GRES1 Stat Check (Meta Reflex cards) — submission reconciliation", () => {
   beforeEach(() => { server.segment = true; });
 
   it("ambiguous success on a card: the same card is re-sent and confirmed by the server's index", async () => {

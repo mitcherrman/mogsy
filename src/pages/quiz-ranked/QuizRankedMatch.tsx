@@ -179,7 +179,7 @@ function revealNames(settlement: ResolvedRoundView,
 const AGAIN_HREF = "/quiz?play=1";
 const LOBBY_HREF = "/quiz";
 /**
- * GR1 — the status while an answer whose outcome is unknown is re-sent
+ * GRES1 — the status while an answer whose outcome is unknown is re-sent
  * UNCHANGED (`useRankedMatch.answerReconciling`). Honest on purpose: it
  * never says the answer was saved, only that it is being sent.
  */
@@ -1066,7 +1066,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // card…" while the backend has stopped for a volume-backed deployment.
     // Neither regrades nor retries submissions; normal snapshot polling is
     // already idempotent and is what advances the authoritative card.
-    // GR1 — an answer whose outcome is unknown is being re-sent unchanged;
+    // GRES1 — an answer whose outcome is unknown is being re-sent unchanged;
     // the copy says so without claiming it was saved.
     error: m.answerReconciling ? ANSWER_RECONCILING_TEXT
       : m.connectionInterrupted ? "Connection lost — reconnecting…" : m.actionError,

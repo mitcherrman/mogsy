@@ -64,7 +64,7 @@ const MAX_LAUNCH_ATTEMPTS = 3;
 const MAX_SYNC_ATTEMPTS = 6;
 const SYNC_RETRY_MS = 1000;
 /**
- * GR1 — riding through an OUTAGE is a different budget from a server that
+ * GRES1 — riding through an OUTAGE is a different budget from a server that
  * keeps ANSWERING "not yet". A Railway redeploy is ~10 s of 502s plus a cold
  * start; the old six-tries-a-second-apart loop gave up after ~6 s and left
  * the stage result behind a manual Retry. Only UNREACHABLE answers
@@ -72,14 +72,14 @@ const SYNC_RETRY_MS = 1000;
  */
 export const OUTAGE_RETRY_MS = [1000, 2000, 3000] as const;
 export const SYNC_OUTAGE_BUDGET_MS = 60_000;
-/** GR1 — the stage launch and the entry read ride through the same window. */
+/** GRES1 — the stage launch and the entry read ride through the same window. */
 export const LAUNCH_OUTAGE_RETRY_MS = [1000, 2000, 3000, 4000, 5000] as const;
 export const ENTRY_OUTAGE_RETRY_MS = [1000, 2000, 4000] as const;
 
 const sleep = (ms: number) => new Promise<void>((res) => window.setTimeout(res, ms));
 
 /**
- * GR1 — run `work`, repeating it after each delay while it fails TRANSIENTLY
+ * GRES1 — run `work`, repeating it after each delay while it fails TRANSIENTLY
  * (the service unreachable). Every Daily call this wraps is idempotent on the
  * server, so a repeat is the same request, not a second action. A refusal, or
  * the last transient failure, is thrown to the caller unchanged.
@@ -206,7 +206,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   const launchInteractions = useRef<Map<string, string>>(new Map());
   const launching = useRef(false);
   const syncing = useRef(false);
-  /** GR1 — the activity lease: one renewal in flight; off once the route is known absent. */
+  /** GRES1 — the activity lease: one renewal in flight; off once the route is known absent. */
   const leaseInFlight = useRef(false);
   const leaseUnsupported = useRef(false);
   const lastLiveRead = useRef(0);
@@ -303,7 +303,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     let cancelled = false;
     (async () => {
       try {
-        // GR1 — a reload during a redeploy rides it out before it shows an
+        // GRES1 — a reload during a redeploy rides it out before it shows an
         // error (whose only button, Begin, would POST /today).
         const today = await retryTransient(() => transport.readToday(), ENTRY_OUTAGE_RETRY_MS,
           () => !cancelled && mounted.current);
@@ -358,7 +358,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     const controller = new AbortController();
     let id: number | undefined;
     const renew = async () => {
-      // GR1 — one renewal at a time: a hung renewal must not stack a second.
+      // GRES1 — one renewal at a time: a hung renewal must not stack a second.
       if (leaseInFlight.current || leaseUnsupported.current) return;
       leaseInFlight.current = true;
       try {
@@ -371,7 +371,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
           adopt(next);
         }
       } catch (e) {
-        // GR1 — an UNCODED 404/405 is the backend saying it has no such
+        // GRES1 — an UNCODED 404/405 is the backend saying it has no such
         // route (the lease shipped ahead of its backend, BE #87): stop asking
         // for the rest of this page instead of POSTing a 404 every 30 s.
         if (e instanceof DailyRunApiError && e.kind === "backend" && e.code === null
@@ -428,7 +428,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     }
     launching.current = true;
     try {
-      // GR1 — the launch is idempotent per stage (server `launch_id`, one
+      // GRES1 — the launch is idempotent per stage (server `launch_id`, one
       // interaction id), so an UNREACHABLE answer is repeated in place; the
       // tag stays up meanwhile, and only a refusal or an outage that outlasts
       // `LAUNCH_OUTAGE_RETRY_MS` reaches the error state and its Retry.
@@ -477,7 +477,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     if (syncing.current) return;
     syncing.current = true;
     try {
-      // Two budgets (GR1). ANSWERS that say "still in progress" (or refuse)
+      // Two budgets (GRES1). ANSWERS that say "still in progress" (or refuse)
       // keep the old bound of MAX_SYNC_ATTEMPTS a second apart. UNREACHABLE
       // answers (a redeploy) spend a time budget instead, with backoff, so a
       // ~10 s outage no longer strands the result behind a manual Retry.

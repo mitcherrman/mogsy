@@ -1,5 +1,5 @@
 /**
- * GR1 — the Daily parent through an outage.
+ * GRES1 — the Daily parent through an outage.
  *
  * Drives the REAL controller (`useDailyRun`) over the fixture transport with
  * faults wrapped around it: a Railway-style 502 window, an uncoded 404 from a
@@ -59,7 +59,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.useRealTimers(); });
 
-describe("GR1 Daily — scoring sync rides through a redeploy", () => {
+describe("GRES1 Daily — scoring sync rides through a redeploy", () => {
   it("a ~12 s 502 window no longer strands the stage result behind Retry", async () => {
     const t = inProgress();
     let downUntil = 0;
@@ -97,7 +97,7 @@ describe("GR1 Daily — scoring sync rides through a redeploy", () => {
   });
 });
 
-describe("GR1 Daily — entry and launch", () => {
+describe("GRES1 Daily — entry and launch", () => {
   it("a reload during a redeploy rides out the entry read instead of offering Begin", async () => {
     const t = inProgress();
     let faults = 2;
@@ -130,7 +130,7 @@ describe("GR1 Daily — entry and launch", () => {
   });
 });
 
-describe("GR1 Daily — the activity lease against a backend without the route", () => {
+describe("GRES1 Daily — the activity lease against a backend without the route", () => {
   it("stops after an uncoded 404 instead of POSTing one every 30 s", async () => {
     const t = inProgress();
     let leaseCalls = 0;

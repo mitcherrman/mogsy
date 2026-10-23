@@ -57,7 +57,7 @@ const KNOWN: ReadonlySet<string> = new Set<DailyRunErrorCode>([
 
 export class DailyRunApiError extends Error {
   constructor(
-    /** GR1 — `timeout`: this client stopped waiting; the server may still have acted. */
+    /** GRES1 — `timeout`: this client stopped waiting; the server may still have acted. */
     public kind: "backend" | "invalid_response" | "network" | "timeout" | "aborted",
     public status: number,
     message: string,
@@ -72,7 +72,7 @@ export const isDailyRunAborted = (e: unknown): boolean =>
   e instanceof DailyRunApiError ? e.kind === "aborted" : (e as { name?: string })?.name === "AbortError";
 
 /**
- * GR1 — the service was unreachable, not unwilling: no response, a client
+ * GRES1 — the service was unreachable, not unwilling: no response, a client
  * timeout, a gateway/availability status, a throttle, or an UNCODED 404/5xx
  * (the platform, or a route this backend does not have yet). Every Daily
  * write is idempotent server-side (start, per-stage launch, sync), so these
@@ -89,7 +89,7 @@ export const isDailyRunTransient = (e: unknown): boolean => {
   return e.code === null && (e.status >= 500 || e.status === 404);
 };
 
-/** GR1 — the Daily transport's request deadlines (see `ranked-public/client.ts`). */
+/** GRES1 — the Daily transport's request deadlines (see `ranked-public/client.ts`). */
 export const DAILY_REQUEST_TIMEOUT_MS = { read: 8000, write: 12000 } as const;
 
 /** `/api/daily-run/<run>/stages/2/launch` → `daily:POST:/:run/stages/:n/launch`. */
@@ -115,7 +115,7 @@ async function request<T>(path: string, parse: (json: unknown) => T,
   const handledAt = timingNow();
   if (method === "POST") await ensureBackendAuthToken();
   const headers: Record<string, string> = { ...(await getBackendAuthHeaders()) };
-  // GR1 — a deadline composed with the caller's signal. Hand-rolled: there is
+  // GRES1 — a deadline composed with the caller's signal. Hand-rolled: there is
   // no `AbortSignal.any` on every browser this site supports.
   const controller = new AbortController();
   let timedOut = false;

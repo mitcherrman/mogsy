@@ -49,14 +49,14 @@ const POLL_MS = 1500;
 /** Backoff ceiling while the server is THROTTLING us (429): back right off. */
 const MAX_BACKOFF_MS = 8000;
 /**
- * GR1 — backoff ceiling while the server is merely UNREACHABLE (502, timeout,
+ * GRES1 — backoff ceiling while the server is merely UNREACHABLE (502, timeout,
  * dropped connection). A Railway redeploy is ~10 s of 502s; at the old 8 s
  * ceiling the arena noticed the recovery up to 8 s late, on a clock that was
  * already running. 3 s is one cheap read per tab per 3 s during an outage.
  */
 export const INTERRUPTED_BACKOFF_CAP_MS = 3000;
 /**
- * GR1 — re-send cadence for an AMBIGUOUS answer (sent, outcome unknown). The
+ * GRES1 — re-send cadence for an AMBIGUOUS answer (sent, outcome unknown). The
  * SAME answer is re-sent, never a different one; the backend's idempotency
  * makes a duplicate harmless. The last value repeats until the round closes.
  */
@@ -225,7 +225,7 @@ export interface MatchController {
    * successful server snapshot. */
   connectionInterrupted: boolean;
   /**
-   * GR1 — an answer was SENT and its outcome is unknown (the connection
+   * GRES1 — an answer was SENT and its outcome is unknown (the connection
    * dropped, timed out or answered 5xx). The chosen option stays selected and
    * every other option stays closed while the controller re-sends the SAME
    * answer; it ends on the server's acknowledgement, on a snapshot that shows
@@ -471,20 +471,20 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   // so a stale-closure check would let the second one through.
   const answeringRef = useRef(false);
   const abilityRef = useRef(false);
-  /** GR1 — the segment path's synchronous guard (it read `submitting` state). */
+  /** GRES1 — the segment path's synchronous guard (it read `submitting` state). */
   const segmentActionRef = useRef(false);
-  /** GR1 — the match this mount is driving NOW, for loops that outlive a render. */
+  /** GRES1 — the match this mount is driving NOW, for loops that outlive a render. */
   const matchIdRef = useRef(matchId);
   matchIdRef.current = matchId;
-  /** GR1 — was the last poll failure a throttle (429) rather than an outage? */
+  /** GRES1 — was the last poll failure a throttle (429) rather than an outage? */
   const rateLimitedRef = useRef(false);
   /**
-   * GR1 — a settled round whose `/resolved` read FAILED at the boundary. The
+   * GRES1 — a settled round whose `/resolved` read FAILED at the boundary. The
    * boundary is only ever seen once (`activeRoundRef` moves on), so without
    * this the round's reveal, transcript and ledger row were lost for good.
    */
   const pendingCaptureRef = useRef<number | null>(null);
-  /** GR1 timing: the answer awaiting its confirming snapshot. */
+  /** GRES1 timing: the answer awaiting its confirming snapshot. */
   const answerTimingRef = useRef<{ round: number; ackAt: number } | null>(null);
 
   const opponentUserId =
@@ -495,7 +495,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       (p) => p.playerId === viewerUserId)?.hasSubmitted) || ownPublic?.hasSubmitted || false;
   const matchOver = publicRound?.matchOver || result !== null;
   /**
-   * GR1 — the latest SERVER truth, for the reconciliation loops, which run
+   * GRES1 — the latest SERVER truth, for the reconciliation loops, which run
    * across renders and must not read the closure they started in.
    *
    * Written where a snapshot ARRIVES (poll, private read, resume), not during
@@ -627,7 +627,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       if (holdTokenRef.current !== token) return;
       if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
-      // GR1 — INTENTIONAL reading time, recorded so it is never mistaken for
+      // GRES1 — INTENTIONAL reading time, recorded so it is never mistaken for
       // latency (and never treated as something to shave).
       recordTiming({ name: "reveal_hold", category: "presentation", ms: Date.now() - heldAt,
         detail: { planned_ms: hold } });
@@ -681,7 +681,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     try {
       env = await api.getResolvedRound(matchId!, round, signal);
     } catch (e) {
-      // GR1 — not ready, or the read failed (502/timeout). The caller keeps
+      // GRES1 — not ready, or the read failed (502/timeout). The caller keeps
       // the round as PENDING and asks again on a later poll; it used to be
       // dropped, because the boundary that triggered this is seen only once.
       return api.isAborted(e) ? "skip" : "retry";
@@ -868,7 +868,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         pendingCaptureRef.current = captured === "retry" ? previous : null;
       } else if (pendingCaptureRef.current !== null && active !== null
                  && resolvedRef.current !== pendingCaptureRef.current) {
-        // GR1 — the boundary's `/resolved` read failed; ask again now. The
+        // GRES1 — the boundary's `/resolved` read failed; ask again now. The
         // reveal BEAT is replayed only while it still fits before the next
         // round is answerable (the same ceiling `anchoredRevealHoldMs`
         // applies); later than that, a held reveal would spend the player's
@@ -1080,7 +1080,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     } catch (e) {
       if (api.isContractError(e)) { failContract("resume", e); return; }
       if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
-      // GR1 — a transient failure (a reload during a redeploy) recovered
+      // GRES1 — a transient failure (a reload during a redeploy) recovered
       // NOTHING, so it must not count as the one recovery this match gets.
       // The poll loop re-runs it from the first snapshot that shows settled
       // rounds (`completedRounds > 0`).
@@ -1232,7 +1232,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   }, [serverAbilityId]);
 
   /**
-   * GR1 — SEND, AND IF THE OUTCOME IS UNKNOWN, RECONCILE; NEVER RE-CHOOSE.
+   * GRES1 — SEND, AND IF THE OUTCOME IS UNKNOWN, RECONCILE; NEVER RE-CHOOSE.
    *
    * One write, re-sent IDENTICALLY while its outcome is ambiguous
    * (`api.isAmbiguousFailure`: no response, a timeout, a 5xx, an edge 404).
@@ -1306,7 +1306,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
    * disables every option while the request is in flight, which is what makes
    * a double-click safe on top of the backend's own idempotency.
    *
-   * GR1 — and it stays disabled while an AMBIGUOUS send is reconciled
+   * GRES1 — and it stays disabled while an AMBIGUOUS send is reconciled
    * (`reconcileWrite`): the grid used to be released on any failure, so a
    * dropped response let the player send a DIFFERENT answer to a round the
    * server may already have recorded.
@@ -1376,7 +1376,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     })();
   }, [matchId, publicRound, poke, playSfx, reconcileWrite]);
 
-  // GR1 timing — POLLING: an acknowledged answer waits for the snapshot that
+  // GRES1 timing — POLLING: an acknowledged answer waits for the snapshot that
   // shows it before the arena reads "locked"; then RENDER: that state's paint.
   useEffect(() => {
     const pending = answerTimingRef.current;
@@ -1487,13 +1487,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     (action: (segment: number, signal: AbortSignal) => Promise<unknown>,
      onAccepted?: (segment: number, response: unknown) => void,
      /**
-      * GR1 — which challenge this action answers. With it, an AMBIGUOUS
+      * GRES1 — which challenge this action answers. With it, an AMBIGUOUS
       * failure is reconciled (the identical choice re-sent) instead of
       * released for a different one; the server's own index moving past it
       * is the confirming signal.
       */
      challengeIndex?: number): Promise<boolean> => {
-      // GR1 — a REF guard, as the round path has: two activations in one
+      // GRES1 — a REF guard, as the round path has: two activations in one
       // React batch both read the pre-update `submitting` state.
       if (!matchId || segmentActionRef.current || submitting || segmentNumber === null) {
         return Promise.resolve(false);

@@ -110,7 +110,7 @@ describe("public Ranked client", () => {
     expect(calls[0].init.method).toBe("DELETE");
   });
 
-  it("isFatal flags non-participant and a BACKEND-coded 404 only (GR1)", () => {
+  it("isFatal flags non-participant and a BACKEND-coded 404 only (GRES1)", () => {
     expect(api.isFatal(new RankedApiError("backend", 403, "x", "RANKED_NOT_A_PARTICIPANT"))).toBe(true);
     expect(api.isFatal(new RankedApiError("backend", 404, "gone", "JOURNEY_NOT_FOUND"))).toBe(true);
     // An uncoded 404 is route skew or an edge response, never "this match is gone".
@@ -281,7 +281,7 @@ describe("segment challenge submission", () => {
   });
 });
 
-describe("GR1 — request deadlines, ambiguity and server timing", () => {
+describe("GRES1 — request deadlines, ambiguity and server timing", () => {
   afterEach(() => { vi.useRealTimers(); });
 
   it("a hung read gives up at the read deadline as a TIMEOUT, never fatal", async () => {

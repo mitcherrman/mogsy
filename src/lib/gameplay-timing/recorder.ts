@@ -1,5 +1,5 @@
 /**
- * GR1 — gameplay timing, split by WHERE the time went.
+ * GRES1 — gameplay timing, split by WHERE the time went.
  *
  * A player who says "the answer felt slow" can mean five different things,
  * and they have five different owners:

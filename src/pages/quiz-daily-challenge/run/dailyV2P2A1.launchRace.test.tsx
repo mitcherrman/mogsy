@@ -194,7 +194,7 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     await waitFor(() => expect(phase()).toBe("optional-entry"));
     fireEvent.click(screen.getByTestId("daily-optional-continue"));
     await gate.release("lost");
-    // GR1 — a lost response is UNREACHABLE, not refused: the SAME launch (one
+    // GRES1 — a lost response is UNREACHABLE, not refused: the SAME launch (one
     // interaction id; idempotent per stage on the server) is re-sent after a
     // short backoff, and the server answers with the child the first send
     // created. The latch holds throughout; the run re-read remains the path

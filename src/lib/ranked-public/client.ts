@@ -52,7 +52,7 @@ export type RankedApiErrorKind =
   | "invalid_response"
   | "network"
   /**
-   * GR1 — the CLIENT gave up waiting (see `REQUEST_TIMEOUT_MS`). Like
+   * GRES1 — the CLIENT gave up waiting (see `REQUEST_TIMEOUT_MS`). Like
    * `network`, it says nothing about whether the server processed the
    * request: a write that timed out is AMBIGUOUS, never a refusal.
    */
@@ -60,7 +60,7 @@ export type RankedApiErrorKind =
   | "aborted";
 
 /**
- * GR1 — client-side request deadlines.
+ * GRES1 — client-side request deadlines.
  *
  * Without one, a connection that hangs (a Railway redeploy produced 15 s
  * CORS dial timeouts, PR #28's evidence) held the single-flight poll loop
@@ -152,7 +152,7 @@ export const isContractError = (e: unknown): boolean =>
   e instanceof RankedApiError && e.kind === "invalid_response";
 
 /**
- * GR1 — a 404 is fatal only when the BACKEND said so (a typed `detail.code`).
+ * GRES1 — a 404 is fatal only when the BACKEND said so (a typed `detail.code`).
  *
  * The match routes never answer an uncoded 404 for a real reason: a missing or
  * foreign match is `403 RANKED_NOT_A_PARTICIPANT`. An uncoded 404 is therefore
@@ -165,7 +165,7 @@ export const isFatal = (e: unknown): boolean =>
     e.code === "ACCOUNT_REQUIRED" || (e.status === 404 && e.code !== null));
 
 /**
- * GR1 — a WRITE that may or may not have reached the server.
+ * GRES1 — a WRITE that may or may not have reached the server.
  *
  * No answer arrived (network, timeout), the platform answered instead of the
  * application (5xx, an uncoded 404 from an edge), or the server shed load
@@ -242,13 +242,13 @@ interface RequestOpts {
   method?: string;
   body?: unknown;
   signal?: AbortSignal;
-  /** Override the GR1 default deadline (`REQUEST_TIMEOUT_MS`). */
+  /** Override the GRES1 default deadline (`REQUEST_TIMEOUT_MS`). */
   timeoutMs?: number;
 }
 
 async function request<T>(path: string, parse: (json: unknown) => T,
                           { method = "GET", body, signal, timeoutMs }: RequestOpts = {}): Promise<T> {
-  // GR1 — the frontend's own share: everything before the request leaves,
+  // GRES1 — the frontend's own share: everything before the request leaves,
   // which for a write includes minting/refreshing the auth header.
   const handledAt = timingNow();
   // USERS1 — the write boundary. A mutating call is the visitor doing
