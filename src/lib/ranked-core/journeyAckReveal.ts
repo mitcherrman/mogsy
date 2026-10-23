@@ -70,8 +70,32 @@ export function withJourneyAckReveal(
     // The revealing child's own window, exactly as a per-child snapshot names
     // it; the hold reads `ownRevealUntil` for when it ends.
     ownRevealWindowMs: t.revealWindowMs,
-    // The pooled clock is paused through every reveal (server-derived); the
-    // remainder stays the snapshot's until the next one restates it.
+    // The pooled clock is paused through every reveal (server-derived), at
+    // what the answered child left of the pool.
     ...(state.activeTimeRunning != null ? { activeTimeRunning: false } : {}),
+    ...pooledRemainder(state, t),
   };
+}
+
+/**
+ * The pool left after the answered child, exactly as the next snapshot will
+ * state it (`active_time_remaining_ms`), or nothing when the snapshot is not on
+ * a pooled clock. The server cuts a pooled child's deadline as `opened +
+ * remaining`, so the next child's own window IS the remainder; the final child
+ * has no next one, and is read off its own deadline less the instant it
+ * settled (`reveal_until − reveal_window_ms`, the final hold being its own
+ * window). Without this the paused header showed the stale snapshot's
+ * remainder, up to one poll interval too high, until the next poll landed.
+ */
+function pooledRemainder(state: SegmentStateView, t: JourneyAckRevealTiming): Partial<SegmentStateView> {
+  if (state.activeTimeRemainingMs == null) return {};
+  let left: number;
+  if (t.nextCardStartedAt && t.nextCardDeadline) {
+    left = Date.parse(t.nextCardDeadline) - Date.parse(t.nextCardStartedAt);
+  } else if (state.ownCardIndex === t.revealingCardIndex && state.ownCardDeadline) {
+    left = Date.parse(state.ownCardDeadline) - (Date.parse(t.revealUntil) - t.revealWindowMs);
+  } else {
+    return {};
+  }
+  return Number.isFinite(left) ? { activeTimeRemainingMs: Math.max(0, Math.round(left)) } : {};
 }

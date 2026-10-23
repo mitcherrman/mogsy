@@ -34,6 +34,12 @@ import { withRevealWindow } from "@/pages/dev/journey-arena/JourneyArenaHarness"
 import { withJourneyAckReveal, type JourneyAckRevealRef } from "../journeyAckReveal";
 import { masterySliceModule } from "./masterySliceModule";
 
+// The real hook, observed (scope of the end instant: Journeys only).
+vi.mock("@/features/mastery/interactions/revealState", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/features/mastery/interactions/revealState")>();
+  return { ...real, useRevealAutoAdvance: vi.fn(real.useRevealAutoAdvance) };
+});
+
 const FIX = resolve(process.cwd(), "src/lib/journey/__fixtures__");
 const load = (n: string): CaptureSnapshot[] => JSON.parse(readFileSync(join(FIX, `${n}.json`), "utf8"));
 const REF = load("jp5/zed_ahri.reference");
@@ -119,13 +125,43 @@ describe("the overlay: the ack's reveal on a snapshot that has not caught up", (
     const real = fresh();
     for (const k of ["ownNextChallengeIndex", "ownChallengesCompleted", "ownFinished", "ownCardIndex",
       "ownCardStartedAt", "ownCardDeadline", "ownRevealingCardIndex", "ownRevealUntil",
-      "ownRevealWindowMs", "activeTimeRunning"] as const) {
+      "ownRevealWindowMs", "activeTimeRunning", "activeTimeRemainingMs"] as const) {
       expect(patched[k], k).toEqual(real[k]);
     }
+    // The paused pool is what the answer left (104 s), not the stale live
+    // snapshot's 110 s.
+    expect(live().activeTimeRemainingMs).toBe(110_000);
+    expect(patched.activeTimeRemainingMs).toBe(104_000);
     expect(patched.ownChallengeReveals).toEqual(real.ownChallengeReveals);
     // Nothing else moves: the reached prefix is still the snapshot's own.
     expect(patched.journey).toBe(live().journey === null ? null : patched.journey);
     expect(patched.block).toEqual(live().block);
+  });
+
+  it("the FINAL child: finished, no next card, and the pool its own deadline left", () => {
+    const patched = withJourneyAckReveal(readPublicRound(snap("child3-live").envelope).segmentState!,
+      ackRef(snap("child3-reveal"), 3), MATCH)!;
+    const real = readPublicRound(snap("child3-reveal").envelope).segmentState!;
+    for (const k of ["ownNextChallengeIndex", "ownChallengesCompleted", "ownFinished", "ownCardIndex",
+      "ownCardStartedAt", "ownCardDeadline", "ownRevealingCardIndex", "ownRevealUntil",
+      "ownRevealWindowMs", "activeTimeRunning", "activeTimeRemainingMs"] as const) {
+      expect(patched[k], k).toEqual(real[k]);
+    }
+    expect(patched.ownFinished).toBe(true);
+    expect(patched.ownCardIndex).toBeNull();
+    expect(patched.activeTimeRemainingMs).toBe(88_000);
+  });
+
+  it("a non-pooled snapshot gets no pool, and an unknown remainder keeps the snapshot's", () => {
+    const ack = ackRef(snap("child3-reveal"), 3);
+    const live = readPublicRound(snap("child3-live").envelope).segmentState!;
+    const survival = { ...live, activeTimeMs: null, activeTimeRemainingMs: null, activeTimeRunning: null };
+    const p = withJourneyAckReveal(survival as SegmentStateView, ack, MATCH)!;
+    expect(p.activeTimeRemainingMs).toBeNull();
+    expect(p.activeTimeRunning).toBeNull();
+    // An older snapshot not on the answered child: nothing to read the final remainder off.
+    const older = { ...live, ownCardIndex: 2 };
+    expect(withJourneyAckReveal(older, ack, MATCH)!.activeTimeRemainingMs).toBe(live.activeTimeRemainingMs);
   });
 
   it("is a no-op (same object) once a snapshot carries the reveal or has moved on", () => {
@@ -321,6 +357,16 @@ describe("the hold is armed against the server's END INSTANT, not a render-time 
     tick(1);
     expect(fired).toHaveBeenCalledTimes(1);
     expect(Date.now()).toBe(endsAt);
+  });
+
+  it("a Journey's module hold is armed against an end instant at the server's reveal_until", () => {
+    const reveal = snap("child1-reveal");
+    vi.setSystemTime(untilOf(reveal) - windowOf(reveal) + 300);
+    vi.mocked(useRevealAutoAdvance).mockClear();
+    render(view(reveal));
+    const held = vi.mocked(useRevealAutoAdvance).mock.calls.filter(([key]) => key === 1);
+    expect(held.length).toBeGreaterThan(0);
+    for (const [, , , endsAtMs] of held) expect(endsAtMs).toBe(untilOf(reveal));
   });
 
   it("an end instant already passed fires at once; no end instant keeps the plain delay", () => {

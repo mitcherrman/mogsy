@@ -193,7 +193,8 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   //
   // QRT1 — the hold is an INSTANT (`endsAt`, client clock), not a duration:
   // the timer is armed after the commit, and a duration measured in render
-  // overran `own_reveal_until` by the commit's length.
+  // overran `own_reveal_until` by the commit's length. A Journey only: the
+  // block-clocked Ranked Mastery Slice keeps its plain full-window delay.
   const heldWindow = useRef<{ index: number; ms: number | null; holdMs: number; endsAt: number } | null>(null);
   if (holding && heldWindow.current?.index !== holding.challengeIndex) {
     const ms = state.ownRevealWindowMs ?? windowMs;
@@ -205,7 +206,7 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   }
   const childWindowMs = holding && heldWindow.current ? heldWindow.current.ms : windowMs;
   const holdMs = holding && heldWindow.current ? heldWindow.current.holdMs : revealDurationMs(windowMs);
-  const holdEndsAt = holding && heldWindow.current ? heldWindow.current.endsAt : null;
+  const holdEndsAt = state.journey && holding && heldWindow.current ? heldWindow.current.endsAt : null;
 
   // ONE timer, keyed on the held challenge's own index — so a duplicate poll,
   // a re-render, or a second state update cannot stack a second advance, and a
