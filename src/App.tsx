@@ -327,6 +327,11 @@ const CombatTheaterDev = import.meta.env.DEV ? CombatTheaterAdmin : null;
 // the League theme. No backend adapter, no persistence, nothing shared.
 const AtlasP1CAdmin = lazy(() => import("./pages/dev/atlas-p1c/AtlasP1CPage"));
 const AtlasP1CDev = import.meta.env.DEV ? AtlasP1CAdmin : null;
+// ATL-CS-UX-001: the Atlas cross-section research table (A / B / B.1) over a
+// DEMO fixture adapter. Same owner-only rule as atlas-p1c, which stays as the
+// baseline for comparison.
+const AtlasCrossSectionAdmin = lazy(() => import("./pages/dev/atlas-cross-section/AtlasCrossSectionPage"));
+const AtlasCrossSectionDev = import.meta.env.DEV ? AtlasCrossSectionAdmin : null;
 // CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
 const CombatEstimateLab = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
@@ -590,6 +595,8 @@ export const appRouter = createBrowserRouter(
                     <Route path="combat-theater" element={<Suspense fallback={<RouteFallback />}><CombatTheaterAdmin /></Suspense>} />
                     {/* ATL-P1-C: fixture-only Atlas prototype, protected by the parent AdminRoute. */}
                     <Route path="atlas-p1c" element={<Suspense fallback={<RouteFallback />}><AtlasP1CAdmin /></Suspense>} />
+                    {/* ATL-CS-UX-001: fixture-only cross-section table, protected by the parent AdminRoute. */}
+                    <Route path="atlas-cross-section" element={<Suspense fallback={<RouteFallback />}><AtlasCrossSectionAdmin /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
                     <Route path="content-atlas" element={<AdminRoute><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
@@ -889,6 +896,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {AtlasP1CDev ? (
                     <Route path="/lol/dev/atlas-p1c" element={<Suspense fallback={<RouteFallback />}><AtlasP1CDev /></Suspense>} />
+                  ) : null}
+                  {AtlasCrossSectionDev ? (
+                    <Route path="/lol/dev/atlas-cross-section" element={<Suspense fallback={<RouteFallback />}><AtlasCrossSectionDev /></Suspense>} />
                   ) : null}
                   {NumericLabPageDev ? (
                     <Route path="/dev/numeric-lab" element={<Suspense fallback={<RouteFallback />}><NumericLabPageDev /></Suspense>} />
