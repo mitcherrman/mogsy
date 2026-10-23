@@ -3,16 +3,17 @@
 Programme: MOGZY Question Reveal Timing. **Phase 1 (QRT1): Mastery Journey reveal durations.**
 This file is kept identical in `mitcherrman/mogsy` and `mitcherrman/League_Combat_Simulator`.
 
-Last updated: 2026-10-22.
+Last updated: 2026-10-23 (release certification, see "Release certification").
 
 ## Current state
 
 | Item | State |
 |---|---|
-| Backend branch | `reveal/qrt1-backend` (off `origin/master` `b3814e26`) |
-| Frontend branch | `reveal/qrt1-frontend` (off `origin/main` `a5d97120`) |
-| PRs | [Frontend #134](https://github.com/mitcherrman/mogsy/pull/134) and [backend #97](https://github.com/mitcherrman/League_Combat_Simulator/pull/97) opened as drafts; neither merged or deployed. |
-| Deploy / production data | none. Railway was unavailable, so nothing was deployed and no production env was read. |
+| Backend branch | `reveal/qrt1-backend`: master `890534c5` merged in (`f45e97da`); code unchanged since the original pass |
+| Frontend branch | `reveal/qrt1-frontend`: main `18a33eff` merged in (`f7bf7747`), plus certification fix `dbf50e55` |
+| PRs | [Frontend #134](https://github.com/mitcherrman/mogsy/pull/134) and [backend #97](https://github.com/mitcherrman/League_Combat_Simulator/pull/97), drafts; neither merged or deployed. |
+| Verdict | **CONDITIONAL GO**: see "Release certification" for the conditions |
+| Deploy / production data | none. Nothing was deployed or published, and no production data or env was read or written. |
 | Phase 2 (sitewide answer-result component) | not started; inventory and recommendation below |
 
 ## What the owner asked for (final targets, not additions)
@@ -51,7 +52,7 @@ The visible reveal = `reveal_until` − the moment the client first draws it. Be
 2. **The reveal starts from the submit response.** The backend adds `challenge_reveal_timing` to the submit ack, for Journey segments only. It is derived by the same `_reveal_phase` as `segment_state`, at the same `now`. The client overlays it (and the inline `challenge_reveal`) on a snapshot that has not caught up yet (`withJourneyAckReveal`), so the reveal draws one response after acceptance instead of a response plus a poll. It is a no-op once a snapshot carries the reveal. It is never applied across match, segment or child, and never past `reveal_until`.
 3. **Poll at the open child's deadline** (Journey only, scheduling only), so a timeout's reveal arrives about one read after the server settles it.
 4. **Hold against the end instant.** `useRevealAutoAdvance(key, cb, delayMs, endsAtMs)` measures the wait when the timer is armed. Browser-measured end overshoot went from +138 ms to +22–25 ms (just the render after the timer fires).
-5. **No server-side "latency allowance".** Adding slack to the window would hand fast clients a longer reveal than the owner's target and still not bound slow ones. The client minimises delivery loss instead. Residual loss: answer = one-way ack latency; timeout = 60 ms + one read.
+5. **No server-side "latency allowance".** Adding slack to the window would hand fast clients a longer reveal than the owner's target and still not bound slow ones. The client minimises delivery loss instead. Residual loss: answer = one-way ack latency; timeout = 60 ms + one read. Against a bot opponent the ack also waits for the route's `_drive_bot` step (`routes/ranked_public.py`, after `submit_challenge`); the hold still ends at `reveal_until`, it only starts that much later. Unchanged by QRT1; measure it live.
 6. **Equation Unfold fold point unchanged (3.2 s).** I tried moving it to 4.2 s (so the added second went to the expanded derivation), but that rewrites a measured, test-pinned JP5 design across ~9 tests, so I reverted it. With 7000 ms the derivation is expanded for 3.2 s, then the compact chain is shown for 3.8 s (was 2.8 s) and can be tapped open. **Owner decision (2026-10-22): keep the fold at the measured 3.2 s for Phase 1.**
 7. **Click acknowledgment** is unchanged and verified. A tap marks the tablet `selected`, locks the grid, and paints no correct or wrong until the server's reveal arrives. A refused submit releases the lock.
 
@@ -68,10 +69,11 @@ The visible reveal = `reveal_until` − the moment the client first draws it. Be
 * `src/pages/quiz-ranked/useRankedMatch.ts`: keeps the accepted Journey ack; overlays it on `segmentState`; adds the deadline poll.
 * `src/pages/quiz-ranked/QuizRankedMatch.tsx`: overlays it on the presented segment.
 * `src/features/mastery/interactions/revealState.ts`: `endsAtMs` on `useRevealAutoAdvance`; doc note that Journey windows are server-owned.
-* `src/lib/ranked-core/modules/masterySliceModule.tsx`: the hold carries its end instant.
-* Tests: new `masterySliceModule.qrt1.test.tsx` and `useRankedMatch.journeyReveal.test.tsx`.
+* `src/lib/ranked-core/modules/masterySliceModule.tsx`: the hold carries its end instant (Journeys only, `dbf50e55`).
+* `journeyAckReveal.ts` (`dbf50e55`): the overlay also states the paused pooled remainder (`active_time_remaining_ms`) the next snapshot will.
+* Tests: new `masterySliceModule.qrt1.test.tsx` and `useRankedMatch.journeyReveal.test.tsx`; `masterySliceReveal.test.tsx` gains the non-Journey hold check.
 
-## Tests and evidence
+## Tests and evidence (original pass, 2026-10-22, on the old bases; superseded by "Release certification")
 
 | Suite | Clean base | With QRT1 |
 |---|---|---|
@@ -108,14 +110,111 @@ At 375 px the full derivation (85 → 24 → 100/(100+24) → 0.806 → 19.4% �
 * **Reload/resume:** unchanged. The hold is still derived from `own_reveal_until` on every snapshot, and a seen reveal never replays.
 * **Grading/answer authority:** untouched. The ack's reveal is the server's graded reveal, read by the same reader as a polled one.
 
-## PRs and live review gate
+## Release certification (2026-10-23)
 
-* **Frontend draft PR #134:** https://github.com/mitcherrman/mogsy/pull/134, head `7eda9282`, base `main`.
-* **Backend draft PR #97:** https://github.com/mitcherrman/League_Combat_Simulator/pull/97, head `00aa7a0f`, base `master`.
-* As checked 2026-10-22 local: both mergeable without conflict, neither merged. Frontend branch was **4 commits behind main**; backend branch was **26 commits behind master**. Reconcile on isolated worktrees and rerun base/head differential testing before release.
-* GitHub Actions for FE #134: deployment-recovery, role-challenge and Practice modernization completed successfully; Practice PM2 acceptance still in progress. GitHub Actions for BE #97: six workflows reported failure. Job logs could not be retrieved through the connected API (404 BlobNotFound), therefore **cause is unverified**; do not infer baseline or billing without additional evidence.
-* **Release gate:** do not merge or deploy until upstream drift, backend CI causes, and cross-repo contract are checked on refreshed branches. The handoff's original local test data above are valid as reported for their original base snapshots but are not proof against latest defaults.
-* Recommended order after certification: publish frontend first, then deploy backend; measure answer and timeout visible reveal duration in live environment.
+**Verdict: CONDITIONAL GO.** The code is release-ready on current defaults. Conditions, all owner-side:
+
+1. **Backend CI cannot run** (GitHub billing, below). Either restore Actions billing and get the six workflows green on PR #97, or accept the local run of their exact commands recorded here.
+2. **Review certification fix `dbf50e55`** (frontend; two small QRT1-introduced deviations corrected, below). It changes no owner-approved timing.
+3. **Release order unchanged:** publish frontend first, then deploy backend; then measure live (see "Next phase").
+
+### Reconciliation (isolated worktrees, merge not rebase: the PRs are open)
+
+| Repo | Behind before | Merged | Overlap with QRT1 |
+|---|---|---|---|
+| Frontend | 4 (main `18a33eff`) | `f7bf7747` | none. Atlas cross-section dev route only (`src/lib/atlas-cross-section`, `src/pages/dev/atlas-cross-section`, App/Layout route lines, a workflow); nothing imports ranked/Mastery code |
+| Backend | 28 (master moved twice during the pass; final `890534c5`) | `f45e97da` | none. Worlds Dynasty (`dynasty/`, `routes/dynasty_*`, two `api_server.py` router lines) and item/rune AD/AP attribution (#98/#99); the only ranked references are docs and an `exact_ref` import |
+
+After each merge, `git diff <default> HEAD` is exactly the original QRT1 change. Both merges were clean.
+
+### Backend CI: infrastructure, not a regression (verified)
+
+Every workflow on every backend branch fails within 2–4 s, master included. Check-run annotations (GitHub REST `check-runs/{id}/annotations`) on all six PR #97 runs, for heads `00aa7a0f` and `e337d82c`, and on master pushes `b8b629cf` / `fafb42ed`, read: *"The job was not started because recent account payments have failed or your spending limit needs to be increased."* The jobs ran no steps, and job logs are unavailable (BlobNotFound) because nothing ran. The last successful backend workflow anywhere was 2026-10-20 09:07 UTC. The backend repo is private, so it uses metered minutes. The frontend repo is public and its CI is green: all 4 workflows on `7eda9282` and `1f5ba92e` (ranked-deployment-recovery, role-challenge-review, practice-modernization-acceptance, practice-pm2-acceptance).
+
+The six blocked workflows' exact commands were run locally on master `890534c5` and the merged branch `f45e97da`. Environment: Windows, Python 3.14.7, pytest 9.1.1, SQLite 3.50.4; CI uses Python 3.12 on Ubuntu.
+
+| Workflow (step) | master | QRT1 branch |
+|---|---|---|
+| creator-replay-backend | 75 passed, 2 skipped | identical |
+| database-concurrency (online backup …) | 91 passed | identical |
+| database-concurrency (lease, import, migration) | 49 passed | identical |
+| Daily question repeat audit (audit, avoidance, compat) | 37 passed | identical |
+| Daily question repeat audit (avoidance flow) | 4 passed | identical |
+| question-intelligence | 69 passed | identical |
+| role-challenge-review (RC1–RC5) | 293 passed, 45 skipped, 179 subtests | identical |
+| role-challenge-review (queue controls) | 10 passed | identical |
+| role-challenge-review (Reconstruct timing) | 40 passed | identical |
+| storage-lifecycle-safety | 215 passed, 4 skipped | identical |
+| tracked-files-unchanged checks | clean | clean |
+
+### Contract review (submit ack ↔ snapshot)
+
+The review covered both diffs, `segment_flow.CardSchedule`, `segment_state_view`, the submit route and every host. A second, independent review of the same code found no correctness defects.
+
+* **Final child:** a Journey block resolves only once the final reveal has run (`everyone_terminal(…, now)` is false until `complete_at`). So the final answer's ack carries `finished: true`, null next-card fields, `reveal_until = complete_at` and `reveal_window_ms` = that child's own window (the final hold is the last reached child's window). The overlay sets `ownCardIndex: null`. All of these match `segment_state`. A strike-stopped block has no final hold and sends no timing, again matching the snapshot.
+* **Idempotent retries:** a duplicate submit restates the same `reveal_until` while that child is still revealing, and sends nothing after it. The racing-writer retry sends no timing and `challenge_reveal: null`, so the client keeps the poll path. An ack that arrives after `reveal_until` shows no reveal (`serverStillRevealing` false, hold 0).
+* **Stale and out-of-order responses:** the overlay applies only to the same match, segment number and child, and only to a snapshot that has neither the reveal nor a later position. An older poll that lands after the ack is overlaid the same way. A reveal-parse failure is caught and leaves the reveal to the poll. A leftover ack is inert once the snapshot moves on, and it is reset on match change.
+* **Timeouts:** the deadline poll uses `own_card_deadline`, which the server publishes for both clocks (pooled Standard: `opened + remaining`; per-card Survival). It is disabled once `own_finished`.
+* **Clocks:** the hold's end instant is `reveal_until − skew` on the client clock, capped at the full window, with the same sign convention as `msUntilServerInstant`. The pooled clock is paused through the reveal, as the server reports. The transition beat (`next_card_started_at` after `reveal_until`) comes from the same chain.
+* **Hosts:** Daily (`DailyRunPage`), Creator Replay (`CreatorReplayRunPage` → `DailyRunPage`) and Tournament Arena (`ArenaMatchRoom`) all render `QuizRankedMatch`, which applies the overlay to the presented segment.
+* **Non-Journey backend:** `_own_reveal_timing` returns `{}` first, so the key set is unchanged. `_reveal_phase` is a line-for-line extraction. `journey_base_window_ms` is called only from `_generate_journey`.
+* **Approved values, unchanged:** `JOURNEY_REVEAL_WINDOW_MS = 2250`; working windows `physical_ability_raw_damage` 5000, `physical_ability_damage` 7000, `cooldown_under_haste` 7000; `REVEAL_WINDOW_MS = 1750`; Equation Unfold `UNFOLD_COMPRESS_AT_MS = 3200` (`src/lib/journey/reasoning.ts`, not touched).
+
+**Two deviations found and fixed (`dbf50e55`, frontend only; each new test fails with its fix removed):**
+
+1. *The Standard pooled header showed a stale remainder during an ack-sourced reveal.* The overlay paused the clock but kept the live snapshot's `active_time_remaining_ms`, so the header could read up to one poll interval too high until the next poll landed. On the final child it stayed at the stale value. The overlay now states what the next snapshot will. For a non-final child that is `next_card_deadline − next_card_started_at`, because the server cuts a pooled deadline as `opened + remaining`. For the final child it is the answered child's deadline − (`reveal_until − reveal_window_ms`). Pinned on the real captures: 110000 → **104000** (child 1) and **88000** (final), equal to the server's own snapshots.
+2. *The end-instant hold also reached the block-clocked, non-Journey Ranked Mastery Slice*, shortening its 1750 ms hold by the render-to-effect time. It is now passed for Journeys only, so that slice is exactly as before ("Unchanged" above holds).
+
+### Test evidence (current defaults; exact commands under "How to rerun")
+
+| Suite | Base (default branch) | QRT1 head | Verdict |
+|---|---|---|---|
+| Backend targeted: 94 files (journey/jp/jref/jl1/jlib/jlong/jhaste/jx2/mastery/segment/reveal/qrt/dcmod/daily_journey/meta_reflex/ranked_public/ranked_module/ranked_bot/rbot2/creator/reconstruct/ranked_admin_bot/daily_user_history/daily_challenge), no DB | 218 failed / 1473 passed / 421 skipped / 12 errors | 218 / **1493** / 423 / 12 | **identical failure set**; +20 passed +2 skipped = `test_qrt1_journey_reveal_timing.py` |
+| Same 94 files on a private copy of the local canonical DB | 192 failed / 1926 passed / 6 errors | 193 / **1947** / 6 | one extra failure, `test_ranked_public_routes.py::test_submission_flow_and_resume`: a ranked-duel quiz round, not Mastery; **flaky on both** (5 reruns each: base 1/5 pass, head 2/5 pass). Otherwise identical |
+| `test_qrt1_journey_reveal_timing.py` with DB | — | 22 passed | |
+| Frontend chunk 1: `src/lib/journey`, `ranked-core`, `ranked-public`, `question-feedback`, `src/components/journey` | 6 failed / 1908 passed | 6 / **1931** | identical failures (rankedAssets.rfx1b2, jp4/jp5/visualLanguage stylesheet, orderForge) |
+| Frontend chunk 2: `src/features/mastery`, `src/pages/quiz-daily-challenge`, `src/features/tournament-arena` | 1 / 718 | 1 / 718 | identical: `dailyChallengeEntry` "no client for any retired Daily endpoint", a 5 s source-scan timeout under load; it passed on the first head run |
+| Frontend chunk 3: `src/pages/quiz-ranked` | 0 / 795 | 0 / **800** | +5 `useRankedMatch.journeyReveal` |
+| Frontend chunk 4: `src/pages/admin`, `src/components/ranked-arena`, `src/pages/journey`, `src/App.*` | 14 / 1410 | 14 / 1410 | identical (App routing/route-guard and arena boundary/geometry source scans) |
+| `tsc --noEmit -p tsconfig.app.json` | 2 errors | 2 errors | identical (`src/lib/identity/connections.ts` Supabase typing) |
+| ESLint, touched files | — | 0 errors | 7 warnings, all on lines QRT1 does not touch |
+
+Pre-existing failures are environment-bound in this checkout (no `onnxruntime`/`numpy`, admin 403s, stale test modules importing removed names such as `AUTH_METHOD_KEY` and `SCORING_ADDITIVE`, CRLF/stylesheet scans). They are identical between base and head.
+
+### Browser acceptance (`/dev/journey-arena`, real JP5 Zed/Ahri capture, DOM observer, from the answer instant)
+
+Probe: `?capture=jp5-ref-zed-ahri&step=<live step>&revealMs=<W>&revealChild=<child>`, headless Edge (Playwright), served by the QRT1 head (`dbf50e55`) Vite dev server. The server's reveal ends exactly W ms after the answer.
+
+Each cell is two runs, in ms from the answer:
+
+| Viewport | Child (server window) | Reveal drawn | Fold | Reveal ended | Overshoot, QRT1 head | Overshoot, base main `18a33eff` |
+|---|---|---|---|---|---|---|
+| 1024×768 | ordinary (2250) | 69, 66 | — | 2273, 2273 | +23, +23 | +23, +22 |
+| 1024×768 | raw calculation (5000) | 37, 34 | — | 5011, 5008 | +11, +8 | +24, +21 |
+| 1024×768 | armor calculation (7000) | 38, 41 | 3244, 3245 | 7014, 7009 | +14, +9 | +49, +57 |
+| 375×812 | ordinary (2250) | 24, 24 | — | 2260, 2270 | +10, +20 | +17, +16 |
+| 375×812 | raw calculation (5000) | 29, 27 | — | 5020, 5013 | +20, +13 | +17, +17 |
+| 375×812 | armor calculation (7000) | 29, 27 | 3219, 3225 | 7011, 7014 | +11, +14 | +36, +43 |
+
+* **Fold:** 3.2 s after the reveal is drawn, as approved. Only the armor/haste working folds; the raw calculation has no fold.
+* **End:** the reveal ends within 8–23 ms of the server's end instant on head, against 16–57 ms on base. What remains is the render after the timer fires.
+* **Layout:** no horizontal page overflow at either width.
+* **Images:** at 1024 px, 2 stage images never loaded from the remote asset host on either tree (the asset host, not the code).
+* **Machine:** these runs were taken on a quieter machine than the 2026-10-22 numbers, which showed +138 ms for the base.
+
+The harness drives `masterySliceModule` (hold, fold, end); the ack → overlay path itself is covered by the jsdom suites above and the backend's real `submit_challenge` tests. The live measurement after release (see "Next phase") is the end-to-end proof.
+
+### How to rerun
+
+* Backend workflow commands: as in `.github/workflows/{creator-replay-ci,database-concurrency,daily-question-repeat-audit,question-intelligence,role-challenge-review,storage-lifecycle-safety}.yml`, run as `python -m pytest -q -p no:cacheprovider -rfE <files>` with `PRO_STATS_WARMUP=0 PATCH_OPS_ENABLE_EXTERNAL_VISION=0`, after deleting any 0-byte `lol_calc.db` in the checkout.
+* Backend targeted set: the same, plus `--continue-on-collection-errors`; once without `LOL_CALC_DB_PATH`, once with it pointing at a **copy** of the canonical DB. Run base and head on separate checkouts.
+* Frontend: Vitest per chunk (`--maxWorkers=4 --reporter=verbose`; the full suite OOMs in one process). On this machine it needs a scratch config without `@vitejs/plugin-react-swc` and a WASM rollup require-hook. Diff the `×` lines against a detached base checkout.
+
+## PRs
+
+* **Frontend draft PR #134:** https://github.com/mitcherrman/mogsy/pull/134, base `main`; code head `dbf50e55`.
+* **Backend draft PR #97:** https://github.com/mitcherrman/League_Combat_Simulator/pull/97, base `master`; code head `f45e97da`.
+* Neither merged, published or deployed.
 
 
 ## Phase 2: inventory of answer-result components (read-only)
