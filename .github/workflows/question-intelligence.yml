@@ -1,0 +1,41 @@
+name: Question Intelligence (QI1)
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/admin/questionIntelligence/**'
+      - 'src/lib/admin/__fixtures__/question-intelligence-v1.json'
+      - 'src/components/admin/users/QuestionIntelligencePanel*'
+      - 'src/pages/admin/areas/AdminUsersPage*'
+      - 'e2e/question-intelligence/**'
+      - 'playwright.question-intelligence.config.ts'
+      - '.github/workflows/question-intelligence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  qi1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies without modifying lockfile
+        run: npm install --no-save --package-lock=false --no-audit --no-fund
+      - name: Notation, mapping, parser and panel tests
+        run: npm test -- src/lib/admin/questionIntelligence src/components/admin/users/QuestionIntelligencePanel.test.tsx src/pages/admin/areas/AdminUsersPage.questions.test.tsx src/lib/admin/admin-registry.test.ts src/test/guards/users2AudienceIa.test.ts
+      - name: Chromium setup
+        run: npx playwright install --with-deps chromium
+      - name: Panel capture at 1280 and 1440
+        run: npx playwright test -c playwright.question-intelligence.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: question-intelligence-screenshots
+          path: test-results/question-intelligence/*.png

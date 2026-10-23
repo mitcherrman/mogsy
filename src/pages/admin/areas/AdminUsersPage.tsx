@@ -56,6 +56,7 @@ import {
 } from "@/components/admin/users/AudienceSections";
 import { VisitorsSection } from "@/components/admin/users/VisitorsSection";
 import { AudiencePulse } from "@/components/admin/users/AudiencePulse";
+import { QuestionIntelligencePanel } from "@/components/admin/users/QuestionIntelligencePanel";
 import { useAdminRoles } from "@/hooks/useAdminRoles";
 import { ADMIN_AREAS_BY_ID } from "@/lib/admin/admin-registry";
 import { loadAnalytics, ROW_CAP, type LoadedAnalytics } from "@/lib/admin/analytics/loadAnalytics";
@@ -268,7 +269,11 @@ export default function AdminUsersPage() {
   const truncated =
     state.s === "ok" && Object.entries(state.loaded.truncated).filter(([, t]) => t).map(([k]) => k);
 
-  const audienceSection = section.id === "audience";
+  // QI1: Question Intelligence is an owner-only view INSIDE Audience (the
+  // former Analytics page), not a fourth Users section. It reads Railway, not
+  // analytics_*, so it brings its own filters and skips the traffic bar.
+  const questionsView = section.id === "audience" && isMasterAdmin && params.get("view") === "questions";
+  const audienceSection = section.id === "audience" && !questionsView;
 
   useEffect(() => {
     if (!audienceSection || !population) return;
@@ -281,6 +286,24 @@ export default function AdminUsersPage() {
   return (
     <div data-testid="admin-area-users">
       <AdminAreaHeader area={area} active={section} onSelect={setSection} />
+
+      {section.id === "audience" && isMasterAdmin && (
+        <SubTabs
+          testId="users-audience-subtabs"
+          value={questionsView ? "questions" : "traffic"}
+          onChange={(id) => setParam("view", id === "questions" ? "questions" : null)}
+          options={[
+            { id: "traffic", label: "Audience & traffic" },
+            { id: "questions", label: "Question Intelligence" },
+          ]}
+        />
+      )}
+
+      {questionsView && (
+        <div data-testid="users-audience-questions">
+          <QuestionIntelligencePanel />
+        </div>
+      )}
 
       {audienceSection && (
         <ControlBar

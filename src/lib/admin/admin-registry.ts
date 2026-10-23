@@ -509,6 +509,23 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization:
       "analytics_traffic_overrides RLS admits admin / master_admin only, for every verb. Nothing in the product authorizes on traffic_class.",
   },
+  {
+    id: "users-question-intelligence",
+    title: "Question Intelligence",
+    description:
+      "Per canonical question: served, answered, correct / wrong / timeout, wrong picks by displayed option position, same-player repeats and the DREP1 forced / avoidable split.",
+    area: "users",
+    section: "audience",
+    kind: "panel",
+    path: "/admin/users?section=audience&view=questions",
+    oldLocation: "none — QI1. Analytics had no per-question fact (analytics_* records none).",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    requiredRole: "master_admin",
+    status: "Production",
+    authorization:
+      "Owner-only sub-view (isMasterAdmin) reading Railway GET /api/admin/question-intelligence behind require_admin; read-only (mode=ro, query_only).",
+  },
 
   // =========================================================================
   // ACCOUNTS, MODERATION AND ACCESS (formerly the People area)
