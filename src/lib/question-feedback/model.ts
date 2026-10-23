@@ -138,12 +138,32 @@ export const NO_FEEDBACK: ResolvedFeedback = Object.freeze({
   explanationOptional: null,
 });
 
-/** The verdict headline. One vocabulary, so no two surfaces word it apart. */
+/**
+ * The verdict headline. One vocabulary, so no two surfaces word it apart.
+ *
+ * QRT2 — the words are CORRECT, INCORRECT and TIMED OUT everywhere a verdict is
+ * the headline (the Ranked/Daily result stamp, `VerdictLine`). They are stored
+ * in sentence case and drawn upper-case by the renderer, so a screen reader
+ * says "Timed out", not an initialism. "Time!" and "Correct!" were two
+ * surfaces' private shorthand; a player should not have to learn that an
+ * expiry is worded differently in the Daily than in the arena.
+ */
 export const VERDICT_HEADLINE: Record<FeedbackVerdict, string> = {
-  correct: "Correct!",
+  correct: "Correct",
   incorrect: "Incorrect",
-  timeout: "Time!",
+  timeout: "Timed out",
 };
+
+/**
+ * The ranked flow's verdict vocabulary (`RoundVerdict`: `timed_out`) mapped
+ * onto this model's (`timeout`). A pure rename — the verdict itself is the
+ * server's and is never derived here.
+ */
+export function feedbackVerdictOfRound(
+  verdict: "correct" | "incorrect" | "timed_out",
+): FeedbackVerdict {
+  return verdict === "timed_out" ? "timeout" : verdict;
+}
 
 /**
  * Fail closed: strip anything answer-bearing from a feedback object whose

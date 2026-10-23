@@ -92,9 +92,9 @@ describe("EvidenceLine", () => {
 
 describe("VerdictLine", () => {
   it.each([
-    ["correct", "Correct!"],
+    ["correct", "Correct"],
     ["incorrect", "Incorrect"],
-    ["timeout", "Time!"],
+    ["timeout", "Timed out"],
   ] as const)("says %s as %s", (verdict, headline) => {
     render(<VerdictLine verdict={verdict} />);
     const line = screen.getByTestId("answer-verdict");

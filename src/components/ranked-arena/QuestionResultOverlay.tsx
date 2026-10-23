@@ -26,14 +26,13 @@ import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type {
   OpponentResultCue, RankedResultFeedback, RoundVerdict, ViewerResultCue,
 } from "@/lib/ranked-core/flow/rankedFlow";
+import { VERDICT_HEADLINE, feedbackVerdictOfRound } from "@/lib/question-feedback/model";
 
 type Tone = "success" | "failure" | "neutral";
 
-const VERDICT_LABEL: Record<RoundVerdict, string> = {
-  correct: "CORRECT",
-  incorrect: "INCORRECT",
-  timed_out: "TIMED OUT",
-};
+/** QRT2 — the shared headline vocabulary (`question-feedback/model`), upper-cased. */
+const verdictLabel = (verdict: RoundVerdict): string =>
+  VERDICT_HEADLINE[feedbackVerdictOfRound(verdict)].toUpperCase();
 
 function viewerFace(cue: ViewerResultCue): { tone: Tone; label: string; sub: string | null } {
   if (cue.kind === "block") {
@@ -45,7 +44,7 @@ function viewerFace(cue: ViewerResultCue): { tone: Tone; label: string; sub: str
   }
   return {
     tone: cue.verdict === "correct" ? "success" : "failure",
-    label: VERDICT_LABEL[cue.verdict],
+    label: verdictLabel(cue.verdict),
     // No `Card n`: the Meta Reflex header's `n / 5` already says which card.
     sub: null,
   };
@@ -91,6 +90,9 @@ export function QuestionResultOverlay({ feedback }: { feedback: RankedResultFeed
           // MISC W2D (F12) — the SERVER's timeout verdict (the cue only ever
           // comes from a settlement) gets the heavier TIME'S UP stamp.
           data-timeout={viewer.kind !== "block" && viewer.verdict === "timed_out" ? "true" : undefined}
+          // QRT2 — the verdict in the DOM for the browser acceptance suite and
+          // the stylesheet; never an input to anything.
+          data-verdict={viewer.kind !== "block" ? viewer.verdict : undefined}
           className={`ranked-result-stamp ranked-result-stamp--${vf.tone}`}>
           <Icon tone={vf.tone} block={viewer.kind === "block"}
             timedOut={viewer.kind !== "block" && viewer.verdict === "timed_out"} />

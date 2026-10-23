@@ -1347,12 +1347,15 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 1.05rem;
+  padding: 0.45rem 1.1rem;
   border-radius: 999px;
-  border: 2px solid;
+  border: 3px solid;
   font-weight: 900;
-  font-size: clamp(1.05rem, 2.4vw, 1.6rem);
-  letter-spacing: 0.14em;
+  /* QRT2 — the verdict is the loudest thing on the card. 1.5rem on a phone
+     (it measured 1.05rem: a pill a player had to look for), 2rem on desktop;
+     "TIMED OUT" at 360px is ~280px wide, inside the card's 322px. */
+  font-size: clamp(1.5rem, 6.4vw, 2rem);
+  letter-spacing: 0.12em;
   line-height: 1;
   white-space: nowrap;
   color: #fff;
@@ -2009,7 +2012,11 @@ html.reduce-motion [data-countdown] > .quiz-countdown-digits {
   background: #9a3412;
   border-color: #fdba74;
   box-shadow: 0 0 0 3px rgba(253,186,116,0.25), 0 12px 32px rgba(0,0,0,0.5);
-  font-size: clamp(1.2rem, 2.8vw, 1.85rem);
+  /* QRT2 — the same loudness as the other two verdicts (this rule used to
+     draw TIMED OUT at 1.2rem on a phone, smaller than CORRECT beside it). A
+     touch under their 2rem ceiling because the stopwatch glyph and the longer
+     word already make it the widest stamp: ~255px at 360px. */
+  font-size: clamp(1.4rem, 6vw, 1.9rem);
   animation-name: quiz-timeout-stamp;
   animation-duration: 460ms;
 }
@@ -2602,6 +2609,42 @@ html.reduce-motion [data-countdown] > .quiz-countdown-digits {
 .ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="incorrect-selected"] svg {
   color: #e2757b;
 }
+/* QRT2 — THE REVEAL IS READABLE AT A GLANCE.
+   The correct tablet was the academy's quiet blue and the shared Button's 50%
+   disabled dim sat on top of it, so on the vellum the ANSWER looked as
+   washed-out as the three bystanders. It is now the one lit tablet: emerald
+   (the verdict stamp's hue), fully opaque, with a 2px inset ring — a
+   box-shadow, never a border-width, so no tablet changes its box between
+   states. The picked wrong tablet is a full-strength rose with its own ring.
+   Neither relies on colour alone: the tabs on their top edge say "Correct
+   answer" / "Your pick" in words, and the check / cross icons are unchanged. */
+.ranked-academy [data-answers-state] [data-verdict-tabs] [data-quiz-choice][data-choice-state="correct"] {
+  border-color: rgba(74,222,128,0.95);
+  background-color: #07281b;
+  background-image: linear-gradient(180deg,
+    rgba(14,86,56,0.99) 0%, rgba(6,44,30,0.99) 100%);
+  color: #eafff3;
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 2px rgba(74,222,128,0.85),
+    inset 0 1px 0 rgba(187,247,208,0.4),
+    0 0 26px -6px rgba(34,197,94,0.75);
+}
+.ranked-academy [data-answers-state] [data-verdict-tabs] [data-quiz-choice][data-choice-state="correct"] svg {
+  color: #86efac;
+}
+.ranked-academy [data-answers-state] [data-verdict-tabs] [data-quiz-choice][data-choice-state="incorrect-selected"] {
+  border-color: rgba(226,117,123,0.95);
+  background-color: #3b1418;
+  background-image: linear-gradient(180deg,
+    rgba(96,30,36,0.99) 0%, rgba(48,16,20,0.99) 100%);
+  color: #ffe8ea;
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 2px rgba(226,117,123,0.8),
+    inset 0 1px 0 rgba(226,117,123,0.3),
+    0 0 24px -8px rgba(184,73,79,0.7);
+}
 
 /* Item Cost Duel picks are the same carved tablet, so the format inherits the
    theme without the module knowing anything about it. Its own logic, timing and
@@ -2730,6 +2773,11 @@ html.reduce-motion [data-countdown] > .quiz-countdown-digits {
   background: rgba(143,208,245,0.9);
   box-shadow: inset 0 0 0 1px rgba(143,208,245,0.45);
   color: #06263c;
+}
+.ranked-academy [data-answers-state] [data-verdict-tabs] [data-quiz-choice][data-choice-state="correct"] [data-choice-letter] {
+  background: rgba(134,239,172,0.95);
+  box-shadow: inset 0 0 0 1px rgba(187,247,208,0.55);
+  color: #052e1a;
 }
 .ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="incorrect-selected"] [data-choice-letter] {
   background: rgba(226,117,123,0.88);
@@ -3265,6 +3313,14 @@ html.reduce-motion [data-countdown] > .quiz-countdown-digits {
    the stack, which the phone's centred card turns into a re-centre. */
 .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack > [data-testid="answer-evidence"] {
   min-height: var(--qs-feedback-h);
+}
+/* QRT2 — the evidence statement was gold (#e8c97a) on parchment, about 1.4:1:
+   present in the DOM and invisible to the eye. On the vellum card it is dark
+   brown ink, measured on the painted pixels under the verdict's green or red
+   wash (which darkens the parchment): at least 4.5:1. Colour only — same type
+   size, weight, slot and box, so the reveal still moves nothing. */
+.ranked-question-stage [data-testid="answer-evidence"][data-evidence-kind="statement"] {
+  color: #2a1a04;
 }
 /* THE REVEAL'S TABLET ICON TAKES NO LABEL WIDTH. On settlement the correct
    (and a wrong, picked) tablet gains a 16px check/cross as an in-flow flex

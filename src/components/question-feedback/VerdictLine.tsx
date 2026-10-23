@@ -10,9 +10,12 @@
  * its own viewport, and the Daily card, whose retry state has to say "your
  * score is spent" without saying what the answer was.
  *
- * `Time!` rather than "Timed out": the Ranked strip already uses the short,
- * loud register for an expiry, and a card beat that runs for a second and a
- * half is the wrong place for a two-word past participle.
+ * QRT2 — the words are the arena stamp's words (CORRECT / INCORRECT / TIMED
+ * OUT, from `VERDICT_HEADLINE`), not a shorter private variant, and the line is
+ * drawn at a size a player reads without hunting for it. It stays inside the
+ * canonical stage's two-line feedback slot (33px): 2rem tall, never wrapping.
+ * A timeout takes the same danger hue as an incorrect — the icon and the words
+ * are what tell the two apart, never the colour alone.
  */
 import { CheckCircle2, Hourglass, XCircle } from "lucide-react";
 import {
@@ -23,7 +26,7 @@ import {
 const TONE: Record<FeedbackVerdict, { text: string; Icon: typeof CheckCircle2 }> = {
   correct: { text: "text-emerald-300", Icon: CheckCircle2 },
   incorrect: { text: "text-[#e2757b]", Icon: XCircle },
-  timeout: { text: "text-muted-foreground", Icon: Hourglass },
+  timeout: { text: "text-[#e2757b]", Icon: Hourglass },
 };
 
 export function VerdictLine({
@@ -49,11 +52,11 @@ export function VerdictLine({
       // Fixed height so the appearance of a verdict never moves the answer
       // surface above it; `nowrap` on the headline so only the optional note
       // can ever wrap.
-      className={`flex h-7 items-center gap-1.5 ${className}`}
+      className={`flex h-8 items-center gap-2 ${className}`}
     >
-      <Icon aria-hidden className={`h-4 w-4 shrink-0 ${text}`} />
+      <Icon aria-hidden className={`h-5 w-5 shrink-0 ${text}`} />
       <span
-        className={`whitespace-nowrap text-sm font-black uppercase tracking-[0.08em] ${text}`}
+        className={`whitespace-nowrap text-lg font-black uppercase tracking-[0.1em] ${text}`}
       >
         {VERDICT_HEADLINE[verdict]}
       </span>
