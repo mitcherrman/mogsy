@@ -18,18 +18,26 @@
  * (A Journey child's structured Combat working is drawn by the Journey stage's
  * own reveal layer — `JourneyStageQuestion` — not here.)
  */
+import { VERDICT_HEADLINE, type FeedbackVerdict } from "@/lib/question-feedback/model";
+import { VERDICT_TONE } from "@/components/question-feedback/VerdictLine";
+
 export function MasteryInlineReveal({
   correct,
   answerLabel,
   explanation,
+  timedOut = false,
 }: {
   /** Server-authoritative correctness. Never computed here. */
   readonly correct: boolean;
+  /** QRT2 — the server's expiry flag; absent where the wire does not carry it. */
+  readonly timedOut?: boolean;
   /** The correct answer, already formatted by the backend. */
   readonly answerLabel: string | null;
   /** The backend's concise explanation, if the payload carries one. */
   readonly explanation: string | null;
 }) {
+  const verdict: FeedbackVerdict = timedOut ? "timeout" : correct ? "correct" : "incorrect";
+  const tone = VERDICT_TONE[verdict];
   return (
     <div
       role="status"
@@ -38,16 +46,24 @@ export function MasteryInlineReveal({
       data-correct={correct ? "true" : "false"}
       className="space-y-1 rounded-md border-l-2 border-l-muted-foreground/30 bg-muted/40 px-3 py-2 text-sm"
     >
-      {answerLabel !== null && (
-        <p>
-          <span className="font-medium">
-            {correct ? "Correct" : "Answer"}:{" "}
+      {/* QRT2 — the verdict, in the arena stamp's words and with an icon, on
+          the same row as the answer (a phone's card gains no line). The three
+          verdicts differ in words AND glyph, never in colour alone. */}
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span data-testid="mastery-verdict" data-verdict={verdict}
+          className={`inline-flex items-center gap-1 font-black uppercase tracking-[0.08em] ${tone.text}`}>
+          <tone.Icon aria-hidden className="h-4 w-4 shrink-0" />
+          {VERDICT_HEADLINE[verdict]}
+        </span>
+        {answerLabel !== null && (
+          <span>
+            <span className="font-medium">Answer: </span>
+            <span data-testid="mastery-reveal-answer" className="tabular-nums">
+              {answerLabel}
+            </span>
           </span>
-          <span data-testid="mastery-reveal-answer" className="tabular-nums">
-            {answerLabel}
-          </span>
-        </p>
-      )}
+        )}
+      </p>
       {explanation && (
         <p data-testid="mastery-reveal-explanation" className="text-muted-foreground">
           {explanation}

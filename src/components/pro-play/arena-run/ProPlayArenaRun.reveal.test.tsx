@@ -132,6 +132,22 @@ describe("after the grade", () => {
     expect(screen.getAllByTestId("answer-your-pick")).toHaveLength(1);
   });
 
+  // QRT2 — Pro Play and Worlds tell a graded answer in words on the tablets.
+  it("tabs the right answer and the player's pick on the tablets, in words, once graded", async () => {
+    setup(["champion_player"]);
+    await ready();
+    const right = correctIndex("champion_player");
+    expect(screen.queryByTestId("answer-correct-tag")).toBeNull();
+    await answer((right + 1) % 2);
+    expect(within(tablets()[right]).getByTestId("answer-correct-tag").textContent).toBe("Correct answer");
+    expect(screen.getAllByTestId("answer-correct-tag")).toHaveLength(1);
+    const wrong = tablets()[(right + 1) % 2];
+    expect(within(wrong).getByTestId("answer-your-pick").textContent).toBe("Your pick");
+    // The screen-reader verdict keeps the shared words.
+    const footer = document.querySelector<HTMLElement>("[data-pp-reveal-footer]")!;
+    expect(within(footer).getByRole("status").textContent ?? "").toMatch(/^Incorrect\./);
+  });
+
   it("opens the Source disclosure from the keyboard and returns focus on Escape", async () => {
     setup(["champion_player"]);
     await ready();

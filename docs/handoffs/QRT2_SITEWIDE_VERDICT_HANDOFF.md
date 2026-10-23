@@ -63,13 +63,13 @@ No timer, hold or pacing constant changed. Ordinary rounds still use `REVEAL_HOL
 
 | Mode / surface | Renderer today | What is left |
 |---|---|---|
-| Ranked Mastery Slice | `MasterySliceChallengeSurface` → `InteractiveScenarioSurface` (no `verdictTabs`); the overlay stamp is already larger | pass `verdictTabs`; check the Data Duel / comparison tablets (`DataDuel` has its own "Your pick") |
+| Ranked Mastery Slice | prose path: **adopted** (tabs + headline, see the adoption report); atomic-recall / comparison: headline only | tabs for the atomic and comparison tablets (shared Mastery components); check `DataDuel` (own "Your pick") |
 | Mastery Journey | `JourneyStageQuestion` → surface; `journey-reveal__verdict--*`; own `.journey-question` tablet CSS | adopt vocabulary + tabs after QRT1 #134 merges (same reveal surface); the Equation Unfold fold stays 3.2 s |
 | Meta Reflex / Stat Check | card beat + `CardResultBeat`; already has its own "YOUR PICK · CORRECT" tab; overlay stamp | vocabulary only; keep its comparison rows |
 | Order Forge | `ownsResultReveal` (own reveal; stamp suppressed) | vocabulary only |
 | Reconstruct, Scrub, Match Grid, Assembly | module renderers, `ownsResultReveal`; per-outcome server holds | vocabulary only. **Do not equalise holds** |
-| Practice / missed replay | `PracticeArena`, own reveal footer ("Correct!" / "Incorrect" via `QuizAnswerFeedback`) | vocabulary + tabs; reader-controlled pause stays; decide whether simple Practice takes the new ordinary baseline |
-| Pro Play / Worlds quizzes | `ProPlayArenaRun` + `ProPlayRevealFooter`, manual Next | tabs (the canonical `answer-your-pick` is already asserted once per tablet) + vocabulary; keep manual Next |
+| Practice / missed replay | **adopted** (tabs + shared footer words; `PracticeArena`) | decide whether simple Practice takes the new ordinary timing baseline; reader-controlled pause stays |
+| Pro Play / Worlds quizzes | **adopted** (tabs + shared sentence; manual Next kept) | label "Correct answer" on wide pair tiles via a container query |
 | Legacy `/quiz/mastery` | `MasteryPlayerLive`, `MASTERY_REVEAL_DURATION_MS` 1750 | vocabulary |
 | Standalone `Quiz.tsx` | `QuizAnswerOptions` directly (no `markSelectionOnReveal`) | out of scope until the arena language is accepted |
 | HUD plate (`RoundResultBeat`, desktop only) | fixed 2.5rem plate, `text-sm lg:text-base` | its own pass against `.ranked-record-window`; phones never see it |
@@ -124,6 +124,74 @@ With (1) and (2) the worst-case lag drops from ~1.9 s to ~1.0 s, so the visible 
 
 ---
 
+# PHASE 2A-ADOPT REPORT (2026-10-23): Mastery slice, Pro Play / Worlds, Practice
+
+Stacked draft PR [mitcherrman/mogsy#138](https://github.com/mitcherrman/mogsy/pull/138) on top of #136 (base `qrt2/sitewide-verdict-clarity`, branch `qrt2/phase2a-adopt-modes`). Frontend only, presentation only, no timer or backend change.
+
+## What each mode now does
+
+| Mode | Before | After |
+|---|---|---|
+| **Pro Play / Worlds** | correct tablet blue with a small check; "Your pick" as 9px text (or a top tab on content tablets); verdict only in an sr-only sentence | "Correct answer" and "Your pick" tabs, emerald/rose tablets (the #136 skin), `verdictSentence` built from `VERDICT_HEADLINE`; manual Next unchanged |
+| **Practice** | same tablets as Pro Play; footer "Correct!" / "Incorrect" in `text-sm font-semibold` | same tabs and skin; the footer word is the shared headline ("Correct" / "Incorrect"), set heavy and upper-case like the arena stamp (`data-testid="practice-verdict"`); "Answer not verified" untouched |
+| **Mastery slice, prose path** (arena surface) | during the server's held reveal the tablets showed only the player's pick as `selected`: **the right answer was not marked on the tablets at all**, only in the text box below | tablets carry the server's answer (`Correct answer`) and the player's pick (`Your pick`), emerald/rose skin; the inline reveal has a headline row |
+| **Mastery slice, atomic-recall and comparison paths** | own tablet components with outline tones | headline row only (see "left undone") |
+| **Standalone `/quiz/mastery` player** | inline reveal said "Correct: x" / "Answer: x" | same headline row (it shares `MasteryInlineReveal`); no timeout word, because that wire has no expiry flag |
+
+Pro Play, Worlds and Practice all mount their question through the **same `CanonicalArena` `questionSurface` seam**, so adopting them is one opt-in (`verdictTabs`) at that seam, not three. The arena-question dev probe rides it too.
+
+## Design decisions and findings
+
+1. **Mastery verdict headline** (`MasteryInlineReveal`): icon + shared word on the same row as "Answer: x", so a phone's card gains no line. `VERDICT_TONE` is now exported from `VerdictLine` and shared.
+2. **TIMED OUT in the Mastery slice comes from the server's flag.** `MasteryQuestionReveal.timedOut` is set from the segment's `own_timed_out_challenges[challengeIndex]` (the same flag `useRankedMatchSfx` reads). A missing pick without the flag is "Incorrect", never "Timed out" (unit-tested). The standalone player and any reveal frozen before the flag existed simply never say "Timed out".
+3. **The prose surface now receives a `reveal` only while the server's own per-challenge reveal is held.** `surfaceRevealFor` maps the server's `correctValue` to the option whose label equals it (exactly what `choiceTone` does for the other renderers); a value matching no option lights nothing. Before the reveal and between challenges the surface still gets `reveal={null}`, so nothing is disclosed early (unit-tested: no tab, no `correct` state, no verdict before a reveal).
+4. **Compact tabs for narrow tablets.** A two-up pair (Pro Play) or a picture choice (Practice, Pro Play) is ~145-155px wide on a phone; the two tabs together (~170px) spilled off the tablet's left edge. They are now set tighter (9px, 0.08em) and the answer's reads "Correct" when the player's pick shares the edge (~128px total). On those layouts the label is chosen by layout, not by measured width, so a Pro Play desktop pair says "Correct" as well; a container query would let wide tiles say "Correct answer" again (follow-up).
+   * **Rejected: pick tab on the bottom edge.** It fixed the width but `e2e/pm2`'s "tablet text clipped" measure treats a tab hanging off the bottom as overflow (the tablet's scroll box grows). Caught by running PM2; the top-edge compact version passes.
+5. **Existing 10px phone re-centre in the Mastery card** (the submit button becomes the reveal box): identical on the base, left alone, and pinned in the browser spec at 10 ± 1px (0 on desktop).
+6. **Pro Play's fixture page scrolls** (846 / 616 / 346px at 360×640 / 390×844 / 1280×720): identical on the base, not this PR's.
+7. **Tests that pinned the old behaviour were updated on purpose:** Practice's "Correct!" text, and `CanonicalArena.regionsSeam` (a question surface now has top-edge tabs on label tablets; it had a bottom-right "Your pick"). `CanonicalArena` has a source guard that forbids naming modes, so the opt-in comment names none.
+8. **Dev fixture:** `/dev/ranked-shell-probe?q=masteryRecall&mreveal=right|wrong|timeout[&mprose=1]` holds a Mastery slice's own reveal (long window) so it can be captured and measured; `mprose=1` serves the recall challenges without prompt semantics, which is what routes them to the arena surface.
+
+## Files
+
+* `CanonicalArena.tsx` (one opt-in), `PracticeArena.tsx`, `proPlayRevealModel.ts`
+* `MasteryInlineReveal.tsx`, `revealState.ts` (`timedOut`), `MasterySliceChallengeSurface.tsx` (`surfaceRevealFor`, `verdictTabs`), `masterySliceModule.tsx` (reads the flag), `AtomicRecallQuestionView.tsx` / `ComparisonQuestionView.tsx` (pass the flag)
+* `VerdictLine.tsx` (`VERDICT_TONE` exported), `QuizAnswerOptions.tsx` (compact tabs)
+* `RankedShellProbe.tsx` (dev fixture)
+* Tests: `masterySliceModule.qrt2.test.tsx` (11), additions to `PracticeArena.test.tsx` (+3) and `ProPlayArenaRun.reveal.test.tsx` (+1), two pinned tests updated, `e2e/qrt2-adoption.spec.ts` (18 browser tests, registered in `playwright.arena.config.ts`)
+
+## Verification
+
+| Check | Result |
+|---|---|
+| New unit tests | Mastery slice 11, Practice 3, Pro Play 1: all pass |
+| `e2e/qrt2-adoption.spec.ts` | **18 passed** (Mastery slice prose right / wrong / timeout and pre-reveal at 360×640, 390×844, 1280×720; Pro Play pick 0 / pick 1 at the same sizes). Asserts the lit tablet is opaque and tagged, the pick tab sits on the tapped tablet, a timeout has no pick tab, every tab is one line, inside the viewport, inside its own tablet, off the letter plate and off the other tab, no tab is in a live region, no tablet changes height, the page does not scroll in the Mastery card, and Pro Play keeps its manual Next |
+| Same spec on the base (#136 head `5e02f010`) | **fails** (5 of 6 sampled at 390×844; the one that passes is the "nothing before the reveal" test) |
+| #136 browser spec `qrt2-verdict-clarity` after this change | 19 / 19 pass |
+| `e2e/pm2` (Practice one-screen, its own fixture backend) | 12 passed across 360×640, 390×844, 430×932, 844×390 and 1280×800 (its measures: no overflow, tablets and the reveal box do not move on reveal, no clipped tablet text) |
+| Affected unit suites (three chunks: `src/features` + `src/lib/*`, `src/components/*`, `src/pages`) head vs base | failure sets identical except `LobbyPreviewPage.premiumAnalytics.test.tsx`, which is **flaky on the base too** (1, 2 and 3 failures on three consecutive base runs; 1, 3, 1 on head) |
+| `tsc --noEmit` | the same 2 pre-existing errors (`OnboardingProfile.tsx`, `identity/connections.ts`), none in changed files |
+| eslint on changed files | 0 errors (react-refresh warnings only) |
+| Merge with QRT1 #134 | `git merge-tree` is clean, although both PRs touch `masterySliceModule.tsx` (different hunks); rerun `masterySliceModule.qrt1.test.tsx` and `masterySliceModule.qrt2.test.tsx` after #134 lands |
+
+Before/after pairs: [`qrt2-evidence-adopt/`](qrt2-evidence-adopt/) (11 side-by-sides: Mastery prose right/wrong/timeout, desktop wrong and the atomic headline; Pro Play at 360, 390 and 1280; Practice text and picture tiles).
+
+Local-run note: AGENTS.md prefers GitHub Actions for browser matrices. These ran headless on the bundled Chromium (no installed Edge/Chrome, nothing headed). `playwright.arena.config.ts` is not wired to CI, and `e2e/pm2`'s config starts Vite with a Unix-style path that fails on Windows (start the server yourself with `VITE_E2E_AUTH=1 … vite --mode e2e --port 8126`).
+
+## Left undone
+
+* **Mastery atomic-recall and comparison tablets** have no "Correct answer" / "Your pick" tabs: their tablets are Mastery components (`MasteryBooleanInput`, the comparison cards), shared with the standalone player, with their own outline tones (`CHOICE_TONE_CLASS`). Adopting them is a separate change to those components.
+* **Journey** (waits for #134), **Meta Reflex, Order Forge, Reconstruct/Scrub/Match Grid/Assembly** (vocabulary only), legacy `/quiz/mastery` tablets, HUD plate, Daily retry wiring, live-region audit, and the timing pair: unchanged from the #136 table.
+* The compact tab label by container width rather than layout (finding 4).
+
+## Deployment dependencies
+
+* **Stacked on #136**: merge #136 first (this PR needs `verdictTabs`, `VERDICT_HEADLINE` and the `[data-verdict-tabs]` skin). The PR's base is #136's branch; GitHub retargets it to `main` when #136 merges.
+* Frontend only: no backend, migration, flag or data. Owner publishes via Lovable after merge. Rollback is a revert.
+* The Mastery `timedOut` flag is read from a field the backend already sends (`own_timed_out_challenges`); an older backend that omits it just yields "Incorrect".
+
+---
+
 # ORIGINAL SCOPE (2026-10-22, still the plan for later phases)
 
 ## Objective / owner requirements
@@ -173,4 +241,4 @@ QRT1 already handles **Mastery Journey** exact reveal windows (ordinary 2250 ms;
 
 As checked 2026-10-22 local, QRT1 frontend #134 was 4 commits behind main and backend #97 26 commits behind master. The backend showed six GitHub Actions failures; logs were not retrievable through the connector, so root cause is **unknown**. Both PRs are mergeable and draft. Address these release gates in parallel, without blocking UI work that can be safely developed in isolation.
 
-**Next task (updated 2026-10-23):** Phase 2A is done (see the report at the top). Next, in separate PRs: (1) adopt the vocabulary and `verdictTabs` in the Mastery slice, Pro Play/Worlds and Practice; (2) after QRT1 #134 merges, Journey; (3) the Phase 2B timing pair plus faster resolution discovery; (4) a real screen-reader pass over the six live regions.
+**Next task (updated 2026-10-23):** Phase 2A is done (see the report at the top). Next, in separate PRs: (1) done in the stacked adoption PR (Mastery slice prose path, Pro Play/Worlds, Practice); still open: the Mastery atomic/comparison tablets; (2) after QRT1 #134 merges, Journey; (3) the Phase 2B timing pair plus faster resolution discovery; (4) a real screen-reader pass over the six live regions.

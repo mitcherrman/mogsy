@@ -248,6 +248,23 @@ function masteryChallenge(kind: "recall" | "compare" | "stat", index: number) {
 }
 
 function masterySegment(kind: "recall" | "compare" | "stat") {
+  // QRT2 — `?mreveal=`: the viewer answered challenge 0 and the server's own
+  // reveal is being held (`own_challenge_reveals`, with the long window below so
+  // it stays on screen for review). Recall options are 9/10/11/12; 11 is correct.
+  const revealing = probe.mreveal !== null && kind === "recall";
+  const heldReveal = revealing ? {
+    reveal_window_ms: 600_000,
+    own_next_challenge_index: 1, own_challenges_completed: 1,
+    own_submitted_choices: [probe.mreveal === "timeout" ? null
+      : { selected: probe.mreveal === "right" ? "11" : "9" }, null, null],
+    own_timed_out_challenges: [probe.mreveal === "timeout", false, false],
+    own_challenge_reveals: [{
+      challenge_index: 0, is_correct: probe.mreveal === "right",
+      player_answer: probe.mreveal === "timeout" ? null : probe.mreveal === "right" ? "11" : "9",
+      correct_answer: "11", explanation: "Brand Q has an 11 second cooldown at rank 1.",
+      answer_type: "single_choice", answer_options: ["9", "10", "11", "12"],
+    }],
+  } : {};
   const base = {
     module_id: "mastery_slice", module_version: 1, challenge_count: 3,
     segment_number: 3, phase: "challenges", ability_deadline: null,
@@ -267,7 +284,11 @@ function masterySegment(kind: "recall" | "compare" | "stat") {
       opponent_challenges_completed: 0, opponent_finished: false, own_finished: false,
       challenges: { prompt: kind === "stat" ? "Mastery Slice: Garen" : "Mastery Slice: Brand",
         challenge_count: 3,
-        challenges: [0, 1, 2].map((i) => masteryChallenge(kind, i)) } },
+        challenges: [0, 1, 2].map((i) => {
+          const c = masteryChallenge(kind, i);
+          return probe.mprose && kind === "recall" ? { ...c, prompt_semantics: null } : c;
+        }) },
+      ...heldReveal },
   };
 }
 
@@ -928,10 +949,15 @@ const probe: {
   mrStep: number | null;
   /** MISC W2D — `?timeout=1`: every settled round times the viewer out. */
   timeout: boolean;
+  /** QRT2 — `?mreveal=right|wrong|timeout` holds a Mastery slice's own per-challenge reveal. */
+  mreveal: "right" | "wrong" | "timeout" | null;
+  /** QRT2 — `?mprose=1` serves the Mastery recall challenges without prompt semantics (the arena-surface path). */
+  mprose: boolean;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
   discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0,
-  seq: [], broken: false, ruleset: null, evlen: 0, mrStep: null, timeout: false };
+  seq: [], broken: false, ruleset: null, evlen: 0, mrStep: null, timeout: false,
+  mreveal: null, mprose: false };
 
 /** Stamp a live clock and a future round-1 start onto a canned envelope. */
 function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
@@ -1257,6 +1283,9 @@ export default function RankedShellProbe() {
   probe.points = parsePoints(params.get("points"));
   probe.questionRoles = (params.get("qroles") ?? "").split(",").filter(Boolean);
   probe.motif = params.get("motif") || null;
+  const mreveal = params.get("mreveal");
+  probe.mreveal = mreveal === "right" || mreveal === "wrong" || mreveal === "timeout" ? mreveal : null;
+  probe.mprose = params.get("mprose") === "1";
   const orole = params.get("orole");
   probe.opponentRole = orole && orole !== "none" ? orole : null;
   probe.progressionOff = params.get("progression") === "0";

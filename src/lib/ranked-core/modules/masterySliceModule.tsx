@@ -97,6 +97,8 @@ export type { MasterySliceRenderPath };
 function toQuestionReveal(
   reveal: MasteryChallengeReveal,
   challenge: MasterySliceChallengeView,
+  /** QRT2 — the server's expiry flag for THIS card (`own_timed_out_challenges`). */
+  timedOut = false,
 ): MasteryQuestionReveal {
   const isComparison = challenge.interactionKind === "comparison_left_right";
   return {
@@ -105,6 +107,7 @@ function toQuestionReveal(
     selectedValue: reveal.playerAnswer,
     answerLabel: isComparison ? null : reveal.correctAnswer,
     explanation: reveal.explanation,
+    ...(timedOut ? { timedOut: true } : {}),
     // DD1 — reveal-only structured values, passed through (already read fail-closed).
     comparisonValues: isComparison ? reveal.comparisonValues ?? null : null,
   };
@@ -335,7 +338,10 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
     }
   };
   const path = renderPathFor(current);
-  const reveal = holding && revealed ? toQuestionReveal(holding, revealed) : null;
+  const reveal = holding && revealed
+    ? toQuestionReveal(holding, revealed,
+      state.ownTimedOutChallenges?.[holding.challengeIndex] === true)
+    : null;
 
   return inJourney(
     // `data-challenge-index` names which challenge is actually on screen — the

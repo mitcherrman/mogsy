@@ -23,7 +23,8 @@ import {
   type FeedbackVerdict,
 } from "@/lib/question-feedback/model";
 
-const TONE: Record<FeedbackVerdict, { text: string; Icon: typeof CheckCircle2 }> = {
+/** Shared by every surface that draws a verdict headline (Mastery's inline reveal reads it too). */
+export const VERDICT_TONE: Record<FeedbackVerdict, { text: string; Icon: typeof CheckCircle2 }> = {
   correct: { text: "text-emerald-300", Icon: CheckCircle2 },
   incorrect: { text: "text-[#e2757b]", Icon: XCircle },
   timeout: { text: "text-[#e2757b]", Icon: Hourglass },
@@ -43,7 +44,7 @@ export function VerdictLine({
   // expiry). Nothing is drawn rather than a neutral placeholder, which would
   // be this surface making a ruling the server declined to make.
   if (!verdict) return null;
-  const { text, Icon } = TONE[verdict];
+  const { text, Icon } = VERDICT_TONE[verdict];
   return (
     <p
       role="status"

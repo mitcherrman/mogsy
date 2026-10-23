@@ -31,6 +31,7 @@ import type {
   ProPlayMetricTag,
 } from "@/lib/pro-play/contract";
 import type { AnswerOptionView } from "@/lib/ranked-core/viewTypes";
+import { VERDICT_HEADLINE } from "@/lib/question-feedback/model";
 
 export const REVEAL_EMPTY_VALUE = "—";
 
@@ -251,7 +252,9 @@ export function verdictSentence(model: ProPlayRevealModel): string {
   const correct = model.candidates.find((c) => c.correct) ?? null;
   const picked = model.candidates.find((c) => c.picked) ?? null;
   const answer = correct ? `The answer is ${correct.letter}, ${correct.label}.` : "";
-  if (model.isCorrect) return `Correct. ${answer}`.trim();
+  // QRT2 — the shared verdict words (`VERDICT_HEADLINE`), so this sentence and
+  // the arena stamp can never word a result apart.
+  if (model.isCorrect) return `${VERDICT_HEADLINE.correct}. ${answer}`.trim();
   const pick = picked ? `You picked ${picked.letter}, ${picked.label}.` : "";
-  return ["Incorrect.", pick, answer].filter(Boolean).join(" ");
+  return [`${VERDICT_HEADLINE.incorrect}.`, pick, answer].filter(Boolean).join(" ");
 }

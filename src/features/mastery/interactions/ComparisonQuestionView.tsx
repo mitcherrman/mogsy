@@ -160,6 +160,7 @@ export function ComparisonQuestionView({
           correct={reveal.correct}
           answerLabel={reveal.answerLabel}
           explanation={reveal.explanation}
+          timedOut={reveal.timedOut}
         />
       )}
       {submitting && reveal === null && (
