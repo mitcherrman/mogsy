@@ -11,6 +11,13 @@
  * falls back to it when the server states none (an older segment, or the
  * standalone player, which has no competitive clock to protect).
  *
+ * QRT1 — a Mastery JOURNEY is not on this constant: the server freezes every
+ * Journey's windows itself (2250 ms for an ordinary child, 5000 / 7000 ms for
+ * a child whose reveal works through a calculation) and the Journey renderer
+ * holds exactly the window the server names, ending at its `own_reveal_until`.
+ * This 1750 ms stays the legacy standalone player's and the non-Journey
+ * Ranked Mastery Slice's fallback.
+ *
  * Nothing here computes correctness. `MasteryChoiceReveal` is a description of
  * an ALREADY-GRADED result handed down from the server — which option was
  * correct, and which one the player picked — and the components that consume
@@ -92,11 +99,19 @@ export const CHOICE_TONE_CLASS: Record<MasteryChoiceTone, string> = {
  * * a stale timer cannot advance a newer question — the fired callback is
  *   re-checked against the key the timer was armed for before it runs;
  * * a null `key` disarms entirely, which is how "not in a reveal" is spelled.
+ *
+ * QRT1 — `endsAtMs`, when given, is the client-clock INSTANT the reveal must
+ * end by (a Ranked Journey: the server's `own_reveal_until`), and wins over
+ * `delayMs`. The wait is measured when the timer is ARMED, not when the
+ * caller rendered: a relative delay computed in render and armed after a slow
+ * commit (measured ~120 ms on desktop, more on a phone) held the reveal past
+ * the instant the server had already started the next child's clock.
  */
 export function useRevealAutoAdvance(
   key: string | number | null,
   onElapsed: () => void,
   delayMs: number = MASTERY_REVEAL_DURATION_MS,
+  endsAtMs: number | null = null,
 ): void {
   const callbackRef = useRef(onElapsed);
   callbackRef.current = onElapsed;
@@ -107,13 +122,14 @@ export function useRevealAutoAdvance(
     // Already advanced for this exact reveal: never schedule a second one.
     if (firedFor.current === key) return;
     const armedFor = key;
+    const wait = endsAtMs !== null ? Math.max(0, endsAtMs - Date.now()) : delayMs;
     const handle = window.setTimeout(() => {
       if (firedFor.current === armedFor) return;
       firedFor.current = armedFor;
       callbackRef.current();
-    }, delayMs);
+    }, wait);
     return () => window.clearTimeout(handle);
-  }, [key, delayMs]);
+  }, [key, delayMs, endsAtMs]);
 }
 
 /**
