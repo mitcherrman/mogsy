@@ -7,10 +7,24 @@
  * harness — `src/pages/dev/quiz-render/QuizRenderPage`, the exact component
  * Playwright drives — into an offscreen host sized by the harness itself, waits
  * for the harness's own `data-quiz-render-ready`, applies the Content Factory's
- * own presentation and asset gates to the mounted stage, and hands the stage to
- * `./browserCapture`. Formats, states, answer selection, filenames, run-
- * directory shape and the readiness policy all come from the modules that
- * already own them.
+ * own QA to the mounted stage, and hands the stage to `./browserCapture`.
+ * Formats, states, answer selection, filenames, run-directory shape and the
+ * readiness policy all come from the modules that already own them.
+ *
+ * CC2 — THE SAME CAPTURE CONTRACT AS PLAYWRIGHT
+ *
+ *  - Harness parameters: every card carries what the generator passes —
+ *    `slide`, `scale`, `difficulty`, and the challenge's `progress` / `repeat`
+ *    / `mid` / `qids` / `sumStart` / `sumPage` / `sumPages`.
+ *  - Answer plan: quiz and recap cards resolve `resolveAnswerPlan` first, as
+ *    the generator does, so a state a question has no content for is SKIPPED
+ *    with the generator's reason and an invalid one FAILS. A harness that then
+ *    refuses a card is a failure (the CLI's `harness-error`), never a skip.
+ *  - QA: the full capture-time DOM sweep (`./domQa.ts`) — presentation and
+ *    asset gates, missing/unresolved images, answer leakage, missing reveal,
+ *    CTA presence and placement, composition, contrast. Any failing finding
+ *    withholds the card: Admin is fail-closed, so a card the CLI would mark
+ *    failed produces no file here.
  *
  * THE ZOOM ENVELOPE
  *
@@ -19,7 +33,9 @@
  * zoom on every other card of the same question and format — so a reveal is
  * never a different size from the question it answers. This does the same, via
  * the same `?scale=` parameter the runner uses. Dropping it would produce a
- * carousel whose slides breathe.
+ * carousel whose slides breathe. CC2: which cards share it is the generator's
+ * own rule (`ExportCard.sharesZoom`) — quiz slides only, never `explanation`,
+ * never challenge slides.
  *
  * THE HARNESS'S SIDE EFFECTS
  *
@@ -44,17 +60,17 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/query-client";
-import { evaluateAssetGate } from "./assetGate";
 import { buildCaptureStyleBundle, captureStageToPng, type CaptureStyleBundle } from "./browserCapture";
-import { evaluatePresentationGate } from "./presentationGate";
-import { getFormat } from "./formats";
 import {
-  PRESENTATION_BAND_ATTRIBUTE,
-  PRESENTATION_REASON_ATTRIBUTE,
-  PRESENTATION_STATUS_ATTRIBUTE,
-  QUIZ_RENDER_WINDOW_KEY,
-  type RenderQuestion,
-} from "./types";
+  assessBrowserExportSupport,
+  GECKO_MAX_DATA_URL_CHARS,
+  type BrowserExportSupport,
+} from "./browserSupport";
+import { collectDomQa, DOM_QA_ATTRIBUTES, evaluateDomQa, type CaptureLayout } from "./domQa";
+import { getFormat } from "./formats";
+import type { QaFinding } from "./metadata";
+import { resolveAnswerPlan } from "./states";
+import { QUIZ_RENDER_WINDOW_KEY, type RenderQuestion, type RenderState } from "./types";
 import type { ExportCard, ExportPlan } from "./exportPlan";
 
 const READY_TIMEOUT_MS = 20_000;
@@ -69,21 +85,44 @@ export type ExportCardOutcome =
       card: ExportCard;
       status: "captured";
       file: ExportedFile;
+      /** Capture-level notes from `browserCapture` (strings, as before CC2). */
       warnings: string[];
       /** The zoom the harness fitted, as it stamps it. Parity tooling compares
        *  this against the CLI's `usedScale` for the same card. */
       usedScale: number | null;
+      /** CC2 — QA warnings from the shared DOM sweep (never failures). */
+      findings: QaFinding[];
+      overflow: QaFinding[];
+      missingAssets: string[];
+      layout: CaptureLayout;
     }
-  /** The harness itself declined this card (e.g. a state it has no content
+  /** The answer plan declined this card (a state the question has no content
    *  for). The CLI records these as skipped-with-a-reason, never as output. */
   | { card: ExportCard; status: "skipped"; reason: string }
-  | { card: ExportCard; status: "failed"; reason: string };
+  | {
+      card: ExportCard;
+      status: "failed";
+      reason: string;
+      /** Machine-readable class: a QA finding code, a capture failure code,
+       *  `harness-error`, `ready-timeout`, `cancelled`, … */
+      classification: string;
+      /** Every QA finding, when the DOM sweep ran. */
+      findings?: QaFinding[];
+      overflow?: QaFinding[];
+      missingAssets?: string[];
+      layout?: CaptureLayout;
+    };
 
 export type ExportRunResult = {
   outcomes: ExportCardOutcome[];
   files: ExportedFile[];
   /** `url()` targets the stylesheet asked for and the browser could not read. */
   styleWarnings: string[];
+  /** Why the run stopped early (cancelled, unsupported browser), else null. */
+  aborted: string | null;
+  support: BrowserExportSupport;
+  startedAt: Date;
+  finishedAt: Date;
 };
 
 export type ExportProgress = { done: number; total: number; card: ExportCard };
@@ -91,15 +130,23 @@ export type ExportProgress = { done: number; total: number; card: ExportCard };
 /** The harness takes the document it renders into; see its own note. */
 type HarnessModule = { default: ComponentType<{ renderDocument?: Document }> };
 
-function harnessUrl(card: ExportCard, forcedScale?: number): string {
+/** The harness URL for one card — the generator's parameters, in its order. */
+export function harnessUrl(card: ExportCard, forcedScale?: number): string {
   const params = new URLSearchParams({
     q: card.questionId,
     state: card.state,
     format: card.formatKey,
   });
-  if (card.slide !== "quiz") params.set("slide", card.slide);
   if (forcedScale !== undefined) params.set("scale", String(forcedScale));
+  if (card.slide !== "quiz") params.set("slide", card.slide);
+  if (card.difficulty) params.set("difficulty", card.difficulty);
+  for (const [key, value] of Object.entries(card.extraParams ?? {})) params.set(key, value);
   return `/dev/quiz-render?${params.toString()}`;
+}
+
+/** Zoom-envelope key: one fitted zoom per question directory + format. */
+function envelopeKey(card: ExportCard): string {
+  return `${card.dirSlug}::${card.formatKey}`;
 }
 
 /**
@@ -111,7 +158,11 @@ function harnessUrl(card: ExportCard, forcedScale?: number): string {
  */
 async function waitForHarness(
   host: HTMLElement,
-): Promise<{ kind: "ready"; stage: HTMLElement } | { kind: "error"; message: string }> {
+): Promise<
+  | { kind: "ready"; stage: HTMLElement }
+  | { kind: "error"; message: string }
+  | { kind: "timeout"; message: string }
+> {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   for (;;) {
     const error = host.querySelector(ERROR_SELECTOR);
@@ -119,60 +170,10 @@ async function waitForHarness(
     const ready = host.querySelector(READY_SELECTOR);
     if (ready) return { kind: "ready", stage: ready as HTMLElement };
     if (Date.now() > deadline) {
-      return { kind: "error", message: `the card did not become ready within ${READY_TIMEOUT_MS / 1000}s` };
+      return { kind: "timeout", message: `the card did not become ready within ${READY_TIMEOUT_MS / 1000}s` };
     }
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
   }
-}
-
-/**
- * Apply the Content Factory's publishing gates to a stage that is about to be
- * captured.
- *
- * These are the SAME two modules the Playwright runner calls, reading the same
- * two attributes the harness stamps and the same backend-computed
- * `asset_status` — not a browser-side re-derivation of either. The diagnostic
- * overrides are pinned false: they exist so a developer can capture a known-bad
- * card through the CLI, and Admin has never offered them.
- */
-function evaluateGates(card: ExportCard, stage: HTMLElement, question: RenderQuestion | undefined): string | null {
-  const presentation = evaluatePresentationGate({
-    status: stage.querySelector(`[${PRESENTATION_STATUS_ATTRIBUTE}]`)?.getAttribute(PRESENTATION_STATUS_ATTRIBUTE) ?? null,
-    band: stage.querySelector(`[${PRESENTATION_BAND_ATTRIBUTE}]`)?.getAttribute(PRESENTATION_BAND_ATTRIBUTE) ?? null,
-    reason: stage.querySelector(`[${PRESENTATION_REASON_ATTRIBUTE}]`)?.getAttribute(PRESENTATION_REASON_ATTRIBUTE) ?? null,
-    questionId: card.questionId,
-    questionKey: question?.question_key ?? null,
-    format: card.formatKey,
-    state: card.state,
-    allowIncomplete: false,
-  });
-  if (presentation.failed) return presentation.findings[0]?.message ?? "incomplete presentation";
-
-  const asset = evaluateAssetGate({
-    assetStatus: question?.asset_status ?? null,
-    questionId: card.questionId,
-    questionKey: question?.question_key ?? null,
-    format: card.formatKey,
-    state: card.state,
-    allowMissingAssets: false,
-  });
-  if (asset.failed) return asset.findings[0]?.message ?? "a required asset did not resolve";
-
-  return null;
-}
-
-/**
- * Defence in depth, the browser half of the runner's `<img>` check.
- *
- * The gates above ask the BACKEND whether an asset was required and resolvable.
- * This asks the picture whether it painted — a bad URL join, a serving 404 or a
- * CSP block all land here and nowhere else. A visibly broken image in an
- * exported PNG is not publishable whatever the premise required.
- */
-function findBrokenImages(stage: HTMLElement): string[] {
-  return Array.from(stage.querySelectorAll("img"))
-    .filter((image) => image.complete && image.naturalWidth === 0)
-    .map((image) => image.currentSrc || image.src);
 }
 
 /**
@@ -194,7 +195,18 @@ function findBrokenImages(stage: HTMLElement): string[] {
  * The stylesheets are copied in rather than re-fetched so the frame is styled by
  * the same CSS this page is running, and the theme classes are mirrored because
  * the harness's own effect puts them on the TOP-level document.
+ *
+ * CC2 — STANDARDS MODE. An iframe's initial `about:blank` has no doctype, so it
+ * lays out in QUIRKS mode, while the page Playwright captures (`index.html`)
+ * is in standards mode. Quirks line-height and box rules made the harness
+ * measure some cards taller and fit a smaller zoom (CC2 parity run: two cards
+ * 4–5% smaller than the authority). The surface is therefore a `srcdoc`
+ * document with a doctype, and the export waits for THAT document's load — not
+ * the transient `about:blank` that precedes it — which also removes Gecko's
+ * replaced-initial-document hazard.
  */
+const STAGE_FRAME_SRCDOC = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body></body></html>";
+
 async function createStageFrame(width: number, height: number): Promise<HTMLIFrameElement> {
   const frame = document.createElement("iframe");
   frame.setAttribute("data-content-export-frame", "");
@@ -206,16 +218,18 @@ async function createStageFrame(width: number, height: number): Promise<HTMLIFra
   // and the harness fits its zoom by MEASURING what it laid out.
   frame.style.cssText =
     `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;border:0;pointer-events:none;`;
-  document.body.appendChild(frame);
-
-  await new Promise<void>((resolve) => {
-    if (frame.contentDocument?.readyState === "complete") resolve();
-    else frame.addEventListener("load", () => resolve(), { once: true });
-    // about:blank can be complete before the listener attaches.
-    if (frame.contentDocument?.readyState === "complete") resolve();
+  const loaded = new Promise<void>((resolve) => {
+    frame.addEventListener("load", () => resolve(), { once: true });
   });
+  frame.srcdoc = STAGE_FRAME_SRCDOC;
+  document.body.appendChild(frame);
+  await loaded;
 
   const doc = frame.contentDocument!;
+  if (doc.compatMode !== "CSS1Compat") {
+    frame.remove();
+    throw new Error("the export surface did not load in standards mode");
+  }
   // Layout.tsx's own rule for the LoL section, applied to the export surface:
   // strip any sitewide `theme-*` the operator happens to be using, then assert
   // the League theme. Copying Admin's classes verbatim would let an operator's
@@ -227,12 +241,38 @@ async function createStageFrame(width: number, height: number): Promise<HTMLIFra
     doc.head.appendChild(node.cloneNode(true));
   }
   // The zoom fit measures text, so it must not run against fallback metrics.
+  // A frame's FontFaceSet loads lazily — only once text asks for a face — so
+  // `ready` alone resolves before anything is pending. Ask the frame for every
+  // face this page has already loaded, so the first card that uses a weight
+  // is measured with it, exactly as Playwright's warmed page is.
   try {
+    const wanted: Promise<unknown>[] = [];
+    document.fonts?.forEach((face) => {
+      if (face.status !== "loaded") return;
+      const family = face.family.replace(/^["']|["']$/g, "");
+      // Variable faces report ranges ("100 900"); one value names the face.
+      const weight = face.weight.split(/\s+/)[0];
+      const style = face.style.split(/\s+/)[0];
+      wanted.push(doc.fonts.load(`${style} ${weight} 16px "${family}"`).catch(() => undefined));
+    });
+    await Promise.all(wanted);
     await doc.fonts?.ready;
   } catch {
     /* font API unavailable in this frame — proceed */
   }
   return frame;
+}
+
+type Surface = { frame: HTMLIFrameElement; root: Root; host: HTMLElement; doc: Document };
+
+/** Every card not attempted, failed with one reason — a short run is never silent. */
+function failRemaining(
+  cards: readonly ExportCard[],
+  from: number,
+  classification: string,
+  reason: string,
+): ExportCardOutcome[] {
+  return cards.slice(from).map((card) => ({ card, status: "failed" as const, classification, reason }));
 }
 
 /**
@@ -246,12 +286,32 @@ export async function runBrowserExport(args: {
   onProgress?: (progress: ExportProgress) => void;
   /** Injected in tests; production builds the bundle from the live document. */
   styleBundle?: CaptureStyleBundle;
+  /** Cancels between cards; the remaining cards are reported as cancelled. */
+  signal?: AbortSignal;
+  /** Injected in tests; production assesses the running browser. */
+  support?: BrowserExportSupport;
 }): Promise<ExportRunResult> {
   const { plan, questions } = args;
+  const startedAt = new Date();
+  const support = args.support ?? assessBrowserExportSupport();
   const byId = new Map(questions.map((q) => [String(q.id), q]));
+
+  if (support.status === "unsupported") {
+    const reason = support.notes.join(" ") || "this browser cannot run the export";
+    return {
+      outcomes: failRemaining(plan.cards, 0, "browser-unsupported", reason),
+      files: [],
+      styleWarnings: [],
+      aborted: reason,
+      support,
+      startedAt,
+      finishedAt: new Date(),
+    };
+  }
 
   const harness = (await import("@/pages/dev/quiz-render/QuizRenderPage")) as HarnessModule;
   const bundle = args.styleBundle ?? (await buildCaptureStyleBundle());
+  const maxSvgChars = support.engine === "firefox" ? GECKO_MAX_DATA_URL_CHARS : undefined;
 
   const globals = window as unknown as Record<string, unknown>;
   const previousInjection = globals[QUIZ_RENDER_WINDOW_KEY];
@@ -261,30 +321,76 @@ export async function runBrowserExport(args: {
   /** Fitted zoom per question+format, so every card of one post matches. */
   const scaleEnvelope = new Map<string, number>();
   /** One surface per format; cards of the same format reuse it. */
-  const frames = new Map<string, { frame: HTMLIFrameElement; root: Root; host: HTMLElement }>();
+  const frames = new Map<string, Surface>();
+  let aborted: string | null = null;
 
   try {
     let done = 0;
-    for (const card of plan.cards) {
+    for (let cardIndex = 0; cardIndex < plan.cards.length; cardIndex++) {
+      const card = plan.cards[cardIndex];
+      if (args.signal?.aborted) {
+        aborted = "cancelled by the operator";
+        outcomes.push(...failRemaining(plan.cards, cardIndex, "cancelled", "cancelled before this card was captured"));
+        break;
+      }
       args.onProgress?.({ done, total: plan.cards.length, card });
-      const envelopeKey = `${card.questionId}::${card.formatKey}`;
-      const url = harnessUrl(card, scaleEnvelope.get(envelopeKey));
+      const fail = (classification: string, reason: string, extra: Partial<Extract<ExportCardOutcome, { status: "failed" }>> = {}) => {
+        outcomes.push({ card, status: "failed", classification, reason, ...extra });
+        done += 1;
+      };
+
+      const format = getFormat(card.formatKey);
+      if (!format) {
+        fail("unknown-format", `unknown format "${card.formatKey}"`);
+        continue;
+      }
+      const question = byId.get(String(card.questionId));
+      if (!question) {
+        fail("question-not-loaded", `question ${card.questionLabel} was not loaded for export`);
+        continue;
+      }
+
+      // The generator's answer plan, before anything is mounted.
+      let expectExplanation = false;
+      if (card.slide === "quiz" || card.slide === "recap") {
+        const planState: RenderState = card.slide === "recap" ? "question" : card.state;
+        try {
+          const answerPlan = resolveAnswerPlan(question, planState);
+          if (answerPlan.kind === "skip") {
+            outcomes.push({ card, status: "skipped", reason: answerPlan.reason });
+            done += 1;
+            continue;
+          }
+          expectExplanation = answerPlan.plan.showExplanation;
+        } catch (error) {
+          fail("invalid-state-for-question", error instanceof Error ? error.message : String(error));
+          continue;
+        }
+      }
+
+      const forcedScale = card.sharesZoom ? scaleEnvelope.get(envelopeKey(card)) : undefined;
+      const url = harnessUrl(card, forcedScale);
 
       let surface = frames.get(card.formatKey);
       if (!surface) {
-        const format = getFormat(card.formatKey);
-        if (!format) {
-          outcomes.push({ card, status: "failed", reason: `unknown format "${card.formatKey}"` });
-          done += 1;
+        let frame: HTMLIFrameElement;
+        try {
+          frame = await createStageFrame(format.width, format.height);
+        } catch (error) {
+          fail("export-surface", error instanceof Error ? error.message : String(error));
           continue;
         }
-        const frame = await createStageFrame(format.width, format.height);
-        surface = { frame, root: createRoot(frame.contentDocument!.body), host: frame.contentDocument!.body };
+        const doc = frame.contentDocument!;
+        surface = { frame, root: createRoot(doc.body), host: doc.body, doc };
         frames.set(card.formatKey, surface);
       }
-      const host = surface.host;
-      const root = surface.root;
-      const frameDocument = surface.frame.contentDocument!;
+      // Gecko may swap an iframe's initial about:blank once it finishes
+      // loading; a root mounted into the old document would never become ready.
+      if (surface.frame.contentDocument !== surface.doc) {
+        fail("export-surface-replaced", "the browser replaced the export surface; this browser is not supported");
+        continue;
+      }
+      const { host, root, doc: frameDocument } = surface;
 
       // Clear the host first. A remount is not instantaneous, and the previous
       // card's stage still carries `data-quiz-render-ready="true"` — polling
@@ -322,50 +428,51 @@ export async function runBrowserExport(args: {
       });
 
       const settled = await waitForHarness(host);
+      if (settled.kind === "timeout") {
+        fail("ready-timeout", settled.message);
+        continue;
+      }
       if (settled.kind === "error") {
-        // The harness's own refusal. `resolveAnswerPlan` returns one of these
-        // for a state a question genuinely has no content for (an explanation
-        // card on a question with no explanation), which the CLI reports as a
-        // skip rather than inventing text for it.
-        outcomes.push({ card, status: "skipped", reason: settled.message });
-        done += 1;
+        // The answer plan already skipped every state the generator skips, so
+        // a refusal here is the CLI's `harness-error`: a failure.
+        fail("harness-error", settled.message || "the render harness refused this card");
         continue;
       }
 
       const stage = host.querySelector(STAGE_SELECTOR) as HTMLElement | null;
       if (!stage) {
-        outcomes.push({ card, status: "failed", reason: "the render stage never mounted" });
-        done += 1;
+        fail("empty-stage", "the render stage never mounted");
         continue;
       }
 
-      if (!scaleEnvelope.has(envelopeKey)) {
+      if (card.sharesZoom && !scaleEnvelope.has(envelopeKey(card))) {
         const fitted = Number(stage.getAttribute("data-render-scale"));
-        if (Number.isFinite(fitted) && fitted > 0) scaleEnvelope.set(envelopeKey, fitted);
+        if (Number.isFinite(fitted) && fitted > 0) scaleEnvelope.set(envelopeKey(card), fitted);
       }
 
-      const question = byId.get(String(card.questionId));
-      const gateFailure = evaluateGates(card, stage, question);
-      if (gateFailure) {
-        outcomes.push({ card, status: "failed", reason: gateFailure });
-        done += 1;
-        continue;
-      }
-
-      const broken = findBrokenImages(stage);
-      if (broken.length > 0) {
-        outcomes.push({
-          card,
-          status: "failed",
-          reason:
-            `${broken.length} image${broken.length === 1 ? "" : "s"} on the card did not load: ` +
-            `${broken.slice(0, 3).join(", ")}`,
+      // The capture-time QA sweep, the same readings and rules as `captureOne`.
+      const dom = collectDomQa(DOM_QA_ATTRIBUTES, frameDocument);
+      const verdict = evaluateDomQa(dom, {
+        question,
+        format,
+        state: card.state,
+        slideKind: card.slide,
+        expectExplanation,
+        allowIncompletePresentation: false,
+        allowMissingAssets: false,
+      });
+      const layout = dom.layout as unknown as CaptureLayout;
+      if (verdict.failures.length > 0) {
+        fail(verdict.failures[0].code, verdict.failures[0].message, {
+          findings: [...verdict.failures, ...verdict.warnings],
+          overflow: verdict.overflowFindings,
+          missingAssets: verdict.missingAssets,
+          layout,
         });
-        done += 1;
         continue;
       }
 
-      const captured = await captureStageToPng(stage, bundle);
+      const captured = await captureStageToPng(stage, bundle, { maxSvgChars });
       if (captured.outcome === "captured") {
         const stamped = Number(stage.getAttribute("data-render-scale"));
         outcomes.push({
@@ -374,13 +481,24 @@ export async function runBrowserExport(args: {
           warnings: captured.warnings,
           usedScale: Number.isFinite(stamped) ? stamped : null,
           file: { path: card.zipPath, fileName: card.flatFileName, blob: captured.blob },
+          findings: verdict.warnings,
+          overflow: verdict.overflowFindings,
+          missingAssets: verdict.missingAssets,
+          layout,
         });
+        done += 1;
       } else {
-        outcomes.push({ card, status: "failed", reason: captured.failure.detail });
+        fail(captured.failure.code, captured.failure.detail, {
+          findings: verdict.warnings,
+          overflow: verdict.overflowFindings,
+          missingAssets: verdict.missingAssets,
+          layout,
+        });
       }
-      done += 1;
     }
-    args.onProgress?.({ done, total: plan.cards.length, card: plan.cards[plan.cards.length - 1] });
+    if (plan.cards.length > 0) {
+      args.onProgress?.({ done, total: plan.cards.length, card: plan.cards[plan.cards.length - 1] });
+    }
   } finally {
     for (const { frame, root } of frames.values()) {
       root.unmount();
@@ -394,5 +512,9 @@ export async function runBrowserExport(args: {
     outcomes,
     files: outcomes.flatMap((o) => (o.status === "captured" ? [o.file] : [])),
     styleWarnings: bundle.unresolved,
+    aborted,
+    support,
+    startedAt,
+    finishedAt: new Date(),
   };
 }
