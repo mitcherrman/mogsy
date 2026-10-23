@@ -116,7 +116,7 @@ describe("Composition Lab panel", () => {
     fireEvent.click(screen.getByTestId("lab-download"));
     await waitFor(() => expect(createUrl).toHaveBeenCalled());
     const get = calls[1];
-    expect(get.url).toBe("https://railway.example/api/daily-run/admin/composition-lab/export.csv?date=2026-10-23&mode=variant&count=10&token=abc");
+    expect(get.url).toBe("https://railway.example/api/daily-run/admin/composition-lab/export.csv?date=2026-10-23&mode=variant&count=10&token=abc&digests=d");
     expect(get.init?.headers).toEqual({ Authorization: "Bearer owner-session" });
     expect(revoke).toHaveBeenCalledWith("blob:lab");
   });
@@ -135,7 +135,30 @@ describe("Composition Lab panel", () => {
 describe("export URL", () => {
   it("names a single reproduced sample by its id", () => {
     const b = batch({ date: null, mode: null, count: null, token: null, sample_id: "tav2.2026-10-23.abc.3" }, ["x"]);
-    expect(exportUrl(b)).toBe("https://railway.example/api/daily-run/admin/composition-lab/export.csv?sample_id=tav2.2026-10-23.abc.3");
+    expect(exportUrl(b)).toBe("https://railway.example/api/daily-run/admin/composition-lab/export.csv?sample_id=tav2.2026-10-23.abc.3&digests=d");
     expect(exportFilename(b)).toBe("daily-composition_tav2.2026-10-23.abc.3.csv");
+  });
+});
+
+describe("stale export", () => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  it("refuses to download when the server reports changed content", async () => {
+    const createUrl = vi.fn(() => "blob:lab");
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: createUrl, revokeObjectURL: vi.fn() }));
+    let n = 0;
+    calls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      n += 1;
+      if (n === 1) return { ok: true, status: 200, json: async () => batch({ date: "2026-10-23", mode: "actual", count: null, token: null, sample_id: null }, ["tav2.2026-10-23.actual"]) };
+      return { ok: false, status: 409, json: async () => ({ detail: { code: "LAB_CONTENT_CHANGED", message: "The questions changed since these samples were generated. Generate them again before downloading." } }) };
+    }));
+    render(<CompositionLabPanel />);
+    fireEvent.click(screen.getByTestId("lab-generate"));
+    await screen.findByTestId("lab-batch");
+    fireEvent.click(screen.getByTestId("lab-download"));
+    expect((await screen.findByTestId("lab-error")).textContent).toContain("Generate them again");
+    expect(calls[1].url).toContain("digests=d");
+    expect(createUrl).not.toHaveBeenCalled();
   });
 });

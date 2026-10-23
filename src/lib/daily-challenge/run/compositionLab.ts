@@ -134,6 +134,9 @@ export function exportUrl(batch: LabBatch): string {
       if (r.token) params.set("token", r.token);
     }
   }
+  // The server regenerates and refuses (409 LAB_CONTENT_CHANGED) unless every
+  // sample still has the content digest shown on screen.
+  params.set("digests", batch.samples.map((s) => s.content_digest).join(","));
   return `${ADMIN_API_BASE_URL}${BASE}/export.csv?${params.toString()}`;
 }
 
