@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { CompositionLabPanel } from "@/components/admin/CompositionLabPanel";
 import { ADMIN_API_BASE_URL, buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
 import {
   DAILY_FORMAT_LABEL, fetchThreeActsStatus, isDailyFormatId,
@@ -222,6 +223,8 @@ export default function CreatorReplayPage() {
       </Button>
       {threeActsMessage && <p role="status" className="text-sm text-muted-foreground">{threeActsMessage}</p>}
     </div>}
+    {/* Owner analysis: sample compositions and the answer CSV, no gameplay. */}
+    <CompositionLabPanel />
     <Link className="text-sm underline" to="/admin/leaguecraft">Back to Leaguecraft Admin</Link>
   </main>;
 }
