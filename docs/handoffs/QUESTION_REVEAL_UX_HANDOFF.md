@@ -11,7 +11,7 @@ Last updated: 2026-10-22.
 |---|---|
 | Backend branch | `reveal/qrt1-backend` (off `origin/master` `b3814e26`) |
 | Frontend branch | `reveal/qrt1-frontend` (off `origin/main` `a5d97120`) |
-| PRs | branches pushed; PRs to be opened from the compare links below. Not merged. |
+| PRs | [Frontend #134](https://github.com/mitcherrman/mogsy/pull/134) and [backend #97](https://github.com/mitcherrman/League_Combat_Simulator/pull/97) opened as drafts; neither merged or deployed. |
 | Deploy / production data | none. Railway was unavailable, so nothing was deployed and no production env was read. |
 | Phase 2 (sitewide answer-result component) | not started; inventory and recommendation below |
 
@@ -108,14 +108,15 @@ At 375 px the full derivation (85 → 24 → 100/(100+24) → 0.806 → 19.4% �
 * **Reload/resume:** unchanged. The hold is still derived from `own_reveal_until` on every snapshot, and a seen reveal never replays.
 * **Grading/answer authority:** untouched. The ack's reveal is the server's graded reveal, read by the same reader as a polled one.
 
-## PRs
+## PRs and live review gate
 
-Both branches are pushed. The PRs were **not opened by the agent**: no GitHub CLI was installed and the browser was not signed in. Open them from:
+* **Frontend draft PR #134:** https://github.com/mitcherrman/mogsy/pull/134, head `7eda9282`, base `main`.
+* **Backend draft PR #97:** https://github.com/mitcherrman/League_Combat_Simulator/pull/97, head `00aa7a0f`, base `master`.
+* As checked 2026-10-22 local: both mergeable without conflict, neither merged. Frontend branch was **4 commits behind main**; backend branch was **26 commits behind master**. Reconcile on isolated worktrees and rerun base/head differential testing before release.
+* GitHub Actions for FE #134: deployment-recovery, role-challenge and Practice modernization completed successfully; Practice PM2 acceptance still in progress. GitHub Actions for BE #97: six workflows reported failure. Job logs could not be retrieved through the connected API (404 BlobNotFound), therefore **cause is unverified**; do not infer baseline or billing without additional evidence.
+* **Release gate:** do not merge or deploy until upstream drift, backend CI causes, and cross-repo contract are checked on refreshed branches. The handoff's original local test data above are valid as reported for their original base snapshots but are not proof against latest defaults.
+* Recommended order after certification: publish frontend first, then deploy backend; measure answer and timeout visible reveal duration in live environment.
 
-* Backend: https://github.com/mitcherrman/League_Combat_Simulator/compare/master...reveal/qrt1-backend?expand=1 (base `master`)
-* Frontend: https://github.com/mitcherrman/mogsy/compare/main...reveal/qrt1-frontend?expand=1 (base `main`)
-
-Merge and deploy order: frontend, then backend (see above). Neither is merged or deployed.
 
 ## Phase 2: inventory of answer-result components (read-only)
 
@@ -144,10 +145,10 @@ Do **not** build a new mega-component. Converge on what already exists:
 2. **One timing primitive.** Promote `useRevealAutoAdvance(key, cb, delayMs, endsAtMs)` (now end-instant safe) to `lib/question-feedback/useRevealHold`. Every server-paced surface passes the server's end instant; only Practice and the legacy player pass a duration.
 3. **One small `VerdictLine`-based header** (it already exists, but Ranked does not use it) for "Correct · 68" / "Wrong" / "Time's up", adopted mode by mode behind visual-regression tests.
 
-Open question for the owner before Phase 2: the server-paced modules deliberately hold a wrong answer longer than an exact one. Keep that, or move to outcome-blind like the Journey?
+**Owner decision (2026-10-22): keep longer wrong/timeout holds** in Reconstruct/Scrub (4000 vs 3400 ms), Match Grid (4500 vs 3000 ms), and Assembly (4400 vs 3600 ms). Error correction requires more comparison time than a perfect solution. Do not equalize these timings during Phase 2.
 
 ## Next phase
 
-* Owner: decide the outcome-blind question above (the fold stays at 3.2 s, decided 2026-10-22).
+* Owner decision (2026-10-22): retain longer wrong/timeout reveal holds in Reconstruct, Scrub, Match Grid and Assembly; preserve existing authoritative per-mode windows until Phase 2 readability testing. The Equation Unfold fold stays at 3.2 s.
 * After both PRs merge and deploy: on a live Journey, measure `reveal_until − first paint` for an answer and a timeout (expect about one-way latency, and about 60 ms + one read). If the Railway env still sets `RANKED_MASTERY_REVEAL_WINDOW_MS`, confirm new Journey segments freeze 2250.
 * Phase 2 per the recommendation above, in separate PRs.
