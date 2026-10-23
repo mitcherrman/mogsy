@@ -5,7 +5,7 @@
 | CC1 — architecture audit | **Done** (sections 1–8 below, unchanged except this header) |
 | CC2 — browser generation engine | **Verified.** Chromium 55/55 and Firefox 55/55 cards match the Playwright authority, 5/5 behaviour checks each, PR mitcherrman/mogsy#124 @ `c81228e2` (section 9) |
 | CC3 — `/admin/content-creator` page | **Built and accepted in CI** (Chromium 13/13, Firefox 13/13, production gates 2/2), PR mitcherrman/mogsy#126 @ `026546bc` (section 10) |
-| Merge and production | **Not merged, not deployed.** The owner merges #124 then #126 and publishes in Lovable (section 10) |
+| Merge and production | **Merged** (#124 → `4d9f6a93`, #126 → `789e7d84`). **Not yet published**: the owner publishes in Lovable (section 10) |
 
 CC1 audited `origin/main` @ `e931bc1a` (2026-10-22). CC2 is built on
 `origin/main` @ `d809f836` in worktree `.worktrees/content-creator-cc2`, branch
@@ -566,23 +566,41 @@ CI's newer TypeScript; a first-generation layout-shift in both engines (fixed by
 the CC2 font fix); a Firefox navigation race in the routes test; a racy Quiz
 Review unit test.
 
-### Current state
+After retargeting to `main`, one more intermittent first-card failure appeared
+(Chromium, classic): the card's "Scan to play" label measured 94px on the first
+card and 80px on the next, and the layout gate failed the run. Cause: a fresh
+Admin page had never loaded that face, and the export surface's cloned
+stylesheet links were not awaited. Fix `2c3a7abf`: the surface waits for its
+stylesheets and loads every Basic Latin `@font-face` before the first card
+(bounded wait). Because the failure was intermittent, merging required
+consecutive green runs:
 
-- PR mitcherrman/mogsy#124 (CC2): green, mergeable (clean). **Not merged.**
-- PR mitcherrman/mogsy#126 (CC3), stacked on #124's branch: green. **Not merged.**
-- **Production: not deployed.** Nothing is live at `/admin/content-creator`
-  until both PRs are on `main` and Lovable publishes.
+| Run | Head | Chromium e2e | Firefox e2e | Parity |
+| --- | --- | --- | --- | --- |
+| [39880902101](https://github.com/mitcherrman/mogsy/actions/runs/39880902101) attempt 1 | `2c3a7abf` | 13/13 | 13/13 | 55/55 · 55/55 |
+| [39880902101](https://github.com/mitcherrman/mogsy/actions/runs/39880902101) attempt 2 | `2c3a7abf` | 13/13 | 13/13 | — |
+| [39885981256](https://github.com/mitcherrman/mogsy/actions/runs/39885981256) (synced with `main` 94335c8a) | `de3d610a` | 13/13 | 13/13 | 55/55 · 55/55 ([39885981208](https://github.com/mitcherrman/mogsy/actions/runs/39885981208)) |
 
-### Remaining owner actions (in order)
+### Current state (2026-10-22)
 
-1. Merge **#124** into `main` (this session's permission rules blocked the
-   merge).
-2. Retarget **#126** to `main` (Edit → base), let its checks re-run, merge it.
-3. **Publish in Lovable** (production deploys through Lovable's Publish, as
-   CON1 did).
-4. Signed in as owner on `https://mogzy.lol/admin/content-creator`: generate one
-   single-question post and one daily package; open the ZIP; spot-check
-   `/admin/quiz-content` export (it now draws the difficulty badge).
+- PR mitcherrman/mogsy#124 (CC2) **merged** to `main` as `4d9f6a93`.
+- PR mitcherrman/mogsy#126 (CC3) **merged** to `main` as `789e7d84`, after its
+  head `de3d610a` (which contains `main` 94335c8a) passed every check above.
+- **Production: not yet published.** Right after the merge, `https://mogzy.lol`
+  still served entry `assets/index-D8U7eiE6.js`, which contains no Content
+  Creator route.
+
+### Remaining owner actions
+
+1. **Publish in Lovable** from `main` at or after `789e7d84` (production deploys
+   through Lovable's Publish). If Lovable reports a different SHA, see the
+   Lovable⇄GitHub sync checks used for earlier releases.
+2. Verify the deploy: the new entry bundle must reference an
+   `AdminContentCreator-*.js` chunk; then, signed in as owner on
+   `https://mogzy.lol/admin/content-creator`, generate one single-question post
+   and one daily package and open the ZIP; spot-check the `/admin/quiz-content`
+   export (it now draws the difficulty badge) and confirm
+   `https://mogzy.lol/dev/content-studio` redirects.
 
 ### Not done / known limits
 
