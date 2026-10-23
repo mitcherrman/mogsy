@@ -13,49 +13,20 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Plus, Search, ShieldAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { quizApi, type ReviewFilters, type ReviewQuestion } from "@/lib/quiz/api";
+import { quizApi, type ReviewQuestion } from "@/lib/quiz/api";
 import { describeItem } from "@/lib/content-creator/creatorState";
+import {
+  activeFilterSummary,
+  bankState,
+  DEFAULT_BANK_FILTERS,
+  selectOptions,
+  toReviewFilters,
+  type BankFilters,
+} from "@/lib/content-creator/bankFilters";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 20;
 const SELECT =
   "h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
-
-type BankFilters = {
-  search: string;
-  category: string;
-  reviewStatus: string;
-  difficulty: string;
-  pack: string;
-  activeOnly: boolean;
-  withImage: boolean;
-};
-
-const DEFAULT_BANK_FILTERS: BankFilters = {
-  search: "",
-  category: "",
-  reviewStatus: "approved",
-  difficulty: "",
-  pack: "",
-  activeOnly: true,
-  withImage: false,
-};
-
-function toReviewFilters(f: BankFilters, page: number): ReviewFilters {
-  const difficulty = f.difficulty ? Number(f.difficulty) : undefined;
-  return {
-    search: f.search.trim() || undefined,
-    category: f.category || undefined,
-    review_status: f.reviewStatus || undefined,
-    difficulty_min: difficulty,
-    difficulty_max: difficulty,
-    pack_key: f.pack || undefined,
-    is_active: f.activeOnly ? 1 : undefined,
-    has_image: f.withImage ? 1 : undefined,
-    page,
-    page_size: PAGE_SIZE,
-  };
-}
 
 function ReadinessChip({ blocking, label, detail }: { blocking: boolean; label: string; detail: string }) {
   return (
@@ -103,6 +74,21 @@ export function QuestionBank({
     [list.data],
   );
 
+  const state = bankState({
+    loading: list.isLoading,
+    error: list.error,
+    total: list.data?.total,
+    filters,
+    options: options.data,
+  });
+  const narrowing = activeFilterSummary(filters);
+  const clearFilters = () => {
+    const cleared = { ...DEFAULT_BANK_FILTERS, activeOnly: false };
+    setDraft(cleared);
+    setFilters(cleared);
+    setPage(1);
+  };
+
   const apply = (next: Partial<BankFilters>, immediate = true) => {
     const merged = { ...draft, ...next };
     setDraft(merged);
@@ -118,7 +104,11 @@ export function QuestionBank({
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold tracking-wide">Question bank</h2>
           <span className="text-[11px] text-muted-foreground" data-testid="cc-bank-total">
-            {list.data ? `${list.data.total.toLocaleString()} match${list.data.total === 1 ? "" : "es"}` : ""}
+            {state.kind === "results"
+              ? `${state.total.toLocaleString()} match${state.total === 1 ? "" : "es"}`
+              : state.kind === "empty" || state.kind === "invalid"
+                ? "0 matches"
+                : ""}
           </span>
         </div>
         <form
@@ -152,9 +142,9 @@ export function QuestionBank({
             data-testid="cc-bank-category"
           >
             <option value="">All categories</option>
-            {(options.data?.categories ?? []).map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {selectOptions(options.data?.categories, draft.category).map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.absent ? c.label : c.value}
               </option>
             ))}
           </select>
@@ -180,9 +170,9 @@ export function QuestionBank({
             data-testid="cc-bank-status"
           >
             <option value="">Any review status</option>
-            {(options.data?.review_statuses ?? ["approved"]).map((s) => (
-              <option key={s} value={s}>
-                {s.replace(/_/g, " ")}
+            {selectOptions(options.data?.review_statuses, draft.reviewStatus).map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
               </option>
             ))}
           </select>
@@ -218,19 +208,31 @@ export function QuestionBank({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="cc-bank-list">
-        {list.isLoading && (
-          <p className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading questions…
-          </p>
-        )}
-        {list.isError && (
-          <p className="p-4 text-xs text-destructive" data-testid="cc-bank-error">
-            The question bank could not be read. {(list.error as Error)?.message ?? ""}
-          </p>
-        )}
-        {list.data && rows.length === 0 && (
-          <p className="p-4 text-xs text-muted-foreground">No questions match these filters.</p>
-        )}
+        <div data-testid="cc-bank-state" data-state={state.kind}>
+          {state.kind === "loading" && (
+            <p className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading questions…
+            </p>
+          )}
+          {(state.kind === "unauthorized" || state.kind === "error") && (
+            <p className="p-4 text-xs text-destructive" data-testid="cc-bank-error">
+              {state.message}{" "}
+              <button type="button" className="underline" onClick={() => void list.refetch()}>
+                Retry
+              </button>
+            </p>
+          )}
+          {(state.kind === "empty" || state.kind === "invalid") && (
+            <div className="space-y-2 p-4 text-xs text-muted-foreground" data-testid="cc-bank-empty">
+              <p>{state.message}</p>
+              {narrowing.length > 0 && (
+                <Button size="sm" variant="secondary" className="h-7 text-[11px]" onClick={clearFilters} data-testid="cc-bank-clear">
+                  Clear all filters
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
         <ul className="space-y-1.5">
           {rows.map(({ row, info }) => {
             const selected = selectedIds.has(info.id);

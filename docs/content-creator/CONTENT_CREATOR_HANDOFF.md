@@ -590,3 +590,45 @@ Review unit test.
 - Generated (review-key) questions are not offered in the bank browser; they
   still export from Quiz Review's Generate Content panel.
 - History is per browser and per device.
+
+---
+
+## 11. Fix — empty Question Bank in production (CC3.1)
+
+**Symptom (owner, production):** the bank showed `0 matches` with every filter
+visibly at "all/any".
+
+**Confirmed cause (evidence, not inference):**
+- `src/components/admin/content-creator/QuestionBank.tsx` defaulted
+  `reviewStatus: "approved"` and sent `review_status=approved`.
+- The backend (`League_Combat_Simulator` `routes/quiz_review.py` @ master
+  `cafe953a`) filters `q.review_status = ?` exactly, and `GET
+  /api/quiz/admin/review/filter-options` returns `review_statuses` as
+  `SELECT DISTINCT review_status FROM quiz_questions`.
+- The dropdown was built ONLY from those backend values. A React-controlled
+  `<select>` whose value is not among its options displays its first option —
+  "Any review status". The owner's screenshot showing "Any review status" while
+  the code's value was "approved" therefore proves the production bank has no
+  `approved` rows: the label said "any" while the request said "approved", and
+  the server correctly returned 0. The request did not fail (the panel showed a
+  count, not its error line).
+- Quiz Review, which works, opens with no status filter (`review_status`
+  undefined).
+- CI missed it because the e2e stand-in ignored `review_status` and every
+  fixture row was `approved`.
+
+**Fix (branch `fix/content-creator-question-bank`):**
+- Default scope = Quiz Review's: every review status, live questions only.
+- Dropdown options always include the selected value; a value the bank lacks
+  is labelled "(none in bank)" — the label can never disagree with the request.
+- One state model (`src/lib/content-creator/bankFilters.ts`): loading ·
+  missing authorization · request failure (with Retry) · invalid filter (a
+  status/category the bank does not contain) · no matches (naming the active
+  filters, with "Clear all filters") · results with the backend's total.
+- e2e stand-in now filters `review_status`/`is_active` exactly and derives
+  `review_statuses` from the rows; new regression e2e: a bank of `unreviewed`
+  rows lists all questions and the label matches; an empty search names its
+  filters and clears.
+
+No backend, data or security change: the same owner-token GETs, no writes.
+Requires a Lovable **Publish** after merge to reach production.
