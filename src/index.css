@@ -18610,6 +18610,8 @@ html.reduce-motion .mogzy-guide-bubble { transition: none !important; transform:
 .journey-question .journey-ask [data-testid="scenario-context"] { text-align: center; }
 /* A subject icon stays with its word. */
 .journey-q-subject { white-space: nowrap; }
+.journey-q-subject[data-wraps] { white-space: normal; }
+.journey-q-subject__lead { white-space: nowrap; }
 
 /* ── 2. THE ICON VOCABULARY ───────────────────────────────────────────────── */
 .journey-ico {

@@ -32,6 +32,9 @@ export type PromptSubject =
   | { kind: "champion"; text: string; championId: string }
   | { kind: "stat"; text: string; mnemonic: StatMnemonic };
 
+/** An ability label longer than this may wrap after its first word. */
+const LONG_SUBJECT = 20;
+
 /** At most this many icons in one sentence. */
 export const PROMPT_ICON_LIMIT = 3;
 
@@ -90,9 +93,17 @@ export function JourneyQuestionText({ sentence: served, subjects }: { sentence: 
     const rank = h.subject.kind === "ability" ? /Rank\u00a0\d+\u00a0$/.exec(before) : null;
     if (rank) before = before.slice(0, rank.index);
     if (before) parts.push(before);
+    const word = sentence.slice(h.at, h.end);
+    // A long ability label ("Pantheon E (Aegis Assault)") may wrap on a phone:
+    // only the icon and the word it identifies are bound together.
+    const split = h.subject.kind === "ability" && word.length > LONG_SUBJECT ? word.indexOf(" ") : -1;
     parts.push(
-      <span key={i} className="journey-q-subject" data-subject-kind={h.subject.kind}>
-        {rank?.[0]}<SubjectIcon subject={h.subject} />{sentence.slice(h.at, h.end)}
+      <span key={i} className="journey-q-subject" data-subject-kind={h.subject.kind}
+        {...(split > 0 ? { "data-wraps": "true" } : {})}>
+        {rank?.[0]}
+        {split > 0
+          ? <><span className="journey-q-subject__lead"><SubjectIcon subject={h.subject} />{word.slice(0, split)}</span>{word.slice(split)}</>
+          : <><SubjectIcon subject={h.subject} />{word}</>}
       </span>,
     );
     at = h.end;
