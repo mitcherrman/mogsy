@@ -45,7 +45,7 @@ jobs:
       - name: Install baseline dependencies without changing the stale lockfile
         run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
       - name: QMEDIA2 unit tests (picture-choice and Match Grid fallbacks)
-        run: npx vitest run src/components/quiz/QuizAnswerOptions.qmedia2.test.tsx src/components/match-grid/MatchGrid.qmedia2.test.tsx src/components/match-grid/MatchGrid.test.tsx src/components/quiz/QuizAnswerOptions.geometry.test.tsx src/components/quiz/QuizAnswerOptions.optionMedia.test.tsx src/components/perfect-timing/PerfectTimingReveal.test.tsx src/components/perfect-timing/PerfectTimingResults.test.tsx
+        run: npx vitest run src/components/quiz/QuizAnswerOptions.qmedia2.test.tsx src/components/match-grid/MatchGrid.qmedia2.test.tsx src/components/match-grid/MatchGrid.test.tsx src/components/quiz/QuizAnswerOptions.geometry.test.tsx src/components/quiz/QuizAnswerOptions.optionMedia.test.tsx src/components/perfect-timing/PerfectTimingReveal.test.tsx src/components/perfect-timing/PerfectTimingResults.test.tsx src/lib/ranked-core/adapters/scenarioSource.qmedia3.test.ts src/lib/ranked-core/adapters/scenarioSource.questionMedia.test.ts
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Question media acceptance
