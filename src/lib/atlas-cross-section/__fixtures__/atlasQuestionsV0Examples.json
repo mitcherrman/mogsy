@@ -1,0 +1,1655 @@
+{
+ "_source": "Copied from League_Combat_Simulator draft PR #93 (ATL-CS-BE-001) at head 5319bbf7c13d40a8c4d154cf2d72fc1801d3b86e, docs/atlas/ATL_CS_BE_001_API_EXAMPLES.json. Synthetic: generated from the backend's atlas_cs_fixture_support.py. Handles, revision and timestamps vary per build and every count is a fixture value, NOT a corpus statistic. Unchanged except: the public-coverage example lists 2 of its 14 certified families (trimmed for size).",
+ "A=Ahri (discovered, user U1)": {
+  "request": "GET /api/atlas/questions/search?collection=discovered&a_kind=champion&a_id=Ahri&limit=2",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": {
+    "a": {
+     "kind": "champion",
+     "id": "Ahri",
+     "label": "Ahri"
+    },
+    "b": null,
+    "b_modifier": null,
+    "filters": {
+     "topic": [],
+     "ability_slot": [],
+     "ability_rank": [],
+     "champion_level": [],
+     "family": [],
+     "mode": [],
+     "difficulty": [],
+     "patch": null
+    }
+   },
+   "collection": "discovered",
+   "access": {
+    "state": "allowed",
+    "requires": "account",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": {
+    "state": "partial",
+    "scope": "certified_premise_index",
+    "corpus": "quiz_bank.stored_rows",
+    "corpus_label": "Stored quiz_questions rows of certified families. Runtime-composed families, the Ranked accepted-candidate export and the Mastery curriculum are NOT in this corpus.",
+    "index_revision": "4b7bd8bb643dd32110d2",
+    "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+    "rules_version": "atl-cs-rules.1",
+    "reason_codes": [
+     "discoveries_outside_index",
+     "mastery_curriculum_not_indexed",
+     "ranked_accepted_bank_not_indexed",
+     "runtime_families_not_indexed",
+     "uncategorized_families_excluded"
+    ],
+    "not_indexed_sources": [
+     "ranked_accepted_bank",
+     "mastery_curriculum",
+     "runtime_casual_families",
+     "pro_play_on_demand"
+    ]
+   },
+   "relationship": null,
+   "results": [
+    {
+     "handle": "aqh_sDpYtJpZm0BbXOQt",
+     "prompt": "Which ultimate has the shorter rank 1 cooldown: Ahri R - Spirit Rush, or Syndra R - Unleashed Power?",
+     "family": {
+      "id": "ability_cooldown_compare",
+      "label": "Which ability has the shorter cooldown"
+     },
+     "topics": [
+      "cooldown"
+     ],
+     "ability_slot": "R",
+     "applicability": {
+      "ability_rank": {
+       "state": "specific",
+       "value": "1"
+      },
+      "champion_level": {
+       "state": "not_stated",
+       "value": null
+      }
+     },
+     "difficulty": 3,
+     "modes": [
+      "daily",
+      "mastery",
+      "practice",
+      "ranked"
+     ],
+     "subjects": [
+      {
+       "kind": "ability",
+       "id": "Ahri:R",
+       "role": "comparison_operand"
+      },
+      {
+       "kind": "ability",
+       "id": "Syndra:R",
+       "role": "comparison_operand"
+      },
+      {
+       "kind": "champion",
+       "id": "Ahri",
+       "role": "comparison_operand"
+      },
+      {
+       "kind": "champion",
+       "id": "Syndra",
+       "role": "comparison_operand"
+      }
+     ],
+     "source_status": "current",
+     "patch_context": null,
+     "discovery": {
+      "state": "unlocked",
+      "times_answered": 1,
+      "times_correct": 1,
+      "first_seen_at": "2026-10-02T00:00:00+00:00",
+      "last_seen_at": "2026-10-11T00:00:00+00:00"
+     },
+     "review": null
+    },
+    {
+     "handle": "aqh_xIc1HWcrmbEonZ-4",
+     "prompt": "What is the rank 1 cooldown of Ahri Q - Orb of Deception?",
+     "family": {
+      "id": "ability_cooldown_rank",
+      "label": "Ability cooldown at a stated rank"
+     },
+     "topics": [
+      "cooldown"
+     ],
+     "ability_slot": "Q",
+     "applicability": {
+      "ability_rank": {
+       "state": "specific",
+       "value": "1"
+      },
+      "champion_level": {
+       "state": "not_stated",
+       "value": null
+      }
+     },
+     "difficulty": 2,
+     "modes": [
+      "daily",
+      "mastery",
+      "practice",
+      "ranked",
+      "time_trial"
+     ],
+     "subjects": [
+      {
+       "kind": "ability",
+       "id": "Ahri:Q",
+       "role": "premise_subject"
+      },
+      {
+       "kind": "champion",
+       "id": "Ahri",
+       "role": "premise_subject"
+      }
+     ],
+     "source_status": "current",
+     "patch_context": null,
+     "discovery": {
+      "state": "unlocked",
+      "times_answered": 2,
+      "times_correct": 1,
+      "first_seen_at": "2026-10-01T00:00:00+00:00",
+      "last_seen_at": "2026-10-10T00:00:00+00:00"
+     },
+     "review": null
+    }
+   ],
+   "facets": {
+    "topics": [
+     {
+      "id": "cooldown",
+      "count": 3,
+      "count_state": "exact",
+      "label": "Cooldown",
+      "selected": false
+     }
+    ],
+    "ability_slot": [
+     {
+      "id": "E",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "Q",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "R",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "ability_rank": [
+     {
+      "id": "1",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "2",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "champion_level": [],
+    "family": [
+     {
+      "id": "ability_cooldown_rank",
+      "count": 2,
+      "count_state": "exact",
+      "label": "Ability cooldown at a stated rank",
+      "selected": false
+     },
+     {
+      "id": "ability_cooldown_compare",
+      "count": 1,
+      "count_state": "exact",
+      "label": "Which ability has the shorter cooldown",
+      "selected": false
+     }
+    ],
+    "mode": [
+     {
+      "id": "daily",
+      "count": 3,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "mastery",
+      "count": 3,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "practice",
+      "count": 3,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "ranked",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "time_trial",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "difficulty": [
+     {
+      "id": 2,
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": 3,
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ]
+   },
+   "facet_applicability": {
+    "ability_rank": {},
+    "champion_level": {
+     "not_stated": 3
+    }
+   },
+   "page": {
+    "limit": 2,
+    "offset": 0,
+    "has_more": true,
+    "next_cursor": "eyJvIjoyLCJmIjoiODVhODAyOTI5ZDA2NGNkMiJ9"
+   },
+   "counts": {
+    "visible_matching": 3,
+    "count_state": "exact",
+    "unit": "question",
+    "discoveries_total": 10,
+    "discoveries_outside_index": {
+     "family_uncategorized": 1,
+     "namespace_not_indexed:mastery": 1,
+     "namespace_not_indexed:ranked": 1,
+     "ref_not_in_index": 1
+    }
+   },
+   "related": null,
+   "error": null
+  }
+ },
+ "A=Ahri topic=mana (discovered, user U2)": {
+  "request": "GET /api/atlas/questions/search?collection=discovered&a_kind=champion&a_id=Ahri&topic=mana",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": {
+    "a": {
+     "kind": "champion",
+     "id": "Ahri",
+     "label": "Ahri"
+    },
+    "b": null,
+    "b_modifier": null,
+    "filters": {
+     "topic": [
+      "mana"
+     ],
+     "ability_slot": [],
+     "ability_rank": [],
+     "champion_level": [],
+     "family": [],
+     "mode": [],
+     "difficulty": [],
+     "patch": null
+    }
+   },
+   "collection": "discovered",
+   "access": {
+    "state": "allowed",
+    "requires": "account",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": {
+    "state": "partial",
+    "scope": "certified_premise_index",
+    "corpus": "quiz_bank.stored_rows",
+    "corpus_label": "Stored quiz_questions rows of certified families. Runtime-composed families, the Ranked accepted-candidate export and the Mastery curriculum are NOT in this corpus.",
+    "index_revision": "4b7bd8bb643dd32110d2",
+    "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+    "rules_version": "atl-cs-rules.1",
+    "reason_codes": [
+     "mastery_curriculum_not_indexed",
+     "ranked_accepted_bank_not_indexed",
+     "runtime_families_not_indexed",
+     "uncategorized_families_excluded"
+    ],
+    "not_indexed_sources": [
+     "ranked_accepted_bank",
+     "mastery_curriculum",
+     "runtime_casual_families",
+     "pro_play_on_demand"
+    ]
+   },
+   "relationship": null,
+   "results": [
+    {
+     "handle": "aqh_-F7UxxfKAe3f7pss",
+     "prompt": "How much mana does Ahri Q - Orb of Deception cost at rank 1?",
+     "family": {
+      "id": "ability_cost_rank",
+      "label": "Ability resource cost at a stated rank"
+     },
+     "topics": [
+      "ability_cost",
+      "mana"
+     ],
+     "ability_slot": "Q",
+     "applicability": {
+      "ability_rank": {
+       "state": "specific",
+       "value": "1"
+      },
+      "champion_level": {
+       "state": "not_stated",
+       "value": null
+      }
+     },
+     "difficulty": 2,
+     "modes": [
+      "daily",
+      "mastery",
+      "practice",
+      "ranked",
+      "time_trial"
+     ],
+     "subjects": [
+      {
+       "kind": "ability",
+       "id": "Ahri:Q",
+       "role": "premise_subject"
+      },
+      {
+       "kind": "champion",
+       "id": "Ahri",
+       "role": "premise_subject"
+      }
+     ],
+     "source_status": "current",
+     "patch_context": null,
+     "discovery": {
+      "state": "unlocked",
+      "times_answered": 1,
+      "times_correct": 1,
+      "first_seen_at": "2026-10-01T00:00:00+00:00",
+      "last_seen_at": "2026-10-10T00:00:00+00:00"
+     },
+     "review": null
+    }
+   ],
+   "facets": {
+    "topics": [
+     {
+      "id": "ability_cost",
+      "count": 1,
+      "count_state": "exact",
+      "label": "Ability cost",
+      "selected": false
+     },
+     {
+      "id": "mana",
+      "count": 1,
+      "count_state": "exact",
+      "label": "Mana",
+      "selected": true
+     }
+    ],
+    "ability_slot": [
+     {
+      "id": "Q",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "ability_rank": [
+     {
+      "id": "1",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "champion_level": [],
+    "family": [
+     {
+      "id": "ability_cost_rank",
+      "count": 1,
+      "count_state": "exact",
+      "label": "Ability resource cost at a stated rank",
+      "selected": false
+     }
+    ],
+    "mode": [
+     {
+      "id": "daily",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "mastery",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "practice",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "ranked",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "time_trial",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "difficulty": [
+     {
+      "id": 2,
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ]
+   },
+   "facet_applicability": {
+    "ability_rank": {},
+    "champion_level": {
+     "not_stated": 1
+    }
+   },
+   "page": {
+    "limit": 20,
+    "offset": 0,
+    "has_more": false,
+    "next_cursor": null
+   },
+   "counts": {
+    "visible_matching": 1,
+    "count_state": "exact",
+    "unit": "question",
+    "discoveries_total": 1,
+    "discoveries_outside_index": {}
+   },
+   "related": null,
+   "error": null
+  }
+ },
+ "A=Ahri B=Syndra (discovered)": {
+  "request": "GET /api/atlas/questions/search?collection=discovered&a_kind=champion&a_id=Ahri&b_kind=champion&b_id=Syndra",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": {
+    "a": {
+     "kind": "champion",
+     "id": "Ahri",
+     "label": "Ahri"
+    },
+    "b": {
+     "kind": "champion",
+     "id": "Syndra",
+     "label": "Syndra"
+    },
+    "b_modifier": null,
+    "filters": {
+     "topic": [],
+     "ability_slot": [],
+     "ability_rank": [],
+     "champion_level": [],
+     "family": [],
+     "mode": [],
+     "difficulty": [],
+     "patch": null
+    }
+   },
+   "collection": "discovered",
+   "access": {
+    "state": "allowed",
+    "requires": "account",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": {
+    "state": "partial",
+    "scope": "certified_premise_index",
+    "corpus": "quiz_bank.stored_rows",
+    "corpus_label": "Stored quiz_questions rows of certified families. Runtime-composed families, the Ranked accepted-candidate export and the Mastery curriculum are NOT in this corpus.",
+    "index_revision": "4b7bd8bb643dd32110d2",
+    "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+    "rules_version": "atl-cs-rules.1",
+    "reason_codes": [
+     "discoveries_outside_index",
+     "mastery_curriculum_not_indexed",
+     "ranked_accepted_bank_not_indexed",
+     "runtime_families_not_indexed",
+     "uncategorized_families_excluded"
+    ],
+    "not_indexed_sources": [
+     "ranked_accepted_bank",
+     "mastery_curriculum",
+     "runtime_casual_families",
+     "pro_play_on_demand"
+    ]
+   },
+   "relationship": {
+    "state": "supported",
+    "supporting_families": [
+     "ability_cooldown_compare"
+    ]
+   },
+   "results": [
+    {
+     "handle": "aqh_sDpYtJpZm0BbXOQt",
+     "prompt": "Which ultimate has the shorter rank 1 cooldown: Ahri R - Spirit Rush, or Syndra R - Unleashed Power?",
+     "family": {
+      "id": "ability_cooldown_compare",
+      "label": "Which ability has the shorter cooldown"
+     },
+     "topics": [
+      "cooldown"
+     ],
+     "ability_slot": "R",
+     "applicability": {
+      "ability_rank": {
+       "state": "specific",
+       "value": "1"
+      },
+      "champion_level": {
+       "state": "not_stated",
+       "value": null
+      }
+     },
+     "difficulty": 3,
+     "modes": [
+      "daily",
+      "mastery",
+      "practice",
+      "ranked"
+     ],
+     "subjects": [
+      {
+       "kind": "ability",
+       "id": "Ahri:R",
+       "role": "comparison_operand"
+      },
+      {
+       "kind": "ability",
+       "id": "Syndra:R",
+       "role": "comparison_operand"
+      },
+      {
+       "kind": "champion",
+       "id": "Ahri",
+       "role": "comparison_operand"
+      },
+      {
+       "kind": "champion",
+       "id": "Syndra",
+       "role": "comparison_operand"
+      }
+     ],
+     "source_status": "current",
+     "patch_context": null,
+     "discovery": {
+      "state": "unlocked",
+      "times_answered": 1,
+      "times_correct": 1,
+      "first_seen_at": "2026-10-02T00:00:00+00:00",
+      "last_seen_at": "2026-10-11T00:00:00+00:00"
+     },
+     "review": null
+    }
+   ],
+   "facets": {
+    "topics": [
+     {
+      "id": "cooldown",
+      "count": 1,
+      "count_state": "exact",
+      "label": "Cooldown",
+      "selected": false
+     }
+    ],
+    "ability_slot": [
+     {
+      "id": "R",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "ability_rank": [
+     {
+      "id": "1",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "champion_level": [],
+    "family": [
+     {
+      "id": "ability_cooldown_compare",
+      "count": 1,
+      "count_state": "exact",
+      "label": "Which ability has the shorter cooldown",
+      "selected": false
+     }
+    ],
+    "mode": [
+     {
+      "id": "daily",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "mastery",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "practice",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "ranked",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "difficulty": [
+     {
+      "id": 3,
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ]
+   },
+   "facet_applicability": {
+    "ability_rank": {},
+    "champion_level": {
+     "not_stated": 1
+    }
+   },
+   "page": {
+    "limit": 20,
+    "offset": 0,
+    "has_more": false,
+    "next_cursor": null
+   },
+   "counts": {
+    "visible_matching": 1,
+    "count_state": "exact",
+    "unit": "question",
+    "discoveries_total": 10,
+    "discoveries_outside_index": {
+     "family_uncategorized": 1,
+     "namespace_not_indexed:mastery": 1,
+     "namespace_not_indexed:ranked": 1,
+     "ref_not_in_index": 1
+    }
+   },
+   "related": null,
+   "error": null
+  }
+ },
+ "A=Ahri B=Syndra B.1=3089 (catalog, flag on)": {
+  "request": "GET /api/atlas/questions/search?collection=catalog&a_kind=champion&a_id=Ahri&b_kind=champion&b_id=Syndra&b1_item_id=3089",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": {
+    "a": {
+     "kind": "champion",
+     "id": "Ahri",
+     "label": "Ahri"
+    },
+    "b": {
+     "kind": "champion",
+     "id": "Syndra",
+     "label": "Syndra"
+    },
+    "b_modifier": {
+     "kind": "item",
+     "id": "3089",
+     "label": "Rabadon's Deathcap",
+     "attached_to": "b",
+     "intent": "equipped_for_research"
+    },
+    "filters": {
+     "topic": [],
+     "ability_slot": [],
+     "ability_rank": [],
+     "champion_level": [],
+     "family": [],
+     "mode": [],
+     "difficulty": [],
+     "patch": null
+    }
+   },
+   "collection": "catalog",
+   "access": {
+    "state": "allowed",
+    "requires": "account",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": {
+    "state": "partial",
+    "scope": "certified_premise_index",
+    "corpus": "quiz_bank.stored_rows",
+    "corpus_label": "Stored quiz_questions rows of certified families. Runtime-composed families, the Ranked accepted-candidate export and the Mastery curriculum are NOT in this corpus.",
+    "index_revision": "4b7bd8bb643dd32110d2",
+    "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+    "rules_version": "atl-cs-rules.1",
+    "reason_codes": [
+     "catalog_family_exposure_limited",
+     "mastery_curriculum_not_indexed",
+     "ranked_accepted_bank_not_indexed",
+     "runtime_families_not_indexed",
+     "uncategorized_families_excluded"
+    ],
+    "not_indexed_sources": [
+     "ranked_accepted_bank",
+     "mastery_curriculum",
+     "runtime_casual_families",
+     "pro_play_on_demand"
+    ]
+   },
+   "relationship": {
+    "state": "unsupported",
+    "b_modifier": {
+     "state": "unsupported",
+     "supporting_families": []
+    },
+    "reason": "no_certified_family_relates_these_subjects_in_collection",
+    "supporting_families": []
+   },
+   "results": [],
+   "facets": {
+    "topics": [],
+    "ability_slot": [],
+    "ability_rank": [],
+    "champion_level": [],
+    "family": [],
+    "mode": [],
+    "difficulty": []
+   },
+   "facet_applicability": {
+    "ability_rank": {},
+    "champion_level": {}
+   },
+   "page": {
+    "limit": 20,
+    "offset": 0,
+    "has_more": false,
+    "next_cursor": null
+   },
+   "counts": {
+    "visible_matching": 0,
+    "count_state": "exact",
+    "unit": "prompt_stem"
+   },
+   "related": {
+    "b_modifier": {
+     "subject": {
+      "kind": "item",
+      "id": "3089",
+      "label": "Rabadon's Deathcap"
+     },
+     "relationship": "item_is_premise_subject",
+     "label": "Questions about the B.1 item itself (not equipped by B)",
+     "results": [
+      {
+       "handle": "aqh_4E5SGlChHp1yjhtJ",
+       "prompt": "How much does Rabadon's Deathcap cost?",
+       "family": {
+        "id": "item_cost",
+        "label": "What does this item cost"
+       },
+       "topics": [
+        "gold"
+       ],
+       "ability_slot": null,
+       "applicability": {
+        "ability_rank": {
+         "state": "not_applicable",
+         "value": null
+        },
+        "champion_level": {
+         "state": "not_applicable",
+         "value": null
+        }
+       },
+       "difficulty": 1,
+       "modes": [
+        "daily",
+        "practice",
+        "ranked",
+        "time_trial"
+       ],
+       "subjects": [
+        {
+         "kind": "item",
+         "id": "3089",
+         "role": "premise_subject"
+        }
+       ],
+       "source_status": "current",
+       "patch_context": null,
+       "discovery": null,
+       "review": null
+      }
+     ],
+     "count": 1,
+     "count_state": "exact",
+     "has_more": false
+    }
+   },
+   "error": null
+  }
+ },
+ "B=Syndra B.1=3089 (catalog, flag on)": {
+  "request": "GET /api/atlas/questions/search?collection=catalog&b_kind=champion&b_id=Syndra&b1_item_id=3089&limit=5",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": {
+    "a": null,
+    "b": {
+     "kind": "champion",
+     "id": "Syndra",
+     "label": "Syndra"
+    },
+    "b_modifier": {
+     "kind": "item",
+     "id": "3089",
+     "label": "Rabadon's Deathcap",
+     "attached_to": "b",
+     "intent": "equipped_for_research"
+    },
+    "filters": {
+     "topic": [],
+     "ability_slot": [],
+     "ability_rank": [],
+     "champion_level": [],
+     "family": [],
+     "mode": [],
+     "difficulty": [],
+     "patch": null
+    }
+   },
+   "collection": "catalog",
+   "access": {
+    "state": "allowed",
+    "requires": "account",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": {
+    "state": "partial",
+    "scope": "certified_premise_index",
+    "corpus": "quiz_bank.stored_rows",
+    "corpus_label": "Stored quiz_questions rows of certified families. Runtime-composed families, the Ranked accepted-candidate export and the Mastery curriculum are NOT in this corpus.",
+    "index_revision": "4b7bd8bb643dd32110d2",
+    "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+    "rules_version": "atl-cs-rules.1",
+    "reason_codes": [
+     "catalog_family_exposure_limited",
+     "mastery_curriculum_not_indexed",
+     "ranked_accepted_bank_not_indexed",
+     "runtime_families_not_indexed",
+     "uncategorized_families_excluded"
+    ],
+    "not_indexed_sources": [
+     "ranked_accepted_bank",
+     "mastery_curriculum",
+     "runtime_casual_families",
+     "pro_play_on_demand"
+    ]
+   },
+   "relationship": {
+    "state": "unsupported",
+    "b_modifier": {
+     "state": "unsupported",
+     "supporting_families": []
+    },
+    "reason": "no_certified_family_relates_these_subjects_in_collection",
+    "supporting_families": []
+   },
+   "results": [],
+   "facets": {
+    "topics": [],
+    "ability_slot": [],
+    "ability_rank": [],
+    "champion_level": [],
+    "family": [],
+    "mode": [],
+    "difficulty": []
+   },
+   "facet_applicability": {
+    "ability_rank": {},
+    "champion_level": {}
+   },
+   "page": {
+    "limit": 5,
+    "offset": 0,
+    "has_more": false,
+    "next_cursor": null
+   },
+   "counts": {
+    "visible_matching": 0,
+    "count_state": "exact",
+    "unit": "prompt_stem"
+   },
+   "related": {
+    "b_modifier": {
+     "subject": {
+      "kind": "item",
+      "id": "3089",
+      "label": "Rabadon's Deathcap"
+     },
+     "relationship": "item_is_premise_subject",
+     "label": "Questions about the B.1 item itself (not equipped by B)",
+     "results": [
+      {
+       "handle": "aqh_4E5SGlChHp1yjhtJ",
+       "prompt": "How much does Rabadon's Deathcap cost?",
+       "family": {
+        "id": "item_cost",
+        "label": "What does this item cost"
+       },
+       "topics": [
+        "gold"
+       ],
+       "ability_slot": null,
+       "applicability": {
+        "ability_rank": {
+         "state": "not_applicable",
+         "value": null
+        },
+        "champion_level": {
+         "state": "not_applicable",
+         "value": null
+        }
+       },
+       "difficulty": 1,
+       "modes": [
+        "daily",
+        "practice",
+        "ranked",
+        "time_trial"
+       ],
+       "subjects": [
+        {
+         "kind": "item",
+         "id": "3089",
+         "role": "premise_subject"
+        }
+       ],
+       "source_status": "current",
+       "patch_context": null,
+       "discovery": null,
+       "review": null
+      }
+     ],
+     "count": 1,
+     "count_state": "exact",
+     "has_more": false
+    }
+   },
+   "error": null
+  }
+ },
+ "premium_review (Premium)": {
+  "request": "GET /api/atlas/questions/search?collection=premium_review&a_kind=champion&a_id=Ahri",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": {
+    "a": {
+     "kind": "champion",
+     "id": "Ahri",
+     "label": "Ahri"
+    },
+    "b": null,
+    "b_modifier": null,
+    "filters": {
+     "topic": [],
+     "ability_slot": [],
+     "ability_rank": [],
+     "champion_level": [],
+     "family": [],
+     "mode": [],
+     "difficulty": [],
+     "patch": null
+    }
+   },
+   "collection": "premium_review",
+   "access": {
+    "state": "allowed",
+    "requires": "premium",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": {
+    "state": "partial",
+    "scope": "certified_premise_index",
+    "corpus": "quiz_bank.stored_rows",
+    "corpus_label": "Stored quiz_questions rows of certified families. Runtime-composed families, the Ranked accepted-candidate export and the Mastery curriculum are NOT in this corpus.",
+    "index_revision": "4b7bd8bb643dd32110d2",
+    "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+    "rules_version": "atl-cs-rules.1",
+    "reason_codes": [
+     "mastery_curriculum_not_indexed",
+     "missed_attempts_outside_index",
+     "ranked_accepted_bank_not_indexed",
+     "runtime_families_not_indexed",
+     "uncategorized_families_excluded"
+    ],
+    "not_indexed_sources": [
+     "ranked_accepted_bank",
+     "mastery_curriculum",
+     "runtime_casual_families",
+     "pro_play_on_demand"
+    ]
+   },
+   "relationship": null,
+   "results": [
+    {
+     "handle": "aqh_xIc1HWcrmbEonZ-4",
+     "prompt": "What is the rank 1 cooldown of Ahri Q - Orb of Deception?",
+     "family": {
+      "id": "ability_cooldown_rank",
+      "label": "Ability cooldown at a stated rank"
+     },
+     "topics": [
+      "cooldown"
+     ],
+     "ability_slot": "Q",
+     "applicability": {
+      "ability_rank": {
+       "state": "specific",
+       "value": "1"
+      },
+      "champion_level": {
+       "state": "not_stated",
+       "value": null
+      }
+     },
+     "difficulty": 2,
+     "modes": [
+      "daily",
+      "mastery",
+      "practice",
+      "ranked",
+      "time_trial"
+     ],
+     "subjects": [
+      {
+       "kind": "ability",
+       "id": "Ahri:Q",
+       "role": "premise_subject"
+      },
+      {
+       "kind": "champion",
+       "id": "Ahri",
+       "role": "premise_subject"
+      }
+     ],
+     "source_status": "current",
+     "patch_context": null,
+     "discovery": null,
+     "review": {
+      "missed_attempts": 3,
+      "last_missed_at": "2026-10-22T00:00:00"
+     }
+    },
+    {
+     "handle": "aqh_CYzEEqoEJFsKxa9Q",
+     "prompt": "What is the rank 1 cooldown of Ahri R - Spirit Rush?",
+     "family": {
+      "id": "ability_cooldown_rank",
+      "label": "Ability cooldown at a stated rank"
+     },
+     "topics": [
+      "cooldown"
+     ],
+     "ability_slot": "R",
+     "applicability": {
+      "ability_rank": {
+       "state": "specific",
+       "value": "1"
+      },
+      "champion_level": {
+       "state": "not_stated",
+       "value": null
+      }
+     },
+     "difficulty": 2,
+     "modes": [
+      "daily",
+      "mastery",
+      "practice",
+      "ranked",
+      "time_trial"
+     ],
+     "subjects": [
+      {
+       "kind": "ability",
+       "id": "Ahri:R",
+       "role": "premise_subject"
+      },
+      {
+       "kind": "champion",
+       "id": "Ahri",
+       "role": "premise_subject"
+      }
+     ],
+     "source_status": "current",
+     "patch_context": null,
+     "discovery": null,
+     "review": {
+      "missed_attempts": 1,
+      "last_missed_at": "2026-10-25T00:00:00"
+     }
+    }
+   ],
+   "facets": {
+    "topics": [
+     {
+      "id": "cooldown",
+      "count": 2,
+      "count_state": "exact",
+      "label": "Cooldown",
+      "selected": false
+     }
+    ],
+    "ability_slot": [
+     {
+      "id": "Q",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "R",
+      "count": 1,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "ability_rank": [
+     {
+      "id": "1",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "champion_level": [],
+    "family": [
+     {
+      "id": "ability_cooldown_rank",
+      "count": 2,
+      "count_state": "exact",
+      "label": "Ability cooldown at a stated rank",
+      "selected": false
+     }
+    ],
+    "mode": [
+     {
+      "id": "daily",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "mastery",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "practice",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "ranked",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     },
+     {
+      "id": "time_trial",
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     }
+    ],
+    "difficulty": [
+     {
+      "id": 2,
+      "count": 2,
+      "count_state": "exact",
+      "selected": false
+     }
+    ]
+   },
+   "facet_applicability": {
+    "ability_rank": {},
+    "champion_level": {
+     "not_stated": 2
+    }
+   },
+   "page": {
+    "limit": 20,
+    "offset": 0,
+    "has_more": false,
+    "next_cursor": null
+   },
+   "counts": {
+    "visible_matching": 2,
+    "count_state": "exact",
+    "unit": "question",
+    "missed_attempts_indexed": 5,
+    "missed_attempts_outside_index": {
+     "family_uncategorized": 1
+    }
+   },
+   "related": null,
+   "error": null
+  }
+ },
+ "premium_review (Free) denied": {
+  "request": "GET /api/atlas/questions/search?collection=premium_review",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "premium_review",
+   "access": {
+    "state": "denied",
+    "requires": "premium",
+    "reason": "premium_required",
+    "retryable": false
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": null
+  }
+ },
+ "premium_review (lookup error)": {
+  "request": "GET /api/atlas/questions/search?collection=premium_review",
+  "status": 503,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "premium_review",
+   "access": {
+    "state": "unavailable_entitlement",
+    "requires": "premium",
+    "reason": null,
+    "retryable": true
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": {
+    "code": "ENTITLEMENT_UNAVAILABLE",
+    "message": "Premium status could not be determined; retry",
+    "field": null
+   }
+  }
+ },
+ "premium_exclusive": {
+  "request": "GET /api/atlas/questions/search?collection=premium_exclusive",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "premium_exclusive",
+   "access": {
+    "state": "not_configured",
+    "requires": "premium_exclusive_entitlement",
+    "reason": "no_premium_exclusive_question_supply_exists",
+    "retryable": false
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": null
+  }
+ },
+ "catalog (default)": {
+  "request": "GET /api/atlas/questions/search?collection=catalog",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "catalog",
+   "access": {
+    "state": "not_configured",
+    "requires": "account",
+    "reason": "catalog_exposure_policy_pending_owner_review",
+    "retryable": false
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": null
+  }
+ },
+ "discovered unauthenticated": {
+  "request": "GET /api/atlas/questions/search?collection=discovered",
+  "status": 401,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "discovered",
+   "access": {
+    "state": "denied",
+    "requires": "account",
+    "reason": "unauthenticated",
+    "retryable": false
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": {
+    "code": "AUTH_REQUIRED",
+    "message": "a verified session is required",
+    "field": null
+   }
+  }
+ },
+ "discovered anonymous": {
+  "request": "GET /api/atlas/questions/search?collection=discovered",
+  "status": 403,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "discovered",
+   "access": {
+    "state": "denied",
+    "requires": "account",
+    "reason": "anonymous_session",
+    "retryable": false
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": {
+    "code": "ACCOUNT_REQUIRED",
+    "message": "a signed-in account is required",
+    "field": null
+   }
+  }
+ },
+ "invalid item id": {
+  "request": "GET /api/atlas/questions/search?collection=discovered&a_kind=item&a_id=abc",
+  "status": 400,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "query": null,
+   "collection": "discovered",
+   "access": {
+    "state": "allowed",
+    "requires": "account",
+    "reason": null,
+    "retryable": false
+   },
+   "coverage": null,
+   "relationship": null,
+   "results": [],
+   "facets": null,
+   "facet_applicability": null,
+   "page": null,
+   "counts": null,
+   "related": null,
+   "error": {
+    "code": "INVALID_SUBJECT_ID",
+    "message": "item id must be a numeric canonical item id",
+    "field": "a_id"
+   }
+  }
+ },
+ "public coverage": {
+  "request": "GET /api/atlas/questions/coverage?",
+  "status": 200,
+  "body": {
+   "contract_version": "atlas_questions.v0",
+   "rules_version": "atl-cs-rules.1",
+   "index_revision": "4b7bd8bb643dd32110d2",
+   "indexed_at": "2026-10-23T03:31:57.036080+00:00",
+   "state": "partial",
+   "certified_families": [
+    {
+     "family_id": "ability_charge_recharge_max",
+     "label": "Charge ability: maximum charges",
+     "indexability": "certified",
+     "catalog_exposure": true,
+     "catalog_withheld_reason": "not_audited: real prompts not yet audited for stating a sibling question's answer"
+    },
+    {
+     "family_id": "ability_charge_recharge_per_target",
+     "label": "Per-target cooldown",
+     "indexability": "certified",
+     "catalog_exposure": true,
+     "catalog_withheld_reason": "not_audited: real prompts not yet audited for stating a sibling question's answer"
+    }
+   ],
+   "uncertified_policy": "families without a certified rule are counted in owner coverage and never appear in results",
+   "not_indexed_sources": [
+    "ranked_accepted_bank",
+    "mastery_curriculum",
+    "runtime_casual_families",
+    "pro_play_on_demand"
+   ],
+   "topics": [
+    {
+     "id": "cooldown",
+     "label": "Cooldown"
+    },
+    {
+     "id": "ability_cost",
+     "label": "Ability cost"
+    },
+    {
+     "id": "mana",
+     "label": "Mana"
+    },
+    {
+     "id": "energy",
+     "label": "Energy"
+    },
+    {
+     "id": "health",
+     "label": "Health"
+    },
+    {
+     "id": "ability_haste",
+     "label": "Ability haste"
+    },
+    {
+     "id": "ability_power",
+     "label": "Ability power"
+    },
+    {
+     "id": "attack_damage",
+     "label": "Attack damage"
+    },
+    {
+     "id": "attack_speed",
+     "label": "Attack speed"
+    },
+    {
+     "id": "critical_strike",
+     "label": "Critical strike"
+    },
+    {
+     "id": "defenses",
+     "label": "Armor & magic resist"
+    },
+    {
+     "id": "movement",
+     "label": "Movement"
+    },
+    {
+     "id": "sustain",
+     "label": "Sustain"
+    },
+    {
+     "id": "lethality_penetration",
+     "label": "Lethality & penetration"
+    },
+    {
+     "id": "stats",
+     "label": "Stats"
+    },
+    {
+     "id": "charges",
+     "label": "Charges"
+    },
+    {
+     "id": "gold",
+     "label": "Gold & cost"
+    },
+    {
+     "id": "build_path",
+     "label": "Build path"
+    },
+    {
+     "id": "item_effects",
+     "label": "Item effects"
+    },
+    {
+     "id": "summoner_spells",
+     "label": "Summoner spells"
+    },
+    {
+     "id": "jungle",
+     "label": "Jungle"
+    },
+    {
+     "id": "objectives",
+     "label": "Objectives"
+    },
+    {
+     "id": "waves",
+     "label": "Minion waves"
+    },
+    {
+     "id": "experience",
+     "label": "Experience"
+    },
+    {
+     "id": "vision",
+     "label": "Vision"
+    },
+    {
+     "id": "map_mechanics",
+     "label": "Map mechanics"
+    },
+    {
+     "id": "fundamentals",
+     "label": "Fundamentals"
+    }
+   ],
+   "collections": [
+    "catalog",
+    "discovered",
+    "premium_review",
+    "admin_inventory",
+    "premium_exclusive"
+   ]
+  }
+ }
+}
