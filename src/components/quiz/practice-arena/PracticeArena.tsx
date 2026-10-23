@@ -62,6 +62,7 @@ import {
 } from "@/lib/quiz/practiceArena";
 import { SITE_DOMAIN } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
+import { VERDICT_HEADLINE } from "@/lib/question-feedback/model";
 import { PracticeQuestionMedia, practiceVisual } from "./PracticeQuestionMedia";
 import { PracticeSubjectPanel, type PracticeProgressionView } from "./PracticeSubjectPanel";
 import { usePracticeAutoAdvance, usePracticeRevealPause } from "./usePracticeAutoAdvance";
@@ -308,7 +309,13 @@ function PracticeRevealFooter({
       <div className="flex min-w-0 items-center gap-2">
         <p role="status" className={cn("flex min-w-0 items-center gap-1.5 text-sm font-semibold", HEAD[tone])}>
           <Icon aria-hidden className="h-4 w-4 shrink-0" />
-          {unverified ? "Answer not verified" : result.is_correct ? "Correct!" : "Incorrect"}
+          {unverified
+            ? "Answer not verified"
+            // QRT2 — the shared verdict words, set as the arena stamp sets them.
+            : <span data-testid="practice-verdict"
+                className="font-black uppercase tracking-[0.08em]">
+                {VERDICT_HEADLINE[result.is_correct ? "correct" : "incorrect"]}
+              </span>}
         </p>
         <span className="ml-auto flex shrink-0 items-center gap-1.5">
           {!unverified && <CompactSourceLink metadata={question.metadata} />}

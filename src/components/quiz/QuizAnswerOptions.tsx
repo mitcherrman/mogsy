@@ -254,6 +254,9 @@ export default function QuizAnswerOptions({
         // answer the server disclosed carries a "Correct answer" tab, and the
         // player's own pick (right or wrong) keeps its "Your pick" tab beside it.
         const showCorrectTag = verdictTabs && markSelectionOnReveal && !!answerResult && isCorrect;
+        // A two-up pair's and a picture choice's tablets are ~145-155px on a
+        // phone: their tabs are set compact (see below).
+        const compactTabs = (!!content && columns === "pair") || !!imgUrl;
         let btnVariant: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive" | "hero" | "accent" = "outline";
         if (answerResult) {
           if (isCorrect) btnVariant = "default";
@@ -403,17 +406,26 @@ export default function QuizAnswerOptions({
                 // resizes or reflows when a round resolves). The text is real
                 // text inside the button, so it is part of the accessible name
                 // a screen reader speaks on focus — and is never a live region.
+                // One line each (`whitespace-nowrap`): a wrapped tab grows into
+                // the tablet's corner. A two-up PAIR or a PICTURE choice is only
+                // ~145-155px wide on a phone, so there the two tabs are set
+                // tighter and the answer's reads "Correct" — together ~128px,
+                // inside the tablet. They stay on the TOP edge: a tab hanging
+                // off the bottom edge would grow the tablet's scroll box.
                 <span data-testid="answer-result-tags"
-                  className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1">
+                  className={`pointer-events-none absolute -top-2 flex items-center whitespace-nowrap ${
+                    compactTabs ? "right-2 gap-0.5" : "right-3 gap-1"}`}>
                   {showCorrectTag && (
                     <span data-testid="answer-correct-tag"
-                      className="rounded-sm bg-[#86efac] px-1.5 py-0.5 text-[10px] font-black uppercase leading-none tracking-[0.14em] text-[#052e1a] shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
-                      Correct answer
+                      className={`whitespace-nowrap rounded-sm bg-[#86efac] font-black uppercase leading-none text-[#052e1a] shadow-[0_1px_4px_rgba(0,0,0,0.45)] ${
+                        compactTabs ? "px-1 py-0.5 text-[9px] tracking-[0.08em]" : "px-1.5 py-0.5 text-[10px] tracking-[0.14em]"}`}>
+                      {compactTabs && showPick ? "Correct" : "Correct answer"}
                     </span>
                   )}
                   {showPick && (
                     <span data-testid="answer-your-pick"
-                      className="rounded-sm bg-[#f0d78c] px-1.5 py-0.5 text-[10px] font-black uppercase leading-none tracking-[0.14em] text-[#1d1608] shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+                      className={`whitespace-nowrap rounded-sm bg-[#f0d78c] font-black uppercase leading-none text-[#1d1608] shadow-[0_1px_4px_rgba(0,0,0,0.45)] ${
+                        compactTabs ? "px-1 py-0.5 text-[9px] tracking-[0.08em]" : "px-1.5 py-0.5 text-[10px] tracking-[0.14em]"}`}>
                       Your pick
                     </span>
                   )}

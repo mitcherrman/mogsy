@@ -147,6 +147,14 @@ export interface MasteryQuestionReveal extends MasteryChoiceReveal {
   /** The backend's concise explanation, or null when it states none. */
   readonly explanation: string | null;
   /**
+   * QRT2 — the SERVER says this card expired with no answer (the segment's
+   * `own_timed_out_challenges` flag). Present only where the wire carries it
+   * (the Ranked slice); absent on the standalone player and on any reveal
+   * frozen before the flag existed. It selects the headline word and nothing
+   * else — a missing selection is never read as a timeout.
+   */
+  readonly timedOut?: boolean;
+  /**
    * DD1 — a comparison's structured values (`comparison_values.v1`), already
    * read through its fail-closed allowlist. Absent on every other interaction,
    * on every reveal frozen before the backend published it, and whenever the

@@ -195,6 +195,25 @@ export function questionViewForChallenge(
   };
 }
 
+/**
+ * QRT2 — the surface's reveal for a held per-challenge reveal.
+ *
+ * Nothing is computed: `isCorrect` is the server's, and the correct option is
+ * the one whose label equals the server's `correctValue`. If no option matches
+ * (a value the grid never offered) the id is null and no tablet is lit.
+ */
+export function surfaceRevealFor(
+  challenge: MasterySliceChallengeView, reveal: MasteryQuestionReveal,
+) {
+  const at = reveal.correctValue === null
+    ? -1 : challenge.answerOptions.indexOf(reveal.correctValue);
+  return {
+    revealed: true as const,
+    isCorrect: reveal.correct,
+    correctOptionId: at >= 0 ? String(at) : null,
+  };
+}
+
 export function ProseChallenge({
   challenge, submitting, onSubmit, reveal = null,
 }: {
@@ -243,15 +262,21 @@ export function ProseChallenge({
         // question, so the surface renders its polished text treatment. It is
         // never fabricated here: inventing art would be inventing content.
         scenarioSource={null}
-        // Pre-reveal, always. A slice's answers arrive only with the segment
-        // settlement, which the arena beat renders — never this viewport.
-        reveal={null}
+        // Pre-reveal, always — EXCEPT while the server's own per-challenge
+        // reveal is held (`own_challenge_reveals`, the SAME payload the inline
+        // reveal below reads). QRT2: then the answer and the player's pick are
+        // told on the tablets in words, from the server's wire values — the
+        // option whose label IS the server's `correctValue`, looked up the way
+        // `choiceTone` does. A value matching no option discloses nothing.
+        reveal={revealing ? surfaceRevealFor(challenge, reveal) : null}
+        verdictTabs
       />
       {revealing ? (
         <MasteryInlineReveal
           correct={reveal.correct}
           answerLabel={reveal.answerLabel}
           explanation={reveal.explanation}
+          timedOut={reveal.timedOut}
         />
       ) : (
         <Button

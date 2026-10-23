@@ -778,6 +778,10 @@ export function CanonicalArena({
                   answerContent={questionSurface.regions?.optionContent ?? null}
                   answerColumns={questionSurface.regions?.answerColumns}
                   pairDivider={questionSurface.regions?.pairDivider ?? null}
+                  // QRT2 — the revealed answer is told in words ("Correct
+                  // answer" / "Your pick" tabs) for every question mounted
+                  // through this seam.
+                  verdictTabs
                 />
               ) : Viewport && moduleSurface ? (
               <Viewport

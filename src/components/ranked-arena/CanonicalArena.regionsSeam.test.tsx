@@ -58,11 +58,16 @@ describe("absent regions: the arena is unchanged", () => {
     expect(screen.queryByTestId("ranked-header-detail")).toBeNull();
   });
 
-  it("keeps the classic bottom-right Your pick on label tablets", () => {
+  // QRT2 — a question surface (Pro Play, Worlds, Practice) now tells the
+  // revealed answer in words: both tabs ride the tablet's top edge, on label
+  // tablets and content tablets alike. (It was a bottom-right label before.)
+  it("tells the pick and the answer on label tablets with top-edge tabs", () => {
     render(<CanonicalArena view={view({ state: "revealed-wrong" })} />);
     const pick = screen.getByTestId("answer-your-pick");
-    expect(pick.className).toContain("bottom-0.5");
-    expect(pick.className).not.toContain("-top-2");
+    const tags = pick.closest('[data-testid="answer-result-tags"]')!;
+    expect(tags.className).toContain("-top-2");
+    expect(pick.className).not.toContain("bottom-0.5");
+    expect(screen.getByTestId("answer-correct-tag")).toHaveTextContent("Correct answer");
   });
 });
 
@@ -104,10 +109,10 @@ describe("present regions: presentation inside the canonical structure", () => {
     for (const t of tablets()) expect(t.hasAttribute("aria-label")).toBe(false);
   });
 
-  it("moves Your pick to the tablet's top edge when the tablet carries content", () => {
+  it("keeps the tabs on the tablet's top edge when the tablet carries content", () => {
     render(<CanonicalArena view={view({ state: "revealed-wrong" }, (s) => ({ optionContent: contentFor(s) }))} />);
     const pick = screen.getByTestId("answer-your-pick");
-    expect(pick.className).toContain("-top-2");
+    expect(pick.closest('[data-testid="answer-result-tags"]')!.className).toContain("-top-2");
     expect(pick.closest("[data-quiz-choice]")).not.toBeNull();
   });
 

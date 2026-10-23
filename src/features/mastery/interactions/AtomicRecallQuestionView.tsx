@@ -181,6 +181,7 @@ export function AtomicRecallQuestionView({
           correct={reveal.correct}
           answerLabel={reveal.answerLabel}
           explanation={reveal.explanation}
+          timedOut={reveal.timedOut}
         />
       ) : (
         <div className="flex items-center gap-3">

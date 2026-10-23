@@ -144,13 +144,43 @@ describe("PracticeArena — Practice in the canonical arena", () => {
     expect(screen.queryByRole("button", { name: /Next question|See results/ })).toBeNull();
   });
 
+  // QRT2 — Practice tells a revealed answer in words, as Ranked does.
+  it("tabs the right answer and the player's pick on the tablets, and words the verdict as the arena does", () => {
+    renderArena({
+      selectedAnswer: "240",
+      answerResult: { is_correct: false, correct_answer: "300", explanation: "", xp_earned: 0 },
+      outcomes: [{ position: 0, isCorrect: false }],
+    });
+    const grid = screen.getByTestId("answer-grid");
+    const right = grid.querySelector<HTMLElement>('[data-choice-state="correct"]')!;
+    const wrong = grid.querySelector<HTMLElement>('[data-choice-state="incorrect-selected"]')!;
+    expect(within(right).getByTestId("answer-correct-tag").textContent).toBe("Correct answer");
+    expect(within(wrong).getByTestId("answer-your-pick").textContent).toBe("Your pick");
+    expect(within(right).queryByTestId("answer-your-pick")).toBeNull();
+    expect(screen.getByTestId("practice-verdict").textContent).toBe("Incorrect");
+  });
+
+  it("says nothing in words before the backend has graded the answer", () => {
+    renderArena({ selectedAnswer: "240", answerResult: null });
+    expect(screen.queryByTestId("answer-correct-tag")).toBeNull();
+    expect(screen.queryByTestId("answer-result-tags")).toBeNull();
+    expect(screen.queryByTestId("practice-verdict")).toBeNull();
+  });
+
+  it("an unverified answer shows no verdict word and no tab", () => {
+    renderArena({ selectedAnswer: "240", answerResult: UNVERIFIED_ANSWER,
+      submitFailure: { kind: "not-sent", retryable: true } });
+    expect(screen.queryByTestId("practice-verdict")).toBeNull();
+    expect(screen.queryByTestId("answer-correct-tag")).toBeNull();
+  });
+
   it("has no See results button on the last question either", () => {
     renderArena({
       currentIndex: 1, selectedAnswer: "Long Sword",
       answerResult: { is_correct: true, correct_answer: "Long Sword", explanation: "" },
     });
     expect(screen.queryByRole("button", { name: /See results|Next question/ })).toBeNull();
-    expect(within(document.querySelector<HTMLElement>("[data-practice-reveal-footer]")!).getByText("Correct!")).toBeTruthy();
+    expect(within(document.querySelector<HTMLElement>("[data-practice-reveal-footer]")!).getByText("Correct")).toBeTruthy();
   });
 
   it("never shows a verdict for an answer the backend could not verify, and offers Try again / Skip", () => {
@@ -160,7 +190,7 @@ describe("PracticeArena — Practice in the canonical arena", () => {
     expect(footer.getAttribute("data-verdict-tone")).toBe("neutral");
     expect(footer.getAttribute("data-auto-advance")).toBe("held");
     expect(within(footer).getByText("Answer not verified")).toBeTruthy();
-    expect(within(footer).queryByText(/Incorrect|Correct!/)).toBeNull();
+    expect(within(footer).queryByText(/Incorrect|Correct/)).toBeNull();
     expect(screen.getByTestId("answer-grid").querySelector('[data-choice-state="correct"]')).toBeNull();
     expect(screen.queryByTestId("central-result")).toBeNull();
     expect(screen.queryByTestId("practice-advance-meter")).toBeNull();
