@@ -281,12 +281,35 @@ export class SpinModel {
       target = next.target;
       this.selected = next.index;
     }
+    this.plan(target, animate);
+    return this.selected;
+  }
+
+  /**
+   * Hover-to-front: bring book `index` itself to the front by the shorter way
+   * round (a tie, the book directly behind, turns the way the orbit idles) and
+   * hold it. Same controller as the arrows: one Hermite turn from the current
+   * position and velocity, re-planned if another book is chosen mid-turn. A book
+   * already being brought (or held) is left alone, so a repeated hover never
+   * re-plans or jolts the turn. Returns false while the pointer holds the orbit.
+   */
+  steerToBook(index: number, animate = true, count = BOOK_ORDER.length): boolean {
+    if (this.phase === "grabbed") return false;
+    if ((this.phase === "steering" || this.phase === "held") && this.selected === index) return true;
+    let d = angleDelta(bookAngle(index, this.theta, count), FRONT_ANGLE);
+    if (Math.abs(Math.abs(d) - Math.PI) < 1e-9) d = this.omega < 0 ? -Math.PI : Math.PI;
+    this.selected = index;
+    this.plan(this.theta + d, animate);
+    return true;
+  }
+
+  private plan(target: number, animate: boolean): void {
     this.steerTo = target;
     if (!animate) {
       this.theta = target;
       this.omega = 0;
       this.phase = "held";
-      return this.selected;
+      return;
     }
     const delta = target - this.theta;
     const T = steerDuration(delta);
@@ -300,7 +323,6 @@ export class SpinModel {
     this.steerT = T;
     this.steerT0 = 0;
     this.phase = "steering";
-    return this.selected;
   }
 
   /** Let go of a selector hold (or an unfinished turn): the slow orbit resumes from here. */

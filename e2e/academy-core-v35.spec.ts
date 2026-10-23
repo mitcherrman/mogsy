@@ -125,6 +125,47 @@ async function noHorizontalOverflow(page: Page) {
 }
 const bookLink = (page: Page, id: Id) => page.getByTestId(`academy-core-slot-${id}`).getByRole("link");
 const focusOf = (page: Page) => page.getByTestId("academy-core-stage").getAttribute("data-focus");
+const stageAttr = (page: Page, name: string) => page.getByTestId("academy-core-stage").getAttribute(name);
+
+/** A point on book `id` that really hits it now (it may be moving), or null. */
+async function pointOn(page: Page, id: Id) {
+  return page.evaluate((id2) => {
+    const b = document.querySelector<HTMLElement>(`.o35-book[data-bay="${id2}"]`)!;
+    const r = b.getBoundingClientRect();
+    for (const fx of [0.5, 0.35, 0.65]) {
+      for (const fy of [0.45, 0.3, 0.6, 0.2, 0.75]) {
+        const x = r.x + r.width * fx;
+        const y = r.y + r.height * fy;
+        if (document.elementFromPoint(x, y)?.closest(".o35-book") === b) return { x, y };
+      }
+    }
+    return null;
+  }, id);
+}
+/** Reach for book `id` where it is NOW and rest the pointer there; resolves once it is the pointer's book. */
+async function reachBook(page: Page, id: Id) {
+  for (let i = 0; i < 40; i++) {
+    const pt = await pointOn(page, id);
+    if (pt) {
+      await page.mouse.move(pt.x, pt.y, { steps: 3 });
+      if ((await focusOf(page)) === id) return pt;
+    }
+    await page.waitForTimeout(150);
+  }
+  throw new Error(`${id} never came under a free point`);
+}
+/** Wait until the hover holds `id` at the front (the turn finished). */
+async function heldAt(page: Page, id: Id) {
+  await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", id, { timeout: 5000 });
+  await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-spin", "held", { timeout: 15_000 });
+}
+/** Book `id` is front-centre: the lowest book on screen, centred under the Core. */
+async function isFrontCentre(page: Page, id: Id) {
+  const b = await boxes(page);
+  const core = (await page.locator(".o35-instrument").boundingBox())!;
+  const lowest = IDS.reduce((best, k) => (b[k].cy > b[best].cy ? k : best), IDS[0]);
+  return lowest === id && Math.abs(b[id].cx - (core.x + core.width / 2)) < 8;
+}
 
 /* ===================================================================== */
 
@@ -250,29 +291,15 @@ test.describe("desktop: the books genuinely orbit", () => {
 });
 
 test.describe("desktop: interaction", () => {
-  test("hover stabilises the book under the pointer, emphasises it, dims the others and projects its room", async ({ page }) => {
+  test("hover selects the book: emphasised at once, the whole orbit brings it front-centre and holds it; the others support it; the crystal projects its room", async ({ page }) => {
     await open(page, 1366, 768);
     for (const id of ["combat-lab", "leaguecraft"] as const) {
-      // reach for the book where it is NOW (it is moving), then hold the pointer still
-      let b = (await boxes(page))[id];
-      await page.mouse.move(b.cx, b.cy + b.h * 0.15, { steps: 8 });
-      await expect.poll(() => focusOf(page), { timeout: 3000 }).toBe(id);
-      const w0 = (await boxes(page))[id].w;
-      await page.waitForTimeout(500);
+      await reachBook(page, id);
+      await heldAt(page, id);
+      expect(await isFrontCentre(page, id), `${id} front-centre`).toBe(true);
       const a = (await boxes(page))[id];
-      await page.waitForTimeout(1200);
-      const c = (await boxes(page))[id];
-      // settled: the book drifts less than 25 px over 1.2 s while the pointer rests on it
-      expect(dist(a, c), `${id} drift while hovered`).toBeLessThan(25);
-      // emphasised: larger than when the pointer arrived
-      expect(c.w, `${id} grows`).toBeGreaterThan(w0 * 1.06);
-      // the pointer is still on it (no chasing)
-      const stillOn = await page.evaluate(([x, y, id2]) => !!document.elementFromPoint(x as number, y as number)?.closest(`.o35-book[data-bay="${id2}"]`),
-        [b.cx, b.cy + b.h * 0.15, id] as const);
-      void stillOn; // the book may have drifted a little; the stronger check is below
-      const pointer = { x: b.cx, y: b.cy + b.h * 0.15 };
-      expect(pointer.x).toBeGreaterThan(c.x - 30);
-      expect(pointer.x).toBeLessThan(c.x + c.w + 30);
+      await page.waitForTimeout(1500);
+      expect(dist(a, (await boxes(page))[id]), `${id} holds still`).toBeLessThan(1.5);
       // the others are supporting; its tether is lit; the crystal projects its room
       for (const other of IDS.filter((o) => o !== id)) {
         const op = await page.getByTestId(`academy-core-slot-${other}`).evaluate((el) => Number(getComputedStyle(el).opacity));
@@ -281,14 +308,16 @@ test.describe("desktop: interaction", () => {
       await expect(page.locator(`.o35-tether[data-bay="${id}"]`)).toHaveAttribute("data-on", "true");
       const mode = id === "combat-lab" ? ".acore-mode-combat" : ".acore-mode-leaguecraft";
       await expect.poll(() => page.locator(mode).evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 3000 }).toBeGreaterThan(0.9);
-      b = (await boxes(page))[id];
+      // really leaving ends the hover; the selection stays at the front
       await page.mouse.move(40, 300, { steps: 4 });
-      await expect.poll(() => focusOf(page), { timeout: 3000 }).toBe("idle");
-      await page.waitForTimeout(600);
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+      expect(await focusOf(page)).toBe(id);
+      await page.waitForTimeout(400);
     }
   });
 
-  test("the orbit calms while a book is hovered and resumes afterwards", async ({ page }) => {
+  test("while a hovered book is held the orbit stays still, also after leaving; a press on open space lets it resume", async ({ page }) => {
     await open(page, 1366, 768);
     const travel = async (ms: number, other: Id) => {
       const a = (await boxes(page))[other];
@@ -296,16 +325,18 @@ test.describe("desktop: interaction", () => {
       return dist(a, (await boxes(page))[other]);
     };
     const free = await travel(1500, "archives");
-    const b = (await boxes(page))["pro-play"];
-    await page.mouse.move(b.cx, b.cy + b.h * 0.15, { steps: 6 });
-    await expect.poll(() => focusOf(page)).toBe("pro-play");
-    await page.waitForTimeout(2200);
-    const held = await travel(1500, "archives");
-    expect(held).toBeLessThan(free * 0.3);
+    await reachBook(page, "pro-play");
+    await heldAt(page, "pro-play");
+    expect(await travel(1500, "archives")).toBeLessThan(1.5);
     await page.mouse.move(40, 300, { steps: 4 });
+    await page.waitForTimeout(800);
+    expect(await travel(1500, "archives")).toBeLessThan(1.5);
+    // an intentional press on open space (far left of the stage, below the orbit) releases it
+    const stage = (await page.getByTestId("academy-core-stage").boundingBox())!;
+    await page.mouse.click(stage.x + 30, stage.y + stage.height - 20);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-spin", /free|inertia|snapping|dwell/);
     await page.waitForTimeout(2600);
-    const resumed = await travel(1500, "archives");
-    expect(resumed).toBeGreaterThan(held * 2.5);
+    expect(await travel(1500, "archives")).toBeGreaterThan(free * 0.3);
   });
 
   test("the crystal previews each room without navigating, and the chosen book comes toward the viewer", async ({ page }) => {
@@ -350,8 +381,11 @@ test.describe("desktop: interaction", () => {
 
   test("one click: the approved 240 ms activation, then navigation (measured)", async ({ page }) => {
     await open(page, 1366, 768);
-    const b = (await boxes(page))["combat-lab"];
-    await page.mouse.move(b.cx, b.cy + b.h * 0.15, { steps: 6 });
+    // hover-to-front: the hovered book is turned to the front and held; click it there
+    await reachBook(page, "combat-lab");
+    await heldAt(page, "combat-lab");
+    const at = (await pointOn(page, "combat-lab"))!;
+    await page.mouse.move(at.x, at.y, { steps: 3 });
     await expect.poll(() => focusOf(page)).toBe("combat-lab");
     await page.evaluate(() => {
       const stage = document.querySelector('[data-testid="academy-core-stage"]')!;
@@ -1100,6 +1134,199 @@ test.describe("crystal redesign: Leaguecraft and Pro Play", () => {
 });
 
 /* ===================================================================== */
+/* HOVER-TO-FRONT — hovering a book turns the whole orbit to bring it forward */
+/* ===================================================================== */
+
+test.describe("hover-to-front", () => {
+  test("every book, reached wherever the orbit has carried it, comes front-centre and is held", async ({ page }) => {
+    await open(page, 1366, 768);
+    for (const id of ["archives", "pro-play", "leaguecraft", "combat-lab"] as const) {
+      // start from an arbitrary orbit position: release, let the orbit idle a while
+      const stage = (await page.getByTestId("academy-core-stage").boundingBox())!;
+      await page.mouse.click(stage.x + 30, stage.y + stage.height - 20);
+      await page.waitForTimeout(900 + IDS.indexOf(id) * 700);
+      await reachBook(page, id);
+      await heldAt(page, id);
+      expect(await isFrontCentre(page, id), `${id} front-centre`).toBe(true);
+      await expect(page.getByTestId("academy-core-preview")).toHaveText(`Previewing ${ROOMS[id].title}`);
+    }
+  });
+
+  test("a still mouse: the chosen book moves away and other books slide under it, and nothing changes (no chasing, no cancelling)", async ({ page }) => {
+    await open(page, 1366, 768);
+    const pt = await reachBook(page, "archives");
+    // record every change of the stage's focus / hover / intent from here on
+    await page.evaluate(() => {
+      const st = document.querySelector('[data-testid="academy-core-stage"]')!;
+      const log: string[] = [];
+      (window as unknown as { __h: string[] }).__h = log;
+      new MutationObserver(() => log.push(`${st.getAttribute("data-focus")}|${st.getAttribute("data-hover")}|${st.getAttribute("data-intent")}`))
+        .observe(st, { attributes: true, attributeFilter: ["data-focus", "data-hover", "data-intent"] });
+    });
+    await heldAt(page, "archives");
+    await page.waitForTimeout(2500); // the mouse never moved
+    const log = await page.evaluate(() => (window as unknown as { __h: string[] }).__h);
+    expect(log.every((l) => l === "archives|archives|book"), log.join(", ")).toBe(true);
+    expect(await isFrontCentre(page, "archives")).toBe(true);
+    const under = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest(".o35-book")?.getAttribute("data-bay") ?? "open space", [pt.x, pt.y]);
+    // whatever is under the still cursor now is not chosen, nor does its cover respond
+    if (under !== "archives" && under !== "open space") {
+      await expect(page.getByTestId(`academy-core-slot-${under}`)).toHaveAttribute("data-active", "false");
+      const tf = await page.locator(`[data-testid="academy-core-slot-${under}"] .academy-hub-book-body`).evaluate((el) => getComputedStyle(el).transform);
+      expect(tf, "a book passing under the cursor keeps its resting cover").toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+    }
+  });
+
+  test("real departure: following the book across open space keeps it; leaving the orrery ends the hover, not the selection", async ({ page }) => {
+    await open(page, 1366, 768);
+    await reachBook(page, "pro-play");
+    await heldAt(page, "pro-play");
+    const core = (await page.locator(".o35-instrument").boundingBox())!;
+    await page.mouse.move(core.x + core.width / 2 + 260, core.y + core.height + 40, { steps: 10 }); // open space near the front
+    await page.waitForTimeout(400);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "pro-play");
+    await page.mouse.move(40, 300, { steps: 6 });
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-intent", "preview");
+    expect(await focusOf(page)).toBe("pro-play");
+    expect(await isFrontCentre(page, "pro-play")).toBe(true);
+  });
+
+  test("switching quickly between books: the last one reached is brought forward, in one continuous turn", async ({ page }) => {
+    await open(page, 1366, 768);
+    await reachBook(page, "combat-lab");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "combat-lab");
+    await reachBook(page, "leaguecraft");
+    await reachBook(page, "archives");
+    await heldAt(page, "archives");
+    expect(await isFrontCentre(page, "archives")).toBe(true);
+  });
+
+  test("an arrow takes precedence and continues from the hovered book; a quick pass over a book does not undo an arrow selection", async ({ page }) => {
+    await open(page, 1366, 768);
+    await reachBook(page, "combat-lab");
+    await heldAt(page, "combat-lab");
+    await page.getByTestId("academy-core-arrow-right").click();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "pro-play");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-spin", "held", { timeout: 15_000 });
+    expect(await isFrontCentre(page, "pro-play")).toBe(true);
+    // a fast pass over another book on the way somewhere else changes nothing
+    const pt = (await pointOn(page, "archives")) ?? (await pointOn(page, "leaguecraft"));
+    if (pt) {
+      await page.mouse.move(pt.x, pt.y, { steps: 2 });
+      await page.mouse.move(40, 300, { steps: 2 });
+    }
+    await page.waitForTimeout(600);
+    expect(await focusOf(page)).toBe("pro-play");
+    expect(await stageAttr(page, "data-spin")).toBe("held");
+    expect(await isFrontCentre(page, "pro-play")).toBe(true);
+  });
+
+  test("the crystal ends the hover and continues its own cycle from the hovered room, never navigating", async ({ page }) => {
+    await open(page, 1366, 768);
+    const url = page.url();
+    await reachBook(page, "leaguecraft");
+    await heldAt(page, "leaguecraft");
+    await page.getByTestId("academy-core-crystal").click();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "pro-play");
+    expect(page.url()).toBe(url);
+  });
+
+  test("a drag interrupts the hover and takes the orbit; no book is chosen while dragging", async ({ page }) => {
+    await open(page, 1366, 768);
+    await reachBook(page, "archives");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "archives");
+    await page.mouse.move(640, 700);
+    await page.mouse.down();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
+    for (let i = 1; i <= 10; i++) { await page.mouse.move(640 + i * 30, 700); await page.waitForTimeout(16); }
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+    expect(await stageAttr(page, "data-hover")).toBe("");
+    await expect(page.getByTestId("academy-core-stage")).not.toHaveAttribute("data-spin", "held");
+  });
+
+  test("Leaguecraft: the Lux reveal completes during the turn and stays open while held — no restart, no flicker", async ({ page }) => {
+    await open(page, 1366, 768);
+    await reachBook(page, "leaguecraft");
+    const t0 = Date.now();
+    const means: number[] = [];
+    for (let i = 0; i < 14; i++) {
+      means.push((await shutterAngles(page)).reduce((x, y) => x + y, 0) / 6);
+      await page.waitForTimeout(250);
+    }
+    expect(await stageAttr(page, "data-intent")).toBe("book");
+    for (let i = 1; i < means.length; i++) expect(means[i], `opening only grows (${i}, ${Date.now() - t0} ms)`).toBeGreaterThanOrEqual(means[i - 1] - 0.5);
+    await heldAt(page, "leaguecraft");
+    await settlesAt(page, "open");
+    await page.waitForTimeout(1500);
+    for (const a of await shutterAngles(page)) expect(a, "still open while held").toBeGreaterThan(62);
+    expect((await revealed(page, "face")).open, "her face revealed").toBe(1);
+    // a real leave closes it
+    await page.mouse.move(40, 300, { steps: 3 });
+    await settlesAt(page, "closed");
+  });
+
+  test("keyboard is unchanged: Tab brings a book beside the crystal without turning the orbit; Enter opens it", async ({ page }) => {
+    await open(page, 1366, 768);
+    await bookLink(page, "pro-play").focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "pro-play");
+    await page.waitForTimeout(800);
+    expect(await stageAttr(page, "data-hover")).toBe("");
+    expect(await stageAttr(page, "data-spin")).not.toMatch(/steering|held/);
+    await page.keyboard.press("Enter");
+    await page.waitForURL(/\/lol\/pro-play$/);
+  });
+
+  test("reduced motion: hover selects in place (the scene never rearranges under the cursor) and a click navigates at once", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, 1366, 768);
+    const before = await boxes(page);
+    await page.getByTestId("academy-core-slot-archives").hover();
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-focus", "archives");
+    await page.waitForTimeout(600);
+    expect(await stageAttr(page, "data-hover")).toBe("");
+    const after = await boxes(page);
+    for (const id of IDS) expect(dist(before[id], after[id]), `${id} did not move`).toBeLessThan(1);
+    await page.getByTestId("academy-core-slot-archives").getByRole("link").click();
+    await page.waitForURL(/\/lol\/docs$/);
+  });
+
+  test("phones: the composed books keep their tap behaviour (no hover hold)", async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    try {
+      await stubCommon(page);
+      await stubChampions(page);
+      await page.goto(ROUTE);
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-mode", "composed");
+      await expect(page.getByTestId("academy-veil")).toHaveCount(0);
+      await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-hover", "");
+      await page.getByTestId("academy-core-slot-combat-lab").getByRole("link").tap();
+      await page.waitForURL(/\/combat-lab$/);
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  test("startup is untouched: a direct /lol visit lifts the veil on a ready scene, with no hover held and the orbit free", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await stubCommon(page);
+    await stubChampions(page);
+    await page.goto(ROUTE);
+    await expect(page.getByTestId("academy-veil")).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.locator(".o35-root")).toHaveAttribute("data-startup", /ready|degraded|none/);
+    await expect(page.getByTestId("academy-core-stage")).toHaveAttribute("data-ready", "true");
+    expect(await stageAttr(page, "data-hover")).toBe("");
+    expect(await stageAttr(page, "data-spin")).toBe("free");
+  });
+});
+
+/* ===================================================================== */
 /* LEAGUECRAFT — five role icons around a concealed Lux                   */
 /* ===================================================================== */
 
@@ -1267,6 +1494,9 @@ test.describe("Leaguecraft: five role icons around a concealed Lux", () => {
     await page.evaluate(() => document.querySelector(".acore-svg")!.setAttribute("data-activating", ""));
     await settlesAt(page, "closed");
     await reachLeaguecraft(page);
+    await heldAt(page, "leaguecraft"); // hover-to-front: it is brought forward first
+    const at = (await pointOn(page, "leaguecraft"))!;
+    await page.mouse.move(at.x, at.y, { steps: 3 });
     await page.mouse.down();
     await page.mouse.up();
     await page.waitForURL(/\/quiz$/);

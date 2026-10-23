@@ -290,8 +290,17 @@ html:has(.o35-root) { overflow-x: clip; }
   transition-duration: 160ms;
 }
 /* the engine already grows a focused book: neutralise the Hall's own hover scale */
-.o35-root.acore-root .academy-hub-book:hover .academy-hub-book-body,
+.o35-root.acore-root .o35-slot[data-active="true"] .academy-hub-book:hover .academy-hub-book-body,
 .o35-root.acore-root .academy-hub-book:focus-visible .academy-hub-book-body { transform: translateY(-1.2%) perspective(900px) rotateY(-24deg); }
+/* hover-to-front: the orbit slides books under a still cursor, which the browser
+   reports as :hover. Only the book the visitor chose (data-active) responds; a
+   book merely passing beneath the cursor keeps its resting cover, light and art. */
+.o35-root.acore-root .o35-slot[data-active="false"] .academy-hub-book:hover:not(:focus-visible) .academy-hub-book-body {
+  transform: none;
+  filter: drop-shadow(0 14px 22px rgba(2, 6, 20, 0.55)) drop-shadow(0 0 12px var(--accent-soft));
+}
+.o35-root.acore-root .o35-slot[data-active="false"] .academy-hub-book:hover:not(:focus-visible) .academy-hub-book-art { transform: none; }
+.o35-root.acore-root .o35-slot[data-active="false"] .academy-hub-book:hover:not(:focus-visible) .academy-hub-book-rim { opacity: 0; }
 .o35-root.acore-root .o35-slot[data-activating="true"] .academy-hub-book:hover .academy-hub-book-body { transform: translateY(0.6%) scale(0.99); }
 
 /* ------------------------------------------------------------- the Core */

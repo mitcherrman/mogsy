@@ -158,7 +158,7 @@ export default function AcademyHubBook({
               // desktop they are on screen at once and usually already warmed.
               loading="lazy"
               onError={() => setImgFailed(true)}
-              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transform-none"
+              className="academy-hub-book-art h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transform-none"
               style={{ objectPosition: splashPosition }}
             />
           )}
@@ -216,7 +216,7 @@ export default function AcademyHubBook({
                the art window so it reads as light catching the inlay rather
                than a glow around the whole card. */}
         <div
-          className="pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+          className="academy-hub-book-rim pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
           style={{
             ...ART_WINDOW,
             boxShadow:

@@ -236,3 +236,52 @@ describe("arrow selector API", () => {
     expect(c.steer(1)).toBeNull();
   });
 });
+
+describe("hover-to-front API", () => {
+  it("steerTo turns the orbit to that book, holds it, reports data-spin, and ignores a repeat", () => {
+    const raf = manualRaf();
+    const host = document.createElement("div");
+    const e = new OrreryEngine({ ...els(), host }, { mode: "orbit", animate: true });
+    e.resize(960, 700);
+    e.start();
+    raf.frames(5, 16.7);
+    expect(e.steerTo("combat-lab")).toBe(true);
+    expect(e.selected).toBe("combat-lab");
+    expect(host.dataset.spin).toBe("steering"); // at once, not on the next frame
+    raf.frames(20, 16.7);
+    const mid = e.phase;
+    expect(e.steerTo("combat-lab")).toBe(true); // a repeated hover: no re-plan
+    raf.frames(1, 16.7);
+    expect(e.phase).not.toBe(mid);
+    raf.frames(160, 16.7);
+    expect(e.spinPhase).toBe("held");
+    expect(host.dataset.spin).toBe("held");
+    const held = e.phase;
+    raf.frames(300, 16.7);
+    expect(e.phase).toBe(held);
+    // the arrows take over from it
+    expect(e.steer(1)).toBe("pro-play");
+  });
+
+  it("is refused during a drag, placed at once under reduced motion, and absent in the phone composition", () => {
+    const raf = manualRaf();
+    const e = new OrreryEngine(els(), { mode: "orbit", animate: true });
+    e.resize(960, 700);
+    e.start();
+    e.grab();
+    expect(e.steerTo("archives")).toBe(false);
+    expect(e.spinPhase).toBe("grabbed");
+    e.release();
+    raf.frames(2, 16.7);
+
+    const r = new OrreryEngine(els(), { mode: "orbit", animate: false });
+    r.resize(960, 700);
+    expect(r.steerTo("archives")).toBe(true);
+    expect(r.spinPhase).toBe("held");
+    expect(r.selected).toBe("archives");
+
+    const c = new OrreryEngine(els(), { mode: "composed", animate: true });
+    c.resize(360, 640);
+    expect(c.steerTo("archives")).toBe(false);
+  });
+});
