@@ -36,7 +36,8 @@ export function RunLadder({ summary }: { summary: PtRunSummary }) {
               <span className="pt-ladder-icon" aria-hidden>
                 <SubjectArt media={round.iconUrl ? { src: round.iconUrl, alt: "" } : null} monogram={round.slot} className="h-full w-full" />
                 {slice?.item?.iconUrl
-                  ? <img className="pt-ladder-item" src={slice.item.iconUrl} alt="" draggable={false} data-testid="pt-ladder-item" />
+                  ? <img className="pt-ladder-item" src={slice.item.iconUrl} alt="" draggable={false} data-testid="pt-ladder-item"
+                      onError={(ev) => { ev.currentTarget.style.display = "none"; }} />
                   : <i>{round.slot}</i>}
               </span>
               <div className="pt-ladder-name">

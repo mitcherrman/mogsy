@@ -2,6 +2,7 @@ name: question-media-acceptance
 
 # QMEDIA1 — premise media (Dragon glyph, Vision item) and missing-asset text
 # fallback through the production Ranked/Daily card path, desktop + 390x844.
+# QMEDIA2: Match Grid art that fails to load falls back to its monogram.
 on:
   pull_request:
     paths:
@@ -10,6 +11,10 @@ on:
       - "src/lib/quiz/api.ts"
       - "src/pages/dev/ranked-shell-probe/**"
       - "e2e/question-media-qmedia1.spec.ts"
+      - "e2e/question-media-qmedia2.spec.ts"
+      - "src/components/quiz/QuizAnswerOptions.tsx"
+      - "src/components/match-grid/**"
+      - "src/components/perfect-timing/**"
       - "e2e/fixtures/qmedia1/**"
       - "playwright.arena.config.ts"
       - ".github/workflows/question-media-acceptance.yml"
@@ -32,10 +37,12 @@ jobs:
           cache: npm
       - name: Install baseline dependencies without changing the stale lockfile
         run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: QMEDIA2 unit tests (picture-choice and Match Grid fallbacks)
+        run: npx vitest run src/components/quiz/QuizAnswerOptions.qmedia2.test.tsx src/components/match-grid/MatchGrid.qmedia2.test.tsx src/components/match-grid/MatchGrid.test.tsx src/components/quiz/QuizAnswerOptions.geometry.test.tsx src/components/quiz/QuizAnswerOptions.optionMedia.test.tsx src/components/perfect-timing/PerfectTimingReveal.test.tsx src/components/perfect-timing/PerfectTimingResults.test.tsx
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Question media acceptance
-        run: npx playwright test -c playwright.arena.config.ts e2e/question-media-qmedia1.spec.ts --workers=1
+        run: npx playwright test -c playwright.arena.config.ts e2e/question-media-qmedia1.spec.ts e2e/question-media-qmedia2.spec.ts --workers=1
       - name: Upload screenshots and failure evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -77,6 +77,35 @@ function OptionMediaIcon({ media }: { media: QuizOptionMedia | null }) {
   );
 }
 
+/** A picture choice's image. QMEDIA2: an image that fails to load becomes a
+ * same-size "?" tile instead of the browser's broken-image glyph, so the grid
+ * keeps its geometry and the label below still names the option. */
+function ChoiceImage({ src, label }: { src: string; label: string }) {
+  const [failed, setFailed] = useState(false);
+  const box = "h-20 w-20 md:h-24 md:w-24 block rounded-sm";
+  if (failed) {
+    return (
+      <span
+        aria-hidden="true"
+        data-choice-image-state="error"
+        className={`${box} flex items-center justify-center bg-black/40 text-2xl font-bold text-[#f0d78c]/70`}
+      >
+        ?
+      </span>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={label}
+      data-choice-image-state="ok"
+      className={`${box} object-cover`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 type QuizAnswerOptionsProps = {
   choices: QuizChoice[];
   selectedAnswer: string | null;
@@ -308,12 +337,7 @@ export default function QuizAnswerOptions({
                         "0 0 12px rgba(201,168,76,0.35), 0 4px 12px rgba(0,0,0,0.45)",
                     }}
                   >
-                    <img
-                      src={imgUrl}
-                      alt={label}
-                      className="h-20 w-20 md:h-24 md:w-24 object-cover block rounded-sm"
-                      loading="lazy"
-                    />
+                    <ChoiceImage src={imgUrl} label={label} />
                   </div>
                   <div className="flex items-center gap-1.5 w-full justify-center">
                     <span data-choice-letter className={`text-xs font-bold ${letterClass}`}>
