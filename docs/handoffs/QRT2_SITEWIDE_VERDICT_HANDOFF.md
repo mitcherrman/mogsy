@@ -126,7 +126,7 @@ With (1) and (2) the worst-case lag drops from ~1.9 s to ~1.0 s, so the visible 
 
 # PHASE 2A-ADOPT REPORT (2026-10-23): Mastery slice, Pro Play / Worlds, Practice
 
-Stacked draft PR on top of #136 (base `qrt2/sitewide-verdict-clarity`, branch `qrt2/phase2a-adopt-modes`). Frontend only, presentation only, no timer or backend change.
+Stacked draft PR [mitcherrman/mogsy#138](https://github.com/mitcherrman/mogsy/pull/138) on top of #136 (base `qrt2/sitewide-verdict-clarity`, branch `qrt2/phase2a-adopt-modes`). Frontend only, presentation only, no timer or backend change.
 
 ## What each mode now does
 
