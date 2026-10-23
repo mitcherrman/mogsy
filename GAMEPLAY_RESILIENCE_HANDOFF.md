@@ -1,6 +1,6 @@
 # GRES1 — Gameplay reliability and outage resilience
 
-Status: **draft PRs open (FE mogsy#135, BE League_Combat_Simulator#101), awaiting owner review** (nothing deployed, merged or migrated). Next action: §12.
+Status: **draft PRs open: FE mogsy#135; BE League_Combat_Simulator#101 stacked on #87 (now mergeable); awaiting owner review** (nothing deployed, merged or migrated). Next action: §12.
 
 | | Frontend (`mitcherrman/mogsy`) | Backend (`mitcherrman/League_Combat_Simulator`) |
 |---|---|---|
@@ -167,7 +167,7 @@ The status copy is honest: it says "Reconnecting — sending your answer…" and
 
 ### 5.4 Composition with BE #87
 
-Audited with a **local trial integration**, never pushed: worktree `C:\Users\mlmit\lcs-gres1-trial`, branch `gres1/trial-87-integration`.
+Audited first on a local trial integration (`C:\Users\mlmit\lcs-gres1-trial`), then **published as the stack in §12**: #87 at `8f29b6de` (`master` merged in as `1fed48c8`, plus a DV2-B1 test update) and GRES1-BE at `47bd1cba`, composed (`88f8db76`).
 
 | Commit | What |
 |---|---|
@@ -256,6 +256,7 @@ Fault-injection scenarios, each run separately for ordinary MCQ rounds and for S
   - BE `617c2ee2`: per-card Stat Check tests exposed the **rewind bug** in single-shift compensation → pause semantics (§5.3). Per-card fixture workaround (§10). 28/28.
   - BE #87 × GRES1 audited by a local trial integration (§5.4): double compensation and rollover-lease interactions found, composed, tested (6/6; 39/39 on the trial). Not pushed.
   - Deploy safety verified (§10.2). Broad backend regression compare: §10.1.
+  - Owner: "just do what's best" → #87 first, GRES1-BE stacked (§12). #87 brought up to date by fast-forward and commented; #101 retargeted onto it. Nothing merged or deployed.
 
 ## 10. Test evidence
 
@@ -390,6 +391,11 @@ All of these failures are pre-existing on `master` and none is attributed to GRE
 
 **Not checkable in CI:** GitHub Actions did not start any backend job. Every check annotation reads "The job was not started because recent account payments have failed or your spending limit needs to be increased". That is a billing block, not a test result.
 
+**Stack vs current `master`** (GRES1-BE `47bd1cba` on #87 vs clean `890534c5`, same test set):
+- The full run at `88f8db76` found exactly 2 tests failing only on the stack, both in `test_dv2_b1_main_daily.py`. They are #87 × newer `master` (exact column and snapshot-key assertions) and also fail on the #87-only merge `1fed48c8`, so they are not GRES1. They were fixed in #87 by `8f29b6de` (test-only, intent kept) and pass now.
+- Every other failing ID and normalised error line is identical to `master`.
+- GRES1 + #87 + DV2-B1 + composition suites on `47bd1cba`: **83 passed**.
+
 ### 10.2 Pushing these branches cannot deploy (verified 2026-10-23)
 
 - **GitHub Actions** (`scratchpad/wf_scan.py`): none of the 37 frontend or 17 backend workflows triggers on a push to `resilience/gres1-frontend` or `resilience/gres1-backend`. Push triggers are branch-filtered to other names. No workflow contains a deploy step (Railway, Supabase deploy, Lovable, Vercel, Netlify, gh-pages, `db push`, or deploy tokens). PR workflows run browser and unit checks only.
@@ -470,33 +476,30 @@ Not verified: whether production sets `RAILWAY_DEPLOYMENT_DRAINING_SECONDS`. The
 
 ## 12. Exact next integration action
 
-PRs: frontend https://github.com/mitcherrman/mogsy/pull/135 (head: this branch), backend https://github.com/mitcherrman/League_Combat_Simulator/pull/101 (head `617c2ee2`). Both are drafts and neither is merged.
+**Decided 2026-10-23 (owner: "just do what's best"): #87 first, GRES1-BE stacked on it.**
 
-**Release dependencies:**
-- **GRES1-FE** is independently releasable against today's production backend.
-  - Without `Server-Timing`, the backend share is recorded as "unknown", never guessed.
-  - The lease stops after the first uncoded 404, so it is safe whether or not BE #87 ships.
-- **GRES1-BE** changes no contract the current frontend reads. It adds one response header, one idempotent-ack path that was a 409 before, and two additive tables.
-  - It can ship before #87.
-  - It **must not merge after #87 without the composition in §5.4**. Merged blindly in that order, Daily players who are present across an outage are compensated twice.
-- **BE #87** conflicts with current `master` in 3 files. The trial resolution in §5.4 keeps both sides and passes the Daily suites with the same failure set as `master`.
+| PR | Branch | Head | Base | State |
+|---|---|---|---|---|
+| FE [mogsy#135](https://github.com/mitcherrman/mogsy/pull/135) | `resilience/gres1-frontend` | this branch | `main` | draft; CI `reconnect` + `role-challenge` green |
+| BE [LCS#87](https://github.com/mitcherrman/League_Combat_Simulator/pull/87) (Daily resume) | `codex/daily-resume-rollover-be` | `8f29b6de` | `master` | **mergeable** (conflicts resolved by fast-forward commits `1fed48c8` + `8f29b6de`; [comment](https://github.com/mitcherrman/League_Combat_Simulator/pull/87#issuecomment-6363953087)) |
+| BE [LCS#101](https://github.com/mitcherrman/League_Combat_Simulator/pull/101) (GRES1) | `resilience/gres1-backend` | `47bd1cba` | `codex/daily-resume-rollover-be` | draft, stacked, composed with #87 |
 
-**The precise next step:** the owner reviews and merges **GRES1-FE**, the client-only half with no data. Then:
+Backend GitHub Actions jobs do not start for this repository: "recent account payments have failed or your spending limit needs to be increased". Backend evidence is local only (§10.1) until billing is fixed.
 
-1. **Owner decision on BE #87.** Frontend #119 is live and POSTs `/activity` to a backend that 404s it. Choose one:
-   - **(a)** Update #87's branch with the trial's conflict resolution (`gres1/trial-87-integration` @ `9a39d26c`, local worktree `C:\Users\mlmit\lcs-gres1-trial`), re-run its tests, and merge #87 first. Then rebase GRES1-BE onto it with the composition commit (`54854319`: compensation ahead of `_resume_daily_clock` at every site including `heartbeat`, `_outage_shift_since`, `_lease_baseline`, `test_gres1_x_87_composition.py`).
-   - **(b)** Merge GRES1-BE first. #87, when later resolved against `master`, must take the same composition. `54854319` is the reference implementation.
+**Merge order: FE #135 (any time) → BE #87 → BE #101.** GitHub retargets #101 to `master` when #87 merges. Nothing has been merged or deployed.
 
-   The trial branch is local only and was not pushed. Pushing it, or rewriting #87's branch, is the owner's call.
-2. **GRES1-BE owner gates before merge:**
+**The precise next step:** the owner fixes the GitHub Actions billing so backend CI can run on #87 and #101, then reviews and merges **#135**. Then:
+
+1. **Merge #87.** It is the backend half of the live #119: the `/activity` route the live frontend 404s against today. It also adds the Daily forfeit exemption. Deploying it is an owner action, and so is its additive `daily_runs` migration (four `ALTER … ADD COLUMN`, applied at boot).
+2. **Then #101.** Owner gates:
    - Two additive tables created at boot.
-   - The liveness beacon `/data/.mogzy_web_alive`, rewritten every 2 s without fsync.
-   - Outage-aware presence applies to **rated Ranked too** (symmetric, not player-controllable).
-   - `RANKED_OUTAGE_CLOCK_COMPENSATION` defaults to `unrated`; `all` brings rated Ranked in.
-   - Kill switches: `SERVICE_OUTAGE_LEDGER=0`, `SERVER_TIMING=0`.
-3. **After deploy**, verify with read-only checks:
-   - **First deploy:** the outgoing process predates the beacon, so no window is recorded. Expect a beacon file and `Server-Timing` on `/api/health`.
-   - **Second deploy:** the boot log shows `service outage recorded: … (graceful)`; `service_outage_windows` has one ~10 s row; any match active across it has a `ranked_outage_compensations` row with `shift_ms ≤ target_ms`.
+   - The liveness beacon `/data/.mogzy_web_alive`.
+   - Outage-aware presence for rated Ranked.
+   - `RANKED_OUTAGE_CLOCK_COMPENSATION` default `unrated`.
+   - Kill switches `SERVICE_OUTAGE_LEDGER=0` and `SERVER_TIMING=0`.
+3. **After each deploy**, verify read-only:
+   - **First GRES1 deploy:** no outage window yet (the outgoing process predates the beacon); a beacon file and `Server-Timing` on `/api/health`.
+   - **Second deploy:** `service outage recorded: … (graceful)` in the boot log; one ~10 s `service_outage_windows` row; `ranked_outage_compensations` rows with `shift_ms ≤ target_ms` for matches active across it.
 4. **Follow-ups** (each its own task):
    - Record Patch Ops maintenance windows as outages.
    - Measure boot steps in production (§11.3 B).
