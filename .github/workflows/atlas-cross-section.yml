@@ -1,0 +1,37 @@
+name: atlas-cross-section
+# ATL-CS-UX-001 — the Atlas cross-section table must stay owner-only and
+# fixture-only. Runs the model, page, rendered-gate suites (plus the P1-C and
+# AdminRoute suites it sits beside), a production Vite build and a bundle
+# check that the DEV-only twin left no route behind. No browser automation.
+on:
+  pull_request:
+    paths:
+      - 'src/lib/atlas-cross-section/**'
+      - 'src/pages/dev/atlas-cross-section/**'
+      - 'src/App.tsx'
+      - 'src/App.atlasCrossSection*.test.ts*'
+      - 'src/components/Layout.tsx'
+      - 'src/components/AdminRoute.tsx'
+      - 'src/hooks/useOwnerAuth.ts'
+      - '.github/workflows/atlas-cross-section.yml'
+jobs:
+  owner-only-cross-section:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false
+      - name: Cross-section model, page, rendered-gate and neighbouring suites
+        run: npx vitest run src/lib/atlas-cross-section src/pages/dev/atlas-cross-section src/App.atlasCrossSectionSecurity.test.tsx src/App.atlasP1cSecurity.test.tsx src/App.atlasP1cRoute.test.ts src/components/AdminRoute.owner.test.tsx
+      - name: Production Vite build
+        run: npx vite build --outDir dist-atlas-cs-ci --emptyOutDir
+      - name: Production bundle carries no development twin route
+        run: |
+          if grep -rl 'path:"/lol/dev/atlas-cross-section"' dist-atlas-cs-ci/assets; then
+            echo "The DEV-only cross-section route leaked into the production bundle" >&2
+            exit 1
+          fi
+          echo "No /lol/dev/atlas-cross-section route in the production bundle"

@@ -41,6 +41,9 @@ describe("ATL-P1-C route map", () => {
 
   it("declares no public Atlas route", () => {
     const paths = appCode.match(/path="[^"]*atlas[^"]*"/g) ?? [];
-    expect([...paths].sort()).toEqual(['path="/lol/dev/atlas-p1c"', 'path="atlas-p1c"', 'path="content-atlas"'].sort());
+    // ATL-CS-UX-001 added its own owner-only pair; still no public Atlas route.
+    expect([...paths].sort()).toEqual(
+      ['path="/lol/dev/atlas-p1c"', 'path="atlas-p1c"', 'path="/lol/dev/atlas-cross-section"', 'path="atlas-cross-section"', 'path="content-atlas"'].sort(),
+    );
   });
 });
