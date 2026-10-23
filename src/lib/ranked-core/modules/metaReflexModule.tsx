@@ -419,10 +419,16 @@ function BlockPhase({ state, cards, actions, skewMs, errorLine }: {
         row={lastSettled && finalCard
           ? <SettledCard card={finalCard} reveal={lastSettled} /> : null}
         status={errorLine ?? (
-          <p className={STATUS_CLASS} role="status">
+          <p className={STATUS_CLASS} role="status" data-testid="mr-final-verdict">
+            {lastSettled
+              ? <span className={lastSettled.outcome === "correct" ? "font-bold text-emerald-400" : lastSettled.outcome === "incorrect" ? "font-bold text-red-400" : "font-bold text-amber-400"}>
+                  {lastSettled.outcome === "correct" ? "CORRECT" : lastSettled.outcome === "incorrect" ? "INCORRECT" : "TIMED OUT"}
+                </span>
+              : null}
+            {lastSettled ? " · " : ""}
             {state.opponentFinished
-              ? "Both players are done — scoring the block…"
-              : `Waiting for the opponent (${state.opponentChallengesCompleted} of ${state.challengeCount} done)…`}
+              ? "Scoring the block…"
+              : `Waiting for opponent (${state.opponentChallengesCompleted}/${state.challengeCount})…`}
           </p>
         )} />
     );
