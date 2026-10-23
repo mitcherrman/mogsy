@@ -9,7 +9,7 @@ balance analysis, for example with ChatGPT.
 |---|---|---|
 | branch | `daily-v2/composition-lab` | `daily-v2/composition-lab` |
 | base | master `cafe953a` | main `705bfb18` (merged in `18941c7e`) |
-| PR | §6 | §6 |
+| PR | [League_Combat_Simulator#94](https://github.com/mitcherrman/League_Combat_Simulator/pull/94) | [mogsy#132](https://github.com/mitcherrman/mogsy/pull/132) |
 
 Not merged and not deployed. Shipping it is a separate release decision.
 
@@ -162,7 +162,10 @@ objects are JSON inside the cell.
 
 ## 6. PRs
 
-Filled in by the commit that opens them.
+* Backend: [League_Combat_Simulator#94](https://github.com/mitcherrman/League_Combat_Simulator/pull/94) → `master`. Code `954c341e`, handoff pointer `0bdbb127`.
+* Frontend: [mogsy#132](https://github.com/mitcherrman/mogsy/pull/132) → `main`. Code `a3068792`, merged with main in `18941c7e`, handoff `7df41950` and this commit.
+* Merge order: backend first. Until it is live, the panel shows the server's
+  404 as an error, and Classic and V2 takes are unaffected.
 
 ## 7. Verification results
 
