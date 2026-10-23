@@ -18,10 +18,10 @@ import { ArrowLeftRight, Compass, FlaskConical, Grid2x2, Layers, ListChecks, Sca
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { APP_REDUCE_MOTION_CLASS, useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import { createFixtureAdapter, pairSupported } from "@/lib/atlas-cross-section/fixtureAdapter";
+import { createFixtureAdapter } from "@/lib/atlas-cross-section/fixtureAdapter";
 import { DEMO_DATA_LABEL, FEATURED_INVESTIGATION, findSubject } from "@/lib/atlas-cross-section/fixtures";
 import { INITIAL_STATE, availableViews, reduceCrossSection, relationshipLabel, relationshipOf, type CrossSectionAction, type CrossSectionState } from "@/lib/atlas-cross-section/query";
-import type { AbilitySlot, CenterView, Collection, CrossSectionAdapter, CrossSectionResponse, Persona, SessionContext, SubjectRef, Topic } from "@/lib/atlas-cross-section/types";
+import { COLLECTIONS, DEFAULT_TOPIC_CATALOG, MAX_ABILITY_RANK, relationUnsupported, type AbilityRank, type AbilitySlot, type CenterView, type Collection, type CrossSectionAdapter, type CrossSectionResponse, type Persona, type SessionContext, type SubjectRef, type TopicId } from "@/lib/atlas-cross-section/types";
 import { SubjectIcon } from "./icons";
 import { SubjectRail } from "./SubjectRail";
 import { AbilitiesView, CompareView, OverviewView, QuestionsView } from "./Views";
@@ -53,18 +53,20 @@ function stateFromParams(params: URLSearchParams): CrossSectionState {
   const a = parseSubject(params.get("a"));
   const b = parseSubject(params.get("b"));
   const b1 = params.get("b1");
-  const topics = params.getAll("topic").filter((t): t is Topic => ["mana", "cooldown", "damage", "movement", "defenses", "cost", "vision", "range", "scaling"].includes(t));
+  const topics = params.getAll("topic").filter((t): t is TopicId => DEFAULT_TOPIC_CATALOG.some((c) => c.id === t));
   const slotRaw = params.get("slot");
   const slot = slotRaw && ["P", "Q", "W", "E", "R"].includes(slotRaw) ? (slotRaw as AbilitySlot) : null;
   const level = params.get("level") ? Number(params.get("level")) : null;
-  const rank = params.get("rank") ? Number(params.get("rank")) : null;
+  const rankRaw = params.get("rank");
+  const rankNumber = rankRaw && rankRaw !== "max" ? Number(rankRaw) : null;
+  const rank: AbilityRank | null = rankRaw === "max" ? "max" : rankNumber !== null && Number.isInteger(rankNumber) && rankNumber >= 1 && rankNumber <= MAX_ABILITY_RANK ? rankNumber : null;
   const collectionRaw = params.get("collection");
-  const collection = collectionRaw && ["catalog", "discovered", "premium_review", "admin_inventory", "premium_exclusive"].includes(collectionRaw) ? (collectionRaw as Collection) : "catalog";
+  const collection = collectionRaw && (COLLECTIONS as readonly string[]).includes(collectionRaw) ? (collectionRaw as Collection) : "catalog";
   const viewRaw = params.get("view");
   const view = viewRaw && ["overview", "abilities", "questions", "compare"].includes(viewRaw) ? (viewRaw as CenterView) : undefined;
   return reduceCrossSection(INITIAL_STATE, {
     type: "load",
-    state: { a, b, b1ItemId: b?.kind === "champion" && b1 && findSubject({ kind: "item", id: b1 }) ? b1 : null, topics, abilitySlot: slot, championLevel: Number.isFinite(level) ? level : null, abilityRank: Number.isFinite(rank) ? rank : null, collection, view },
+    state: { a, b, b1ItemId: b?.kind === "champion" && b1 && findSubject({ kind: "item", id: b1 }) ? b1 : null, topics, abilitySlot: slot, championLevel: Number.isFinite(level) ? level : null, abilityRank: rank, collection, view },
   });
 }
 
@@ -98,6 +100,7 @@ export default function AtlasCrossSectionPage({ adapter: adapterProp }: AtlasCro
   const [premiumLookup, setPremiumLookup] = useState<SessionContext["premiumLookup"]>("ok");
   const [response, setResponse] = useState<CrossSectionResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [requestFailed, setRequestFailed] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const requestSeq = useRef(0);
   const forceReduce = params.get("motion") === "reduce";
@@ -174,11 +177,21 @@ export default function AtlasCrossSectionPage({ adapter: adapterProp }: AtlasCro
     }
     const seq = ++requestSeq.current;
     setLoading(true);
-    adapter.search(state.query, { persona, premiumLookup }).then((res) => {
-      if (seq !== requestSeq.current) return;
-      setResponse(res);
-      setLoading(false);
-    });
+    setRequestFailed(false);
+    adapter.search(state.query, { persona, premiumLookup }).then(
+      (res) => {
+        if (seq !== requestSeq.current) return;
+        setResponse(res);
+        setLoading(false);
+      },
+      () => {
+        // A rejected or invalid answer is "unavailable", never an empty result.
+        if (seq !== requestSeq.current) return;
+        setResponse(null);
+        setRequestFailed(true);
+        setLoading(false);
+      },
+    );
   }, [adapter, state.query, persona, premiumLookup, rel.kind]);
 
   const loadFeatured = () => {
@@ -189,7 +202,7 @@ export default function AtlasCrossSectionPage({ adapter: adapterProp }: AtlasCro
   const a = findSubject(state.query.a);
   const b = findSubject(state.query.b);
   const b1 = state.query.b1ItemId ? findSubject({ kind: "item", id: state.query.b1ItemId }) : null;
-  const unsupportedPair = rel.kind === "pair" && !pairSupported(rel.a, rel.b);
+  const unsupportedPair = rel.kind === "pair" && relationUnsupported(response);
   const viewProps = { state, dispatch, response, loading, persona, compact };
 
   return (
@@ -275,6 +288,7 @@ export default function AtlasCrossSectionPage({ adapter: adapterProp }: AtlasCro
                       {b1 ? <span className="acs-chip">{b?.name} + {b1.name}</span> : null}
                       {unsupportedPair ? <span className="acs-chip acs-chip--rose">no certified relation</span> : null}
                       {loading ? <span className="acs-chip acs-chip--quiet" role="status">loading…</span> : null}
+                      {requestFailed ? <span className="acs-chip acs-chip--rose" role="alert">Question index unavailable</span> : null}
                     </div>
                   </header>
 

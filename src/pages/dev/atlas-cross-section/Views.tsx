@@ -7,11 +7,11 @@
  * Compare: side-by-side on shared units only; champion × item is an
  * equipment association, never a combat prediction.
  */
-import { ChevronRight, Lock, LockOpen, Minus, Plus, RotateCcw, ShieldAlert } from "lucide-react";
+import { ChevronRight, LockOpen, Minus, Plus, RotateCcw, ShieldAlert } from "lucide-react";
 import { useMemo } from "react";
-import { CHAMPIONS, DEMO_DATA_LABEL, FAMILIES, findSubject, statAtLevel, type ChampionAbility, type ChampionSubject, type ItemSubject, type Subject } from "@/lib/atlas-cross-section/fixtures";
+import { CHAMPIONS, DEMO_DATA_LABEL, findSubject, statAtLevel, type ChampionAbility, type ChampionSubject, type ItemSubject, type Subject } from "@/lib/atlas-cross-section/fixtures";
 import { appliedFilters, clampRank, relationshipOf, type CrossSectionAction, type CrossSectionState } from "@/lib/atlas-cross-section/query";
-import { ABILITY_SLOTS, COLLECTION_LABELS, TOPICS, type AbilitySlot, type Collection, type CrossSectionResponse, type Persona, type QuestionResult, type SubjectRef } from "@/lib/atlas-cross-section/types";
+import { ABILITY_SLOTS, COLLECTION_LABELS, MAX_ABILITY_RANK, relationUnsupported, topicLabel, type Collection, type CrossSectionResponse, type Persona, type QuestionResult, type SubjectRef } from "@/lib/atlas-cross-section/types";
 import { AbilityIcon, SubjectIcon } from "./icons";
 
 export interface ViewProps {
@@ -24,6 +24,15 @@ export interface ViewProps {
 }
 
 const DEMO_SEAL = <span className="acs-seal">{DEMO_DATA_LABEL}</span>;
+
+/** "Max" is the server's symbolic top rank. It is a toggle, never a number. */
+function MaxRankToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="acs-btn acs-btn--sm" aria-pressed={active} onClick={onToggle} title="The symbolic maximum rank. The index states no numeric bound for it.">
+      Max rank
+    </button>
+  );
+}
 
 function Stepper({ label, value, min, max, onChange, onClear, placeholder }: { label: string; value: number | null; min: number; max: number; onChange: (v: number) => void; onClear: () => void; placeholder: string }) {
   const current = value ?? min;
@@ -132,8 +141,8 @@ export function OverviewView({ state, response, persona, dispatch }: ViewProps) 
             <li>
               <strong>{COLLECTION_LABELS.catalog}</strong>
               <span>
-                {response.access.state === "allowed" && state.query.collection === "catalog" ? `${response.counts.visible_matching} indexed` : "see Questions"} · coverage {response.coverage.state}
-                {response.coverage.families_total ? ` (${response.coverage.families_certified}/${response.coverage.families_total} families certified)` : ""}
+                {response.access.state === "allowed" && state.query.collection === "catalog" && response.counts.visible_matching !== null ? `${response.counts.visible_matching} indexed` : "see Questions"}
+                {response.coverage ? ` · coverage ${response.coverage.state}${response.coverage.index_revision ? ` · index ${response.coverage.index_revision}` : ""}` : ""}
               </span>
             </li>
             <li>
@@ -166,7 +175,9 @@ export function OverviewView({ state, response, persona, dispatch }: ViewProps) 
 /* Abilities & stats                                                         */
 /* ------------------------------------------------------------------------- */
 
-function AbilitySheet({ champion, ability, rank }: { champion: ChampionSubject; ability: ChampionAbility; rank: number | null }) {
+function AbilitySheet({ champion, ability, rank }: { champion: ChampionSubject; ability: ChampionAbility; rank: number | "max" | null }) {
+  const lastRank = ability.cooldown?.length ?? 0;
+  const current = rank === "max" ? lastRank : rank;
   const rows: { label: string; values: number[] | null; unit: string }[] = [
     { label: "Cooldown", values: ability.cooldown, unit: "s" },
     { label: "Cost", values: ability.cost, unit: champion.resource },
@@ -191,7 +202,7 @@ function AbilitySheet({ champion, ability, rank }: { champion: ChampionSubject; 
             <tr>
               <th scope="col">Rank</th>
               {ability.cooldown.map((_, i) => (
-                <th key={i} scope="col" aria-current={rank === i + 1 ? "true" : undefined}>{i + 1}</th>
+                <th key={i} scope="col" aria-current={current === i + 1 ? "true" : undefined}>{i + 1}</th>
               ))}
             </tr>
           </thead>
@@ -200,7 +211,7 @@ function AbilitySheet({ champion, ability, rank }: { champion: ChampionSubject; 
               <tr key={r.label}>
                 <th scope="row">{r.label}{r.unit ? <span className="acs-unit"> {r.unit}</span> : null}</th>
                 {r.values!.map((v, i) => (
-                  <td key={i} data-current={rank === i + 1}>{v}</td>
+                  <td key={i} data-current={current === i + 1}>{v}</td>
                 ))}
               </tr>
             ))}
@@ -235,7 +246,8 @@ export function AbilitiesView({ state, dispatch }: ViewProps) {
             );
           })}
         </div>
-        <Stepper label="Ability rank" value={rank} min={1} max={slot === "R" ? 3 : 5} onChange={(v) => dispatch({ type: "setRank", rank: clampRank(v, slot) })} onClear={() => dispatch({ type: "setRank", rank: null })} placeholder={slot === "R" ? "1–3" : "1–5"} />
+        <Stepper label="Ability rank" value={typeof rank === "number" ? rank : null} min={1} max={MAX_ABILITY_RANK} onChange={(v) => dispatch({ type: "setRank", rank: clampRank(v, slot) })} onClear={() => dispatch({ type: "setRank", rank: null })} placeholder={rank === "max" ? "max" : `1–${MAX_ABILITY_RANK}`} />
+        <MaxRankToggle active={rank === "max"} onToggle={() => dispatch({ type: "setRank", rank: rank === "max" ? null : "max" })} />
         {DEMO_SEAL}
       </div>
       <div className="acs-columns" data-count={subjects.length}>
@@ -281,18 +293,28 @@ export function AbilitiesView({ state, dispatch }: ViewProps) {
 /* Questions                                                                 */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * The four applicability states are kept apart: a question that does not state
+ * a rank is not the same as one where rank cannot apply, and `max` is shown as
+ * "max rank", never as a number.
+ */
 function applicabilityText(r: QuestionResult): string {
-  const parts: string[] = [];
   const l = r.applicability.champion_level;
   const k = r.applicability.ability_rank;
-  if (l.kind === "specific") parts.push(`level ${l.value}`);
-  if (l.kind === "interval") parts.push(`levels ${l.min}–${l.max}`);
-  if (k.kind === "specific") parts.push(`rank ${k.value}`);
-  if (k.kind === "interval") parts.push(`ranks ${k.min}–${k.max}`);
-  return parts.length ? parts.join(" · ") : "any level or rank";
+  const parts: string[] = [];
+  if (l.state === "specific") parts.push(`level ${l.value}`);
+  if (k.state === "specific") parts.push(`rank ${k.value}`);
+  if (k.state === "interval") parts.push("max rank");
+  if (parts.length) return parts.join(" · ");
+  const unstated = [l, k].some((x) => x.state === "not_stated");
+  return unstated ? "level / rank not stated" : "no level or rank";
 }
 
-function ResultRow({ r, champion }: { r: QuestionResult; champion: string | null }) {
+function sourceStatusLabel(status: QuestionResult["source_status"]): string {
+  return status === "inactive" ? "inactive in the bank" : status === "withheld" ? "withheld" : status === "unavailable" ? "source unavailable" : status;
+}
+
+function ResultRow({ r, champion, response }: { r: QuestionResult; champion: string | null; response: CrossSectionResponse }) {
   return (
     <li className="acs-result" data-status={r.source_status}>
       <div className="acs-result__lead">
@@ -305,27 +327,38 @@ function ResultRow({ r, champion }: { r: QuestionResult; champion: string | null
       <div className="acs-result__body">
         <p className="acs-result__prompt">{r.prompt}</p>
         <div className="acs-result__meta">
-          <span className="acs-chip">{r.family_label}</span>
+          <span className="acs-chip">{r.family.label}</span>
           {r.topics.map((t) => (
-            <span key={t} className="acs-chip acs-chip--topic">{t}</span>
+            <span key={t} className="acs-chip acs-chip--topic">{topicLabel(t, response)}</span>
           ))}
           <span className="acs-chip acs-chip--quiet">{applicabilityText(r)}</span>
-          {r.source_status !== "current" ? <span className="acs-chip acs-chip--warn">{r.source_status}</span> : null}
-          {r.review ? <span className="acs-chip acs-chip--rose">missed · {r.review.attempted_at.slice(0, 10)}</span> : null}
-          {r.inventory ? <span className="acs-chip acs-chip--quiet">{r.inventory.serve_state} · {r.inventory.answer_role_edges} answer-role edge{r.inventory.answer_role_edges === 1 ? "" : "s"}</span> : null}
+          {r.source_status !== "current" ? <span className="acs-chip acs-chip--warn">{sourceStatusLabel(r.source_status)}</span> : null}
+          {r.review ? <span className="acs-chip acs-chip--rose">missed ×{r.review.missed_attempts}{r.review.last_missed_at ? ` · last ${r.review.last_missed_at.slice(0, 10)}` : ""}</span> : null}
+          {r.admin ? <span className="acs-chip acs-chip--quiet">{r.admin.index_state} · catalog {r.admin.catalog_exposure ? "listed" : "withheld"}</span> : null}
         </div>
       </div>
-      <div className="acs-result__state" aria-label={r.discovery.state === "unlocked" ? "Unlocked" : r.discovery.state === "locked" ? "Not yet unlocked" : "Discovery not applicable"} title={r.discovery.state === "unlocked" ? "Unlocked by this account" : r.discovery.state === "locked" ? "Not yet unlocked; the answer is not shown" : "Sign in to track discoveries"}>
-        {r.discovery.state === "unlocked" ? <LockOpen size={15} aria-hidden="true" /> : <Lock size={15} aria-hidden="true" />}
+      {/* `discovery: null` means "not reported in this collection", never "locked". */}
+      <div className="acs-result__state" aria-label={r.discovery ? "Unlocked" : "Discovery not reported here"} title={r.discovery ? `Unlocked by this account · answered ${r.discovery.times_answered}×, correct ${r.discovery.times_correct}×` : "Discovery is only reported in My unlocked"}>
+        {r.discovery ? <LockOpen size={15} aria-hidden="true" /> : <Minus size={15} aria-hidden="true" />}
       </div>
     </li>
   );
 }
 
+function outsideIndexNote(response: CrossSectionResponse): string | null {
+  const { counts } = response;
+  const sum = (m?: Record<string, number>) => (m ? Object.values(m).reduce((a, b) => a + b, 0) : 0);
+  const unlocked = sum(counts.discoveries_outside_index);
+  const missed = sum(counts.missed_attempts_outside_index);
+  if (unlocked > 0) return `${unlocked} of your unlocked question${unlocked === 1 ? " is" : "s are"} outside the indexed corpus and not listed here.`;
+  if (missed > 0) return `${missed} missed attempt${missed === 1 ? " is" : "s are"} outside the indexed corpus and not listed here.`;
+  return null;
+}
+
 function StatePanel({ response, loading }: { response: CrossSectionResponse | null; loading: boolean }) {
-  if (loading && !response) return <div className="acs-state acs-state--loading" role="status">Searching the demo index…</div>;
+  if (loading && !response) return <div className="acs-state acs-state--loading" role="status">Searching the index…</div>;
   if (!response) return null;
-  const { access, coverage, relation } = response;
+  const { access, coverage, error } = response;
   if (access.state !== "allowed") {
     const tone = access.state === "unavailable_entitlement" ? "warn" : access.state === "not_configured" ? "quiet" : "blocked";
     return (
@@ -333,34 +366,51 @@ function StatePanel({ response, loading }: { response: CrossSectionResponse | nu
         <ShieldAlert size={16} aria-hidden="true" />
         <div>
           <strong>
-            {access.state === "requires_account" ? "Sign in required" : access.state === "denied" ? "Not available to this account" : access.state === "unavailable_entitlement" ? "Entitlement check unavailable" : "Reserved collection"}
+            {access.state === "requires_account" ? "Sign in required" : access.state === "denied" ? "Not available to this account" : access.state === "unavailable_entitlement" ? "Entitlement check unavailable" : "Not configured"}
           </strong>
-          <p>{access.message}</p>
+          <p>{access.message}{access.retryable ? " You can retry." : ""}</p>
         </div>
       </div>
     );
   }
-  if (relation === "unsupported") {
+  // A failed request is not an empty result.
+  if (error) {
     return (
-      <div className="acs-state acs-state--blocked" role="status">
+      <div className="acs-state acs-state--warn" role="status">
         <ShieldAlert size={16} aria-hidden="true" />
         <div>
-          <strong>No certified relation</strong>
-          <p>The index holds no premise-safe question that names both subjects. Nothing was inferred from key substrings or text matching.</p>
+          <strong>{error.http_status >= 500 ? "Question index unavailable" : "Search request rejected"}</strong>
+          <p>{error.http_status >= 500 ? "The question index could not be read. Nothing was counted; try again shortly." : "The server rejected this combination of filters. Nothing was counted."}</p>
         </div>
       </div>
     );
   }
+  if (coverage?.state === "unavailable") {
+    return (
+      <div className="acs-state acs-state--warn" role="status">
+        <ShieldAlert size={16} aria-hidden="true" />
+        <div>
+          <strong>Question index unavailable</strong>
+          <p>The index is not built or cannot be read, so there is no count to show. This is not zero.</p>
+        </div>
+      </div>
+    );
+  }
+  const outside = outsideIndexNote(response);
+  const matches = response.counts.visible_matching;
+  const unit = response.counts.unit === "prompt_stem" ? "distinct prompt" : "question";
   return (
-    <div className={`acs-state acs-state--${coverage.state === "full" ? "ok" : "warn"}`} role="status">
+    <div className="acs-state acs-state--warn" role="status">
       <div>
         <strong>
-          {response.counts.visible_matching} match{response.counts.visible_matching === 1 ? "" : "es"} · coverage {coverage.state}
-          {coverage.families_total ? ` · ${coverage.families_certified} of ${coverage.families_total} families certified` : ""}
+          {relationUnsupported(response) ? "No certified relation" : `${matches ?? "—"} ${unit}${matches === 1 ? "" : "s"}`} · coverage {coverage?.state ?? "unknown"} · not every Mogzy question
         </strong>
         <p>
-          {coverage.state === "partial" ? "Uncertified families are excluded, so this is not the whole bank. " : ""}
-          {access.message} Counts are exact over the visible, authorized set ({DEMO_DATA_LABEL}).
+          {relationUnsupported(response) ? `${response.relationship?.reason ? "No certified question family relates these subjects here. " : ""}Nothing was inferred from key substrings or text matching. ` : ""}
+          {access.message} {coverage?.corpus_label ? `${coverage.corpus_label} ` : ""}
+          {coverage && coverage.not_indexed_sources.length ? `Not indexed: ${coverage.not_indexed_sources.map((x) => x.replace(/_/g, " ")).join(", ")}. ` : ""}
+          {outside ? `${outside} ` : ""}
+          Counts are exact over the indexed corpus{coverage?.index_revision ? ` (index ${coverage.index_revision})` : ""}{response.demo ? ` (${DEMO_DATA_LABEL})` : ""}.
         </p>
       </div>
     </div>
@@ -371,8 +421,10 @@ export function QuestionsView({ state, dispatch, response, loading, persona }: V
   const q = state.query;
   const collections: Collection[] = ["catalog", "discovered", "premium_review", ...(persona === "owner" ? (["admin_inventory"] as Collection[]) : [])];
   const champion = findSubject(q.a)?.kind === "champion" ? q.a!.id : findSubject(q.b)?.kind === "champion" ? q.b!.id : null;
-  const facetCount = (id: string) => response?.facets.topics.find((t) => t.id === id)?.count ?? null;
-  const b1 = q.b1ItemId ? findSubject({ kind: "item", id: q.b1ItemId }) : null;
+  // Topic chips are the topics the response reports (id + label from its facets);
+  // a selected topic with no matches stays listed with its zero.
+  const topicChips = response?.access.state === "allowed" && !response.error ? response.facets.topics : [];
+  const unsupported = relationUnsupported(response);
   return (
     <div className="acs-view acs-view--questions">
       <div className="acs-collections" role="radiogroup" aria-label="Question collection">
@@ -388,16 +440,17 @@ export function QuestionsView({ state, dispatch, response, loading, persona }: V
 
       <div className="acs-facets" aria-label="Filters">
         <div className="acs-topics" role="group" aria-label="Topics (any of)">
-          {TOPICS.map((t) => {
-            const n = facetCount(t.id);
+          {topicChips.map((t) => {
+            const label = t.label ?? topicLabel(t.id, response);
             const on = q.topics.includes(t.id);
             return (
-              <button key={t.id} type="button" aria-pressed={on} className="acs-topic" onClick={() => dispatch({ type: "toggleTopic", topic: t.id })} disabled={!on && n === 0} title={!on && n === 0 ? `No ${t.label.toLowerCase()} questions in this set` : undefined}>
-                {t.label}
-                {n !== null ? <span className="acs-topic__n">{n}</span> : null}
+              <button key={t.id} type="button" aria-pressed={on} className="acs-topic" onClick={() => dispatch({ type: "toggleTopic", topic: t.id })} disabled={!on && t.count === 0} title={!on && t.count === 0 ? `No ${label.toLowerCase()} questions in this set` : undefined}>
+                {label}
+                <span className="acs-topic__n">{t.count}</span>
               </button>
             );
           })}
+          {response && !topicChips.length && !q.topics.length ? <span className="acs-why">No certified topics in this set.</span> : null}
           {q.topics.length ? (
             <button type="button" className="acs-btn acs-btn--ghost acs-btn--sm" onClick={() => dispatch({ type: "clearTopics" })}>
               Clear topics
@@ -407,7 +460,7 @@ export function QuestionsView({ state, dispatch, response, loading, persona }: V
         <div className="acs-facets__row">
           <div className="acs-slots" role="radiogroup" aria-label="Ability slot">
             {ABILITY_SLOTS.map((s) => {
-              const n = response?.facets.ability_slots.find((x) => x.id === s)?.count ?? null;
+              const n = response?.facets.ability_slot.find((x) => x.id === s)?.count ?? null;
               const name = champion ? CHAMPIONS.find((c) => c.id === champion)?.abilities.find((ab) => ab.slot === s)?.name ?? s : s;
               return (
                 <button key={s} type="button" role="radio" aria-checked={q.abilitySlot === s} aria-label={`Slot ${s}: ${name}${n !== null ? `, ${n} question${n === 1 ? "" : "s"}` : ""}`} data-tip={`${s} · ${name}${n !== null ? ` · ${n}` : ""}`} className="acs-slot" onClick={() => dispatch({ type: "setSlot", slot: q.abilitySlot === s ? null : s })}>
@@ -417,7 +470,8 @@ export function QuestionsView({ state, dispatch, response, loading, persona }: V
             })}
           </div>
           <Stepper label="Champion level" value={q.championLevel} min={1} max={18} onChange={(v) => dispatch({ type: "setLevel", level: v })} onClear={() => dispatch({ type: "setLevel", level: null })} placeholder="any" />
-          <Stepper label="Ability rank" value={q.abilityRank} min={1} max={q.abilitySlot === "R" ? 3 : 5} onChange={(v) => dispatch({ type: "setRank", rank: v })} onClear={() => dispatch({ type: "setRank", rank: null })} placeholder="any" />
+          <Stepper label="Ability rank" value={typeof q.abilityRank === "number" ? q.abilityRank : null} min={1} max={MAX_ABILITY_RANK} onChange={(v) => dispatch({ type: "setRank", rank: v })} onClear={() => dispatch({ type: "setRank", rank: null })} placeholder={q.abilityRank === "max" ? "max" : "any"} />
+          <MaxRankToggle active={q.abilityRank === "max"} onToggle={() => dispatch({ type: "setRank", rank: q.abilityRank === "max" ? null : "max" })} />
           <span className="acs-chip">patch · current</span>
         </div>
         <p className="acs-applied" aria-live="polite">
@@ -427,14 +481,14 @@ export function QuestionsView({ state, dispatch, response, loading, persona }: V
 
       <StatePanel response={response} loading={loading} />
 
-      {response && response.access.state === "allowed" && response.relation !== "unsupported" ? (
+      {response && response.access.state === "allowed" && !response.error && response.coverage?.state === "partial" ? (
         <>
-          {response.results.length === 0 ? (
-            <p className="acs-empty">No matches in {COLLECTION_LABELS[q.collection]} with these filters. Zero is a real count here, not missing coverage.</p>
+          {unsupported ? null : response.results.length === 0 ? (
+            <p className="acs-empty">No matches in {COLLECTION_LABELS[q.collection]} with these filters. This is an exact count over the indexed corpus, not missing coverage.</p>
           ) : (
             <ol className="acs-results" aria-label="Matching questions" data-loading={loading}>
               {response.results.map((r) => (
-                <ResultRow key={r.handle} r={r} champion={champion} />
+                <ResultRow key={r.handle} r={r} champion={champion} response={response} />
               ))}
             </ol>
           )}
@@ -443,21 +497,23 @@ export function QuestionsView({ state, dispatch, response, loading, persona }: V
               Showing {response.results.length} of {response.counts.visible_matching}. Paging is part of the contract; the prototype shows the first page.
             </p>
           ) : null}
-          {b1 ? (
-            <section className="acs-related" aria-label={`Related: questions about ${b1.name}`}>
+          {response.related ? (
+            <section className="acs-related" aria-label={`Related: questions about ${response.related.subject.label}`}>
               <header className="acs-panel__head">
-                <h3>Related · about {b1.name} (B.1)</h3>
+                <h3>Related · about {response.related.subject.label} (B.1)</h3>
                 <span className="acs-chip acs-chip--quiet">not part of the A × B intersection</span>
               </header>
-              {response.related_results.length ? (
+              <p className="acs-why">{response.related.label}. {response.related.count} in total.</p>
+              {response.related.results.length ? (
                 <ol className="acs-results">
-                  {response.related_results.map((r) => (
-                    <ResultRow key={r.handle} r={r} champion={null} />
+                  {response.related.results.map((r) => (
+                    <ResultRow key={r.handle} r={r} champion={null} response={response} />
                   ))}
                 </ol>
               ) : (
-                <p className="acs-empty">No {COLLECTION_LABELS[q.collection].toLowerCase()} questions about {b1.name} with these filters.</p>
+                <p className="acs-empty">No {COLLECTION_LABELS[q.collection].toLowerCase()} questions about {response.related.subject.label}.</p>
               )}
+              {response.related.has_more ? <p className="acs-why">Showing {response.related.results.length} of {response.related.count}.</p> : null}
             </section>
           ) : null}
         </>
@@ -518,15 +574,17 @@ export function CompareView({ state, response }: ViewProps) {
             <tbody>
               {rows.map((r) => {
                 if (!r.va || !r.vb) return <tr key={r.label}><th scope="row">{r.label}</th><td colSpan={3} className="acs-why">not comparable: one side has no rank values</td></tr>;
-                const idx = rank ? Math.min(rank, r.va.length, r.vb.length) - 1 : null;
-                const va = idx === null ? r.va.join(" / ") : r.va[idx];
-                const vb = idx === null ? r.vb.join(" / ") : r.vb[idx];
+                // `max` is each ability's own last rank on the demo sheet; no shared number is invented.
+                const ia = rank === "max" ? r.va.length - 1 : rank ? Math.min(rank, r.va.length) - 1 : null;
+                const ib = rank === "max" ? r.vb.length - 1 : rank ? Math.min(rank, r.vb.length) - 1 : null;
+                const va = ia === null ? r.va.join(" / ") : r.va[ia];
+                const vb = ib === null ? r.vb.join(" / ") : r.vb[ib];
                 return (
                   <tr key={r.label}>
                     <th scope="row">{r.label}</th>
                     <td>{va}</td>
                     <td>{vb}</td>
-                    <td className="acs-delta" data-sign={idx === null ? 0 : Math.sign(r.vb[idx] - r.va[idx])}>{idx === null ? "pick a rank" : delta(r.va[idx], r.vb[idx])}</td>
+                    <td className="acs-delta" data-sign={ia === null || ib === null ? 0 : Math.sign(r.vb[ib] - r.va[ia])}>{ia === null || ib === null ? "pick a rank" : delta(r.va[ia], r.vb[ib])}</td>
                   </tr>
                 );
               })}
@@ -600,14 +658,16 @@ export function CompareView({ state, response }: ViewProps) {
   }, [rel, slot, level, rank]);
 
   if (rel.kind !== "pair") return null;
-  const families = FAMILIES.filter((f) => f.certified).map((f) => f.label);
+  const supporting = response?.relationship?.state === "supported" ? response.relationship.supporting_families : [];
   return (
     <div className="acs-view acs-view--compare">
       <div className="acs-compare__meta">
         {DEMO_SEAL}
         <span className="acs-chip">{rel.shape.replace(/_/g, " ")}</span>
-        {response ? <span className="acs-chip acs-chip--quiet">{response.relation === "unsupported" ? "no certified question relation" : `${response.counts.visible_matching} intersection question${response.counts.visible_matching === 1 ? "" : "s"}`}</span> : null}
-        <span className="acs-chip acs-chip--quiet">certified families: {families.join(", ")}</span>
+        {response && response.access.state === "allowed" && !response.error ? (
+          <span className="acs-chip acs-chip--quiet">{relationUnsupported(response) ? "no certified question relation" : response.counts.visible_matching === null ? "count unavailable" : `${response.counts.visible_matching} intersection question${response.counts.visible_matching === 1 ? "" : "s"}`}</span>
+        ) : null}
+        {supporting.length ? <span className="acs-chip acs-chip--quiet">relation certified by: {supporting.join(", ")}</span> : null}
       </div>
       {body}
     </div>
