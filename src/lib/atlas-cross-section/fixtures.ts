@@ -12,7 +12,16 @@
  * publicly, held/retired records, level- and rank-scoped applicability, a
  * demo account's discoveries and a demo Premium review history.
  */
-import type { AbilitySlot, Applicability, EdgeRole, SubjectRef, Topic } from "./types";
+import type { AbilitySlot, LevelApplicability, PublicEdgeRole, RankApplicability, SourceStatus, SubjectRef, TopicId } from "./types";
+
+/**
+ * Demo stat-sheet tags for the ability / item sheets and the Compare "touches"
+ * chips. These are NOT question topics: question topics come from the server
+ * taxonomy (`TopicId`) and `damage`, `range` and `scaling` are not among them.
+ */
+export type SheetTag = "mana" | "cooldown" | "damage" | "movement" | "defenses" | "cost" | "vision" | "range" | "scaling";
+
+export type EdgeRole = PublicEdgeRole | "answer_subject" | "unverified";
 
 export const DEMO_DATA_LABEL = "DEMO DATA";
 
@@ -42,7 +51,7 @@ export interface ChampionAbility {
   baseDamage: number[] | null;
   ratio: { stat: "AP" | "AD"; value: number } | null;
   range: number | null;
-  topics: Topic[];
+  topics: SheetTag[];
 }
 
 export interface ItemSubject {
@@ -52,7 +61,7 @@ export interface ItemSubject {
   tier: "legendary" | "mythic-era" | "basic";
   hue: number;
   /** DEMO stat lines. */
-  stats: { label: string; value: number; unit?: string; topic: Topic }[];
+  stats: { label: string; value: number; unit?: string; topic: SheetTag }[];
   passive: { name: string; summary: string } | null;
   cost: number;
   tags: ("ap" | "ad" | "crit" | "armor" | "pen")[];
@@ -182,6 +191,8 @@ export const FAMILIES: FamilyInfo[] = [
 export interface QuestionEdge {
   subject: SubjectRef;
   role: EdgeRole;
+  /** A `scenario_context` item edge names the champion that holds the item. */
+  attachedTo?: SubjectRef;
 }
 
 export interface DemoQuestion {
@@ -189,16 +200,16 @@ export interface DemoQuestion {
   prompt: string;
   family: FamilyId;
   edges: QuestionEdge[];
-  topics: Topic[];
+  topics: TopicId[];
   abilitySlot: AbilitySlot | null;
-  championLevel: Applicability;
-  abilityRank: Applicability;
+  championLevel: LevelApplicability;
+  abilityRank: RankApplicability;
   serveState: "serveable" | "hold" | "retired";
-  sourceStatus: "current" | "frozen" | "unavailable";
+  sourceStatus: SourceStatus;
   /** Demo account's Ranked discoveries. */
   discoveredByDemoUser: boolean;
-  /** Demo Premium reviewer's missed attempts. */
-  demoAttempt: { attempted_at: string; outcome: "missed" | "correct" } | null;
+  /** Demo Premium reviewer's distinct missed question (no answers). */
+  demoAttempt: { missed_attempts: number; last_missed_at: string } | null;
 }
 
 const ahri: SubjectRef = { kind: "champion", id: "Ahri" };
@@ -212,71 +223,84 @@ const voidstaff: SubjectRef = { kind: "item", id: "3135" };
 const ie: SubjectRef = { kind: "item", id: "3031" };
 const kraken: SubjectRef = { kind: "item", id: "6672" };
 
-const agnostic: Applicability = { kind: "agnostic" };
-const rank = (value: number): Applicability => ({ kind: "specific", value });
-const level = (min: number, max: number): Applicability => ({ kind: "interval", min, max });
+const rank = (value: number): RankApplicability => ({ state: "specific", value: String(value) });
+const maxRank: RankApplicability = { state: "interval", value: "max" };
+const level = (value: number): LevelApplicability => ({ state: "specific", value });
 
 let seq = 0;
-function q(partial: Omit<DemoQuestion, "handle" | "serveState" | "sourceStatus" | "discoveredByDemoUser" | "demoAttempt"> & Partial<Pick<DemoQuestion, "serveState" | "sourceStatus" | "discoveredByDemoUser" | "demoAttempt">>): DemoQuestion {
+type QuestionInput = Omit<DemoQuestion, "handle" | "serveState" | "sourceStatus" | "discoveredByDemoUser" | "demoAttempt" | "championLevel" | "abilityRank"> &
+  Partial<Pick<DemoQuestion, "serveState" | "sourceStatus" | "discoveredByDemoUser" | "demoAttempt" | "championLevel" | "abilityRank">>;
+
+/**
+ * Applicability defaults mirror the server: a rank is `not_stated` for an
+ * ability question that gives none and `not_applicable` when there is no
+ * ability; a level is `not_stated` for a champion question and
+ * `not_applicable` otherwise. Nothing is ever invented.
+ */
+function q(partial: QuestionInput): DemoQuestion {
   seq += 1;
+  const hasChampion = partial.edges.some((e) => e.subject.kind === "champion");
   return {
     handle: `demo-q-${String(seq).padStart(3, "0")}`,
     serveState: "serveable",
     sourceStatus: "current",
     discoveredByDemoUser: false,
     demoAttempt: null,
+    championLevel: { state: hasChampion ? "not_stated" : "not_applicable", value: null },
+    abilityRank: { state: partial.abilitySlot ? "not_stated" : "not_applicable", value: null },
     ...partial,
   };
 }
 
 export const QUESTIONS: DemoQuestion[] = [
   // Ahri — ability numbers
-  q({ prompt: "What is the mana cost of Ahri's Orb of Deception at rank 1?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["mana"], abilitySlot: "Q", championLevel: agnostic, abilityRank: rank(1), discoveredByDemoUser: true }),
-  q({ prompt: "By how much does Orb of Deception's mana cost rise per rank?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["mana", "scaling"], abilitySlot: "Q", championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "What is the cooldown of Ahri's Charm at rank 5?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "E", championLevel: agnostic, abilityRank: rank(5), discoveredByDemoUser: true, demoAttempt: { attempted_at: "2026-10-18T19:12:00Z", outcome: "missed" } }),
-  q({ prompt: "How much mana does Ahri's Fox-Fire cost?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["mana"], abilitySlot: "W", championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "What is the base cooldown of Spirit Rush at rank 2?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "R", championLevel: level(11, 18), abilityRank: rank(2), demoAttempt: { attempted_at: "2026-10-20T02:40:00Z", outcome: "missed" } }),
-  q({ prompt: "What is the cast range of Ahri's Charm?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["range"], abilitySlot: "E", championLevel: agnostic, abilityRank: agnostic, discoveredByDemoUser: true }),
-  q({ prompt: "What AP ratio does Orb of Deception carry on each pass?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["damage", "scaling"], abilitySlot: "Q", championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "How much mana does Ahri have at level 9?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["mana", "scaling"], abilitySlot: null, championLevel: { kind: "specific", value: 9 }, abilityRank: agnostic }),
-  q({ prompt: "Which Ahri ability grants movement speed on cast?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["movement"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, serveState: "hold" }),
+  q({ prompt: "What is the mana cost of Ahri's Orb of Deception at rank 1?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["ability_cost", "mana"], abilitySlot: "Q", abilityRank: rank(1), discoveredByDemoUser: true }),
+  q({ prompt: "By how much does Orb of Deception's mana cost rise per rank?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["ability_cost", "mana"], abilitySlot: "Q" }),
+  q({ prompt: "What is the cooldown of Ahri's Charm at rank 5?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "E", abilityRank: rank(5), discoveredByDemoUser: true, demoAttempt: { missed_attempts: 1, last_missed_at: "2026-10-18T19:12:00Z" } }),
+  q({ prompt: "How much mana does Ahri's Fox-Fire cost?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["ability_cost", "mana"], abilitySlot: "W" }),
+  q({ prompt: "What is the base cooldown of Spirit Rush at rank 2?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "R", abilityRank: rank(2), demoAttempt: { missed_attempts: 1, last_missed_at: "2026-10-20T02:40:00Z" } }),
+  q({ prompt: "What is the cast range of Ahri's Charm?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: [], abilitySlot: "E", discoveredByDemoUser: true }),
+  q({ prompt: "What AP ratio does Orb of Deception carry on each pass?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: [], abilitySlot: "Q" }),
+  q({ prompt: "How much mana does Ahri have at level 9?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["mana"], abilitySlot: null, championLevel: level(9) }),
+  q({ prompt: "Which Ahri ability grants movement speed on cast?", family: "ability-numbers", edges: [{ subject: ahri, role: "premise_subject" }], topics: ["movement"], abilitySlot: null, serveState: "hold" }),
   // Syndra — ability numbers
-  q({ prompt: "What is the mana cost of Syndra's Dark Sphere at rank 3?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["mana"], abilitySlot: "Q", championLevel: agnostic, abilityRank: rank(3), discoveredByDemoUser: true }),
-  q({ prompt: "What is the cooldown of Dark Sphere at max rank?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "Q", championLevel: agnostic, abilityRank: rank(5) }),
-  q({ prompt: "How far can Syndra's Force of Will throw a sphere?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["range"], abilitySlot: "W", championLevel: agnostic, abilityRank: agnostic, demoAttempt: { attempted_at: "2026-10-21T21:05:00Z", outcome: "missed" } }),
-  q({ prompt: "What is the cooldown of Scatter the Weak at rank 1?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "E", championLevel: agnostic, abilityRank: rank(1) }),
-  q({ prompt: "How much mana does Syndra gain per level?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["mana", "scaling"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic }),
+  q({ prompt: "What is the mana cost of Syndra's Dark Sphere at rank 3?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["ability_cost", "mana"], abilitySlot: "Q", abilityRank: rank(3), discoveredByDemoUser: true }),
+  q({ prompt: "What is the cooldown of Dark Sphere at max rank?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "Q", abilityRank: maxRank }),
+  q({ prompt: "How far can Syndra's Force of Will throw a sphere?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: [], abilitySlot: "W", demoAttempt: { missed_attempts: 1, last_missed_at: "2026-10-21T21:05:00Z" } }),
+  q({ prompt: "What is the cooldown of Scatter the Weak at rank 1?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["cooldown"], abilitySlot: "E", abilityRank: rank(1) }),
+  q({ prompt: "How much mana does Syndra gain per level?", family: "ability-numbers", edges: [{ subject: syndra, role: "premise_subject" }], topics: ["mana"], abilitySlot: null }),
   // Comparisons (both operands named in the prompt)
-  q({ prompt: "Which costs more mana at rank 1: Ahri's Orb of Deception or Syndra's Dark Sphere?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["mana"], abilitySlot: "Q", championLevel: agnostic, abilityRank: rank(1), discoveredByDemoUser: true }),
-  q({ prompt: "Which has the shorter cooldown at rank 5: Dark Sphere or Orb of Deception?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["cooldown"], abilitySlot: "Q", championLevel: agnostic, abilityRank: rank(5), demoAttempt: { attempted_at: "2026-10-19T04:22:00Z", outcome: "missed" } }),
-  q({ prompt: "Whose Q reaches further: Ahri's or Syndra's?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["range"], abilitySlot: "Q", championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "At level 6, who has more base mana: Ahri or Syndra?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["mana", "scaling"], abilitySlot: null, championLevel: { kind: "specific", value: 6 }, abilityRank: agnostic }),
-  q({ prompt: "Which ultimate has the longer base cooldown at rank 1: Spirit Rush or Final Spark?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: lux, role: "comparison_operand" }], topics: ["cooldown"], abilitySlot: "R", championLevel: agnostic, abilityRank: rank(1) }),
-  q({ prompt: "Which Q costs more mana at rank 1: Lux's Light Binding or Syndra's Dark Sphere?", family: "comparison", edges: [{ subject: lux, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["mana"], abilitySlot: "Q", championLevel: agnostic, abilityRank: rank(1) }),
-  q({ prompt: "Which item grants more ability power: Rabadon's Deathcap or Void Staff?", family: "comparison", edges: [{ subject: deathcap, role: "comparison_operand" }, { subject: voidstaff, role: "comparison_operand" }], topics: ["scaling"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, discoveredByDemoUser: true }),
-  q({ prompt: "Which costs more gold: Infinity Edge or Kraken Slayer?", family: "comparison", edges: [{ subject: ie, role: "comparison_operand" }, { subject: kraken, role: "comparison_operand" }], topics: ["cost"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic }),
+  q({ prompt: "Which costs more mana at rank 1: Ahri's Orb of Deception or Syndra's Dark Sphere?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["ability_cost", "mana"], abilitySlot: "Q", abilityRank: rank(1), discoveredByDemoUser: true }),
+  q({ prompt: "Which has the shorter cooldown at rank 5: Dark Sphere or Orb of Deception?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["cooldown"], abilitySlot: "Q", abilityRank: rank(5), demoAttempt: { missed_attempts: 1, last_missed_at: "2026-10-19T04:22:00Z" } }),
+  q({ prompt: "Whose Q reaches further: Ahri's or Syndra's?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: [], abilitySlot: "Q" }),
+  q({ prompt: "At level 6, who has more base mana: Ahri or Syndra?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["mana"], abilitySlot: null, championLevel: level(6) }),
+  q({ prompt: "Which ultimate has the longer base cooldown at rank 1: Spirit Rush or Final Spark?", family: "comparison", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: lux, role: "comparison_operand" }], topics: ["cooldown"], abilitySlot: "R", abilityRank: rank(1) }),
+  q({ prompt: "Which Q costs more mana at rank 1: Lux's Light Binding or Syndra's Dark Sphere?", family: "comparison", edges: [{ subject: lux, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }], topics: ["ability_cost", "mana"], abilitySlot: "Q", abilityRank: rank(1) }),
+  q({ prompt: "Which item grants more ability power: Rabadon's Deathcap or Void Staff?", family: "comparison", edges: [{ subject: deathcap, role: "comparison_operand" }, { subject: voidstaff, role: "comparison_operand" }], topics: ["ability_power"], abilitySlot: null, discoveredByDemoUser: true }),
+  q({ prompt: "Which costs more gold: Infinity Edge or Kraken Slayer?", family: "comparison", edges: [{ subject: ie, role: "comparison_operand" }, { subject: kraken, role: "comparison_operand" }], topics: ["gold"], abilitySlot: null }),
   // Scenarios (champion + item named in the prompt)
-  q({ prompt: "Syndra holds Zhonya's Hourglass. Which stat on the item lowers her Dark Sphere cooldown?", family: "scenario", edges: [{ subject: syndra, role: "premise_subject" }, { subject: zhonya, role: "scenario_context" }], topics: ["cooldown"], abilitySlot: "Q", championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "Ahri buys Luden's Companion first. How much mana does the item add?", family: "scenario", edges: [{ subject: ahri, role: "premise_subject" }, { subject: ludens, role: "scenario_context" }], topics: ["mana"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, discoveredByDemoUser: true }),
-  q({ prompt: "Jinx with Infinity Edge: which Jinx ability scales with critical strike chance?", family: "scenario", edges: [{ subject: jinx, role: "premise_subject" }, { subject: ie, role: "scenario_context" }], topics: ["damage", "scaling"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic }),
+  q({ prompt: "Syndra holds Zhonya's Hourglass. Which stat on the item lowers her Dark Sphere cooldown?", family: "scenario", edges: [{ subject: syndra, role: "premise_subject" }, { subject: zhonya, role: "scenario_context", attachedTo: syndra }], topics: ["cooldown"], abilitySlot: "Q" }),
+  q({ prompt: "Ahri buys Luden's Companion first. How much mana does the item add?", family: "scenario", edges: [{ subject: ahri, role: "premise_subject" }, { subject: ludens, role: "scenario_context", attachedTo: ahri }], topics: ["mana"], abilitySlot: null, discoveredByDemoUser: true }),
+  q({ prompt: "Jinx with Infinity Edge: which Jinx ability scales with critical strike chance?", family: "scenario", edges: [{ subject: jinx, role: "premise_subject" }, { subject: ie, role: "scenario_context", attachedTo: jinx }], topics: ["critical_strike"], abilitySlot: null }),
+  q({ prompt: "Ahri faces Syndra, who holds Zhonya's Hourglass. Whose Q comes back first at rank 3?", family: "scenario", edges: [{ subject: ahri, role: "comparison_operand" }, { subject: syndra, role: "comparison_operand" }, { subject: zhonya, role: "scenario_context", attachedTo: syndra }], topics: ["cooldown", "ability_haste"], abilitySlot: "Q", abilityRank: rank(3), discoveredByDemoUser: true }),
   // Item identity
-  q({ prompt: "How much ability power does Rabadon's Deathcap grant?", family: "item-identity", edges: [{ subject: deathcap, role: "premise_subject" }], topics: ["scaling"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, discoveredByDemoUser: true }),
-  q({ prompt: "How much armor does Zhonya's Hourglass grant?", family: "item-identity", edges: [{ subject: zhonya, role: "premise_subject" }], topics: ["defenses"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "How much mana does Luden's Companion grant?", family: "item-identity", edges: [{ subject: ludens, role: "premise_subject" }], topics: ["mana"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "What percentage of magic penetration does Void Staff grant?", family: "item-identity", edges: [{ subject: voidstaff, role: "premise_subject" }], topics: ["damage"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, demoAttempt: { attempted_at: "2026-10-17T11:00:00Z", outcome: "missed" } }),
-  q({ prompt: "What is the total gold cost of Zhonya's Hourglass?", family: "item-identity", edges: [{ subject: zhonya, role: "premise_subject" }], topics: ["cost"], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, sourceStatus: "frozen" }),
+  q({ prompt: "How much ability power does Rabadon's Deathcap grant?", family: "item-identity", edges: [{ subject: deathcap, role: "premise_subject" }], topics: ["ability_power"], abilitySlot: null, discoveredByDemoUser: true }),
+  q({ prompt: "How much armor does Zhonya's Hourglass grant?", family: "item-identity", edges: [{ subject: zhonya, role: "premise_subject" }], topics: ["defenses"], abilitySlot: null }),
+  q({ prompt: "How much mana does Luden's Companion grant?", family: "item-identity", edges: [{ subject: ludens, role: "premise_subject" }], topics: ["mana"], abilitySlot: null }),
+  q({ prompt: "What percentage of magic penetration does Void Staff grant?", family: "item-identity", edges: [{ subject: voidstaff, role: "premise_subject" }], topics: ["lethality_penetration"], abilitySlot: null, demoAttempt: { missed_attempts: 1, last_missed_at: "2026-10-17T11:00:00Z" } }),
+  q({ prompt: "What is the total gold cost of Zhonya's Hourglass?", family: "item-identity", edges: [{ subject: zhonya, role: "premise_subject" }], topics: ["gold"], abilitySlot: null, sourceStatus: "inactive" }),
   // Uncertified families: visible ONLY in admin inventory.
-  q({ prompt: "Which region does Ahri call home?", family: "lore-trivia", edges: [{ subject: ahri, role: "unverified" }], topics: [], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "Which champion's ultimate is named Unleashed Power?", family: "answer-key-family", edges: [{ subject: syndra, role: "answer_subject" }], topics: ["cooldown"], abilitySlot: "R", championLevel: agnostic, abilityRank: agnostic }),
-  q({ prompt: "Which item is nicknamed 'Deathcap'?", family: "answer-key-family", edges: [{ subject: deathcap, role: "answer_subject" }], topics: [], abilitySlot: null, championLevel: agnostic, abilityRank: agnostic, serveState: "retired" }),
+  q({ prompt: "Which region does Ahri call home?", family: "lore-trivia", edges: [{ subject: ahri, role: "unverified" }], topics: [], abilitySlot: null }),
+  q({ prompt: "Which champion's ultimate is named Unleashed Power?", family: "answer-key-family", edges: [{ subject: syndra, role: "answer_subject" }], topics: ["cooldown"], abilitySlot: "R" }),
+  q({ prompt: "Which item is nicknamed 'Deathcap'?", family: "answer-key-family", edges: [{ subject: deathcap, role: "answer_subject" }], topics: [], abilitySlot: null, serveState: "retired" }),
 ];
 
 /** A clearly labelled starting investigation for the empty screen. */
 export const FEATURED_INVESTIGATION = {
   label: "Featured demo investigation",
-  description: "Ahri against Syndra, Syndra holding Zhonya's Hourglass, Questions view on the mana topic.",
+  description: "Ahri against Syndra, Syndra holding Zhonya's Hourglass, Questions view on the cooldown topic.",
   a: ahri,
   b: syndra,
   b1ItemId: "3157",
-  topics: ["mana"] as Topic[],
+  topics: ["cooldown"] as TopicId[],
 };

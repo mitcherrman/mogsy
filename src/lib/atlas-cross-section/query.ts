@@ -8,10 +8,10 @@
  *   * B.1 is an item attached to B. It is valid only while B is a champion.
  *     Changing or clearing B, or making B an item, clears B.1 explicitly
  *     (`lastInvalidation` says why, so the UI can announce it).
- *   * Champion level (1–18) and ability rank (1–5) are separate facets.
+ *   * Champion level (1–18) and ability rank (1–6 or `max`) are separate facets.
  *   * Topics OR together; every other facet ANDs.
  */
-import type { AbilitySlot, CenterView, Collection, CrossSectionQuery, PairShape, Relationship, SubjectRef, Topic } from "./types";
+import { MAX_ABILITY_RANK, topicLabel, MAX_CHAMPION_LEVEL, type AbilityRank, type AbilitySlot, type CenterView, type Collection, type CrossSectionQuery, type PairShape, type Relationship, type SubjectRef, type TopicId } from "./types";
 
 export interface CrossSectionState {
   query: CrossSectionQuery;
@@ -26,11 +26,11 @@ export type CrossSectionAction =
   | { type: "setB1"; itemId: string | null }
   | { type: "swap" }
   | { type: "setCollection"; collection: Collection }
-  | { type: "toggleTopic"; topic: Topic }
+  | { type: "toggleTopic"; topic: TopicId }
   | { type: "clearTopics" }
   | { type: "setSlot"; slot: AbilitySlot | null }
   | { type: "setLevel"; level: number | null }
-  | { type: "setRank"; rank: number | null }
+  | { type: "setRank"; rank: AbilityRank | null }
   | { type: "setView"; view: CenterView }
   | { type: "reset" }
   | { type: "load"; state: Partial<CrossSectionQuery> & { view?: CenterView } };
@@ -57,12 +57,17 @@ export function sameSubject(a: SubjectRef | null, b: SubjectRef | null): boolean
 }
 
 export function clampLevel(level: number): number {
-  return Math.max(1, Math.min(18, Math.round(level)));
+  return Math.max(1, Math.min(MAX_CHAMPION_LEVEL, Math.round(level)));
 }
 
-export function clampRank(rank: number, slot: AbilitySlot | null): number {
-  const max = slot === "R" ? 3 : 5;
-  return Math.max(1, Math.min(max, Math.round(rank)));
+/**
+ * The server accepts ranks 1–6 or `max`. It cannot say which ability has how
+ * many ranks, so the slot no longer narrows the bound and a numeric bound is
+ * never invented for `max`.
+ */
+export function clampRank(rank: AbilityRank, _slot?: AbilitySlot | null): AbilityRank {
+  if (rank === "max") return "max";
+  return Math.max(1, Math.min(MAX_ABILITY_RANK, Math.round(rank)));
 }
 
 export function relationshipOf(query: CrossSectionQuery): Relationship {
@@ -144,8 +149,7 @@ export function reduceCrossSection(state: CrossSectionState, action: CrossSectio
     case "clearTopics":
       return q.topics.length ? withQuery(state, { ...q, topics: [] }) : { ...state, lastInvalidation: null };
     case "setSlot": {
-      const abilityRank = q.abilityRank !== null && action.slot ? clampRank(q.abilityRank, action.slot) : q.abilityRank;
-      return withQuery(state, { ...q, abilitySlot: action.slot, abilityRank });
+      return withQuery(state, { ...q, abilitySlot: action.slot });
     }
     case "setLevel":
       return withQuery(state, { ...q, championLevel: action.level === null ? null : clampLevel(action.level) });
@@ -170,7 +174,7 @@ export function reduceCrossSection(state: CrossSectionState, action: CrossSectio
 /** Human list of applied filters, always shown so nothing filters silently. */
 export function appliedFilters(query: CrossSectionQuery): string[] {
   const out: string[] = [];
-  if (query.topics.length) out.push(`Topic: ${query.topics.join(" or ")}`);
+  if (query.topics.length) out.push(`Topic: ${query.topics.map((t) => topicLabel(t)).join(" or ")}`);
   if (query.abilitySlot) out.push(`Slot: ${query.abilitySlot}`);
   if (query.championLevel !== null) out.push(`Level ${query.championLevel}`);
   if (query.abilityRank !== null) out.push(`Rank ${query.abilityRank}`);

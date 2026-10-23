@@ -2,6 +2,8 @@
 
 Status: owner-only prototype on a DEMO fixture adapter. Not wired to any backend. Baseline `/admin/atlas-p1c` untouched.
 
+> **Updated by ATL-CS-INT-001:** the view model, fixture and a typed wire boundary now follow the implemented backend contract. See [ATL_CS_INT_001_HANDOFF.md](ATL_CS_INT_001_HANDOFF.md) for the mapping; rows below that mention `related_results`, `relation`, rank 1–5 or `facetMatch` are superseded by it.
+
 ## Where
 
 - Routes: `/admin/atlas-cross-section` (child of the AdminRoute-protected `/admin` shell) and `/lol/dev/atlas-cross-section` (DEV-only twin; absent from production builds).
@@ -25,7 +27,7 @@ Status: owner-only prototype on a DEMO fixture adapter. Not wired to any backend
 |---|---|
 | A and B are independent; either stands alone | `query.ts` `relationshipOf` |
 | B.1 is one item attached to B, only while B is a champion; B change / clear / item → B.1 cleared with a spoken reason | `query.ts` `setB`, `setB1`, `swap`, `lastInvalidation` |
-| Champion level (1–18) and ability rank (1–5, 1–3 for R) are separate facets | `query.ts` `setLevel`, `setRank`, `clampRank` |
+| Champion level (1–18) and ability rank (1–6 or `max`) are separate facets | `query.ts` `setLevel`, `setRank`, `clampRank` |
 | Topics OR, other facets AND; level/rank touch only scoped questions | `fixtureAdapter.ts` `facetMatch`, `applies` |
 | A × B needs two certified premise-safe edges; no relation at all → `unsupported` | `fixtureAdapter.ts` `publicEdgeFor`, `searchFixtures` |
 | B.1 questions are `related_results`, never mixed into the intersection | `fixtureAdapter.ts` |
@@ -34,9 +36,9 @@ Status: owner-only prototype on a DEMO fixture adapter. Not wired to any backend
 | Facets and counts cover the full authorized population, not the page | `fixtureAdapter.ts` |
 | No raw refs, answers, options or explanations in any result | `crossSection.test.ts` last case |
 
-## Swapping in the real adapter (after Gate 1)
+## Swapping in the real adapter
 
-Implement `CrossSectionAdapter.search(query, session)` over `GET /api/atlas/questions/search` (name provisional), mapping the JSON onto `CrossSectionResponse`. The UI reads only that type. Keep `access`, `coverage`, `relation`, `related_results`, `facets` and `counts` as the server returns them; do not derive them client-side. The `session` argument disappears in the real adapter (the server derives identity from the JWT); the `persona` select is a DEMO-only preview control and must not ship.
+Done as a boundary only (ATL-CS-INT-001): `createServerWireAdapter(transport)` encodes, calls an injected transport and validates the reply, but nothing constructs it. Writing a transport and switching the page over is a separate, owner-gated change; see [ATL_CS_INT_001_HANDOFF.md](ATL_CS_INT_001_HANDOFF.md#gates-before-any-live-wiring).
 
 ## Open design choices for the owner
 
