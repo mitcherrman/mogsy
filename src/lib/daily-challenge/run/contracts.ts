@@ -21,6 +21,8 @@
  *     is completed (`readMain`).
  */
 
+import { readThreeActsPlan, type ThreeActsPlan } from "@/lib/daily-v2/threeActsPlan";
+
 /**
  * Every stage kind this client knows. `order_forge` is the planned Daily V2
  * bonus stage: the backend does not serve it yet, but the reader accepts it so
@@ -54,6 +56,11 @@ export interface DailyRuleset {
 export interface DailyStageContent {
   title: string;
   focus: string | null;
+  /**
+   * Daily three acts (V2) — the server's published set plan, present only on
+   * a three-act Standard (an owner take behind the server flag). Shape only.
+   */
+  plan?: ThreeActsPlan;
 }
 
 /**
@@ -312,7 +319,14 @@ function readStage(v: unknown, i: number): DailyStage {
   const r = rec(v, l);
   const content = r.content === null || r.content === undefined ? null : (() => {
     const c = rec(r.content, `${l}.content`);
-    return { title: str(c.title, `${l}.content.title`), focus: optStr(c.focus, `${l}.content.focus`) };
+    let plan: ThreeActsPlan | null;
+    try {
+      plan = readThreeActsPlan(c.composition, `${l}.content.composition`);
+    } catch (err) {
+      return fail(err instanceof Error ? err.message : `${l}.content.composition`);
+    }
+    return { title: str(c.title, `${l}.content.title`), focus: optStr(c.focus, `${l}.content.focus`),
+      ...(plan ? { plan } : {}) };
   })();
   return {
     index: int(r.stage_index, `${l}.stage_index`),

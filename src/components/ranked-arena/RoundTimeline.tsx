@@ -80,6 +80,7 @@ import {
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { categoryLabel } from "@/lib/quiz/publicCategory";
 import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
+import type { SetTimelineGroup, SetTimelineView } from "@/lib/daily-v2/threeActsPlan";
 
 /**
  * Per-identity presentation. Literal hex, like the rest of the Ranked skin, so
@@ -245,6 +246,89 @@ function TimelineNodeMark({ node, slotWidth, testIdPrefix = "" }:
  * match state, holds no state of its own, starts no timer, and cannot decide
  * anything — every judgement it renders was made in `projectRoundTimeline`.
  */
+// ─────────────────────────────────────────────────────────────────────────
+// DAILY THREE ACTS (V2) — THE SAME STRIP, GROUPED BY SET
+// ─────────────────────────────────────────────────────────────────────────
+// A three-act Standard is nineteen segments: as nodes, specks on a 320px
+// phone. The server publishes the day's plan (six E/M/H sets and one Meta
+// Reflex sprint), so the strip draws SEVEN groups — a chip per set with three
+// pips (Easy · Medium · Hard) and one for the sprint — and the phone window
+// (`windowTimelineView`) keeps three whole sets. Still progression only: every
+// state and verdict comes from `timeline.nodes`, through `projectSetTimeline`.
+// Equal columns and a fixed height in every state, so advancing recolours
+// pips and never lays anything out.
+
+const SET_BAND_WORD = { E: "easy", M: "medium", H: "hard" } as const;
+const SET_ACT_INK = { early: "#9fd3a8", mid: "#e8c97a", late: "#e79a8f" } as const;
+const SET_OUTCOME_WORD: Record<ResultKind, string> = {
+  correct: "correct", "both-correct": "correct",
+  incorrect: "incorrect", "timed-out": "timed out",
+};
+
+function setGroupLabel(group: SetTimelineGroup): string {
+  const steps = group.steps.map((s) => {
+    const band = s.band ? `${SET_BAND_WORD[s.band]} ` : "";
+    const what = s.state === "current" ? "current"
+      : s.outcome ? SET_OUTCOME_WORD[s.outcome] : s.state === "resolved" ? "done" : "upcoming";
+    return `${band}${what}`;
+  });
+  return `${group.spoken}: ${steps.join(", ")}`;
+}
+
+function SetStrip({ view, className, testIdPrefix }: {
+  view: SetTimelineView; className: string; testIdPrefix: string;
+}) {
+  return (
+    <section
+      data-testid={`${testIdPrefix}ranked-round-timeline`}
+      data-variant="sets"
+      data-current-group={view.currentGroupIndex === null ? "" : String(view.currentGroupIndex)}
+      data-current-round={view.currentRoundNumber === null ? "" : String(view.currentRoundNumber)}
+      aria-label={`Daily sets, ${view.totalSegments} segments`}
+      className={`ranked-timeline px-1 ${className}`}
+    >
+      <ol className="m-0 grid h-[3.4rem] w-full list-none items-center gap-[3px] p-0 sm:gap-1"
+        style={{ gridTemplateColumns: `repeat(${view.groups.length}, minmax(0, 1fr))` }}>
+        {view.groups.map((group) => {
+          const current = group.state === "current";
+          return (
+            <li key={group.key}
+              data-testid={`${testIdPrefix}daily-set-${group.key}`}
+              data-state={group.state}
+              data-kind={group.kind}
+              aria-label={setGroupLabel(group)}
+              aria-current={current ? "step" : undefined}
+              className={`flex h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-md border
+                ${current ? "border-[#f0d78c] bg-[#1d2a3d] shadow-[0_0_0_1px_rgba(240,215,140,0.45)]"
+                  : group.state === "done" ? "border-white/15 bg-[#121b28]" : "border-white/10 bg-[#0d141f]"}`}
+            >
+              <span aria-hidden
+                className="block max-w-full truncate text-[10px] font-extrabold uppercase leading-none tracking-[0.06em]"
+                style={{ color: group.act ? SET_ACT_INK[group.act] : "#7fd6ef",
+                  opacity: group.state === "upcoming" ? 0.6 : 1 }}>
+                {group.label}
+              </span>
+              <span aria-hidden className="flex items-center gap-[3px]">
+                {group.steps.map((step) => (
+                  <span key={step.roundNumber}
+                    data-testid={`${testIdPrefix}daily-set-step-${step.roundNumber}`}
+                    data-state={step.state}
+                    data-outcome={step.outcome ?? ""}
+                    className={`block rounded-full ${group.kind === "meta_reflex" ? "h-1.5 w-4" : "h-1.5 w-1.5"}
+                      ${step.state === "current" ? "ring-1 ring-[#f0d78c]" : ""}`}
+                    style={{ backgroundColor: step.outcome ? OUTCOME[step.outcome].ink
+                      : step.state === "current" ? "#f0d78c"
+                        : step.state === "resolved" ? "#5d6b7e" : "#2a3646" }} />
+                ))}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 export function RoundTimeline({
   timeline, className = "", testIdPrefix = "",
 }: {
@@ -257,6 +341,9 @@ export function RoundTimeline({
    */
   testIdPrefix?: string;
 }) {
+  if (timeline.sets) {
+    return <SetStrip view={timeline.sets} className={className} testIdPrefix={testIdPrefix} />;
+  }
   // Slots divide the strip exactly, with no CSS gap: a gap would break the
   // arithmetic that keeps the marker and the node it rings in the same place.
   // The gutter comes from each plate's own `max-w` inside its slot instead.

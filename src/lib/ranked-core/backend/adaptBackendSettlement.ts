@@ -168,7 +168,13 @@ const END_REASONS = new Set(["both_answered", "deadline_expired"]);
 // it was listed here the final module's settlement failed to adapt on every
 // points match, so module 10 never reached the settlement log: the live
 // strip's last bubble and the end screen's final column were both missing.
-const COMPLETION_REASONS = new Set(["knockout", "simultaneous_knockout", "segments_complete"]);
+// The Daily ruleset ends (Time Trial `time_bank_exhausted`, Survival
+// `strikes_exhausted`) are the same case: unlisted, the stage's LAST round
+// failed to adapt and never reached the settlement log.
+const COMPLETION_REASONS = new Set([
+  "knockout", "simultaneous_knockout", "segments_complete",
+  "time_bank_exhausted", "strikes_exhausted",
+]);
 
 const nonNegative = (value: unknown, field: string): void => {
   if (typeof value !== "number" || Number.isNaN(value) || value < 0) {

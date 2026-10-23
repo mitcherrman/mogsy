@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { DailyRunPage } from "@/pages/quiz-daily-challenge/run/DailyRunPage";
 import { httpDailyRunTransport, type DailyRunTransport } from "@/lib/daily-challenge/run/client";
+import { OwnerTakeContext } from "@/lib/daily-challenge/run/ownerTake";
 
 const isRunId = (id: string | undefined): id is string =>
   !!id && /^dr_[a-f0-9]{24}$/.test(id);
@@ -34,5 +35,13 @@ export default function CreatorReplayRunPage({
   }
   // No wrapper and no extra header. The shared Ranked ArenaShell sizes itself
   // against the exact same viewport, HUD and mobile breakpoints as official Daily.
-  return <DailyRunPage transport={transport} />;
+  // The public More Challenges catalog plays the OFFICIAL run's bonus stages,
+  // so a take continues into its OWN Survival / Time Trial / Review in place.
+  // Owner take: result surfaces say "Owner take" / "Take score", never
+  // "Today's Challenge" / "Daily score" (``ownerTake.ts``).
+  return (
+    <OwnerTakeContext.Provider value>
+      <DailyRunPage transport={transport} moreChallengesCatalog={false} />
+    </OwnerTakeContext.Provider>
+  );
 }

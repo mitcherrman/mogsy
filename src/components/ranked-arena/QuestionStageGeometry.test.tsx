@@ -629,7 +629,9 @@ describe("transient state cannot change Match Shell geometry", () => {
     // a fixed square per breakpoint and the image fills it with `object-contain`,
     // so intrinsic dimensions never reach layout and a late-loading asset
     // cannot move what is around it.
-    expect(mr).toContain("h-24 w-24 sm:h-28 sm:w-28 lg:h-36 lg:w-36");
+    // DV2-A: no `sm` step (112px) and 152px, not 160px, from 1500px up — the
+    // card holds the settled caption plate's room below the art.
+    expect(mr).toContain("h-24 w-24 lg:h-36 lg:w-36 min-[1500px]:h-[9.5rem] min-[1500px]:w-[9.5rem]");
     expect(mr).toContain("h-14 w-14 sm:h-16 sm:w-16 lg:h-20 lg:w-20");
     expect(mr).toContain('className="h-full w-full object-contain"');
     // The error fallback renders INSIDE the same slot, so a broken asset is

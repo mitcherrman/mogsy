@@ -23,7 +23,10 @@ export type BackendRoundEndReason = "both_answered" | "deadline_expired";
  * RP1 points match ends — its configured number of modules has been played.
  */
 export type BackendCompletionReason =
-  | "knockout" | "simultaneous_knockout" | "segments_complete";
+  | "knockout" | "simultaneous_knockout" | "segments_complete"
+  // Daily ruleset stages (``ranked_rulesets.contract`` STAGE_END_*): a Time
+  // Trial whose time bank ran dry, a Survival whose strikes ran out.
+  | "time_bank_exhausted" | "strikes_exhausted";
 
 /** One entry of `record.level_up_events`, filtered per player. */
 export interface BackendLevelUpEvent {

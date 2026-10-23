@@ -29,6 +29,7 @@ import { skippedStageNote, stageContentLine } from "@/lib/daily-challenge/run/st
 import { MORE_CHALLENGES_ROUTE, moreChallengesState } from "@/lib/public-modes/launch";
 import { COMPLETION_SHORT_DENSITY, TOUCH_TARGET } from "./dailyResultDensity";
 import { StageTag } from "./StageTag";
+import { OWNER_TAKE_LABELS, useOwnerTake } from "@/lib/daily-challenge/run/ownerTake";
 
 /** Where a guest lands back after the in-place account upgrade. */
 export const DAILY_SAVE_RETURN_TO = "/quiz/daily-challenge";
@@ -47,6 +48,7 @@ export function DailyCompletion({ run, saveRequired = false }: {
   const perfect = isPerfect(run);
   const review = reviewStage(run);
   const main = hasMainDaily(run);
+  const ownerTake = useOwnerTake();
   const announcedRun = useRef<string | null>(null);
   useEffect(() => {
     if (!saveRequired || announcedRun.current === run.runId) return;
@@ -67,10 +69,11 @@ export function DailyCompletion({ run, saveRequired = false }: {
         {main ? (
           <>
             <h2 className="ranked-title ranked-beat__title" data-testid="daily-run-complete-title">
-              All Done for Today
+              {ownerTake ? `${OWNER_TAKE_LABELS.headline} complete` : "All Done for Today"}
             </h2>
             <p className="text-sm text-[var(--ranked-vellum,#f1e6c8)]/85" data-testid="daily-run-complete-note">
-              More Challenges and Review finished. Today's Daily was already complete.
+              {ownerTake ? OWNER_TAKE_LABELS.note
+                : "More Challenges and Review finished. Today's Daily was already complete."}
             </p>
           </>
         ) : (
@@ -89,10 +92,11 @@ export function DailyCompletion({ run, saveRequired = false }: {
           <div className="flex w-full max-w-xl flex-col gap-3 pt-2 max-sm:gap-2 max-sm:pt-0" data-testid="daily-run-recap">
             {dailySections(run).map((g) => (
               <section key={g.id} data-testid={`daily-recap-section-${g.id}`} data-section={g.id}
-                aria-label={g.label} className="flex flex-col gap-1.5">
+                aria-label={ownerTake && g.id === "today" ? OWNER_TAKE_LABELS.section : g.label}
+                className="flex flex-col gap-1.5">
                 <h3 className={`text-left text-[0.625rem] font-semibold uppercase tracking-[0.2em] ${
                   g.id === "today" ? "text-[#f0d78c]" : "text-[var(--ranked-muted,#a8a29e)]"}`}>
-                  {g.label}
+                  {ownerTake && g.id === "today" ? OWNER_TAKE_LABELS.section : g.label}
                 </h3>
                 <ol className="flex flex-col gap-2">
                   {g.stages.map((s) => (
@@ -158,6 +162,7 @@ function RecapRow({ stage: s, closing, main, mainScore }: {
 }) {
   const r = s.result;
   const skipped = s.status === "skipped";
+  const ownerTake = useOwnerTake();
   return (
     <li data-testid={`daily-recap-${s.index}`} data-stage-kind={s.kind}
       data-closing={closing ? "true" : undefined} data-main={main ? "true" : undefined}
@@ -182,7 +187,7 @@ function RecapRow({ stage: s, closing, main, mainScore }: {
                   data-testid="daily-recap-main-score">
                   {mainScore.toLocaleString()}
                   <span className="pl-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] opacity-70 max-sm:block max-sm:pl-0">
-                    Daily score
+                    {ownerTake ? OWNER_TAKE_LABELS.scoreLabel : "Daily score"}
                   </span>
                 </span>
               )}

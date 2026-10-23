@@ -65,6 +65,7 @@ const MICRO_TEXT = `text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] ${TIGHT_LEAD
 export function ScenarioBadge({ children }: { children: string }) {
   return (
     <div
+      data-scenario-badge=""
       className={`absolute left-[5%] top-[4%] z-10 rounded-md border border-[#d4b35a]/50 bg-black/70 px-[max(1.6cqmin,calc(0.5*var(--sc-fit)))] py-[max(0.7cqmin,calc(0.1875*var(--sc-fit)))] ${MICRO_TEXT} font-bold uppercase tracking-[0.32em] text-[#e8c97a] backdrop-blur-sm`}
     >
       {children}
