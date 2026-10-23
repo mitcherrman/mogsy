@@ -6,8 +6,13 @@
  */
 import { describe, expect, it } from "vitest";
 import type { QuizAnswerResult, QuizQuestion } from "@/lib/quiz/api";
+import { REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS } from "@/lib/ranked-core/pacing";
 import {
+  PRACTICE_REVEAL_HOLD_MAX_MS,
   UNVERIFIED_ANSWER,
+  classifyPracticeSubmitFailure,
+  practiceExplanationDensity,
+  practiceRevealHoldMs,
   practiceOptionIdForLabel,
   projectPracticeArena,
   projectPracticeOptions,
@@ -128,5 +133,66 @@ describe("practice arena projection", () => {
     expect(practiceOptionIdForLabel(Q1, "180s")).toBe("2");
     expect(practiceOptionIdForLabel(Q1, "nope")).toBeNull();
     expect(practiceOptionIdForLabel(Q1, null)).toBeNull();
+  });
+});
+
+describe("PM2 — the reveal hold and the explanation's density", () => {
+  const graded = (explanation: string): QuizAnswerResult => ({ is_correct: true, correct_answer: "x", explanation });
+
+  it("never advances by itself without a grade, or after a failed submit", () => {
+    expect(practiceRevealHoldMs(null)).toBeNull();
+    expect(practiceRevealHoldMs(UNVERIFIED_ANSWER)).toBeNull();
+  });
+
+  it("takes the arena's short beat for a verdict with nothing to read", () => {
+    expect(practiceRevealHoldMs(graded(""))).toBe(REVEAL_HOLD_MS);
+    expect(practiceRevealHoldMs(graded("   "))).toBe(REVEAL_HOLD_MS);
+  });
+
+  it("takes at least the long beat with an explanation, longer for longer text, and is capped", () => {
+    const short = practiceRevealHoldMs(graded("Yes."))!;
+    const median = practiceRevealHoldMs(graded("x".repeat(94)))!;
+    const longest = practiceRevealHoldMs(graded("x".repeat(305)))!;
+    expect(short).toBe(REVEAL_HOLD_LEVEL_UP_MS);
+    expect(median).toBeGreaterThan(REVEAL_HOLD_LEVEL_UP_MS);
+    expect(longest).toBeGreaterThan(median);
+    expect(longest).toBeLessThanOrEqual(PRACTICE_REVEAL_HOLD_MAX_MS);
+    expect(practiceRevealHoldMs(graded("x".repeat(5000)))).toBe(PRACTICE_REVEAL_HOLD_MAX_MS);
+  });
+
+  it("tiers explanations by length", () => {
+    expect(practiceExplanationDensity(null)).toBe("normal");
+    expect(practiceExplanationDensity("x".repeat(100))).toBe("normal");
+    expect(practiceExplanationDensity("x".repeat(101))).toBe("medium");
+    expect(practiceExplanationDensity("x".repeat(150))).toBe("medium");
+    expect(practiceExplanationDensity("x".repeat(151))).toBe("long");
+    expect(practiceExplanationDensity("x".repeat(220))).toBe("long");
+    expect(practiceExplanationDensity("x".repeat(221))).toBe("dense");
+  });
+});
+
+describe("PM2 — a failed submit is retried only when that cannot record it twice", () => {
+  const classify = (notSent: boolean, status: number | null, idempotentAttempts = false) =>
+    classifyPracticeSubmitFailure({ notSent, status, idempotentAttempts });
+
+  it("never sent → retry is the first real send", () => {
+    expect(classify(true, null)).toEqual({ kind: "not-sent", retryable: true });
+  });
+
+  it("refused before the handler records (auth, validation, rate limit) → retry is safe", () => {
+    for (const status of [400, 401, 403, 404, 422, 429]) {
+      expect(classify(false, status)).toEqual({ kind: "rejected", retryable: true });
+    }
+  });
+
+  it("outcome unknown (dropped connection, 5xx, timeouts) → no retry against a backend without idempotency", () => {
+    for (const status of [null, 500, 502, 503, 504, 408, 409]) {
+      expect(classify(false, status)).toEqual({ kind: "unknown", retryable: false });
+    }
+  });
+
+  it("outcome unknown → retry once the backend has proved it dedupes the same client_attempt_id", () => {
+    expect(classify(false, 503, true)).toEqual({ kind: "unknown", retryable: true });
+    expect(classify(false, null, true)).toEqual({ kind: "unknown", retryable: true });
   });
 });

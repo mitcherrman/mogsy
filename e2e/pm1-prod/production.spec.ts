@@ -94,11 +94,11 @@ for (const vp of [
       if (vp.desktop) expect(fit.matchBottom).toBeLessThanOrEqual(fit.vh + 1);
       await page.screenshot({ path: `${SHOTS}/${vp.name}-practice-question.png`, fullPage: !vp.desktop });
 
-      // Answering locks the grid and shows the reveal footer + Next (the grade
-      // itself is the local stand-in above).
+      // Answering locks the grid and shows the reveal footer (the grade itself
+      // is the local stand-in above). PM2 retired the Next control — the
+      // reveal advances by itself — so only the footer is asserted here.
       await tablets.first().click();
       await expect(page.locator("[data-practice-reveal-footer]")).toBeVisible();
-      await expect(page.getByTestId("practice-next")).toBeVisible();
       await page.screenshot({ path: `${SHOTS}/${vp.name}-practice-after-answer.png`, fullPage: !vp.desktop });
 
       // The leave guard still owns the way out.

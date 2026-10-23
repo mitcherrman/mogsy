@@ -35,6 +35,7 @@ import {
 } from "@/lib/ranked-core/viewTypes";
 import type { ArenaHeaderView } from "@/lib/ranked-core/arenaView";
 import type { SurfaceReveal } from "@/lib/question-surface/contract";
+import { REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS } from "@/lib/ranked-core/pacing";
 
 export const PRACTICE_ARENA_EYEBROW = "Leaguecraft Practice";
 
@@ -52,6 +53,53 @@ export const UNVERIFIED_ANSWER: QuizAnswerResult = Object.freeze({
 
 export function isUnverifiedAnswer(result: QuizAnswerResult | null): boolean {
   return result === UNVERIFIED_ANSWER;
+}
+
+/**
+ * PM2 — WHY A SUBMIT FAILED, and whether sending it again is SAFE.
+ *
+ * `POST /api/quiz/attempts` records the attempt and awards XP in one
+ * transaction. A resend after a failure the server may have completed would
+ * record it twice — two attempts, two XP awards — so "Try again" exists only
+ * where that cannot happen:
+ *
+ *  - `not-sent`  the request never reached `fetch` (the browser was offline,
+ *                no session could be established, the auth headers could not
+ *                be read). Nothing can have been recorded: retry is safe.
+ *  - `rejected`  the server answered with a status that refuses the request
+ *                before the handler records anything (auth, validation, rate
+ *                limit). Nothing was recorded: retry is safe.
+ *  - `unknown`   the request may have been completed (the connection dropped
+ *                mid-flight, a 5xx, a proxy timeout). Retry is safe ONLY when
+ *                the backend has proved it dedupes resends of the same
+ *                `client_attempt_id` (a graded response carried
+ *                `attempt_idempotent: true`); otherwise the player can only
+ *                skip, and the answer is never sent again.
+ */
+export type PracticeSubmitFailureKind = "not-sent" | "rejected" | "unknown";
+
+export interface PracticeSubmitFailure {
+  kind: PracticeSubmitFailureKind;
+  /** A resend of the same answer cannot record it twice. */
+  retryable: boolean;
+}
+
+/** Statuses the backend returns before its handler records an attempt. */
+export const PRACTICE_REJECTED_STATUSES: ReadonlySet<number> = new Set([400, 401, 403, 404, 405, 413, 415, 422, 429]);
+
+export function classifyPracticeSubmitFailure(input: {
+  /** The request failed before it was handed to `fetch`. */
+  notSent: boolean;
+  /** The failed response's HTTP status, or null. */
+  status: number | null;
+  /** The backend has shown it dedupes resends of one `client_attempt_id`. */
+  idempotentAttempts: boolean;
+}): PracticeSubmitFailure {
+  if (input.notSent) return { kind: "not-sent", retryable: true };
+  if (input.status !== null && PRACTICE_REJECTED_STATUSES.has(input.status)) {
+    return { kind: "rejected", retryable: true };
+  }
+  return { kind: "unknown", retryable: input.idempotentAttempts };
 }
 
 type Choice = QuizQuestion["choices"][number];
@@ -159,6 +207,57 @@ export function practiceXpLabel(result: QuizAnswerResult | null): string | null 
   return typeof result.xp_earned === "number" ? `+${result.xp_earned} XP` : null;
 }
 
+/**
+ * PM2 — HOW LONG A GRADED PRACTICE ANSWER STAYS ON SCREEN before the run moves
+ * on by itself. There is no Next button: the reveal is a beat, like Ranked's.
+ *
+ * The two arena numbers are the floor, under the rule `pacing.ts` states for
+ * every mode: a reveal with nothing but its verdict and highlighted tablet
+ * takes the short beat (`REVEAL_HOLD_MS`), and one with "strictly more to
+ * read" takes the long one (`REVEAL_HOLD_LEVEL_UP_MS`) — the Daily's rule for
+ * a card whose explanation survived. Practice differs in ONE way: its
+ * explanation is the point of the mode and is a sentence or three (the bank's
+ * median is ~94 characters, its longest ~305), so the long beat is extended by
+ * a reading allowance — about 220 words a minute — and capped, so no reveal
+ * holds the run for longer than `PRACTICE_REVEAL_HOLD_MAX_MS`. The player can
+ * also hold the reveal (see `usePracticeRevealPause`), and every explanation
+ * is kept in the completed run's review.
+ *
+ * Null means "never advance by itself": no grade yet, or a submit that failed
+ * (the unverified sentinel), which waits for Try again or Skip.
+ */
+export const PRACTICE_READ_MS_PER_CHAR = 45;
+export const PRACTICE_READ_BASE_MS = 1200;
+export const PRACTICE_REVEAL_HOLD_MAX_MS = 12_000;
+
+export function practiceRevealHoldMs(result: QuizAnswerResult | null): number | null {
+  if (!result || isUnverifiedAnswer(result)) return null;
+  const text = (result.explanation ?? "").trim();
+  if (!text) return REVEAL_HOLD_MS;
+  const reading = PRACTICE_READ_BASE_MS + text.length * PRACTICE_READ_MS_PER_CHAR;
+  return Math.min(PRACTICE_REVEAL_HOLD_MAX_MS, Math.max(REVEAL_HOLD_LEVEL_UP_MS, reading));
+}
+
+/**
+ * PM2 — the explanation's type tier on a phone, from its length alone (before
+ * layout), the same way VISCONT1 tiers prompts and tablets: the reveal box is
+ * held at one height and LONGER TEXT TIGHTENS INSIDE IT rather than growing
+ * it. Measured against a 360-wide phone's reveal column (index.css, PM2):
+ *   normal (<= 100)  12px everywhere — two lines;
+ *   medium (101–150) 12px (three lines) on a tall phone, 11px on a short one;
+ *   long   (151–220) 11px / 10.5px on a short phone — four lines;
+ *   dense  (221+)    10.5px — five lines, up to the bank's longest (~305).
+ */
+export type PracticeExplanationDensity = "normal" | "medium" | "long" | "dense";
+
+export function practiceExplanationDensity(text: string | null | undefined): PracticeExplanationDensity {
+  const n = (text ?? "").trim().length;
+  if (n <= 100) return "normal";
+  if (n <= 150) return "medium";
+  if (n <= 220) return "long";
+  return "dense";
+}
+
 function projectSurface(input: PracticeArenaInput): PracticeArenaSurfaceData | null {
   const question = input.questions[input.currentIndex];
   if (!question) return null;
@@ -172,8 +271,8 @@ function projectSurface(input: PracticeArenaInput): PracticeArenaSurfaceData | n
       revealed: true,
       isCorrect: result.is_correct,
       correctOptionId: practiceOptionIdForLabel(question, result.correct_answer),
-      // Practice's explanation is drawn by its own reveal footer, beside Next,
-      // with the pro-data source link — see `PracticeRevealFooter`.
+      // Practice's explanation is drawn by its own reveal footer, with the XP
+      // and the pro-data source link — see `PracticeRevealFooter`.
       explanation: null,
     }
     : null;
@@ -219,8 +318,8 @@ function projectTimeline(
   const roundNumber = input.currentIndex + 1;
   return projectRoundTimeline({
     roundNumber,
-    // The question on stage stays the current node until Next mounts the next
-    // one, revealed or not (PPQ2-E's rule for the same strip).
+    // The question on stage stays the current node until the reveal advances
+    // to the next one, revealed or not (PPQ2-E's rule for the same strip).
     completedRounds: input.currentIndex,
     segmentRoundNumber: roundNumber,
     settlements: [],

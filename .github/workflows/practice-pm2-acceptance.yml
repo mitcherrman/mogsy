@@ -1,0 +1,119 @@
+name: practice-pm2-acceptance
+
+# PM2 — one-screen mobile Practice: the Ranked/Daily phone composition, the
+# one-line PRACTICE · mogzy.lol header, and automatic advance (no Next).
+# Six viewports (360x640, 390x844, 430x932, 844x390, 1280x800, 1440x900),
+# unanswered and revealed, plus timing, keyboard, reduced motion, Report,
+# the leave guard, the six Quick Study launches and a 390x844 video.
+# Bundled Chromium on the GitHub runner, one worker (AGENTS.md).
+on:
+  push:
+    branches:
+      - "practice/pm2-**"
+  pull_request:
+    paths:
+      - "src/pages/Quiz.tsx"
+      - "src/components/quiz/**"
+      - "src/components/ranked-arena/**"
+      - "src/components/question-surface/**"
+      - "src/lib/quiz/**"
+      - "src/lib/ranked-core/**"
+      - "src/index.css"
+      - "e2e/pm2/**"
+      - "playwright.pm2.config.ts"
+      - ".github/workflows/practice-pm2-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pm2-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: One-screen Practice acceptance
+        shell: bash
+        run: |
+          mkdir -p test-results/pm2
+          set -o pipefail
+          npx playwright test -c playwright.pm2.config.ts --workers=1 2>&1 | tee test-results/pm2/run.log
+      - name: Annotate failures and measurements
+        if: always()
+        shell: bash
+        run: |
+          node -e '
+            const fs = require("fs");
+            const enc = (s) => String(s).replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A");
+            const strip = (s) => String(s).replace(/\u001b\[[0-9;]*m/g, "");
+            const f = "test-results/pm2/report.json";
+            if (fs.existsSync(f)) {
+              const out = [];
+              const walk = (suite, trail) => {
+                for (const s of suite.suites ?? []) walk(s, [...trail, s.title]);
+                for (const spec of suite.specs ?? []) for (const t of spec.tests ?? []) for (const r of t.results ?? []) {
+                  if (r.status === "passed" || r.status === "skipped") continue;
+                  const err = (r.errors ?? [r.error]).filter(Boolean).map((e) => strip(e.message ?? e.value ?? "")).join("\n");
+                  out.push({ title: [...trail, spec.title].filter(Boolean).join(" > "), err });
+                }
+              };
+              walk(JSON.parse(fs.readFileSync(f, "utf8")), []);
+              for (const x of out.slice(0, 9)) console.log(`::error title=${enc(x.title.slice(0, 200))}::${enc(x.err.slice(0, 3500))}`);
+            }
+            const log = "test-results/pm2/run.log";
+            if (fs.existsSync(log)) {
+              const lines = fs.readFileSync(log, "utf8").split("\n").map(strip).filter((l) => /\[pm2\] (hold|.*analytics|quick-study|390x844-q9101|360x640-q9101|1280x800-q9101)/.test(l));
+              for (const l of lines.slice(0, 40)) console.log(`::notice title=pm2 measurement::${enc(l.slice(0, 900))}`);
+            }
+          '
+      - name: Upload screenshots, video and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: practice-pm2-evidence
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14
+  unit-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: PM2 unit tests
+        run: >-
+          npx vitest run
+          src/lib/quiz/practiceArena.test.ts
+          src/lib/quiz/api.attemptRetrySafety.test.ts
+          src/lib/quiz/api.write-auth.test.ts
+          src/components/quiz/practice-arena
+          src/pages/Quiz.practiceMissed.test.tsx
+          src/components/ranked-arena/CanonicalArena.questionSurface.test.tsx
+          src/components/ranked-arena/CanonicalArena.regionsSeam.test.tsx
+          src/components/ranked-arena/CanonicalArena.rm1Integration.test.tsx
+          src/components/ranked-arena/MobileMatchBar.test.tsx
+          src/components/ranked-arena/AnswerGrid.test.tsx
+          src/components/pro-play/arena-run
+      - name: Typecheck
+        run: npx tsc -p tsconfig.app.json --noEmit
+        continue-on-error: true
+      - name: Production build
+        run: npx vite build

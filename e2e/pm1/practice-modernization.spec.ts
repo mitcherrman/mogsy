@@ -156,6 +156,16 @@ async function innerScrollers(page: Page, selector: string) {
   }, selector);
 }
 
+/**
+ * PM2 — the tablets' staggered entrance (350ms + 70ms per tablet) slides them
+ * up into place; the one-screen phone folio has no slack for a mid-animation
+ * offset, so geometry is read once the entrance has settled.
+ */
+async function settleEntrance(page: Page) {
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(900);
+}
+
 /** The prompt and every tablet are inside the visible stage, unclipped. */
 async function stageFits(page: Page, desktop: boolean, label: string) {
   const m = await page.evaluate(() => {
@@ -193,14 +203,36 @@ async function stageFits(page: Page, desktop: boolean, label: string) {
   await noHorizontalScroll(page);
 }
 
+/**
+ * PM2 — the reveal advances by itself after its hold, so a check that takes
+ * longer than the hold holds the reveal the way a reader does: pressing on it
+ * pauses the countdown, releasing resumes it.
+ */
+async function holdReveal(page: Page) {
+  const footer = page.locator("[data-practice-reveal-footer]");
+  await footer.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const box = (await footer.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(footer).toHaveAttribute("data-advance-paused", "true");
+  return async () => { await page.mouse.up(); };
+}
+
 async function answerAndReveal(page: Page, choice: string, label: string, desktop: boolean, shot: string) {
   await page.getByRole("group", { name: "Answer options" }).getByRole("button", { name: choice, exact: false }).first().click();
   const footer = page.locator("[data-practice-reveal-footer]");
   await expect(footer).toBeVisible();
+  const release = await holdReveal(page);
   await expect(page.locator('[data-testid="answer-grid"]')).toHaveAttribute("data-answers-state", "revealed");
   await stageFits(page, desktop, `${label} revealed`);
-  await footer.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOTS}/${shot}`, fullPage: !desktop });
+  return release;
+}
+
+/** PM2 — no Next: the run moves on by itself to question `next`, or the results. */
+async function expectAdvanced(page: Page, next: number, total: number) {
+  if (next > total) await expect(page.getByText("Quiz Complete")).toBeVisible({ timeout: 20_000 });
+  else await expect(page.getByTestId("ranked-header-title")).toContainText(`Question ${next} / ${total}`, { timeout: 20_000 });
 }
 
 for (const vp of VIEWPORTS) {
@@ -295,6 +327,7 @@ for (const vp of VIEWPORTS) {
         if (typeof q!.choices[0] !== "string") {
           await expect(page.getByRole("group", { name: "Answer options" }).getByRole("img")).toHaveCount(4);
         }
+        await settleEntrance(page);
         await stageFits(page, vp.desktop, `${tag} question`);
         const detailed = q!.id <= 9005 || n === 1;
         if (detailed) await page.screenshot({ path: `${SHOTS}/${tag}-question.png`, fullPage: !vp.desktop });
@@ -302,15 +335,19 @@ for (const vp of VIEWPORTS) {
         const wrong = q!.id === 9001 || q!.id === 9004 || q!.id === 9006;
         const labels = q!.choices.map((c) => (typeof c === "string" ? c : c.label));
         const pick = wrong ? labels.find((l) => l !== correctFor(q!.id))! : correctFor(q!.id);
+        let release: (() => Promise<void>) | null = null;
         if (detailed) {
-          await answerAndReveal(page, pick, tag, vp.desktop, `${tag}-reveal.png`);
+          release = await answerAndReveal(page, pick, tag, vp.desktop, `${tag}-reveal.png`);
         } else {
           await page.getByRole("group", { name: "Answer options" }).getByRole("button", { name: pick, exact: false }).first().click();
           await expect(page.locator("[data-practice-reveal-footer]")).toBeVisible();
+          release = await holdReveal(page);
         }
         if (wrong) await expect(page.getByTestId("practice-explanation")).toContainText(correctFor(q!.id));
         else await expect(page.getByTestId("practice-xp-earned")).toContainText("+12 XP");
-        await page.getByTestId("practice-next").click();
+        await expect(page.getByTestId("practice-next")).toHaveCount(0);
+        await release();
+        await expectAdvanced(page, n + 1, QUESTIONS.length);
       }
 
       // ── Results (the shared end screen) and replaying the misses ──
@@ -320,6 +357,7 @@ for (const vp of VIEWPORTS) {
       await page.getByTestId("practice-missed-cta").click();
       await expect(page.getByTestId("practice-arena")).toBeVisible();
       await expect(page.getByTestId("ranked-header-title")).toContainText("Question 1 / 3");
+      await settleEntrance(page);
       await stageFits(page, vp.desktop, `${vp.name} replay`);
       await page.screenshot({ path: `${SHOTS}/${vp.name}-31-replay-missed.png`, fullPage: !vp.desktop });
       expect(consoleErrors).toEqual([]);
@@ -343,7 +381,7 @@ test.describe("PM1 states", () => {
     await expect(page.getByRole("navigation", { name: "Practice by subject" })).toBeVisible();
   });
 
-  test("keyboard-only play: select, Next, focus lands on the new question", async ({ page }) => {
+  test("keyboard-only play: select, the reveal advances, focus lands on the new question", async ({ page }) => {
     await prepare(page);
     await page.goto("/quiz", { waitUntil: "domcontentloaded" });
     const first = page.getByRole("navigation", { name: "Practice by subject" }).getByRole("button").first();
@@ -354,11 +392,9 @@ test.describe("PM1 states", () => {
     await tablet.focus();
     await page.screenshot({ path: `${SHOTS}/states-keyboard-tablet-focus.png` });
     await page.keyboard.press("Enter");
-    const next = page.getByTestId("practice-next");
-    await expect(next).toBeFocused();
-    await page.screenshot({ path: `${SHOTS}/states-keyboard-next-focus.png` });
-    await page.keyboard.press("Enter");
-    await expect(page.getByTestId("ranked-header-title")).toContainText("Question 2 / 10");
+    await expect(page.locator("[data-practice-reveal-footer]")).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/states-keyboard-reveal.png` });
+    await expect(page.getByTestId("ranked-header-title")).toContainText("Question 2 / 10", { timeout: 20_000 });
     await expect(page.locator('[data-testid="ranked-question"] [data-surface-region="prompt"] h2')).toBeFocused();
   });
 
@@ -368,6 +404,7 @@ test.describe("PM1 states", () => {
     await page.goto("/quiz", { waitUntil: "domcontentloaded" });
     await page.getByRole("navigation", { name: "Practice by subject" }).getByRole("button").first().click();
     await expect(page.getByTestId("ranked-question")).toBeVisible();
+    await settleEntrance(page);
     await stageFits(page, true, "reduced-motion");
     await page.screenshot({ path: `${SHOTS}/states-reduced-motion.png` });
   });
