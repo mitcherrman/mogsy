@@ -64,6 +64,9 @@ function QuizViewport({
       feedback={feedback ?? null}
       verdict={surfaceVerdict ?? null}
       settings={surfaceSettings}
+      // QRT2 Phase 2A — Ranked and the hosted Daily tell the revealed answer
+      // in words. The other modes' surfaces are untouched until they adopt it.
+      verdictTabs
     />
   );
 }

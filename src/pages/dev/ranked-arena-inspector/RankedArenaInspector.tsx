@@ -43,6 +43,7 @@ import {
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { RoundResultBeat } from "@/components/ranked-arena/RoundResultBeat";
+import { NO_FEEDBACK } from "@/lib/question-feedback/model";
 import { RankedScoreline } from "@/pages/quiz-ranked/RankedScoreline";
 import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
@@ -1889,6 +1890,18 @@ const STATES: InspectorState[] = [
     render: () => <Surface variant="standard" scenarioSource={ITEM_SCENARIO} selectedOptionId="2"
       reveal={{ revealed: true, isCorrect: false, correctOptionId: "0",
         explanation: "Blasting Wand gives only 45 AP." }} /> },
+  // QRT2 — the Daily's two judged-card states, through the RG3 `feedback`
+  // channel. A first miss is judged and score-locked but NOT disclosed: the
+  // verdict shows, the answer must not.
+  { key: "surface-daily-retry", label: "Surface — Daily first miss (score locked, answer withheld)",
+    render: () => <Surface variant="competitive" scenarioSource={ITEM_SCENARIO} verdictTabs
+      feedback={{ ...NO_FEEDBACK, verdict: "incorrect", scoreLocked: true,
+        retryAvailable: true, eliminatedOptionIds: ["2"] }} /> },
+  { key: "surface-daily-resolved", label: "Surface — Daily resolved after retry (answer disclosed)",
+    render: () => <Surface variant="competitive" scenarioSource={ITEM_SCENARIO} selectedOptionId="2" verdictTabs
+      feedback={{ ...NO_FEEDBACK, verdict: "incorrect", resolved: true, disclosureAllowed: true,
+        scoreLocked: true, selectedOptionId: "2", correctOptionId: "0",
+        evidence: { kind: "statement", text: "Rabadon's Deathcap gives 130 AP and a 35% AP amplifier." } }} /> },
   { key: "surface-standard-hero", label: "Surface — standard (hero)",
     render: () => <Surface variant="standard" question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
   { key: "surface-speed", label: "Surface — speed (no media)",

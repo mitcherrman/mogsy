@@ -53,6 +53,8 @@ export interface AnswerGridProps {
   columns?: "auto" | "wide-2" | "pair";
   /** PPQ2-C (proposed) — drawn over a pair's gap. */
   pairDivider?: ReactNode;
+  /** QRT2 — the revealed-answer tabs; see `QuizAnswerOptions`. Off by default. */
+  verdictTabs?: boolean;
 }
 
 export function AnswerGrid({
@@ -66,6 +68,7 @@ export function AnswerGrid({
   optionContent,
   columns,
   pairDivider = null,
+  verdictTabs = false,
 }: AnswerGridProps) {
   const resolvedColumns = columns ?? (wideTwoColumn ? "wide-2" : "auto");
   const selected = options.find((o) => o.id === selectedOptionId) ?? null;
@@ -133,6 +136,7 @@ export function AnswerGrid({
         }
         eliminatedIndexes={eliminatedIndexes}
         markSelectionOnReveal
+        verdictTabs={verdictTabs}
       />
     </fieldset>
   );

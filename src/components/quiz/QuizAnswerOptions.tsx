@@ -169,6 +169,18 @@ type QuizAnswerOptionsProps = {
    * unchanged. Absolutely positioned, so it never resizes a tablet.
    */
   markSelectionOnReveal?: boolean;
+  /**
+   * QRT2 — the revealed-answer TABS, opt-in.
+   *
+   * After a reveal the correct tablet carries a "Correct answer" tab and the
+   * player's pick a "Your pick" tab on the tablet's top edge, so which one was
+   * right and which one was chosen is told in words and never by colour alone.
+   * Both tabs are out of flow (no tablet changes its box), real text inside the
+   * button (part of its accessible name, never a live region) and need
+   * `markSelectionOnReveal`. Off for every surface that has not adopted the
+   * Phase 2A presentation: they keep the plain "Your pick" label exactly.
+   */
+  verdictTabs?: boolean;
 };
 
 export default function QuizAnswerOptions({
@@ -179,6 +191,7 @@ export default function QuizAnswerOptions({
   columns = "auto",
   optionMedia,
   markSelectionOnReveal = false,
+  verdictTabs = false,
   eliminatedIndexes,
   optionContent,
   pairDivider = null,
@@ -202,6 +215,7 @@ export default function QuizAnswerOptions({
     <div
       data-quiz-answer-options
       data-columns={columns}
+      data-verdict-tabs={verdictTabs ? "true" : undefined}
       /**
        * SIBLING GEOMETRY (answer-geometry pass).
        *
@@ -235,6 +249,11 @@ export default function QuizAnswerOptions({
         const isCorrect = answerResult?.correct_answer === label;
         const isEliminated = eliminated.has(idx);
         const showPick = markSelectionOnReveal && !!answerResult && isSelected;
+        // QRT2 — the correct tablet says so IN WORDS. A check icon and a hue are
+        // not enough for a colour-blind player or a glance at a phone: the
+        // answer the server disclosed carries a "Correct answer" tab, and the
+        // player's own pick (right or wrong) keeps its "Your pick" tab beside it.
+        const showCorrectTag = verdictTabs && markSelectionOnReveal && !!answerResult && isCorrect;
         let btnVariant: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive" | "hero" | "accent" = "outline";
         if (answerResult) {
           if (isCorrect) btnVariant = "default";
@@ -323,6 +342,9 @@ export default function QuizAnswerOptions({
                 showPick
                   ? "relative ring-2 ring-offset-2 ring-offset-transparent ring-[#f0d78c] disabled:opacity-100"
                   : "",
+                // A revealed correct tablet is the answer; the shared Button's
+                // 50% disabled dim must not wash it out like a bystander.
+                showCorrectTag ? "relative disabled:opacity-100" : "",
               ].join(" ").trim()}
             >
               {imgUrl ? (
@@ -376,7 +398,28 @@ export default function QuizAnswerOptions({
                   )}
                 </>
               )}
-              {showPick && (
+              {verdictTabs && (showPick || showCorrectTag) && (
+                // Tabs on the tablet's top edge (out of flow: no tablet ever
+                // resizes or reflows when a round resolves). The text is real
+                // text inside the button, so it is part of the accessible name
+                // a screen reader speaks on focus — and is never a live region.
+                <span data-testid="answer-result-tags"
+                  className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1">
+                  {showCorrectTag && (
+                    <span data-testid="answer-correct-tag"
+                      className="rounded-sm bg-[#86efac] px-1.5 py-0.5 text-[10px] font-black uppercase leading-none tracking-[0.14em] text-[#052e1a] shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+                      Correct answer
+                    </span>
+                  )}
+                  {showPick && (
+                    <span data-testid="answer-your-pick"
+                      className="rounded-sm bg-[#f0d78c] px-1.5 py-0.5 text-[10px] font-black uppercase leading-none tracking-[0.14em] text-[#1d1608] shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+                      Your pick
+                    </span>
+                  )}
+                </span>
+              )}
+              {!verdictTabs && showPick && (
                 <span data-testid="answer-your-pick"
                   className={content
                     // PPQ2-INT: rich tablet content reaches the tablet's lower

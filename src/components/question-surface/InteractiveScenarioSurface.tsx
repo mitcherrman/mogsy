@@ -122,6 +122,13 @@ export interface InteractiveScenarioSurfaceProps {
   answerColumns?: "auto" | "wide-2" | "pair";
   /** PPQ2-C (proposed) — drawn over the gap of a "pair". */
   pairDivider?: ReactNode;
+  /**
+   * QRT2 Phase 2A — tell the revealed answer in words ("Correct answer" /
+   * "Your pick" tabs on the tablets). Opt-in per surface: Ranked and the hosted
+   * Daily pass it; every mode that has not adopted the new result presentation
+   * renders exactly what it always did.
+   */
+  verdictTabs?: boolean;
 }
 
 /**
@@ -205,6 +212,7 @@ export function InteractiveScenarioSurface({
   answerContent = null,
   answerColumns,
   pairDivider = null,
+  verdictTabs = false,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
   // Pre-reveal premise fields only — see resolveBandProfile. Recomputed per
@@ -367,6 +375,7 @@ export function InteractiveScenarioSurface({
           optionContent={answerContent ?? undefined}
           columns={answerColumns}
           pairDivider={pairDivider}
+          verdictTabs={verdictTabs}
         />
       </div>
 
