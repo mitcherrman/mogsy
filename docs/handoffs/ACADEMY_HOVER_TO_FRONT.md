@@ -126,3 +126,21 @@ See the PR. The CI result and the build are recorded in the PR description and i
 
 The owner's hands-on review at 60 fps on a real GPU: is the 180 ms dwell right, and should the reduced-motion hover stay in place?
 Then merge and publish on the owner's explicit go. Rollback: revert the merge; nothing else depends on it.
+
+---
+
+## Release certification — 2026-10-23
+
+**Objective:** release owner-approved hover-to-front without polluting the forthcoming Academy Pulse workstream.
+
+**Integration:** original feature PR #95 was merged to main at `024721716dfb26820145aabd49ff942b23ea8e7d`; a subsequent main merge of Journey PR #137 placed the default at `5e1bd56554ae765bb15d1277edfa27d1c1956869`. Release-cert branch `academy/hover-release-cert-20261023` was based on that main.
+
+**Historical CI:** the PR #95 browser workflow at https://github.com/mitcherrman/mogsy/actions/runs/39359126756 had passing unit tests/build, 65 passing V3.5 browser tests plus three V3.5 browser failures and two legacy V3 browser failures. Do not label the original workflow green.
+
+**Cert changes:** 1) Separate two independent hover targets into fresh orbit visits rather than attempting to pointer-target a book occluded behind a previous sticky selection; 2) increase the measurement interval, preserving the motion-distance assertion and the strong front-centre/hold checks; 3) issue a real touchscreen tap at a validated exposed hit target rather than Playwright locator.tap() waiting for continuously levitating book stability; 4) update legacy spec to assert approved sticky focus after leaving, and avoid occluded-book aiming by resetting between independent cases; 5) test muted click navigation via keyboard activation instead of coordinates invalidated by a rotating book. No gameplay/animation production changes in this cert batch.
+
+**Validation still required:** new PR browser workflow with both suites and unit/build, and independent live production interaction proof after publication. Never infer production publication from a merge.
+
+**Deployment gate:** Lovable connector permission reports `Allow low-risk actions` inheriting default, but prior Lovable code-edit/read calls were denied by the integration. Do not retry declined actions. GitHub is writable. No verified Lovable deployment as of this handoff.
+
+**Next task:** inspect the certification PR's Actions checks. If green, merge to main. If any browser failure remains, examine the exact job logs, adjust a real defect or brittle test with a meaningful replacement, and rerun. Publish through Lovable only when access is restored, then inspect the live `/lol` interaction. Start Pulse in a fresh branch after cert completion.
