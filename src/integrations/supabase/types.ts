@@ -230,31 +230,96 @@ export type Database = {
           },
         ]
       }
+      admin_notification_states: {
+        Row: {
+          admin_user_id: string
+          done_at: string | null
+          notification_id: string
+          saved_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_user_id: string
+          done_at?: string | null
+          notification_id: string
+          saved_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_user_id?: string
+          done_at?: string | null
+          notification_id?: string
+          saved_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notification_states_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "admin_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notifications: {
         Row: {
+          activity_at: string
+          category: string | null
           created_at: string
+          dedupe_key: string | null
+          expires_at: string | null
           id: string
           is_read: boolean
           message: string | null
           metadata: Json | null
+          occurrence_count: number
+          priority: string | null
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          subject_id: string | null
+          subject_type: string | null
           title: string
           type: string
         }
         Insert: {
+          activity_at?: string
+          category?: string | null
           created_at?: string
+          dedupe_key?: string | null
+          expires_at?: string | null
           id?: string
           is_read?: boolean
           message?: string | null
           metadata?: Json | null
+          occurrence_count?: number
+          priority?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          subject_id?: string | null
+          subject_type?: string | null
           title: string
           type?: string
         }
         Update: {
+          activity_at?: string
+          category?: string | null
           created_at?: string
+          dedupe_key?: string | null
+          expires_at?: string | null
           id?: string
           is_read?: boolean
           message?: string | null
           metadata?: Json | null
+          occurrence_count?: number
+          priority?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          subject_id?: string | null
+          subject_type?: string | null
           title?: string
           type?: string
         }
@@ -2955,6 +3020,24 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          muted_categories: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          muted_categories?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          muted_categories?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       play_layout_config: {
         Row: {
           config: Json
@@ -3961,11 +4044,46 @@ export type Database = {
           },
         ]
       }
+      user_notification_states: {
+        Row: {
+          done_at: string | null
+          notification_id: string
+          saved_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          done_at?: string | null
+          notification_id: string
+          saved_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          done_at?: string | null
+          notification_id?: string
+          saved_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_states_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "user_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_notifications: {
         Row: {
           action_url: string | null
+          activity_at: string
+          category: string | null
           created_at: string
           emoji: string | null
+          expires_at: string | null
           id: string
           image_url: string | null
           is_recurring: boolean
@@ -3978,8 +4096,12 @@ export type Database = {
           profile_id: string | null
           recurrence_end_at: string | null
           recurrence_rule: string | null
+          resolution: string | null
+          resolved_at: string | null
           scheduled_at: string | null
           sent_by_user_id: string
+          subject_id: string | null
+          subject_type: string | null
           target_categories: string[] | null
           target_league_ids: string[] | null
           target_type: string
@@ -3988,8 +4110,11 @@ export type Database = {
         }
         Insert: {
           action_url?: string | null
+          activity_at?: string
+          category?: string | null
           created_at?: string
           emoji?: string | null
+          expires_at?: string | null
           id?: string
           image_url?: string | null
           is_recurring?: boolean
@@ -4002,8 +4127,12 @@ export type Database = {
           profile_id?: string | null
           recurrence_end_at?: string | null
           recurrence_rule?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
           scheduled_at?: string | null
           sent_by_user_id: string
+          subject_id?: string | null
+          subject_type?: string | null
           target_categories?: string[] | null
           target_league_ids?: string[] | null
           target_type?: string
@@ -4012,8 +4141,11 @@ export type Database = {
         }
         Update: {
           action_url?: string | null
+          activity_at?: string
+          category?: string | null
           created_at?: string
           emoji?: string | null
+          expires_at?: string | null
           id?: string
           image_url?: string | null
           is_recurring?: boolean
@@ -4026,8 +4158,12 @@ export type Database = {
           profile_id?: string | null
           recurrence_end_at?: string | null
           recurrence_rule?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
           scheduled_at?: string | null
           sent_by_user_id?: string
+          subject_id?: string | null
+          subject_type?: string | null
           target_categories?: string[] | null
           target_league_ids?: string[] | null
           target_type?: string
@@ -4204,6 +4340,67 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_get_notification: {
+        Args: { _id: string }
+        Returns: {
+          activity_at: string
+          category: string
+          created_at: string
+          expires_at: string
+          id: string
+          is_done: boolean
+          is_expired: boolean
+          is_read: boolean
+          is_saved: boolean
+          message: string
+          metadata: Json
+          occurrence_count: number
+          priority: string
+          resolution: string
+          resolved_at: string
+          sort_at: string
+          sort_rank: number
+          state: string
+          subject_id: string
+          subject_type: string
+          tab: string
+          title: string
+          type: string
+        }[]
+      }
+      admin_get_notifications: {
+        Args: {
+          _cursor_at?: string
+          _cursor_id?: string
+          _cursor_rank?: number
+          _limit?: number
+          _tab?: string
+        }
+        Returns: {
+          activity_at: string
+          category: string
+          created_at: string
+          expires_at: string
+          id: string
+          is_done: boolean
+          is_expired: boolean
+          is_read: boolean
+          is_saved: boolean
+          message: string
+          metadata: Json
+          occurrence_count: number
+          priority: string
+          resolution: string
+          resolved_at: string
+          sort_at: string
+          sort_rank: number
+          state: string
+          subject_id: string
+          subject_type: string
+          title: string
+          type: string
+        }[]
+      }
       admin_link_friendship: {
         Args: { _target_profile_id: string }
         Returns: Json
@@ -4317,9 +4514,54 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_notification_counts: { Args: never; Returns: Json }
+      admin_notification_inbox_rows: {
+        Args: never
+        Returns: {
+          activity_at: string
+          category: string
+          created_at: string
+          done_at: string
+          expires_at: string
+          id: string
+          is_expired: boolean
+          is_read: boolean
+          message: string
+          metadata: Json
+          occurrence_count: number
+          priority: string
+          resolution: string
+          resolved_at: string
+          saved_at: string
+          state: string
+          subject_id: string
+          subject_type: string
+          title: string
+          type: string
+        }[]
+      }
+      admin_notifications_v2_sync: {
+        Args: {
+          _resolution: string
+          _resolved: boolean
+          _status?: string
+          _subject_id: string
+          _subject_type: string
+        }
+        Returns: undefined
+      }
+      admin_reopen_notification: { Args: { _id: string }; Returns: boolean }
       admin_resolve_mod_request: {
         Args: { _approved: boolean; _notification_id: string }
         Returns: string
+      }
+      admin_resolve_notifications: {
+        Args: { _ids: string[]; _resolution: string }
+        Returns: Json
+      }
+      admin_set_notification_state: {
+        Args: { _action: string; _ids: string[]; _tab?: string }
+        Returns: Json
       }
       admin_set_pro_grant: {
         Args: {
@@ -4495,6 +4737,37 @@ export type Database = {
         }[]
       }
       get_league_swipe_stats: { Args: never; Returns: Json }
+      get_my_notification_summary: { Args: never; Returns: Json }
+      get_my_notifications: {
+        Args: {
+          _cursor_at?: string
+          _cursor_id?: string
+          _limit?: number
+          _view?: string
+        }
+        Returns: {
+          action_url: string
+          activity_at: string
+          category: string
+          created_at: string
+          expires_at: string
+          id: string
+          image_url: string
+          is_done: boolean
+          is_expired: boolean
+          is_read: boolean
+          is_saved: boolean
+          message: string
+          metadata: Json
+          priority: string
+          resolution: string
+          resolved_at: string
+          sort_at: string
+          state: string
+          title: string
+          type: string
+        }[]
+      }
       get_my_referral_code: {
         Args: never
         Returns: {
@@ -4705,6 +4978,31 @@ export type Database = {
           status: string
         }[]
       }
+      my_notification_inbox_rows: {
+        Args: never
+        Returns: {
+          action_url: string
+          activity_at: string
+          category: string
+          created_at: string
+          done_at: string
+          expires_at: string
+          id: string
+          image_url: string
+          is_expired: boolean
+          is_muted: boolean
+          is_read: boolean
+          message: string
+          metadata: Json
+          priority: string
+          resolution: string
+          resolved_at: string
+          saved_at: string
+          state: string
+          title: string
+          type: string
+        }[]
+      }
       my_pro_entitlement: {
         Args: never
         Returns: {
@@ -4716,6 +5014,42 @@ export type Database = {
         }[]
       }
       normalize_display_name: { Args: { _name: string }; Returns: string }
+      notification_admin_profile: {
+        Args: {
+          _feedback_intent: string
+          _feedback_severity: string
+          _feedback_type: string
+          _id: string
+          _metadata: Json
+          _type: string
+        }
+        Returns: {
+          category: string
+          dedupe_key: string
+          priority: string
+          subject_id: string
+          subject_type: string
+          ttl: string
+        }[]
+      }
+      notification_feedback_digest: {
+        Args: { _feedback_id: string }
+        Returns: Json
+      }
+      notification_priority_rank: {
+        Args: { _priority: string }
+        Returns: number
+      }
+      notification_try_uuid: { Args: { _value: string }; Returns: string }
+      notification_user_profile: {
+        Args: { _metadata: Json; _priority: string; _type: string }
+        Returns: {
+          category: string
+          subject_id: string
+          subject_type: string
+          ttl: string
+        }[]
+      }
       owner_auth_state: { Args: never; Returns: Json }
       owner_configured_id: { Args: never; Returns: string }
       owner_create_custom_offer_claim: {
@@ -5022,6 +5356,14 @@ export type Database = {
       set_display_name: {
         Args: { _name: string; _only_if_unset?: boolean }
         Returns: Json
+      }
+      set_my_notification_preferences: {
+        Args: { _muted: string[] }
+        Returns: string[]
+      }
+      set_my_notification_state: {
+        Args: { _action: string; _ids: string[] }
+        Returns: number
       }
       set_round_winner: {
         Args: { _round_id: string; _winner_team_id: string }
