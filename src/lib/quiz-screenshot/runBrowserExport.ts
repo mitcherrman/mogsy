@@ -237,16 +237,69 @@ async function createStageFrame(width: number, height: number): Promise<HTMLIFra
   const inherited = document.documentElement.className.replace(/theme-\S+/g, "").trim();
   doc.documentElement.className = `${inherited} dark theme-lol`.trim();
   doc.body.style.margin = "0";
+  const sheetsLoaded: Promise<void>[] = [];
   for (const node of Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))) {
-    doc.head.appendChild(node.cloneNode(true));
+    const clone = node.cloneNode(true) as HTMLElement;
+    if (clone.tagName === "LINK") {
+      sheetsLoaded.push(
+        new Promise<void>((resolve) => {
+          clone.addEventListener("load", () => resolve(), { once: true });
+          clone.addEventListener("error", () => resolve(), { once: true });
+        }),
+      );
+    }
+    doc.head.appendChild(clone);
   }
-  // The zoom fit measures text, so it must not run against fallback metrics.
-  // A frame's FontFaceSet loads lazily — only once text asks for a face — so
-  // `ready` alone resolves before anything is pending. Ask the frame for every
-  // face this page has already loaded, so the first card that uses a weight
-  // is measured with it, exactly as Playwright's warmed page is.
+  await withTimeout(Promise.all(sheetsLoaded), FONT_PRELOAD_TIMEOUT_MS);
+  await preloadStageFonts(doc);
+  return frame;
+}
+
+/** Fonts must be in place before the first card is measured; never wait forever. */
+const FONT_PRELOAD_TIMEOUT_MS = 15_000;
+
+function withTimeout(work: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    work.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
+}
+
+/** True when a face's unicode-range covers Basic Latin (or is unrestricted). */
+function coversBasicLatin(range: string): boolean {
+  return /U\+0+-10FFFF|U\+0+-0*FF\b|U\+0+-0*7F\b|U\+0000-00FF/i.test(range.replace(/\s+/g, ""));
+}
+
+/**
+ * Load the export surface's fonts BEFORE any card is laid out.
+ *
+ * The zoom fit and the cross-slide layout gate both measure text, so the first
+ * card must not be laid out with fallback metrics. A frame's FontFaceSet loads
+ * lazily — a face is fetched only once text asks for it — so `fonts.ready`
+ * alone resolves while nothing is pending yet. The CC2 runs showed what that
+ * costs: the first card of a fresh page measured "Scan to play" 94px wide
+ * against 80px on the next card, and the generator's layout gate (correctly)
+ * failed the run. So every @font-face the copied stylesheets declare for Basic
+ * Latin is loaded here, plus any face this page has already loaded; a missing
+ * or slow font cannot hang the export (bounded wait).
+ */
+async function preloadStageFonts(doc: Document): Promise<void> {
   try {
     const wanted: Promise<unknown>[] = [];
+    doc.fonts?.forEach((face) => {
+      if (face.status === "unloaded" && coversBasicLatin(face.unicodeRange)) {
+        wanted.push(face.load().catch(() => undefined));
+      }
+    });
     document.fonts?.forEach((face) => {
       if (face.status !== "loaded") return;
       const family = face.family.replace(/^["']|["']$/g, "");
@@ -255,12 +308,11 @@ async function createStageFrame(width: number, height: number): Promise<HTMLIFra
       const style = face.style.split(/\s+/)[0];
       wanted.push(doc.fonts.load(`${style} ${weight} 16px "${family}"`).catch(() => undefined));
     });
-    await Promise.all(wanted);
-    await doc.fonts?.ready;
+    await withTimeout(Promise.all(wanted), FONT_PRELOAD_TIMEOUT_MS);
+    await withTimeout(doc.fonts?.ready ?? Promise.resolve(), FONT_PRELOAD_TIMEOUT_MS);
   } catch {
     /* font API unavailable in this frame — proceed */
   }
-  return frame;
 }
 
 type Surface = { frame: HTMLIFrameElement; root: Root; host: HTMLElement; doc: Document };
