@@ -3,6 +3,8 @@ name: question-media-acceptance
 # QMEDIA1 — premise media (Dragon glyph, Vision item) and missing-asset text
 # fallback through the production Ranked/Daily card path, desktop + 390x844.
 # QMEDIA2: Match Grid art that fails to load falls back to its monogram.
+# QMEDIA3: Varus Q (ability_cooldown_rank) draws its ability in Ranked, Daily
+# and Practice; an ability_cooldown_compare row draws both champions.
 on:
   pull_request:
     paths:
@@ -12,6 +14,11 @@ on:
       - "src/pages/dev/ranked-shell-probe/**"
       - "e2e/question-media-qmedia1.spec.ts"
       - "e2e/question-media-qmedia2.spec.ts"
+      - "e2e/question-media-qmedia3.spec.ts"
+      - "e2e/pm2/**"
+      - "e2e/fixtures/qmedia3/**"
+      - "playwright.pm2.config.ts"
+      - "src/lib/question-surface/**"
       - "src/components/quiz/QuizAnswerOptions.tsx"
       - "src/components/match-grid/**"
       - "src/components/perfect-timing/**"
@@ -42,7 +49,10 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Question media acceptance
-        run: npx playwright test -c playwright.arena.config.ts e2e/question-media-qmedia1.spec.ts e2e/question-media-qmedia2.spec.ts --workers=1
+        run: npx playwright test -c playwright.arena.config.ts e2e/question-media-qmedia1.spec.ts e2e/question-media-qmedia2.spec.ts e2e/question-media-qmedia3.spec.ts --workers=1
+      - name: QMEDIA3 Practice acceptance (Varus Q)
+        if: always()
+        run: npx playwright test -c playwright.pm2.config.ts e2e/pm2/practice-qmedia3-varus.spec.ts --workers=1
       - name: Upload screenshots and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
