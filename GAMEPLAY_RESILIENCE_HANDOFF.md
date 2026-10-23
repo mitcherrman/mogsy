@@ -1,6 +1,6 @@
 # GRES1 — Gameplay reliability and outage resilience
 
-Status: **implemented and tested on isolated branches, awaiting owner review** (nothing deployed, merged or migrated). Next action: §12.
+Status: **draft PRs open (FE mogsy#135, BE League_Combat_Simulator#101), awaiting owner review** (nothing deployed, merged or migrated). Next action: §12.
 
 | | Frontend (`mitcherrman/mogsy`) | Backend (`mitcherrman/League_Combat_Simulator`) |
 |---|---|---|
@@ -366,7 +366,29 @@ Not covered by an automated test: a per-card **Journey** block with pooled activ
 
 ### 10.1 Backend regression comparison (branch vs clean `master` `b8b629cf`)
 
-BE_REGRESSION_RESULT
+**No regression.**
+
+**Scope.** Branch `617c2ee2` vs a detached clean checkout at its base, `b8b629cf`. 177 gameplay test files (`test_*ranked*`, `*daily*`, `dcmod*`, `journey*`, `quiz1*`, `order_forge*`, `match_grid*`, `assembly*`, `rc3*`/`rc5*`, `*stat_check*`, `live1_deployment*`, `funnel1b3*`, `jlong1*`, `jp5*`, `pq1*`, `dcsurv*`, `users2_3c*`) plus `public_game_modes/tests` and `arena/tests`. Both sides ran with `--continue-on-collection-errors -rfE --tb=line`.
+
+| | Branch `617c2ee2` | Clean `b8b629cf` |
+|---|---|---|
+| Failed | 495 | 495 |
+| Passed | 4,251 | 4,251 |
+| Skipped | 705 | 705 |
+| Errors | 16 | 16 |
+| Collection errors (both sides) | 4 | 4 |
+
+The 4 collection errors are the same files on both sides: `test_quiz1_meta_reflex_additive.py`, `test_quiz1_per_card_timers.py`, `test_ranked_builder_catalog.py` and `test_ranked_format_config.py`.
+
+**By test identity:** 505 failing or erroring test IDs on each side, in 59 files.
+- Failing only on the branch: **0**.
+- Failing only on base: **0**.
+
+**By traceback:** for all 505 shared failures, the normalised error line (paths, hex ids and timings masked) is **identical** on both sides.
+
+All of these failures are pre-existing on `master` and none is attributed to GRES1. GRES1's own suite, `test_gres1_outage_resilience.py` (28/28), is not in this list and was run separately.
+
+**Not checkable in CI:** GitHub Actions did not start any backend job. Every check annotation reads "The job was not started because recent account payments have failed or your spending limit needs to be increased". That is a billing block, not a test result.
 
 ### 10.2 Pushing these branches cannot deploy (verified 2026-10-23)
 
@@ -448,7 +470,7 @@ Not verified: whether production sets `RAILWAY_DEPLOYMENT_DRAINING_SECONDS`. The
 
 ## 12. Exact next integration action
 
-PRs: frontend FE_PR_URL (head FE_HEAD), backend BE_PR_URL (head BE_HEAD). Both are drafts and neither is merged.
+PRs: frontend https://github.com/mitcherrman/mogsy/pull/135 (head: this branch), backend https://github.com/mitcherrman/League_Combat_Simulator/pull/101 (head `617c2ee2`). Both are drafts and neither is merged.
 
 **Release dependencies:**
 - **GRES1-FE** is independently releasable against today's production backend.
