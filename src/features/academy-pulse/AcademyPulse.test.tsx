@@ -120,6 +120,44 @@ describe("the device", () => {
     expect(scene()).toHaveAttribute("data-category", "player-activity");
   });
 
+  it("a parked mouse releases its hover hold after a finite grace period", () => {
+    vi.useFakeTimers();
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
+    expect(root).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(5_900); });
+    expect(root).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(root).toHaveAttribute("data-playing", "true");
+  });
+
+  it("Play overrides a transient hover hold and updates its true playing state", () => {
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    const toggle = screen.getByTestId("academy-pulse-toggle");
+    fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
+    expect(root).toHaveAttribute("data-playing", "false");
+    expect(toggle).toHaveAccessibleName("Play Academy Pulse");
+    fireEvent.click(toggle);
+    expect(root).toHaveAttribute("data-playing", "true");
+    expect(toggle).toHaveAccessibleName("Pause Academy Pulse");
+  });
+
+  it("mouse focus on a scene control does not persist as keyboard focus after pointer departure", () => {
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    const next = screen.getByTestId("academy-pulse-next");
+    const matches = vi.spyOn(next, "matches");
+    matches.mockImplementation((selector) => selector === ":focus-visible" ? false : HTMLElement.prototype.matches.call(next, selector));
+    fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
+    fireEvent.focus(next);
+    fireEvent.click(next);
+    fireEvent.pointerOut(root, { pointerType: "mouse", relatedTarget: document.body });
+    expect(root).toHaveAttribute("data-playing", "true");
+    matches.mockRestore();
+  });
+
   it("reduced motion starts paused", () => {
     reduced.current = true;
     mount();
