@@ -56,6 +56,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import SEOHead from "@/components/SEOHead";
+import { OfficialSocialLinks } from "@/components/social/OfficialSocialLinks";
 import { useAuth } from "@/hooks/useAuth";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { SITE_URL } from "@/lib/site-config";
@@ -577,6 +578,7 @@ function AcademyCoreOrrery() {
       >
         Academy Hall
       </Link>
+      <OfficialSocialLinks placement="home_hub" compact />
     </nav>
   );
 
