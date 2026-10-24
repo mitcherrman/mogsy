@@ -248,8 +248,8 @@ test.describe("behaviour at 1366x768", () => {
     await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);
     await page.mouse.move(900, 400);
     await expect(pulse).toHaveAttribute("data-holds", "");
-    const before = await page.getByTestId("academy-pulse-scene").getAttribute("data-category");
-    await expect(page.getByTestId("academy-pulse-scene")).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
+    const before = await incomingScene(page).getAttribute("data-category");
+    await expect(incomingScene(page)).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
   });
 
   test("hovering holds the rotation; leaving lets it go", async ({ page }) => {
@@ -278,10 +278,14 @@ test.describe("behaviour at 1366x768", () => {
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await expect(pulse).toHaveAttribute("data-playing", "false");
     await expect(pulse).toHaveAttribute("data-playing", "true", { timeout: 10_000 });
-    // A deliberate Play click must also clear a hover pause immediately.
+    // While hovering, the button still offers the viewer's Pause (PULSE-1.2): the first click
+    // pauses; Play then resumes at once and clears the hover pause too.
     await page.mouse.move(900, 400);
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await expect(pulse).toHaveAttribute("data-playing", "false");
+    await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
+    await page.getByTestId("academy-pulse-toggle").click();
+    await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Play Academy Pulse");
     await page.getByTestId("academy-pulse-toggle").click();
     await expect(pulse).toHaveAttribute("data-playing", "true");
     await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
