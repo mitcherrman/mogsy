@@ -531,3 +531,51 @@ Tests:
   - the owner applies it. Never applied by an agent.
 - **CV4 (L2):** component tests, CI browser job, then the owner's real `/admin` check.
 - Always: no push, merge or deploy without owner instruction.
+
+---
+
+## 10. CV2 status (2026-10-24): owner approved D-1 to D-4
+
+**Built** (frontend only; no tracking, no migration, no UI yet):
+- `src/lib/admin/analytics/conversion.ts`: three pure projections, each returning the unit sets behind every number so CV4 drill-downs can reuse them.
+  - `computeBrowserConversion`:
+    - new browsers, 7-day window, ordered steps Entered → Leaguecraft → Chose a game → Server-confirmed play → Viewed signup → Created an account;
+    - per step: `reached`, `enteredLater`, `dropped`, `stepRate`, `cumulativeRate`;
+    - `furthest` buckets (they sum to eligible);
+    - `serverPlayCoverage` (input for D-6);
+    - Daily stage-start / Standard-completion rates.
+  - `computeSignupForm`:
+    - first `signup_viewed`, 24 h window, viewed → submitted → created in order;
+    - split by entry surface and by origin;
+    - `completedWithoutView` as a side set.
+  - `computeAccountActivation`:
+    - the Retention V2 account anchor (`accountSignupAnchors`, parity-tested against `computeCohortRetention`);
+    - played before signup (guest upgrades only, a floor);
+    - activated within 7 days;
+    - played again from 24 h to 8 days;
+    - email confirmation marked not applicable (D-1).
+  - Every projection returns `unavailableReason` when any capped read was truncated.
+- `src/lib/admin/analytics/conversion.test.ts`: 22 cases covering:
+  - order and equal-timestamp rules;
+  - entered-later;
+  - too-recent;
+  - per-unit window;
+  - returning browsers excluded;
+  - duplicates and repeat sessions;
+  - no UID fan-out;
+  - session correlation and conflicting ids;
+  - browser-authored gameplay ignored;
+  - furthest buckets;
+  - Daily attribution;
+  - truncation;
+  - signup-form ordering and windows;
+  - anchor parity;
+  - shared browser;
+  - email confirmation not applicable.
+- `src/lib/admin/analytics/loadAnalytics.ts` (D-4): each paged read now ends its order with the primary key (`id`, `session_id`, `visitor_id`), so offset pages are stable on timestamp ties. Which rows a capped read keeps (the oldest 50k) is unchanged.
+
+**Not changed:**
+- `metrics.ts`, `cohorts.ts`, `visitorJourney.ts`, Daily History: imported only.
+- The existing tiles (D-7).
+
+**Next:** CV4 UI (§9.5) after the owner sets D-6 (server-play coverage threshold), using Q5. CV3 is optional (D-5).
