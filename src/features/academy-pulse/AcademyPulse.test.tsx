@@ -132,6 +132,19 @@ describe("the device", () => {
     expect(root).toHaveAttribute("data-playing", "true");
   });
 
+  it("new genuine mouse movement starts another brief reading grace", () => {
+    vi.useFakeTimers();
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    fireEvent.pointerOver(root, { pointerType: "mouse", clientX: 20, clientY: 20, relatedTarget: document.body });
+    act(() => { vi.advanceTimersByTime(6_100); });
+    expect(root).toHaveAttribute("data-playing", "true");
+    fireEvent.pointerMove(root, { pointerType: "mouse", clientX: 60, clientY: 28 });
+    expect(root).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(6_100); });
+    expect(root).toHaveAttribute("data-playing", "true");
+  });
+
   it("Play overrides a transient hover hold and updates its true playing state", () => {
     mount({ provider: provider(30_000) });
     const root = screen.getByTestId("academy-pulse");
