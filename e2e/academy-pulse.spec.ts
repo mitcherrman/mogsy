@@ -53,6 +53,9 @@ async function stub(page: Page) {
 
 type R = { x: number; y: number; width: number; height: number };
 const box = async (page: Page, sel: string): Promise<R> => (await page.locator(sel).first().boundingBox())!;
+// Cross-fades intentionally render both outgoing and incoming scenes briefly.
+// The newest (last) scene is the current selection; it need not be unique.
+const incomingScene = (page: Page) => page.getByTestId("academy-pulse-scene").last();
 
 async function open(page: Page, width: number, height: number, pulse: boolean) {
   await page.setViewportSize({ width, height });
@@ -188,13 +191,13 @@ test.describe("behaviour at 1366x768", () => {
   test("controls move between scenes without moving the page; Pause holds; keyboard focus holds", async ({ page }) => {
     const pulse = page.getByTestId("academy-pulse");
     const slotBefore = await box(page, '[data-testid="academy-pulse-slot"]');
-    await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-category", "player-activity");
+    await expect(incomingScene(page)).toHaveAttribute("data-category", "player-activity");
     await page.getByTestId("academy-pulse-next").click();
-    await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-category", "mini-game");
+    await expect(incomingScene(page)).toHaveAttribute("data-category", "mini-game");
     await page.getByTestId("academy-pulse-next").click();
-    await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-category", "sponsor");
+    await expect(incomingScene(page)).toHaveAttribute("data-category", "sponsor");
     await page.getByTestId("academy-pulse-prev").click();
-    await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-category", "mini-game");
+    await expect(incomingScene(page)).toHaveAttribute("data-category", "mini-game");
     const slotAfter = await box(page, '[data-testid="academy-pulse-slot"]');
     expect(slotAfter).toEqual(slotBefore);
 
@@ -225,7 +228,7 @@ test.describe("behaviour at 1366x768", () => {
 
   test("the practice question answers in place; the expanded view opens and closes with Escape", async ({ page }) => {
     await page.getByRole("button", { name: "Scene 9: Quick study" }).click();
-    await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-scene", "question");
+    await expect(incomingScene(page)).toHaveAttribute("data-scene", "question");
     await page.getByTestId("pulse-question-option-lux").click();
     await expect(page.getByTestId("pulse-question-option-ahri")).toHaveAttribute("data-state", "right");
     await expect(page.getByTestId("academy-pulse")).toHaveAttribute("data-playing", "false");
@@ -242,7 +245,7 @@ test.describe("behaviour at 1366x768", () => {
 
   test("leaderboard rows can be inspected; a creator opens the viewer, which loads no third-party player for a sample", async ({ page }) => {
     await page.getByRole("button", { name: "Scene 4: Leaderboard" }).click();
-    await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-scene", "leaderboard");
+    await expect(incomingScene(page)).toHaveAttribute("data-scene", "leaderboard");
     await page.waitForTimeout(1800); // the climb
     await page.getByTestId("pulse-board-row-2").click();
     await expect(page.getByRole("dialog", { name: /FrostfireFox details/ })).toBeVisible();
@@ -267,7 +270,7 @@ test("reduced motion: Pulse starts paused and every change is a cross-fade", asy
   await expect(page.getByTestId("academy-pulse")).toHaveAttribute("data-reduced", "true");
   await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Play Academy Pulse");
   await page.getByTestId("academy-pulse-next").click();
-  await expect(page.getByTestId("academy-pulse-scene")).toHaveAttribute("data-category", "mini-game");
+  await expect(incomingScene(page)).toHaveAttribute("data-category", "mini-game");
   await expect(page.locator(".apulse-flare")).toHaveCount(0);
   await page.screenshot({ path: path.join(OUT, "reduced-motion-1366x768.png") });
 });
