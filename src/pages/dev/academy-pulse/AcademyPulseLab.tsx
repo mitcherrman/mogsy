@@ -10,7 +10,7 @@
  *   &still=1  every framer animation jumps to its end (layout review in a
  *             backgrounded browser, where animation frames barely run)
  */
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MotionGlobalConfig } from "framer-motion";
 
@@ -48,6 +48,7 @@ export default function AcademyPulseLab() {
   const paused = params.get("paused") !== "0";
   // DEV lab only: a global switch, set before the device mounts
   MotionGlobalConfig.skipAnimations = params.get("still") === "1";
+  useEffect(() => () => { MotionGlobalConfig.skipAnimations = false; }, []);
   const dims = LAB_SIZES[size];
   const set = (k: string, v: string) => { const next = new URLSearchParams(params); next.set(k, v); setParams(next, { replace: true }); };
   const key = useMemo(() => `${scene}:${size}:${paused}`, [scene, size, paused]);

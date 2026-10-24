@@ -91,8 +91,15 @@ export default function AcademyPulse({
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hold("focus", false);
   }, [hold]);
   const onRailKey = (e: KeyboardEvent<HTMLElement>) => {
-    if (e.key === "ArrowRight") { e.preventDefault(); rot.next(); }
-    else if (e.key === "ArrowLeft") { e.preventDefault(); rot.prev(); }
+    const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!dir) return;
+    e.preventDefault();
+    if (dir > 0) rot.next(); else rot.prev();
+    // on the pips (a roving set), focus follows the current scene
+    if ((e.target as HTMLElement).classList.contains("apulse-pip")) {
+      const rail = e.currentTarget;
+      requestAnimationFrame(() => rail.querySelector<HTMLElement>('.apulse-pip[data-current="true"]')?.focus());
+    }
   };
 
   // short glass (the shortest laptop screens): every scene becomes a one-line ticker
