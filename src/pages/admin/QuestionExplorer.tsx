@@ -20,12 +20,12 @@ function compose(source: Source, family: string, resource: string, champion: str
   return "FROM " + source + "\nWHERE " + terms.join("\n  AND ") +
     "\nORDER BY champion, slot, rank\nLIMIT 10000\nEXPORT CSV";
 }
-async function request(query: string, output: "preview" | "csv") {
+async function request(query: string, output: "preview" | "csv", offset = 0) {
   const headers = await getBackendAuthHeaders();
   const response = await fetch(quizApi.baseUrl + "/api/quiz/admin/review/query", {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ query, output }),
+    body: JSON.stringify({ query, output, offset }),
   });
   if (!response.ok) {
     const error = await response.json().catch(() => null);
@@ -43,6 +43,7 @@ export default function QuestionExplorer() {
   const [query, setQuery] = useState(MANA);
   const [rows, setRows] = useState<Row[]>([]);
   const [count, setCount] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState<"preview" | "csv" | null>(null);
   const [error, setError] = useState("");
 
@@ -56,22 +57,48 @@ export default function QuestionExplorer() {
     setResource(values.resource); setChampion(values.champion);
     setDifficulty(values.difficulty);
     setQuery(compose(values.source, values.family, values.resource, values.champion, values.difficulty));
-    setRows([]); setCount(null); setError("");
+    setRows([]); setCount(null); setHasMore(false); setError("");
   }
 
   async function run(output: "preview" | "csv") {
     setBusy(output); setError("");
     try {
-      const response = await request(query, output);
       if (output === "preview") {
-        const data = await response.json() as { rows: Row[]; total: number };
-        setRows(data.rows); setCount(data.total);
+        const response = await request(query, "preview");
+        const data = await response.json() as { rows: Row[]; shown: number; has_more: boolean };
+        setRows(data.rows); setCount(data.shown); setHasMore(data.has_more);
       } else {
-        const blob = await response.blob();
+        // Sequential bounded pages, never multiple heavy DB queries in flight.
+        // No partial CSV is downloaded if a page fails or size cap is reached.
+        const pieces: string[] = [];
+        let offset = 0;
+        let bytes = 0;
+        let completed = false;
+        for (let page = 0; page < 12; page++) {
+          const response = await request(query, "csv", offset);
+          const rowCount = Number(response.headers.get("X-Export-Row-Count"));
+          const more = response.headers.get("X-Export-Has-More");
+          if (!Number.isSafeInteger(rowCount) || rowCount < 0 || (more !== "true" && more !== "false")) {
+            throw new Error("CSV pagination metadata unavailable. Verify backend CORS/header contract.");
+          }
+          const contents = (await response.text()).replace(/^\uFEFF/, "");
+          const chunk = page === 0 ? "\uFEFF" + contents : contents.slice(contents.indexOf("\n") + 1);
+          bytes += new TextEncoder().encode(chunk).length;
+          if (bytes > 64 * 1024 * 1024) {
+            throw new Error("Export exceeds the 64MB browser safety limit. Narrow the query.");
+          }
+          pieces.push(chunk);
+          offset += rowCount;
+          if (more === "false") { completed = true; break; }
+          if (rowCount === 0) throw new Error("Export pagination stopped progressing.");
+        }
+        if (!completed) throw new Error("Export exceeded 12 pages. Narrow the query; no partial file was saved.");
+        const blob = new Blob(pieces, { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = "mogzy-question-export.csv";
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Query failed");
@@ -86,7 +113,7 @@ export default function QuestionExplorer() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-xl font-semibold">Question Explorer</h2>
-            <p className="text-sm text-muted-foreground">Visual filters and query text use one backend engine. Read-only; exports have a 10,000-row safety ceiling.</p>
+            <p className="text-sm text-muted-foreground">Visual filters and query text use one backend engine. Read-only. Full exports are collected in bounded sequential pages (64MB / 12 pages maximum).</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" disabled={busy !== null} onClick={() => void run("preview")}>
@@ -146,7 +173,7 @@ export default function QuestionExplorer() {
         </div>
         {error && <p role="alert" className="rounded border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
         <div className="space-y-2" aria-label="Query results">
-          <p className="text-sm font-semibold">{count === null ? "No preview loaded" : count.toLocaleString() + " matching questions"}</p>
+          <p className="text-sm font-semibold">{count === null ? "No preview loaded" : count.toLocaleString() + " shown" + (hasMore ? " · more available" : "")}</p>
           {rows.length > 0 && <div className="overflow-auto rounded border">
             <table className="min-w-[750px] w-full text-left text-xs">
               <thead className="bg-muted"><tr>{["Champion","Ability","Rank","Family","Question","Answer","Stored?"].map(h => <th className="px-3 py-2" key={h}>{h}</th>)}</tr></thead>
