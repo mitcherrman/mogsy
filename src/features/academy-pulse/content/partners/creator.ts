@@ -75,7 +75,7 @@ export function validateCreator(rec: CreatorRecord, opts: CreatorOptions): Creat
     const login = parseTwitchChannelUrl(rec.media.channelUrl);
     if (!login) return omit("invalid-media-url", "Not a Twitch channel URL.");
     const live = decideLive(login, opts.liveEvidence ?? [], { now, trustedSources: opts.trustedLiveSources, maxAgeMs: opts.liveMaxAgeMs });
-    if (!live.live && (live.reason === "untrusted" || live.reason === "stale" || live.reason === "malformed")) {
+    if (live.live === false && (live.reason === "untrusted" || live.reason === "stale" || live.reason === "malformed")) {
       notes.push({
         recordId: rid,
         scope: "field",
@@ -100,8 +100,8 @@ export function validateCreator(rec: CreatorRecord, opts: CreatorOptions): Creat
   let challenge: CreatorItem["challenge"] = null;
   if (rec.challenge) {
     const c = validateCreatorChallenge(rec.challenge, opts.challengeSources ?? CHALLENGE_SOURCES);
-    if (c.ok) challenge = c.challenge;
-    else notes.push({ recordId: rid, scope: "field", reason: c.reason, detail: c.detail });
+    if (c.ok === true) challenge = c.challenge;
+    else if (c.ok === false) notes.push({ recordId: rid, scope: "field", reason: c.reason, detail: c.detail });
   }
 
   const fixture = rec.provenance?.source !== "owner-entry";

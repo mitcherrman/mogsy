@@ -128,13 +128,13 @@ No paid service is required. None of these credentials or approvals were created
   - compatibility with `isRenderable`, `embedUrl`, `platformUrl` and `buildPulseCycle`;
   - the examples' provenance, and the import isolation.
 - **Lint:** eslint on the folder is clean.
-- **Typecheck:** **not run locally.** The global resource guard refused it, and it was not retried or bypassed: 4.9 GB free RAM against the 5.5 GB required, League client open, and another session's pytest running. It runs in CI instead (`academy-pulse-partners`, scoped to this folder).
+- **Typecheck:** **not run locally.** The global resource guard refused it twice, and it was not retried in a loop or bypassed. The first refusal was 4.9 GB free RAM against 5.5 GB required, League open and another session's pytest running. The second (2C.1) was 857 MB free and the disk 99 % busy. It runs in CI instead (`academy-pulse-partners`, scoped to this folder).
 - **Browser:** no rendered change; the adapter isn't wired in. `academy-pulse` (GitHub Chromium) still triggers on this path and proves PULSE-1 is unaffected.
-- CI results: see the draft PR.
+- **CI:** see §11 for the PULSE-2C.1 result.
 
 ## 9. Next
 
-- PULSE-2B: confirm or amend the contract (§4) on #151, then store records behind owner auth.
+- PULSE-2B: settle the incompatibilities in §10 on #151 (2C does not edit #155).
 - PULSE-2A integration, the sole owner of `pulse-provider.ts`:
   1. Read approved records server-side or under RLS.
   2. Call `adaptPartnerContent` with `now`.
@@ -142,3 +142,37 @@ No paid service is required. None of these credentials or approvals were created
   4. Re-adapt at `validUntil`.
   5. Flip `PARTNER_CONTENT_ENABLED` only on the owner's decision.
 - Backend, when wanted: the Twitch live reader, and a reproducible challenge id with a score read.
+
+## 10. Compatibility with PULSE-2B (#155, head f337759a)
+
+#155's contract (`src/lib/admin/pulse/contract.ts`, `pulse-admin/1`) is a different shape from §4.
+
+- **#155** stores the **finished scene payload** (`CreatorItem` / `SponsorItem`) inside an editorial envelope (`PulseContentRecord`), and links it to a `PulseCampaign` that holds approval, flight and disclosure.
+- **2C** takes **raw records** (pasted URLs, approved hosts, artwork) and *derives* the payload.
+
+The two can coexist, but these points disagree. Neither PR is wrong to merge alone, because 2C is disconnected, but they must be resolved before partner content is enabled:
+
+| # | Topic | #155 | 2C | Risk if left | Proposed resolution |
+|---|---|---|---|---|---|
+| 1 | Where media ids come from | Owner types `videoId` / `channel` into the payload; publish requires `platformUrl()` ≠ null | Derived from a pasted URL by `parseYouTubeUrl` / `parseTwitchChannelUrl` | Low: both end in the same id regex | #155's editor can call 2C's parsers to fill the payload from a URL. No contract change. |
+| 2 | Twitch LIVE / viewers | Save rejects `live: true` by hand; `viewersLabel` stays editable but is only drawn when live | No owner field; only trusted fresh evidence | Low | Compatible. #155 should also blank `viewersLabel`. 2A applies `decideLive` at projection time. |
+| 3 | Creator challenge | Owner may type `challenge { title, detail, href }` with an internal href | Omitted unless the source is reproducible and score-authoritative; none is | **High**: a typed "Beat their Daily 9,210" would be an unverifiable score | The public projection drops `challenge` until a `CHALLENGE_SOURCES` entry is verified, or #155 removes the field from the creator form. |
+| 4 | Sponsor destination | Any https host (`isHttpsUrl`) | Exact match against the campaign's `approvedHosts` | Medium: a typo or swapped link goes live | Add `approvedHosts: string[]` to `PulseCampaign`, approved with it. 2C validates `href` against them. |
+| 5 | Artwork / thumbnail host | Any https URL | Same-origin path or allowlisted image host (default `i.ytimg.com`) | Medium: third-party hotlinks, tracking pixels | Agree on the owner upload host (Supabase Storage public bucket?) and add it to `imageHosts`. |
+| 6 | Disclosure | 4 kinds (`sponsored`, `paid-partnership`, `affiliate`, `unpaid-spotlight`) plus `disclosureText`, on the campaign; creators require a campaign | Only "Sponsored" (the scene's fixed band), advertiser = sponsor name; creators carry no disclosure | Medium: wording the scene doesn't show | Either the scenes learn to print `DISCLOSURE_LABEL[kind]` (2A owns the scenes), or sponsor campaigns are limited to `sponsored`. 2C would accept `disclosure.kind`, and `partnerName === sponsorName`. |
+| 7 | States | Item `draft/published/unpublished/archived` plus campaign `pending/approved/rejected/ended`, and a `partners` kill switch | One `status` (`draft/pending-review/approved/paused/ended/rejected`) per record | Low | Map: shown ⇔ item effectively `live` **and** campaign `approved`. `paused` ≈ unpublished or kill. The kill switch is checked before the adapter runs. |
+| 8 | Approval identity | `decidedAt` (server-set), no approver id | `approval { approvedBy, approvedAt }` | Low | Use #155's server `decidedAt`; the approver comes from the server's audit log. 2C relaxes `approvedBy` when mapping from #155. |
+| 9 | Windows | Optional `flightStart` / `flightEnd` on the campaign, plus item `publishAt` / `expiresAt` | Sponsor window required, at most 92 days, end exclusive; creator window optional | Medium: an open-ended sponsor flight | Require both flight bounds for `type: "sponsor"` in #155 (owner decision on the cap, §7.4). The effective window is the intersection of item and flight. |
+| 10 | Concurrency | Category `maxPerCycle` | `maxConcurrentCampaigns` (1) | Low | Both apply. They are independent limits. |
+| 11 | Provenance | Implicit (owner records → `live`; preview → `fixture`) | Explicit `provenance` | Low | Map #155 records to `source: "owner-entry"`; preview stays `fixture`. |
+| 12 | Timestamps | `Date.parse` of any ISO | Explicit offset required | Low | The server emits `timestamptz` with an offset, so 2C's stricter parse accepts it. |
+
+**Integration recommendation (for 2A).** Build the public catalogue from #155's projection, then run 2C's checks on each partner item before it reaches the scheduler: rows 2–6 and 9. That needs a small mapping from `PulseContentRecord + PulseCampaign` to 2C's records, owned by 2A at integration time. That way neither contract is the only gate. 2C did not edit #155.
+
+## 11. PULSE-2C.1 — typecheck fix (2026-10-24)
+
+**Cause.** `tsconfig.app.json` has `strict: false`, so `strictNullChecks` is off. Without it, a truthiness test (`!d.ok`, `!live.live`) does not narrow a discriminated union, so `.omission`, `.reason` and `.detail` were not visible on the false branch. That gave 10 errors (run 40073095905) in `creator.ts`, `sponsor.ts`, `partner-adapter.ts` and `partner-adapter.test.ts`. Vitest passed, because esbuild doesn't typecheck.
+
+**Fix.** Every decision is compared to its literal discriminant (`d.ok === false`, `live.live === false`, `c.ok === true`), and that is commented at the adapter. No type was widened, no cast or `any` was added, and no validation rule changed.
+
+**Results:** local partner and model vitest 124/124, eslint clean, local typecheck refused by the guard (§8). CI: see the PR.

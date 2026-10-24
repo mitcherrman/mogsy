@@ -62,7 +62,10 @@ export function adaptPartnerContent(input: PartnerInput, opts: PartnerAdapterOpt
   const creators: CreatorItem[] = [];
   for (const rec of input.creators ?? []) {
     const d = validateCreator(rec, opts);
-    if (!d.ok) {
+    // Decisions are compared to their literal discriminant (`=== false`), never
+    // `!d.ok`: tsconfig.app.json is not strict, and without strictNullChecks a
+    // truthiness test does not narrow these unions.
+    if (d.ok === false) {
       omitted.push(d.omission);
       continue;
     }

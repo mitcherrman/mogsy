@@ -57,7 +57,7 @@ describe("creator spotlights", () => {
   it("an approved owner video becomes a live CreatorItem the PULSE-1 viewer can play", () => {
     const d = validateCreator(video(), { now: NOW });
     expect(d.ok).toBe(true);
-    if (!d.ok) return;
+    if (d.ok === false) return;
     expect(d.item).toMatchObject({
       id: "partner-creator-c1",
       kind: "creator",
@@ -74,13 +74,13 @@ describe("creator spotlights", () => {
   it("a Twitch channel is shown without LIVE unless trusted fresh evidence says so", () => {
     const evidence = [{ login: "real_streamer", state: "live" as const, source: "twitch-helix-streams" as const, observedAt: "2026-10-24T12:00:00Z", viewerCount: 50 }];
     const plain = validateCreator(channel(), { now: NOW, liveEvidence: evidence });
-    expect(plain.ok && plain.item.media).toMatchObject({ platform: "twitch", channel: "real_streamer", live: false, viewersLabel: "" });
-    expect(plain.ok && plain.notes.map((n) => n.reason)).toEqual(["live-evidence-untrusted"]);
+    expect(plain.ok === true && plain.item.media).toMatchObject({ platform: "twitch", channel: "real_streamer", live: false, viewersLabel: "" });
+    expect(plain.ok === true && plain.notes.map((n) => n.reason)).toEqual(["live-evidence-untrusted"]);
 
     const trusted = validateCreator(channel(), { now: NOW, liveEvidence: evidence, trustedLiveSources: new Set(["twitch-helix-streams"]) });
-    expect(trusted.ok && trusted.item.media).toMatchObject({ live: true, viewersLabel: "50 watching" });
-    expect(trusted.ok && trusted.validUntil).toBe(Date.parse("2026-10-24T12:01:30Z"));
-    expect(trusted.ok && embedUrl(trusted.item.media, "mogzy.lol")).toContain("channel=real_streamer&parent=mogzy.lol");
+    expect(trusted.ok === true && trusted.item.media).toMatchObject({ live: true, viewersLabel: "50 watching" });
+    expect(trusted.ok === true && trusted.validUntil).toBe(Date.parse("2026-10-24T12:01:30Z"));
+    expect(trusted.ok === true && embedUrl(trusted.item.media, "mogzy.lol")).toContain("channel=real_streamer&parent=mogzy.lol");
   });
 
   it.each<[string, Partial<CreatorRecord>, string]>([
@@ -97,7 +97,7 @@ describe("creator spotlights", () => {
   ])("omits a creator that is %s", (_label, over, reason) => {
     const d = validateCreator(video(over), { now: NOW });
     expect(d.ok).toBe(false);
-    if (!d.ok) expect(d.omission).toMatchObject({ recordId: "c1", scope: "item", reason });
+    if (d.ok === false) expect(d.omission).toMatchObject({ recordId: "c1", scope: "item", reason });
   });
 });
 
@@ -114,8 +114,8 @@ describe("creator challenges", () => {
       expect(src.reproducible && src.scoreAuthority, id).toBe(false);
     }
     const d = validateCreator(video({ challenge }), { now: NOW });
-    expect(d.ok && d.item.challenge).toBeNull();
-    expect(d.ok && d.notes).toEqual([expect.objectContaining({ scope: "field", reason: "challenge-not-reproducible" })]);
+    expect(d.ok === true && d.item.challenge).toBeNull();
+    expect(d.ok === true && d.notes).toEqual([expect.objectContaining({ scope: "field", reason: "challenge-not-reproducible" })]);
   });
 
   it("a verified source still needs a score attempt on that same source", () => {
@@ -134,7 +134,7 @@ describe("sponsor campaigns", () => {
   it("an approved in-flight campaign becomes a disclosed SponsorItem on its approved host", () => {
     const d = validateSponsorCampaign(campaign(), { now: NOW });
     expect(d.ok).toBe(true);
-    if (!d.ok) return;
+    if (d.ok === false) return;
     expect(d.item).toMatchObject({ id: "partner-sponsor-s1", provenance: "live", sponsorName: "Brand", artUrl: "/mogsy-logo.png", href: "https://brand.example/landing" });
     expect(d.validUntil).toBe(Date.parse("2026-10-31T00:00:00Z"));
     expect(isRenderable(d.item)).toBe(true);
@@ -166,7 +166,7 @@ describe("sponsor campaigns", () => {
   ])("omits a campaign that is %s", (_label, over, reason) => {
     const d = validateSponsorCampaign(campaign(over), { now: NOW });
     expect(d.ok).toBe(false);
-    if (!d.ok) expect(d.omission).toMatchObject({ recordId: "s1", scope: "item", reason });
+    if (d.ok === false) expect(d.omission).toMatchObject({ recordId: "s1", scope: "item", reason });
   });
 
   it("lets one campaign run at a time, earliest approval first", () => {

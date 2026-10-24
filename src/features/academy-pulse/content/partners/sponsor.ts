@@ -99,8 +99,8 @@ export function adaptSponsorCampaigns(records: readonly SponsorCampaignRecord[],
   const accepted: Extract<SponsorDecision, { ok: true }>[] = [];
   for (const rec of records) {
     const d = validateSponsorCampaign(rec, opts);
-    if (d.ok) accepted.push(d);
-    else omitted.push(d.omission);
+    if (d.ok === true) accepted.push(d);
+    else if (d.ok === false) omitted.push(d.omission);
   }
   accepted.sort((a, b) => a.approvedAt - b.approvedAt || a.item.id.localeCompare(b.item.id));
   for (const d of accepted.slice(limit)) {
