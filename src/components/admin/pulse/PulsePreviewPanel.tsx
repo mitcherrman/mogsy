@@ -22,7 +22,7 @@ export function PulsePreviewPanel({ snapshot, now }: { snapshot: PulseWorkspaceS
 
   return (
     <div className="grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]">
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap gap-1" role="group" aria-label="Slot size">
           {(Object.keys(PULSE_PREVIEW_SIZES) as PulsePreviewSize[]).map((s) => (
             <Button key={s} size="sm" variant={s === size ? "default" : "outline"} className="h-7 px-2 text-[11px]" aria-pressed={s === size}

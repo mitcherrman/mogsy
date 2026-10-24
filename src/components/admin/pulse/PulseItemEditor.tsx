@@ -145,7 +145,7 @@ export function PulseItemEditor({ record, initial, campaigns, now, busy, onSave,
           </div>
         </div>
 
-        <aside className="space-y-2" aria-label="Preview">
+        <aside className="min-w-0 space-y-2" aria-label="Preview">
           <div className="flex flex-wrap gap-1">
             {(Object.keys(PULSE_PREVIEW_SIZES) as PulsePreviewSize[]).map((s) => (
               <Button key={s} size="sm" variant={s === size ? "default" : "outline"} className="h-6 px-2 text-[10px]"

@@ -56,18 +56,23 @@ export function PulsePresentation({ catalogue, cadence, size, startAt, paused = 
   );
   const dims = PULSE_PREVIEW_SIZES[size];
   const key = `${revisionKey}:${size}:${startAt ?? ""}:${paused}`;
+  // The device keeps its exact Home Hub slot size; on a screen narrower than
+  // the slot, the owner scrolls the preview instead of seeing a squeezed one.
+  // pt-3 leaves room for the nameplate on the frame's top edge (PULSE-1 §3).
   return (
-    <div
-      className="relative mt-3 rounded-md bg-[#050a14]" /* not overflow-hidden: the nameplate sits on the frame's top edge (PULSE-1 §3) */
-      style={{ width: dims.w, height: dims.h, maxWidth: "100%" }}
-      data-testid="pulse-admin-presentation"
-      data-size={size}
-    >
-      <PreviewBoundary resetKey={key}>
-        <Suspense fallback={<div className="p-3 text-xs text-muted-foreground">Loading Pulse…</div>}>
-          <AcademyPulse key={key} provider={provider} cadence={cadence} startAt={startAt} startPaused={paused} variant={size === "mobile" ? "mobile" : "desktop"} />
-        </Suspense>
-      </PreviewBoundary>
+    <div className="max-w-full overflow-x-auto pt-3">
+      <div
+        className="relative shrink-0 rounded-md bg-[#050a14]"
+        style={{ width: dims.w, height: dims.h }}
+        data-testid="pulse-admin-presentation"
+        data-size={size}
+      >
+        <PreviewBoundary resetKey={key}>
+          <Suspense fallback={<div className="p-3 text-xs text-muted-foreground">Loading Pulse…</div>}>
+            <AcademyPulse key={key} provider={provider} cadence={cadence} startAt={startAt} startPaused={paused} variant={size === "mobile" ? "mobile" : "desktop"} />
+          </Suspense>
+        </PreviewBoundary>
+      </div>
     </div>
   );
 }
