@@ -65,7 +65,12 @@ The full contract is in `src/lib/admin/pulse/contract.ts`. The **scene payload i
 | UI (jsdom) | `AdminPulseWorkspace.test.tsx`: author → publish → plays; category off; cadence cap; campaign approval → sponsor publish; emergency disable / restore; preview mounts the production device | 7 pass |
 | Typecheck | `tsc -p tsconfig.app.json` | No diagnostics in the new files. The two pre-existing errors on main, in `OnboardingProfile.tsx` and `connections.ts`, are unchanged. |
 | Lint | eslint on the new files | 0 errors; 3 fast-refresh warnings (a repo-wide pattern) |
-| Browser | `e2e/admin-pulse/workspace.spec.ts` via `.github/workflows/admin-pulse.yml` (GitHub runner, bundled headless Chromium, 1 worker; artifact `admin-pulse-evidence`) | See the PR checks. **Not run on this PC** (AGENTS.md). |
+| Browser | `e2e/admin-pulse/workspace.spec.ts` via `.github/workflows/admin-pulse.yml` (GitHub runner, bundled headless Chromium, 1 worker; artifact `admin-pulse-evidence`) | **8/8 pass** on d297a473, [run 40077237138](https://github.com/mitcherrman/mogsy/actions/runs/40077237138). The same job's vitest (112), migration-location guard and `vite build` also pass. **Not run on this PC** (AGENTS.md). |
+
+The earlier CI runs found three real issues, now fixed:
+- The harness lacked the `QueryClientProvider` that `App.tsx` gives every route, and the Pulse device reads champion art through react-query.
+- The tab strip and the campaign buttons overflowed at 360/390 px.
+- The preview frame clipped Pulse's nameplate. The preview now keeps the exact slot size and scrolls on narrow screens.
 
 The PGlite suite proves these server-side behaviours:
 
