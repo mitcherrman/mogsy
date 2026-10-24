@@ -26,6 +26,7 @@ export type PulsePreviewSize = keyof typeof PULSE_PREVIEW_SIZES;
 class PreviewBoundary extends Component<{ children: ReactNode; resetKey: string }, { failed: boolean; key: string }> {
   state = { failed: false, key: this.props.resetKey };
   static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) { console.error("[admin-pulse] preview failed to draw", error); }
   static getDerivedStateFromProps(p: { resetKey: string }, s: { key: string }) {
     return p.resetKey !== s.key ? { failed: false, key: p.resetKey } : null;
   }

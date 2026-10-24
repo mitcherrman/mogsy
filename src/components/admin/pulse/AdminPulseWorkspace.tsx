@@ -91,7 +91,7 @@ export function AdminPulseWorkspace({ repository, now: nowOverride }: AdminPulse
         <>
           <PulseEmergencyControl schedule={ws.snapshot.schedule} busy={ws.busy} write={ws.write} />
           <Tabs defaultValue="content">
-            <TabsList>
+            <TabsList className="h-auto flex-wrap justify-start">
               <TabsTrigger value="content" data-testid="pulse-tab-content">Content</TabsTrigger>
               <TabsTrigger value="cadence" data-testid="pulse-tab-cadence">Cadence & categories</TabsTrigger>
               <TabsTrigger value="campaigns" data-testid="pulse-tab-campaigns">Campaigns</TabsTrigger>

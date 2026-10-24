@@ -5,6 +5,7 @@
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { MotionGlobalConfig } from "framer-motion";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@/index.css";
 import { AdminPulseWorkspace } from "@/components/admin/pulse/AdminPulseWorkspace";
 import { createMemoryPulseRepository } from "@/lib/admin/pulse/memoryRepository";
@@ -13,10 +14,15 @@ import { prototypeSeed } from "@/lib/admin/pulse/prototypeSeed";
 MotionGlobalConfig.skipAnimations = new URLSearchParams(location.search).get("still") === "1";
 const repository = createMemoryPulseRepository(prototypeSeed(), { latencyMs: 60 });
 
+// App.tsx provides react-query to every route; the Pulse device reads champion art through it.
+const queryClient = new QueryClient();
+
 createRoot(document.getElementById("root")!).render(
-  <MemoryRouter>
-    <main className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-6">
-      <AdminPulseWorkspace repository={repository} />
-    </main>
-  </MemoryRouter>,
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>
+      <main className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-6">
+        <AdminPulseWorkspace repository={repository} />
+      </main>
+    </MemoryRouter>
+  </QueryClientProvider>,
 );
