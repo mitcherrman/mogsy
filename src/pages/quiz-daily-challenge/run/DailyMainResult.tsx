@@ -43,6 +43,7 @@
  */
 import { useEffect, useRef, type CSSProperties } from "react";
 import { track } from "@/lib/analytics";
+import { OfficialSocialLinks } from "@/components/social/OfficialSocialLinks";
 import { ResultActions } from "@/components/game-results/ResultActions";
 import { ResultHero, SCORE_REVEAL_BEATS } from "@/components/game-results/ResultHero";
 import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
@@ -278,6 +279,7 @@ export function DailyMainResult({
           testId: "daily-done-for-now",
         },
       }} />
+      {settled && !ownerTake && <OfficialSocialLinks placement="daily_main_result" compact />}
     </section>
   );
 }

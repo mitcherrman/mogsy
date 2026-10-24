@@ -168,9 +168,15 @@
 .acore-book-mobile::after { display: none; }
 
 .acore-second-screen {
-  display: flex; flex-wrap: nowrap; white-space: nowrap; gap: 0 clamp(0.8rem, 2vw, 1.4rem);
-  min-height: 44px; padding: 0.1rem 0.2rem 0;
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 0.25rem; min-height: 44px; padding: 0.1rem 0.2rem 0;
 }
+.acore-secondary-nav {
+  display: flex; flex-wrap: nowrap; white-space: nowrap;
+  gap: 0 clamp(0.8rem, 2vw, 1.4rem);
+}
+.acore-second-screen [data-testid="official-socials-home_hub"] { max-width: 100%; }
+.acore-second-screen [data-testid="official-socials-home_hub"] a { min-width: 1.9rem; min-height: 1.9rem; padding: 0.35rem; }
 .acore-minor-link {
   display: inline-flex; align-items: center; min-height: 44px;
   font-family: "Space Mono", ui-monospace, monospace; font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase;

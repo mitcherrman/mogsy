@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Shield, FileText, Info, Mail, Lock, MessageSquarePlus } from "lucide-react";
 import { SITE_NAME } from "@/lib/site-config";
+import { OfficialSocialLinks } from "@/components/social/OfficialSocialLinks";
 import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
 import { PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 
@@ -93,6 +94,7 @@ export default function Footer() {
             ))}
           </nav>
         </div>
+        <div className="mt-6"><OfficialSocialLinks placement="footer" /></div>
         <div className="mt-8 pt-6 border-t border-border/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground">
           <span>© {year} {SITE_NAME}. All rights reserved.</span>
           <span>Made for gamers and online communities.</span>

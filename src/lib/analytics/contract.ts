@@ -141,6 +141,7 @@ export const PRODUCT_EVENTS = [
   "ad_slot_suppressed",
   "ad_slot_error",
   "house_ad_clicked",
+  "official_social_clicked",
   "dsa_entry_viewed",
   "dsa_official_cta_clicked",
   "dsa_signin_gate_shown",
