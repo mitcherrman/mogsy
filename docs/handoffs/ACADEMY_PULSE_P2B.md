@@ -138,7 +138,9 @@ Totals: **71 pass + 1 skipped** locally across `src/lib/admin/pulse` and `src/co
 **Browser:**
 - `e2e/admin-pulse/workspace.spec.ts` runs through `.github/workflows/admin-pulse.yml`: GitHub runner, bundled headless Chromium, 1 worker. Artifact: `admin-pulse-evidence`.
 - **Not run on this PC** (AGENTS.md).
-- The v1 head d297a473 passed 8/8 ([run 40077237138](https://github.com/mitcherrman/mogsy/actions/runs/40077237138)). See the PR for the v2 run.
+- **v2 head 1668d137: 8/8 pass** ([run 40092293245](https://github.com/mitcherrman/mogsy/actions/runs/40092293245)). The same job ran vitest (127 pass + 1 skipped, 11 files), the staged-migration location guard and the production build, all green on the GitHub runner.
+- The run before it (4429920d) failed 1/8 on a stale spec assertion that still checked the removed editorial sponsor row. The product was not at fault, and the assertion was fixed in 1668d137.
+- The v1 head d297a473 had passed 8/8 ([run 40077237138](https://github.com/mitcherrman/mogsy/actions/runs/40077237138)).
 
 ## 5. Security notes
 
