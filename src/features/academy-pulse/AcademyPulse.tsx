@@ -124,12 +124,15 @@ export default function AcademyPulse({
     refreshHoverGrace();
   }, [hold, refreshHoverGrace]);
   const onHoverMove = useCallback((e: ReactPointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "mouse" || hoverTimer.current === null) return;
+    if (e.pointerType !== "mouse") return;
     const previous = hoverPoint.current;
     if (!previous || Math.hypot(e.clientX - previous.x, e.clientY - previous.y) < 12) return;
     hoverPoint.current = { x: e.clientX, y: e.clientY };
+    // After an idle cursor resumes playback, fresh intentional movement gives
+    // the viewer a new reading grace instead of changing a scene mid-action.
+    if (hoverTimer.current === null) hold("hover", true);
     refreshHoverGrace();
-  }, [refreshHoverGrace]);
+  }, [hold, refreshHoverGrace]);
   const onHoverLeave = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType !== "mouse") return;
     clearHoverTimer();
