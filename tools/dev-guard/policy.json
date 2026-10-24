@@ -1,6 +1,6 @@
 {
-  "_comment": "Tunable limits for mogzy-guard. Numbers are conservative estimates for a 16 GB / 8-core Windows PC that also runs League of Legends and Firefox; adjust after observing real peaks (see README 'Tuning').",
-  "version": 1,
+  "_comment": "Limits for mogzy-guard, which only serializes BROAD jobs. Targeted test runs (<= 8 named test files, scope.mjs) never use it. No value here can refuse a job: League, Firefox, RAM and CPU only shrink it (workers, priority). See README 'Tuning'.",
+  "version": 2,
   "lock": {
     "mutexName": "Global\\mogzy-dev-guard-heavy-job",
     "defaultWaitSec": 120,
@@ -8,27 +8,23 @@
   },
   "stateDirEnvDefault": "%LOCALAPPDATA%\\mogzy-dev-guard",
   "resources": {
-    "reserveFreeRamMB": 1500,
-    "reserveFreeRamMBLeagueClient": 3000,
-    "maxCpuPercent": 85,
-    "maxCpuPercentLeagueClient": 70,
-    "maxDiskBusyPercent": 95,
-    "recheckAttempts": 3,
-    "recheckIntervalSec": 10
+    "_comment": "Advisory only. Below advisoryFreeRamMB (+ class estimate) the job runs with 1 worker; above advisoryCpuPercent a note is printed.",
+    "advisoryFreeRamMB": 1000,
+    "advisoryCpuPercent": 85
   },
   "league": {
     "inGameProcesses": ["League of Legends"],
     "clientProcesses": ["LeagueClient", "LeagueClientUx", "LeagueClientUxRender"]
   },
   "classes": {
-    "vitest":  { "estimateMB": 2500, "workers": 2, "workersLeagueClient": 1, "timeoutSec": 900,  "jobMemoryLimitMB": 6000 },
-    "pytest":  { "estimateMB": 1500, "workers": 1, "workersLeagueClient": 1, "timeoutSec": 1200, "jobMemoryLimitMB": 4000 },
-    "build":   { "estimateMB": 2500, "workers": 2, "workersLeagueClient": 1, "timeoutSec": 900,  "jobMemoryLimitMB": 6000 },
-    "e2e":     { "estimateMB": 3000, "workers": 1, "workersLeagueClient": 1, "timeoutSec": 1200, "jobMemoryLimitMB": 6000 },
-    "generic": { "estimateMB": 1500, "workers": 1, "workersLeagueClient": 1, "timeoutSec": 900,  "jobMemoryLimitMB": 4000 }
+    "vitest":  { "estimateMB": 2500, "workers": 2, "timeoutSec": 900,  "jobMemoryLimitMB": 6000 },
+    "pytest":  { "estimateMB": 1500, "workers": 1, "timeoutSec": 1200, "jobMemoryLimitMB": 4000 },
+    "build":   { "estimateMB": 2500, "workers": 2, "timeoutSec": 900,  "jobMemoryLimitMB": 6000 },
+    "e2e":     { "estimateMB": 3000, "workers": 1, "timeoutSec": 1200, "jobMemoryLimitMB": 6000 },
+    "generic": { "estimateMB": 1500, "workers": 1, "timeoutSec": 900,  "jobMemoryLimitMB": 4000 }
   },
   "childNodeMaxOldSpaceMB": 2048,
-  "_heavyProcessComment": "Command-line patterns (matched only on the listed process names) that count as an UNGUARDED heavy job already running. A new guarded job is blocked while any exist. Dev servers are not heavy; they are only reported by 'status'.",
+  "_heavyProcessComment": "Command-line patterns used only by 'status' (and an advisory note) to list test/build processes running outside the guard. They never block anything: targeted runs from other sessions are expected to appear here.",
   "heavyProcessNames": ["node.exe", "python.exe", "py.exe", "bun.exe", "pythonw.exe"],
   "heavyProcessPatterns": [
     "vitest",

@@ -1,5 +1,7 @@
 # Dev workflow optimization — handoff
 
+> **2026-10-24:** the guard admission design below (RAM/League/CPU/disk refusals, enforcement backstops) blocked ordinary targeted tests and is superseded by **§7**. §1 audit facts remain valid.
+
 Branch `policy/dev-resource-optimization` in both repositories (`mogsy` frontend, `League_Combat_Simulator` backend), draft PRs, based on
 `origin/main` @ `9685c68d` and `origin/master` @ `890534c5`. Nothing is merged, deployed or killed. (Update 2026-10-23: the guard was later installed on the owner's PC with approval; see §6.) The existing checkouts, their
 uncommitted work and all 400+ worktrees were left untouched; these branches were made in new worktrees under `C:\dev\mogzy-wt\`.
@@ -91,3 +93,82 @@ Proposed migration (each step needs owner approval; do it with all sessions idle
 4. Tune `policy.json` after a week of real `mogzy-guard` output (RAM estimates are conservative guesses).
 5. Approve Phase 5 steps one by one; start with the read-only inventory.
 6. Follow-ups not done here: bring the 13 files that reference a browser `channel`/`PW_CHANNEL` in line with AGENTS.md in a separate reviewed change; consider a single `workflow_dispatch` "affected-system" workflow for L3 releases instead of local exhaustive runs; stop the three leftover Vite servers from their owning sessions.
+
+## 7. Redesign 2026-10-24: targeted tests never blocked (supersedes the admission design in §2-§4)
+
+**Confirmed regression.** The 2026-10-23 guard stopped ordinary work. The hook denied every `vitest`/`pytest` command, and the guard then refused
+even a one-file test unless 4.0-5.5 GB of RAM was free, the disk was below 95 % busy, no other session's test was running and League was not in a match.
+On this PC, with Firefox and League open, those conditions are almost never met. The owner must never have to close Firefox or League for Claude to keep working.
+
+**Verification level of this change:** L1 for the policy text; L2 for the execution behaviour (hook, guard, `vitest.config.ts`, backend `conftest.py`).
+
+### 7.1 Evidence measured today (read-only snapshots, no suites started)
+
+| Measurement (2026-10-24) | Value |
+|---|---|
+| Available RAM / total | 641-747 MB / 15,510 MB (three snapshots) |
+| Firefox | 15 processes, 5,141 MB working set |
+| Claude sessions | 34 `claude` processes, 4,675 MB working set |
+| Disk busy | 89-100 % |
+| League | not running at snapshot time |
+| Other sessions | 1 pytest run (another session) |
+| **Installed** guard, `check --class vitest` | `WOULD BLOCK`, exit 3: "available RAM 641 MB < required 4,000 MB", "disk busy 99.7 % >= 95 %" |
+| **Redesigned** guard, `check --class vitest` | `WOULD RUN`, exit 0: 1 worker, BelowNormal, low-RAM note only |
+| **Installed** hook false positive | denied a PowerShell line that only *assigned* `$V = "...\vitest.mjs"` (no run). The redesigned hook allows it (`scope-check`) |
+| `selftest.ps1` (redesigned guard) | 14/14 PASS, 43 s wall; trivial `cmd`/`ping` children only |
+| `node --test hook-pretooluse.test.mjs` | 11/11 PASS, ~0.3 s |
+| Per-session duplicate tooling | 3 session scratchpads each hold their own `@rollup/wasm-node` install (≈4 MB each), plus many copied scratch Vitest configs |
+
+**Not measured (owner chose "no runs" on 2026-10-24).** The installed hook denies `vitest`/`pytest`, and the installed guard refuses them (exit 3 above),
+so no real Vitest or pytest execution was measured. The planned bounded set was: one 1-file Vitest run, a 4-file run with the redesigned bounds and the
+same 4 files with Vitest defaults, and one 1-file pytest run, each sampled for peak process-tree memory, CPU seconds, wall time and worker priority
+(harness `measure.ps1`, kept in the session scratchpad). Run it after the redesign is installed. Until then **no claim is made that peak memory or speed
+improved**. The expected trade-off, unmeasured: a targeted multi-file run uses one worker instead of up to N parallel ones, so peak memory goes down and
+wall time goes up (roughly the sum of the per-file times instead of the slowest one). Below-normal priority makes runs slower when League or Firefox
+needs the CPU, and never blocks them.
+
+**Also UNVERIFIED:** `vitest.config.ts` was not executed. On this PC the real config cannot load anyway: the shared `@swc/core` 1.16.13 fails its DACL check
+and Windows Application Control blocks rollup's native binary, so local Vitest currently needs an esbuild/WASM scratch shim. No CI workflow lists
+`vitest.config.ts` in `paths:`, and CI skips the local branch (`CI` is set), so CI only proves that the config and `scope.mjs` import load. The options used
+(`maxWorkers`, `minWorkers`, `fileParallelism`, `poolOptions.forks|threads.execArgv`) are documented for Vitest 3.2. `os.setPriority` inheritance by fork
+workers follows Windows priority-class inheritance; it is not observed yet. The scope decisions `vitest.config.ts` makes were checked with plain Node on
+real argv shapes: 1 and 4 named files → targeted (1 worker); `run` and `run src/lib` → broad.
+
+### 7.2 Command classification by actual scope (`tools/dev-guard/scope.mjs`)
+
+| Scope | Examples | Local handling |
+|---|---|---|
+| Targeted | `npx vitest run a.test.ts b.test.tsx` (up to 8 named test files, `-t` allowed); `npm test -- a.test.ts`; `python -m pytest -q test_x.py::T::t`; `python -m unittest pkg.test_x` | Runs directly. Hook allows it; no lock, no admission check. Vitest gets 1 worker, no file parallelism, heap cap 2 GB/worker (`MOGZY_VITEST_HEAP_MB`), below-normal priority. pytest stays single-process at below-normal priority |
+| Broad | `vitest run` (no files), directories or substring filters, more than 8 files, `--coverage`/`--changed`/`related`/watch; `npm test`; pytest with no file, with directories or with `-n`; `unittest discover`; build, project-wide `tsc`, tree ESLint, Playwright, validators | Hook redirects to the guard: one broad job at a time machine-wide, bounded lock wait (120 s default). It never refuses because of League, Firefox, RAM, CPU, disk or other sessions; those only reduce workers to 1 and priority (Idle during a League match). Job memory cap per class |
+| Not a test | `node --test <file>`, `--version`, `grep vitest`, `git commit -m "...vitest..."`, path assignments | Allowed |
+
+### 7.3 Safeguards evaluated against "could this stop Claude from completing work or force closing Firefox/League?"
+
+| Safeguard | Verdict | Why |
+|---|---|---|
+| Free-RAM admission threshold | **Rejected** (removed) | PC routinely has <1 GB free with Firefox open; it blocked one-file tests |
+| League in-match refusal | **Rejected** → Idle priority + 1 worker | Would stop work for a whole match |
+| CPU/disk-busy refusal | **Rejected** → advisory note | Disk is 89-100 % busy routinely (OneDrive, other sessions) |
+| "Another test is running outside the guard" refusal | **Rejected** → advisory note | Every other session's targeted run would block yours |
+| Global lock for every test | **Rejected for targeted**, kept for broad | Targeted runs are cheap and must run concurrently across sessions |
+| `MOGZY_GUARD_ENFORCE` backstops (Vitest `globalSetup`, pytest `conftest.py` exit 3) | **Rejected** (removed) | They failed ordinary runs started by scripts/subagents |
+| Resource re-check sleep loop (3 × 10 s) | **Rejected** (removed) | Waiting with nothing to wait for |
+| Broad-job lock with bounded wait (exit 4 on timeout) | Kept | Bounded; targeted tests and CI remain available while waiting; prevents the observed multi-suite overlap |
+| Per-job memory cap (Job Object) | Kept | Fails only the oversized job, never blocks a start; raise per class if a legitimate job hits it |
+| Per-worker heap cap 2 GB | Kept, overridable | A single test file needing >2 GB heap would fail with an explicit OOM; `MOGZY_VITEST_HEAP_MB` raises it |
+| Below-normal / Idle priority | Kept | Slower under contention, never blocked |
+| Hook denial of kill-by-name and `MOGZY_GUARD_*` forging | Kept | Protects the owner's browsers/game; does not block testing |
+
+### 7.4 What is omitted vs kept
+
+* **Eliminated locally:** automatic full-suite runs, folder runs per edit, repeated baselines, routine screenshot/viewport sweeps, builds for small edits, watch mode, reruns of green unchanged tests, per-session dependency installs.
+* **Safe to omit at L1:** folder/full Vitest, build, screenshots, baseline comparisons, project-wide `tsc` (AGENTS.md lists the reasons).
+* **Never omitted (L2/L3):** the changed behaviour's tests; affected-system tests for auth/identity, billing/Stripe/entitlements, RLS/migrations (`src/test/security`), Ranked/Daily scoring integrity; one `build` for tooling or dependency changes; every path-matched CI workflow before release. A gate that cannot run is reported **NOT RUN**, never as a pass. Backend CI is reported billing-blocked, so backend L2/L3 gates run locally, once and sequentially.
+* **No new paid infrastructure:** frontend Actions are free (public repo); nothing new is added.
+
+### 7.5 Owner decisions left
+
+1. Install the redesign (README *Updating the installed copy*: back up and copy 5 files; no settings change needed). Until then the installed 2026-10-23 guard keeps blocking targeted tests.
+2. After install, run the bounded measurement set in §7.1 (4 runs) as acceptance.
+3. Repair the local toolchain once (shared `@swc/core` DACL failure, rollup native binary blocked by App Control), or approve one shared WASM shim under `%LOCALAPPDATA%`, so sessions stop installing their own copies.
+4. Optionally remove `MOGZY_GUARD_ENFORCE` from `~\.claude\settings.json` (inert after the redesign).

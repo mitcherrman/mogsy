@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // Claude Code PreToolUse hook (matcher: Bash|PowerShell).
 //
-// Denies a heavyweight local test/build command unless it goes through mogzy-guard, and denies the few
-// commands that would bypass or undermine the guard (forging its env vars, killing processes by image name).
+// Denies a BROAD local test/build command unless it goes through mogzy-guard, and denies the few commands that
+// would bypass or undermine the guard (forging its env vars, killing processes by image name).
+//
+// TARGETED test runs (<= 8 named test files, see scope.mjs) are always allowed directly: no lock, no RAM or League
+// admission. Their cost is bounded by vitest.config.ts and by pytest being single-process. The 2026-10-23 version
+// denied those too, and the guard then refused them whenever Firefox or League was open, which blocked ordinary work.
 // It decides from the command text only (no resource probing: that is the guard's job), so it starts in ~50 ms.
 //
 // Fail-open on malformed input: a broken hook must never brick every tool call. The guard itself and the
@@ -12,6 +16,7 @@
 
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
+import { vitestScope, pytestScope, unittestScope } from "./scope.mjs";
 
 const GUARD_CMD =
   process.env.MOGZY_GUARD_CMD ||
@@ -79,11 +84,14 @@ const INFO_ONLY = /^(-v|-V|--version|-h|--help)$/;
 
 // ---------------------------------------------------------------- classification
 
+/** null when the selection is targeted (allowed directly), else the class for the guard. */
+const broadOnly = (cls, s) => (s.scope === "targeted" ? null : cls);
+
 function heavyClassFor(name, args) {
   if (args.length && args.every((a) => INFO_ONLY.test(a))) return null;
   switch (name) {
-    case "vitest": return "vitest";
-    case "pytest": case "py.test": return "pytest";
+    case "vitest": return broadOnly("vitest", vitestScope(args));
+    case "pytest": case "py.test": return broadOnly("pytest", pytestScope(args));
     case "playwright": return "e2e";
     case "tsc": return "build";
     case "remotion": return /^(render|studio|still|compositions)$/.test(args[0] || "") ? "build" : null;
@@ -111,7 +119,14 @@ function scriptHeavy(path) {
 function classifyTokens(toks, depth) {
   let t = toks.slice();
   while (t.length) {
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t[0]) || PREFIXES.has(prog(t[0]))) { t.shift(); continue; }
+    // FOO=1 cmd (env prefix) and PowerShell `$V = "...vitest.mjs"` (a variable holding a path is not a run;
+    // `$out = npx vitest run` still is, because the tokens after the assignment are classified)
+    if (/^\$?[A-Za-z_][A-Za-z0-9_:]*=/.test(t[0]) || PREFIXES.has(prog(t[0]))) { t.shift(); continue; }
+    if (/^\$[A-Za-z_][A-Za-z0-9_:]*$/.test(t[0]) && t[1] === "=") {
+      t.splice(0, 2);
+      if (t.length === 1 && /[\\/]/.test(t[0])) return null; // `$V = "C:/x/vitest.mjs"`: a path value
+      continue;
+    }
     break;
   }
   if (!t.length || depth > 4) return null;
@@ -127,12 +142,16 @@ function classifyTokens(toks, depth) {
   }
 
   const direct = heavyClassFor(name, args);
-  if (direct) return { cls: direct, what: name };
+  if (direct) {
+    const why = direct === "vitest" ? vitestScope(args).reason : direct === "pytest" ? pytestScope(args).reason : "";
+    return { cls: direct, what: why ? `${name} (${why})` : name };
+  }
 
   if (RUNNERS.has(name)) {
     if (["npm", "pnpm", "yarn", "bun"].includes(name)) {
       const a = args.filter((x) => !x.startsWith("-"));
       const script = a[0] === "run" || a[0] === "run-script" ? a[1] : a[0];
+      if (script === "test" && vitestScope(args.slice(args.indexOf(script) + 1)).scope === "targeted") return null;
       if (script && (SCRIPT_HEAVY.has(script) || /^test:e2e/.test(script))) {
         return { cls: /^test:e2e/.test(script) ? "e2e" : script.startsWith("test") ? "vitest" : "build", what: `${name} ${script}` };
       }
@@ -144,16 +163,23 @@ function classifyTokens(toks, depth) {
     }
     if (["python", "python3", "py", "uv", "poetry"].includes(name)) {
       const m = args.findIndex((x) => x === "-m");
-      if (m >= 0 && /^(pytest|unittest)$/.test(args[m + 1] || "")) return { cls: "pytest", what: `python -m ${args[m + 1]}` };
+      if (m >= 0 && /^(pytest|unittest)$/.test(args[m + 1] || "")) {
+        const rest = args.slice(m + 2);
+        const s = args[m + 1] === "pytest" ? pytestScope(rest) : unittestScope(rest);
+        return s.scope === "targeted" ? null : { cls: "pytest", what: `python -m ${args[m + 1]} (${s.reason})` };
+      }
       if (m >= 0 && args[m + 1] === "playwright") return { cls: "e2e", what: "python -m playwright" };
       const s = args.find((x) => /\.py$/i.test(x));
       if (s) { const c = scriptHeavy(s); if (c) return { cls: c, what: basename(s) }; }
       if (name === "uv" || name === "poetry") return classifyTokens(args.filter((x) => !["run"].includes(x)), depth + 1);
     }
     if (["node", "tsx", "ts-node", "deno"].includes(name)) {
-      for (const x of args) {
+      for (const [i, x] of args.entries()) {
         if (x.startsWith("-")) continue;
         const c = scriptHeavy(x);
+        const rest = args.slice(i + 1);
+        if (c === "vitest" && vitestScope(rest).scope === "targeted") return null;
+        if (c === "pytest" && pytestScope(rest).scope === "targeted") return null;
         if (c && c !== "vite") return { cls: c, what: basename(x) };
         if (c === "vite" && args.includes("build")) return { cls: "build", what: "vite build" };
       }
@@ -210,10 +236,11 @@ export function classify(command) {
       rule: "unguarded-heavy-job",
       cls,
       reason:
-        `Blocked: '${hit.what}' is a heavyweight local job and must run through the global resource guard (one heavy job at a time across all Claude sessions; checks RAM/CPU/disk and League of Legends first). ` +
-        `Re-run as:\n  ${GUARD_CMD} run --class ${cls} -- <your original command>\n` +
-        "Before that, state your verification level (L1/L2/L3), the narrowest test plan that proves the change, and the expected local resource impact (see AGENTS.md). " +
-        "Prefer GitHub Actions for browser/E2E and exhaustive suites. If the guard reports BLOCKED, do not retry in a loop or work around it: report the reasons to the owner.",
+        `Not run: '${hit.what}' is a broad local job. Options, best first:\n` +
+        "  1. Narrow it to the test files that prove the change: up to 8 named *.test.* / test_*.py files run immediately, without the guard.\n" +
+        "  2. If the broad run is really required (L2 end-of-task folder run, L3 affected system), run it ONCE through the guard. It serializes broad jobs across sessions but never refuses because of League, Firefox or free RAM:\n" +
+        `     ${GUARD_CMD} run --class ${cls} -- <your original command>\n` +
+        "  3. Exhaustive and browser suites: the path-filtered GitHub Actions workflow on the PR. If CI is unavailable, report that; it is not a pass (AGENTS.md).",
     };
   }
   return { decision: "allow" };

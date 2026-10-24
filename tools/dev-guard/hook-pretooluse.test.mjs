@@ -10,15 +10,42 @@ const denied = (cmd, cls) => {
 };
 const allowed = (cmd) => assert.equal(classify(cmd).decision, "allow", `expected allow: ${cmd}`);
 
+test("targeted test runs are allowed directly (no guard, no lock, no RAM/League admission)", () => {
+  allowed("npx vitest run src/foo.test.ts");
+  allowed("npx vitest run src/lib/a.test.ts src/components/B.test.tsx --reporter=dot");
+  allowed("npx vitest run --config C:/tmp/vitest.noswc.config.mts src/lib/ads/policy.test.ts");
+  allowed("npx vitest run src/lib/x.test.ts -t 'rounds down'");
+  allowed("npm test -- src/lib/x.test.ts");
+  allowed("npm run test -- src/lib/x.test.ts");
+  allowed("node node_modules/vitest/vitest.mjs run src/lib/x.test.ts");
+  allowed("python -m pytest -q test_x.py");
+  allowed("python -m pytest -q -p no:cacheprovider tests/test_a.py::TestA::test_b tests/test_c.py");
+  allowed("pytest -q -k rounding test_patch_math.py");
+  allowed("py -m unittest -v knowledge_engine.tests.test_x");
+  allowed('bash -c "npx vitest run src/foo.test.ts"');
+});
+
+test("broad selections are still routed to the guard", () => {
+  denied("npx vitest run", "vitest");
+  denied("npx vitest run src/lib", "vitest");
+  denied("npx vitest run policy", "vitest");
+  denied("npx vitest run src/a.test.ts src/b.test.ts src/c.test.ts src/d.test.ts src/e.test.ts src/f.test.ts src/g.test.ts src/h.test.ts src/i.test.ts", "vitest");
+  denied("npx vitest run --coverage src/foo.test.ts", "vitest");
+  denied("npx vitest related src/lib/x.ts", "vitest");
+  denied("npx vitest run --changed", "vitest");
+  denied("npm test -- src/lib", "vitest");
+  denied("python -m pytest -q", "pytest");
+  denied("python -m pytest -q tests/", "pytest");
+  denied("python -m pytest -n 4 test_x.py", "pytest");
+  denied("python -m unittest discover", "pytest");
+});
+
 test("direct heavy commands are denied with the right class", () => {
-  denied("npx vitest run src/foo.test.ts", "vitest");
   denied("npm test", "vitest");
   denied("npm run test -- --coverage", "vitest");
   denied("bun run build", "build");
   denied("npm run test:e2e:frontend", "e2e");
   denied("npx playwright test -c playwright.config.ts", "e2e");
-  denied("python -m pytest -q test_x.py", "pytest");
-  denied("py -m unittest -v knowledge_engine.tests.test_x", "pytest");
   denied("pytest engine_tests", "pytest");
   denied("npx tsc --noEmit -p tsconfig.app.json", "build");
   denied("npx vite build", "build");
@@ -62,6 +89,9 @@ test("mentions are not executions", () => {
   allowed("pytest --help");
   allowed("echo 'run npm test later'");
   allowed("eslint src/foo.ts");
+  allowed('$V="C:/repo/node_modules/vitest/vitest.mjs"; Write-Output $V');
+  allowed('$V = "C:/repo/node_modules/vitest/vitest.mjs"');
+  denied("$out = npx vitest run", "vitest");
   allowed("python scripts/helper.py");
   allowed("npm install");
 });

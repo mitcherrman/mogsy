@@ -17,9 +17,7 @@ New-Item -ItemType Directory -Path $work | Out-Null
 function New-TestPolicy([string]$name, [scriptblock]$tweak) {
   $p = Get-Content -LiteralPath (Join-Path $here 'policy.json') -Raw | ConvertFrom-Json
   $p.lock.mutexName = "Local\mogzy-guard-selftest-$([guid]::NewGuid().ToString('N'))"
-  $p.resources.reserveFreeRamMB = 0; $p.resources.reserveFreeRamMBLeagueClient = 0
-  $p.resources.maxCpuPercent = 101; $p.resources.maxCpuPercentLeagueClient = 101; $p.resources.maxDiskBusyPercent = 101
-  $p.resources.recheckAttempts = 1; $p.resources.recheckIntervalSec = 1
+  $p.resources.advisoryFreeRamMB = 0; $p.resources.advisoryCpuPercent = 101
   $p.league.inGameProcesses = @('__none__'); $p.league.clientProcesses = @('__none__')
   $p.heavyProcessPatterns = @('__never_matches__')
   foreach ($c in $p.classes.PSObject.Properties) { $c.Value.estimateMB = 1 }
@@ -57,7 +55,7 @@ try {
 
   $r = Invoke-Guard $pol @('run', '--', 'cmd', '/c', 'exit', '7')
   Check 'child exit code is passed through' ($r.Code -eq 7) "code=$($r.Code) $($r.Err)"
-  Check 'admission message printed' ($r.Err -match 'ADMITTED') $r.Err
+  Check 'run message printed' ($r.Err -match 'RUNNING') $r.Err
 
   $r = Invoke-Guard $pol @('run', '--', 'cmd', '/c', 'echo', '"a b"')
   Check 'arguments with spaces survive quoting' ($r.Out -match 'a b') "out=$($r.Out)"
@@ -68,19 +66,20 @@ try {
   $r = Invoke-Guard $pol @('run')
   Check 'missing command is a usage error (2)' ($r.Code -eq 2) "code=$($r.Code)"
 
-  $polBlock = New-TestPolicy 'block' { param($p) $p.resources.reserveFreeRamMB = 9999999; $p.resources.reserveFreeRamMBLeagueClient = 9999999 }
-  $r = Invoke-Guard $polBlock @('run', '--', 'cmd', '/c', 'exit', '0')
-  Check 'insufficient RAM blocks with exit 3 and explains why' ($r.Code -eq 3 -and $r.Err -match 'available RAM') "code=$($r.Code) $($r.Err)"
+  # Machine conditions never refuse a job (2026-10-24 redesign); they only shrink it.
+  $polLow = New-TestPolicy 'lowram' { param($p) $p.resources.advisoryFreeRamMB = 9999999 }
+  $r = Invoke-Guard $polLow @('run', '--', 'cmd', '/c', 'exit', '0')
+  Check 'low RAM does not block: runs with 1 worker and says why' ($r.Code -eq 0 -and $r.Err -match 'workers=1' -and $r.Err -match 'available RAM') "code=$($r.Code) $($r.Err)"
 
   $polLeague = New-TestPolicy 'league' { param($p) $p.league.inGameProcesses = @('powershell') }
   $r = Invoke-Guard $polLeague @('run', '--', 'cmd', '/c', 'exit', '0')
-  Check 'in-game detection blocks (simulated with the powershell process name)' ($r.Code -eq 3 -and $r.Err -match 'in a match') "code=$($r.Code) $($r.Err)"
+  Check 'League in a match does not block: Idle priority, 1 worker (simulated with the powershell process name)' ($r.Code -eq 0 -and $r.Err -match 'priority=Idle' -and $r.Err -match 'workers=1') "code=$($r.Code) $($r.Err)"
 
   $marker = Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 20 # mogzy-selftest-marker' -PassThru -WindowStyle Hidden
   try {
     $polHeavy2 = New-TestPolicy 'heavy2' { param($p) $p.heavyProcessNames = @('powershell.exe'); $p.heavyProcessPatterns = @('mogzy-selftest-marker') }
     $r = Invoke-Guard $polHeavy2 @('run', '--', 'cmd', '/c', 'exit', '0')
-    Check 'unguarded heavy job already running blocks (exit 3)' ($r.Code -eq 3 -and $r.Err -match 'outside the guard') "code=$($r.Code) $($r.Err)"
+    Check 'other unguarded test processes do not block (note only)' ($r.Code -eq 0 -and $r.Err -match 'outside the guard') "code=$($r.Code) $($r.Err)"
   } finally { if (-not $marker.HasExited) { $marker.Kill() } }   # the process this test started itself
 
   $r = Invoke-Guard $pol @('run', '--timeout', '2', '--', 'ping', '-n', '30', '127.0.0.1')
@@ -101,7 +100,7 @@ try {
   $t0 = Get-Date
   $r = Invoke-Guard $pol @('run', '--wait', '2', '--', 'cmd', '/c', 'exit', '0')
   $secs = ((Get-Date) - $t0).TotalSeconds
-  Check 'second heavy job is refused after a bounded wait (exit 4)' ($r.Code -eq 4 -and $secs -lt 30) "code=$($r.Code) secs=$secs $($r.Err)"
+  Check 'second broad job gives up after a bounded wait (exit 4)' ($r.Code -eq 4 -and $secs -lt 30) "code=$($r.Code) secs=$secs $($r.Err)"
 
   $holder.Kill()      # simulate a crashed terminal / killed guard; this process was started by this test
   $holder.WaitForExit(10000) | Out-Null

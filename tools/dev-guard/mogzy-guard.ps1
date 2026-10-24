@@ -3,9 +3,14 @@
   Machine-wide admission control for heavyweight local MOGZY test/build jobs (Windows PowerShell 5.1+).
 
 .DESCRIPTION
-  Guarantees at most ONE heavyweight job (vitest, pytest, vite build, tsc, Playwright, *_validate.py ...)
-  runs at a time across ALL Claude sessions and worktrees, and refuses to start one while the PC is
-  short of memory, CPU or disk, or while League of Legends is in a match.
+  Serializes BROAD local jobs (whole/folder Vitest, pytest over directories, vite build, tsc over the project,
+  Playwright, *_validate.py ...) so at most one runs at a time across ALL Claude sessions and worktrees.
+  Targeted test runs (a few named test files) do not use the guard at all (see scope.mjs).
+
+  It never refuses a job because League of Legends, Firefox or low free RAM is present. Those conditions only
+  lower the job's footprint: 1 worker and Idle priority while League is in a match, 1 worker when RAM is short,
+  BelowNormal priority otherwise, plus a per-job memory cap. (The 2026-10-23 version refused instead, which
+  blocked ordinary work whenever Firefox and League were open.)
 
   Usage (guard options come first, the job comes after a literal --):
     mogzy-guard.cmd run   [--class vitest|pytest|build|e2e|generic] [--wait SEC] [--timeout SEC] [--dry-run] -- <command> [args...]
@@ -13,7 +18,7 @@
     mogzy-guard.cmd status                  read-only snapshot: lock holder, League, memory, unguarded heavy jobs, dev servers
     mogzy-guard.cmd help
 
-  Exit codes:  0 ok | 2 usage | 3 blocked by resources | 4 lock wait timed out | 5 cannot confine job | 124 job timed out
+  Exit codes:  0 ok | 2 usage | 4 lock wait timed out (another broad job is running) | 5 cannot confine job | 124 job timed out
                (any other code is the wrapped command's own exit code)
 
   Design notes (details in README.md):
@@ -21,7 +26,7 @@
       guard or a killed terminal can never leave a stale lock. holder.json is diagnostics only.
     * The wrapped command runs inside a Job Object with KILL_ON_JOB_CLOSE: when the guard exits or is killed,
       only the processes it started (and their descendants) are terminated. Nothing else is ever killed.
-    * Every wait is bounded (lock wait, resource re-checks, job wall-clock timeout). No infinite loops.
+    * Every wait is bounded (lock wait, job wall-clock timeout). No resource re-check loop, no infinite loops.
     * Nested use (a guarded job that itself calls the guard) is allowed through MOGZY_GUARD_TOKEN, which is
       verified against holder.json, so wrappers/npm scripts inside a guarded job cannot deadlock.
 #>
@@ -131,25 +136,25 @@ function Get-ClassPolicy($pol, [string]$cls) {
 }
 
 function Test-Admission($pol, [string]$cls, $snap) {
+  # Never refuses. Machine conditions only shrink the job (workers, priority) and are reported as advisories.
   $cp = Get-ClassPolicy $pol $cls
   $r  = $pol.resources
   $clientUp = @($snap.LeagueClient).Count -gt 0
-  $reserve  = if ($clientUp) { [double]$r.reserveFreeRamMBLeagueClient } else { [double]$r.reserveFreeRamMB }
-  $maxCpu   = if ($clientUp) { [double]$r.maxCpuPercentLeagueClient } else { [double]$r.maxCpuPercent }
-  $need     = [double]$cp.estimateMB + $reserve
-  $workers  = if ($clientUp) { [int]$cp.workersLeagueClient } else { [int]$cp.workers }
+  $inGame   = @($snap.LeagueInGame).Count -gt 0
+  $low      = ($null -ne $snap.AvailMB) -and ($snap.AvailMB -lt ([double]$cp.estimateMB + [double]$r.advisoryFreeRamMB))
+  $workers  = if ($inGame -or $clientUp -or $low) { 1 } else { [int]$cp.workers }
+  $priority = if ($inGame) { 'Idle' } else { 'BelowNormal' }
 
-  $reasons = @()
-  if (@($snap.LeagueInGame).Count -gt 0) { $reasons += "League of Legends is in a match ($(@($snap.LeagueInGame) -join ', ')); heavy jobs are never started during a game" }
-  if ($null -eq $snap.AvailMB) { $reasons += 'available memory could not be measured (failing safe)' }
-  elseif ($snap.AvailMB -lt $need) { $reasons += ("available RAM {0:N0} MB < required {1:N0} MB (class '{2}' estimate {3} MB + reserve {4:N0} MB)" -f $snap.AvailMB, $need, $cls, $cp.estimateMB, $reserve) }
-  if ($null -ne $snap.Cpu -and $snap.Cpu -gt $maxCpu) { $reasons += ("CPU {0}% > limit {1}%" -f $snap.Cpu, $maxCpu) }
-  if ($null -ne $snap.Disk -and $snap.Disk -ge [double]$r.maxDiskBusyPercent) { $reasons += ("disk busy {0}% >= limit {1}%" -f $snap.Disk, $r.maxDiskBusyPercent) }
+  $notes = @()
+  if ($inGame) { $notes += "League of Legends is in a match: running with 1 worker at Idle priority (the game keeps the CPU)" }
+  elseif ($clientUp) { $notes += 'League client open: 1 worker' }
+  if ($null -eq $snap.AvailMB) { $notes += 'available memory could not be measured' }
+  elseif ($low) { $notes += ("available RAM {0:N0} MB is below the class estimate {1} MB + {2} MB: 1 worker; the job memory cap {3} MB still applies. Prefer CI for this run if it is not needed now." -f $snap.AvailMB, $cp.estimateMB, $r.advisoryFreeRamMB, $cp.jobMemoryLimitMB) }
+  if ($null -ne $snap.Cpu -and $snap.Cpu -gt [double]$r.advisoryCpuPercent) { $notes += ("CPU {0}% is busy: the job runs below normal priority, so it is slower, not blocking" -f $snap.Cpu) }
   $hv = @($snap.Heavy)
-  foreach ($h in ($hv | Select-Object -First 4)) { $reasons += "another heavy job is already running outside the guard: pid $($h.Pid) $($h.Name) :: $($h.Cmd)" }
-  if ($hv.Count -gt 4) { $reasons += "... and $($hv.Count - 4) more unguarded heavy job(s); run 'mogzy-guard status' for the full list" }
+  if ($hv.Count -gt 0) { $notes += "$($hv.Count) other test/build process(es) outside the guard (targeted runs are expected there; see 'status')" }
 
-  return [pscustomobject]@{ Ok = ($reasons.Count -eq 0); Reasons = $reasons; Workers = $workers; NeedMB = $need; Class = $cp; ClientUp = $clientUp }
+  return [pscustomobject]@{ Ok = $true; Reasons = $notes; Workers = $workers; Priority = $priority; NeedMB = [double]$cp.estimateMB; Class = $cp; ClientUp = $clientUp }
 }
 
 function Write-SnapshotLine($snap) {
@@ -339,10 +344,9 @@ function Invoke-Check($pol, $o) {
   $snap = Get-Snapshot $pol
   Write-SnapshotLine $snap
   $adm = Test-Admission $pol $cls $snap
-  if ($adm.Ok) { Say ("WOULD ADMIT class '{0}' with {1} worker(s) (needs {2:N0} MB free)." -f $cls, $adm.Workers, $adm.NeedMB); exit 0 }
-  Say "WOULD BLOCK class '$cls':"
-  foreach ($r in $adm.Reasons) { Say "  - $r" }
-  exit 3
+  Say ("WOULD RUN class '{0}' with {1} worker(s) at {2} priority (resources never block; only the broad-job lock can make it wait)." -f $cls, $adm.Workers, $adm.Priority)
+  foreach ($r in $adm.Reasons) { Say "  note: $r" }
+  exit 0
 }
 
 function Invoke-Run($pol, $o) {
@@ -388,12 +392,11 @@ function Invoke-Run($pol, $o) {
       try { $lockFree = $mx.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $lockFree = $true }
       if ($lockFree) { $mx.ReleaseMutex() }
     } finally { if ($mx) { $mx.Dispose() } }
-    Say "dry-run plan: class=$cls exe=$exe args=[$argStr] timeout=${timeout}s lockWait<=${wait}s workers=$($adm.Workers) jobMemCap=$($cp.jobMemoryLimitMB)MB"
+    Say "dry-run plan: class=$cls exe=$exe args=[$argStr] timeout=${timeout}s lockWait<=${wait}s workers=$($adm.Workers) priority=$($adm.Priority) jobMemCap=$($cp.jobMemoryLimitMB)MB"
     Say ("dry-run lock: " + $(if ($lockFree) { 'free' } else { "HELD by $(Format-Holder (Read-Holder))" }))
-    if ($adm.Ok -and $lockFree) { Say 'dry-run verdict: WOULD RUN'; exit 0 }
-    foreach ($r in $adm.Reasons) { Say "  - $r" }
-    if (-not $lockFree) { Say '  - another guarded heavy job holds the lock'; exit 4 }
-    Say 'dry-run verdict: WOULD BLOCK'; exit 3
+    foreach ($r in $adm.Reasons) { Say "  note: $r" }
+    if (-not $lockFree) { Say 'dry-run verdict: WOULD WAIT for the broad-job lock (bounded)'; exit 4 }
+    Say 'dry-run verdict: WOULD RUN'; exit 0
   }
 
   New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
@@ -420,24 +423,13 @@ function Invoke-Run($pol, $o) {
       if ($remainMs -le 10000) { break }
       Say "waiting for the heavy-job lock (<= $([int]($remainMs/1000))s left); held by $(Format-Holder (Read-Holder))"
     }
-    if (-not $owned) { Die 4 "gave up after ${wait}s: another heavy job holds the lock: $(Format-Holder (Read-Holder)). Re-run when it finishes; do not start a second heavy job." }
+    if (-not $owned) { Die 4 "waited ${wait}s: another broad job holds the lock: $(Format-Holder (Read-Holder)). Keep working meanwhile: targeted tests (named files) need no lock. Re-run this once later, or use the PR's CI workflow. Do not poll in a loop." }
 
-    # ---- admission control, bounded re-checks
-    $attempts = [math]::Max(1, [int]$pol.resources.recheckAttempts)
-    $adm = $null
-    for ($n = 1; $n -le $attempts; $n++) {
-      $snap = Get-Snapshot $pol
-      Write-SnapshotLine $snap
-      $adm = Test-Admission $pol $cls $snap
-      if ($adm.Ok) { break }
-      if ($n -lt $attempts) { Say "resources insufficient (attempt $n of $attempts); re-checking in $($pol.resources.recheckIntervalSec)s"; Start-Sleep -Seconds ([int]$pol.resources.recheckIntervalSec) }
-    }
-    if (-not $adm.Ok) {
-      Say "BLOCKED: not starting class '$cls'. Reasons:"
-      foreach ($r in $adm.Reasons) { Say "  - $r" }
-      Say 'Nothing was killed or started. Close other workloads or wait, then retry; ask the owner before overriding policy.'
-      exit 3
-    }
+    # ---- sizing (single snapshot, never refuses)
+    $snap = Get-Snapshot $pol
+    Write-SnapshotLine $snap
+    $adm = Test-Admission $pol $cls $snap
+    foreach ($r in $adm.Reasons) { Say "note: $r" }
 
     # ---- record holder (diagnostics) and run
     $me = Get-Process -Id $PID
@@ -447,9 +439,9 @@ function Invoke-Run($pol, $o) {
       command = ((@($o.Cmd) -join ' ') -replace '\s+', ' ')
     }
     $hold | ConvertTo-Json | Set-Content -LiteralPath $HolderPath -Encoding UTF8
-    try { $me.PriorityClass = 'BelowNormal' } catch { }   # children inherit; keeps the game/UI responsive
+    try { $me.PriorityClass = $adm.Priority } catch { }   # children inherit; the game, Firefox and other sessions keep the CPU first
 
-    Say "ADMITTED class '$cls': workers=$($adm.Workers), timeout=${timeout}s, memcap=$($cp.jobMemoryLimitMB)MB, priority=BelowNormal."
+    Say "RUNNING class '$cls': workers=$($adm.Workers), timeout=${timeout}s, memcap=$($cp.jobMemoryLimitMB)MB, priority=$($adm.Priority)."
     $timedOut = $false
     try { $code = [MogzyJob]::Run($exe, $argStr, (Build-ChildEnv $pol $adm $cls $token), $timeout * 1000, $memBytes, [ref]$timedOut) }
     catch { Die 5 "could not start/confine the job: $($_.Exception.Message)" }

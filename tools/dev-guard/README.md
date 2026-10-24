@@ -1,8 +1,22 @@
-# dev-guard — one heavy local job at a time
+# dev-guard — targeted tests run freely, broad jobs one at a time
 
 Resource control for the owner's Windows PC (16 GB RAM, 8C/16T, often running League of Legends and Firefox).
 Several Claude sessions had been launching overlapping Vitest, pytest, Vite/esbuild and `*_validate.py` jobs, which
 pinned CPU 94 %, RAM 98 % and disk 100 %.
+
+> **Redesign 2026-10-24 (this branch; not installed).** The 2026-10-23 guard blocked ordinary work: the hook denied every
+> `vitest`/`pytest` command, and the guard then refused even a one-file test whenever Firefox and League were open (needed
+> 4.0-5.5 GB free RAM; the PC usually has <1 GB). Now:
+> * **Targeted** runs (up to 8 named test files, `scope.mjs`) are allowed directly by the hook: no lock, no admission check.
+>   `vitest.config.ts` bounds them (1 worker, no file parallelism, heap cap, below-normal priority); pytest is single-process
+>   and `conftest.py` lowers its priority.
+> * **Broad** runs still go through the guard, which only serializes them (bounded lock wait). League, Firefox, RAM, CPU, disk
+>   and other sessions' processes **never refuse** a job; they only reduce workers/priority. Exit code 3 no longer exists.
+> * The Vitest `globalSetup` and pytest `conftest.py` backstops (fail when `MOGZY_GUARD_ENFORCE=1`) are removed; the variable is inert.
+> * Hook false positive fixed: a PowerShell assignment such as `$V = "...\vitest.mjs"` was treated as running Vitest.
+>
+> Installing it on the owner's PC is an owner decision (see *Updating the installed copy* below). Sections further down that
+> describe RAM/League blocking describe the 2026-10-23 version and are kept as history.
 
 **Status (2026-10-23): installed on the owner's PC; merging this PR changes only repository files.** The install plan below is the
 original, *historical* proposal; it was executed with the owner's approval and the hook matcher was later widened (see
@@ -12,11 +26,12 @@ original, *historical* proposal; it was executed with the owner's approval and t
 
 | Piece | File | Job |
 |---|---|---|
-| Guard | `mogzy-guard.ps1` (+ `.cmd` shim) | Global lock, admission checks, bounded worker env, owned-process job object |
-| Limits | `policy.json` | Thresholds, per-class RAM estimates, worker caps, timeouts |
-| Claude hook | `hook-pretooluse.mjs` | Denies unguarded heavy commands and guard-bypass attempts before they run |
-| Backstop | `vitest-guard-setup.mjs`, backend `conftest.py` | Unguarded local Vitest/pytest warns, or fails when `MOGZY_GUARD_ENFORCE=1` |
-| Settings | `claude-settings.proposed.json` | Hook registration + `MOGZY_GUARD_ENFORCE=1` (reference copy; installed on the owner's PC) |
+| Guard | `mogzy-guard.ps1` (+ `.cmd` shim) | Broad-job lock (bounded wait), sizing by machine state (never refuses), bounded worker env, owned-process job object with memory cap |
+| Limits | `policy.json` | Advisory thresholds, per-class worker caps, timeouts, job memory caps |
+| Scope | `scope.mjs` | Targeted vs broad classification, shared by the hook and `vitest.config.ts` |
+| Claude hook | `hook-pretooluse.mjs` | Allows targeted test runs; redirects broad ones to the guard; denies guard-bypass attempts and kill-by-name |
+| Local bounds | `vitest.config.ts`, backend `conftest.py` | 1 worker + no file parallelism for targeted Vitest, worker heap cap, below-normal priority; pytest priority drop |
+| Settings | `claude-settings.proposed.json` | Hook registration (reference copy; installed on the owner's PC). `MOGZY_GUARD_ENFORCE` is inert since 2026-10-24 and can be removed |
 | Tests | `selftest.ps1`, `hook-pretooluse.test.mjs` | Millisecond/trivial-command validation, no real suites |
 
 The guard source of truth lives in the frontend repo (`mogsy`). The backend repo (`League_Combat_Simulator`) only
@@ -32,10 +47,11 @@ mogzy-guard.cmd run --class pytest -- python -m pytest -q test_x.py
 mogzy-guard.cmd run --class vitest --dry-run -- npx vitest run     # plan + verdict, starts nothing
 ```
 
-Guard options go before `--`; the job goes after it. Exit codes: `0` ok, `2` usage, `3` blocked by resources,
-`4` lock wait timed out, `5` could not confine job, `124` job exceeded its wall-clock limit, anything else = the job's own code.
+Guard options go before `--`; the job goes after it. Exit codes: `0` ok, `2` usage, `4` lock wait timed out (another broad job
+is running), `5` could not confine job, `124` job exceeded its wall-clock limit, anything else = the job's own code.
+(Code `3`, "blocked by resources", was removed on 2026-10-24.) Targeted test runs do not need the guard at all.
 
-### Guarantees and how they are met
+### Guarantees and how they are met (2026-10-23 version; see the redesign note at the top)
 
 | Requirement | Mechanism |
 |---|---|
@@ -71,6 +87,21 @@ The job memory cap makes an over-hungry job fail with an out-of-memory error ins
 * `mogzy-guard.cmd status`, `check` and `--dry-run` against the real machine (read-only).
 * No Vitest, pytest, build or browser run was started to certify this change.
 
+## Updating the installed copy to the 2026-10-24 redesign (owner approval needed; not done)
+
+```powershell
+$dst = "$env:LOCALAPPDATA\mogzy-dev-guard"
+New-Item -ItemType Directory -Force "$dst\backup-20261024" | Out-Null
+Copy-Item "$dst\*.ps1", "$dst\*.cmd", "$dst\*.json", "$dst\*.mjs" "$dst\backup-20261024"
+Copy-Item tools\dev-guard\hook-pretooluse.mjs, tools\dev-guard\scope.mjs, tools\dev-guard\mogzy-guard.ps1, tools\dev-guard\mogzy-guard.cmd, tools\dev-guard\policy.json $dst
+```
+
+`scope.mjs` is new and must sit next to the hook (the hook imports it). `~\.claude\settings.json` needs no change; optionally drop
+`MOGZY_GUARD_ENFORCE` from its `env` (nothing reads it any more). The hook file is read on every tool call, so the change applies to all
+sessions at once. Acceptance after install: a one-file `npx vitest run <file>` and a one-file `python -m pytest -q <file>` run
+without the guard while Firefox/League are open; `npx vitest run src/lib` is redirected to the guard; `mogzy-guard.cmd check
+--class vitest` prints `WOULD RUN`. Rollback: copy the files back from `backup-20261024` and delete `scope.mjs`.
+
 ## Install plan (historical proposal; already executed on the owner's PC)
 
 Original proposal, kept as the procedure for other machines. On the owner's PC steps 1-2 were executed with approval, and the hook file and
@@ -82,7 +113,7 @@ unless reinstalling. "Not installed" wording elsewhere in this file describes th
    ```powershell
    $dst = "$env:LOCALAPPDATA\mogzy-dev-guard"
    New-Item -ItemType Directory -Force $dst | Out-Null
-   Copy-Item tools\dev-guard\mogzy-guard.ps1, tools\dev-guard\mogzy-guard.cmd, tools\dev-guard\policy.json, tools\dev-guard\hook-pretooluse.mjs $dst
+   Copy-Item tools\dev-guard\mogzy-guard.ps1, tools\dev-guard\mogzy-guard.cmd, tools\dev-guard\policy.json, tools\dev-guard\hook-pretooluse.mjs, tools\dev-guard\scope.mjs $dst
    ```
    Creates one folder with 4 files. Re-run after a policy change merges.
 2. **Register the hook and enforcement variable** in the user-level Claude settings. `~\.claude\settings.json` did not exist when this was written, so this creates it with exactly the contents of `claude-settings.proposed.json` (if the file exists by then, merge the `env` and `hooks.PreToolUse` entries instead of overwriting). Effect: every Claude Code session, subagent and worktree runs the hook before Bash/PowerShell commands; spawned processes inherit `MOGZY_GUARD_ENFORCE=1`.
