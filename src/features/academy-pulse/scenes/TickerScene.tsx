@@ -9,7 +9,8 @@
  */
 import { motion } from "framer-motion";
 
-import { CATEGORY_LABEL, type PulseItem, type PulseSceneKind } from "../model/pulse-types";
+import { pulseItemLabel } from "../content/live/live-items";
+import type { PulseItem, PulseSceneKind } from "../model/pulse-types";
 import { EASE_OUT, fade, pop, rise, sceneRoot, type SceneProps } from "./scene-kit";
 
 const SIGIL: Record<PulseSceneKind, string> = {
@@ -40,7 +41,7 @@ export default function TickerScene({ item, onExpand }: SceneProps<PulseItem>) {
         <svg viewBox="0 0 24 24" focusable="false"><path d={SIGIL[item.kind]} /></svg>
       </motion.span>
       <div className="apulse-stack apulse-ticker-text">
-        <motion.p variants={fade} className="apulse-kicker">{CATEGORY_LABEL[item.category]}</motion.p>
+        <motion.p variants={fade} className="apulse-kicker">{pulseItemLabel(item)}</motion.p>
         <motion.p variants={rise} className="apulse-ticker-line">{item.title}</motion.p>
       </div>
       <motion.button variants={pop} type="button" className="apulse-btn apulse-btn-ghost" onClick={onExpand} data-testid="pulse-ticker-open">

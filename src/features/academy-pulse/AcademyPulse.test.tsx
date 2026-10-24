@@ -311,3 +311,62 @@ describe("the expanded view", () => {
     expect(within(viewer).getByRole("link", { name: "Open on YouTube" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   });
 });
+
+describe("content belongs to its provider (PULSE-2A: the live provider is per viewer)", () => {
+  it("a new provider never shows the previous provider's scenes while its own load is in flight", async () => {
+    const first = provider();
+    const pending: PulseContentProvider = { id: "next-viewer", load: () => new Promise(() => {}), peek: () => null };
+    const view = mount({ provider: first });
+    expect(scene()).toHaveAttribute("data-category", "player-activity");
+    view.rerender(
+      <MemoryRouter>
+        <div style={{ height: 260 }}>
+          <AcademyPulse provider={pending} cadence={DEFAULT_PULSE_CADENCE} />
+        </div>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByTestId("academy-pulse-scene")).toBeNull();
+  });
+
+  it("a new provider draws its own peek at once", () => {
+    const only = fixturePulseCatalogue();
+    const next: PulseContentProvider = { id: "next", load: () => new Promise(() => {}), peek: () => ({ news: only.news }) };
+    const view = mount();
+    view.rerender(
+      <MemoryRouter>
+        <div style={{ height: 260 }}>
+          <AcademyPulse provider={next} cadence={DEFAULT_PULSE_CADENCE} />
+        </div>
+      </MemoryRouter>,
+    );
+    // The old provider's scene is cut at once; only the new provider's (re-keyed by the resize) remain.
+    const scenes = screen.getAllByTestId("academy-pulse-scene");
+    expect(scenes.length).toBeGreaterThan(0);
+    for (const el of scenes) expect(el).toHaveAttribute("data-category", "news");
+  });
+});
+
+describe("truthful labels (PULSE-2A)", () => {
+  it("the viewer's own Daily card is chipped and announced as Your Daily", () => {
+    const record = {
+      id: "live-daily-record", kind: "news" as const, category: "player-activity" as const, provenance: "live" as const,
+      title: "Your last Daily Challenge (Sep 14): 459 points, 72 of 82 correct", variant: "announcement" as const,
+      kicker: "Your Daily", headline: "459 points in your last Daily", summary: "72 of 82 correct in the Daily for Sep 14.",
+      body: ["b"], dateLabel: "Sep 14", href: "/quiz#history", ctaLabel: "See your record",
+    };
+    const news = fixturePulseCatalogue().news!;
+    const cat: PulseCatalogue = { "player-activity": [record], news };
+    mount({ provider: { id: "labels", load: async () => cat, peek: () => cat } });
+    expect(screen.getByTestId("academy-pulse-viewport")).toHaveAccessibleName(/^1 of \d+: Your Daily\./);
+    expect(screen.getByRole("button", { name: "Scene 1: Your Daily" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Player activity/ })).toBeNull();
+  });
+
+  it("chart points are named by their place in the series, not as days", () => {
+    const insight = fixturePulseCatalogue()["personal-insight"]![0];
+    mount({ startAt: insight.id });
+    const probes = within(screen.getByRole("list", { name: /oldest first$/ })).getAllByRole("listitem");
+    expect(probes[0]).toHaveAccessibleName(`1 of ${probes.length}: 62%`);
+    expect(screen.queryByRole("listitem", { name: /^Day / })).toBeNull();
+  });
+});

@@ -8,7 +8,7 @@
  * crystal flares in the next scene's colour and a light sweep crosses the
  * glass, then the new scene's pieces arrive in their own choreography.
  *
- *   CONTENT  usePulseContent(provider)   — fixtures in Phase 1
+ *   CONTENT  usePulseContent(provider)   — editorial, plus the viewer's own record (PULSE-2A)
  *   ORDER    usePulseRotation(cadence)   — scheduler + dwell clock + holds
  *   SCENES   SceneRenderer               — one component per kind
  *
@@ -26,9 +26,11 @@ import { getChampionIcon, getChampionSplash, useChampionAssets } from "@/hooks/u
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { cn } from "@/lib/utils";
 
-import { fixturePulseProvider, publicPulseProvider } from "./content/pulse-provider";
+import { useLivePulseProvider } from "./content/live/useLivePulseProvider";
+import { fixturePulseProvider } from "./content/pulse-provider";
 import { DEFAULT_PULSE_CADENCE } from "./model/pulse-cadence";
-import { CATEGORY_LABEL, type PulseCadence, type PulseCatalogue, type PulseContentProvider } from "./model/pulse-types";
+import { pulseItemLabel } from "./content/live/live-items";
+import type { PulseCadence, PulseCatalogue, PulseContentProvider } from "./model/pulse-types";
 import PulseExpanded from "./PulseExpanded";
 import SceneRenderer, { SCENE_ACCENT } from "./scenes/SceneRenderer";
 import TickerScene from "./scenes/TickerScene";
@@ -36,17 +38,37 @@ import { EASE_OUT, PulseArtContext, type PulseArt } from "./scenes/scene-kit";
 import { usePulseRotation } from "./usePulseRotation";
 import "./academy-pulse.css";
 
+/**
+ * A catalogue belongs to the provider that produced it. A new provider (the
+ * live one is per viewer: sign-in, sign-out, account switch) shows its own
+ * `peek` from the very render it arrives in, never the previous provider's
+ * scenes while its load is in flight.
+ */
 function usePulseContent(provider: PulseContentProvider): PulseCatalogue | null {
-  const [catalogue, setCatalogue] = useState<PulseCatalogue | null>(() => provider.peek?.() ?? null);
+  const [held, setHeld] = useState<{ provider: PulseContentProvider; catalogue: PulseCatalogue | null }>(
+    () => ({ provider, catalogue: provider.peek?.() ?? null }),
+  );
   useEffect(() => {
     const ctl = new AbortController();
-    provider.load(ctl.signal).then((c) => { if (!ctl.signal.aborted) setCatalogue(c); }).catch(() => {
-      if (!ctl.signal.aborted) setCatalogue({});
+    provider.load(ctl.signal).then((c) => { if (!ctl.signal.aborted) setHeld({ provider, catalogue: c }); }).catch(() => {
+      if (!ctl.signal.aborted) setHeld({ provider, catalogue: {} });
     });
     return () => ctl.abort();
   }, [provider]);
-  return catalogue;
+  const peeked = useMemo(() => (held.provider === provider ? null : provider.peek?.() ?? null), [held.provider, provider]);
+  return held.provider === provider ? held.catalogue : peeked;
 }
+
+const providerKeys = new WeakMap<PulseContentProvider, number>();
+let nextProviderKey = 0;
+function providerKey(provider: PulseContentProvider): number {
+  let key = providerKeys.get(provider);
+  if (key === undefined) providerKeys.set(provider, (key = nextProviderKey++));
+  return key;
+}
+
+/** Local development plays the labelled fixtures unless the live provider is asked for. */
+const DEV_FIXTURES = import.meta.env.DEV && import.meta.env.VITE_ACADEMY_PULSE_CONTENT !== "live";
 
 const EMPTY: PulseCatalogue = {};
 /** Below this much glass a full scene is cramped; the ticker takes over. */
@@ -65,7 +87,7 @@ export interface AcademyPulseProps {
 
 export default function AcademyPulse({
   variant = "desktop",
-  provider = import.meta.env.DEV ? fixturePulseProvider : publicPulseProvider,
+  provider: providerProp,
   cadence = DEFAULT_PULSE_CADENCE,
   className,
   startAt,
@@ -73,7 +95,12 @@ export default function AcademyPulse({
 }: AcademyPulseProps) {
   const reduced = useReducedMotionPreference();
   const rootRef = useRef<HTMLElement>(null);
+  // Production: the viewer's live provider (editorial for guests, plus the
+  // viewer's own record for a signed-in account). See content/live/.
+  const liveProvider = useLivePulseProvider();
+  const provider = providerProp ?? (DEV_FIXTURES ? fixturePulseProvider : liveProvider);
   const catalogue = usePulseContent(provider);
+  const contentKey = providerKey(provider);
   const rot = usePulseRotation(catalogue ?? EMPTY, cadence, { startPaused: reduced || startPaused, rootRef, startAt });
   const item = rot.current;
 
@@ -237,13 +264,13 @@ export default function AcademyPulse({
               <AnimatePresence mode="popLayout" initial={false}>
                 {item && (
                   <motion.span
-                    key={item.category}
+                    key={pulseItemLabel(item)}
                     className="apulse-cat"
                     initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { delay: 0.25, duration: 0.45, ease: EASE_OUT } }}
                     exit={{ opacity: 0, y: -10, filter: "blur(4px)", transition: { duration: 0.2 } }}
                   >
-                    {CATEGORY_LABEL[item.category]}
+                    {pulseItemLabel(item)}
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -258,7 +285,7 @@ export default function AcademyPulse({
             data-compact={compact ? "true" : "false"}
             role="group"
             aria-roledescription="slide"
-            aria-label={item ? `${rot.index + 1} of ${count}: ${CATEGORY_LABEL[item.category]}. ${item.title}` : "Academy Pulse"}
+            aria-label={item ? `${rot.index + 1} of ${count}: ${pulseItemLabel(item)}. ${item.title}` : "Academy Pulse"}
             aria-live={rot.playing ? "off" : "polite"}
             data-testid="academy-pulse-viewport"
           >
@@ -271,7 +298,8 @@ export default function AcademyPulse({
                 style={{ animationDuration: `${rot.dwellMs}ms`, animationPlayState: rot.playing ? "running" : "paused" }}
               />
             )}
-            <AnimatePresence mode="sync" initial={!reduced}>
+            {/* keyed by provider: a viewer change cuts the old scene at once rather than letting it play its exit */}
+            <AnimatePresence key={contentKey} mode="sync" initial={!reduced}>
               {item && (
                 <motion.div
                   key={`${item.id}:${rot.epoch}`}
@@ -328,7 +356,7 @@ export default function AcademyPulse({
                     className="apulse-pip"
                     data-current={i === rot.index ? "true" : "false"}
                     style={{ ["--pip" as string]: SCENE_ACCENT[it.kind] }}
-                    aria-label={`Scene ${i + 1}: ${CATEGORY_LABEL[it.category]}`}
+                    aria-label={`Scene ${i + 1}: ${pulseItemLabel(it)}`}
                     aria-current={i === rot.index ? "true" : undefined}
                     onClick={() => rot.goTo(i)}
                     tabIndex={i === rot.index ? 0 : -1}
