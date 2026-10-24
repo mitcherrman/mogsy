@@ -1,5 +1,5 @@
 /** MQS1 — owner-only query explorer. Backend owns grammar and matching. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, Download, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { quizApi } from "@/lib/quiz/api";
 
 type Row = Record<string, unknown> & { question_key: string; question_text: string; correct_answer: string };
 type Source = "bank" | "candidates";
+type QuerySchema = { schema_version: string; fields: string[]; bank_fields: string[]; candidate_families: string[]; max_page_size: number };
 const MANA = 'FROM candidates\nWHERE family = "ability_cost_rank" AND resource = "mana"\nORDER BY champion, slot, rank\nLIMIT 10000\nEXPORT CSV';
 const BANK = 'FROM bank\nWHERE family = "ability_cost_rank" AND resource = "mana"\nORDER BY champion, slot, rank\nLIMIT 10000\nEXPORT CSV';
 
@@ -34,6 +35,12 @@ async function request(query: string, output: "preview" | "csv", offset = 0) {
   }
   return response;
 }
+async function getSchema(): Promise<QuerySchema> {
+  const headers = await getBackendAuthHeaders();
+  const response = await fetch(quizApi.baseUrl + "/api/quiz/admin/review/query/schema", { headers });
+  if (!response.ok) throw new Error("Schema unavailable (" + response.status + ")");
+  return await response.json() as QuerySchema;
+}
 export default function QuestionExplorer() {
   const [source, setSource] = useState<Source>("candidates");
   const [family, setFamily] = useState("ability_cost_rank");
@@ -46,6 +53,18 @@ export default function QuestionExplorer() {
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState<"preview" | "csv" | null>(null);
   const [error, setError] = useState("");
+  const [schema, setSchema] = useState<QuerySchema | null>(null);
+  const [customQuery, setCustomQuery] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void getSchema().then(data => {
+      if (active) setSchema(data);
+    }).catch(() => {
+      // The Explorer continues to work without optional schema help.
+    });
+    return () => { active = false; };
+  }, []);
 
   function filter(next: Partial<{ source: Source; family: string; resource: string; champion: string; difficulty: string }>) {
     const values = {
@@ -57,7 +76,7 @@ export default function QuestionExplorer() {
     setResource(values.resource); setChampion(values.champion);
     setDifficulty(values.difficulty);
     setQuery(compose(values.source, values.family, values.resource, values.champion, values.difficulty));
-    setRows([]); setCount(null); setHasMore(false); setError("");
+    setRows([]); setCount(null); setHasMore(false); setCustomQuery(false); setError("");
   }
 
   async function run(output: "preview" | "csv") {
@@ -156,6 +175,13 @@ export default function QuestionExplorer() {
             </label>
           </div>
           <p className="text-xs text-muted-foreground">Generator preview currently supports ability_cost_rank only. All stored-bank families can be queried. For advanced combinations, edit the query below.</p>
+          {schema && <p className="text-xs text-muted-foreground" data-testid="query-schema">
+            Available bank fields: {schema.bank_fields.join(", ")}.
+            Candidate providers: {schema.candidate_families.join(", ")}.
+          </p>}
+          {customQuery && <p className="text-xs text-amber-600 dark:text-amber-400">
+            Custom command active. The visual controls show your last selections; changing a filter replaces the custom command.
+          </p>}
         </div>
         <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
           <div className="space-y-2">
@@ -163,12 +189,12 @@ export default function QuestionExplorer() {
               <label htmlFor="mqs-query" className="text-sm font-semibold">Mogzy Query Language</label>
               <Button variant="ghost" size="sm" onClick={() => void navigator.clipboard?.writeText(query)}><Copy className="mr-1 h-4 w-4"/>Copy</Button>
             </div>
-            <Textarea id="mqs-query" spellCheck={false} value={query} onChange={e => setQuery(e.target.value)} rows={6} className="font-mono text-sm" />
+            <Textarea id="mqs-query" spellCheck={false} value={query} onChange={e => { setQuery(e.target.value); setCustomQuery(true); }} rows={6} className="font-mono text-sm" />
           </div>
           <div className="space-y-2">
             <p className="text-sm font-semibold">Presets</p>
-            <Button variant="outline" className="w-full justify-start" onClick={() => setQuery(MANA)}>All producible mana costs</Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => setQuery(BANK)}>Stored mana-cost questions</Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => { setQuery(MANA); setCustomQuery(true); }}>All producible mana costs</Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => { setQuery(BANK); setCustomQuery(true); }}>Stored mana-cost questions</Button>
           </div>
         </div>
         {error && <p role="alert" className="rounded border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
