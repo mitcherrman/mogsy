@@ -40,6 +40,7 @@ import {
   type AdminTab,
 } from "@/lib/notifications/policy";
 import { useAdminInbox } from "@/lib/notifications/useAdminInbox";
+import { NotificationErrorDetail } from "@/components/notifications/NotificationErrorDetail";
 import { cn } from "@/lib/utils";
 
 /**
@@ -717,6 +718,7 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
         {status === "error" && (
           <div className="py-6 text-center" data-testid="admin-notifications-error">
             <p className="text-sm text-muted-foreground">Couldn’t load notifications.</p>
+            <NotificationErrorDetail error={inbox.error} />
             <Button size="sm" variant="link" onClick={() => void inbox.refresh()}>
               Try again
             </Button>

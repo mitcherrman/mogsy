@@ -247,6 +247,25 @@ describe("live updates", () => {
     fireEvent.click(within(panel).getByText("Try again"));
     expect(await within(panel).findByText("Back")).toBeTruthy();
   });
+
+  it("#146: a refused owner feed reports in its own section and never hides the owner's player notifications", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    ownerCtx.authorized = true;
+    inbox.player = [{ id: "a", type: "update", title: "Patch 26.21 is live" }];
+    inbox.errors.admin_get_notifications = { code: "42501", message: "admin role required" };
+    render(<MogzyIdentityMenu />);
+    const panel = await openPanel();
+    expect(await within(panel).findByText("Patch 26.21 is live")).toBeTruthy();
+    const adminError = await within(panel).findByTestId("hud-admin-error");
+    expect(within(panel).queryByTestId("notification-error")).toBeNull();
+    expect(within(adminError).getByTestId("notification-error-detail").textContent).toBe(
+      "Admin session needs re-verification. (admin_get_notifications · 42501)",
+    );
+    delete inbox.errors.admin_get_notifications;
+    fireEvent.click(within(adminError).getByText("Try again"));
+    expect(await within(panel).findByTestId("hud-admin-summary")).toBeTruthy();
+    expect(within(panel).queryByTestId("hud-admin-error")).toBeNull();
+  });
 });
 
 describe("invitations", () => {
