@@ -12,8 +12,9 @@
  *   ORDER    usePulseRotation(cadence)   — scheduler + dwell clock + holds
  *   SCENES   SceneRenderer               — one component per kind
  *
- * Rotation holds while the pointer rests on Pulse, while keyboard focus is in
- * it, for ten seconds after any interaction with a scene, while the expanded
+ * Rotation briefly holds during active mouse exploration (then resumes after
+ * pointer inactivity), while visible keyboard focus is in it, for ten seconds
+ * after a scene interaction, while the expanded
  * view is open, while Pulse is off screen or the tab hidden, and when the
  * viewer presses Pause. Under reduced motion it starts paused and every
  * transition is a plain cross-fade.
@@ -92,7 +93,49 @@ export default function AcademyPulse({
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setExpanded(true);
   }, []);
-  const onFocus = useCallback(() => hold("focus", true), [hold]);
+  // Mouse clicks leave DOM focus on buttons. Only a visible keyboard focus
+  // indicator should hold auto-rotation; pointer-created focus must not.
+  const onFocus = useCallback((e: FocusEvent<HTMLElement>) => {
+    const target = e.target;
+    hold("focus", target instanceof HTMLElement && target.matches(":focus-visible"));
+  }, [hold]);
+
+  // Hover is a short reading grace, not an indefinite stop if a cursor stays
+  // inside the device. Active movement refreshes it; an idle pointer releases it.
+  const HOVER_IDLE_GRACE_MS = 6_000;
+  const hoverTimer = useRef<number | null>(null);
+  const hoverPoint = useRef<{ x: number; y: number } | null>(null);
+  const clearHoverTimer = useCallback(() => {
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+  }, []);
+  const refreshHoverGrace = useCallback(() => {
+    clearHoverTimer();
+    hoverTimer.current = window.setTimeout(() => {
+      hoverTimer.current = null;
+      hold("hover", false);
+    }, HOVER_IDLE_GRACE_MS);
+  }, [clearHoverTimer, hold]);
+  useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
+  const onHoverEnter = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse") return;
+    hoverPoint.current = { x: e.clientX, y: e.clientY };
+    hold("hover", true);
+    refreshHoverGrace();
+  }, [hold, refreshHoverGrace]);
+  const onHoverMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse" || hoverTimer.current === null) return;
+    const previous = hoverPoint.current;
+    if (!previous || Math.hypot(e.clientX - previous.x, e.clientY - previous.y) < 12) return;
+    hoverPoint.current = { x: e.clientX, y: e.clientY };
+    refreshHoverGrace();
+  }, [refreshHoverGrace]);
+  const onHoverLeave = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse") return;
+    clearHoverTimer();
+    hoverPoint.current = null;
+    hold("hover", false);
+  }, [clearHoverTimer, hold]);
   const onBlur = useCallback((e: FocusEvent<HTMLElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hold("focus", false);
   }, [hold]);
@@ -142,8 +185,10 @@ export default function AcademyPulse({
           aria-roledescription="carousel"
           aria-label="Academy Pulse"
           data-testid="academy-pulse"
-          onPointerEnter={(e) => { if (e.pointerType === "mouse") hold("hover", true); }}
-          onPointerLeave={(e) => { if (e.pointerType === "mouse") hold("hover", false); }}
+          onPointerEnter={onHoverEnter}
+          onPointerMove={onHoverMove}
+          onPointerLeave={onHoverLeave}
+          onPointerDown={() => hold("focus", false)}
           onFocus={onFocus}
           onBlur={onBlur}
         >
@@ -241,11 +286,11 @@ export default function AcademyPulse({
               className="apulse-icon-btn apulse-icon-btn-main"
               onClick={rot.toggle}
               disabled={count < 2}
-              aria-label={rot.userPaused ? "Play Academy Pulse" : "Pause Academy Pulse"}
+              aria-label={rot.playing ? "Pause Academy Pulse" : "Play Academy Pulse"}
               aria-pressed={rot.userPaused}
               data-testid="academy-pulse-toggle"
             >
-              {rot.userPaused ? (
+              {!rot.playing ? (
                 <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M8 5.5v13l11-6.5z" className="apulse-fill" /></svg>
               ) : (
                 <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M8.5 5.5v13M15.5 5.5v13" /></svg>
