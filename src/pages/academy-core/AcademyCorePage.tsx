@@ -98,6 +98,10 @@ import "./orrery/academy-core-v35.css";
 import "./orrery/academy-core-masthead.css";
 import "./orrery/academy-core-phone-fit.css";
 import "./orrery/academy-core-seamless-hud.css";
+import "./orrery/academy-core-pulse.css";
+import AcademyRadioStrip from "@/components/audio/AcademyRadioStrip";
+import AcademyPulseSlot from "@/features/academy-pulse/AcademyPulseSlot";
+import { readAcademyPulseEnabled } from "@/features/academy-pulse/model/pulse-flag";
 
 import OrreryCore from "./orrery/OrreryCore";
 import OrreryEnvironment from "./orrery/OrreryEnvironment";
@@ -200,6 +204,9 @@ function AcademyCoreOrrery() {
   const nav = useCoreNavigator(reduced, (id) => hoverCommit.current(id));
   const [quality, setQuality] = useState<SceneQuality>(initialQuality);
   const { focus, pointerFocus, keyboardFocus, pinned, pinSource, activating } = nav;
+  // ACADEMY PULSE (PULSE-1 prototype): off unless the build enables it; a dev
+  // or preview build shows it with `?pulse=1` (pulse-flag.ts). Read once.
+  const [pulse] = useState(readAcademyPulseEnabled);
 
   // The same session flag the Hall and the V3 Core set on arrival.
   useEffect(() => { markHubVisited(); }, []);
@@ -281,6 +288,8 @@ function AcademyCoreOrrery() {
     setEngaged((prev) => (prev.has(focus) ? prev : new Set(prev).add(focus)));
   }, [focus]);
   const deferredShown = warmed && deferredReady;
+  // Pulse's code and art wait for the same moment: the first screen drawn and the browser idle
+  const pulseReady = pulse && startup.shown && deferredReady;
   const matchupShown = deferredShown || engaged.has("pro-play");
   const mysteryShown = deferredShown || engaged.has("leaguecraft");
   const reactionsShown = deferredShown || engaged.size > 0;
@@ -602,6 +611,7 @@ function AcademyCoreOrrery() {
       data-ambient={ambient ? "on" : "off"}
       data-reduced={reduced ? "true" : "false"}
       data-quality={quality}
+      data-pulse={pulse ? "on" : undefined}
       data-testid="academy-core-v35"
     >
       <SEOHead
@@ -640,12 +650,14 @@ function AcademyCoreOrrery() {
               <div className="o35-patch-rune" aria-hidden />
               <div className="o35-patch-shadow" aria-hidden />
               <div className="o35-patch-float">
-                <AcademyBroadcastCenterpiece feed={broadcastFeed} className="o35-patch-centerpiece" />
+                <AcademyBroadcastCenterpiece feed={broadcastFeed} className="o35-patch-centerpiece" dock={!pulse} />
               </div>
               <span className="o35-spark o35-spark-1" aria-hidden /><span className="o35-spark o35-spark-2" aria-hidden />
               <span className="o35-spark o35-spark-3" aria-hidden /><span className="o35-spark o35-spark-4" aria-hidden />
             </div>
           )}
+          {fullLayout && pulse && <AcademyRadioStrip className="o35-radio-strip" />}
+          {fullLayout && pulse && <AcademyPulseSlot ready={pulseReady} variant="desktop" />}
           {fullLayout && secondScreen}
         </div>
 
@@ -711,6 +723,7 @@ function AcademyCoreOrrery() {
 
         {!fullLayout && (
           <div className="o35-island-mobile">
+            {pulse && <AcademyPulseSlot ready={pulseReady} variant="mobile" />}
             <div className="o35-patch o35-patch-mobile" data-testid="academy-core-book-mobile">
               <div className="o35-patch-halo" aria-hidden />
               <div className="o35-patch-shadow" aria-hidden />
