@@ -19,7 +19,7 @@
  * viewer presses Pause. Under reduced motion it starts paused and every
  * transition is a plain cross-fade.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 import { getChampionIcon, getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
@@ -117,20 +117,20 @@ export default function AcademyPulse({
     }, HOVER_IDLE_GRACE_MS);
   }, [clearHoverTimer, hold]);
   useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
-  const onHoverEnter = useCallback((e: React.PointerEvent<HTMLElement>) => {
+  const onHoverEnter = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType !== "mouse") return;
     hoverPoint.current = { x: e.clientX, y: e.clientY };
     hold("hover", true);
     refreshHoverGrace();
   }, [hold, refreshHoverGrace]);
-  const onHoverMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
+  const onHoverMove = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType !== "mouse" || hoverTimer.current === null) return;
     const previous = hoverPoint.current;
     if (!previous || Math.hypot(e.clientX - previous.x, e.clientY - previous.y) < 12) return;
     hoverPoint.current = { x: e.clientX, y: e.clientY };
     refreshHoverGrace();
   }, [refreshHoverGrace]);
-  const onHoverLeave = useCallback((e: React.PointerEvent<HTMLElement>) => {
+  const onHoverLeave = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType !== "mouse") return;
     clearHoverTimer();
     hoverPoint.current = null;
