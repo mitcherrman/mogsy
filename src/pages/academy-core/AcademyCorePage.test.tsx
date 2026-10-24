@@ -72,6 +72,17 @@ vi.mock("@/lib/audio/academy-radio", () => ({
 vi.mock("@/components/audio/AcademyRadioDock", () => ({
   default: ({ variant }: { variant: string }) => <div data-testid={`academy-radio-${variant === "desktop" ? "dock" : "dock-mobile"}`} />,
 }));
+// ACADEMY PULSE (PULSE-1): the build/URL flag, and stubs for the strip and the lazy slot.
+const pulseFlag = vi.hoisted(() => ({ on: false }));
+vi.mock("@/features/academy-pulse/model/pulse-flag", () => ({ readAcademyPulseEnabled: () => pulseFlag.on }));
+vi.mock("@/features/academy-pulse/AcademyPulseSlot", () => ({
+  default: ({ ready, variant }: { ready: boolean; variant: string }) => (
+    <div data-testid={`pulse-slot-${variant}`} data-ready={String(ready)} />
+  ),
+}));
+vi.mock("@/components/audio/AcademyRadioStrip", () => ({
+  default: () => <div data-testid="academy-radio-strip" />,
+}));
 const sfxPlay = vi.fn();
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: sfxPlay, stop: vi.fn(), preload: vi.fn() }) }));
 const prefetchRoute = vi.fn();
@@ -158,6 +169,7 @@ beforeEach(() => {
   auth.user = { id: "test-user" };
   dailyStatus.current = UNKNOWN_DAILY_STATUS;
   setLayout(true);
+  pulseFlag.on = false;
   window.matchMedia = ((query: string) => ({
     matches: matchMediaMatches.current(query), media: query, onchange: null,
     addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
@@ -1383,5 +1395,54 @@ describe("hover-to-front", () => {
     slideUnder("leaguecraft");
     tick(2000);
     expect(sfxPlay.mock.calls.filter(([cue]) => cue === "hub.destination.focus")).toHaveLength(1);
+  });
+});
+
+describe("ACADEMY PULSE (PULSE-1): behind its flag", () => {
+  it("is absent by default: the current layout, the radio dock under the Patch Report, no Pulse", async () => {
+    mount();
+    const root = await screen.findByTestId("academy-core-v35");
+    expect(root).not.toHaveAttribute("data-pulse");
+    expect(within(screen.getByTestId("academy-core-book")).getByTestId("academy-radio-dock")).toBeInTheDocument();
+    expect(screen.queryByTestId("academy-radio-strip")).toBeNull();
+    expect(screen.queryByTestId("pulse-slot-desktop")).toBeNull();
+    expect(screen.queryByTestId("pulse-slot-mobile")).toBeNull();
+  });
+
+  it("desktop: Patch Report, the slim radio strip, then Pulse, in the left column; the dock goes", async () => {
+    pulseFlag.on = true;
+    mount();
+    const root = await screen.findByTestId("academy-core-v35");
+    expect(root).toHaveAttribute("data-pulse", "on");
+    expect(within(screen.getByTestId("academy-core-book")).queryByTestId("academy-radio-dock")).toBeNull();
+    const island = document.querySelector(".o35-island")!;
+    const order = Array.from(island.children).map((el) =>
+      el.matches('[data-testid="academy-core-book"]') ? "patch"
+        : el.matches('[data-testid="academy-radio-strip"]') ? "radio"
+          : el.matches('[data-testid="pulse-slot-desktop"]') ? "pulse"
+            : el.matches(".o35-second-screen") ? "links" : null,
+    ).filter(Boolean);
+    expect(order).toEqual(["patch", "radio", "pulse", "links"]);
+  });
+
+  it("Pulse waits for the first screen: its slot is not ready until the Core has settled and the browser is idle", async () => {
+    pulseFlag.on = true;
+    let release!: () => void;
+    settledGate.promise = new Promise<void>((r) => { release = r; });
+    mount();
+    expect(await screen.findByTestId("pulse-slot-desktop")).toHaveAttribute("data-ready", "false");
+    await act(async () => { release(); await Promise.resolve(); });
+    await waitFor(() => expect(screen.getByTestId("pulse-slot-desktop")).toHaveAttribute("data-ready", "true"), { timeout: 3000 });
+  });
+
+  it("phones: Pulse sits below the Orrery's first screen, before the Patch Report; no strip (the HUD has the radio)", async () => {
+    pulseFlag.on = true;
+    setLayout(false);
+    mount();
+    const slotEl = await screen.findByTestId("pulse-slot-mobile");
+    const patch = screen.getByTestId("academy-core-book-mobile");
+    expect(slotEl.compareDocumentPosition(patch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("academy-radio-strip")).toBeNull();
+    expect(screen.queryByTestId("pulse-slot-desktop")).toBeNull();
   });
 });

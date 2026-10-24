@@ -316,6 +316,10 @@ const PerfectTimingPageDev = import.meta.env.DEV
 const PerfectTimingDemo = import.meta.env.DEV
   ? lazy(() => import("./components/perfect-timing/__stories__/PerfectTimingDemo"))
   : null;
+// ACADEMY PULSE (PULSE-1): the scene lab over development fixtures. DEV only.
+const AcademyPulseLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/academy-pulse/AcademyPulseLab"))
+  : null;
 // COMBAT V4: the Combat Theater prototype over committed Team Sim fixtures.
 // Same DEVELOPMENT-ONLY rule; no network, no credits, nothing shared with
 // the public /combat-lab page.
@@ -905,6 +909,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {PerfectTimingPageDev ? (
                     <Route path="/dev/perfect-timing" element={<Suspense fallback={<RouteFallback />}><PerfectTimingPageDev exitTo="/dev/perfect-timing" /></Suspense>} />
+                  ) : null}
+                  {AcademyPulseLab ? (
+                    <Route path="/dev/academy-pulse" element={<Suspense fallback={<RouteFallback />}><AcademyPulseLab /></Suspense>} />
                   ) : null}
                   {PerfectTimingDemo ? (
                     <Route path="/dev/perfect-timing/demo" element={<Suspense fallback={<RouteFallback />}><PerfectTimingDemo /></Suspense>} />

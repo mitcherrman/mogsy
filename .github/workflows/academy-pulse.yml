@@ -1,0 +1,62 @@
+name: academy-pulse
+
+# Academy Pulse (PULSE-1 prototype): unit tests, a production build, and the
+# browser acceptance + owner-review evidence (desktop, short desktop, tablet,
+# phones portrait and landscape, reduced motion, the scene gallery and a motion
+# recording). Bundled headless Chromium on GitHub's runner only (AGENTS.md).
+# Evidence: the `academy-pulse-evidence` artifact.
+on:
+  pull_request:
+    paths:
+      - "src/features/academy-pulse/**"
+      - "src/pages/academy-core/**"
+      - "src/pages/dev/academy-pulse/**"
+      - "src/components/audio/AcademyRadioStrip*"
+      - "src/components/lol/broadcast/AcademyBroadcastCenterpiece.tsx"
+      - "e2e/academy-pulse.spec.ts"
+      - ".github/workflows/academy-pulse.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Unit tests (Pulse, the Orrery page, the radio strip, the Patch Report)
+        run: >
+          npx vitest run
+          src/features/academy-pulse
+          src/pages/academy-core
+          src/components/audio/AcademyRadioStrip.test.tsx
+          src/components/audio/AcademyRadioDock.test.tsx
+          src/components/lol/broadcast
+      - name: Production build (Pulse public editorial provider enabled)
+        run: npx vite build
+      - name: The production bundle never routes the DEV-only scene lab
+        run: |
+          if grep -l "Academy Pulse lab" dist/assets/*.js; then echo "the DEV lab leaked into production"; exit 1; fi
+          grep -l "academy-pulse-slot" dist/assets/*.js > /dev/null
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Pulse acceptance and review evidence
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-pulse.spec.ts --workers=1
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: academy-pulse-evidence
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 30

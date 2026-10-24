@@ -1,0 +1,105 @@
+/* ==========================================================================
+   Academy Pulse layout (PULSE-1) — the Orrery's left column, re-divided.
+   Every rule is scoped under `.o35-root[data-pulse="on"]`, which the page sets
+   only when the Pulse flag is on (pulse-flag.ts): with the flag off, /lol is
+   byte-for-byte the current layout. Imported after the other Orrery sheets.
+
+   DESKTOP COLUMN (measured 1366 x 768: column 369 px, island 683 px tall)
+     masthead (crest + Daily seal) · unchanged
+     Patch Report book             · raised, sized from the viewport HEIGHT so
+                                     short screens keep room for Pulse
+     Academy Radio                 · the slim strip (was the 93 px dock)
+     Academy Pulse                 · takes everything left, capped near square
+     Academy Commons / Hall links  · unchanged, at the foot
+   The column width (--o35-col) is untouched: the Orrery's stage, its drag
+   geometry and its tests do not move.
+   ========================================================================== */
+
+.o35-root[data-pulse="on"][data-layout="full"] .o35-island {
+  gap: 0.5rem;
+  min-height: 0;
+}
+.o35-root[data-pulse="on"][data-layout="full"] .o35-patch {
+  flex: none;
+  align-self: center;
+  margin-block: 0.35rem 0;
+  /* the painted tome is 0.724 x its width tall: ~191 px at 768 tall, ~274 px at 1080 */
+  width: clamp(232px, calc((100dvh - var(--app-header-h, 3.5rem)) * 0.37), 100%);
+}
+/* the rune disc under the tome would run through the radio strip: keep it, flatter and fainter */
+.o35-root[data-pulse="on"][data-layout="full"] .o35-patch-rune { opacity: 0.55; bottom: calc(-48cqw + 22px); }
+.o35-root[data-pulse="on"][data-layout="full"] .o35-patch-shadow { bottom: -16px; height: 16px; }
+
+.o35-root[data-pulse="on"] .o35-radio-strip { flex: none; position: relative; z-index: 3; }
+.o35-root[data-pulse="on"][data-layout="full"] .apulse-slot[data-variant="desktop"] {
+  flex: 1 1 0;
+  min-height: 118px;
+  max-height: calc(var(--o35-col) * 0.98);
+  margin-top: 0.6rem; /* the nameplate rides 9 px above the frame */
+}
+.o35-root[data-pulse="on"][data-layout="full"] .o35-second-screen { margin-top: auto; }
+/* a mouse needs no 44 px row for two text links; the height goes to Pulse */
+@media (hover: hover) and (pointer: fine) {
+  .o35-root[data-pulse="on"][data-layout="full"] .o35-second-screen,
+  .o35-root[data-pulse="on"][data-layout="full"] .o35-second-screen .acore-minor-link { min-height: 30px; }
+}
+
+/* phones / tablets: below the Orrery's own first screen, before the Patch Report */
+.o35-root[data-pulse="on"] .apulse-slot[data-variant="mobile"] {
+  width: 100%;
+  height: clamp(270px, calc(var(--o35-phone-w, 100vw) * 0.8), 380px);
+  margin-top: 1.1rem;
+}
+
+/* ---------------------------------------------------- the radio strip */
+
+.academy-radio-strip {
+  display: flex; align-items: center; gap: 0.55rem; min-width: 0; height: 40px;
+  padding: 0 0.6rem 0 0.35rem; border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  background: linear-gradient(180deg, rgba(12, 24, 48, 0.92), rgba(5, 13, 28, 0.94));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+.academy-radio-strip-play {
+  flex: none; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 50%; cursor: pointer;
+  color: #f0d78c; border: 1px solid rgba(201, 168, 76, 0.7);
+  background: linear-gradient(180deg, rgba(201, 168, 76, 0.3), rgba(120, 101, 47, 0.25));
+  box-shadow: 0 0 10px rgba(201, 168, 76, 0.25);
+  transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.academy-radio-strip-play svg { width: 15px; height: 15px; }
+.academy-radio-strip-play:hover { color: #f5e9c8; border-color: #e3d7b2; box-shadow: 0 0 16px rgba(201, 168, 76, 0.4); }
+.academy-radio-strip :focus-visible { outline: 2px solid #0ac8ff; outline-offset: 2px; }
+.academy-radio-strip-track { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.academy-radio-strip-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; flex: none; align-self: center; }
+.academy-radio-strip-bars i { width: 2.5px; height: 4px; border-radius: 1px; background: rgba(122, 214, 255, 0.4); }
+.academy-radio-strip-bars[data-active="true"] i { background: #7ad6ff; animation: academy-radio-strip-bar 1.1s ease-in-out infinite alternate; }
+.academy-radio-strip-bars[data-active="true"] i:nth-child(2) { animation-delay: -0.3s; }
+.academy-radio-strip-bars[data-active="true"] i:nth-child(3) { animation-delay: -0.6s; }
+.academy-radio-strip-bars[data-active="true"] i:nth-child(4) { animation-delay: -0.9s; }
+@keyframes academy-radio-strip-bar { from { height: 3px; } to { height: 11px; } }
+.academy-radio-strip-title {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif; font-size: 0.8rem; font-weight: 600; color: #f0e6d2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.academy-radio-strip-status {
+  flex: none; font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(122, 214, 255, 0.75); white-space: nowrap;
+}
+.academy-radio-strip-volume { flex: none; display: flex; align-items: center; gap: 0.35rem; color: rgba(201, 168, 76, 0.75); }
+.academy-radio-strip-volume svg { width: 13px; height: 13px; }
+.academy-radio-strip-volume input {
+  width: clamp(56px, 18cqw, 84px); height: 16px; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; background: transparent;
+}
+.academy-radio-strip-volume input::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 3px;
+  background: linear-gradient(90deg, #c9a84c var(--vol, 50%), rgba(255, 255, 255, 0.14) var(--vol, 50%));
+}
+.academy-radio-strip-volume input::-moz-range-track { height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); }
+.academy-radio-strip-volume input::-moz-range-progress { height: 3px; border-radius: 3px; background: #c9a84c; }
+.academy-radio-strip-volume input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 11px; height: 11px; margin-top: -4px; border-radius: 50%;
+  background: #f0d78c; box-shadow: 0 0 0 2px #2b1c08, 0 0 6px rgba(240, 215, 140, 0.6);
+}
+.academy-radio-strip-volume input::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: #f0d78c; }
+.o35-root[data-reduced="true"] .academy-radio-strip-bars i { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .academy-radio-strip-bars i { animation: none !important; } }

@@ -30,6 +30,7 @@ export default function AcademyBroadcastCenterpiece({
   feed = INITIAL_BROADCAST_FEED,
   className,
   style,
+  dock = true,
 }: {
   variant?: Variant;
   /** Injectable so a future provider (or a test) can swap the content. */
@@ -37,6 +38,11 @@ export default function AcademyBroadcastCenterpiece({
   className?: string;
   /** Pass-through for the hub's computed width (academy-layout.ts). */
   style?: CSSProperties;
+  /**
+   * Draw the desktop radio dock under the tome (default). The Academy Pulse
+   * layout passes false and places its own slim radio strip instead.
+   */
+  dock?: boolean;
 }) {
   const radio = useAcademyRadio();
   const suffix = variant === "desktop" ? "" : "-mobile";
@@ -56,7 +62,7 @@ export default function AcademyBroadcastCenterpiece({
           below the painted base keeps them related but not fused. The phone
           Hall deliberately shows the Patch Report surface alone; global HUD
           playback remains available and continues to drive the tome's energy. */}
-      {variant === "desktop" ? (
+      {variant === "desktop" && dock ? (
         <AcademyRadioDock variant="desktop" className="mx-auto mt-1.5 w-full" />
       ) : null}
     </div>
