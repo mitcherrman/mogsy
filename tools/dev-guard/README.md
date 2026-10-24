@@ -95,8 +95,28 @@ The guard never raises privileges and installs no services. The `.cmd` shim pass
 - `hook-pretooluse.test.mjs` 8/8 and `selftest.ps1` all PASS (second heavy job refused with exit 4, kill-on-close, lock recoverable after holder death).
 - Live in Claude Desktop: unguarded `vitest`/`pnpm build` denied in the Bash and PowerShell tools; `git`, `ls`, `Get-ChildItem` and `--version` allowed.
 
-**Known enforcement gaps** (the hook matcher is `Bash|PowerShell` only):
-1. `preview_start` dev servers from `.claude/launch.json` (vite/python) never pass through the hook. They are long-running, not test suites, but can be heavy.
-2. The Terminal panel tool (`run_in_terminal`), `Monitor`, scheduled tasks/cron and the `Workflow` script runner are not matched. Vitest/pytest still hit the enforcement-variable backstop only if that variable is inherited there (not verified).
-3. Vite builds and Playwright have no in-process backstop, so they rely on the hook alone.
-4. A user's own terminal is outside the guard by design.
+### Execution-path coverage (2026-10-23, L2; probes used a harmless fake `vitest.cmd` that only echoes its environment)
+
+| Path | Hook intercepts today (matcher `Bash\|PowerShell`) | Inherits the enforcement variable | Evidence |
+|---|---|---|---|
+| Bash / PowerShell tools | Yes | Yes | **Verified** live (denials, `git`/`ls` allowed) |
+| Subagents (`Agent`; `Workflow` `agent()` calls are subagents) | Yes: their Bash/PowerShell calls hit the same hook | Yes (same process tree) | **Verified**: a haiku subagent's fake `vitest.cmd` call was denied. Docs say hooks fire for subagent tool calls |
+| `Monitor` | **No** (ran the fake job) | Yes (`enforce=[1]`) | **Verified** |
+| Terminal panel (`run_in_terminal`) | **No** (ran the fake job in the user's shell; the app's own hook only limits it to literal command lines) | **No** (`enforce=[]`) | **Verified** |
+| `preview_start` (`.claude/launch.json`) | **No** (ran the fake job) | **No** (`enforce=[]`) | **Verified** |
+| Desktop scheduled tasks / `/loop` | Not tested. They start Claude sessions that should load user settings | Not tested | Theoretical |
+| Cloud scheduled tasks (routines) | Do not load `~/.claude/settings.json` per Claude Code docs, but run in the cloud, not on this PC | n/a | Docs only |
+
+Official mechanism: `PreToolUse` matchers are regexes on the tool name, including MCP tools as `mcp__<server>__<tool>` (docs; also observed: the app's own hook fires on `mcp__terminal__run_in_terminal`). Docs do not document a `Monitor` matcher or schema, and `SubagentStart` cannot block. We do not rely on anything beyond that.
+
+**Smallest protection** (source change in this branch, **not installed**): the hook script accepts `Monitor` and `mcp__terminal__run_in_terminal` (both carry a `command` string) and `claude-settings.proposed.json` widens the matcher to `Bash|PowerShell|Monitor|mcp__terminal__run_in_terminal`. Unit-tested (9/9) and driven with stdin JSON; the live matcher behaviour for those two tools is verified only after install (below). No global process monitor is added.
+
+**Remaining manual restrictions** (not enforceable by a hook without more machinery):
+1. `preview_start` runs whatever `.claude/launch.json` says, with no guard and no enforcement variable. Keep launch configs to a single dev server per worktree; never put Vitest/pytest/builds/Playwright in `launch.json`; stop servers when done (`mogzy-guard status` lists them).
+2. The Terminal panel and the owner's own terminals are the owner's; agents that use `run_in_terminal` for heavy jobs get blocked only after the update below.
+3. Vite builds and Playwright have no in-process backstop; they rely on the hook alone.
+
+**Minimal update plan (needs owner approval; nothing has been run):**
+1. `Copy-Item tools\dev-guard\hook-pretooluse.mjs "$env:LOCALAPPDATA\mogzy-dev-guard\"` (one file; guard, policy and shim unchanged).
+2. In `~\.claude\settings.json` change only the `matcher` value to `Bash|PowerShell|Monitor|mcp__terminal__run_in_terminal`.
+3. Start a new session and verify with a fake `vitest.cmd` through Monitor and `run_in_terminal`: both should be denied. Rollback: restore the old matcher and file.

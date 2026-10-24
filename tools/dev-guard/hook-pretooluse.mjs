@@ -221,6 +221,11 @@ export function classify(command) {
 
 // ---------------------------------------------------------------- hook entry point
 
+/** Tools whose `command` input is a shell command line that this hook classifies. Keep in sync with the
+ *  matcher in claude-settings.proposed.json (the matcher decides what reaches the hook; this is a second check). */
+export const COVERED_TOOLS = new Set(["Bash", "PowerShell", "Monitor", "mcp__terminal__run_in_terminal"]);
+export const isCoveredTool = (tool) => COVERED_TOOLS.has(tool);
+
 async function main() {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
@@ -231,7 +236,7 @@ async function main() {
   }
   const tool = input.tool_name;
   const command = input.tool_input && (input.tool_input.command ?? input.tool_input.script);
-  if (tool && tool !== "Bash" && tool !== "PowerShell") return;
+  if (tool && !isCoveredTool(tool)) return;
   const v = classify(command);
   if (v.decision === "deny") {
     process.stdout.write(

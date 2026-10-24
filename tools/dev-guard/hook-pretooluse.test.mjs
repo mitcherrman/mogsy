@@ -1,7 +1,7 @@
 // Run with:  node --test tools/dev-guard/hook-pretooluse.test.mjs   (pure string logic, milliseconds, no browsers/servers)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classify } from "./hook-pretooluse.mjs";
+import { classify, isCoveredTool } from "./hook-pretooluse.mjs";
 
 const denied = (cmd, cls) => {
   const v = classify(cmd);
@@ -88,4 +88,9 @@ test("empty or odd input is allowed (fail open)", () => {
   allowed("");
   allowed(undefined);
   allowed("   ");
+});
+
+test("hook covers the shell-like tools beyond Bash/PowerShell and ignores others", () => {
+  for (const t of ["Bash", "PowerShell", "Monitor", "mcp__terminal__run_in_terminal"]) assert.equal(isCoveredTool(t), true, t);
+  for (const t of ["Edit", "Read", "Agent", "mcp__Claude_Browser__preview_start"]) assert.equal(isCoveredTool(t), false, t);
 });
