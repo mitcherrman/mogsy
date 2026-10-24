@@ -109,7 +109,7 @@ The guard never raises privileges and installs no services. The `.cmd` shim pass
 
 Official mechanism: `PreToolUse` matchers are regexes on the tool name, including MCP tools as `mcp__<server>__<tool>` (docs; also observed: the app's own hook fires on `mcp__terminal__run_in_terminal`). Docs do not document a `Monitor` matcher or schema, and `SubagentStart` cannot block. We do not rely on anything beyond that.
 
-**Smallest protection** (source change in this branch, **not installed**): the hook script accepts `Monitor` and `mcp__terminal__run_in_terminal` (both carry a `command` string) and `claude-settings.proposed.json` widens the matcher to `Bash|PowerShell|Monitor|mcp__terminal__run_in_terminal`. Unit-tested (9/9) and driven with stdin JSON; the live matcher behaviour for those two tools is verified only after install (below). No global process monitor is added.
+**Smallest protection** (source change in this branch, **not installed**): the hook script accepts `Monitor` and `mcp__terminal__run_in_terminal` (both carry a `command` string) and `claude-settings.proposed.json` widens the matcher to `Bash|PowerShell|Monitor|mcp__terminal__run_in_terminal`. Unit-tested (9/9) and driven with stdin JSON; the live matcher behaviour for those two tools was verified after install (2026-10-23: fake vitest denied via Monitor and run_in_terminal; git allowed). No global process monitor is added.
 
 **Remaining manual restrictions** (not enforceable by a hook without more machinery):
 1. `preview_start` runs whatever `.claude/launch.json` says, with no guard and no enforcement variable. Keep launch configs to a single dev server per worktree; never put Vitest/pytest/builds/Playwright in `launch.json`; stop servers when done (`mogzy-guard status` lists them).
