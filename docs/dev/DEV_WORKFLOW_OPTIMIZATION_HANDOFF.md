@@ -1,7 +1,7 @@
 # Dev workflow optimization — handoff
 
 Branch `policy/dev-resource-optimization` in both repositories (`mogsy` frontend, `League_Combat_Simulator` backend), draft PRs, based on
-`origin/main` @ `9685c68d` and `origin/master` @ `890534c5`. Nothing is merged, installed, deployed or killed. The existing checkouts, their
+`origin/main` @ `9685c68d` and `origin/master` @ `890534c5`. Nothing is merged, deployed or killed. (Update 2026-10-23: the guard was later installed on the owner's PC with approval; see §6.) The existing checkouts, their
 uncommitted work and all 400+ worktrees were left untouched; these branches were made in new worktrees under `C:\dev\mogzy-wt\`.
 
 ## 1. Audit findings (evidence from 2026-10-23)
@@ -86,7 +86,7 @@ Proposed migration (each step needs owner approval; do it with all sessions idle
 ## 6. Remaining steps (owner decisions)
 
 1. Review/merge the two draft PRs (merge is the owner's call).
-2. Approve the guard installation plan in `tools/dev-guard/README.md` (copy 4 files to `%LOCALAPPDATA%\mogzy-dev-guard`, create `~\.claude\settings.json` from `claude-settings.proposed.json`). Until then the policy is by-convention plus the repo-level backstops.
+2. **Done on the owner's PC (2026-10-23):** guard files in `%LOCALAPPDATA%\mogzy-dev-guard`, hook + enforcement variable in `~\.claude\settings.json`, hook later widened to Monitor and the Terminal tool (live-verified with a fake `vitest`). The install steps in `tools/dev-guard/README.md` remain the procedure for other machines. Known unguarded path: `preview_start` (README coverage table). One small guarded Vitest smoke test is still unverified.
 3. Confirm backend Actions billing is restored (see §1); until then backend CI-only gates are not available. Install `gh` if desired.
 4. Tune `policy.json` after a week of real `mogzy-guard` output (RAM estimates are conservative guesses).
 5. Approve Phase 5 steps one by one; start with the read-only inventory.

@@ -4,9 +4,9 @@ Resource control for the owner's Windows PC (16 GB RAM, 8C/16T, often running Le
 Several Claude sessions had been launching overlapping Vitest, pytest, Vite/esbuild and `*_validate.py` jobs, which
 pinned CPU 94 %, RAM 98 % and disk 100 %.
 
-**Status: proposal. Nothing here is installed or active.** Merging this PR changes only repository files. The
-machine-level pieces (copy to `%LOCALAPPDATA%`, Claude settings) need the owner's explicit approval; see
-[Install plan](#install-plan-needs-owner-approval).
+**Status (2026-10-23): installed on the owner's PC; merging this PR changes only repository files.** The install plan below is the
+original, *historical* proposal; it was executed with the owner's approval and the hook matcher was later widened (see
+[Installed-guard verification](#installed-guard-verification-2026-10-23-l1-guard-only)). Other machines still need the install steps.
 
 ## What it does
 
@@ -16,7 +16,7 @@ machine-level pieces (copy to `%LOCALAPPDATA%`, Claude settings) need the owner'
 | Limits | `policy.json` | Thresholds, per-class RAM estimates, worker caps, timeouts |
 | Claude hook | `hook-pretooluse.mjs` | Denies unguarded heavy commands and guard-bypass attempts before they run |
 | Backstop | `vitest-guard-setup.mjs`, backend `conftest.py` | Unguarded local Vitest/pytest warns, or fails when `MOGZY_GUARD_ENFORCE=1` |
-| Proposed settings | `claude-settings.proposed.json` | Hook registration + `MOGZY_GUARD_ENFORCE=1` (not installed) |
+| Settings | `claude-settings.proposed.json` | Hook registration + `MOGZY_GUARD_ENFORCE=1` (reference copy; installed on the owner's PC) |
 | Tests | `selftest.ps1`, `hook-pretooluse.test.mjs` | Millisecond/trivial-command validation, no real suites |
 
 The guard source of truth lives in the frontend repo (`mogsy`). The backend repo (`League_Combat_Simulator`) only
@@ -71,9 +71,11 @@ The job memory cap makes an over-hungry job fail with an out-of-memory error ins
 * `mogzy-guard.cmd status`, `check` and `--dry-run` against the real machine (read-only).
 * No Vitest, pytest, build or browser run was started to certify this change.
 
-## Install plan (needs owner approval)
+## Install plan (historical proposal; already executed on the owner's PC)
 
-Nothing below has been executed. Review, then run it yourself or reply "approved".
+Original proposal, kept as the procedure for other machines. On the owner's PC steps 1-2 were executed with approval, and the hook file and
+matcher were later updated (`Bash|PowerShell|Monitor|mcp__terminal__run_in_terminal`; see the coverage section below). Do not re-run it there
+unless reinstalling. "Not installed" wording elsewhere in this file describes the state at proposal time.
 
 1. **Copy runtime files** to a stable per-user folder outside OneDrive and outside any worktree (so every session and worktree uses one copy, and branch switches cannot disable it):
 
