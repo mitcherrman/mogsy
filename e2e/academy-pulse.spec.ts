@@ -201,11 +201,18 @@ test.describe("behaviour at 1366x768", () => {
     const slotAfter = await box(page, '[data-testid="academy-pulse-slot"]');
     expect(slotAfter).toEqual(slotBefore);
 
-    // keyboard focus inside Pulse holds the rotation
-    await page.getByTestId("academy-pulse-next").focus();
+    // A real keyboard Tab (not scripted locator.focus after a mouse click)
+    // creates :focus-visible and should hold the rotation.
+    await page.getByTestId("academy-pulse-prev").focus();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("academy-pulse-toggle")).toBeFocused();
     await expect(pulse).toHaveAttribute("data-playing", "false");
-    // the viewer's Pause holds it after focus leaves
-    await page.getByTestId("academy-pulse-toggle").press("Enter");
+    // Play should explicitly resume even while this keyboard focus remains.
+    await page.keyboard.press("Enter");
+    await expect(pulse).toHaveAttribute("data-playing", "true");
+    await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
+    // An intentional Pause persists after both pointer and focus leave.
+    await page.keyboard.press("Enter");
     await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Play Academy Pulse");
     await page.mouse.move(900, 400);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
