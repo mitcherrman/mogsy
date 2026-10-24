@@ -101,6 +101,8 @@ export interface PrepareOptions {
    * response lost after the write, the case a blind resend would double.
    */
   loseResponseOfPost?: number;
+  /** Serve these instead of QUESTIONS (QMEDIA3: one real backend row). */
+  questions?: Q[];
 }
 
 export async function prepare(page: Page, opts: PrepareOptions = {}): Promise<Counters> {
@@ -141,7 +143,8 @@ export async function prepare(page: Page, opts: PrepareOptions = {}): Promise<Co
     if (p === "/api/quiz/questions") {
       // A Quick Study subject deals round-robin across several categories:
       // the launch's first request gets the whole set, the rest get nothing.
-      const batch = counters.served === 0 ? QUESTIONS.map(({ stress: _s, ...q }) => q) : [];
+      const batch = counters.served === 0
+        ? (opts.questions ?? QUESTIONS).map(({ stress: _s, ...q }) => q) : [];
       counters.served += 1;
       return route.fulfill({ json: { questions: batch } });
     }

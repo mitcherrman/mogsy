@@ -30,7 +30,9 @@
  *   presentation blob) | matchup (VISCONT1: a two-champion Matchup card) |
  *   twoChamp (VISCONT1: the RCP1 two-option champion duel, option media only) |
  *   dragonRespawn | visionWard (QMEDIA1: the exact blobs the backend renders
- *   for `camp_respawn:v2:dragon_pit` and Vision `VISION-015`)
+ *   for `camp_respawn:v2:dragon_pit` and Vision `VISION-015`) |
+ *   varusQCooldown | ultCooldownCompare (QMEDIA3: `ability_cooldown_rank`
+ *   Varus Q rank 2 and an `ability_cooldown_compare` R-vs-R row)
  * `?seq=a,b,c,d` (VISCONT1) — with `?sfx=1`, serves probe state `a` for round
  *   1, `b` for round 2 and so on, and settles each round with a correct option
  *   and an evidence note. Advancing the SFX fixture therefore plays a real
@@ -152,7 +154,7 @@ export const PROBE_STATES = [
   "spellCooldown", "matchup", "twoChamp", "shape",
   "ssm212", "ssm218", "ssm224", "ssm228", "ssm248",
   "f1Ionian", "f1IonianText", "f1Chempunk", "f1ChempunkText", "f1Locket",
-  "scrub", "dragonRespawn", "visionWard",
+  "scrub", "dragonRespawn", "visionWard", "varusQCooldown", "ultCooldownCompare",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -646,6 +648,38 @@ function baseQuestionFor(state: ProbeState) {
           champion_b_splash: "assets/champions/Syndra/splash/0_default.jpg",
           champion_b_icon: "assets/champions/Syndra/icon.png",
           ability_slot: "W", ability_name: "Ability W", metric_label: "Cooldown",
+          ability_rank: 1 } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
+    // QMEDIA3 — the owner's Daily row `ability_cooldown_rank:Varus:Q:r2`
+    // (quiz_questions 126394), with the blob the backend renderer now
+    // produces. Before QMEDIA3 the family was undeclared and this round drew
+    // an empty media band. The answer is a number of seconds.
+    case "varusQCooldown":
+      return { question_id: "qq-126394#r1",
+        prompt: "What is the rank 2 cooldown of Varus Q - Piercing Arrow?",
+        options: ["14 seconds", "18 seconds", "16 seconds", "15 seconds"],
+        category: "Champion Ability Cooldowns",
+        presentation: { assets: { subject: {
+          type: "combat_cooldown", champion: "Varus", ability_name: "Piercing Arrow",
+          champion_icon: "assets/champions/Varus/icon.png",
+          ability_icon: "assets/champions/Varus/Q_VarusQ.png", item_icons: [],
+          ability_slot: "Q", champion_splash: "assets/champions/Varus/splash/0_default.jpg",
+          champion_loading: "assets/champions/Varus/loading/0_default.jpg", ability_rank: 2 } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
+    // QMEDIA3 — `ability_cooldown_compare` (138338): both sides, balanced,
+    // in prompt order. The answer is one of the two options, so no side gets
+    // an ability icon.
+    case "ultCooldownCompare":
+      return { question_id: "qq-138338#r1",
+        prompt: "Which ultimate has the shorter rank 1 cooldown: Aatrox R - World Ender, or Ahri R - Spirit Rush?",
+        options: ["Aatrox R", "Ahri R"], category: "Champion Ability Cooldowns",
+        presentation: { assets: { subject: {
+          type: "matchup", champion_a: "Aatrox", champion_b: "Ahri", badge: "Matchup",
+          champion_a_splash: "assets/champions/Aatrox/splash/0_default.jpg",
+          champion_a_icon: "assets/champions/Aatrox/icon.png",
+          champion_b_splash: "assets/champions/Ahri/splash/0_default.jpg",
+          champion_b_icon: "assets/champions/Ahri/icon.png",
+          ability_slot: "R", ability_name: "Ability R", metric_label: "Cooldown",
           ability_rank: 1 } },
           presentation: { role: "context", timing: "question", spoiler: false } } };
     // VISCONT1 — RCP1's two-option champion duel: option media, no premise.
