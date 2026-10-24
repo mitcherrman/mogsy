@@ -87,7 +87,8 @@ async function latestReceived(filter: { source_system: string; event_name?: stri
   return data?.[0]?.received_at ?? null;
 }
 
-export async function loadAnalytics(range: AnalyticsRange): Promise<LoadedAnalytics> {
+/** Only `range.start` bounds the read; retention cohorts pass their own lookback start. */
+export async function loadAnalytics(range: Pick<AnalyticsRange, "start">): Promise<LoadedAnalytics> {
   const startIso = range.start === null ? null : new Date(range.start).toISOString();
 
   const [events, sessions, visitors, web, railway, ...perEvent] = await Promise.all([
