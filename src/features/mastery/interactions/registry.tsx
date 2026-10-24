@@ -82,6 +82,12 @@ export interface MasteryQuestionDispatchProps {
    * scheduled for a separate audit.
    */
   readonly reveal?: MasteryQuestionReveal | null;
+  /**
+   * QRT2 — tell a graded reveal in words (a "Correct answer" and a "Your pick"
+   * tab on the choice rows; the duel's tags read the same). Opt-in: the Ranked
+   * slice passes it; the standalone player and the labs do not.
+   */
+  readonly verdictTabs?: boolean;
 }
 
 /** Dispatches the question screen by `question.interactionKind`. */
@@ -91,6 +97,7 @@ export function MasteryQuestionDispatch({
   submitting,
   onSubmit,
   reveal = null,
+  verdictTabs = false,
 }: MasteryQuestionDispatchProps) {
   const kind: MasteryInteractionKind = question.interactionKind;
   switch (kind) {
@@ -111,6 +118,7 @@ export function MasteryQuestionDispatch({
           submitting={submitting}
           onSubmit={onSubmit}
           reveal={reveal}
+          verdictTabs={verdictTabs}
         />
       );
     case "comparison_left_right":
@@ -121,6 +129,7 @@ export function MasteryQuestionDispatch({
           submitting={submitting}
           onSubmit={onSubmit}
           reveal={reveal}
+          verdictTabs={verdictTabs}
         />
       );
     default: {

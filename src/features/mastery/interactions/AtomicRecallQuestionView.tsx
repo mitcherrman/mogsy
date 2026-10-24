@@ -35,11 +35,14 @@ export function AtomicRecallQuestionView({
   submitting,
   onSubmit,
   reveal = null,
+  verdictTabs = false,
 }: {
   question: MasteryPlayerQuestion;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
+  /** QRT2 — the revealed answer and the player's pick get word tabs (Ranked slice only). */
+  verdictTabs?: boolean;
   /**
    * In-place reveal for THIS question, once the server has graded it. The
    * question stays on screen; the input locks, the options take their green /
@@ -158,6 +161,7 @@ export function AtomicRecallQuestionView({
           onSelect={setChoice}
           disabled={submitting}
           reveal={reveal}
+          verdictTabs={verdictTabs}
           ariaLabel="Answer choices"
         />
       ) : (

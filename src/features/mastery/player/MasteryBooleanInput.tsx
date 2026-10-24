@@ -18,6 +18,7 @@
 import { useId } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { AnswerTabs } from "@/components/question-feedback/AnswerTabs";
 import {
   CHOICE_TONE_CLASS,
   choiceTone,
@@ -36,6 +37,7 @@ export function MasteryChoiceInput({
   onSelect,
   disabled,
   reveal = null,
+  verdictTabs = false,
   ariaLabel = "Answer choices",
 }: {
   options: readonly ChoiceOption[];
@@ -44,6 +46,12 @@ export function MasteryChoiceInput({
   disabled?: boolean;
   /** Server-graded reveal for this group, or null while it is answerable. */
   reveal?: MasteryChoiceReveal | null;
+  /**
+   * QRT2 — tell a graded reveal in words: the answer's row carries a "Correct
+   * answer" tab and the player's own row a "Your pick" tab (`AnswerTabs`).
+   * Opt-in, so every caller that has not adopted it is byte-identical.
+   */
+  verdictTabs?: boolean;
   ariaLabel?: string;
 }) {
   const groupId = useId();
@@ -73,11 +81,19 @@ export function MasteryChoiceInput({
             key={opt.value}
             data-testid={`mastery-choice-row-${opt.value}`}
             data-tone={tone}
-            className={`flex items-center gap-2 rounded-md border p-2.5 transition-colors ${CHOICE_TONE_CLASS[tone]}`}
+            className={`flex items-center gap-2 rounded-md border p-2.5 transition-colors ${
+              verdictTabs && revealing ? "relative " : ""}${CHOICE_TONE_CLASS[tone]}`}
           >
             <RadioGroupItem value={opt.value} id={itemId} data-testid={`choice-${opt.value}`} />
             <Label htmlFor={itemId} className="flex-1 cursor-pointer text-sm">
               {opt.label}
+              {/* Inside the label, so the tab is part of the radio's accessible
+                  name; absolutely placed on the row's top edge (the row is
+                  `relative` while a reveal is held). */}
+              {verdictTabs && revealing && (
+                <AnswerTabs correct={tone === "correct"}
+                  pick={reveal.selectedValue !== null && reveal.selectedValue === opt.value} />
+              )}
             </Label>
           </div>
         );

@@ -54,6 +54,12 @@ export interface DataDuelProps {
   onLock: (response: DataDuelResponse) => void;
   /** Null until the caller's authority resolves. */
   reveal?: DataDuelReveal | null;
+  /**
+   * QRT2 — in the revealed phase the pick tag reads "Your pick" (not "Locked")
+   * and the answer tag "Correct answer" (not "Answer"), the arena tablets'
+   * words. Opt-in: the Interaction Lab and every other caller keep theirs.
+   */
+  verdictWords?: boolean;
   /** The prompt heading (focusable, `tabIndex=-1`), so a host can move focus to it. */
   promptRef?: Ref<HTMLHeadingElement>;
 }
@@ -82,22 +88,24 @@ function choiceState(token: string, value: string | null, reveal: DataDuelReveal
 }
 
 /** Tags carry the meaning in words, so the reveal never depends on colour. */
-function Tags({ which, picked, canonical, phase, animate }: {
+function Tags({ which, picked, canonical, phase, animate, verdictWords = false }: {
   which: Which; picked: boolean; canonical: boolean; phase: InteractionPhase; animate: boolean;
+  verdictWords?: boolean;
 }) {
   return (
     <>
       {picked && (
         <span data-testid={`duel-tag-pick-${which}`}
           className="inline-flex items-center gap-1 rounded-sm bg-black/75 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#f0d78c]">
-          {phase === "open" ? "Your pick" : <><Lock aria-hidden className="!size-3" /> Locked</>}
+          {phase === "open" || (verdictWords && phase === "revealed")
+            ? "Your pick" : <><Lock aria-hidden className="!size-3" /> Locked</>}
         </span>
       )}
       {canonical && (
         <span data-testid={`duel-tag-answer-${which}`}
           className={`inline-flex items-center gap-1 rounded-sm bg-[#0d2740]/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#bfe4ff] ${
             animate ? "animate-in fade-in zoom-in-75 duration-300 fill-mode-both [animation-delay:380ms]" : ""}`}>
-          <Check aria-hidden className="!size-3" /> Answer
+          <Check aria-hidden className="!size-3" /> {verdictWords ? "Correct answer" : "Answer"}
         </span>
       )}
     </>
@@ -106,7 +114,9 @@ function Tags({ which, picked, canonical, phase, animate }: {
 
 function SideTablet({
   side, which, state, phase, reveal, picked, tabIndex, onPick, onKeyDown, animate, buttonRef,
+  verdictWords = false,
 }: {
+  verdictWords?: boolean;
   side: DuelSide;
   which: "left" | "right";
   state: ChoiceState;
@@ -124,7 +134,8 @@ function SideTablet({
   // A reveal with no value for this side (a legacy reveal) shows NO value —
   // never a placeholder that reads like a number.
   const value = reveal ? reveal.values[side.token] ?? null : null;
-  const tags = [picked ? "your pick" : null, canonical ? "answer" : null].filter(Boolean).join(", ");
+  const tags = [picked ? "your pick" : null,
+    canonical ? (verdictWords ? "correct answer" : "answer") : null].filter(Boolean).join(", ");
   const label = [side.label, side.sublabel, value, tags].filter(Boolean).join(" — ");
   return (
     <button ref={buttonRef} type="button" role="radio" aria-checked={picked}
@@ -170,7 +181,8 @@ function SideTablet({
         </span>
       </span>
       <span className="pointer-events-none absolute left-2 top-2 flex flex-wrap gap-1">
-        <Tags which={which} picked={picked} canonical={canonical} phase={phase} animate={animate} />
+        <Tags which={which} picked={picked} canonical={canonical} phase={phase} animate={animate}
+          verdictWords={verdictWords} />
       </span>
     </button>
   );
@@ -251,7 +263,7 @@ function MarginBar({ content, reveal, animate }: {
   );
 }
 
-export function DataDuel({ content, phase, value, onChange, onLock, reveal = null, promptRef }: DataDuelProps) {
+export function DataDuel({ content, phase, value, onChange, onLock, reveal = null, verdictWords = false, promptRef }: DataDuelProps) {
   const reduced = useReducedMotionPreference();
   const animate = !reduced;
   const promptId = useId();
@@ -316,7 +328,7 @@ export function DataDuel({ content, phase, value, onChange, onLock, reveal = nul
             return (
               <SideTablet key={which} side={side} which={which}
                 state={choiceState(side.token, value, reveal)}
-                phase={phase} reveal={reveal} picked={pickedWhich === which}
+                phase={phase} reveal={reveal} picked={pickedWhich === which} verdictWords={verdictWords}
                 tabIndex={rovingStop === which ? 0 : -1}
                 onPick={() => pick(which)} onKeyDown={keysFor(which)} animate={animate}
                 buttonRef={(el) => { refs.current[which] = el; }} />
@@ -332,7 +344,8 @@ export function DataDuel({ content, phase, value, onChange, onLock, reveal = nul
           const tie = content.tie;
           const picked = pickedWhich === "tie";
           const canonical = reveal !== null && reveal.canonicalToken === tie.token;
-          const tags = [picked ? "your pick" : null, canonical ? "answer" : null].filter(Boolean).join(", ");
+          const tags = [picked ? "your pick" : null,
+            canonical ? (verdictWords ? "correct answer" : "answer") : null].filter(Boolean).join(", ");
           return (
             // THE TIE. A slim, neutral tablet under the pair — present because
             // the comparison's domain has a "same" answer, never a hint that
@@ -352,7 +365,8 @@ export function DataDuel({ content, phase, value, onChange, onLock, reveal = nul
               {/* Inline, not absolute: the pill is short and a tag laid over it
                   would cover its own label. */}
               <span className="pointer-events-none flex gap-1 tracking-normal">
-                <Tags which="tie" picked={picked} canonical={canonical} phase={phase} animate={animate} />
+                <Tags which="tie" picked={picked} canonical={canonical} phase={phase} animate={animate}
+                  verdictWords={verdictWords} />
               </span>
             </button>
           );
