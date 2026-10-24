@@ -186,3 +186,27 @@ The owner approved the visual direction and explicitly requested completion and 
 - **Verification required:** both `academy-pulse` and `academy-core-orrery` workflow checks green on the final head and production-build no DEV lab. Different failing workflows require evidence on current base before waiving them.
 - **Deploy gate:** merge only when final relevant CI is green; verify latest GitHub `main` equals latest Lovable sync; publish via Lovable; compare the live `/lol` bundle and content to the merged release as far as accessible. No claim of live until deployment completes.
 - **Next task after launch:** PULSE-2 real authorized activity, user-specific recommendations, creator embeds, sponsor/admin campaigns, leaderboard events and per-user cadence; retain consent and authoritative source constraints.
+
+
+## 10. PULSE-1.1 rotation/interaction reliability — 2026-10-23
+
+**Objective:** Resolve owner's live feedback: Pulse seems to stop after interactions and the Play/Pause state is inconsistent. Maintain public editorial-only feed from PULSE-1.
+
+**Verified root causes from code (prior to browser acceptance):**
+1. `AcademyPulse.tsx` had `onFocus={() => hold("focus", true)}` for *all* focus, including a mouse-clicked Next/pip/Play/scene button. Mouse departure clears `hover` but does not clear `focus`; that pause can persist indefinitely.
+2. `onPointerEnter` held `hover` indefinitely until pointerleave. A stationary cursor parked inside Pulse could therefore stop it forever.
+3. `toggle-user` only toggled the explicit user hold. A click on Play while the cursor remained hovered or a clicked control focused could leave other holds and falsely imply playback.
+4. The Play/Pause icon/label depended only on the manual pause hold, not whether rotation was actually running.
+
+**Fix (PULSE-1.1):**
+- Focus hold is limited to actual `:focus-visible` keyboard interactions; pointer press clears stale focus.
+- Mouse hover gives 6 seconds of idle reading grace; significant mouse movement refreshes it, and leaving releases it. The visitor can still press Pause to hold indefinitely.
+- Explicit Play clears user/hover/focus/interaction holds while preserving `expanded`, `offscreen`, and `hidden` safety holds. Manual scene selection clears transient hover and the prior scene's interaction hold but preserves keyboard focus.
+- Play/Pause icon and accessible label report actual `rot.playing`, not merely `userPaused`.
+- Added reducer, shell and real Chromium Playwright regression coverage for parked hover, focused mouse clicks, explicit Play, subsequent automatic advance, and safety holds.
+
+**Files:** `src/features/academy-pulse/AcademyPulse.tsx`, `model/pulse-rotation.ts`, their tests, `e2e/academy-pulse.spec.ts`.
+
+**Gate:** L2 targeted unit tests, production build, `academy-pulse` GitHub browser acceptance. If changes affect Orrery layout, run related integration; otherwise avoid redundant baselines/screenshots. No schema, gameplay, radio, mobile geometry or backend changes. Merge and deploy only after green targeted CI; independently verify production version. 
+
+**Next:** run/check GitHub CI for the Pulse reliability PR. If green, merge main, wait for Lovable sync, publish and verify Pulse controls on live `/lol`. Follow with PULSE-2 real providers separately.
