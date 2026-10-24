@@ -12,6 +12,7 @@ import { useState, type ReactNode } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { AnswerTabs } from "@/components/question-feedback/AnswerTabs";
 
 export type QuizChoiceObject = { label: string; image_path?: string; champion_name?: string };
 export type QuizChoice = string | QuizChoiceObject;
@@ -401,35 +402,12 @@ export default function QuizAnswerOptions({
                   )}
                 </>
               )}
-              {verdictTabs && (showPick || showCorrectTag) && (
-                // Tabs on the tablet's top edge (out of flow: no tablet ever
-                // resizes or reflows when a round resolves). The text is real
-                // text inside the button, so it is part of the accessible name
-                // a screen reader speaks on focus — and is never a live region.
-                // One line each (`whitespace-nowrap`): a wrapped tab grows into
-                // the tablet's corner. A two-up PAIR or a PICTURE choice is only
-                // ~145-155px wide on a phone, so there the two tabs are set
-                // tighter and the answer's reads "Correct" — together ~128px,
-                // inside the tablet. They stay on the TOP edge: a tab hanging
-                // off the bottom edge would grow the tablet's scroll box.
-                <span data-testid="answer-result-tags"
-                  className={`pointer-events-none absolute -top-2 flex items-center whitespace-nowrap ${
-                    compactTabs ? "right-2 gap-0.5" : "right-3 gap-1"}`}>
-                  {showCorrectTag && (
-                    <span data-testid="answer-correct-tag"
-                      className={`whitespace-nowrap rounded-sm bg-[#86efac] font-black uppercase leading-none text-[#052e1a] shadow-[0_1px_4px_rgba(0,0,0,0.45)] ${
-                        compactTabs ? "px-1 py-0.5 text-[9px] tracking-[0.08em]" : "px-1.5 py-0.5 text-[10px] tracking-[0.14em]"}`}>
-                      {compactTabs && showPick ? "Correct" : "Correct answer"}
-                    </span>
-                  )}
-                  {showPick && (
-                    <span data-testid="answer-your-pick"
-                      className={`whitespace-nowrap rounded-sm bg-[#f0d78c] font-black uppercase leading-none text-[#1d1608] shadow-[0_1px_4px_rgba(0,0,0,0.45)] ${
-                        compactTabs ? "px-1 py-0.5 text-[9px] tracking-[0.08em]" : "px-1.5 py-0.5 text-[10px] tracking-[0.14em]"}`}>
-                      Your pick
-                    </span>
-                  )}
-                </span>
+              {verdictTabs && (
+                // Out of flow, one line, real text inside the button (see
+                // `AnswerTabs`). A pair / picture tile is ~150px wide on a
+                // phone, so its tabs are set compact.
+                <AnswerTabs correct={showCorrectTag} pick={showPick && verdictTabs}
+                  compact={compactTabs} />
               )}
               {!verdictTabs && showPick && (
                 <span data-testid="answer-your-pick"

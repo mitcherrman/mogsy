@@ -62,11 +62,14 @@ export function ComparisonQuestionView({
   submitting,
   onSubmit,
   reveal = null,
+  verdictTabs = false,
 }: {
   question: MasteryPlayerQuestion;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
+  /** QRT2 — the duel's reveal tags read "Your pick" / "Correct answer" (Ranked slice only). */
+  verdictTabs?: boolean;
   /** In-place reveal for THIS comparison — see `AtomicRecallQuestionView`. */
   reveal?: MasteryQuestionReveal | null;
 }) {
@@ -146,6 +149,7 @@ export function ComparisonQuestionView({
           if (!submitting && reveal === null) onSubmit(selected);
         }}
         reveal={duelReveal}
+        verdictWords={verdictTabs}
         promptRef={headingRef}
       />
 

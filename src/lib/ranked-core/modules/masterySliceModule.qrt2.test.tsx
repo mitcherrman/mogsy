@@ -271,3 +271,96 @@ describe("atomic path — the inline reveal headline", () => {
     }
   });
 });
+
+// ────────────────────────────────── the atomic rows and the comparison duel
+
+const row = (value: string) => screen.getByTestId(`mastery-choice-row-${value}`);
+
+describe("atomic path - the choice rows tell the answer and the pick in words", () => {
+  const rowsReveal = (over: Record<string, unknown>, picked: string | null) => held(false, {
+    own_submitted_choices: [picked === null ? null : { selected: picked }, null, null],
+    own_challenge_reveals: [revealWire(0, over)],
+    ...(picked === null ? { own_timed_out_challenges: [true, false, false] } : {}),
+  });
+
+  it("CORRECT: the player's own row carries both tabs", () => {
+    renderModule(rowsReveal({}, "12"));
+    const r = row("12");
+    expect(within(r).getByTestId("answer-correct-tag")).toHaveTextContent("Correct answer");
+    expect(within(r).getByTestId("answer-your-pick")).toHaveTextContent("Your pick");
+    expect(screen.getAllByTestId("answer-result-tags")).toHaveLength(1);
+  });
+
+  it("INCORRECT: the wrong pick and the right answer are different rows, each tabbed", () => {
+    renderModule(rowsReveal({ is_correct: false, player_answer: "9" }, "9"));
+    expect(row("9").getAttribute("data-tone")).toBe("chosen-wrong");
+    expect(within(row("9")).getByTestId("answer-your-pick")).toBeTruthy();
+    expect(within(row("9")).queryByTestId("answer-correct-tag")).toBeNull();
+    expect(within(row("12")).getByTestId("answer-correct-tag")).toBeTruthy();
+    expect(within(row("12")).queryByTestId("answer-your-pick")).toBeNull();
+  });
+
+  it("TIMEOUT: only the answer is tabbed", () => {
+    renderModule(rowsReveal({ is_correct: false, player_answer: null }, null));
+    expect(screen.queryByTestId("answer-your-pick")).toBeNull();
+    expect(within(row("12")).getByTestId("answer-correct-tag")).toBeTruthy();
+  });
+
+  it("the tab is part of the row's label (so the radio's name carries it) and never a live region", () => {
+    renderModule(rowsReveal({ is_correct: false, player_answer: "9" }, "9"));
+    const tags = screen.getAllByTestId("answer-result-tags");
+    for (const t of tags) {
+      expect(t.closest("label")).not.toBeNull();
+      expect(t.closest('[role="status"], [aria-live]')).toBeNull();
+    }
+  });
+
+  it("before a reveal no row is tabbed", () => {
+    renderModule(parse(segmentStateWire({})));
+    expect(screen.queryByTestId("answer-result-tags")).toBeNull();
+  });
+
+  it("a reveal that names a value no row offers tabs no row as the answer", () => {
+    renderModule(rowsReveal({ correct_answer: "13", is_correct: false, player_answer: "9" }, "9"));
+    expect(screen.queryByTestId("answer-correct-tag")).toBeNull();
+    expect(within(row("9")).getByTestId("answer-your-pick")).toBeTruthy();
+  });
+});
+
+describe("comparison path - the duel's tags read the arena's words", () => {
+  const comparisonWire = (i: number) => ({
+    challenge_index: i, interaction_kind: "comparison_left_right",
+    question_family: "ability_cooldown", prompt: "Brand Q vs Diana Q - ability_cooldown",
+    answer_type: "single_choice", answer_options: ["Brand", "Diana", "tie"],
+    prompt_semantics: null,
+    comparison_semantics: { template: "compare_ability_cooldown", champion_a_display: "Brand",
+      champion_b_display: "Diana", metric: "ability_cooldown", dimension: "duration",
+      subject_ref: "Q", context: { ability_rank: 1, champion_level: null, form: null },
+      unit: "seconds", ability_name_a: "Sear", ability_name_b: "Crescent Strike",
+      rank_independent: false },
+  });
+  const duel = (picked: string, correct: string) => {
+    const wire = segmentStateWire({
+      own_next_challenge_index: 1, own_challenges_completed: 1,
+      reveal_window_ms: MASTERY_REVEAL_DURATION_MS,
+      own_submitted_choices: [{ selected: picked }, null, null],
+      own_challenge_reveals: [revealWire(0, {
+        is_correct: picked === correct, player_answer: picked, correct_answer: correct,
+        answer_options: ["Brand", "Diana", "tie"],
+      })],
+    });
+    (wire.challenges as { challenges: unknown[] }).challenges = [0, 1, 2].map(comparisonWire);
+    return parse(wire);
+  };
+
+  it("the picked side says Your pick and the answer side says Correct answer", () => {
+    renderModule(duel("Diana", "Brand"));
+    expect(screen.getByTestId("mastery-slice-challenge-phase")).toHaveAttribute("data-render-path", "comparison");
+    expect(screen.getByTestId("duel-tag-pick-right")).toHaveTextContent("Your pick");
+    expect(screen.getByTestId("duel-tag-answer-left")).toHaveTextContent("Correct answer");
+    expect(screen.queryByText("Locked")).toBeNull();
+    // The accessible names say it too.
+    expect(screen.getByTestId("duel-side-left").getAttribute("aria-label")).toContain("correct answer");
+    expect(screen.getByTestId("duel-side-right").getAttribute("aria-label")).toContain("your pick");
+  });
+});

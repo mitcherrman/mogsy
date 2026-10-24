@@ -63,7 +63,7 @@ No timer, hold or pacing constant changed. Ordinary rounds still use `REVEAL_HOL
 
 | Mode / surface | Renderer today | What is left |
 |---|---|---|
-| Ranked Mastery Slice | prose path: **adopted** (tabs + headline, see the adoption report); atomic-recall / comparison: headline only | tabs for the atomic and comparison tablets (shared Mastery components); check `DataDuel` (own "Your pick") |
+| Ranked Mastery Slice | **adopted on all three paths** (prose: adoption report; atomic rows and comparison duel: Mastery report) | nothing for the ordinary child; its Journey child waits for #134 |
 | Mastery Journey | `JourneyStageQuestion` → surface; `journey-reveal__verdict--*`; own `.journey-question` tablet CSS | adopt vocabulary + tabs after QRT1 #134 merges (same reveal surface); the Equation Unfold fold stays 3.2 s |
 | Meta Reflex / Stat Check | card beat + `CardResultBeat`; already has its own "YOUR PICK · CORRECT" tab; overlay stamp | vocabulary only; keep its comparison rows |
 | Order Forge | `ownsResultReveal` (own reveal; stamp suppressed) | vocabulary only |
@@ -192,6 +192,52 @@ Local-run note: AGENTS.md prefers GitHub Actions for browser matrices. These ran
 
 ---
 
+# PHASE 2A-MASTERY REPORT (2026-10-23): atomic-recall rows and the comparison duel
+
+Second stacked draft PR (base `qrt2/phase2a-adopt-modes`, branch `qrt2/mastery-tablet-tabs`). Frontend only, presentation only. Finishes the Ranked Mastery slice: its prose path was done in the adoption PR; this covers the other two render paths.
+
+## What changes
+
+| Path | Before | After |
+|---|---|---|
+| **Atomic recall** (choice rows: `MasteryChoiceInput`) | green / rose outlines only; the right answer and the player's pick had no words on them | the answer's row carries a "Correct answer" tab and the player's row a "Your pick" tab (one row, both tabs, when the pick was right); a timeout tabs only the answer |
+| **Comparison** (`DataDuel`) | the reveal said "Answer" on the right side and **"Locked"** on the player's side (the lock label from before the reveal, still showing after it) | "Correct answer" and "Your pick"; the tiles' accessible names say "correct answer" / "your pick" |
+| Numeric free-entry recall | typed answer; unchanged | unchanged (there are no tablets) |
+
+## How
+
+* **One tabs component.** `components/question-feedback/AnswerTabs.tsx` now renders the tabs for the arena tablets (`QuizAnswerOptions`, refactored to use it) and the Mastery rows, so wording, size, colours, one-line behaviour and the compact variant cannot drift. Its tests cover both uses.
+* **Opt-in again.** `verdictTabs` on `MasteryChoiceInput`, `AtomicRecallQuestionView`, `ComparisonQuestionView` and `MasteryQuestionDispatch`; `verdictWords` on `DataDuel`. Only the Ranked slice's **ordinary** child passes it (`MasterySliceChallengeSurface`). Not passed, so unchanged: the standalone `/quiz/mastery` player, the Journey child, the Admin Generator Lab and the Interaction Lab.
+* **The tab sits inside the row's `<label>`**, so it is part of the radio's accessible name; it is absolutely placed on the row's top edge (the row becomes `relative` only while a reveal is held) and never inside a live region.
+* **Rows need no new colours:** the existing `CHOICE_TONE_CLASS` outlines (emerald / destructive) already tell right from wrong; the words were what was missing.
+* Dev fixture: `?q=masteryCompare&mreveal=right|wrong|timeout` now also works (Brand is the correct side); `masteryRecall` unchanged.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| New unit tests | 7 module tests (atomic rows right / wrong / timeout / pre-reveal / unmatched value / label + live-region; comparison duel) + 7 component tests (`MasteryChoiceInput` opt-in, `AnswerTabs` wording and compact form) |
+| `e2e/qrt2-mastery-tablets.spec.ts` | **18 passed** at 360×640, 390×844, 1280×720: rows tabbed right, one line, inside the viewport and their row, off the label text and the row above, no row height change, scroll no worse than the base; duel tags read the arena's words and "Locked" is gone; nothing tabbed before the reveal |
+| Same spec on the base (`df695ab1`) | **fails** (5 of 6 sampled at 390×844; the "nothing tabbed before the reveal" test passes there, as it should) |
+| #136's and #138's browser specs after `QuizAnswerOptions` moved to `AnswerTabs` | 19 + 18 = **37 passed** |
+| Scroll / layout against the base, same fixture | identical: 12px at 360×640 for the atomic card, 165px for the comparison card at 360×640, 0 elsewhere (both exist on the base) |
+| Affected unit suites (three chunks: `src/features` + `src/lib/*`, `src/components/*`, `src/pages`), head vs base | chunks 1 and 2: identical failure sets (the known CRLF-environment files). Pages chunk, run one tree at a time: same 17 failing files; the only per-test differences are the load-flaky `LobbyPreviewPage.premiumAnalytics` file and, once each way, `TeamSimPage.phase5a` / `LobbyPreviewPage.test`, which pass on both trees when rerun |
+| `tsc --noEmit` | the same 2 pre-existing errors, none in changed files |
+
+Before/after pairs: [`qrt2-evidence-mastery/`](qrt2-evidence-mastery/) (7 side-by-sides: atomic right / wrong / timeout; duel right / wrong; phone and desktop).
+
+## Left undone
+
+* Journey child tablets (waits for #134), the standalone `/quiz/mastery` player's rows and `MasteryQuestionView`, Meta Reflex, Order Forge, the puzzle modes: unchanged from the table above.
+* The comparison card is 165px taller than a 640px phone on the base too (the fixture's reveal plus the duel); a fit pass is its own task.
+* The container-query "Correct answer" on wide pair tiles (adoption report finding 4) is still open.
+
+## Deployment dependencies
+
+Stacked on #138 (which is stacked on #136): merge in that order; GitHub retargets each as its base merges. Frontend only; no backend, migration, flag or data. No file in common with QRT1 #134 (checked against `origin/main...origin/reveal/qrt1-frontend`).
+
+---
+
 # ORIGINAL SCOPE (2026-10-22, still the plan for later phases)
 
 ## Objective / owner requirements
@@ -241,4 +287,4 @@ QRT1 already handles **Mastery Journey** exact reveal windows (ordinary 2250 ms;
 
 As checked 2026-10-22 local, QRT1 frontend #134 was 4 commits behind main and backend #97 26 commits behind master. The backend showed six GitHub Actions failures; logs were not retrievable through the connector, so root cause is **unknown**. Both PRs are mergeable and draft. Address these release gates in parallel, without blocking UI work that can be safely developed in isolation.
 
-**Next task (updated 2026-10-23):** Phase 2A is done (see the report at the top). Next, in separate PRs: (1) done in the stacked adoption PR (Mastery slice prose path, Pro Play/Worlds, Practice); still open: the Mastery atomic/comparison tablets; (2) after QRT1 #134 merges, Journey; (3) the Phase 2B timing pair plus faster resolution discovery; (4) a real screen-reader pass over the six live regions.
+**Next task (updated 2026-10-23):** Phase 2A is done (see the report at the top). Next, in separate PRs: (1) done in the stacked adoption PR (Mastery slice prose path, Pro Play/Worlds, Practice); the Mastery atomic/comparison tablets are done in the second stacked PR; (2) after QRT1 #134 merges, Journey; (3) the Phase 2B timing pair plus faster resolution discovery; (4) a real screen-reader pass over the six live regions.

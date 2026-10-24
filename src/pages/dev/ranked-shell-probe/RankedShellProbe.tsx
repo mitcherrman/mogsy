@@ -251,18 +251,24 @@ function masterySegment(kind: "recall" | "compare" | "stat") {
   // QRT2 — `?mreveal=`: the viewer answered challenge 0 and the server's own
   // reveal is being held (`own_challenge_reveals`, with the long window below so
   // it stays on screen for review). Recall options are 9/10/11/12; 11 is correct.
-  const revealing = probe.mreveal !== null && kind === "recall";
+  const revealing = probe.mreveal !== null && (kind === "recall" || kind === "compare");
+  // A comparison's options are the champion ids and the tie token; Brand is correct.
+  const cmp = kind === "compare";
+  const correctValue = cmp ? "Brand" : "11";
+  const wrongValue = cmp ? "Diana" : "9";
   const heldReveal = revealing ? {
     reveal_window_ms: 600_000,
     own_next_challenge_index: 1, own_challenges_completed: 1,
     own_submitted_choices: [probe.mreveal === "timeout" ? null
-      : { selected: probe.mreveal === "right" ? "11" : "9" }, null, null],
+      : { selected: probe.mreveal === "right" ? correctValue : wrongValue }, null, null],
     own_timed_out_challenges: [probe.mreveal === "timeout", false, false],
     own_challenge_reveals: [{
       challenge_index: 0, is_correct: probe.mreveal === "right",
-      player_answer: probe.mreveal === "timeout" ? null : probe.mreveal === "right" ? "11" : "9",
-      correct_answer: "11", explanation: "Brand Q has an 11 second cooldown at rank 1.",
-      answer_type: "single_choice", answer_options: ["9", "10", "11", "12"],
+      player_answer: probe.mreveal === "timeout" ? null
+        : probe.mreveal === "right" ? correctValue : wrongValue,
+      correct_answer: correctValue, explanation: "Brand Q has an 11 second cooldown at rank 1.",
+      answer_type: "single_choice",
+      answer_options: cmp ? ["Brand", "Diana", "tie"] : ["9", "10", "11", "12"],
     }],
   } : {};
   const base = {

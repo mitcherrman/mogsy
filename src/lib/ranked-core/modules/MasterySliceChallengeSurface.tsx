@@ -476,6 +476,8 @@ function OrdinaryChild({
         submitting={submitting}
         onSubmit={onSubmit}
         reveal={reveal}
+        // QRT2 — an ordinary (non-Journey) slice child tells its reveal in words.
+        verdictTabs
       />
     </MasteryAssetsProvider>
   );
