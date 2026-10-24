@@ -39,7 +39,7 @@
 
 import { Suspense, lazy, useCallback, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2, ListChecks, Stethoscope, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, ListChecks, Stethoscope, ExternalLink, Terminal } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,8 +48,9 @@ import { QuizDiagnosticsPanel } from "@/components/admin/quiz-diagnostics/QuizDi
 import type { ReviewFilters } from "@/lib/quiz/api";
 
 const AdminQuizReview = lazy(() => import("./AdminQuizReview"));
+const QuestionExplorer = lazy(() => import("./QuestionExplorer"));
 
-export const WORKSPACE_TABS = ["review", "diagnostics"] as const;
+export const WORKSPACE_TABS = ["review", "query", "diagnostics"] as const;
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 const DEFAULT_TAB: WorkspaceTab = "review";
 
@@ -58,6 +59,7 @@ const isWorkspaceTab = (value: string | null): value is WorkspaceTab =>
 
 const TAB_META: Record<WorkspaceTab, { label: string; icon: typeof ListChecks }> = {
   review: { label: "Quiz Review", icon: ListChecks },
+  query: { label: "Query Explorer", icon: Terminal },
   diagnostics: { label: "Diagnostics", icon: Stethoscope },
 };
 
@@ -231,6 +233,15 @@ export default function AdminQuizWorkspace() {
                 focusLabel={focus?.label}
                 onClearFocus={clearFocus}
               />
+            </Suspense>
+          </AdminAuthGate>
+        </TabsContent>
+
+        {/* MQS1 — owner-only query and CSV engine. No writes or generation. */}
+        <TabsContent value="query" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <AdminAuthGate>
+            <Suspense fallback={<TabLoading label="Loading Query Explorer" />}>
+              <QuestionExplorer />
             </Suspense>
           </AdminAuthGate>
         </TabsContent>
