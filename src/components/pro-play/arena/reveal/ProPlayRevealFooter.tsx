@@ -22,7 +22,7 @@
  * server grade; there is no "pending" or placeholder state.
  */
 import { Check, Info } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
@@ -50,6 +50,23 @@ export interface ProPlayRevealFooterProps {
   /** The Next / See results control, placed at the footer's trailing edge. */
   action?: ReactNode;
   className?: string;
+  /**
+   * W26Q-UX — the one-screen presentation (Worlds 2026 Quiz). The footer stays
+   * one row at every width (scope and sentence beside the Source control) so
+   * the held reveal box does not grow on a phone, and the explanation's type
+   * tightens by length (`densityTier`) instead of the box growing.
+   */
+  dense?: boolean;
+  /** `normal | medium | long | dense`, from the explanation's length. */
+  densityTier?: string;
+  /**
+   * W26Q-UX — the run advances by itself after `holdMs`. Draws the draining
+   * hairline (paused with the hold) and marks the footer for tests; the timer
+   * itself is the caller's. Absent: nothing changes.
+   */
+  advance?: { holdMs: number; paused: boolean } | null;
+  /** The element the caller's pause logic watches (focus / press inside it). */
+  footerRef?: Ref<HTMLElement>;
 }
 
 /** One option's statistic as a sentence fragment, for the list. */
@@ -59,11 +76,16 @@ function candidateLine(c: RevealCandidate): string {
 }
 
 /** The per-option readout. Server order; same row for every option. */
-function CandidateReadout({ model, visible }: { model: ProPlayRevealModel; visible: boolean }) {
+function CandidateReadout({ model, visible, inSource = false }: {
+  model: ProPlayRevealModel;
+  visible: boolean;
+  /** The copy inside the Source disclosure (one-screen presentation). */
+  inSource?: boolean;
+}) {
   return (
     <ol
-      aria-label="Statistics by option"
-      data-pp-reveal-readout={visible ? "visible" : "sr-only"}
+      aria-label={inSource ? "Statistics by option, in the source panel" : "Statistics by option"}
+      data-pp-reveal-readout={inSource ? "source" : visible ? "visible" : "sr-only"}
       className={visible ? "mt-2 grid gap-1" : "sr-only"}
     >
       {model.candidates.map((c) => (
@@ -119,7 +141,7 @@ function formLabel(form: string | null): string | null {
 }
 
 /** Technical authority behind a keyboard/touch disclosure. Null when empty. */
-function SourceDisclosure({ model }: { model: ProPlayRevealModel }) {
+function SourceDisclosure({ model, readout }: { model: ProPlayRevealModel; readout?: ReactNode }) {
   const rows: { term: string; detail: ReactNode }[] = [];
   if (model.metric) {
     rows.push({
@@ -147,7 +169,7 @@ function SourceDisclosure({ model }: { model: ProPlayRevealModel }) {
   if (model.provenanceNote && model.explanationVerbatim) {
     rows.push({ term: "Server note", detail: model.explanationVerbatim });
   }
-  if (!rows.length) return null;
+  if (!rows.length && !readout) return null;
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -174,23 +196,34 @@ function SourceDisclosure({ model }: { model: ProPlayRevealModel }) {
         data-pp-reveal-source-panel
         className="w-[min(20rem,calc(100vw-2rem))] border-white/10 bg-black/85 p-3 text-[#efe8d6] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.9)] backdrop-blur-md"
       >
-        <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.24em] text-[#e8c97a]/90">Evidence authority</p>
-        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[11px] leading-snug">
-          {rows.map((r) => (
-            <div key={r.term} className="contents">
-              <dt className="text-white/55">{r.term}</dt>
-              <dd className="min-w-0 break-words">{r.detail}</dd>
-            </div>
-          ))}
-        </dl>
+        {readout ? <div className="mb-3">{readout}</div> : null}
+        {rows.length ? (
+          <>
+            <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.24em] text-[#e8c97a]/90">Evidence authority</p>
+            <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[11px] leading-snug">
+              {rows.map((r) => (
+                <div key={r.term} className="contents">
+                  <dt className="text-white/55">{r.term}</dt>
+                  <dd className="min-w-0 break-words">{r.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        ) : null}
       </PopoverContent>
     </Popover>
   );
 }
 
-export function ProPlayRevealFooter({ model, valuesOnTablets, action, className }: ProPlayRevealFooterProps) {
+export function ProPlayRevealFooter({
+  model, valuesOnTablets, action, className, dense = false, densityTier, advance = null, footerRef,
+}: ProPlayRevealFooterProps) {
   const reduced = useReducedMotionPreference();
-  const showReadout = !valuesOnTablets && model.evidenceState !== "absent";
+  // One-screen (dense): the held reveal box cannot grow by a row per option, so
+  // the per-option statistics are read in the Source disclosure instead of
+  // drawn under the sentence. They stay in the footer for screen readers.
+  const readoutInSource = dense && !valuesOnTablets && model.evidenceState !== "absent";
+  const showReadout = !valuesOnTablets && model.evidenceState !== "absent" && !readoutInSource;
   const count = model.candidates.length;
   // The footer settles after the last tablet value (beat 3).
   const footerDelay = REVEAL_VALUE_DELAY_MS + Math.max(0, count - 1) * REVEAL_VALUE_STAGGER_MS + 80;
@@ -201,8 +234,12 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
       : null;
   return (
     <section
+      ref={footerRef}
       aria-label="Answer evidence"
       data-pp-reveal-footer={model.isCorrect ? "correct" : "incorrect"}
+      data-pp-reveal-dense={dense ? "true" : undefined}
+      data-auto-advance={advance ? "pending" : undefined}
+      data-advance-paused={advance ? (advance.paused ? "true" : "false") : undefined}
       data-pp-evidence-state={model.evidenceState}
       data-pp-reveal-motion={reduced ? "static" : "staged"}
       className={cn(
@@ -216,7 +253,7 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
       <span aria-hidden className="pointer-events-none absolute inset-x-6 top-0 h-px"
         style={{ background: "linear-gradient(90deg, transparent, rgba(212,179,90,0.6), transparent)" }} />
       <p role="status" data-pp-reveal-verdict className="sr-only">{verdictSentence(model)}</p>
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+      <div className={cn("flex min-w-0 gap-2 sm:items-center sm:gap-4", dense ? "flex-row items-center" : "flex-col sm:flex-row")}>
         {/* From lg the scope and the sentence share one line: the footer
             costs the stage only what the action button already needs. */}
         <div className="min-w-0 flex-1 lg:flex lg:items-baseline lg:gap-3">
@@ -235,7 +272,11 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
             </p>
           ) : null}
           {model.explanation ? (
-            <p data-pp-reveal-explanation className="mt-1 text-[13px] leading-snug text-[#efe8d6]/90 sm:text-sm lg:mt-0 lg:min-w-0 lg:flex-1">
+            <p data-pp-reveal-explanation data-explanation-density={dense ? densityTier : undefined}
+              className={cn(
+                "mt-1 leading-snug text-[#efe8d6]/90 lg:mt-0 lg:min-w-0 lg:flex-1",
+                dense ? "pp-reveal-explanation text-xs sm:text-sm" : "text-[13px] sm:text-sm",
+              )}>
               {model.explanation}
             </p>
           ) : null}
@@ -244,11 +285,20 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
           ) : null}
         </div>
         <div className="flex shrink-0 items-center justify-end gap-2">
-          <SourceDisclosure model={model} />
+          <SourceDisclosure model={model}
+            readout={readoutInSource ? <CandidateReadout model={model} visible inSource /> : undefined} />
           {action}
         </div>
       </div>
       {model.evidenceState !== "absent" ? <CandidateReadout model={model} visible={showReadout} /> : null}
+      {advance ? (
+        // How long until the run moves on: a draining hairline along the box's
+        // bottom edge, paused with the hold. Decorative — the verdict above is
+        // what is announced.
+        <span aria-hidden data-testid="pro-play-advance-meter" className="pp-advance-meter"
+          data-paused={advance.paused ? "true" : "false"}
+          style={{ "--pp-hold-ms": `${advance.holdMs}ms` } as CSSProperties} />
+      ) : null}
     </section>
   );
 }

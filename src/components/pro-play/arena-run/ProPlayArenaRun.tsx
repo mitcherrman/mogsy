@@ -19,17 +19,21 @@
  * actions): the end-screen tone is an open owner question (PPQ1 Q3), so it
  * says only what is true.
  */
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { Check, X } from "lucide-react";
 
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { Button } from "@/components/ui/button";
+import { usePracticeAutoAdvance, usePracticeRevealPause } from "@/components/quiz/practice-arena/usePracticeAutoAdvance";
+import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
+import { SITE_DOMAIN } from "@/lib/site-config";
 import type { ProPlayArenaController, ProPlayRunPip } from "@/lib/pro-play/arena";
 import { cn } from "@/lib/utils";
 import { composeProPlayArenaStage, DOCK_SCROLL_MARGIN } from "./composeProPlayArenaStage";
-import { ProPlayRouteChrome } from "./ProPlayRouteChrome";
+import { proPlayExplanationDensity, proPlayRevealHoldMs } from "./proPlayAutoAdvance";
+import { ProPlayOneScreenChrome, ProPlayRouteChrome } from "./ProPlayRouteChrome";
 
 export interface ProPlayArenaRunProps {
   controller: ProPlayArenaController;
@@ -50,6 +54,14 @@ export interface ProPlayArenaRunProps {
    * (`PP_PRESET_UNAVAILABLE`) — why there is no quiz, in the scope's terms.
    */
   unavailableNote?: string;
+  /**
+   * W26Q-UX: `one-screen` (the Worlds 2026 Quiz) is the phone one-screen arena
+   * frame with nothing scrolling at any width, a header row that carries the
+   * position and the site's name, and a graded reveal that moves the run on by
+   * itself after its hold, with no Next / See results control. The default is
+   * the Pro Play Quiz exactly as it was.
+   */
+  presentation?: "standard" | "one-screen";
 }
 
 /** The server refused a preset session for lack of verified questions. */
@@ -68,6 +80,29 @@ const PRESET_UNAVAILABLE = "PP_PRESET_UNAVAILABLE";
  * descendants are unaffected; the dock and popovers are portalled outside.
  */
 const FRAME_CLIP = "overflow-x-clip";
+
+/**
+ * W26Q-UX — the compact stage: a phone (below `lg`) shorter than 760px, which
+ * covers a 360x640 portrait phone and every landscape phone. MVFIT1's own
+ * short-phone band, and the query Practice uses for the same budget. Off in
+ * jsdom (no `matchMedia`).
+ */
+export const PRO_PLAY_COMPACT_QUERY = "(max-width: 1023.98px) and (max-height: 760px)";
+
+function useCompactStage(enabled: boolean): boolean {
+  const read = () => enabled && typeof window !== "undefined" && typeof window.matchMedia === "function"
+    && window.matchMedia(PRO_PLAY_COMPACT_QUERY).matches;
+  const [compact, setCompact] = useState(read);
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(PRO_PLAY_COMPACT_QUERY);
+    const sync = () => setCompact(mq.matches);
+    sync();
+    mq.addEventListener?.("change", sync);
+    return () => mq.removeEventListener?.("change", sync);
+  }, [enabled]);
+  return enabled && compact;
+}
 
 /** Either reduced-motion switch: the OS preference or the app's own. */
 function reducedMotion(): boolean {
@@ -244,23 +279,52 @@ export default function ProPlayArenaRun({
   backLink = false,
   exitLabel = "Back to Pro Play",
   unavailableNote,
+  presentation = "standard",
 }: ProPlayArenaRunProps) {
   const { state, projection } = controller;
+  const oneScreen = presentation === "one-screen";
   // W26Q: "Pro Play Quiz", or the preset's own name ("Worlds 2026 Quiz").
   const mode = projection.header.eyebrow;
 
+  // One-screen: the only control a question ever carries is the recovery one
+  // (Try again over an errored question). There is no Next / See results; the
+  // HUD row's reserve is held by the stylesheet, not by an invisible button.
   const action = projection.error && projection.surface ? (
     <TryAgainControl enabled={projection.error.enabled} onTryAgain={controller.tryAgain} />
-  ) : projection.next ? (
+  ) : oneScreen ? null : projection.next ? (
     <NextControl label={projection.next.label} enabled={projection.next.enabled} onNext={controller.next} />
   ) : <ActionReserve />;
 
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // W26Q-UX: THE AUTO-ADVANCE. Armed only by a reveal the server graded
+  // (`projection.reveal`), keyed on the session and question so a restart or a
+  // replay can never be advanced by a stale timer. `controller.next` is the
+  // same exactly-once advance the button used (it refuses while a request is in
+  // flight and resyncs when the grade carried no next question).
+  const footerRef = useRef<HTMLElement>(null);
+  const reducedMotion = useReducedMotionPreference();
+  const compact = useCompactStage(oneScreen);
+  const holdMs = oneScreen && state.session && state.question
+    ? proPlayRevealHoldMs(projection.reveal, state.question.choices.length, reducedMotion)
+    : null;
+  const revealKey = holdMs !== null && state.session && state.question
+    ? `${state.session.session_id}:${state.question.question_id}`
+    : null;
+  const paused = usePracticeRevealPause(footerRef, revealKey !== null);
+  usePracticeAutoAdvance({ revealKey, holdMs, paused, onAdvance: controller.next });
+
   const view = composeProPlayArenaStage({
     state,
     projection,
     onSelectOption: controller.selectOption,
     action,
+    oneScreen: oneScreen ? {
+      advance: holdMs !== null ? { holdMs, paused } : null,
+      footerRef,
+      densityTier: proPlayExplanationDensity(projection.reveal?.explanation),
+      compact,
+    } : undefined,
   });
 
   // What occupies the stage: a question (by its server id), the end panel, or
@@ -268,10 +332,18 @@ export default function ProPlayArenaRun({
   const stageKey = view ? state.question?.question_id ?? null : projection.terminal ? SUMMARY_KEY : null;
   useStageHandoff(rootRef, stageKey);
 
+  const rootClass = cn(FRAME_CLIP, oneScreen && "pp-one-screen");
+  const oneScreenChrome = (emptyFrame: boolean) => (
+    <ProPlayOneScreenChrome to={exitTo} label={exitLabel} brand={SITE_DOMAIN} emptyFrame={emptyFrame}
+      number={state.question?.number ?? null} total={state.session?.total ?? 0}
+      correct={state.session && state.session.answered > 0 ? state.session.score : null} />
+  );
+
   if (view) {
     return (
-      <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
-        <CanonicalArena view={view} chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} label={exitLabel} /> : undefined)} />
+      <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={rootClass}>
+        <CanonicalArena view={view}
+          chrome={chrome ?? (oneScreen ? oneScreenChrome(false) : backLink ? <ProPlayRouteChrome to={exitTo} label={exitLabel} /> : undefined)} />
       </div>
     );
   }
@@ -341,9 +413,9 @@ export default function ProPlayArenaRun({
   }
 
   return (
-    <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
+    <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={rootClass}>
       <CanonicalArena view={null}
-        chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} label={exitLabel} fromLg={false} /> : undefined)}
+        chrome={chrome ?? (oneScreen ? oneScreenChrome(true) : backLink ? <ProPlayRouteChrome to={exitTo} label={exitLabel} fromLg={false} /> : undefined)}
         recovering={{ eyebrow: mode, message: "", intro }} />
     </div>
   );

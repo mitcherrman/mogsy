@@ -28,7 +28,7 @@
  * Report publishing is NOT here: the Arena publishes from `view.report` +
  * `surface.reportRef`, and nothing in this directory may publish a second time.
  */
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { asQuestionContext } from "@/lib/pro-play/contract";
 import {
@@ -77,6 +77,26 @@ export interface ProPlayArenaStageInput {
    * over an errored question, or an invisible placeholder of the same size.
    */
   action: ReactNode;
+  /**
+   * W26Q-UX — the one-screen presentation (Worlds 2026 Quiz): the arena takes
+   * the phone one-screen frame (`phoneOneScreen`), and the reveal footer is the
+   * dense, single-row one. `advance` draws the auto-advance hairline and
+   * `footerRef` is what the pause logic watches. Absent: the Pro Play Quiz,
+   * exactly as before.
+   */
+  oneScreen?: {
+    advance: { holdMs: number; paused: boolean } | null;
+    footerRef: Ref<HTMLElement>;
+    densityTier: string;
+    /**
+     * A short phone or a landscape phone (`useCompactStage`): the anchor plate
+     * is not drawn and the surface draws no decorative band, so the prompt, the
+     * tablets and the reveal box have the room. The question, its scope tags
+     * and the metric still reach the player: the stem names the competition,
+     * and the reveal names the metric and scope.
+     */
+    compact: boolean;
+  };
 }
 
 /** Received verdicts only, keyed by question number (never inferred). */
@@ -92,6 +112,7 @@ export function composeProPlayArenaStage({
   projection,
   onSelectOption,
   action,
+  oneScreen,
 }: ProPlayArenaStageInput): ProPlayArenaViewModel | null {
   const question = state.question;
   const session = state.session;
@@ -109,7 +130,9 @@ export function composeProPlayArenaStage({
   });
   const hudAction = reveal ? (
     <ProPlayRevealFooter model={reveal.model} valuesOnTablets={revealValuesOnTablets(reveal, slots)}
-      action={action} className={`${REVEAL_FOOTER_MIN_H} ${DOCK_SCROLL_MARGIN}`} />
+      action={action} className={`${REVEAL_FOOTER_MIN_H} ${DOCK_SCROLL_MARGIN}`}
+      dense={oneScreen !== undefined} densityTier={oneScreen?.densityTier}
+      advance={oneScreen?.advance ?? null} footerRef={oneScreen?.footerRef} />
   ) : (
     <div data-pro-play-hud-reserve className={`flex w-full items-center justify-end ${REVEAL_FOOTER_MIN_H}`}>
       {action}
@@ -140,8 +163,9 @@ export function composeProPlayArenaStage({
     },
     surface: {
       ...view.surface,
+      surfaceSettings: oneScreen?.compact ? { mediaScale: "none" } : view.surface.surfaceSettings,
       regions: {
-        media: <ProPlayAnchorPlate context={context} fallbackTitle={question.topic} />,
+        media: oneScreen?.compact ? undefined : <ProPlayAnchorPlate context={context} fallbackTitle={question.topic} />,
         optionContent: slots.optionContent,
         answerColumns: slots.columns,
         pairDivider: slots.pairDivider,
@@ -150,5 +174,6 @@ export function composeProPlayArenaStage({
     // composeProPlayArenaView only carries a control while a reveal shows; the
     // row is held on every frame instead (see the header note).
     hudAction,
+    ...(oneScreen ? { phoneOneScreen: true } : {}),
   };
 }
