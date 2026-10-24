@@ -266,6 +266,22 @@ test.describe("behaviour at 1366x768", () => {
     await expect(incomingScene(page)).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
   });
 
+  test("PULSE-1.2: a keyboard-opened expanded view closed with Escape keeps the keyboard focus hold", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    await page.getByTestId("academy-pulse-next").focus();
+    await page.keyboard.press("Tab"); // the current pip
+    await page.keyboard.press("Tab"); // Expand
+    await expect(page.getByTestId("academy-pulse-expand")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("pulse-expanded")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);
+    await expect(page.getByTestId("academy-pulse-expand")).toBeFocused();
+    await page.mouse.move(900, 400);
+    await page.waitForTimeout(7_000);
+    await expect(pulse).toHaveAttribute("data-holds", "focus");
+  });
+
   test("hovering holds the rotation; leaving lets it go", async ({ page }) => {
     const pulse = page.getByTestId("academy-pulse");
     const b = await box(page, '[data-testid="academy-pulse-viewport"]');

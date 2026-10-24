@@ -89,13 +89,29 @@ export default function AcademyPulse({
   useEffect(() => { hold("expanded", expanded); }, [expanded, hold]);
   // Radix returns focus only to a Dialog.Trigger; Pulse opens from several buttons, so it remembers which
   const returnFocus = useRef<HTMLElement | null>(null);
+  // How the view was opened decides whether the restored focus is a keyboard
+  // hold: closing a mouse-opened view with Escape makes the browser treat the
+  // programmatic return as :focus-visible, which must not pause rotation for good.
+  const openedByKeyboard = useRef(false);
+  const restoringPointerFocus = useRef(false);
   const openExpanded = useCallback(() => {
-    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const el = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    returnFocus.current = el;
+    openedByKeyboard.current = !!el?.matches(":focus-visible");
     setExpanded(true);
+  }, []);
+  const restoreFocusTarget = useCallback(() => {
+    restoringPointerFocus.current = !openedByKeyboard.current && !!returnFocus.current?.isConnected;
+    return returnFocus.current;
   }, []);
   // Mouse clicks leave DOM focus on buttons. Only a visible keyboard focus
   // indicator should hold auto-rotation; pointer-created focus must not.
   const onFocus = useCallback((e: FocusEvent<HTMLElement>) => {
+    if (restoringPointerFocus.current) {
+      restoringPointerFocus.current = false;
+      hold("focus", false);
+      return;
+    }
     const target = e.target;
     hold("focus", target instanceof HTMLElement && target.matches(":focus-visible"));
   }, [hold]);
@@ -341,7 +357,7 @@ export default function AcademyPulse({
           onOpenChange={setExpanded}
           reduced={reduced}
           onInteract={rot.interact}
-          returnFocus={() => returnFocus.current}
+          returnFocus={restoreFocusTarget}
         />
       </PulseArtContext.Provider>
     </MotionConfig>
