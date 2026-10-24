@@ -222,8 +222,6 @@ export function DailyMainResult({
           holdMs={DAILY_DISCOVERY_HOLD_MS.mainResult} onReview={onReviewDiscoveries} />
       )}
 
-      {settled && !ownerTake && <OfficialSocialLinks placement="daily_main_result" compact />}
-
       {optional.length > 0 && (
         <section aria-label="Optional" data-testid="daily-main-optional"
           className="space-y-2 rounded-[0.6rem] border border-white/10 bg-black/20 px-4 py-3
@@ -281,6 +279,7 @@ export function DailyMainResult({
           testId: "daily-done-for-now",
         },
       }} />
+      {settled && !ownerTake && <OfficialSocialLinks placement="daily_main_result" compact />}
     </section>
   );
 }
