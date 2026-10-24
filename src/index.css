@@ -20386,6 +20386,102 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
   [data-scenario-badge] { display: none; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   DAILY THREE ACTS — THE PERSISTENT COOLDOWN TRACK (JourneyCooldownTrack).
+   The Journey's magnitude bar, kept on the card through a Summoner Spell
+   Mastery set: the track is the spell's base cooldown, the fill the served
+   share that remains. Each reveal moves the fill from the previous stage's
+   served share (`--jm-from`) to this one's (`--jm-ratio`). Dark-card ink
+   (the parchment ink above is for the light reveal panel). Fixed heights,
+   so a reveal changes what is inside the boxes, never their size. */
+.journey-cdtrack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  min-height: 2.75rem;
+  padding: 5px 8px 4px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgb(11 23 39 / 0.92), rgb(6 13 24 / 0.92));
+  box-shadow: inset 0 0 0 1px rgb(212 179 90 / 0.35);
+}
+.journey-cdtrack__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 0.875rem;
+}
+.journey-cdtrack__title {
+  overflow: hidden;
+  color: #e8c97a;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.journey-cdtrack__steps {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.journey-cdtrack__step {
+  display: grid;
+  width: 0.875rem;
+  height: 0.875rem;
+  place-items: center;
+  border-radius: 9999px;
+  color: #7fb2d4;
+  font-size: 0.5rem;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgb(127 178 212 / 0.55);
+}
+.journey-cdtrack__step[data-state="current"] { color: #f3dca0; box-shadow: inset 0 0 0 1px #d4b35a; }
+.journey-cdtrack__step[data-state="done"] { color: #0b1727; background: #d4b35a; box-shadow: none; }
+.journey-cdtrack .journey-magnitude { color: #e8c97a; }
+.journey-cdtrack .journey-magnitude b { color: #f3dca0; }
+.journey-cdtrack .journey-magnitude__delta { border-left-color: rgb(212 179 90 / 0.45); color: #8fd0a0; }
+.journey-cdtrack .journey-magnitude__track {
+  min-width: 3.5rem;
+  background: repeating-linear-gradient(135deg, rgb(212 179 90 / 0.30) 0 3px, rgb(212 179 90 / 0.10) 3px 6px);
+  box-shadow: inset 0 0 0 1px rgb(212 179 90 / 0.5);
+}
+.journey-cdtrack[data-revealed="false"] .journey-magnitude__end--to b { color: #7fb2d4; }
+.journey-cdtrack__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 0.75rem;
+  margin: 0;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 0.75rem;
+  white-space: nowrap;
+}
+.journey-cdtrack__change {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #8fd0a0;
+  text-overflow: ellipsis;
+}
+.journey-cdtrack__change[data-change-kind="upgrade"] { color: #e8c97a; }
+.journey-cdtrack__change[data-change-kind="none"] { color: #7fb2d4; }
+@keyframes journey-cdtrack-move {
+  from { width: calc(var(--jm-from, 1) * 100%); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-cdtrack .journey-magnitude__fill {
+    animation: journey-cdtrack-move 440ms cubic-bezier(0.4, 0, 0.2, 1) 120ms backwards;
+  }
+}
+html.reduce-motion .journey-cdtrack,
+html.reduce-motion .journey-cdtrack * { animation: none !important; transition: none !important; }
+
 /* ──────────────────────────────────────────────────────────────────────────
    JUX1 — THE COMPACT (TOP-AND-BOTTOM) BOARD, REFINED.
    Phone boards only (`@container (max-width: 25.99rem)`, the existing

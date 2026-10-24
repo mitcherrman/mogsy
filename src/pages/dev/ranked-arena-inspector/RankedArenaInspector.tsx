@@ -48,6 +48,10 @@ import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { JourneyCooldownTrack } from "@/components/journey/JourneyCooldownTrack";
+import {
+  projectCooldownContinuity, SUMMONER_SET_KIND, type CooldownContinuity,
+} from "@/lib/journey/cooldownContinuity";
 import { masterySliceModule } from "@/lib/ranked-core/modules/masterySliceModule";
 import { readPublicRound } from "@/lib/ranked-public/contracts";
 import { loadCapture, type CaptureKey, type CaptureSnapshot } from "@/lib/journey/realFixtures";
@@ -589,6 +593,27 @@ const OM_RUNE = optionMediaCase(RUNE_OPTION_QUESTION);
 const OM_SPELL = optionMediaCase(SUMMONER_SPELL_OPTION_QUESTION);
 const OM_NUMERIC = optionMediaCase(NUMERIC_QUESTION);
 
+/** The served `cooldown_working` shapes of Flash's path A and C steps
+ * (ranked_public.mastery_slices), projected the way the arena does. */
+function cooldownTrackFixture(round: number, revealed: boolean, path: "A" | "C"): CooldownContinuity | null {
+  const w = (answer: string, multiplier: number, effective: number,
+    sources: Array<[string, "rune" | "item", number]>) => ({ cooldown_working: {
+      contract: "summoner_cooldown_working.v1", spell: "Flash", base_cooldown: 300,
+      summoner_spell_haste: sources.reduce((n, x) => n + x[2], 0),
+      sources: sources.map(([name, kind, haste]) => ({ name, kind, summoner_spell_haste: haste })),
+      cooldown_multiplier: multiplier, effective_cooldown: effective, unit: "seconds", answer } });
+  const chain = path === "A"
+    ? [w("300s", 1, 300, []), w("272.7s", 100 / 110, 300 * 100 / 110, [["Ionian Boots of Lucidity", "item", 10]]),
+      w("250s", 100 / 120, 250, [["Crimson Lucidity", "item", 20]])]
+    : [w("300s", 1, 300, []), w("254.2s", 100 / 118, 300 * 100 / 118, [["Cosmic Insight", "rune", 18]]),
+      w("234.4s", 0.78125, 234.375, [["Cosmic Insight", "rune", 18], ["Ionian Boots of Lucidity", "item", 10]])];
+  return projectCooldownContinuity({
+    linkedSet: { kind: SUMMONER_SET_KIND, position: round, of: 3 }, roundNumber: round,
+    explanations: new Map(chain.slice(0, round).map((e, i) => [i + 1, e])),
+    currentRevealed: revealed,
+  });
+}
+
 function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
   return (
     <InteractiveScenarioSurface
@@ -864,11 +889,13 @@ function ArenaComposition({
   locked = false,
   question = ITEM_Q,
   scenarioSource = ITEM_SCENARIO,
+  continuity = null,
 }: {
   selected?: string | null;
   locked?: boolean;
   question?: QuestionView;
   scenarioSource?: QuizQuestion | null;
+  continuity?: CooldownContinuity | null;
 }) {
   const perms = locked ? NO_INTERACTIONS : OPEN;
   return (
@@ -892,7 +919,8 @@ function ArenaComposition({
         <section data-testid="ranked-question"
           className="ranked-panel ranked-folio col-span-2 p-3 sm:p-5 min-[1500px]:px-7 lg:col-span-1 lg:col-start-2 lg:row-start-1">
           <InteractiveScenarioSurface question={question} selectedOptionId={selected} permissions={perms}
-            onSelectOption={() => {}} variant="competitive" scenarioSource={scenarioSource} />
+            onSelectOption={() => {}} variant="competitive" scenarioSource={scenarioSource}
+            continuity={continuity ? <JourneyCooldownTrack continuity={continuity} /> : null} />
         </section>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -1774,6 +1802,23 @@ const STATES: InspectorState[] = [
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "Barrier has a 180-second base cooldown. You are running Cosmic Insight (18 summoner spell haste) and Ionian Boots of Lucidity (10 summoner spell haste). That is 28 summoner spell haste in total. What is Barrier's cooldown now?" }}
       scenarioSource={SSM_SPELL_SCENARIO} selected={null} /> },
+  // --- Daily three acts: the Summoner Spell set's carried cooldown track ---
+  { key: "dv2-cooldown-a1", label: "Three acts — cooldown track, path A Q1 (base withheld)",
+    render: () => <ArenaComposition selected={null}
+      question={{ ...ITEM_Q, prompt: "What is the base cooldown of Flash, with no summoner spell haste?" }}
+      scenarioSource={null} continuity={cooldownTrackFixture(1, false, "A")} /> },
+  { key: "dv2-cooldown-a2", label: "Three acts — cooldown track, path A Q2 (before the answer)",
+    render: () => <ArenaComposition selected={null}
+      question={{ ...ITEM_Q, prompt: "Flash has a 300s base cooldown. Ionian Boots of Lucidity gives 10 Summoner Spell Haste. What is its cooldown?" }}
+      scenarioSource={null} continuity={cooldownTrackFixture(2, false, "A")} /> },
+  { key: "dv2-cooldown-a3", label: "Three acts — cooldown track, path A Q3 revealed (Ionian upgraded to Crimson)",
+    render: () => <ArenaComposition selected="2" locked
+      question={{ ...ITEM_Q, prompt: "Flash has a 300s base cooldown. Crimson Lucidity gives 20 Summoner Spell Haste. What is its cooldown?" }}
+      scenarioSource={null} continuity={cooldownTrackFixture(3, true, "A")} /> },
+  { key: "dv2-cooldown-c3", label: "Three acts — cooldown track, path C Q3 revealed (Ionian stacked on Cosmic Insight)",
+    render: () => <ArenaComposition selected="2" locked
+      question={{ ...ITEM_Q, prompt: "Flash has a 300s base cooldown. Cosmic Insight and Ionian Boots of Lucidity give 18 + 10 Summoner Spell Haste. What is its cooldown?" }}
+      scenarioSource={null} continuity={cooldownTrackFixture(3, true, "C")} /> },
   { key: "arena-spell-cooldown", label: "Arena — summoner spell cooldown (quiz.v1)",
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "What is the cooldown of Barrier?" }}

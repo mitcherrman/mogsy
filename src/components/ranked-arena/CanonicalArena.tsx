@@ -813,6 +813,9 @@ export function CanonicalArena({
                 feedback={moduleSurface.feedback}
                 surfaceVerdict={moduleSurface.surfaceVerdict}
                 surfaceSettings={moduleSurface.surfaceSettings}
+                // A linked set's carried state, relayed verbatim; absent for
+                // every other round.
+                stateContinuity={moduleSurface.stateContinuity}
               />
               ) : null}
               </div>

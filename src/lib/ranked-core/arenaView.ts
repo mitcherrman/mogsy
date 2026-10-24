@@ -15,6 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import type { JourneyRailIdentity } from "@/lib/journey/rail";
+import type { CooldownContinuity } from "@/lib/journey/cooldownContinuity";
 import type { ReactNode } from "react";
 import type { SurfaceReveal, SurfaceSettings } from "@/lib/question-surface/contract";
 import type { ResolvedFeedback } from "@/lib/question-feedback/model";
@@ -324,6 +325,12 @@ export interface ArenaModuleSurface {
    * override is the alternative to a second question renderer that shows one.
    */
   surfaceSettings?: Partial<SurfaceSettings>;
+  /**
+   * Daily three acts — a linked set's settled, carried state (a summoner
+   * spell's cooldown), relayed verbatim to the viewport, or absent. See
+   * `ModuleViewportProps.stateContinuity`.
+   */
+  stateContinuity?: CooldownContinuity | null;
 }
 
 /**
