@@ -588,3 +588,64 @@ Run this when the machine is free:
 `mogzy-guard.cmd run --class vitest -- node node_modules/vitest/vitest.mjs run src/lib/admin/analytics/conversion.test.ts src/lib/admin/analytics/metrics.test.ts src/lib/admin/analytics/cohorts.test.ts src/lib/admin/analytics/visitorJourney.test.ts`
 
 If the config fails to load with ERR_SWC_NATIVE_CACHE, use the esbuild scratch-config workaround (shared @swc/core).
+
+---
+
+## 11. CV3 / CV4 status (2026-10-24): UNTESTED, stopped before the release gate
+
+The owner authorised implementation without running the pending checks. **Nothing in §10 or §11 has been executed.** No unit or component run, no type check, no build, no browser. The code was reviewed by hand only.
+
+### Decisions
+- **D-6, resolved as unavailable.**
+  - No production evidence of browser-attribution coverage exists, because Q5 was never run.
+  - The dashboard therefore calls `computeBrowserConversion(..., { excludeServerPlay: true })`. Server play is left out of the ordered chain, so later steps are not gated on it, and it is shown as **Unavailable** with the reason.
+  - The correlated / total count of server starts in the current read is printed as context only. It is never a rate and never a threshold.
+  - Per-browser Daily play depends on the same link, so it is not shown either.
+  - To enable later: run Q5, have the owner set a threshold, then drop the option, or gate it on coverage.
+- **CV3, not built.**
+  - The PII-free account registry needs a migration and an auth-boundary review (L3). The brief said to avoid migrations unless clearly justified, and the dashboard works without it.
+  - It stays the recommended follow-up for signup-event coverage (Q3 live) and QA-account exclusion.
+- **D-1:** email confirmation is shown as "Not applicable" with the auto-confirm reason.
+- **D-7 untouched:** the existing tiles keep their numbers. Only the independent table's title changed, to "Reach by surface (independent)".
+
+### Files
+- `src/lib/admin/analytics/conversion.ts`: `excludeServerPlay` option, `excludedSteps`, and `furthest` typed `Partial` (commit 43e000b6). Default behaviour is unchanged.
+- `src/lib/admin/analytics/conversion.test.ts`: one exclusion case added (23 cases).
+- `src/components/admin/users/ConversionDashboard.tsx` (new, commit 2a220159). Three panels built from the existing `AdminPanel`, `Table`, `Metric`/`MetricGrid`, `Kind`, `Unavailable` and `formatRate`:
+  1. **Browser conversion:**
+     - ordered steps, with reached, from-previous, of-entered, a share bar (from 20 units), dropped-here, entered-later and reached evidence;
+     - the server-play unavailable note.
+  2. **Signup form (24 h):**
+     - metrics, with the origin split;
+     - a per-entry-surface table;
+     - expandable "viewed, did not submit", "submitted, not created" and "created with no view" lists.
+  3. **Account activation:**
+     - played before signup, within 7 days, and again from day 1 to day 8, each with too-recent counts and account evidence;
+     - the email-confirmed row as not applicable.
+
+  Evidence lists are `<details>` elements capped at 30 ids, with "…and N more". Browser ids open the existing visitor record through `?visitor=`. Account ids are shown as text only; no new account lookup was added. Every panel shows `unavailableReason` instead of numbers when any capped read was truncated.
+- `src/components/admin/users/ConversionDashboard.test.tsx` (new): 3 cases. Server play is absent and unavailable, browser evidence opens the record, and a truncated read shows unavailable.
+- `src/pages/admin/areas/AdminUsersPage.tsx` (commit 3836ddb7):
+  - the dashboard renders in Users › Audience right after the cohort retention panel, on the same traffic-filtered `viewLoaded`;
+  - the open-visitor handler is extracted as `openVisitor` and shared with Audience Pulse, with identical behaviour.
+- `src/components/admin/users/AudienceSections.tsx`: reach table title and description only.
+
+### Authorization and data
+- There are no new reads, queries, endpoints, dependencies or migrations. Everything comes from the analytics rows the page already loads under admin-only RLS (owner after OWN1).
+- The page has no account record view, so account ids are not linked.
+
+### Limitations
+- **Cohort:** the cohort is the page's range, read once. "All time" will likely truncate and then shows unavailable.
+- **Played before signup** sees only events inside the range, so it is a floor.
+- **Browser funnel:**
+  - It is dominated by single-page `unknown` traffic in the default filter. Compare against the Human-only filter.
+  - Its last step counts only signup completions recorded by that same browser.
+- **Accounts:**
+  - Accounts created before signup tracking, or whose signup row was lost, are in no cohort (as in Retention V2).
+  - Pre-signup acquisition per account is not shown.
+
+### To verify, when the guard admits it (one job at a time)
+1. Run the targeted test files through the guard. `conversion.test.ts` and `ConversionDashboard.test.tsx` are new; also run `metrics.test.ts`, `cohorts.test.ts`, `visitorJourney.test.ts`, `CohortRetention.test.tsx`, `AudienceSections.gameplay.test.tsx` and the `AdminUsersPage` tests.
+2. Run the type check (`tsconfig.app.json`) through the guard as class build. Expect only the two known baseline errors.
+3. Run the CI browser job only; per AGENTS.md, no local browsers.
+4. The owner checks the real `/admin/users` → Audience on a preview build. The release gate (push, PR, merge, publish) is the owner's.
