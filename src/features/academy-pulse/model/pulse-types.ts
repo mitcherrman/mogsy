@@ -254,16 +254,16 @@ export const CATEGORY_LABEL: Record<PulseCategory, string> = {
 
 /** Default time on screen per kind (ms): richer scenes stay longer. */
 export const KIND_DWELL_MS: Record<PulseSceneKind, number> = {
-  activity: 9000,
-  minigame: 11000,
-  leaderboard: 10000,
-  news: 9000,
-  premium: 9500,
-  sponsor: 8000,
-  creator: 10000,
-  insight: 9500,
-  question: 12000,
-  challenge: 9000,
+  activity: 14500,
+  minigame: 16000,
+  leaderboard: 14500,
+  news: 17000,
+  premium: 17000,
+  sponsor: 12000,
+  creator: 17000,
+  insight: 15000,
+  question: 20000,
+  challenge: 15000,
 };
 
 export function dwellFor(item: PulseItem): number {
