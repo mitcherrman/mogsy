@@ -39,3 +39,41 @@ export const fixturePulseProvider: PulseContentProvider = {
   load: async () => fixturePulseCatalogue(),
   peek: () => fixturePulseCatalogue(),
 };
+
+
+/**
+ * Initial public launch catalogue. Until PULSE-2 has consented, authoritative
+ * player results, sponsor bookings and real creator URLs, public viewers get
+ * ONLY verified Academy editorial content and an unscored mini-game.
+ *
+ * Never expose fake players, rankings, personal metrics, sponsor campaigns,
+ * Twitch LIVE badges or upcoming event dates on the public Home Hub.
+ * The development scene lab keeps the full explicitly labelled fixture set.
+ */
+export const PUBLIC_PULSE_ITEM_IDS: readonly string[] = [
+  "fx-minigame-dial",
+  "fx-news-hover",
+  "fx-news-patch-deck",
+  "fx-premium-lead",
+  "fx-question-fox",
+];
+
+export function publicPulseCatalogue(): PulseCatalogue {
+  const allowed = new Set(PUBLIC_PULSE_ITEM_IDS);
+  const safe = PULSE_FIXTURE_ITEMS
+    .filter((item) => allowed.has(item.id))
+    .map((item): PulseItem => {
+      const resolved = withResolvedPremium(item);
+      if (resolved.kind === "news") {
+        return { ...resolved, id: `editorial-${resolved.id}`, provenance: "live", dateLabel: "Academy update" };
+      }
+      return { ...resolved, id: `editorial-${resolved.id}`, provenance: "live" };
+    });
+  return fixtureCatalogue(safe);
+}
+
+export const publicPulseProvider: PulseContentProvider = {
+  id: "public-editorial-v1",
+  load: async () => publicPulseCatalogue(),
+  peek: () => publicPulseCatalogue(),
+};
