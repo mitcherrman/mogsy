@@ -76,7 +76,15 @@ function move(state: PulseRotationState, to: number, direction: 1 | -1, manual: 
     cycle,
     direction,
     epoch: state.epoch + 1,
-    holds: manual ? withHold(state.holds, "interaction", false) : state.holds,
+    // A deliberate Next/Previous/pip selection releases a lingering mouse
+    // hover and the preceding scene's interaction hold. Keyboard focus is
+    // preserved, so keyboard users can inspect the new scene safely.
+    holds: manual ? (() => {
+      const h = new Set(state.holds);
+      h.delete("hover");
+      h.delete("interaction");
+      return h;
+    })() : state.holds,
   };
 }
 
@@ -96,8 +104,17 @@ export function rotationReducer(state: PulseRotationState, action: PulseRotation
       const holds = withHold(state.holds, action.reason, action.on);
       return holds === state.holds ? state : { ...state, holds };
     }
-    case "toggle-user":
-      return { ...state, holds: withHold(state.holds, "user", !state.holds.has("user")) };
+    case "toggle-user": {
+      if (isRotating(state)) {
+        return { ...state, holds: withHold(state.holds, "user", true) };
+      }
+      // Play is an explicit request to resume, even if a previous click left
+      // pointer hover/focus/interaction holds behind. Never override safety
+      // holds for an expanded dialog, an offscreen device or a hidden tab.
+      const holds = new Set(state.holds);
+      for (const reason of ["user", "hover", "focus", "interaction"] as const) holds.delete(reason);
+      return { ...state, holds };
+    }
     case "resize": {
       if (action.length === state.length) return state;
       const index = action.length === 0 ? 0 : Math.min(state.index, action.length - 1);

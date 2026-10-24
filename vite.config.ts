@@ -37,6 +37,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    // Skip per-chunk gzip-size reporting: with ~5k modules it exhausts the
+    // default Node heap during "computing gzip size" and fails the build (OOM).
+    reportCompressedSize: false,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -48,6 +48,7 @@ import type { AdminInboxItem, PlayerInboxItem } from "@/lib/notifications/api";
 import { adminRecordLink, formatRelative } from "@/lib/notifications/policy";
 import { useAdminInbox } from "@/lib/notifications/useAdminInbox";
 import { usePlayerInbox } from "@/lib/notifications/usePlayerInbox";
+import { NotificationErrorDetail } from "@/components/notifications/NotificationErrorDetail";
 
 /**
  * Notifications 2.0 (#92). What the bell lists is decided by the SERVER:
@@ -223,14 +224,13 @@ export default function MogzyIdentityMenu() {
     onArrival: n => toast(n.title, { description: n.message || undefined, icon: "🛡️" }),
   });
 
-  // A failed read of either feed means the state is genuinely unknown; an
-  // error with a retry beats a confidently empty bell.
+  // A failed read means that feed's state is genuinely unknown; an error with
+  // a retry beats a confidently empty bell. The two feeds fail separately
+  // (#146): a refused owner feed used to blank the owner's own player
+  // notifications too, so the admin feed now reports inline, in its section.
   const panelStatus: "loading" | "ready" | "error" =
-    player.status === "error" || (isAdmin && admin.status === "error")
-      ? "error"
-      : player.status === "loading"
-        ? "loading"
-        : "ready";
+    player.status === "error" ? "error" : player.status === "loading" ? "loading" : "ready";
+  const adminFailed = isAdmin && admin.status === "error";
 
   const closePanel = useCallback(() => {
     setOpen(false);
@@ -736,13 +736,27 @@ export default function MogzyIdentityMenu() {
           {panelStatus === "error" && (
             <div data-testid="notification-error" className="px-3 py-4 text-center">
               <p className="text-xs text-muted-foreground">Couldn’t load your notifications.</p>
+              <NotificationErrorDetail error={player.error} />
               <button
                 type="button"
                 onClick={() => {
-                  // Both feeds are part of what failed, so the retry reloads both.
                   void player.refresh();
                   if (isAdmin) void admin.refresh();
                 }}
+                className="mt-1 text-[10px] text-primary hover:underline"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {panelStatus === "ready" && adminFailed && (
+            <div data-testid="hud-admin-error" className="border-b border-border px-3 py-2 text-center">
+              <p className="text-xs text-muted-foreground">Couldn’t load the admin inbox.</p>
+              <NotificationErrorDetail error={admin.error} />
+              <button
+                type="button"
+                onClick={() => void admin.refresh()}
                 className="mt-1 text-[10px] text-primary hover:underline"
               >
                 Try again
@@ -754,7 +768,7 @@ export default function MogzyIdentityMenu() {
             <>
               {/* Admin: the top of Action Required and the counters, linked to
                   the full inbox. Owner session only. */}
-              {isAdmin && admin.counts && (
+              {isAdmin && !adminFailed && admin.counts && (
                 <div data-testid="hud-admin-section" className="border-b border-border">
                   <Link
                     to={ADMIN_NOTIFICATIONS_PATH}

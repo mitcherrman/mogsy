@@ -15,6 +15,7 @@ import {
   type PlayerCategory,
 } from "@/lib/notifications/policy";
 import { usePlayerInbox } from "@/lib/notifications/usePlayerInbox";
+import { NotificationErrorDetail } from "@/components/notifications/NotificationErrorDetail";
 import { cn } from "@/lib/utils";
 
 /**
@@ -207,6 +208,7 @@ export default function Notifications() {
             {inbox.status === "error" && (
               <div className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">Couldn’t load your notifications.</p>
+                <NotificationErrorDetail error={inbox.error} />
                 <Button size="sm" variant="link" onClick={() => void inbox.refresh()}>
                   Try again
                 </Button>

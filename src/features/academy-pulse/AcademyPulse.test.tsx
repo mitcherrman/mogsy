@@ -115,9 +115,67 @@ describe("the device", () => {
     expect(scene()).toHaveAttribute("data-category", "player-activity");
     expect(root).toHaveAttribute("data-playing", "false");
     fireEvent.pointerOut(root, { pointerType: "mouse", relatedTarget: document.body });
-    fireEvent.focus(screen.getByTestId("academy-pulse-expand"));
+    const expand = screen.getByTestId("academy-pulse-expand");
+    // Keyboard focus has the :focus-visible indicator. Generic scripted focus
+    // (or a mouse click) does not represent keyboard intent anymore.
+    const matches = vi.spyOn(expand, "matches");
+    matches.mockImplementation((selector) => selector === ":focus-visible" ? true : HTMLElement.prototype.matches.call(expand, selector));
+    fireEvent.focus(expand);
+    expect(root).toHaveAttribute("data-playing", "false");
     await new Promise((r) => setTimeout(r, 250));
     expect(scene()).toHaveAttribute("data-category", "player-activity");
+    matches.mockRestore();
+  });
+
+  it("a parked mouse releases its hover hold after a finite grace period", () => {
+    vi.useFakeTimers();
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
+    expect(root).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(5_900); });
+    expect(root).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(root).toHaveAttribute("data-playing", "true");
+  });
+
+  it("new genuine mouse movement starts another brief reading grace", () => {
+    vi.useFakeTimers();
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    fireEvent.pointerOver(root, { pointerType: "mouse", clientX: 20, clientY: 20, relatedTarget: document.body });
+    act(() => { vi.advanceTimersByTime(6_100); });
+    expect(root).toHaveAttribute("data-playing", "true");
+    fireEvent.pointerMove(root, { pointerType: "mouse", clientX: 60, clientY: 28 });
+    expect(root).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(6_100); });
+    expect(root).toHaveAttribute("data-playing", "true");
+  });
+
+  it("Play overrides a transient hover hold and updates its true playing state", () => {
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    const toggle = screen.getByTestId("academy-pulse-toggle");
+    fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
+    expect(root).toHaveAttribute("data-playing", "false");
+    expect(toggle).toHaveAccessibleName("Play Academy Pulse");
+    fireEvent.click(toggle);
+    expect(root).toHaveAttribute("data-playing", "true");
+    expect(toggle).toHaveAccessibleName("Pause Academy Pulse");
+  });
+
+  it("mouse focus on a scene control does not persist as keyboard focus after pointer departure", () => {
+    mount({ provider: provider(30_000) });
+    const root = screen.getByTestId("academy-pulse");
+    const next = screen.getByTestId("academy-pulse-next");
+    const matches = vi.spyOn(next, "matches");
+    matches.mockImplementation((selector) => selector === ":focus-visible" ? false : HTMLElement.prototype.matches.call(next, selector));
+    fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
+    fireEvent.focus(next);
+    fireEvent.click(next);
+    fireEvent.pointerOut(root, { pointerType: "mouse", relatedTarget: document.body });
+    expect(root).toHaveAttribute("data-playing", "true");
+    matches.mockRestore();
   });
 
   it("reduced motion starts paused", () => {
@@ -143,6 +201,18 @@ describe("scenes are interactive, and nothing they do leaves the browser", () =>
     expect(scene()).toHaveAttribute("data-scene", "question");
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("an answered practice question releases its interaction hold after ten quiet seconds", () => {
+    vi.useFakeTimers();
+    mount({ startAt: "fx-question-fox", provider: provider(30_000) });
+    const pulse = screen.getByTestId("academy-pulse");
+    fireEvent.click(screen.getByTestId("pulse-question-option-lux"));
+    expect(pulse).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(9_900); });
+    expect(pulse).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(pulse).toHaveAttribute("data-playing", "true");
   });
 
   it("a leaderboard row opens an inspect card; closing it returns focus to the row", async () => {

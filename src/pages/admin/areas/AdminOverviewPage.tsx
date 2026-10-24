@@ -19,6 +19,7 @@ import { AdminAreaHeader, AdminPanel, useAreaSection } from "@/components/admin/
 import { useAdminAttention } from "@/lib/admin/useAdminAttention";
 import { ADMIN_AREAS_BY_ID, ADMIN_ALL_TOOLS_PATH } from "@/lib/admin/admin-registry";
 import { OverviewVisitorJourneys } from "@/components/admin/users/OverviewVisitorJourneys";
+import { RetentionGlance } from "@/components/admin/users/CohortRetention";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -218,6 +219,7 @@ export default function AdminOverviewPage() {
       <AdminAreaHeader area={area} active={section} onSelect={setSection} />
       <div className="space-y-4">
         <OverviewVisitorJourneys />
+        <RetentionGlance />
         <PlatformCounts />
         <AttentionQueue />
         <Shortcuts />
