@@ -175,4 +175,9 @@ The two can coexist, but these points disagree. Neither PR is wrong to merge alo
 
 **Fix.** Every decision is compared to its literal discriminant (`d.ok === false`, `live.live === false`, `c.ok === true`), and that is commented at the adapter. No type was widened, no cast or `any` was added, and no validation rule changed.
 
-**Results:** local partner and model vitest 124/124, eslint clean, local typecheck refused by the guard (§8). CI: see the PR.
+**Results:**
+- Local partner and model vitest: 124/124. eslint is clean. The local typecheck was refused by the guard (§8).
+- CI on code head `d5b28e5b`:
+  - `academy-pulse-partners` **success** (run 40089420778): vitest 125/125, eslint clean. The typecheck reports **0 errors in `content/partners`**, against 10 before. Across the whole repository 2 errors remain, both elsewhere and pre-existing; the run before the fix reported 12.
+  - `academy-pulse` **success** (run 40089420756): vitest, build, the DEV-lab bundle guard and Playwright Pulse acceptance. PULSE-1 is unaffected.
+- The commit after `d5b28e5b` changes only this handoff. Neither workflow triggers on `docs/**`, so that CI evidence applies unchanged.
