@@ -649,3 +649,14 @@ The owner authorised implementation without running the pending checks. **Nothin
 2. Run the type check (`tsconfig.app.json`) through the guard as class build. Expect only the two known baseline errors.
 3. Run the CI browser job only; per AGENTS.md, no local browsers.
 4. The owner checks the real `/admin/users` → Audience on a preview build. The release gate (push, PR, merge, publish) is the owner's.
+
+---
+
+## 12. Release preparation (2026-10-24): draft PR, still UNTESTED
+
+- Draft PR: https://github.com/mitcherrman/mogsy/pull/156 (base `main`), titled `[UNTESTED]`. It was opened through the REST API because `gh` is not installed, so the desktop app cannot bind or monitor it.
+- Implementation SHA pushed and attached to the PR: `9cae759645dc14a948e784f8e90488c07d8ee1f5`. This handoff update is a doc-only commit on top of it.
+- Base at push time: `origin/main` `6e334d60`. `git merge-tree` reported no conflicts.
+- The PR description carries the UNTESTED label, the definitions, the limitations (D-6 server play unavailable, D-1 not applicable, CV3 excluded), the security boundaries and the planned verification from §11.
+- Nothing has been executed, merged or published, and no production data was touched.
+- Release blockers: §11 verification steps 1–4 are all outstanding. CI has not been read; recent handoffs note that GitHub Actions is billing-blocked.
