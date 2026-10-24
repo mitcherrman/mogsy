@@ -5,9 +5,9 @@
 | Worktree | `C:\Users\mlmit\OneDrive\Desktop\mogzy-wt\admin-retention-v2` |
 | Branch | `admin-retention-v2/cohorts` (local, unpushed) |
 | Base | `origin/main` @ `e6b91095` (2026-10-23) |
-| Status | **Pass 0 — audit complete. Awaiting owner gate before implementation.** |
+| Status | **Pass 1 — implemented and locally verified. Awaiting owner review. Not merged, not pushed, not published.** |
 
-Nothing is merged, pushed, published or applied. No migration has been written.
+Nothing is merged, pushed, published or applied. No migration, SQL view, RLS or edge-function change.
 
 ---
 
@@ -131,17 +131,69 @@ Existing D1/D7 numbers and `computeRetention` stay byte-for-byte identical; V2 i
 - `signup_completed` is browser-reported; a missed emit drops an account from its cohort (never mis-assigns it).
 - Pre-existing UID fan-out in `engagedVisitors` / `buildVisitorRows` (noted, not changed).
 
-## 6. Files (planned)
+## 6. Decisions (owner, 2026-10-23)
 
-- `src/lib/admin/analytics/cohorts.ts` (+ `cohorts.test.ts`) — new, pure.
-- `src/components/admin/users/CohortRetention.tsx` (+ test) — new.
-- `src/components/admin/users/AudienceSections.tsx` — mount inside `RetentionSection`.
-- Optional: `src/pages/admin/areas/AdminOverviewPage.tsx` card.
+D-1 … D-6 approved as recommended: two separate lenses; account anchor = `signup_completed`; account return = any `is_guest = false` event (web or Railway); D0 + W1–W4 added beside unchanged D1/D7; Overview glance card; client-side read with truncation states (no SQL view yet).
 
-## 7. Test results / commits
+Implementation choices made inside those decisions:
 
-None yet (audit only).
+- Cohort lookback = **8 UTC weeks** (Monday start), read with its own `loadAnalytics({ start })` so D7 and the W-columns are observable regardless of the page's range preset. Day grain shows the latest **28 UTC days** of the same read.
+- Mounted in Users › Audience directly after Audience Pulse (visible, not inside "Advanced analytics"), instead of inside `RetentionSection` as planned in §3.4; the existing Return-behaviour tiles are untouched.
+- D0 (browser) = at least **two** session starts in `[first_seen, +24h)`. If the first session's row never landed, a real repeat can be missed (undercount, never overcount).
+- Truncation is per lens: browser lens unavailable if `analytics_sessions` or `analytics_visitors` truncated; account lens if `analytics_events` truncated (ascending reads lose the newest rows, i.e. the returns).
+- Shading only when eligible ≥ `MIN_RATE_SAMPLE` (20); smaller cells show `k / n` unshaded; unelapsed cells read "pending"; partially elapsed cells show `+n` pending.
+- Curve = W0 (100 %) → W1…W4 pooled, each point labelled with its own rate; hollow when n < 20. Inline SVG, no chart dependency, `aria-hidden` with a text caption; the table (with caption, `scope`, screen-reader cell sentences) is the accessible source. Draw-in transition disabled under OS or in-app reduced motion (`useReducedMotionPreference`).
+- The panel honours the Users page `?traffic=` filter; the Overview card uses the default `human + unknown`.
 
-## 8. Next steps
+## 7. Files
 
-Owner answers D-1…D-6 → implement §3 → L1 + L2 → screenshots → update this handoff → owner review. No merge or publish until reviewed.
+| File | Change |
+|---|---|
+| `src/lib/admin/analytics/cohorts.ts` | new — pure cohort engine (lenses, windows, UTC buckets, lookback) |
+| `src/lib/admin/analytics/cohorts.test.ts` | new — 14 L1 tests incl. D1/D7 parity with `computeRetention` on 7d / 30d / all |
+| `src/lib/admin/analytics/useCohortAnalytics.ts` | new — shared query, per-lens availability, report builder |
+| `src/components/admin/users/CohortRetention.tsx` | new — `CohortRetentionPanel` (Users) + `RetentionGlance` (Overview) |
+| `src/components/admin/users/CohortRetention.test.tsx` | new — 9 L2 component tests |
+| `src/lib/admin/analytics/metrics.ts` | `indexSessions`, `firstSeenByVisitor`, `sessionsByVisitor`, `SessionInfo` exported (no logic change) |
+| `src/lib/admin/analytics/loadAnalytics.ts` | parameter widened to `Pick<AnalyticsRange, "start">` (the only field it read) |
+| `src/pages/admin/areas/AdminUsersPage.tsx` | panel mounted in Audience after Audience Pulse |
+| `src/pages/admin/areas/AdminOverviewPage.tsx` | glance card after Audience journeys |
+| `docs/handoffs/admin-retention-v2/*.jpg` | preview screenshots (browser weekly dark/light, account daily, 375 px, truncated) |
+
+## 8. Test results
+
+| Level | Scope | Result |
+|---|---|---|
+| L1 | `src/lib/admin/analytics` | all pass (cohorts 14, metrics 53, audience 16, visitorJourney 22, afterDaily 6) |
+| L2 | `src/components/admin/users` + `src/lib/admin/analytics` + `src/pages/admin/areas` | **13 files, 209/209 pass** |
+| L2 | `src/pages/admin` (wider) | 1 failure, pre-existing and unrelated: `AdminPlatformPolicies.test.tsx` boundary scan expects `/` paths, gets `\` on Windows |
+| Types | `tsc -p tsconfig.app.json --noEmit` | 2 errors, both pre-existing in untouched files (`OnboardingProfile.tsx:180`, `identity/connections.ts:263`); none in changed files |
+| Lint | `eslint` on all changed files | clean |
+| Browser | built-in Browser pane; worktree Vite dev server; git-excluded harness `retention-preview.html/.tsx` that seeds the real components with a synthetic 8-week dataset via the React Query cache (no auth, no Supabase) | browser + account lenses, week + day grain, dark + light, 375 px (no page h-scroll; table scrolls in its own box), truncated and empty states, curve draw-in completes; 0 console errors. No local Edge/Chrome automation (AGENTS.md). Server stopped afterwards. |
+
+All test runs were single, sequential, short (≤ 2 s test time each). The global `mogzy-guard` vitest hook appeared only after these runs; later runs must go through `mogzy-guard.cmd run --class vitest`.
+
+Not verified: the real `/admin/users` and `/admin` routes against production data (needs an admin sign-in, which the agent does not do). Owner should open both on a preview build.
+
+Test note: `beforeEach(load.mockReset())` plus a rejecting mock made vitest report the rejection as a failure after the test body passed; the suite sets each mock per test instead.
+
+## 9. Commits (branch `admin-retention-v2/cohorts`, unpushed)
+
+- `7a359ac0` pass 0 audit handoff
+- `dd82a2bf` implementation (cohorts engine, panel, Overview card, tests)
+- docs/polish commit: tile-vs-panel note wording, screenshots, this handoff
+
+## 10. Risks
+
+- Client-side ceiling: the 8-week read is a second analytics load on Users/Overview (cache shared between them). At 50k rows/table the affected lens goes unavailable — the signal to move cohorts into SQL.
+- Browser retention is a floor (cleared storage, devices, private windows).
+- Account cohorts depend on the browser-reported `signup_completed`; a missed emit drops an account (never misassigns it). Pre-instrumentation accounts are in no cohort.
+- Account "return" includes any signed-in event, so a page view counts; a "played (server-confirmed)" variant is a later toggle.
+- Pre-existing UID fan-out in `engagedVisitors` / `buildVisitorRows` remains (out of scope, flagged in §1.3).
+- The panel's D1/D7 can legitimately differ from the existing tiles (different cohort window); the panel says so.
+
+## 11. Next steps
+
+1. Owner reviews diff + screenshots, then opens `/admin` and `/admin/users` on a preview build.
+2. If accepted: push branch, open PR (Actions billing-blocked; local evidence above).
+3. Follow-ups (not started): "played" account-return toggle; D1/W1 by first-touch source; SQL view for cohorts once volume nears the cap; resolve the UID fan-out in `metrics.ts` / `population.ts`.

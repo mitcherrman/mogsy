@@ -295,7 +295,7 @@ export function CohortRetentionView({ report, filter, unavailable, lens, grain, 
       <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
         <li>Each cell is <em>returned ÷ eligible</em>. A unit is eligible only once its whole window has passed; younger units are “pending” (the small +n), never counted as lost.</li>
         <li>Below {MIN_RATE_SAMPLE} eligible a cell shows k / n and is not shaded.</li>
-        <li>D1 and D7 use the same definitions as the existing tiles. W1–W4 are days 7–13, 14–20, 21–27, 28–34.</li>
+        <li>D1 and D7 use the same definitions as the existing tiles; the numbers can differ because those tiles take their cohort from the page’s date range, and this panel from its own {COHORT_LOOKBACK_WEEKS}-week window. W1–W4 are days 7–13, 14–20, 21–27, 28–34.</li>
         <li>Browsers and accounts are separate units and are never added together or matched to each other.</li>
       </ul>
     </div>
