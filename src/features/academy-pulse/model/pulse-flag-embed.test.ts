@@ -14,10 +14,12 @@ function memoryStorage() {
 }
 
 describe("the Pulse flag", () => {
-  it("a production build without the variable is OFF, whatever the URL says", () => {
+  it("a production build shows the public editorial feed unless explicitly disabled", () => {
     const mode = pulseFlagMode(undefined, false);
-    expect(mode).toBe("off");
-    expect(resolvePulseEnabled(mode, "?pulse=1", memoryStorage())).toBe(false);
+    expect(mode).toBe("on");
+    expect(resolvePulseEnabled(mode, "", memoryStorage())).toBe(true);
+    expect(pulseFlagMode("off", false)).toBe("off");
+    expect(resolvePulseEnabled("off", "?pulse=1", memoryStorage())).toBe(false);
   });
 
   it("the dev server is a preview: on only with ?pulse=1, remembered for the tab, forgotten with ?pulse=0", () => {
