@@ -42,9 +42,9 @@ jobs:
           src/components/audio/AcademyRadioStrip.test.tsx
           src/components/audio/AcademyRadioDock.test.tsx
           src/components/lol/broadcast
-      - name: Production build (Pulse off by default)
+      - name: Production build (Pulse public editorial provider enabled)
         run: npx vite build
-      - name: The production bundle never routes the lab and never fetches Pulse on its own
+      - name: The production bundle never routes the DEV-only scene lab
         run: |
           if grep -l "Academy Pulse lab" dist/assets/*.js; then echo "the DEV lab leaked into production"; exit 1; fi
           grep -l "academy-pulse-slot" dist/assets/*.js > /dev/null
