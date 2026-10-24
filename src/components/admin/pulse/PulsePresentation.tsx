@@ -58,7 +58,7 @@ export function PulsePresentation({ catalogue, cadence, size, startAt, paused = 
   const key = `${revisionKey}:${size}:${startAt ?? ""}:${paused}`;
   return (
     <div
-      className="relative overflow-hidden rounded-md bg-[#050a14]"
+      className="relative mt-3 rounded-md bg-[#050a14]" /* not overflow-hidden: the nameplate sits on the frame's top edge (PULSE-1 §3) */
       style={{ width: dims.w, height: dims.h, maxWidth: "100%" }}
       data-testid="pulse-admin-presentation"
       data-size={size}

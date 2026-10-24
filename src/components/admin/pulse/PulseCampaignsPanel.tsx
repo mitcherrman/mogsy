@@ -150,7 +150,7 @@ export function PulseCampaignsPanel({ snapshot, busy, write }: { snapshot: Pulse
         Every sponsor and creator item belongs to a campaign. Disclosure is fixed per campaign so the wording is reviewed once, and nothing linked can
         go live until the campaign is approved and inside its flight. PULSE-2C partner feeds attach here.
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" disabled={busy} data-testid="pulse-new-campaign-sponsor" onClick={() => { setSelected(null); setCreating(blank("sponsor")); }}>New sponsor campaign</Button>
         <Button size="sm" variant="outline" disabled={busy} data-testid="pulse-new-campaign-creator" onClick={() => { setSelected(null); setCreating(blank("creator")); }}>New creator campaign</Button>
       </div>
