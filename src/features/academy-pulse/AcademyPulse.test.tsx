@@ -115,9 +115,16 @@ describe("the device", () => {
     expect(scene()).toHaveAttribute("data-category", "player-activity");
     expect(root).toHaveAttribute("data-playing", "false");
     fireEvent.pointerOut(root, { pointerType: "mouse", relatedTarget: document.body });
-    fireEvent.focus(screen.getByTestId("academy-pulse-expand"));
+    const expand = screen.getByTestId("academy-pulse-expand");
+    // Keyboard focus has the :focus-visible indicator. Generic scripted focus
+    // (or a mouse click) does not represent keyboard intent anymore.
+    const matches = vi.spyOn(expand, "matches");
+    matches.mockImplementation((selector) => selector === ":focus-visible" ? true : HTMLElement.prototype.matches.call(expand, selector));
+    fireEvent.focus(expand);
+    expect(root).toHaveAttribute("data-playing", "false");
     await new Promise((r) => setTimeout(r, 250));
     expect(scene()).toHaveAttribute("data-category", "player-activity");
+    matches.mockRestore();
   });
 
   it("a parked mouse releases its hover hold after a finite grace period", () => {
