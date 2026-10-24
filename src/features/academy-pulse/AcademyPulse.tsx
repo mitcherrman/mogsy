@@ -25,7 +25,7 @@ import { getChampionIcon, getChampionSplash, useChampionAssets } from "@/hooks/u
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { cn } from "@/lib/utils";
 
-import { fixturePulseProvider } from "./content/pulse-provider";
+import { fixturePulseProvider, publicPulseProvider } from "./content/pulse-provider";
 import { DEFAULT_PULSE_CADENCE } from "./model/pulse-cadence";
 import { CATEGORY_LABEL, type PulseCadence, type PulseCatalogue, type PulseContentProvider } from "./model/pulse-types";
 import PulseExpanded from "./PulseExpanded";
@@ -64,7 +64,7 @@ export interface AcademyPulseProps {
 
 export default function AcademyPulse({
   variant = "desktop",
-  provider = fixturePulseProvider,
+  provider = import.meta.env.DEV ? fixturePulseProvider : publicPulseProvider,
   cadence = DEFAULT_PULSE_CADENCE,
   className,
   startAt,
@@ -205,7 +205,7 @@ export default function AcademyPulse({
                 style={{ animationDuration: `${rot.dwellMs}ms`, animationPlayState: rot.playing ? "running" : "paused" }}
               />
             )}
-            <AnimatePresence mode="wait" initial={!reduced}>
+            <AnimatePresence mode="sync" initial={!reduced}>
               {item && (
                 <motion.div
                   key={`${item.id}:${rot.epoch}`}
