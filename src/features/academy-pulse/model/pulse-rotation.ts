@@ -105,7 +105,11 @@ export function rotationReducer(state: PulseRotationState, action: PulseRotation
       return holds === state.holds ? state : { ...state, holds };
     }
     case "toggle-user": {
-      if (isRotating(state)) {
+      // The button is the viewer's own Pause. It follows that choice, not
+      // whether a transient hold (the pointer resting on Pulse to reach the
+      // button) happens to have stopped the clock: otherwise the first mouse
+      // click on Pause would read the hover hold as "paused" and resume.
+      if (!state.holds.has("user")) {
         return { ...state, holds: withHold(state.holds, "user", true) };
       }
       // Play is an explicit request to resume, even if a previous click left

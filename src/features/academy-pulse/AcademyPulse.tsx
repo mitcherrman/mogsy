@@ -89,13 +89,29 @@ export default function AcademyPulse({
   useEffect(() => { hold("expanded", expanded); }, [expanded, hold]);
   // Radix returns focus only to a Dialog.Trigger; Pulse opens from several buttons, so it remembers which
   const returnFocus = useRef<HTMLElement | null>(null);
+  // How the view was opened decides whether the restored focus is a keyboard
+  // hold: closing a mouse-opened view with Escape makes the browser treat the
+  // programmatic return as :focus-visible, which must not pause rotation for good.
+  const openedByKeyboard = useRef(false);
+  const restoringPointerFocus = useRef(false);
   const openExpanded = useCallback(() => {
-    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const el = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    returnFocus.current = el;
+    openedByKeyboard.current = !!el?.matches(":focus-visible");
     setExpanded(true);
+  }, []);
+  const restoreFocusTarget = useCallback(() => {
+    restoringPointerFocus.current = !openedByKeyboard.current && !!returnFocus.current?.isConnected;
+    return returnFocus.current;
   }, []);
   // Mouse clicks leave DOM focus on buttons. Only a visible keyboard focus
   // indicator should hold auto-rotation; pointer-created focus must not.
   const onFocus = useCallback((e: FocusEvent<HTMLElement>) => {
+    if (restoringPointerFocus.current) {
+      restoringPointerFocus.current = false;
+      hold("focus", false);
+      return;
+    }
     const target = e.target;
     hold("focus", target instanceof HTMLElement && target.matches(":focus-visible"));
   }, [hold]);
@@ -182,6 +198,8 @@ export default function AcademyPulse({
           data-variant={variant}
           data-kind={item?.kind ?? "none"}
           data-playing={rot.playing ? "true" : "false"}
+          // DEV-only diagnostics: why the clock is held (no cost in production)
+          data-holds={import.meta.env.DEV ? [...rot.holds].sort().join(" ") : undefined}
           data-reduced={reduced ? "true" : "false"}
           data-provenance={item?.provenance}
           style={{ ["--apulse-accent" as string]: accent }}
@@ -289,11 +307,11 @@ export default function AcademyPulse({
               className="apulse-icon-btn apulse-icon-btn-main"
               onClick={rot.toggle}
               disabled={count < 2}
-              aria-label={rot.playing ? "Pause Academy Pulse" : "Play Academy Pulse"}
+              aria-label={rot.userPaused ? "Play Academy Pulse" : "Pause Academy Pulse"}
               aria-pressed={rot.userPaused}
               data-testid="academy-pulse-toggle"
             >
-              {!rot.playing ? (
+              {rot.userPaused ? (
                 <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M8 5.5v13l11-6.5z" className="apulse-fill" /></svg>
               ) : (
                 <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M8.5 5.5v13M15.5 5.5v13" /></svg>
@@ -339,7 +357,7 @@ export default function AcademyPulse({
           onOpenChange={setExpanded}
           reduced={reduced}
           onInteract={rot.interact}
-          returnFocus={() => returnFocus.current}
+          returnFocus={restoreFocusTarget}
         />
       </PulseArtContext.Provider>
     </MotionConfig>

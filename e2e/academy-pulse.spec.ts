@@ -207,9 +207,7 @@ test.describe("behaviour at 1366x768", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("academy-pulse-toggle")).toBeFocused();
     await expect(pulse).toHaveAttribute("data-playing", "false");
-    // Play should explicitly resume even while this keyboard focus remains.
-    await page.keyboard.press("Enter");
-    await expect(pulse).toHaveAttribute("data-playing", "true");
+    // keyboard focus holds the clock, but the button still offers the viewer's own Pause (PULSE-1.2)
     await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
     // An intentional Pause persists after both pointer and focus leave.
     await page.keyboard.press("Enter");
@@ -222,6 +220,66 @@ test.describe("behaviour at 1366x768", () => {
     await page.mouse.move(900, 400);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await expect(pulse).toHaveAttribute("data-playing", "true");
+  });
+
+  test("PULSE-1.2: the mouse pauses on the first click and resumes on the next (data-holds diagnostics)", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    const toggle = page.getByTestId("academy-pulse-toggle");
+    await toggle.hover();
+    await expect(pulse).toHaveAttribute("data-holds", "hover");
+    await expect(toggle).toHaveAccessibleName("Pause Academy Pulse");
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName("Play Academy Pulse");
+    await expect(pulse).toHaveAttribute("data-holds", /\buser\b/);
+    // leaving keeps the viewer's Pause
+    await page.mouse.move(900, 400);
+    await expect(pulse).toHaveAttribute("data-holds", "user");
+    await expect(pulse).toHaveAttribute("data-playing", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName("Pause Academy Pulse");
+    await expect(pulse).toHaveAttribute("data-playing", "true");
+  });
+
+  test("PULSE-1.2: expanding and closing restores rotation; the next scene arrives on its own", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    await page.getByTestId("academy-pulse-expand").click();
+    await expect(pulse).toHaveAttribute("data-holds", /\bexpanded\b/);
+    await page.getByTestId("pulse-expanded-close").click();
+    await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);
+    await page.mouse.move(900, 400);
+    await expect(pulse).toHaveAttribute("data-holds", "");
+    const before = await incomingScene(page).getAttribute("data-category");
+    await expect(incomingScene(page)).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
+  });
+
+  test("PULSE-1.2: mouse-opened expanded view closed with Escape does not leave rotation paused", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    await page.getByTestId("academy-pulse-expand").click(); // mouse
+    await expect(page.getByTestId("pulse-expanded")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);
+    await page.mouse.move(900, 400); // pointer leaves Pulse
+    // past the 6 s hover grace: nothing may still hold the clock
+    await expect(pulse).toHaveAttribute("data-holds", "", { timeout: 8_000 });
+    await expect(pulse).toHaveAttribute("data-playing", "true");
+    const before = await incomingScene(page).getAttribute("data-category");
+    await expect(incomingScene(page)).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
+  });
+
+  test("PULSE-1.2: a keyboard-opened expanded view closed with Escape keeps the keyboard focus hold", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    await page.getByTestId("academy-pulse-next").focus();
+    await page.keyboard.press("Tab"); // the current pip
+    await page.keyboard.press("Tab"); // Expand
+    await expect(page.getByTestId("academy-pulse-expand")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("pulse-expanded")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);
+    await expect(page.getByTestId("academy-pulse-expand")).toBeFocused();
+    await page.mouse.move(900, 400);
+    await page.waitForTimeout(7_000);
+    await expect(pulse).toHaveAttribute("data-holds", "focus");
   });
 
   test("hovering holds the rotation; leaving lets it go", async ({ page }) => {
@@ -250,10 +308,14 @@ test.describe("behaviour at 1366x768", () => {
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await expect(pulse).toHaveAttribute("data-playing", "false");
     await expect(pulse).toHaveAttribute("data-playing", "true", { timeout: 10_000 });
-    // A deliberate Play click must also clear a hover pause immediately.
+    // While hovering, the button still offers the viewer's Pause (PULSE-1.2): the first click
+    // pauses; Play then resumes at once and clears the hover pause too.
     await page.mouse.move(900, 400);
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await expect(pulse).toHaveAttribute("data-playing", "false");
+    await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
+    await page.getByTestId("academy-pulse-toggle").click();
+    await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Play Academy Pulse");
     await page.getByTestId("academy-pulse-toggle").click();
     await expect(pulse).toHaveAttribute("data-playing", "true");
     await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
