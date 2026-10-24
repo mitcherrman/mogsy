@@ -125,7 +125,7 @@ describe("computeBrowserConversion", () => {
     expect(step(r, "leaguecraft").reached.has("b")).toBe(true);
     expect(step(r, "account_created").reached.has("b")).toBe(false);
     expect(step(r, "account_created").enteredLater.has("b")).toBe(true);
-    expect(r.furthest.leaguecraft.has("b")).toBe(true);
+    expect(r.furthest.leaguecraft!.has("b")).toBe(true);
   });
 
   it("orders by received_at and lets equal timestamps count as after", () => {
@@ -272,6 +272,27 @@ describe("computeBrowserConversion", () => {
     const r = computeBrowserConversion(ds, BOUNDS, NOW);
     expect(r.daily.started).toEqual({ numerator: 1, denominator: 1 });
     expect(r.daily.standardCompleted).toEqual({ numerator: 1, denominator: 1 });
+  });
+
+  it("can leave server play out of the chain without gating later steps on it (D-6)", () => {
+    const ds = dataset([
+      browser("n", T),
+      {
+        events: [
+          web("leaguecraft_opened", T + HOUR, "n"),
+          web("ranked_opened", T + 2 * HOUR, "n"),
+          web("signup_viewed", T + 3 * HOUR, "n"),
+          web("signup_completed", T + 4 * HOUR, "n", { user_id: "u-n" }),
+        ],
+      },
+    ]);
+    const gated = computeBrowserConversion(ds, BOUNDS, NOW);
+    expect(step(gated, "account_created").reached.has("n")).toBe(false);
+    const r = computeBrowserConversion(ds, BOUNDS, NOW, { excludeServerPlay: true });
+    expect(r.excludedSteps).toEqual(["server_play"]);
+    expect(r.steps.map((s) => s.id)).not.toContain("server_play");
+    expect(step(r, "account_created").reached.has("n")).toBe(true);
+    expect(r.furthest.server_play).toBeUndefined();
   });
 
   it("is unavailable when any read hit the row cap", () => {

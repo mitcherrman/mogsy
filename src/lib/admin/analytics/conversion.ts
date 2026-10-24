@@ -138,8 +138,10 @@ export interface BrowserConversionReport {
   eligible: Set<string>;
   tooRecent: Set<string>;
   steps: ConversionStep[];
-  /** Eligible browsers by the furthest step reached in order. Sums to eligible. */
-  furthest: Record<BrowserStepId, Set<string>>;
+  /** Eligible browsers by the furthest step reached in order. Sums to eligible. Excluded steps are absent. */
+  furthest: Partial<Record<BrowserStepId, Set<string>>>;
+  /** Steps left out of the ordered chain (see options.excludeServerPlay). */
+  excludedSteps: BrowserStepId[];
   /**
    * Railway starts in the dataset that correlate to some browser, out of all
    * Railway starts. Low coverage means server_play under-reads; the caller
@@ -173,9 +175,19 @@ export function computeBrowserConversion(
   ds: AnalyticsDataset,
   bounds: ConversionBounds,
   now: number,
-  options: { windowMs?: number; truncated?: TruncationFlags } = {},
+  options: {
+    windowMs?: number;
+    truncated?: TruncationFlags;
+    /**
+     * D-6: leave server_play out of the chain, so later steps are not gated on
+     * a correlation whose coverage is unestablished. Coverage is still reported.
+     */
+    excludeServerPlay?: boolean;
+  } = {},
 ): BrowserConversionReport {
   const windowMs = options.windowMs ?? BROWSER_CONVERSION_WINDOW_MS;
+  const excludedSteps: BrowserStepId[] = options.excludeServerPlay ? ["server_play"] : [];
+  const defs = BROWSER_STEPS.filter((d) => !excludedSteps.includes(d.id));
   const firstSeen = firstSeenByVisitor(ds, indexSessions(ds));
   const sessionOwners = new Map(ds.sessions.map((s) => [s.session_id, s.visitor_id]));
 
@@ -217,8 +229,8 @@ export function computeBrowserConversion(
   const cohort = new Set<string>();
   const eligible = new Set<string>();
   const tooRecent = new Set<string>();
-  const reached = BROWSER_STEPS.map(() => new Set<string>());
-  const later = BROWSER_STEPS.map(() => new Set<string>());
+  const reached = defs.map(() => new Set<string>());
+  const later = defs.map(() => new Set<string>());
   let dailyStarted = 0;
   let dailyStandardDone = 0;
 
@@ -237,8 +249,8 @@ export function computeBrowserConversion(
     reached[0].add(v);
     let prev = anchor;
     let inOrder = true;
-    for (let k = 1; k < BROWSER_STEPS.length; k++) {
-      const times = (steps?.get(BROWSER_STEPS[k].id) ?? []).filter(inWindow);
+    for (let k = 1; k < defs.length; k++) {
+      const times = (steps?.get(defs[k].id) ?? []).filter(inWindow);
       if (inOrder) {
         const next = times.filter((t) => t >= prev).sort((a, b) => a - b)[0];
         if (next !== undefined) {
@@ -255,7 +267,7 @@ export function computeBrowserConversion(
     if ((dailyStandard.get(v) ?? []).some(inWindow)) dailyStandardDone += 1;
   }
 
-  const steps: ConversionStep[] = BROWSER_STEPS.map((def, k) => {
+  const steps: ConversionStep[] = defs.map((def, k) => {
     const next = reached[k + 1];
     const dropped = new Set([...reached[k]].filter((v) => !next || !next.has(v)));
     return {
@@ -270,7 +282,7 @@ export function computeBrowserConversion(
 
   const furthest = Object.fromEntries(
     steps.map((s, k) => [s.id, k === steps.length - 1 ? s.reached : s.dropped]),
-  ) as Record<BrowserStepId, Set<string>>;
+  ) as Partial<Record<BrowserStepId, Set<string>>>;
 
   return {
     windowMs,
@@ -279,6 +291,7 @@ export function computeBrowserConversion(
     tooRecent,
     steps,
     furthest,
+    excludedSteps,
     serverPlayCoverage: { correlated, total },
     daily: { started: rate(dailyStarted, eligible.size), standardCompleted: rate(dailyStandardDone, eligible.size) },
     unavailableReason: truncationReason(options.truncated),
