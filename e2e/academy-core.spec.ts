@@ -306,7 +306,17 @@ test.describe("desktop", () => {
     await expect(page).toHaveURL(/\/quiz\/daily-challenge$/);
     await page.goBack();
     await expect(page.getByTestId("academy-core-book")).toBeVisible();
-    await page.getByTestId("academy-core-book").getByRole("link", { name: /Read full report/i }).click();
+    // The floating Patch Report never settles geometrically: Playwright's
+    // locator.click() waits for a stable box until timeout. A real visitor can
+    // click it during levitation, so perform a real hit-tested pointer click.
+    const reportLink = page.getByTestId("academy-core-book").getByRole("link", { name: /Read full report/i });
+    await expect(reportLink).toBeVisible();
+    const r = (await reportLink.boundingBox())!;
+    const p = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    const hit = await page.evaluate(({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest('a[href^="/lol/patch-reports"]') !== null, p);
+    expect(hit, "Patch Report link accepts a real pointer hit").toBe(true);
+    await page.mouse.click(p.x, p.y);
     await expect(page).toHaveURL(/\/lol\/patch-reports\?patch=26\.20$/);
   });
 
