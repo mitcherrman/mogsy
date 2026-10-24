@@ -88,12 +88,15 @@ export default function PulseExpanded({
   onOpenChange,
   reduced,
   onInteract,
+  returnFocus,
 }: {
   item: PulseItem | null;
   open: boolean;
   onOpenChange(open: boolean): void;
   reduced: boolean;
   onInteract(): void;
+  /** Where focus goes back to on close (the button that opened it). */
+  returnFocus(): HTMLElement | null;
 }) {
   return (
     <Dialog.Root open={open && !!item} onOpenChange={onOpenChange}>
@@ -106,6 +109,10 @@ export default function PulseExpanded({
             style={{ ["--apulse-accent" as string]: SCENE_ACCENT[item.kind] }}
             data-testid="pulse-expanded"
             aria-describedby={undefined}
+            onCloseAutoFocus={(e) => {
+              const el = returnFocus();
+              if (el?.isConnected) { e.preventDefault(); el.focus(); }
+            }}
           >
             <header className="apulse-x-head">
               <p className="apulse-x-cat">

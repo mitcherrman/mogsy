@@ -86,6 +86,12 @@ export default function AcademyPulse({
   const { hold } = rot;
   const [expanded, setExpanded] = useState(false);
   useEffect(() => { hold("expanded", expanded); }, [expanded, hold]);
+  // Radix returns focus only to a Dialog.Trigger; Pulse opens from several buttons, so it remembers which
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const openExpanded = useCallback(() => {
+    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setExpanded(true);
+  }, []);
   const onFocus = useCallback(() => hold("focus", true), [hold]);
   const onBlur = useCallback((e: FocusEvent<HTMLElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hold("focus", false);
@@ -212,9 +218,9 @@ export default function AcademyPulse({
                   data-category={item.category}
                 >
                   {compact ? (
-                    <TickerScene item={item} reduced={reduced} onInteract={rot.interact} onExpand={() => setExpanded(true)} />
+                    <TickerScene item={item} reduced={reduced} onInteract={rot.interact} onExpand={openExpanded} />
                   ) : (
-                    <SceneRenderer item={item} reduced={reduced} onInteract={rot.interact} onExpand={() => setExpanded(true)} />
+                    <SceneRenderer item={item} reduced={reduced} onInteract={rot.interact} onExpand={openExpanded} />
                   )}
                 </motion.div>
               )}
@@ -267,7 +273,7 @@ export default function AcademyPulse({
             <button
               type="button"
               className="apulse-icon-btn"
-              onClick={() => setExpanded(true)}
+              onClick={openExpanded}
               disabled={!item}
               aria-label="Expand this scene"
               aria-haspopup="dialog"
@@ -279,7 +285,14 @@ export default function AcademyPulse({
           <p className="sr-only" aria-live="polite">{rot.userPaused ? "Academy Pulse paused" : ""}</p>
         </section>
 
-        <PulseExpanded item={item} open={expanded} onOpenChange={setExpanded} reduced={reduced} onInteract={rot.interact} />
+        <PulseExpanded
+          item={item}
+          open={expanded}
+          onOpenChange={setExpanded}
+          reduced={reduced}
+          onInteract={rot.interact}
+          returnFocus={() => returnFocus.current}
+        />
       </PulseArtContext.Provider>
     </MotionConfig>
   );

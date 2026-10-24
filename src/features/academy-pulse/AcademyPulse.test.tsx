@@ -192,6 +192,7 @@ describe("scenes are interactive, and nothing they do leaves the browser", () =>
 describe("the expanded view", () => {
   it("opens as a modal over the current scene, holds the rotation and closes with Escape", async () => {
     mount({ provider: provider(60) });
+    screen.getByTestId("academy-pulse-expand").focus();
     fireEvent.click(screen.getByTestId("academy-pulse-expand"));
     const dialog = await screen.findByTestId("pulse-expanded");
     expect(dialog).toHaveAttribute("role", "dialog");
@@ -200,6 +201,7 @@ describe("the expanded view", () => {
     expect(scene()).toHaveAttribute("data-category", "player-activity");
     fireEvent.keyDown(dialog, { key: "Escape" });
     await waitFor(() => expect(screen.queryByTestId("pulse-expanded")).toBeNull());
+    expect(document.activeElement).toBe(screen.getByTestId("academy-pulse-expand"));
   });
 
   it("a creator video loads no player until asked, and Academy Radio yields while it plays", async () => {

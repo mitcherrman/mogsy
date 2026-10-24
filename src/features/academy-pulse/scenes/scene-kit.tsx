@@ -190,7 +190,8 @@ export function ChampionArt({ src, className, alt = "" }: { src: string | null; 
       className={className}
       decoding="async"
       // the scene is already on screen when this mounts; low priority keeps it behind the page's own art
-      fetchPriority="low"
+      // (lowercase: React 18 passes it through as an attribute)
+      {...({ fetchpriority: "low" } as Record<string, string>)}
       draggable={false}
       onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
     />
