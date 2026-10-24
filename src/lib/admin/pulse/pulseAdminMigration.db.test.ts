@@ -8,16 +8,23 @@
  *
  * Proves the server, not the UI, protects every write:
  *   - anon and players can't read the tables, can't call the admin RPCs, and
- *     can't write the tables directly;
- *   - even the owner can't write the tables directly (RPCs only);
- *   - an unattested aal1 owner gets step_up_required; campaign decisions need
- *     a fresh MFA;
- *   - the public read applies every eligibility rule and leaks nothing.
+ *     can't write the tables directly; even the owner can't write directly;
+ *   - the assurance policy (policy.ts) row by row: each action is attempted at
+ *     "trusted" (owner at aal2 whose MFA is an hour old) and at "fresh"
+ *     (MFA 30 s ago), and the database must demand exactly what policy.ts says;
+ *   - partner records are stored and emitted in PULSE-2C's shape, behind the
+ *     host allowlist and the migration-only release gates;
+ *   - the public read applies every rule and leaks nothing.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+
+import type { OwnerActionLevel } from "@/lib/admin-auth/ownerAction";
+
+import type { PulsePublicCatalogue } from "./contract";
+import { hostAllowlistLevel, killLevel, partnerSaveLevel, partnerTransitionLevel } from "./policy";
 
 const OWNER = "0aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const PLAYER = "0bbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -81,8 +88,10 @@ type Who =
   | { role: "anon" }
   | { role: "authenticated"; uid: string; aal?: "aal1" | "aal2"; mfaSecondsAgo?: number };
 
-const OWNER_MFA: Who = { role: "authenticated", uid: OWNER, aal: "aal2", mfaSecondsAgo: 30 };
-const OWNER_STALE_MFA: Who = { role: "authenticated", uid: OWNER, aal: "aal2", mfaSecondsAgo: 3600 };
+/** Owner, MFA 30 s ago: passes 'fresh_aal2'. */
+const FRESH: Who = { role: "authenticated", uid: OWNER, aal: "aal2", mfaSecondsAgo: 30 };
+/** Owner at aal2 whose MFA is an hour old: passes 'trusted', fails 'fresh_aal2'. */
+const TRUSTED: Who = { role: "authenticated", uid: OWNER, aal: "aal2", mfaSecondsAgo: 3600 };
 const OWNER_AAL1: Who = { role: "authenticated", uid: OWNER, aal: "aal1" };
 const PLAYER_AAL2: Who = { role: "authenticated", uid: PLAYER, aal: "aal2", mfaSecondsAgo: 30 };
 const ANON: Who = { role: "anon" };
@@ -118,19 +127,50 @@ async function ok(who: Who, sql: string, params: unknown[] = []) {
 const one = async <T = Record<string, unknown>>(who: Who, sql: string, params: unknown[] = []) =>
   (await ok(who, sql, params))[0].r as T;
 
+/** Superuser view, bypassing RLS (what the database actually holds). */
+const peek = async <T = Record<string, unknown>>(sql: string, params: unknown[] = []) => {
+  await db.exec("RESET ROLE;");
+  return (await db.query<T>(sql, params)).rows;
+};
+
+const publicCatalogue = (who: Who = ANON) => one<PulsePublicCatalogue>(who, `SELECT public.pulse_public_catalogue() AS r`);
+
 const news = (headline: string, extra: Record<string, unknown> = {}) => ({
-  id: null, label: headline || "Untitled", publishAt: null, expiresAt: null, priority: 10, featured: false, campaignId: null, note: "secret internal note",
+  id: null, label: headline || "Untitled", publishAt: null, expiresAt: null, priority: 10, featured: false, note: "secret internal note",
   payload: {
     id: "", kind: "news", category: "news", provenance: "live", title: headline, variant: "announcement", kicker: "Academy update",
     headline, summary: "s", body: ["b"], dateLabel: "Academy update", href: "/quiz", ctaLabel: "Read", ...extra,
   },
 });
-
 const saveItem = (who: Who, item: unknown, rev: number | null) =>
   run(who, `SELECT public.pulse_admin_save_item($1::jsonb, $2) AS r`, [JSON.stringify(item), rev]);
-const publicCatalogue = async (who: Who = ANON) =>
-  one<{ items: { item: Record<string, unknown>; disclosure: unknown }[]; fallbackToStatic: boolean; cadence: { slots: string[] } }>(
-    who, `SELECT public.pulse_public_catalogue() AS r`);
+
+const iso = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
+
+const sponsorRecord = (id: string, extra: Record<string, unknown> = {}) => ({
+  id, sponsorName: "Example Co", campaignTitle: "Autumn", tagline: "Autumn at Example Co", ctaLabel: "Learn more",
+  artwork: { url: "/placeholder.svg", alt: "Example Co autumn art" },
+  destinationUrl: "https://example.com/autumn", approvedHosts: ["example.com"],
+  disclosure: { label: "Sponsored", advertiser: "Example Co" },
+  window: { startsAt: iso(-24), endsAt: iso(24 * 20) }, placement: { surfaces: ["academy-pulse"] }, ...extra,
+});
+const creatorRecord = (id: string, extra: Record<string, unknown> = {}) => ({
+  id, creatorName: "Example Creator", creatorTag: "Creator",
+  media: { platform: "youtube", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", title: "Five Daily habits" }, ...extra,
+});
+
+type Partner = { record: { id: string; status: string }; revision: number; type: "sponsor" | "creator"; compensation: string | null };
+const savePartner = (who: Who, type: string, record: unknown, compensation: string | null, rev: number | null) =>
+  run(who, `SELECT public.pulse_admin_save_partner($1, $2::jsonb, $3, 'internal contract ref 42', $4) AS r`,
+    [type, JSON.stringify(record), compensation, rev]);
+const partnerAct = (who: Who, id: string, action: string, note: string, rev: number) =>
+  run(who, `SELECT public.pulse_admin_transition_partner($1, $2, $3, $4) AS r`, [id, action, note, rev]);
+const partnerNow = async (id: string): Promise<Partner> =>
+  one<Partner>(FRESH, `SELECT (public.pulse_admin_snapshot()->'partners') @? '$[*]' AS x, (
+      SELECT p FROM jsonb_array_elements(public.pulse_admin_snapshot()->'partners') p WHERE p#>>'{record,id}' = $1) AS r`, [id]);
+
+/** Did the database demand a fresh MFA? (trusted attempt refused with step_up_required, nothing changed) */
+const isStepUp = (r: Outcome) => !r.ok && r.message === "step_up_required";
 
 beforeAll(async () => {
   db = new PGlite();
@@ -140,211 +180,338 @@ beforeAll(async () => {
 
 afterAll(async () => { await db?.close(); });
 
-describe("PULSE-2B staged migration: who can do what", () => {
-  it("anon: no table reads, no admin RPCs; the public read works", async () => {
-    for (const t of ["pulse_content_items", "pulse_campaigns", "pulse_category_settings", "pulse_schedule_settings"]) {
+describe("who can do what", () => {
+  it("anon: no table reads, no admin RPCs; the public read works and is empty", async () => {
+    for (const t of ["pulse_content_items", "pulse_partner_records", "pulse_sponsor_host_allowlist", "pulse_category_settings", "pulse_schedule_settings"]) {
       const r = await run(ANON, `SELECT * FROM public.${t}`);
       expect(r.ok, t).toBe(false);
-      expect(!r.ok && r.code).toBe("42501");
+      expect(r.code, t).toBe("42501");
     }
     const rpc = await run(ANON, `SELECT public.pulse_admin_snapshot()`);
-    expect(rpc.ok).toBe(false);
-    expect(!rpc.ok && rpc.code).toBe("42501");
-    expect((await publicCatalogue()).items).toEqual([]);
+    expect(rpc.code).toBe("42501");
+    const cat = await publicCatalogue();
+    expect(cat.contractVersion).toBe("pulse-public/2");
+    expect(cat.items).toEqual([]);
+    expect(cat.partners).toEqual({ creators: [], sponsors: [] });
+  });
+
+  it("release gates are unreadable and unwritable from any client role", async () => {
+    for (const who of [ANON, PLAYER_AAL2, FRESH]) {
+      expect((await run(who, `SELECT * FROM private.pulse_release_gates`)).code).toBe("42501");
+      expect((await run(who, `UPDATE private.pulse_release_gates SET sponsor_disclosure_rendered = true`)).code).toBe("42501");
+    }
   });
 
   it("a player (even at aal2) is refused by assert_owner and sees no rows", async () => {
-    const r = await saveItem(PLAYER_AAL2, news("Player headline"), null);
-    expect(r.ok === false && r.message).toBe("owner_required");
-    expect((await run(PLAYER_AAL2, `SELECT public.pulse_admin_set_kill(true, 'managed', 'x')`)).ok).toBe(false);
+    expect((await saveItem(PLAYER_AAL2, news("Player headline"), null)).message).toBe("owner_required");
+    expect((await savePartner(PLAYER_AAL2, "sponsor", sponsorRecord("p1"), null, null)).message).toBe("owner_required");
+    expect((await run(PLAYER_AAL2, `SELECT public.pulse_admin_set_kill(true, 'managed', 'x')`)).message).toBe("owner_required");
     expect(await ok(PLAYER_AAL2, `SELECT * FROM public.pulse_schedule_settings`)).toEqual([]);
   });
 
   it("no one writes the tables directly — not players, not the owner", async () => {
-    for (const who of [PLAYER_AAL2, OWNER_MFA]) {
-      const ins = await run(who, `INSERT INTO public.pulse_content_items (label, kind, category, payload) VALUES ('x', 'news', 'news', '{}')`);
-      expect(ins.ok === false && ins.code).toBe("42501");
-      const upd = await run(who, `UPDATE public.pulse_schedule_settings SET kill_active = false`);
-      expect(upd.ok === false && upd.code).toBe("42501");
-      const del = await run(who, `DELETE FROM public.pulse_category_settings`);
-      expect(del.ok === false && del.code).toBe("42501");
+    for (const who of [PLAYER_AAL2, FRESH]) {
+      for (const sql of [
+        `INSERT INTO public.pulse_content_items (label, kind, category, payload) VALUES ('x', 'news', 'news', '{}')`,
+        `INSERT INTO public.pulse_partner_records (id, type, record) VALUES ('x', 'sponsor', '{"id":"x"}')`,
+        `INSERT INTO public.pulse_sponsor_host_allowlist (host) VALUES ('evil.example')`,
+        `UPDATE public.pulse_schedule_settings SET kill_active = false`,
+        `DELETE FROM public.pulse_category_settings`,
+      ]) expect((await run(who, sql)).code, sql).toBe("42501");
     }
   });
 
-  it("an owner on an unattested aal1 session must step up", async () => {
-    const r = await run(OWNER_AAL1, `SELECT public.pulse_admin_snapshot()`);
-    expect(r.ok === false && r.message).toBe("step_up_required");
-  });
-
-  it("owner reads the snapshot in the contract shape", async () => {
-    const s = await one<{ contractVersion: string; categories: unknown[]; schedule: { slots: string[]; kill: { active: boolean } } }>(
-      OWNER_MFA, `SELECT public.pulse_admin_snapshot() AS r`);
-    expect(s.contractVersion).toBe("pulse-admin/1");
-    expect(s.categories).toHaveLength(11);
-    expect(s.schedule.slots).toHaveLength(12);
-    expect(s.schedule.kill.active).toBe(false);
+  it("an owner on an unattested aal1 session must step up for anything", async () => {
+    expect((await run(OWNER_AAL1, `SELECT public.pulse_admin_snapshot()`)).message).toBe("step_up_required");
+    expect((await run(OWNER_AAL1, `SELECT public.pulse_admin_set_kill(true, 'managed', 'x')`)).message).toBe("step_up_required");
   });
 });
 
-describe("PULSE-2B staged migration: editorial lifecycle and the public read", () => {
+describe("editorial lifecycle (trusted)", () => {
   let newsId = "";
   let rev = 0;
 
-  it("refuses unsafe payloads server-side", async () => {
-    const bad = await saveItem(OWNER_MFA, news("Bad", { href: "javascript:alert(1)" }), null);
-    expect(bad.ok === false && bad.message).toBe("pulse_invalid");
-    expect(bad.ok === false && JSON.parse(bad.detail!)).toContainEqual(expect.objectContaining({ field: "href" }));
-    const offsite = await saveItem(OWNER_MFA, news("Bad", { href: "//evil.example" }), null);
-    expect(offsite.ok).toBe(false);
-    const wrongKind = await saveItem(OWNER_MFA, { ...news("x"), payload: { ...news("x").payload, kind: "leaderboard" } }, null);
-    expect(wrongKind.ok).toBe(false);
+  it("refuses unsafe payloads and partner kinds as editorial", async () => {
+    const bad = await saveItem(TRUSTED, news("Bad", { href: "javascript:alert(1)" }), null);
+    expect(bad.message).toBe("pulse_invalid");
+    expect(JSON.parse(bad.detail!)).toContainEqual(expect.objectContaining({ field: "href" }));
+    expect((await saveItem(TRUSTED, news("Bad", { href: "//evil.example" }), null)).ok).toBe(false);
+    const sponsorAsItem = { ...news("x"), payload: { ...news("x").payload, kind: "sponsor", category: "sponsor" } };
+    expect((await saveItem(TRUSTED, sponsorAsItem, null)).message).toBe("pulse_invalid");
   });
 
-  it("draft → not public; publish → public, without internal fields", async () => {
+  it("draft → not public; publish at TRUSTED (no paid promotion) → public, without internal fields", async () => {
     const created = await one<{ id: string; revision: number; state: string }>(
-      OWNER_MFA, `SELECT public.pulse_admin_save_item($1::jsonb, NULL) AS r`, [JSON.stringify(news("Halloween quiz week"))]);
+      TRUSTED, `SELECT public.pulse_admin_save_item($1::jsonb, NULL) AS r`, [JSON.stringify(news("Halloween quiz week"))]);
     expect(created.state).toBe("draft");
     newsId = created.id;
-    rev = created.revision;
     expect((await publicCatalogue()).items).toEqual([]);
-
-    const pub = await one<{ revision: number; state: string }>(OWNER_MFA,
-      `SELECT public.pulse_admin_transition_item($1::uuid, 'publish', NULL, $2) AS r`, [newsId, rev]);
+    const pub = await one<{ revision: number; state: string }>(TRUSTED,
+      `SELECT public.pulse_admin_transition_item($1::uuid, 'publish', NULL, $2) AS r`, [newsId, created.revision]);
     expect(pub.state).toBe("published");
     rev = pub.revision;
     const cat = await publicCatalogue();
     expect(cat.items).toHaveLength(1);
-    expect(cat.items[0].item).toMatchObject({ id: newsId, provenance: "live", headline: "Halloween quiz week" });
-    expect(JSON.stringify(cat)).not.toMatch(/secret internal note|label/);
+    expect(cat.items[0]).toMatchObject({ id: newsId, provenance: "live", headline: "Halloween quiz week" });
+    expect(JSON.stringify(cat)).not.toMatch(/secret internal note|"label"/);
   });
 
-  it("stale revisions are conflicts", async () => {
-    const r = await run(OWNER_MFA, `SELECT public.pulse_admin_transition_item($1::uuid, 'unpublish', NULL, $2)`, [newsId, rev - 1]);
-    expect(r.ok === false && r.message).toBe("pulse_conflict");
+  it("an event publishes at TRUSTED too", async () => {
+    const ev = news("Showcase night", { variant: "event", startsAt: iso(48) });
+    const created = await one<{ id: string; revision: number }>(TRUSTED, `SELECT public.pulse_admin_save_item($1::jsonb, NULL) AS r`,
+      [JSON.stringify({ ...ev, payload: { ...ev.payload, category: "event" } })]);
+    const pub = await run(TRUSTED, `SELECT public.pulse_admin_transition_item($1::uuid, 'publish', NULL, $2)`, [created.id, created.revision]);
+    expect(pub.ok).toBe(true);
   });
 
-  it("live content can't be archived, and edits that would break it are refused", async () => {
-    const a = await run(OWNER_MFA, `SELECT public.pulse_admin_transition_item($1::uuid, 'archive', NULL, $2)`, [newsId, rev]);
-    expect(a.ok === false && a.message).toBe("pulse_invalid");
-    const broken = await saveItem(OWNER_MFA, { ...news(""), id: newsId, label: "x" }, rev);
-    expect(broken.ok === false && broken.message).toBe("pulse_invalid");
+  it("stale revisions are conflicts; live content can't be archived or broken by an edit", async () => {
+    expect((await run(TRUSTED, `SELECT public.pulse_admin_transition_item($1::uuid, 'unpublish', NULL, $2)`, [newsId, rev - 1])).message).toBe("pulse_conflict");
+    expect((await run(TRUSTED, `SELECT public.pulse_admin_transition_item($1::uuid, 'archive', NULL, $2)`, [newsId, rev])).message).toBe("pulse_invalid");
+    expect((await saveItem(TRUSTED, { ...news(""), id: newsId, label: "x" }, rev)).message).toBe("pulse_invalid");
   });
 
-  it("category disable / frequency / expiry apply to items and the cadence", async () => {
-    // The owner's read policy: support reads go straight to the table.
-    const s = { revision: await one<number>(OWNER_MFA, `SELECT revision AS r FROM public.pulse_category_settings WHERE category = 'news'`) };
-    await ok(OWNER_MFA, `SELECT public.pulse_admin_save_category('news', false, NULL, NULL, $1)`, [s.revision]);
+  it("category disable / frequency apply to items and the cadence; cadence bounds are enforced", async () => {
+    const r = await one<number>(FRESH, `SELECT revision AS r FROM public.pulse_category_settings WHERE category = 'news'`);
+    await ok(TRUSTED, `SELECT public.pulse_admin_save_category('news', false, NULL, NULL, $1)`, [r]);
     let cat = await publicCatalogue();
-    expect(cat.items).toEqual([]);
+    expect(cat.items.some((i) => i.category === "news")).toBe(false);
     expect(cat.cadence.slots).not.toContain("news");
-    await ok(OWNER_MFA, `SELECT public.pulse_admin_save_category('news', true, NULL, NULL, $1)`, [s.revision + 1]);
-    await ok(OWNER_MFA, `SELECT public.pulse_admin_save_category('mini-game', true, 0, NULL, 1)`);
+    await ok(TRUSTED, `SELECT public.pulse_admin_save_category('news', true, NULL, NULL, $1)`, [r + 1]);
+    await ok(TRUSTED, `SELECT public.pulse_admin_save_category('mini-game', true, 0, NULL, 1)`);
     cat = await publicCatalogue();
-    expect(cat.items).toHaveLength(1);
     expect(cat.cadence.slots).not.toContain("mini-game");
     expect(cat.cadence.slots).toContain("news");
-  });
-
-  it("cadence bounds are enforced by the server", async () => {
-    const r = await run(OWNER_MFA, `SELECT public.pulse_admin_save_schedule(ARRAY['news'], 9, 3, 1)`);
-    expect(r.ok === false && r.message).toBe("pulse_invalid");
-    const bogus = await run(OWNER_MFA, `SELECT public.pulse_admin_save_schedule(ARRAY['not-a-category'], 2, 3, 1)`);
-    expect(bogus.ok).toBe(false);
+    expect((await run(TRUSTED, `SELECT public.pulse_admin_save_schedule(ARRAY['news'], 9, 3, 1)`)).message).toBe("pulse_invalid");
   });
 });
 
-describe("PULSE-2B staged migration: partners, approval and the emergency disable", () => {
-  let campaign: { id: string; revision: number };
-  let sponsor: { id: string; revision: number };
-
-  it("sponsor disclosure is fixed by type; paid needs wording", async () => {
-    const bad = await run(OWNER_MFA, `SELECT public.pulse_admin_save_campaign($1::jsonb, NULL)`, [JSON.stringify({
-      id: null, type: "sponsor", partnerName: "Example Co", title: "Autumn", disclosure: "unpaid-spotlight", disclosureText: "",
-      flightStart: null, flightEnd: null, contractRef: "" })]);
-    expect(bad.ok === false && bad.message).toBe("pulse_invalid");
-    campaign = await one(OWNER_MFA, `SELECT public.pulse_admin_save_campaign($1::jsonb, NULL) AS r`, [JSON.stringify({
-      id: null, type: "sponsor", partnerName: "Example Co", title: "Autumn", disclosure: "sponsored", disclosureText: "Paid by Example Co",
-      flightStart: null, flightEnd: null, contractRef: "INTERNAL-REF-42" })]);
+describe("partner records: PULSE-2C contract", () => {
+  it("only 2C's owner-editable keys are accepted: no status, approval, LIVE, viewers or challenge scores", async () => {
+    const forged = [
+      ["sponsor", sponsorRecord("forge-1", { status: "approved" })],
+      ["sponsor", sponsorRecord("forge-2", { approval: { approvedBy: "x", approvedAt: iso(-1) } })],
+      ["creator", creatorRecord("forge-3", { media: { platform: "twitch", channelUrl: "https://www.twitch.tv/realchan", title: "t", live: true } })],
+      ["creator", creatorRecord("forge-4", { media: { platform: "twitch", channelUrl: "https://www.twitch.tv/realchan", title: "t", viewerCount: 9000 } })],
+      ["creator", creatorRecord("forge-5", { challenge: { title: "t", detail: "d", ref: { source: "daily-challenge", key: "k" }, score: { source: "daily-challenge", attemptId: "a", value: 9, verifiedAt: iso(-1) } } })],
+    ] as const;
+    for (const [type, rec] of forged) {
+      const r = await savePartner(TRUSTED, type, rec, type === "creator" ? "unpaid" : null, null);
+      expect(r.message, JSON.stringify(rec)).toBe("pulse_invalid");
+    }
   });
 
-  it("a sponsor item can't publish until its campaign is approved — and approval needs a fresh MFA", async () => {
-    sponsor = await one(OWNER_MFA, `SELECT public.pulse_admin_save_item($1::jsonb, NULL) AS r`, [JSON.stringify({
-      id: null, label: "Autumn placement", publishAt: null, expiresAt: null, priority: 1, featured: false, campaignId: campaign.id, note: "",
-      payload: { id: "", kind: "sponsor", category: "sponsor", provenance: "live", title: "Sponsored: Autumn", sponsorName: "Example Co",
-        campaignTitle: "Autumn", tagline: "t", artUrl: null, ctaLabel: "Learn more", href: "https://example.com/autumn" } })]);
-    const early = await run(OWNER_MFA, `SELECT public.pulse_admin_transition_item($1::uuid, 'publish', NULL, $2)`, [sponsor.id, sponsor.revision]);
-    expect(early.ok === false && early.message).toBe("pulse_invalid");
+  it("refuses unsafe destinations and artwork at save time", async () => {
+    for (const rec of [
+      sponsorRecord("bad-1", { destinationUrl: "http://example.com/x" }),
+      sponsorRecord("bad-2", { destinationUrl: "https://evil.example/x" }),
+      sponsorRecord("bad-3", { destinationUrl: "https://user:pw@example.com/x" }),
+      sponsorRecord("bad-4", { destinationUrl: "https://example.com:8443/x" }),
+      sponsorRecord("bad-5", { artwork: { url: "https://evil.example/a.png", alt: "a" } }),
+      sponsorRecord("bad-6", { disclosure: { label: "Ad", advertiser: "Example Co" } }),
+    ]) expect((await savePartner(TRUSTED, "sponsor", rec, null, null)).message, rec.id).toBe("pulse_invalid");
+  });
+});
 
-    const stale = await run(OWNER_STALE_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'approve', '', $2)`, [campaign.id, campaign.revision]);
-    expect(stale.ok === false && stale.message).toBe("step_up_required");
-    campaign = await one(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'approve', '', $2) AS r`, [campaign.id, campaign.revision]);
+describe("assurance policy, row by row (database vs policy.ts)", () => {
+  /** Attempt at TRUSTED; if the DB demands fresh, retry at FRESH. Returns the level the DB required. */
+  async function required(sql: string, params: unknown[]): Promise<{ level: OwnerActionLevel; result: Outcome }> {
+    const trusted = await run(TRUSTED, sql, params);
+    if (!isStepUp(trusted)) return { level: "trusted", result: trusted };
+    return { level: "fresh", result: await run(FRESH, sql, params) };
+  }
+  const expectOk = (r: Outcome) => expect(r.ok, `${r.code} ${r.message} ${r.detail ?? ""}`).toBe(true);
 
-    sponsor = await one(OWNER_MFA, `SELECT public.pulse_admin_transition_item($1::uuid, 'publish', NULL, $2) AS r`, [sponsor.id, sponsor.revision]);
+  it("emergency disable: trusted; restore: FRESH; narrowing managed → partners: FRESH; widening: trusted", async () => {
+    const kill = (active: boolean, scope: string, reason: string) => required(`SELECT public.pulse_admin_set_kill($1, $2, $3)`, [active, scope, reason]);
+    const cases: { cur: { active: boolean; scope: "partners" | "managed" }; next: { active: boolean; scope: "partners" | "managed"; reason: string } }[] = [
+      { cur: { active: false, scope: "partners" }, next: { active: true, scope: "partners", reason: "brand safety" } },
+      { cur: { active: true, scope: "partners" }, next: { active: true, scope: "managed", reason: "wider incident" } },
+      { cur: { active: true, scope: "managed" }, next: { active: true, scope: "partners", reason: "narrowing" } },
+      { cur: { active: true, scope: "partners" }, next: { active: false, scope: "partners", reason: "resolved" } },
+    ];
+    for (const c of cases) {
+      const { level, result } = await kill(c.next.active, c.next.scope, c.next.reason);
+      expectOk(result);
+      expect(level, JSON.stringify(c)).toBe(killLevel(c.cur, c.next));
+    }
+    expect(cases.map((c) => killLevel(c.cur, c.next))).toEqual(["trusted", "trusted", "fresh", "fresh"]);
+  });
+
+  it("sponsor host allowlist: add FRESH, remove trusted; approval needs an allowlisted host", async () => {
+    let p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_save_partner('sponsor', $1::jsonb, NULL, '', NULL) AS r`, [JSON.stringify(sponsorRecord("autumn"))]);
+    p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_transition_partner('autumn', 'submit', '', $1) AS r`, [p.revision])
+      .catch(() => p);
+    // submit is refused while example.com is not allowlisted
+    expect(p.record.status).toBe("draft");
+    const submit = await partnerAct(FRESH, "autumn", "submit", "", p.revision);
+    expect(submit.message).toBe("pulse_invalid");
+    expect(submit.detail).toMatch(/not on the sponsor host allowlist/);
+
+    const add = await required(`SELECT public.pulse_admin_set_sponsor_host('example.com', 'add') AS r`, []);
+    expectOk(add.result);
+    expect(add.level).toBe(hostAllowlistLevel("add"));
+    expect(add.level).toBe("fresh");
+    const remove = await required(`SELECT public.pulse_admin_set_sponsor_host('other.example', 'remove') AS r`, []);
+    expect(remove.level).toBe(hostAllowlistLevel("remove"));
+    expect((await run(FRESH, `SELECT public.pulse_admin_set_sponsor_host('10.0.0.1', 'add')`)).message).toBe("pulse_invalid");
+  });
+
+  it("sponsor: submit trusted, approve FRESH, pause trusted, resume FRESH, end trusted", async () => {
+    let p = await partnerNow("autumn");
+    for (const action of ["submit", "approve", "pause", "resume", "end"] as const) {
+      const note = action === "pause" || action === "end" ? "flight change" : "";
+      const { level, result } = await required(`SELECT public.pulse_admin_transition_partner('autumn', $1, $2, $3) AS r`, [action, note, p.revision]);
+      expectOk(result);
+      expect(level, action).toBe(partnerTransitionLevel(p, action));
+      p = result.rows![0].r as Partner;
+    }
+    expect(p.record.status).toBe("ended");
+  });
+
+  it("editing an approved sponsor is FRESH and sends it back to review; editing a draft is trusted", async () => {
+    let p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_save_partner('sponsor', $1::jsonb, NULL, '', NULL) AS r`, [JSON.stringify(sponsorRecord("winter"))]);
+    const draftEdit = await required(`SELECT public.pulse_admin_save_partner('sponsor', $1::jsonb, NULL, '', $2) AS r`,
+      [JSON.stringify(sponsorRecord("winter", { tagline: "Winter at Example Co" })), p.revision]);
+    expect(draftEdit.level).toBe(partnerSaveLevel(p as never, { type: "sponsor", compensation: null }));
+    expect(draftEdit.level).toBe("trusted");
+    p = draftEdit.result.rows![0].r as Partner;
+    p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_transition_partner('winter', 'submit', '', $1) AS r`, [p.revision]);
+    p = await one<Partner>(FRESH, `SELECT public.pulse_admin_transition_partner('winter', 'approve', '', $1) AS r`, [p.revision]);
+    expect(p.record.status).toBe("approved");
+
+    const edit = await required(`SELECT public.pulse_admin_save_partner('sponsor', $1::jsonb, NULL, '', $2) AS r`,
+      [JSON.stringify(sponsorRecord("winter", { destinationUrl: "https://example.com/other" })), p.revision]);
+    expectOk(edit.result);
+    expect(edit.level).toBe(partnerSaveLevel(p as never, { type: "sponsor", compensation: null }));
+    expect(edit.level).toBe("fresh");
+    expect((edit.result.rows![0].r as Partner).record.status).toBe("pending-review");
+  });
+
+  it("creators: unpaid approve trusted; paid / affiliate approve FRESH; editing approved paid FRESH, approved unpaid trusted", async () => {
+    for (const comp of ["unpaid", "paid", "affiliate"] as const) {
+      const id = `creator-${comp}`;
+      let p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_save_partner('creator', $1::jsonb, $2, '', NULL) AS r`, [JSON.stringify(creatorRecord(id)), comp]);
+      p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_transition_partner($1, 'submit', '', $2) AS r`, [id, p.revision]);
+      const approve = await required(`SELECT public.pulse_admin_transition_partner($1, 'approve', '', $2) AS r`, [id, p.revision]);
+      expectOk(approve.result);
+      expect(approve.level, comp).toBe(partnerTransitionLevel(p, "approve"));
+      expect(approve.level, comp).toBe(comp === "unpaid" ? "trusted" : "fresh");
+      p = approve.result.rows![0].r as Partner;
+      if (comp === "affiliate") continue; // stays approved for the public-read checks below
+      const edit = await required(`SELECT public.pulse_admin_save_partner('creator', $1::jsonb, $2, '', $3) AS r`,
+        [JSON.stringify(creatorRecord(id, { creatorTag: "Partner" })), comp, p.revision]);
+      expectOk(edit.result);
+      expect(edit.level, comp).toBe(partnerSaveLevel(p as never, { type: "creator", compensation: comp }));
+      // re-approve so the public-read checks below have an approved unpaid + paid creator
+      const back = edit.result.rows![0].r as Partner;
+      await ok(FRESH, `SELECT public.pulse_admin_transition_partner($1, 'approve', '', $2)`, [id, back.revision]);
+    }
+    // Switching an approved unpaid creator to paid is approval-sensitive too.
+    const p = await partnerNow("creator-unpaid");
+    const toPaid = await required(`SELECT public.pulse_admin_save_partner('creator', $1::jsonb, 'paid', '', $2) AS r`,
+      [JSON.stringify(creatorRecord("creator-unpaid")), p.revision]);
+    expect(toPaid.level).toBe("fresh");
+    expect(toPaid.level).toBe(partnerSaveLevel(p as never, { type: "creator", compensation: "paid" }));
+    const restored = toPaid.result.rows![0].r as Partner;
+    const unpaid = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_save_partner('creator', $1::jsonb, 'unpaid', '', $2) AS r`,
+      [JSON.stringify(creatorRecord("creator-unpaid")), restored.revision]);
+    await ok(TRUSTED, `SELECT public.pulse_admin_transition_partner('creator-unpaid', 'approve', '', $1)`, [unpaid.revision]);
+  });
+
+  it("a cancelled/refused fresh attempt changed nothing", async () => {
+    const before = await peek(`SELECT status, revision FROM public.pulse_partner_records WHERE id = 'winter'`);
+    const r = await partnerAct(TRUSTED, "winter", "approve", "", (before[0] as { revision: number }).revision);
+    expect(isStepUp(r)).toBe(true);
+    expect(await peek(`SELECT status, revision FROM public.pulse_partner_records WHERE id = 'winter'`)).toEqual(before);
+  });
+});
+
+describe("public read: release gates, windows, emergency disable", () => {
+  it("approved sponsors and paid creators stay in the database while their release gate is closed", async () => {
+    await ok(FRESH, `SELECT public.pulse_admin_set_kill(false, 'partners', 'clear')`);
+    const winter = await partnerNow("winter");
+    await ok(FRESH, `SELECT public.pulse_admin_transition_partner('winter', 'approve', '', $1)`, [winter.revision]);
     const cat = await publicCatalogue();
-    const entry = cat.items.find((i) => i.item.id === sponsor.id);
-    expect(entry?.disclosure).toEqual({ kind: "sponsored", text: "Paid by Example Co", partner: "Example Co" });
-    expect(JSON.stringify(cat)).not.toMatch(/INTERNAL-REF-42/);
+    expect(cat.partners.sponsors).toEqual([]);
+    expect(cat.partners.creators.map((c) => c.id)).toEqual(["creator-unpaid"]);
   });
 
-  it("ending the campaign takes its content off at once", async () => {
-    const noNote = await run(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'end', '', $2)`, [campaign.id, campaign.revision]);
-    expect(noNote.ok === false && noNote.message).toBe("pulse_invalid");
-    campaign = await one(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'end', 'Flight over', $2) AS r`, [campaign.id, campaign.revision]);
-    expect((await publicCatalogue()).items.some((i) => i.item.kind === "sponsor")).toBe(false);
-    // An ended campaign is final.
-    const again = await run(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'approve', '', $2)`, [campaign.id, campaign.revision]);
-    expect(again.message).toBe("pulse_invalid");
+  it("opening the gates (a reviewed migration, simulated as superuser) emits records in PULSE-2C's exact shape", async () => {
+    await peek(`UPDATE private.pulse_release_gates SET sponsor_disclosure_rendered = true, paid_creator_disclosure_rendered = true`);
+    const cat = await publicCatalogue();
+    expect(cat.partners.sponsors.map((s) => s.id)).toEqual(["winter"]);
+    expect(cat.partners.creators.map((c) => c.id).sort()).toEqual(["creator-affiliate", "creator-paid", "creator-unpaid"]);
+
+    const s = cat.partners.sponsors[0];
+    expect(Object.keys(s).sort()).toEqual([
+      "approval", "approvedHosts", "artwork", "campaignTitle", "ctaLabel", "destinationUrl", "disclosure", "id", "placement",
+      "provenance", "sponsorName", "status", "tagline", "window"]);
+    expect(s.status).toBe("approved");
+    expect(s.approval?.approvedBy).toBe("owner");
+    expect(s.approval?.approvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(s.provenance).toMatchObject({ source: "owner-entry", recordedBy: "owner" });
+    const c = cat.partners.creators[0];
+    expect(Object.keys(c).sort()).toEqual(["approval", "creatorName", "creatorTag", "id", "media", "provenance", "status"]);
+    // nothing admin-side or identifying leaks
+    expect(JSON.stringify(cat)).not.toMatch(new RegExp(`${OWNER}|internal contract ref|compensation|decisionNote|revision`));
   });
 
-  it("hand-claimed Twitch LIVE is refused", async () => {
-    const r = await saveItem(OWNER_MFA, {
-      id: null, label: "Stream", publishAt: null, expiresAt: null, priority: 1, featured: false, campaignId: campaign.id, note: "",
-      payload: { id: "", kind: "creator", category: "creator-spotlight", provenance: "live", title: "t", creatorName: "C", creatorTag: "",
-        challenge: null, media: { platform: "twitch", channel: "realchan", title: "Live now", live: true, viewersLabel: "", thumbnailUrl: null } },
-    }, null);
-    expect(r.ok === false && r.message).toBe("pulse_invalid");
+  it("a sponsor outside its flight is not emitted", async () => {
+    const all = await peek<{ id: string }>(`SELECT id FROM public.pulse_partner_records WHERE type = 'sponsor' AND status = 'approved'`);
+    expect(all.map((r) => r.id)).toEqual(["winter"]);
+    await peek(`UPDATE public.pulse_partner_records SET record = jsonb_set(record, '{window,startsAt}', to_jsonb($1::text)) WHERE id = 'winter'`, [iso(5)]);
+    expect((await publicCatalogue()).partners.sponsors).toEqual([]);
+    await peek(`UPDATE public.pulse_partner_records SET record = jsonb_set(record, '{window,startsAt}', to_jsonb($1::text)) WHERE id = 'winter'`, [iso(-5)]);
+    expect((await publicCatalogue()).partners.sponsors).toHaveLength(1);
   });
 
-  it("emergency disable: needs a reason; partners vs managed; restore", async () => {
-    const noReason = await run(OWNER_MFA, `SELECT public.pulse_admin_set_kill(true, 'managed', '  ')`);
-    expect(noReason.ok === false && noReason.message).toBe("pulse_invalid");
+  it("a host removed from the allowlist takes its sponsor off at once", async () => {
+    await ok(TRUSTED, `SELECT public.pulse_admin_set_sponsor_host('example.com', 'remove')`);
+    expect((await publicCatalogue()).partners.sponsors).toEqual([]);
+    await ok(FRESH, `SELECT public.pulse_admin_set_sponsor_host('example.com', 'add')`);
+    expect((await publicCatalogue()).partners.sponsors).toHaveLength(1);
+  });
 
-    await ok(OWNER_MFA, `SELECT public.pulse_admin_set_kill(true, 'managed', 'Wrong patch number')`);
+  it("emergency disable: partners → no partner records, editorial stays; managed → empty + fallback", async () => {
+    await ok(TRUSTED, `SELECT public.pulse_admin_set_kill(true, 'partners', 'Brand-safety review')`);
     let cat = await publicCatalogue();
+    expect(cat.partners).toEqual({ creators: [], sponsors: [] });
+    expect(cat.items.length).toBeGreaterThan(0);
+    expect(cat.fallbackToStatic).toBe(false);
+    await ok(TRUSTED, `SELECT public.pulse_admin_set_kill(true, 'managed', 'Wrong patch number')`);
+    cat = await publicCatalogue();
     expect(cat.items).toEqual([]);
     expect(cat.fallbackToStatic).toBe(true);
-
-    await ok(OWNER_MFA, `SELECT public.pulse_admin_set_kill(true, 'partners', 'Brand-safety review')`);
-    cat = await publicCatalogue();
-    expect(cat.fallbackToStatic).toBe(false);
-    expect(cat.items.length).toBeGreaterThan(0);
-    expect(cat.items.every((i) => i.item.kind !== "sponsor" && i.item.kind !== "creator")).toBe(true);
-
-    await ok(OWNER_MFA, `SELECT public.pulse_admin_set_kill(false, 'partners', 'Resolved')`);
+    expect((await run(TRUSTED, `SELECT public.pulse_admin_set_kill(false, 'managed', 'resolved')`)).message).toBe("step_up_required");
+    expect((await publicCatalogue()).fallbackToStatic).toBe(true);
+    await ok(FRESH, `SELECT public.pulse_admin_set_kill(false, 'managed', 'resolved')`);
     expect((await publicCatalogue()).fallbackToStatic).toBe(false);
   });
 
-  it("every owner write left an audit row", async () => {
-    await db.exec("RESET ROLE;");
-    const actions = (await db.query<{ action: string }>(`SELECT action FROM public.admin_audit_log WHERE actor_user_id = $1`, [OWNER])).rows.map((r) => r.action);
+  it("every owner write left an audit row, restores and host changes included", async () => {
+    const actions = (await peek<{ action: string }>(`SELECT action FROM public.admin_audit_log WHERE actor_user_id = $1`, [OWNER])).map((r) => r.action);
     expect(actions).toEqual(expect.arrayContaining([
-      "pulse.save_item", "pulse.publish", "pulse.save_category", "pulse.save_campaign", "pulse.campaign_approve", "pulse.campaign_end",
-      "pulse.kill_on", "pulse.kill_off",
+      "pulse.save_item", "pulse.publish", "pulse.save_category", "pulse.partner_create", "pulse.partner_save", "pulse.partner_submit",
+      "pulse.partner_approve", "pulse.partner_pause", "pulse.partner_resume", "pulse.partner_end", "pulse.sponsor_host_add",
+      "pulse.sponsor_host_remove", "pulse.kill_on", "pulse.kill_restore",
     ]));
+    // A refused fresh attempt is not an audited action.
+    const audited = (await peek<{ n: string }>(`SELECT count(*)::text AS n FROM public.admin_audit_log WHERE action = 'pulse.kill_restore'`))[0].n;
+    expect(Number(audited)).toBe(3);
   });
 });
 
-describe("PULSE-2B staged migration: rollback", () => {
+describe("rollback", () => {
   it("removes everything it added and nothing else", async () => {
     await db.exec(ROLLBACK);
-    const left = (await db.query<{ n: string }>(`
+    const left = await peek<{ n: string }>(`
       SELECT c.relname AS n FROM pg_class c JOIN pg_namespace s ON s.oid = c.relnamespace
-       WHERE s.nspname = 'public' AND c.relname LIKE 'pulse_%'
+       WHERE s.nspname IN ('public', 'private') AND c.relname LIKE 'pulse_%'
       UNION ALL
       SELECT p.proname FROM pg_proc p JOIN pg_namespace s ON s.oid = p.pronamespace
-       WHERE s.nspname IN ('public', 'private') AND p.proname LIKE 'pulse_%'`)).rows;
+       WHERE s.nspname IN ('public', 'private') AND p.proname LIKE 'pulse_%'`);
     expect(left).toEqual([]);
-    expect((await db.query(`SELECT 1 FROM public.admin_audit_log`)).rows.length).toBeGreaterThan(0);
-    expect((await db.query(`SELECT public.is_owner_user($1::uuid) AS r`, [OWNER])).rows[0]).toEqual({ r: true });
+    expect((await peek(`SELECT 1 FROM public.admin_audit_log`)).length).toBeGreaterThan(0);
+    expect((await peek(`SELECT public.is_owner_user($1::uuid) AS r`, [OWNER]))[0]).toEqual({ r: true });
   });
 });

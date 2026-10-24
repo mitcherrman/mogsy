@@ -1,11 +1,12 @@
 // ---------------------------------------------------------------------------
 // PULSE-2B — prototype workspace contents.
 //
-// Built from the SHIPPED public editorial set (the same five items
-// `publicPulseProvider` serves today) plus clearly-labelled placeholder
-// partner drafts that are never approved. Nothing here invents a real
-// sponsor, creator, player or score; the placeholder campaign exists only so
-// the approval and disclosure workflow can be exercised.
+// Built from the SHIPPED public editorial set (the same items
+// `publicPulseProvider` serves today) plus one clearly-labelled placeholder
+// sponsor record in PULSE-2C's shape, as a draft. Nothing here invents a real
+// sponsor, creator, player or score. The sponsor host allowlist starts empty
+// and both release gates start closed, exactly as the staged migration seeds
+// them, so the placeholder can rehearse the workflow but never go public.
 // ---------------------------------------------------------------------------
 
 import { PULSE_FIXTURE_ITEMS } from "@/features/academy-pulse/content/pulse-fixtures";
@@ -15,9 +16,9 @@ import type { PulseCategory } from "@/features/academy-pulse/model/pulse-types";
 import {
   AUTHORABLE_KINDS,
   type AuthorablePulseItem,
-  type PulseCampaign,
   type PulseCategorySetting,
   type PulseContentRecord,
+  type PulsePartnerRecord,
   type PulseWorkspaceSnapshot,
 } from "./contract";
 
@@ -49,37 +50,19 @@ function fixture(id: string): AuthorablePulseItem {
   return { ...(item as AuthorablePulseItem), provenance: "live" };
 }
 
-function record(
-  id: string,
-  label: string,
-  payload: AuthorablePulseItem,
-  extra: Partial<PulseContentRecord>,
-  at: string,
-): PulseContentRecord {
+function record(id: string, label: string, payload: AuthorablePulseItem, extra: Partial<PulseContentRecord>, at: string): PulseContentRecord {
   return {
-    id,
-    label,
-    payload: { ...payload, id },
-    state: "draft",
-    publishAt: null,
-    expiresAt: null,
-    priority: 100,
-    featured: false,
-    campaignId: null,
-    revision: 1,
-    createdAt: at,
-    updatedAt: at,
-    publishedAt: null,
-    note: "",
-    ...extra,
+    id, label, payload: { ...payload, id }, state: "draft", publishAt: null, expiresAt: null, priority: 100, featured: false,
+    revision: 1, createdAt: at, updatedAt: at, publishedAt: null, note: "", ...extra,
   };
 }
 
-export const PROTOTYPE_CAMPAIGN_ID = "cmp-placeholder-sponsor";
+export const PROTOTYPE_SPONSOR_ID = "placeholder-sponsor";
 
 export function prototypeSeed(now: Date = new Date()): Omit<PulseWorkspaceSnapshot, "serverNow" | "contractVersion"> {
   const at = new Date(now.getTime() - 3 * 86_400_000).toISOString();
   const published = { state: "published" as const, publishedAt: at };
+  const day = 86_400_000;
 
   const items: PulseContentRecord[] = [
     record("pc-news-hover", "Orrery hover-to-front", fixture("fx-news-hover"), { ...published, priority: 10 }, at),
@@ -90,47 +73,41 @@ export function prototypeSeed(now: Date = new Date()): Omit<PulseWorkspaceSnapsh
       "pc-draft-announcement",
       "Draft: next Academy update",
       {
-        id: "",
-        kind: "news",
-        category: "news",
-        provenance: "live",
-        title: "Draft announcement",
-        variant: "announcement",
-        kicker: "Academy update",
-        headline: "Draft headline",
-        summary: "Write the summary the Home Hub shows.",
-        body: ["Write the article the expanded view shows."],
-        dateLabel: "Academy update",
-        href: null,
-        ctaLabel: "Read update",
+        id: "", kind: "news", category: "news", provenance: "live", title: "Draft announcement", variant: "announcement",
+        kicker: "Academy update", headline: "Draft headline", summary: "Write the summary the Home Hub shows.",
+        body: ["Write the article the expanded view shows."], dateLabel: "Academy update", href: null, ctaLabel: "Read update",
       },
       { note: "Prototype draft: replace before publishing." },
       at,
     ),
-    record(
-      "pc-sponsor-placeholder",
-      "Placeholder sponsor slot",
-      fixture("fx-sponsor-placeholder"),
-      { campaignId: PROTOTYPE_CAMPAIGN_ID, note: "No sponsor is booked. Exercises the approval workflow only." },
-      at,
-    ),
   ];
 
-  const campaigns: PulseCampaign[] = [
+  // example.com is reserved for documentation (RFC 2606): this is not a sponsor.
+  const partners: PulsePartnerRecord[] = [
     {
-      id: PROTOTYPE_CAMPAIGN_ID,
       type: "sponsor",
-      partnerName: "Placeholder partner",
-      title: "Workflow rehearsal (no sponsor booked)",
-      disclosure: "sponsored",
-      disclosureText: "Placeholder: who paid goes here.",
-      approval: "pending",
-      decidedAt: null,
-      decisionNote: "",
-      flightStart: null,
-      flightEnd: null,
-      contractRef: "",
+      compensation: null,
       revision: 1,
+      createdAt: at,
+      updatedAt: at,
+      note: "No sponsor is booked. Rehearses approval, the host allowlist and the release gate only.",
+      decisionNote: "",
+      record: {
+        id: PROTOTYPE_SPONSOR_ID,
+        sponsorName: "Placeholder Co",
+        campaignTitle: "Workflow rehearsal",
+        tagline: "A placeholder campaign: no sponsor is booked.",
+        ctaLabel: "Learn more",
+        artwork: { url: "/placeholder.svg", alt: "Placeholder campaign artwork" },
+        destinationUrl: "https://example.com/rehearsal",
+        approvedHosts: ["example.com"],
+        disclosure: { label: "Sponsored", advertiser: "Placeholder Co" },
+        window: { startsAt: new Date(now.getTime() - day).toISOString(), endsAt: new Date(now.getTime() + 30 * day).toISOString() },
+        placement: { surfaces: ["academy-pulse"] },
+        status: "draft",
+        approval: null,
+        provenance: { source: "owner-entry", recordedBy: "owner", recordedAt: at },
+      },
     },
   ];
 
@@ -144,8 +121,10 @@ export function prototypeSeed(now: Date = new Date()): Omit<PulseWorkspaceSnapsh
 
   return {
     items,
-    campaigns,
+    partners,
     categories,
+    sponsorHostAllowlist: [],
+    gates: { sponsorDisclosureRendered: false, paidCreatorDisclosureRendered: false },
     schedule: {
       slots: [...DEFAULT_PULSE_CADENCE.slots],
       maxPromotionsPerCycle: DEFAULT_PULSE_CADENCE.maxPromotionsPerCycle,

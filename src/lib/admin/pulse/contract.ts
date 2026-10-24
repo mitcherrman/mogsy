@@ -1,27 +1,37 @@
 // ---------------------------------------------------------------------------
-// PULSE-2B — the Admin Pulse Workspace persistence contract.
+// PULSE-2B — the Admin Pulse Workspace persistence contract (v2).
 //
-// What the owner manages, as plain data. The SCENE payload is the shared
-// `PulseItem` (pulse-types.ts, unchanged); everything here is the editorial
-// envelope around it: lifecycle, schedule, ordering, campaign linkage, and the
-// per-category / cadence / emergency settings the public catalogue obeys.
+// Two kinds of owner content, each with ONE public shape:
 //
-// AUTHORITY. These records are written only through owner RPCs (see
-// supabase/pulse-p2b-staged). The public Home Hub never reads these tables:
-// it reads `pulse_public_catalogue()`, which applies `projectPublicPulse`'s
-// rules server-side. The browser projection (projection.ts) mirrors those
-// rules for the owner's preview and is not itself a gate.
+//   EDITORIAL  news / event / question / mini-game. The scene payload is the
+//              shared `PulseItem` (pulse-types.ts, unchanged) inside an
+//              editorial envelope (lifecycle, schedule, ordering).
+//   PARTNERS   sponsor campaigns and creator spotlights, stored and emitted
+//              as PULSE-2C's `SponsorCampaignRecord` / `CreatorRecord`
+//              (partnerContract.ts mirrors #153 verbatim). 2C's adapter is
+//              the single presentation validator; the database repeats the
+//              security-relevant checks. The workspace adds only admin-side
+//              fields (revision, note, creator compensation) that are never
+//              public.
 //
-// Coordinated through mitcherrman/mogsy#151 with PULSE-2A (live provider,
-// consumes the public projection) and PULSE-2C (partner adapters, supply the
-// campaign + disclosure metadata modelled here).
+// AUTHORITY. Records are written only through owner RPCs (supabase/
+// pulse-p2b-staged). The public Home Hub reads `pulse_public_catalogue()`
+// ("pulse-public/2"): editorial PulseItems + approved partner records.
+// policy.ts states which owner assurance each action needs; the server
+// enforces the same table.
+//
+// Coordinated through mitcherrman/mogsy#151 with PULSE-2A (consumes the public
+// read) and PULSE-2C (#153, owns the partner record contract and adapter).
 // ---------------------------------------------------------------------------
 
 import type { PulseCategory, PulseItem, PulseSceneKind } from "@/features/academy-pulse/model/pulse-types";
 
-export const PULSE_ADMIN_CONTRACT_VERSION = "pulse-admin/1" as const;
+import type { CreatorRecord, PartnerStatus, SponsorCampaignRecord } from "./partnerContract";
 
-/* --------------------------------------------------------------- content */
+export const PULSE_ADMIN_CONTRACT_VERSION = "pulse-admin/2" as const;
+export const PULSE_PUBLIC_CONTRACT_VERSION = "pulse-public/2" as const;
+
+/* ------------------------------------------------------------- editorial */
 
 /** What the owner set. Scheduling is a published record with a future `publishAt`. */
 export type PulseEditorialState = "draft" | "published" | "unpublished" | "archived";
@@ -30,13 +40,12 @@ export type PulseEditorialState = "draft" | "published" | "unpublished" | "archi
 export type PulseEffectiveStatus = "draft" | "scheduled" | "live" | "expired" | "unpublished" | "archived";
 
 /**
- * Kinds the owner may author by hand. The rest are provider-generated
- * (PULSE-2A): activity, leaderboard, insight and challenge carry real player
- * numbers that must come from an authoritative source, and Premium copy comes
- * only from `src/lib/premium/matrix.ts`. The owner steers those through
- * category and cadence settings, never by typing scores.
+ * Kinds the owner authors as editorial items. Sponsor and creator content are
+ * partner records (below), not editorial items. Activity, leaderboard,
+ * insight and challenge carry real player numbers and are provider-only
+ * (PULSE-2A); Premium copy comes only from `src/lib/premium/matrix.ts`.
  */
-export const AUTHORABLE_KINDS = ["news", "question", "minigame", "sponsor", "creator"] as const satisfies readonly PulseSceneKind[];
+export const AUTHORABLE_KINDS = ["news", "question", "minigame"] as const satisfies readonly PulseSceneKind[];
 export type PulseAuthorableKind = (typeof AUTHORABLE_KINDS)[number];
 
 /** Which categories an authorable kind may be filed under (mirrors the scene registry). */
@@ -44,12 +53,7 @@ export const KIND_CATEGORIES: Record<PulseAuthorableKind, readonly PulseCategory
   news: ["news", "event"],
   question: ["educational"],
   minigame: ["mini-game"],
-  sponsor: ["sponsor"],
-  creator: ["creator-spotlight"],
 };
-
-/** Kinds that must be linked to an approved, disclosed campaign before they can go live. */
-export const CAMPAIGN_KINDS: ReadonlySet<PulseSceneKind> = new Set<PulseSceneKind>(["sponsor", "creator"]);
 
 export type AuthorablePulseItem = Extract<PulseItem, { kind: PulseAuthorableKind }>;
 
@@ -67,8 +71,6 @@ export interface PulseContentRecord {
   priority: number;
   /** Featured items lead their category regardless of priority. */
   featured: boolean;
-  /** Required for sponsor / creator kinds. */
-  campaignId: string | null;
   /** Optimistic concurrency: every write names the revision it read. */
   revision: number;
   createdAt: string;
@@ -78,6 +80,58 @@ export interface PulseContentRecord {
   /** Internal note (why, source link); never shown publicly. */
   note: string;
 }
+
+/* -------------------------------------------------------------- partners */
+
+/**
+ * Admin-only: the commercial relationship behind a creator spotlight.
+ * `paid` / `affiliate` are paid promotion: approving them needs fresh MFA,
+ * and they stay off the public Home Hub until a disclosure can be rendered
+ * (CreatorRecord has no disclosure field yet — a shared-type PR).
+ */
+export type PartnerCompensation = "unpaid" | "paid" | "affiliate";
+
+interface PartnerEnvelope {
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  /** Internal note (contract reference, contact). Never public. */
+  note: string;
+  /** Why it was last rejected / paused / ended. Never public. */
+  decisionNote: string;
+}
+
+export type PulsePartnerRecord =
+  | (PartnerEnvelope & { type: "sponsor"; record: SponsorCampaignRecord; compensation: null })
+  | (PartnerEnvelope & { type: "creator"; record: CreatorRecord; compensation: PartnerCompensation });
+
+/** What the owner edits. Status, approval and provenance are set by the server, never by the form. */
+export type EditableSponsorRecord = Omit<SponsorCampaignRecord, "status" | "approval" | "provenance">;
+export type EditableCreatorRecord = Omit<CreatorRecord, "status" | "approval" | "provenance" | "challenge">;
+
+export type PulsePartnerInput =
+  | { type: "sponsor"; record: EditableSponsorRecord; compensation: null; note: string }
+  | { type: "creator"; record: EditableCreatorRecord; compensation: PartnerCompensation; note: string };
+
+/**
+ * Partner lifecycle on PULSE-2C's statuses:
+ *
+ *   draft ─submit─► pending-review ─approve─► approved ─pause─► paused
+ *     ▲                  │  reject               │  ▲   resume   │
+ *     │                  ▼                       │  └────────────┘
+ *     └──revise── rejected / ended ◄──── end ────┴───────────────┘
+ */
+export type PartnerAction = "submit" | "approve" | "reject" | "pause" | "resume" | "end" | "revise";
+
+export const PARTNER_TRANSITIONS: Record<PartnerAction, { from: readonly PartnerStatus[]; to: PartnerStatus }> = {
+  submit: { from: ["draft"], to: "pending-review" },
+  approve: { from: ["pending-review"], to: "approved" },
+  reject: { from: ["pending-review"], to: "rejected" },
+  pause: { from: ["approved"], to: "paused" },
+  resume: { from: ["paused"], to: "approved" },
+  end: { from: ["approved", "paused"], to: "ended" },
+  revise: { from: ["rejected", "ended"], to: "draft" },
+};
 
 /* ------------------------------------------------------------ categories */
 
@@ -130,42 +184,15 @@ export const CADENCE_LIMITS = {
   maxPromotionGap: 12,
 } as const;
 
-/* ------------------------------------------------------------- campaigns */
-
-export type PulseCampaignType = "sponsor" | "creator";
-export type PulseCampaignApproval = "pending" | "approved" | "rejected" | "ended";
-
 /**
- * How the scene discloses the relationship. Sponsor scenes always carry the
- * permanent SPONSORED band; this adds the owner-reviewed wording.
+ * Release gates, set ONLY by a reviewed migration (no RPC can change them).
+ * While false, the matching partner content never leaves the database.
  */
-export type PulseDisclosureKind = "sponsored" | "paid-partnership" | "affiliate" | "unpaid-spotlight";
-
-export const DISCLOSURE_LABEL: Record<PulseDisclosureKind, string> = {
-  sponsored: "Sponsored",
-  "paid-partnership": "Paid partnership",
-  affiliate: "Affiliate link",
-  "unpaid-spotlight": "Creator spotlight · not paid",
-};
-
-export interface PulseCampaign {
-  id: string;
-  type: PulseCampaignType;
-  partnerName: string;
-  title: string;
-  disclosure: PulseDisclosureKind;
-  /** Extra disclosure wording shown in the expanded view, e.g. "Paid by Example Co." */
-  disclosureText: string;
-  approval: PulseCampaignApproval;
-  /** Set by the server on approve / reject / end. */
-  decidedAt: string | null;
-  decisionNote: string;
-  /** Flight window (ISO). Content of this campaign is only eligible inside it. */
-  flightStart: string | null;
-  flightEnd: string | null;
-  /** Internal contract / brief reference; never public. */
-  contractRef: string;
-  revision: number;
+export interface PulseReleaseGates {
+  /** The shared-type PR that renders sponsor disclosure has shipped. */
+  sponsorDisclosureRendered: boolean;
+  /** CreatorRecord can carry and render a paid-relationship disclosure. */
+  paidCreatorDisclosureRendered: boolean;
 }
 
 /* -------------------------------------------------------------- snapshot */
@@ -175,7 +202,10 @@ export interface PulseWorkspaceSnapshot {
   items: PulseContentRecord[];
   categories: PulseCategorySetting[];
   schedule: PulseScheduleSettings;
-  campaigns: PulseCampaign[];
+  partners: PulsePartnerRecord[];
+  /** Global sponsor destination allowlist: a destination host must be here AND in the campaign's approvedHosts. */
+  sponsorHostAllowlist: string[];
+  gates: PulseReleaseGates;
   /** Server time at load, so previews evaluate schedules on the server's clock. */
   serverNow: string;
 }
@@ -190,7 +220,6 @@ export interface PulseItemInput {
   expiresAt: string | null;
   priority: number;
   featured: boolean;
-  campaignId: string | null;
   note: string;
 }
 
@@ -201,12 +230,24 @@ export type PulseItemTransition =
   | { action: "archive" }
   | { action: "revert-to-draft" };
 
-export type PulseCampaignInput = Omit<PulseCampaign, "approval" | "decidedAt" | "decisionNote" | "revision"> & { id: string | null };
-
-export type PulseCampaignDecision = "approve" | "reject" | "end";
-
 export interface PulseKillInput {
   active: boolean;
   scope: PulseKillScope;
   reason: string;
+}
+
+/* ------------------------------------------------------- public (read) */
+
+/** `pulse_public_catalogue()` — the ONE public shape PULSE-2A consumes. */
+export interface PulsePublicCatalogue {
+  contractVersion: typeof PULSE_PUBLIC_CONTRACT_VERSION;
+  generatedAt: string;
+  /** Emergency disable "managed": serve the shipped static editorial set instead. */
+  fallbackToStatic: boolean;
+  /** Empty slots = keep DEFAULT_PULSE_CADENCE. */
+  cadence: { slots: PulseCategory[]; maxPromotionsPerCycle: number; minPromotionGap: number };
+  /** Eligible editorial PulseItems, rotation order. */
+  items: AuthorablePulseItem[];
+  /** Approved, in-window partner records in PULSE-2C's shape; feed to adaptPartnerContent(). */
+  partners: { creators: CreatorRecord[]; sponsors: SponsorCampaignRecord[] };
 }

@@ -1,31 +1,20 @@
 // ---------------------------------------------------------------------------
-// PULSE-2B — what may be saved, and what may go live.
+// PULSE-2B — editorial items: what may be saved, and what may go live.
 //
 // Two levels:
 //   save     the record is well-formed (a draft may be incomplete, but never
-//            unsafe: no script URLs, no hand-claimed Twitch LIVE, no
-//            off-site links on editorial content).
+//            unsafe: no script URLs, no off-site links on editorial content).
 //   publish  the scene can actually be drawn (the shared scheduler's own
-//            `isRenderable`), sponsor/creator content has an approved,
-//            disclosed campaign, and the schedule is coherent.
+//            `isRenderable`) and the schedule is coherent.
 //
+// Partner records (sponsor / creator) follow PULSE-2C's rules: partnerRules.ts.
 // The server repeats these checks (pulse_admin_* RPCs); this module exists so
 // the owner sees the reason before pressing the button.
 // ---------------------------------------------------------------------------
 
 import { isRenderable } from "@/features/academy-pulse/model/pulse-cadence";
-import { platformUrl } from "@/features/academy-pulse/model/pulse-embed";
 
-import {
-  AUTHORABLE_KINDS,
-  CADENCE_LIMITS,
-  CAMPAIGN_KINDS,
-  KIND_CATEGORIES,
-  type PulseCampaign,
-  type PulseCampaignInput,
-  type PulseItemInput,
-  type PulseScheduleSettings,
-} from "./contract";
+import { AUTHORABLE_KINDS, CADENCE_LIMITS, KIND_CATEGORIES, type PulseItemInput, type PulseScheduleSettings } from "./contract";
 
 export interface PulseIssue {
   field: string;
@@ -35,16 +24,6 @@ export interface PulseIssue {
 /** A same-site route: "/quiz", never "//evil.example" or "javascript:". */
 export function isInternalPath(href: string): boolean {
   return /^\/(?!\/)[A-Za-z0-9\-._~/?#&=%+]*$/.test(href) && !href.includes("\\");
-}
-
-/** An absolute https URL with a host (partner destinations, artwork). */
-export function isHttpsUrl(href: string): boolean {
-  try {
-    const u = new URL(href);
-    return u.protocol === "https:" && u.hostname.includes(".") && u.username === "" && u.password === "";
-  } catch {
-    return false;
-  }
 }
 
 const TEXT_LIMITS = { headline: 90, summary: 220, title: 140, label: 80, body: 1200 } as const;
@@ -65,7 +44,7 @@ export function validateItemForSave(input: PulseItemInput): PulseIssue[] {
   if (!input.label.trim()) issues.push({ field: "label", message: "Give it a workspace name." });
   tooLong(issues, "label", input.label, TEXT_LIMITS.label);
   if (!(AUTHORABLE_KINDS as readonly string[]).includes(p.kind)) {
-    issues.push({ field: "kind", message: "This kind is provider-generated and can't be written by hand." });
+    issues.push({ field: "kind", message: "This kind is not editorial: providers or partner records supply it." });
     return issues;
   }
   if (!KIND_CATEGORIES[p.kind].includes(p.category)) {
@@ -83,12 +62,6 @@ export function validateItemForSave(input: PulseItemInput): PulseIssue[] {
     issues.push({ field: "dwellMs", message: `Time on screen is ${DWELL_MS.min / 1000}–${DWELL_MS.max / 1000} s.` });
   }
   tooLong(issues, "title", p.title, TEXT_LIMITS.title);
-  if (CAMPAIGN_KINDS.has(p.kind) && !input.campaignId) {
-    issues.push({ field: "campaignId", message: "Link a campaign: sponsor and creator content always carries a disclosure." });
-  }
-  if (!CAMPAIGN_KINDS.has(p.kind) && input.campaignId) {
-    issues.push({ field: "campaignId", message: "Only sponsor and creator content belongs to a campaign." });
-  }
 
   switch (p.kind) {
     case "news":
@@ -107,27 +80,12 @@ export function validateItemForSave(input: PulseItemInput): PulseIssue[] {
     case "minigame":
       if (!isInternalPath(p.playHref)) issues.push({ field: "playHref", message: "Play link stays on Mogzy." });
       break;
-    case "sponsor":
-      if (p.href !== null && !isHttpsUrl(p.href)) issues.push({ field: "href", message: "Sponsor destinations must be https." });
-      if (p.artUrl !== null && !isHttpsUrl(p.artUrl)) issues.push({ field: "artUrl", message: "Artwork must be an https URL." });
-      break;
-    case "creator":
-      if (p.media.thumbnailUrl !== null && !isHttpsUrl(p.media.thumbnailUrl)) issues.push({ field: "thumbnailUrl", message: "Thumbnail must be an https URL." });
-      if (p.media.platform === "twitch" && p.media.live) {
-        issues.push({ field: "live", message: "LIVE can't be set by hand; only a verified partner feed may claim it." });
-      }
-      if (p.challenge?.href && !isInternalPath(p.challenge.href)) issues.push({ field: "challengeHref", message: "Challenge link stays on Mogzy." });
-      break;
   }
   return issues;
 }
 
 /** Everything Save checks, plus what going live needs. */
-export function validateItemForPublish(
-  input: PulseItemInput,
-  campaign: PulseCampaign | null,
-  now: Date,
-): PulseIssue[] {
+export function validateItemForPublish(input: PulseItemInput, now: Date): PulseIssue[] {
   const issues = validateItemForSave(input);
   const p = input.payload;
   if (!isRenderable(p)) issues.push({ field: "payload", message: "The scene is incomplete and would be skipped by the scheduler." });
@@ -137,52 +95,20 @@ export function validateItemForPublish(
   if (p.kind === "news" && p.variant === "event" && !p.startsAt) {
     issues.push({ field: "startsAt", message: "An event needs a start time for its countdown." });
   }
-  if (p.kind === "creator" && platformUrl(p.media) === null) {
-    issues.push({ field: "media", message: "Connect a real video or channel id before going live." });
-  }
-  if (CAMPAIGN_KINDS.has(p.kind)) {
-    if (!campaign) {
-      if (input.campaignId) issues.push({ field: "campaignId", message: "The linked campaign no longer exists." });
-    } else {
-      if (campaign.type !== p.kind) issues.push({ field: "campaignId", message: `This is a ${campaign.type} campaign.` });
-      if (campaign.approval !== "approved") issues.push({ field: "campaignId", message: `Campaign is ${campaign.approval}; it must be approved first.` });
-      if (campaign.flightEnd && Date.parse(campaign.flightEnd) <= now.getTime()) issues.push({ field: "campaignId", message: "The campaign's flight has ended." });
-    }
-  }
-  return issues;
-}
-
-export function validateCampaign(input: PulseCampaignInput): PulseIssue[] {
-  const issues: PulseIssue[] = [];
-  if (!input.partnerName.trim()) issues.push({ field: "partnerName", message: "Name the partner." });
-  if (!input.title.trim()) issues.push({ field: "title", message: "Give the campaign a title." });
-  if (input.type === "sponsor" && input.disclosure !== "sponsored") {
-    issues.push({ field: "disclosure", message: "Sponsor campaigns are always disclosed as Sponsored." });
-  }
-  if (input.type === "creator" && input.disclosure === "sponsored") {
-    issues.push({ field: "disclosure", message: "Use Paid partnership, Affiliate, or Not paid for creators." });
-  }
-  if (input.disclosure !== "unpaid-spotlight" && !input.disclosureText.trim()) {
-    issues.push({ field: "disclosureText", message: "Paid relationships need disclosure wording (who paid)." });
-  }
-  if (!validIso(input.flightStart) || !validIso(input.flightEnd)) issues.push({ field: "flight", message: "Not a valid date." });
-  if (input.flightStart && input.flightEnd && Date.parse(input.flightEnd) <= Date.parse(input.flightStart)) {
-    issues.push({ field: "flight", message: "The flight must end after it starts." });
-  }
   return issues;
 }
 
 export function validateSchedule(s: Pick<PulseScheduleSettings, "slots" | "maxPromotionsPerCycle" | "minPromotionGap">): PulseIssue[] {
   const issues: PulseIssue[] = [];
-  const L = CADENCE_LIMITS;
-  if (s.slots.length < L.minSlots || s.slots.length > L.maxSlots) {
-    issues.push({ field: "slots", message: `A cycle has ${L.minSlots}–${L.maxSlots} slots.` });
+  const C = CADENCE_LIMITS;
+  if (s.slots.length < C.minSlots || s.slots.length > C.maxSlots) {
+    issues.push({ field: "slots", message: `A cycle has ${C.minSlots}–${C.maxSlots} slots.` });
   }
-  if (!Number.isInteger(s.maxPromotionsPerCycle) || s.maxPromotionsPerCycle < 0 || s.maxPromotionsPerCycle > L.maxPromotionsPerCycle) {
-    issues.push({ field: "maxPromotionsPerCycle", message: `Promotions per cycle: 0–${L.maxPromotionsPerCycle}.` });
+  if (!Number.isInteger(s.maxPromotionsPerCycle) || s.maxPromotionsPerCycle < 0 || s.maxPromotionsPerCycle > C.maxPromotionsPerCycle) {
+    issues.push({ field: "maxPromotionsPerCycle", message: `Promotions per cycle: 0–${C.maxPromotionsPerCycle}.` });
   }
-  if (!Number.isInteger(s.minPromotionGap) || s.minPromotionGap < L.minPromotionGap || s.minPromotionGap > L.maxPromotionGap) {
-    issues.push({ field: "minPromotionGap", message: `Promotion spacing: ${L.minPromotionGap}–${L.maxPromotionGap} positions.` });
+  if (!Number.isInteger(s.minPromotionGap) || s.minPromotionGap < C.minPromotionGap || s.minPromotionGap > C.maxPromotionGap) {
+    issues.push({ field: "minPromotionGap", message: `Promotion spacing: ${C.minPromotionGap}–${C.maxPromotionGap} positions.` });
   }
   return issues;
 }

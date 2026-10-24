@@ -7,23 +7,25 @@
 //             server so the workflow can be reviewed before any migration is
 //             applied. Labelled "Prototype — not saved" in the UI.
 //   supabase  owner RPCs from supabase/pulse-p2b-staged (NOT applied). Every
-//             write goes through runOwnerAction, so a lapsed device
-//             attestation or a missing MFA is handled the OWN1.1 way; the
-//             server's assert_owner() is the authority.
+//             write goes through runOwnerAction at the level policy.ts
+//             assigns; the server's assert_owner() is the authority.
 //
 // Every write names the revision it read; a stale revision is a conflict,
-// never a silent overwrite.
+// never a silent overwrite. Writes whose assurance depends on the current
+// state (partner edits, approvals, restoring after a disable) take that
+// state as an argument, so the level is decided before the call.
 // ---------------------------------------------------------------------------
 
 import type {
-  PulseCampaign,
-  PulseCampaignDecision,
-  PulseCampaignInput,
+  PartnerAction,
   PulseCategorySetting,
   PulseContentRecord,
+  PulseEditorialKill,
   PulseItemInput,
   PulseItemTransition,
   PulseKillInput,
+  PulsePartnerInput,
+  PulsePartnerRecord,
   PulseScheduleSettings,
   PulseWorkspaceSnapshot,
 } from "./contract";
@@ -58,10 +60,17 @@ export interface PulseAdminRepository {
     schedule: Pick<PulseScheduleSettings, "slots" | "maxPromotionsPerCycle" | "minPromotionGap">,
     expectedRevision: number,
   ): Promise<PulseScheduleSettings>;
-  saveCampaign(input: PulseCampaignInput, expectedRevision: number | null): Promise<PulseCampaign>;
-  decideCampaign(id: string, decision: PulseCampaignDecision, note: string, expectedRevision: number): Promise<PulseCampaign>;
-  /** Emergency editorial disable. Deliberately needs no revision: it must always win. */
-  setEditorialKill(input: PulseKillInput): Promise<PulseScheduleSettings>;
+  /** `existing` is the record as last read (null to create); its status decides the assurance level. */
+  savePartner(input: PulsePartnerInput, existing: PulsePartnerRecord | null): Promise<PulsePartnerRecord>;
+  transitionPartner(partner: PulsePartnerRecord, action: PartnerAction, note: string): Promise<PulsePartnerRecord>;
+  /** Global sponsor destination allowlist. Adding a host needs fresh MFA. */
+  setSponsorHost(host: string, op: "add" | "remove"): Promise<string[]>;
+  /**
+   * Emergency editorial disable. Carries no revision (switching OFF content
+   * must always win); `current` decides whether this re-exposes content
+   * (restore / narrowing), which needs fresh MFA.
+   */
+  setEditorialKill(input: PulseKillInput, current: PulseEditorialKill): Promise<PulseScheduleSettings>;
 }
 
 /** Owner-facing message for any repository failure. */

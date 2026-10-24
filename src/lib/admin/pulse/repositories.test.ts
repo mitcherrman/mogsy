@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OwnerActionOptions } from "@/lib/admin-auth/ownerAction";
 
+import type { PulsePartnerRecord } from "./contract";
 import { createMemoryPulseRepository } from "./memoryRepository";
-import { prototypeSeed } from "./prototypeSeed";
+import { toPartnerInput } from "./partnerRules";
+import { PROTOTYPE_SPONSOR_ID, prototypeSeed } from "./prototypeSeed";
 import { PulseRepositoryError } from "./repository";
-import { PULSE_ACTION_LEVEL, PULSE_ADMIN_RPCS, createSupabasePulseRepository, toRepositoryError, type PulseRpc } from "./supabaseRepository";
+import { PULSE_ADMIN_RPCS, createSupabasePulseRepository, toRepositoryError, type PulseRpc } from "./supabaseRepository";
 
 const NOW = new Date("2026-10-24T12:00:00Z");
 const repo = () => createMemoryPulseRepository(prototypeSeed(NOW), { now: () => NOW });
@@ -19,54 +21,57 @@ async function code(p: Promise<unknown>): Promise<string> {
   }
 }
 
+const sponsorOf = (s: { partners: PulsePartnerRecord[] }) => s.partners.find((p) => p.record.id === PROTOTYPE_SPONSOR_ID)!;
+
 describe("memory repository (prototype) enforces the server rules", () => {
   it("stale revisions are conflicts", async () => {
     const r = repo();
-    const s = await r.load();
-    const item = s.items[0];
+    const item = (await r.load()).items[0];
     await r.saveItem({ ...item, label: "A" }, item.revision);
     expect(await code(r.saveItem({ ...item, label: "B" }, item.revision))).toBe("conflict");
   });
 
-  it("publishing a sponsor needs an approved campaign; approval needs a pending campaign", async () => {
+  it("sponsor: submit needs an allowlisted host; approval is logged FRESH; editing it returns it to review at FRESH", async () => {
     const r = repo();
-    let s = await r.load();
-    const sp = s.items.find((i) => i.id === "pc-sponsor-placeholder")!;
-    expect(await code(r.transitionItem(sp.id, { action: "publish" }, sp.revision))).toBe("invalid");
-    const c = s.campaigns[0];
-    expect(await code(r.decideCampaign(c.id, "end", "x", c.revision))).toBe("invalid");
-    await r.decideCampaign(c.id, "approve", "", c.revision);
-    const published = await r.transitionItem(sp.id, { action: "publish" }, sp.revision);
-    expect(published.state).toBe("published");
-
-    // A material disclosure edit sends the campaign back for approval.
-    s = await r.load();
-    const approved = s.campaigns[0];
-    const edited = await r.saveCampaign({ ...approved, disclosureText: "Paid by someone else" }, approved.revision);
-    expect(edited.approval).toBe("pending");
+    let p = sponsorOf(await r.load());
+    expect(await code(r.transitionPartner(p, "submit", ""))).toBe("invalid");
+    await r.setSponsorHost("example.com", "add");
+    p = await r.transitionPartner(p, "submit", "");
+    p = await r.transitionPartner(p, "approve", "");
+    expect(p.record.status).toBe("approved");
+    expect(p.record.approval?.approvedBy).toBe("owner");
+    const edited = await r.savePartner(toPartnerInput(p), p);
+    expect(edited.record.status).toBe("pending-review");
+    expect(edited.record.approval).toBeNull();
+    expect(r.assuranceLog).toEqual([
+      { action: "host.add", level: "fresh" },
+      { action: "partner.submit", level: "trusted" },
+      { action: "partner.approve", level: "fresh" },
+      { action: "partner.save", level: "fresh" },
+    ]);
   });
 
-  it("live content can't be archived, and live edits must stay publishable", async () => {
+  it("reject / pause / end need a note; illegal transitions are refused", async () => {
     const r = repo();
-    const s = await r.load();
-    const live = s.items.find((i) => i.id === "pc-news-hover")!;
+    const p = sponsorOf(await r.load());
+    expect(await code(r.transitionPartner(p, "approve", ""))).toBe("invalid");
+    expect(await code(r.transitionPartner(p, "end", "x"))).toBe("invalid");
+  });
+
+  it("live editorial can't be archived, and live edits must stay publishable", async () => {
+    const r = repo();
+    const live = (await r.load()).items.find((i) => i.id === "pc-news-hover")!;
     expect(await code(r.transitionItem(live.id, { action: "archive" }, live.revision))).toBe("invalid");
-    const broken = { ...live, payload: { ...live.payload, headline: "" } as typeof live.payload };
-    expect(await code(r.saveItem(broken, live.revision))).toBe("invalid");
+    expect(await code(r.saveItem({ ...live, payload: { ...live.payload, headline: "" } as typeof live.payload }, live.revision))).toBe("invalid");
   });
 
-  it("schedule must be in the future", async () => {
+  it("emergency disable trusted; restore logged FRESH", async () => {
     const r = repo();
-    const s = await r.load();
-    const d = s.items.find((i) => i.id === "pc-news-hover")!;
-    expect(await code(r.transitionItem(d.id, { action: "schedule", publishAt: "2026-10-01T00:00:00Z" }, d.revision))).toBe("invalid");
-  });
-
-  it("emergency disable needs a reason, needs no revision, and always applies", async () => {
-    const r = repo();
-    expect(await code(r.setEditorialKill({ active: true, scope: "managed", reason: "" }))).toBe("invalid");
-    const s = await r.setEditorialKill({ active: true, scope: "managed", reason: "Incident" });
-    expect(s.kill).toMatchObject({ active: true, scope: "managed", reason: "Incident" });
+    const off = { active: false, scope: "partners" as const, reason: "", changedAt: null };
+    expect(await code(r.setEditorialKill({ active: true, scope: "managed", reason: "" }, off))).toBe("invalid");
+    const s = await r.setEditorialKill({ active: true, scope: "managed", reason: "Incident" }, off);
+    await r.setEditorialKill({ active: false, scope: "managed", reason: "" }, s.kill);
+    expect(r.assuranceLog).toEqual([{ action: "kill.on", level: "trusted" }, { action: "kill.restore", level: "fresh" }]);
   });
 });
 
@@ -78,55 +83,68 @@ describe("supabase repository: owner authorization", () => {
       levels.push(opts);
       return { status: "done" as const, result: await fn() };
     });
-    const r = createSupabasePulseRepository({ rpc, runAction: runAction as never });
-    return { r, rpc, levels, runAction };
+    return { r: createSupabasePulseRepository({ rpc, runAction: runAction as never }), rpc, levels, runAction };
   }
 
-  it("every write goes through runOwnerAction at its declared level", async () => {
+  it("every write goes through runOwnerAction at the level policy.ts assigns", async () => {
     const { r, levels, rpc } = setup();
     const s = prototypeSeed(NOW);
+    const draft = sponsorOf(s);
+    const approved = { ...draft, record: { ...draft.record, status: "approved", approval: { approvedBy: "owner", approvedAt: NOW.toISOString() } } } as PulsePartnerRecord;
+    const off = { active: false, scope: "partners" as const, reason: "", changedAt: null };
+    const on = { active: true, scope: "managed" as const, reason: "x", changedAt: null };
+
     await r.saveItem(s.items[0], 1);
     await r.transitionItem("x", { action: "publish" }, 1);
     await r.saveCategory({ category: "news", enabled: false, maxPerCycle: null, expiresAt: null }, 1);
     await r.saveSchedule(s.schedule, 1);
-    await r.saveCampaign({ ...s.campaigns[0], id: null }, null);
-    await r.decideCampaign("c", "approve", "", 1);
-    await r.setEditorialKill({ active: true, scope: "partners", reason: "r" });
-    expect(levels.map((l) => l.level)).toEqual(["trusted", "trusted", "trusted", "trusted", "trusted", "fresh", "trusted"]);
-    expect(levels.every((l) => l.idempotent === false)).toBe(true);
-    expect(rpc.mock.calls.map((c) => c[0])).toEqual([
-      PULSE_ADMIN_RPCS.saveItem, PULSE_ADMIN_RPCS.transitionItem, PULSE_ADMIN_RPCS.saveCategory, PULSE_ADMIN_RPCS.saveSchedule,
-      PULSE_ADMIN_RPCS.saveCampaign, PULSE_ADMIN_RPCS.decideCampaign, PULSE_ADMIN_RPCS.setKill,
+    await r.savePartner(toPartnerInput(draft), null);
+    await r.savePartner(toPartnerInput(draft), draft);
+    await r.savePartner(toPartnerInput(approved), approved);
+    await r.transitionPartner(draft, "submit", "");
+    await r.transitionPartner(draft, "approve", "");
+    await r.transitionPartner(approved, "pause", "why");
+    await r.setSponsorHost("example.com", "add");
+    await r.setSponsorHost("example.com", "remove");
+    await r.setEditorialKill({ active: true, scope: "managed", reason: "x" }, off);
+    await r.setEditorialKill({ active: true, scope: "partners", reason: "x" }, on);
+    await r.setEditorialKill({ active: false, scope: "managed", reason: "" }, on);
+
+    expect(levels.map((l) => l.level)).toEqual([
+      "trusted", "trusted", "trusted", "trusted", // editorial, category, cadence
+      "trusted", "trusted", "fresh", // partner create, draft edit, approved-sponsor edit
+      "trusted", "fresh", "trusted", // submit, approve, pause
+      "fresh", "trusted", // host add, remove
+      "trusted", "fresh", "fresh", // disable, narrow, restore
     ]);
-    expect(PULSE_ACTION_LEVEL.decideCampaign).toBe("fresh");
+    expect(levels.every((l) => l.idempotent === false)).toBe(true);
+    expect(new Set(rpc.mock.calls.map((c) => c[0]))).toEqual(new Set(Object.values(PULSE_ADMIN_RPCS).filter((n) => n !== PULSE_ADMIN_RPCS.snapshot)));
   });
 
-  it("a cancelled or deferred verification changes nothing and says so", async () => {
+  it("a cancelled or deferred verification sends nothing and says so", async () => {
     const rpc = vi.fn<PulseRpc>();
     const r = createSupabasePulseRepository({ rpc, runAction: (async () => ({ status: "cancelled" })) as never });
-    await expect(r.decideCampaign("c", "approve", "", 1)).rejects.toMatchObject({ code: "step_up" });
+    const on = { active: true, scope: "managed" as const, reason: "x", changedAt: null };
+    await expect(r.setEditorialKill({ active: false, scope: "managed", reason: "" }, on)).rejects.toMatchObject({ code: "step_up" });
     expect(rpc).not.toHaveBeenCalled();
   });
 
   it("server refusals map to typed errors", () => {
-    expect(toRepositoryError({ message: "not_authorized", code: "42501" }).code).toBe("forbidden");
+    expect(toRepositoryError({ message: "owner_required", code: "42501" }).code).toBe("forbidden");
     expect(toRepositoryError({ message: "permission denied for function pulse_admin_save_item" }).code).toBe("forbidden");
-    expect(toRepositoryError({ message: "step_up_required", hint: "fresh_aal2" }).code).toBe("step_up");
+    expect(toRepositoryError({ message: "step_up_required", code: "42501", hint: "fresh_aal2" }).code).toBe("step_up");
     expect(toRepositoryError({ message: "pulse_conflict" }).code).toBe("conflict");
-    const inv = toRepositoryError({ message: "pulse_invalid", details: JSON.stringify([{ field: "href", message: "no" }]) });
+    const inv = toRepositoryError({ message: "pulse_invalid", details: JSON.stringify([{ field: "destinationUrl", message: "no" }]) });
     expect(inv.code).toBe("invalid");
-    expect(inv.issues).toEqual([{ field: "href", message: "no" }]);
+    expect(inv.issues).toEqual([{ field: "destinationUrl", message: "no" }]);
     expect(toRepositoryError({ message: "x", code: "PGRST202" }).code).toBe("unavailable");
   });
 
-  it("load does not need step-up but still surfaces a forbidden read", async () => {
-    const { r, runAction } = setup({ data: null, error: { message: "not_authorized", code: "42501" } });
-    await expect(r.load()).rejects.toMatchObject({ code: "forbidden" });
-    expect(runAction).not.toHaveBeenCalled();
-  });
-
-  it("refuses a snapshot from another contract version", async () => {
-    const { r } = setup({ data: { contractVersion: "pulse-admin/0" }, error: null });
-    await expect(r.load()).rejects.toMatchObject({ code: "unavailable" });
+  it("load needs no step-up, surfaces a forbidden read, and refuses a v1 snapshot", async () => {
+    const forbidden = setup({ data: null, error: { message: "owner_required", code: "42501" } });
+    await expect(forbidden.r.load()).rejects.toMatchObject({ code: "forbidden" });
+    expect(forbidden.runAction).not.toHaveBeenCalled();
+    const v1 = setup({ data: { contractVersion: "pulse-admin/1", items: [], categories: [], campaigns: [], schedule: {}, serverNow: "x" }, error: null });
+    await expect(v1.r.load()).rejects.toMatchObject({ code: "unavailable" });
   });
 });
