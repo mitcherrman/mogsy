@@ -1,0 +1,40 @@
+name: academy-pulse-partners
+
+# PULSE-2C: the partner content adapters (creators, YouTube, Twitch, creator
+# challenges, sponsor campaigns). Pure modules, so this is unit tests plus a
+# typecheck scoped to the partner folder (the app project may carry unrelated
+# errors). The browser acceptance for Pulse stays in academy-pulse.yml.
+on:
+  pull_request:
+    paths:
+      - "src/features/academy-pulse/content/partners/**"
+      - "src/features/academy-pulse/model/**"
+      - ".github/workflows/academy-pulse-partners.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  partners:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install baseline dependencies without changing the stale lockfile
+        run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Unit tests (partner adapters and the Pulse model they feed)
+        run: npx vitest run src/features/academy-pulse/content src/features/academy-pulse/model
+      - name: Typecheck (errors in the partner folder fail the job)
+        run: |
+          npx tsc -p tsconfig.app.json --noEmit > tsc.log || true
+          grep -c "error TS" tsc.log || true
+          if grep -E "src/features/academy-pulse/content/partners" tsc.log; then exit 1; fi
+      - name: Lint the partner folder
+        run: npx eslint src/features/academy-pulse/content/partners
