@@ -16,7 +16,7 @@ import { defineConfig } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: /(ranked-((arena|result)-fit|outro-axis|visual-continuity|statcheck-boundary|reconstruct-continuity|reconstruct-r3a|arena-r3c)|match-grid-(arena-)?continuity|pro-play-assembly-continuity|scrub-continuity|scrub-objective-fit|combat-estimate-continuity|numeric-lab-owner|perfect-timing-owner|mobile-arena-visibility|rangefinder-continuity|word-puzzle-continuity|question-media-qmedia[12])\.spec\.ts/,
+  testMatch: /(ranked-((arena|result)-fit|outro-axis|visual-continuity|statcheck-boundary|reconstruct-continuity|reconstruct-r3a|arena-r3c)|match-grid-(arena-)?continuity|pro-play-assembly-continuity|scrub-continuity|scrub-objective-fit|combat-estimate-continuity|numeric-lab-owner|perfect-timing-owner|mobile-arena-visibility|rangefinder-continuity|word-puzzle-continuity|question-media-qmedia[123])\.spec\.ts/,
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

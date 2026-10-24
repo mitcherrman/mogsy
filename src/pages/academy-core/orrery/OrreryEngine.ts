@@ -252,6 +252,22 @@ export class OrreryEngine {
     return i >= 0 ? BOOK_ORDER[i] : null;
   }
 
+  /**
+   * Hover-to-front (orbit mode): turn the whole orbit, by the shorter way, until
+   * `id` is front and centre, then hold it there — the arrows' own turn and hold.
+   * Choosing the book already being brought changes nothing. Under reduced
+   * motion the orbit is placed at once. False when there is no orbit to turn or
+   * the pointer is holding it (a drag).
+   */
+  steerTo(id: BookId): boolean {
+    if (this.mode !== "orbit") return false;
+    const ok = this.spin.steerToBook(BOOK_ORDER.indexOf(id), this.animate);
+    this.syncSpin();
+    if (!this.animate) this.renderFrame(0);
+    this.wake();
+    return ok;
+  }
+
   /** Release a selector hold; the orbit resumes. */
   releaseSelection(): void {
     this.spin.releaseHold();

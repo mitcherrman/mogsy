@@ -184,21 +184,27 @@ test.describe("desktop", () => {
   });
 
   test("hover focuses a book, projects its room in the crystal and moves Mogzy", async ({ page }) => {
-    await open(page, 1366, 768);
     const stage = page.getByTestId("academy-core-stage");
     const mogzy = page.getByTestId("academy-core-mogzy");
-    await expect(stage).toHaveAttribute("data-focus", "idle");
-    await expect(page.getByTestId("academy-core-v35-lux-portrait")).toHaveCount(1, { timeout: 8000 });
+    // Hover-to-front holds the selected book at the front. Test each destination
+    // from a fresh free-running orbit instead of aiming at books hidden behind
+    // a previous held selection.
     for (const [id, pose] of [["leaguecraft", "holdingBook"], ["pro-play", "peeking"], ["combat-lab", "raisingHand"], ["archives", "explaining"]] as const) {
+      await open(page, 1366, 768);
+      await expect(stage).toHaveAttribute("data-focus", "idle");
+      await expect(page.getByTestId("academy-core-v35-lux-portrait")).toHaveCount(1, { timeout: 8000 });
       await aimBook(page, id);
       await expect(mogzy).toHaveAttribute("data-pose", pose);
       await expect(page.getByTestId("academy-core-preview")).toHaveText(/Previewing/);
-      await page.waitForTimeout(800);
+      await expect(stage).toHaveAttribute("data-hover", id, { timeout: 5000 });
+      await expect(stage).toHaveAttribute("data-spin", "held", { timeout: 15000 });
       if (id === "leaguecraft" || id === "pro-play") await page.screenshot({ path: path.join(OUT, `desktop-1366x768-focus-${id}.png`) });
+      await page.mouse.move(10, 400);
+      await expect(stage).toHaveAttribute("data-hover", "");
+      // Deliberate sticky-selection contract: departure clears pointer intent
+      // while the last selected room remains pinned until another action.
+      await expect(stage).toHaveAttribute("data-focus", id);
     }
-    await page.mouse.move(10, 400);
-    await expect(stage).toHaveAttribute("data-focus", "idle");
-    await expect(mogzy).toHaveAttribute("data-pose", "rest");
   });
 
   test("one click: a ≤ 350 ms activation, then navigation (measured)", async ({ page }) => {
@@ -441,12 +447,14 @@ test.describe("desktop", () => {
     await mp.addInitScript(() => { localStorage.setItem("mogsy-sounds-muted", "1"); });
     await open(mp, 1366, 768);
     await mp.getByTestId("academy-core-crystal").click();
-    await aimBook(mp, "pro-play");
-    await mp.waitForTimeout(400);
-    await aimBook(mp, "combat-lab");
-    await mp.waitForTimeout(400);
-    expect(await starts(mp), "muted: hover, crystal and focus cues make no sound").toBe(0);
-    await pressBook(mp, "archives");
+    await mp.getByTestId("academy-core-arrow-right").click();
+    await bookLink(mp, "pro-play").focus();
+    await bookLink(mp, "combat-lab").focus();
+    expect(await starts(mp), "muted: crystal, arrow and focus cues make no sound").toBe(0);
+    // Opening through a real keyboard gesture also exercises the book-open
+    // cue, without a stale-coordinate click on the continuously moving orbit.
+    await bookLink(mp, "archives").focus();
+    await mp.keyboard.press("Enter");
     await mp.waitForURL(/\/lol\/docs$/);
     expect(await starts(mp), "muted: the book-open cue makes no sound").toBe(0);
     await muted.close();

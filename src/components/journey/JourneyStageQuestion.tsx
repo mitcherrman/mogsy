@@ -68,8 +68,9 @@ import type { MasteryQuestionReveal } from "@/features/mastery/interactions/reve
 import type { PlayerAnswer } from "@/features/mastery/player/useMasteryFixtureSession";
 import { PROMPT_TEMPLATES, readPromptSemantics } from "@/features/mastery/contracts/promptSemantics";
 import { readComparisonSemantics } from "@/features/mastery/contracts/comparisonSemantics";
-import { formatRecallPrompt } from "@/features/mastery/interactions/formatPromptSemantics";
-import { formatComparisonPrompt } from "@/features/mastery/interactions/formatComparisonSemantics";
+import { abilityLabel, formatRecallPrompt } from "@/features/mastery/interactions/formatPromptSemantics";
+import { abilitySubjectLabel, formatComparisonPrompt } from "@/features/mastery/interactions/formatComparisonSemantics";
+import { getAbilityIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { COMPARISON_TIE_TOKEN } from "@/features/mastery/interactions/ComparisonQuestionView";
 import type { ComparisonValues } from "@/features/mastery/contracts/comparisonValues";
 import {
@@ -220,6 +221,37 @@ function championIdOf(journey: JourneyChildContext, name: string | undefined | n
   return null;
 }
 
+/** An ability subject only where the asset store has that champion's slot art (never a guess). */
+function storedAbility(text: string, champion: string, slot: string): PromptSubject[] {
+  if (!text || !ABILITY_SLOTS_SET.has(slot) || !getAbilityIconUrl(champion, slot as AbilitySlot)) return [];
+  return [{ kind: "ability", text, champion, slot: slot as AbilitySlot }];
+}
+
+/** A cooldown / cost recall's ability, named exactly as the recall sentence names it. */
+function recallAbilitySubjects(challenge: MasterySliceChallengeView): PromptSubject[] {
+  try {
+    const ps = readPromptSemantics(challenge.promptSemantics);
+    return storedAbility(abilityLabel(ps), ps.championDisplay, ps.subjectRef);
+  } catch {
+    return [];
+  }
+}
+
+/** An ability comparison's two abilities, each named exactly as the sentence names it. */
+function comparisonAbilitySubjects(challenge: MasterySliceChallengeView): PromptSubject[] {
+  if (!challenge.comparisonSemantics) return [];
+  try {
+    const cs = readComparisonSemantics(challenge.comparisonSemantics);
+    if (!cs.subjectRef) return [];
+    return [
+      ...storedAbility(abilitySubjectLabel(cs, cs.championADisplay, cs.abilityNameA), cs.championADisplay, cs.subjectRef),
+      ...storedAbility(abilitySubjectLabel(cs, cs.championBDisplay, cs.abilityNameB), cs.championBDisplay, cs.subjectRef),
+    ];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * JP4 — which nouns of this question get a subject icon (`JourneyQuestionText`):
  * a rule per question kind, from the served semantics only.
@@ -248,6 +280,13 @@ export function promptSubjectsFor(challenge: MasterySliceChallengeView, journey:
     const word = isJourneyStatKey(stat) ? JOURNEY_STAT_META[stat].long : "";
     return [...championSubject(champion),
       ...(mnemonic && word ? [{ kind: "stat" as const, text: word, mnemonic }] : [])];
+  }
+  // Cooldown / cost recall and ability comparisons name their abilities in the
+  // sentence ("Ahri Q (Orb of Deception)"); each gets its stored icon.
+  if (question.kind === "recall") return recallAbilitySubjects(challenge);
+  if (question.kind === "comparison") {
+    const sides = comparisonAbilitySubjects(challenge);
+    if (sides.length) return sides;
   }
   // Anything else: the champions it names, at most two.
   return [...championSubject(journey.playerChampion), ...championSubject(journey.opponentChampion)];

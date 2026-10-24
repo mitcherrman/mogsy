@@ -190,15 +190,23 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   // way through (a reload, a late first poll) is held only for what the server
   // has left of it, never a fresh full window past `own_reveal_until` (the
   // next child would already be open, its clock running behind the reveal).
-  const heldWindow = useRef<{ index: number; ms: number | null; holdMs: number } | null>(null);
+  //
+  // QRT1 — the hold is an INSTANT (`endsAt`, client clock), not a duration:
+  // the timer is armed after the commit, and a duration measured in render
+  // overran `own_reveal_until` by the commit's length. A Journey only: the
+  // block-clocked Ranked Mastery Slice keeps its plain full-window delay.
+  const heldWindow = useRef<{ index: number; ms: number | null; holdMs: number; endsAt: number } | null>(null);
   if (holding && heldWindow.current?.index !== holding.challengeIndex) {
     const ms = state.ownRevealWindowMs ?? windowMs;
     const full = revealDurationMs(ms);
-    const left = Number.isNaN(revealUntilMs) ? full : revealUntilMs - (Date.now() + skewMs);
-    heldWindow.current = { index: holding.challengeIndex, ms, holdMs: Math.max(0, Math.min(full, left)) };
+    const now = Date.now();
+    const left = Number.isNaN(revealUntilMs) ? full : revealUntilMs - (now + skewMs);
+    const holdMs = Math.max(0, Math.min(full, left));
+    heldWindow.current = { index: holding.challengeIndex, ms, holdMs, endsAt: now + holdMs };
   }
   const childWindowMs = holding && heldWindow.current ? heldWindow.current.ms : windowMs;
   const holdMs = holding && heldWindow.current ? heldWindow.current.holdMs : revealDurationMs(windowMs);
+  const holdEndsAt = state.journey && holding && heldWindow.current ? heldWindow.current.endsAt : null;
 
   // ONE timer, keyed on the held challenge's own index — so a duplicate poll,
   // a re-render, or a second state update cannot stack a second advance, and a
@@ -216,6 +224,7 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
     holding ? holding.challengeIndex : null,
     () => setDismissed(holding ? holding.challengeIndex : -1),
     holdMs,
+    holdEndsAt,
   );
 
   const revealed = holding ? challenges[holding.challengeIndex] ?? null : null;
