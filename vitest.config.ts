@@ -2,9 +2,17 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
+// Local worker cap. Vitest's default is (CPU threads - 1), i.e. ~15 jsdom workers on the owner's 16-thread PC,
+// which saturated RAM when several Claude sessions ran suites at once. mogzy-guard sets MOGZY_VITEST_WORKERS
+// (1-2); unguarded local runs default to 2. CI keeps Vitest's own default (GitHub runners are isolated).
+const localWorkers = Math.max(1, Number(process.env.MOGZY_VITEST_WORKERS) || 2);
+
 export default defineConfig({
   plugins: [react()],
   test: {
+    ...(process.env.CI ? {} : { maxWorkers: localWorkers, minWorkers: 1 }),
+    // Warns (or fails when MOGZY_GUARD_ENFORCE=1) if a local run did not go through tools/dev-guard.
+    globalSetup: ["./tools/dev-guard/vitest-guard-setup.mjs"],
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

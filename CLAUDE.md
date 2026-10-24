@@ -1,3 +1,5 @@
 # Mogzy frontend — Claude Code rules
 
 Read [AGENTS.md](AGENTS.md) before running tools or tests. Its local-browser safety rules apply to every task, every subagent, and every worktree. **Never run automated local Microsoft Edge/Google Chrome or visible browser sessions.** Use GitHub Actions for browser acceptance; request approval for any bundled headless Chromium locally. Respect branch isolation, test evidence and no unapproved deploy.
+
+**Resource and verification policy (also in AGENTS.md):** declare a verification level (L1 isolated / L2 behavioral / L3 critical-or-release), a test plan and the expected local resource impact before any heavy run. Run heavy local jobs (Vitest beyond one small file, build, tsc/eslint over the tree, pytest, validators) only through `tools/dev-guard` (`mogzy-guard.cmd run --class <vitest|pytest|build|e2e> -- <cmd>`), one at a time across all sessions. If the guard says BLOCKED, stop and report: no retry loops, no workarounds, no killing processes you did not start. Use GitHub Actions for browser, screenshot and exhaustive suites. Matrix: `docs/dev/TESTING_MATRIX.md`.
