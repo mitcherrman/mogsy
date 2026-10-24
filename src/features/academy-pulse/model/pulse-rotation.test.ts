@@ -47,6 +47,36 @@ describe("rotation", () => {
     expect(s.holds.has("focus")).toBe(true);
   });
 
+  it("explicit Play clears pointer, mouse-focus and stale interaction pauses", () => {
+    const stopped = run(initialRotation(4),
+      { type: "hold", reason: "hover", on: true },
+      { type: "hold", reason: "focus", on: true },
+      { type: "hold", reason: "interaction", on: true });
+    expect(isRotating(stopped)).toBe(false);
+    const resumed = run(stopped, { type: "toggle-user" });
+    expect(isRotating(resumed)).toBe(true);
+    expect(resumed.holds.size).toBe(0);
+
+    // Explicit Play must never bypass an expanded modal or visibility safety.
+    const blocked = run(stopped,
+      { type: "hold", reason: "expanded", on: true },
+      { type: "hold", reason: "hidden", on: true },
+      { type: "toggle-user" });
+    expect(blocked.holds).toEqual(new Set(["expanded", "hidden"]));
+    expect(isRotating(blocked)).toBe(false);
+  });
+
+  it("manual scene selection drops a pointer hover but preserves deliberate keyboard focus", () => {
+    const stopped = run(initialRotation(3),
+      { type: "hold", reason: "hover", on: true },
+      { type: "hold", reason: "focus", on: true });
+    const next = run(stopped, { type: "next" });
+    expect(next.index).toBe(1);
+    expect(next.holds.has("hover")).toBe(false);
+    expect(next.holds.has("focus")).toBe(true);
+    expect(isRotating(run(next, { type: "hold", reason: "focus", on: false }))).toBe(true);
+  });
+
   it("Previous wraps backwards (into the previous cycle) and records the direction", () => {
     const s = run(initialRotation(4), { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" });
     expect(s).toMatchObject({ index: 0, cycle: 1 });
