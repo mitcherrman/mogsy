@@ -20,6 +20,7 @@
  */
 import { useEffect, useRef } from "react";
 import { track } from "@/lib/analytics";
+import { OfficialSocialLinks } from "@/components/social/OfficialSocialLinks";
 import { authHref } from "@/lib/auth/auth-destination";
 import { Link } from "react-router-dom";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
@@ -132,6 +133,7 @@ export function DailyCompletion({ run, saveRequired = false }: {
             </Link>
           </aside>
         )}
+        {!ownerTake && <OfficialSocialLinks placement="daily_completion" compact />}
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-0 pt-1 sm:pt-3">
           {/* PGM1 — the bonus modes outlive the day's run: a finished Daily
               can still go on to the public catalog. v5+ only, where there is
