@@ -4,9 +4,10 @@
  * PULSE-1 is an unreleased prototype. It must never appear on the public Home
  * Hub by accident, so the default is OFF and the switch is a build-time value:
  *
- *   VITE_ACADEMY_PULSE unset / "off"  → never (a production build: no Pulse code is fetched)
- *   VITE_ACADEMY_PULSE = "preview"    → only with `?pulse=1` in the URL
- *   VITE_ACADEMY_PULSE = "on"         → always (a future release decision)
+ *   VITE_ACADEMY_PULSE = "off"       → disabled (emergency rollback)
+ *   VITE_ACADEMY_PULSE = "preview"   → only with `?pulse=1` in the URL
+ *   VITE_ACADEMY_PULSE = "on"        → always
+ *   unset                           → preview in dev, on in production (public editorial feed)
  *
  * The Vite dev server (and the e2e dev server) behaves as "preview", so a
  * development preview is `/lol?pulse=1`. The preview choice is remembered for
@@ -23,7 +24,8 @@ export function pulseFlagMode(envValue: string | undefined, isDev: boolean): Pul
   if (v === "on") return "on";
   if (v === "preview") return "preview";
   if (v === "off") return "off";
-  return isDev ? "preview" : "off";
+  // Owner-authorized public launch. Set VITE_ACADEMY_PULSE=off to roll back.
+  return isDev ? "preview" : "on";
 }
 
 interface StorageLike {
