@@ -47,3 +47,15 @@ The icon and label followed `playing`, meaning "no hold at all". A mouse moving 
 - **Keyboard users:** a visible keyboard focus inside Pulse still holds rotation until focus leaves, which is intended (WCAG). After Escape closes the expanded view, focus returns to Expand as visible focus, so rotation stays held until the user tabs away. That is correct for keyboard users, but a mouse user who closes with Escape gets the same hold.
 - **Not verified on real hardware:** the owner's live browser (Lovable build) and touch devices. Touch never creates a hover hold, by design.
 - The handoff `ACADEMY_PULSE_HANDOFF.md` opening header still says #140 is unmerged. I left it alone (out of scope); §§9–10 are current.
+
+## Mixed-input follow-up (command-center review on #152)
+
+**Interaction certified:** open Expand with the mouse → press Escape → move the pointer out of Pulse → wait past the 6 s hover grace.
+
+- **Reproduced first, before any fix.** Run 40074322960 on fe6bf08d failed the new focused regression: `data-holds` stayed `"focus"`, so rotation was paused indefinitely; the other 23 cases passed.
+- **Cause.** Escape is a keyboard event, so Chromium treats the dialog's programmatic return of focus to the opener as `:focus-visible`. Pulse's focus handler read that as an intentional keyboard hold.
+- **Fix (narrow, `AcademyPulse.tsx` only).** When the view opens, Pulse records whether the opener had keyboard focus (`:focus-visible`). If it was opened with the mouse, the restored focus is not counted as a keyboard hold. A keyboard-opened view keeps its hold, as intended. The provider, cadence and every other system are untouched.
+- **Regressions.** Two focused Chromium tests:
+  - The mouse path: after the hover grace, holds are empty, playing is true, and the next scene arrives by itself.
+  - The keyboard path: Tab to Expand, Enter, Escape. Focus returns to Expand and the `focus` hold is preserved.
+- **Result.** Run **40075007670** on **bd088af6**: **pass**, all 25 browser cases plus the unit tests and production build.
