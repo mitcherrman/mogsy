@@ -56,6 +56,7 @@ import {
 } from "@/components/admin/users/AudienceSections";
 import { VisitorsSection } from "@/components/admin/users/VisitorsSection";
 import { AudiencePulse } from "@/components/admin/users/AudiencePulse";
+import { CohortRetentionPanel } from "@/components/admin/users/CohortRetention";
 import { useAdminRoles } from "@/hooks/useAdminRoles";
 import { ADMIN_AREAS_BY_ID } from "@/lib/admin/admin-registry";
 import { loadAnalytics, ROW_CAP, type LoadedAnalytics } from "@/lib/admin/analytics/loadAnalytics";
@@ -350,6 +351,7 @@ export default function AdminUsersPage() {
                 if (typeof visitors?.scrollIntoView === "function") visitors.scrollIntoView({ block: "start" });
               }}
             />
+            <CohortRetentionPanel filter={filter} refreshKey={nonce} />
             <section id="users-audience-visitors" aria-label="Visitors">
               <details
                 open={Boolean(visitor || population)}

@@ -315,7 +315,7 @@ export function formatRate(rate: Rate | null, minSample = MIN_RATE_SAMPLE): stri
 
 const ts = (iso: string) => Date.parse(iso);
 
-interface SessionInfo {
+export interface SessionInfo {
   session_id: string;
   visitor_id: string;
   startedAt: number;
@@ -327,7 +327,7 @@ interface SessionInfo {
  * events are independent fire-and-forget writes) is reconstructed from its
  * earliest event.
  */
-function indexSessions(ds: AnalyticsDataset): Map<string, SessionInfo> {
+export function indexSessions(ds: AnalyticsDataset): Map<string, SessionInfo> {
   const map = new Map<string, SessionInfo>();
   for (const s of ds.sessions) {
     map.set(s.session_id, { session_id: s.session_id, visitor_id: s.visitor_id, startedAt: ts(s.started_at) });
@@ -342,7 +342,7 @@ function indexSessions(ds: AnalyticsDataset): Map<string, SessionInfo> {
 }
 
 /** Each visitor's first-seen instant: the earlier of first_seen_at and their first session. */
-function firstSeenByVisitor(ds: AnalyticsDataset, sessions: Map<string, SessionInfo>): Map<string, number> {
+export function firstSeenByVisitor(ds: AnalyticsDataset, sessions: Map<string, SessionInfo>): Map<string, number> {
   const first = new Map<string, number>();
   const take = (v: string, t: number) => {
     const cur = first.get(v);
@@ -354,7 +354,7 @@ function firstSeenByVisitor(ds: AnalyticsDataset, sessions: Map<string, SessionI
 }
 
 /** Each visitor's sessions, sorted by start. */
-function sessionsByVisitor(sessions: Map<string, SessionInfo>): Map<string, SessionInfo[]> {
+export function sessionsByVisitor(sessions: Map<string, SessionInfo>): Map<string, SessionInfo[]> {
   const out = new Map<string, SessionInfo[]>();
   for (const s of sessions.values()) {
     const list = out.get(s.visitor_id) ?? [];
