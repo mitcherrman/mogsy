@@ -110,9 +110,12 @@ describe("public Ranked client", () => {
     expect(calls[0].init.method).toBe("DELETE");
   });
 
-  it("isFatal flags non-participant and 404", () => {
+  it("isFatal flags non-participant and a BACKEND-coded 404 only (GRES1)", () => {
     expect(api.isFatal(new RankedApiError("backend", 403, "x", "RANKED_NOT_A_PARTICIPANT"))).toBe(true);
-    expect(api.isFatal(new RankedApiError("backend", 404, "gone"))).toBe(true);
+    expect(api.isFatal(new RankedApiError("backend", 404, "gone", "JOURNEY_NOT_FOUND"))).toBe(true);
+    // An uncoded 404 is route skew or an edge response, never "this match is gone".
+    expect(api.isFatal(new RankedApiError("backend", 404, "gone"))).toBe(false);
+    expect(api.isFatal(new RankedApiError("timeout", 0, "x"))).toBe(false);
     expect(api.isFatal(new RankedApiError("network", 0, "x"))).toBe(false);
   });
 });
@@ -275,5 +278,71 @@ describe("segment challenge submission", () => {
     // The index is in the PATH and must equal the server's expected one.
     expect(Object.keys(body)).toEqual(["selected"]);
     expect(calls[0].url).toMatch(/\/challenges\/4$/);
+  });
+});
+
+describe("GRES1 — request deadlines, ambiguity and server timing", () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("a hung read gives up at the read deadline as a TIMEOUT, never fatal", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn((_url: string, init: RequestInit = {}) =>
+      new Promise((_res, rej) => {
+        init.signal?.addEventListener("abort", () =>
+          rej(Object.assign(new Error("aborted"), { name: "AbortError" })));
+      })) as unknown as typeof fetch);
+    const p = api.getPublicRound("m1").catch((e) => e);
+    await vi.advanceTimersByTimeAsync(api.REQUEST_TIMEOUT_MS.read + 10);
+    const e = await p;
+    expect(e).toBeInstanceOf(RankedApiError);
+    expect((e as RankedApiError).kind).toBe("timeout");
+    expect(api.isFatal(e)).toBe(false);
+    expect(api.isAmbiguousFailure(e)).toBe(true);
+  });
+
+  it("a caller abort stays an abort (not a timeout)", async () => {
+    vi.stubGlobal("fetch", vi.fn((_url: string, init: RequestInit = {}) =>
+      new Promise((_res, rej) => {
+        init.signal?.addEventListener("abort", () =>
+          rej(Object.assign(new Error("aborted"), { name: "AbortError" })));
+      })) as unknown as typeof fetch);
+    const c = new AbortController();
+    const p = api.getPublicRound("m1", c.signal).catch((e) => e);
+    // Abort only once the request is on the wire (the auth header is awaited first).
+    await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    c.abort();
+    const e = await p;
+    expect((e as RankedApiError).kind).toBe("aborted");
+    expect(api.isAborted(e)).toBe(true);
+  });
+
+  it("classifies what a write's failure says about the answer", () => {
+    const amb = (e: RankedApiError) => api.isAmbiguousFailure(e);
+    expect(amb(new RankedApiError("network", 0, "x"))).toBe(true);
+    expect(amb(new RankedApiError("timeout", 0, "x"))).toBe(true);
+    expect(amb(new RankedApiError("backend", 502, "request failed (502)"))).toBe(true);
+    expect(amb(new RankedApiError("backend", 503, "x", "SERVICE_PAUSED"))).toBe(true);
+    expect(amb(new RankedApiError("backend", 429, "x", "RANKED_RATE_LIMITED"))).toBe(true);
+    expect(amb(new RankedApiError("backend", 404, "Not Found"))).toBe(true);
+    // The application's own verdicts are definitive.
+    expect(amb(new RankedApiError("backend", 500, "x", "RANKED_INTERNAL"))).toBe(false);
+    expect(amb(new RankedApiError("backend", 409, "x", "RANKED_STALE_ROUND"))).toBe(false);
+    expect(amb(new RankedApiError("backend", 422, "x", "RANKED_INVALID_ANSWER"))).toBe(false);
+    expect(amb(new RankedApiError("aborted", 0, "x"))).toBe(false);
+  });
+
+  it("reads the backend's Server-Timing app duration into the timing ring", async () => {
+    const { clearTimingRecords, timingRecords } = await import("@/lib/gameplay-timing/recorder");
+    clearTimingRecords();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(publicRoundV2()), {
+      status: 200, headers: { "Content-Type": "application/json", "Server-Timing": "app;dur=42.5" },
+    })) as unknown as typeof fetch);
+    await api.getPublicRound("m1");
+    const backend = timingRecords().filter((r) => r.category === "backend");
+    expect(backend).toHaveLength(1);
+    expect(backend[0].ms).toBe(42.5);
+    expect(backend[0].name).toBe("ranked:GET:/matches/:id");
+    expect(timingRecords().some((r) => r.category === "network" && r.name === "ranked:GET:/matches/:id"))
+      .toBe(true);
   });
 });

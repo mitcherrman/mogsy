@@ -41,6 +41,7 @@ import type { RankedRole } from "./roles";
 import { MATCH_HOST, readMatchHost, type RankedMatchHost } from "./matchHost";
 import { readJourneyLibrary, type JourneyLibraryView } from "@/lib/journey-library/contracts";
 import { withBrowserCorrelation } from "@/lib/analytics/correlation";
+import { recordRequestTiming, recordTiming, timingNow } from "@/lib/gameplay-timing/recorder";
 
 export const RANKED_API_BASE =
   (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ?? "http://127.0.0.1:8000";
@@ -50,7 +51,25 @@ export type RankedApiErrorKind =
   | "backend"
   | "invalid_response"
   | "network"
+  /**
+   * GRES1 — the CLIENT gave up waiting (see `REQUEST_TIMEOUT_MS`). Like
+   * `network`, it says nothing about whether the server processed the
+   * request: a write that timed out is AMBIGUOUS, never a refusal.
+   */
+  | "timeout"
   | "aborted";
+
+/**
+ * GRES1 — client-side request deadlines.
+ *
+ * Without one, a connection that hangs (a Railway redeploy produced 15 s
+ * CORS dial timeouts, PR #28's evidence) held the single-flight poll loop
+ * for as long as the browser cared to wait, and the arena showed a frozen
+ * card with no "reconnecting" state, because that state is only set when a
+ * request FAILS. Reads give up sooner than writes: a read is free to repeat,
+ * a write's retry is a reconciliation (`isAmbiguousFailure`).
+ */
+export const REQUEST_TIMEOUT_MS = { read: 8000, write: 10000 } as const;
 
 const KNOWN_CODES: ReadonlySet<string> = new Set([
   "FEATURE_DISABLED", "AUTH_REQUIRED", "ACCOUNT_REQUIRED",
@@ -181,10 +200,74 @@ export const isAborted = (e: unknown): boolean =>
 export const isContractError = (e: unknown): boolean =>
   e instanceof RankedApiError && e.kind === "invalid_response";
 
+/**
+ * GRES1 — a 404 is fatal only when the BACKEND said so (a typed `detail.code`).
+ *
+ * The match routes never answer an uncoded 404 for a real reason: a missing or
+ * foreign match is `403 RANKED_NOT_A_PARTICIPANT`. An uncoded 404 is therefore
+ * route skew (a frontend ahead of its backend) or an edge/proxy response during
+ * a deployment, and treating it as fatal stopped a live match for good.
+ */
 export const isFatal = (e: unknown): boolean =>
   e instanceof RankedApiError &&
   (e.code === "RANKED_NOT_A_PARTICIPANT" || e.code === "AUTH_REQUIRED" ||
-    e.code === "ACCOUNT_REQUIRED" || e.status === 404);
+    e.code === "ACCOUNT_REQUIRED" || (e.status === 404 && e.code !== null));
+
+/**
+ * GRES1 — a WRITE that may or may not have reached the server.
+ *
+ * No answer arrived (network, timeout), the platform answered instead of the
+ * application (5xx, an uncoded 404 from an edge), or the server shed load
+ * before reading the body (429/408). None of these is a refusal of the
+ * player's choice, so the caller must not hand the choice back for a
+ * DIFFERENT answer; it re-sends the SAME one, which the backend's
+ * idempotency makes harmless, until it hears a definitive outcome.
+ */
+export const isAmbiguousFailure = (e: unknown): boolean => {
+  if (!(e instanceof RankedApiError)) return false;
+  if (e.kind === "network" || e.kind === "timeout") return true;
+  if (e.kind !== "backend") return false;
+  // Gateway/availability statuses: the platform (or an unavailable app)
+  // answered, not a handler that judged the answer.
+  if (e.status === 502 || e.status === 503 || e.status === 504) return true;
+  if (e.status === 429 || e.status === 408) return true;
+  // Any other 5xx/404 counts only when UNCODED. A typed 500 is the
+  // application's own refusal (its transaction rolled back) and is shown.
+  return e.code === null && (e.status >= 500 || e.status === 404);
+};
+
+/**
+ * A caller signal combined with a deadline. Hand-rolled because
+ * `AbortSignal.any`/`AbortSignal.timeout` are not available on every browser
+ * this site supports (nor in jsdom).
+ */
+function deadlineSignal(caller: AbortSignal | undefined, ms: number) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const onAbort = () => controller.abort();
+  if (caller) {
+    if (caller.aborted) controller.abort();
+    else caller.addEventListener("abort", onAbort, { once: true });
+  }
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, ms);
+  return {
+    signal: controller.signal,
+    timedOut: () => timedOut && !(caller?.aborted ?? false),
+    done: () => {
+      clearTimeout(timer);
+      caller?.removeEventListener("abort", onAbort);
+    },
+  };
+}
+
+/** `/api/ranked/matches/abc/rounds/3/submission` → `ranked:POST:/matches/:id/rounds/:n/submission`. */
+function timingName(method: string, path: string): string {
+  const template = path.split("?")[0]
+    .replace(/^\/api\/ranked/, "")
+    .replace(/\/matches\/[^/]+/, "/matches/:id")
+    .replace(/\/\d+(?=\/|$)/g, "/:n");
+  return `ranked:${method}:${template}`;
+}
 
 async function toApiError(response: Response): Promise<RankedApiError> {
   let detail: unknown = null;
@@ -208,10 +291,15 @@ interface RequestOpts {
   method?: string;
   body?: unknown;
   signal?: AbortSignal;
+  /** Override the GRES1 default deadline (`REQUEST_TIMEOUT_MS`). */
+  timeoutMs?: number;
 }
 
 async function request<T>(path: string, parse: (json: unknown) => T,
-                          { method = "GET", body, signal }: RequestOpts = {}): Promise<T> {
+                          { method = "GET", body, signal, timeoutMs }: RequestOpts = {}): Promise<T> {
+  // GRES1 — the frontend's own share: everything before the request leaves,
+  // which for a write includes minting/refreshing the auth header.
+  const handledAt = timingNow();
   // USERS1 — the write boundary. A mutating call is the visitor doing
   // something the backend attributes to their verified JWT subject, so an
   // identity is established here, at the moment it becomes necessary. Reads
@@ -221,18 +309,35 @@ async function request<T>(path: string, parse: (json: unknown) => T,
     ...(await getBackendAuthHeaders(method === "GET" ? undefined : { mint: "ranked_write" })),
   };
   if (body !== undefined) headers["Content-Type"] = "application/json";
+  const name = timingName(method, path);
+  const sentAt = timingNow();
+  if (method !== "GET") {
+    recordTiming({ name, category: "frontend", ms: sentAt - handledAt });
+  }
+  const deadline = deadlineSignal(signal, timeoutMs
+    ?? (method === "GET" ? REQUEST_TIMEOUT_MS.read : REQUEST_TIMEOUT_MS.write));
   let response: Response;
   try {
     response = await fetch(`${RANKED_API_BASE}${path}`, {
-      method, headers, signal,
+      method, headers, signal: deadline.signal,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch (e) {
+    const timedOut = deadline.timedOut();
+    deadline.done();
+    recordTiming({ name, category: "network", ms: timingNow() - sentAt,
+      detail: { outcome: timedOut ? "timeout" : "failed" } });
+    if (timedOut) {
+      throw new RankedApiError("timeout", 0, "the ranked service took too long to answer");
+    }
     if ((e as { name?: string })?.name === "AbortError") {
       throw new RankedApiError("aborted", 0, "request aborted");
     }
     throw new RankedApiError("network", 0, "could not reach the ranked service");
   }
+  deadline.done();
+  recordRequestTiming(name, timingNow() - sentAt,
+    response.headers?.get?.("server-timing") ?? null, { status: response.status });
   if (!response.ok) throw await toApiError(response);
   let json: unknown;
   try {

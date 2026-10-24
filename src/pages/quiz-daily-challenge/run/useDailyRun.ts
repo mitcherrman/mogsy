@@ -45,7 +45,7 @@ import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { currentStage } from "@/lib/daily-challenge/run/contracts";
 import {
-  DailyRunApiError, isDailyRunAborted, type DailyRunTransport,
+  DailyRunApiError, isDailyRunAborted, isDailyRunTransient, type DailyRunTransport,
 } from "@/lib/daily-challenge/run/client";
 import { newInteractionId } from "@/lib/analytics/correlation";
 import {
@@ -63,6 +63,39 @@ export type DailyRunLoad = "loading" | "ready" | "run" | "unavailable";
 const MAX_LAUNCH_ATTEMPTS = 3;
 const MAX_SYNC_ATTEMPTS = 6;
 const SYNC_RETRY_MS = 1000;
+/**
+ * GRES1 — riding through an OUTAGE is a different budget from a server that
+ * keeps ANSWERING "not yet". A Railway redeploy is ~10 s of 502s plus a cold
+ * start; the old six-tries-a-second-apart loop gave up after ~6 s and left
+ * the stage result behind a manual Retry. Only UNREACHABLE answers
+ * (`isDailyRunTransient`) spend this budget; refusals keep the old bound.
+ */
+export const OUTAGE_RETRY_MS = [1000, 2000, 3000] as const;
+export const SYNC_OUTAGE_BUDGET_MS = 60_000;
+/** GRES1 — the stage launch and the entry read ride through the same window. */
+export const LAUNCH_OUTAGE_RETRY_MS = [1000, 2000, 3000, 4000, 5000] as const;
+export const ENTRY_OUTAGE_RETRY_MS = [1000, 2000, 4000] as const;
+
+const sleep = (ms: number) => new Promise<void>((res) => window.setTimeout(res, ms));
+
+/**
+ * GRES1 — run `work`, repeating it after each delay while it fails TRANSIENTLY
+ * (the service unreachable). Every Daily call this wraps is idempotent on the
+ * server, so a repeat is the same request, not a second action. A refusal, or
+ * the last transient failure, is thrown to the caller unchanged.
+ */
+async function retryTransient<T>(work: () => Promise<T>, delays: readonly number[],
+                                 alive: () => boolean): Promise<T> {
+  for (let i = 0; ; i += 1) {
+    try {
+      return await work();
+    } catch (e) {
+      if (i >= delays.length || !isDailyRunTransient(e) || !alive()) throw e;
+      await sleep(delays[i]);
+      if (!alive()) throw e;
+    }
+  }
+}
 /** Floor between live ruleset reads during a stage. */
 const LIVE_READ_MIN_GAP_MS = 400;
 const ACTIVITY_LEASE_RENEW_MS = 30_000;
@@ -123,7 +156,9 @@ function messageFor(e: unknown): string {
       default:
         break;
     }
-    if (e.kind === "network") return "Lost the connection. Your progress is saved.";
+    if (e.kind === "network" || e.kind === "timeout" || isDailyRunTransient(e)) {
+      return "Lost the connection. Your progress is saved.";
+    }
     if (e.kind === "invalid_response") return "This page is out of date. Refresh to update.";
   }
   return "Something went wrong. Your progress is saved.";
@@ -171,6 +206,9 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   const launchInteractions = useRef<Map<string, string>>(new Map());
   const launching = useRef(false);
   const syncing = useRef(false);
+  /** GRES1 — the activity lease: one renewal in flight; off once the route is known absent. */
+  const leaseInFlight = useRef(false);
+  const leaseUnsupported = useRef(false);
   const lastLiveRead = useRef(0);
 
   useEffect(() => () => {
@@ -265,7 +303,10 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     let cancelled = false;
     (async () => {
       try {
-        const today = await transport.readToday();
+        // GRES1 — a reload during a redeploy rides it out before it shows an
+        // error (whose only button, Begin, would POST /today).
+        const today = await retryTransient(() => transport.readToday(), ENTRY_OUTAGE_RETRY_MS,
+          () => !cancelled && mounted.current);
         if (cancelled || !mounted.current) return;
         if (!today) {
           if (!autoStart) { setLoad("ready"); return; }
@@ -313,8 +354,13 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   const leaseRunStatus = run?.status ?? null;
   useEffect(() => {
     if (!leaseRunId || leaseRunStatus !== "active" || !transport.noteActivity) return;
+    if (leaseUnsupported.current) return;
     const controller = new AbortController();
+    let id: number | undefined;
     const renew = async () => {
+      // GRES1 — one renewal at a time: a hung renewal must not stack a second.
+      if (leaseInFlight.current || leaseUnsupported.current) return;
+      leaseInFlight.current = true;
       try {
         const next = await transport.noteActivity!(leaseRunId, controller.signal);
         if (!mounted.current) return;
@@ -325,13 +371,23 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
           adopt(next);
         }
       } catch (e) {
+        // GRES1 — an UNCODED 404/405 is the backend saying it has no such
+        // route (the lease shipped ahead of its backend, BE #87): stop asking
+        // for the rest of this page instead of POSTing a 404 every 30 s.
+        if (e instanceof DailyRunApiError && e.kind === "backend" && e.code === null
+            && (e.status === 404 || e.status === 405)) {
+          leaseUnsupported.current = true;
+          window.clearInterval(id);
+        }
         // A lease is best-effort. Gameplay reads/answers remain authoritative,
         // and the next renewal or ordinary Daily request retries it.
         if (!isDailyRunAborted(e)) return;
+      } finally {
+        leaseInFlight.current = false;
       }
     };
+    id = window.setInterval(() => { void renew(); }, ACTIVITY_LEASE_RENEW_MS);
     void renew();
-    const id = window.setInterval(() => { void renew(); }, ACTIVITY_LEASE_RENEW_MS);
     return () => { controller.abort(); window.clearInterval(id); };
   }, [leaseRunId, leaseRunStatus, transport, adopt]);
 
@@ -372,7 +428,19 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     }
     launching.current = true;
     try {
-      const next = await ask(() => transport.launchStage(r.runId, s.index, undefined, interactionId));
+      // GRES1 — the launch is idempotent per stage (server `launch_id`, one
+      // interaction id), so an UNREACHABLE answer is repeated in place; the
+      // tag stays up meanwhile, and only a refusal or an outage that outlasts
+      // `LAUNCH_OUTAGE_RETRY_MS` reaches the error state and its Retry.
+      const next = await ask(() => retryTransient(
+        () => transport.launchStage(r.runId, s.index, undefined, interactionId),
+        LAUNCH_OUTAGE_RETRY_MS, () => mounted.current).then((launched) => {
+        // Marked fresh BEFORE `ask` adopts the snapshot that mounts it: the
+        // render that adoption triggers is the one that reads this set.
+        const bound = launched.stages[s.index]?.childMatchId;
+        if (bound) freshChildren.current.add(bound);
+        return launched;
+      }));
       const child = next ? next.stages[s.index]?.childMatchId : null;
       if (child) freshChildren.current.add(child);
       // DV2-P2A.1 — a failed launch the player committed to is not yet a SAFE
@@ -409,20 +477,40 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     if (syncing.current) return;
     syncing.current = true;
     try {
-      for (let attempt = 0; attempt < MAX_SYNC_ATTEMPTS && mounted.current; attempt++) {
+      // Two budgets (GRES1). ANSWERS that say "still in progress" (or refuse)
+      // keep the old bound of MAX_SYNC_ATTEMPTS a second apart. UNREACHABLE
+      // answers (a redeploy) spend a time budget instead, with backoff, so a
+      // ~10 s outage no longer strands the result behind a manual Retry.
+      const startedAt = Date.now();
+      let answered = 0;
+      let outages = 0;
+      while (mounted.current && answered < MAX_SYNC_ATTEMPTS) {
         const r = runRef.current;
         if (!r) return;
-        const next = await ask(() => transport.syncRun(r.runId), true);
+        let next: DailyRun | null = null;
+        try {
+          next = await transport.syncRun(r.runId);
+          adopt(next);
+        } catch (e) {
+          if (!mounted.current || isDailyRunAborted(e)) return;
+          if (isDailyRunTransient(e)) {
+            if (Date.now() - startedAt >= SYNC_OUTAGE_BUDGET_MS) break;
+            await sleep(OUTAGE_RETRY_MS[Math.min(outages, OUTAGE_RETRY_MS.length - 1)]);
+            outages += 1;
+            continue;
+          }
+        }
         const still = next ? currentStage(next) : null;
         if (next && !(still && still.childMatchId === childId && still.status === "in_progress")) return;
-        await new Promise((res) => window.setTimeout(res, SYNC_RETRY_MS));
+        answered += 1;
+        if (answered < MAX_SYNC_ATTEMPTS) await sleep(SYNC_RETRY_MS);
       }
       // The parent never saw the child finish. Say so, and offer the re-ask.
       if (mounted.current) setError("Scoring this stage is taking longer than expected.");
     } finally {
       syncing.current = false;
     }
-  }, [ask, transport]);
+  }, [adopt, transport]);
 
   const onChildSettled = useCallback((matchId: string) => {
     setSettledChild(matchId);

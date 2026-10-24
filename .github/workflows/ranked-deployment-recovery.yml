@@ -6,6 +6,12 @@ on:
       - "src/pages/quiz-ranked/useRankedMatch.ts"
       - "src/pages/quiz-ranked/useRankedMatch.test.tsx"
       - "src/pages/quiz-ranked/QuizRankedMatch.tsx"
+      - "src/lib/ranked-public/client.ts"
+      - "src/lib/ranked-public/client.test.ts"
+      - "src/lib/daily-challenge/run/client.ts"
+      - "src/pages/quiz-daily-challenge/run/useDailyRun.ts"
+      - "src/pages/quiz-daily-challenge/run/useDailyRun.resilience.test.tsx"
+      - "src/lib/gameplay-timing/**"
       - ".github/workflows/ranked-deployment-recovery.yml"
   workflow_dispatch:
 
@@ -28,5 +34,12 @@ jobs:
         run: npm install --ignore-scripts --package-lock=false --no-audit --no-fund
       - name: Ranked match and Stat Check lifecycle tests
         run: npx vitest run src/pages/quiz-ranked/useRankedMatch.test.tsx src/lib/ranked-core/modules/metaReflexModule.test.tsx
+      - name: GRES1 Daily recovery, request and timing regression tests
+        run: >-
+          npx vitest run
+          src/pages/quiz-daily-challenge/run/useDailyRun.resilience.test.tsx
+          src/pages/quiz-daily-challenge/run/dailyV2P2A1.launchRace.test.tsx
+          src/lib/ranked-public/client.test.ts
+          src/lib/gameplay-timing/recorder.test.ts
       - name: Frontend production build
         run: npx vite build
