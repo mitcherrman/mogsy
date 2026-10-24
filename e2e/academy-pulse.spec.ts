@@ -226,6 +226,32 @@ test.describe("behaviour at 1366x768", () => {
     await expect(pulse).toHaveAttribute("data-playing", "true");
   });
 
+  test("a clicked Next button does not leave a permanent focus pause; auto advances again", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    await page.getByTestId("academy-pulse-next").click();
+    await expect(page.getByTestId("academy-pulse-scene").last()).toHaveAttribute("data-category", "mini-game");
+    // A real mouse click focuses the button. Leaving with the mouse must not
+    // preserve a keyboard hold forever.
+    await page.mouse.move(900, 400);
+    await expect(pulse).toHaveAttribute("data-playing", "true");
+    await expect(page.getByTestId("academy-pulse-scene").last()).toHaveAttribute("data-category", "sponsor", { timeout: 21_000 });
+  });
+
+  test("hover pauses briefly but an idle parked cursor never freezes rotation", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    const b = await box(page, '[data-testid="academy-pulse-viewport"]');
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await expect(pulse).toHaveAttribute("data-playing", "false");
+    await expect(pulse).toHaveAttribute("data-playing", "true", { timeout: 10_000 });
+    // A deliberate Play click must also clear a hover pause immediately.
+    await page.mouse.move(900, 400);
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await expect(pulse).toHaveAttribute("data-playing", "false");
+    await page.getByTestId("academy-pulse-toggle").click();
+    await expect(pulse).toHaveAttribute("data-playing", "true");
+    await expect(page.getByTestId("academy-pulse-toggle")).toHaveAccessibleName("Pause Academy Pulse");
+  });
+
   test("the practice question answers in place; the expanded view opens and closes with Escape", async ({ page }) => {
     await page.getByRole("button", { name: "Scene 9: Quick study" }).click();
     await expect(incomingScene(page)).toHaveAttribute("data-scene", "question");
