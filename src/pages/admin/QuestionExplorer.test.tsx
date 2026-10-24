@@ -73,4 +73,55 @@ describe("MQS1 Question Explorer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("unknown field"));
   });
+  it("stitches sequential CSV pages with one header and sends advancing offsets", async () => {
+    const pages = [
+      { body: "a,b
+1,2
+3,4
+", count: "2", more: "true" },
+      { body: "a,b
+5,6
+", count: "1", more: "false" },
+    ];
+    let n = 0;
+    requests.mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (!init?.method) return json(schema);
+      const page = pages[n++];
+      return new Response(page.body, { status: 200, headers: {
+        "X-Export-Row-Count": page.count, "X-Export-Has-More": page.more } });
+    });
+    let saved: Blob | null = null;
+    URL.createObjectURL = vi.fn((b: Blob) => { saved = b; return "blob:x"; });
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<QuestionExplorer />);
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    await waitFor(() => expect(saved).not.toBeNull());
+    const text = await new Response(saved!).text();
+    expect(text.replace(/^﻿/, "")).toBe("a,b
+1,2
+3,4
+5,6
+");
+    const offsets = requests.mock.calls.filter((c) => c[1]?.method === "POST")
+      .map((c) => JSON.parse(c[1].body as string).offset);
+    expect(offsets).toEqual([0, 2]);
+  });
+
+  it("downloads nothing when a later CSV page fails", async () => {
+    let n = 0;
+    requests.mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (!init?.method) return json(schema);
+      if (n++ === 0) return new Response("a
+1
+", { status: 200, headers: {
+        "X-Export-Row-Count": "1", "X-Export-Has-More": "true" } });
+      return new Response("{}", { status: 500, statusText: "boom" });
+    });
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    render(<QuestionExplorer />);
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("500"));
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
 });

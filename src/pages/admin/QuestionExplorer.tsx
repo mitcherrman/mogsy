@@ -1,5 +1,5 @@
 /** MQS1 — owner-only query explorer. Backend owns grammar and matching. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, Download, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +55,9 @@ export default function QuestionExplorer() {
   const [error, setError] = useState("");
   const [schema, setSchema] = useState<QuerySchema | null>(null);
   const [customQuery, setCustomQuery] = useState(false);
+  // Bumped whenever the visual filters replace the query, so an in-flight
+  // preview for the old query cannot repopulate the results.
+  const generation = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -76,15 +79,18 @@ export default function QuestionExplorer() {
     setResource(values.resource); setChampion(values.champion);
     setDifficulty(values.difficulty);
     setQuery(compose(values.source, values.family, values.resource, values.champion, values.difficulty));
+    generation.current += 1;
     setRows([]); setCount(null); setHasMore(false); setCustomQuery(false); setError("");
   }
 
   async function run(output: "preview" | "csv") {
     setBusy(output); setError("");
+    const started = generation.current;
     try {
       if (output === "preview") {
         const response = await request(query, "preview");
         const data = await response.json() as { rows: Row[]; shown: number; has_more: boolean };
+        if (started !== generation.current) return;
         setRows(data.rows); setCount(data.shown); setHasMore(data.has_more);
       } else {
         // Sequential bounded pages, never multiple heavy DB queries in flight.
@@ -120,7 +126,7 @@ export default function QuestionExplorer() {
         URL.revokeObjectURL(url);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Query failed");
+      if (started === generation.current) setError(e instanceof Error ? e.message : "Query failed");
     } finally {
       setBusy(null);
     }
@@ -187,7 +193,7 @@ export default function QuestionExplorer() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label htmlFor="mqs-query" className="text-sm font-semibold">Mogzy Query Language</label>
-              <Button variant="ghost" size="sm" onClick={() => void navigator.clipboard?.writeText(query)}><Copy className="mr-1 h-4 w-4"/>Copy</Button>
+              <Button variant="ghost" size="sm" onClick={() => void navigator.clipboard?.writeText(query).catch(() => setError("Copy failed: clipboard unavailable."))}><Copy className="mr-1 h-4 w-4"/>Copy</Button>
             </div>
             <Textarea id="mqs-query" spellCheck={false} value={query} onChange={e => { setQuery(e.target.value); setCustomQuery(true); }} rows={6} className="font-mono text-sm" />
           </div>
