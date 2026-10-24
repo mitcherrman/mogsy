@@ -27,6 +27,8 @@
  * same box `RankedRouteHeader` uses (x 56, y 0..band), at scroll 0.
  */
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { cn } from "@/lib/utils";
 
 /**
@@ -57,5 +59,82 @@ export function ProPlayRouteChrome({ to, label = "Back to Pro Play", fromLg = tr
         {label}
       </Link>
     </div>
+  );
+}
+
+/**
+ * W26Q-UX — the Worlds 2026 Quiz's one-screen chrome: the way back, the
+ * position, and the site's name (`mogzy.lol`) at EVERY width, as the Daily's
+ * and Practice's header rows carry it.
+ *
+ *  - below `lg` it is Practice's one line, a real row in the shell's header
+ *    slot (`arenaHeaderRowClass`, `min-h-7`) under the app's HUD band: way
+ *    back at the left, the position beside it (the desktop strip is hidden on
+ *    a phone, so the position lives here), the domain at the right. The row
+ *    never wraps: `Back to Worlds`, `n / N` and the domain together are ~190px
+ *    at 12px type, against 328px at 360 wide;
+ *  - from `lg` the row is the zero-height box `ProPlayRouteChrome` is, and its
+ *    two items are `fixed` in the HUD band so the stage keeps every pixel it
+ *    has: the way back centred (the strip's centre track is empty — there is
+ *    no clock), the domain at the band's right, clear of the identity cluster
+ *    (`right-62`: ~236px of cluster plus a gutter). The position and the
+ *    score are the strip's own there.
+ *
+ * Same link, same test id and same label as `ProPlayRouteChrome`; one element
+ * serves both regimes, so there is exactly one way back in the DOM.
+ */
+export function ProPlayOneScreenChrome({ to, label, brand, number, total, correct, emptyFrame = false }: {
+  to: string;
+  label: string;
+  brand: string;
+  /** The question on the stage (1-based), or null on the empty frames. */
+  number: number | null;
+  total: number;
+  /** The server's score so far, shown once something has been answered. */
+  correct: number | null;
+  /**
+   * The loading / error / end frames: from `lg` their panel carries its own
+   * way back and would cover the band's (as `ProPlayRouteChrome`'s
+   * `fromLg={false}`), so the band link is phone-only there.
+   */
+  emptyFrame?: boolean;
+}) {
+  return (
+    <header data-testid="pro-play-chrome"
+      className={`${arenaHeaderRowClass("wide")} !flex-nowrap !gap-1.5 sm:!gap-2 lg:!h-0 lg:!min-h-0 lg:!p-0`}>
+      <div className="flex min-w-0 items-center gap-2">
+        <Link
+          to={to}
+          data-testid="pro-play-back"
+          className="relative z-40 inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs
+            text-muted-foreground/80 underline-offset-2 transition-colors hover:text-muted-foreground
+            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-amber-300
+            before:absolute before:-inset-x-1 before:-inset-y-2 before:content-['']
+            lg:fixed lg:left-1/2 lg:top-0 lg:h-[var(--app-header-h)] lg:-translate-x-1/2 lg:underline
+            data-[empty-frame=true]:lg:hidden"
+          data-empty-frame={emptyFrame ? "true" : undefined}
+        >
+          <ArrowLeft aria-hidden className="h-3.5 w-3.5 lg:hidden" />
+          {label}
+        </Link>
+        {number !== null && total > 0 && (
+          <span data-testid="pro-play-position"
+            className="shrink-0 whitespace-nowrap text-[11px] font-semibold tabular-nums text-muted-foreground lg:hidden">
+            <span aria-hidden>
+              {number} / {total}
+              {correct !== null && correct > 0 ? <span className="hidden min-[400px]:inline">{` · ${correct} correct`}</span> : null}
+            </span>
+            <span className="sr-only">
+              {`Question ${number} of ${total}${correct !== null && correct > 0 ? `, ${correct} correct` : ""}`}
+            </span>
+          </span>
+        )}
+      </div>
+      <span data-testid="pro-play-brand"
+        className="ml-auto shrink-0 whitespace-nowrap text-xs font-semibold tracking-wide text-sky-200 sm:text-sm
+          lg:fixed lg:right-[15.5rem] lg:top-0 lg:z-40 lg:ml-0 lg:flex lg:h-[var(--app-header-h)] lg:items-center">
+        {brand}
+      </span>
+    </header>
   );
 }

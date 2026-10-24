@@ -10,7 +10,7 @@
  * Pro Play arena's own and are covered by its suites.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Worlds2026Quiz from "./Worlds2026Quiz";
@@ -83,6 +83,7 @@ async function answerFirstEnabled() {
 beforeEach(() => vi.unstubAllGlobals());
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -103,7 +104,10 @@ describe("Worlds2026Quiz", () => {
     expect(back.getAttribute("href")).toBe(WORLDS_EXPERIENCE_BASE);
   });
 
-  it("plays the captured real session to the server's score", async () => {
+  it("plays the captured real session to the server's score, advancing by itself", async () => {
+    // W26Q-UX: there is no Next / See results control. The run moves on by
+    // itself after each server-graded reveal; fake time stands in for the hold.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     installServer();
     renderPage();
     await screen.findByText((START.question as Json).question_text as string);
@@ -111,7 +115,9 @@ describe("Worlds2026Quiz", () => {
       await answerFirstEnabled();
       // The reveal is the server's; the page only renders it.
       await waitFor(() => expect(document.querySelector("[data-pp-reveal-footer]")).toBeTruthy());
-      fireEvent.click(await screen.findByRole("button", { name: n === ANSWERS.length ? "See results" : "Next" }));
+      expect(screen.queryByRole("button", { name: /^(Next|See results)$/ })).toBeNull();
+      expect(screen.queryByTestId("pro-play-next")).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(30_000); });
     }
     const summary = await screen.findByTestId("pro-play-summary");
     const final = ANSWERS[ANSWERS.length - 1].session as Json;

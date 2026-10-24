@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Shield, FileText, Info, Mail, Lock, MessageSquarePlus } from "lucide-react";
 import { SITE_NAME } from "@/lib/site-config";
 import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
+import { PRO_PLAY_WORLDS_QUIZ_ROUTE } from "@/lib/pro-play/routes";
 
 const links = [
   { to: "/about", label: "About", icon: Info },
@@ -56,6 +57,9 @@ export default function Footer() {
     // stay linked from every other page.
     isWorldsExperienceSurface(pathname) ||
     pathname.startsWith("/lol/dev/worlds-experience") ||
+    // W26Q-UX — the Worlds 2026 Quiz is a one-screen run like /quiz: nothing
+    // below it to scroll to. Only this route; the Pro Play Quiz keeps the footer.
+    pathname === PRO_PLAY_WORLDS_QUIZ_ROUTE ||
     pathname.startsWith("/admin");
   if (hidden) return null;
 

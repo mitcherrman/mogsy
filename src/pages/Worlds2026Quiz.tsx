@@ -23,6 +23,11 @@ import {
  * (`useProPlayArenaController` + `ProPlayArenaRun`), unchanged. The only
  * differences are the preset id, the mode label ("Worlds 2026 Quiz", which the
  * server's session confirms), and the way back (to the Worlds page).
+ *
+ * W26Q-UX: it is also the one-screen presentation. Nothing scrolls at any
+ * width, the header row carries the position and `mogzy.lol`, and a graded
+ * reveal moves the run on by itself after its hold — there is no Next / See
+ * results control (the general Pro Play Quiz keeps both).
  */
 export default function Worlds2026Quiz() {
   const controller = useProPlayArenaController({
@@ -43,6 +48,7 @@ export default function Worlds2026Quiz() {
         exitLabel="Back to Worlds"
         unavailableNote="Every question comes from verified Worlds 2026 results, bracket and field facts only — never from earlier Worlds. More become available as matches finish."
         backLink
+        presentation="one-screen"
       />
     </>
   );
