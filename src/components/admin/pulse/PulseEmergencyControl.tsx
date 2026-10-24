@@ -7,9 +7,11 @@
 //   partners  sponsor + creator content only (brand-safety incident)
 //   managed   everything authored here; Pulse falls back to the shipped
 //             static editorial set
-// It needs a reason, carries no revision (it must win over any concurrent
-// edit), and asks only for the trusted owner session so it is never blocked
-// behind an MFA prompt during an incident.
+//
+// Assurance (policy.ts): disabling is "trusted" — an incident is never held
+// behind an MFA prompt — and carries no revision, so it always wins.
+// Anything that RE-EXPOSES content (restore, or narrowing managed →
+// partners) asks for a fresh authenticator code.
 // ---------------------------------------------------------------------------
 
 import { useState } from "react";
@@ -17,6 +19,7 @@ import { OctagonAlert, ShieldOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { PulseKillScope, PulseScheduleSettings } from "@/lib/admin/pulse/contract";
+import { FRESH_HINT, killLevel } from "@/lib/admin/pulse/policy";
 import type { PulseWorkspaceState } from "@/lib/admin/pulse/usePulseWorkspace";
 import { cn } from "@/lib/utils";
 
@@ -27,15 +30,17 @@ const SCOPE_LABEL: Record<PulseKillScope, string> = {
 
 export function PulseEmergencyControl({ schedule, busy, write }: { schedule: PulseScheduleSettings; busy: boolean; write: PulseWorkspaceState["write"] }) {
   const { kill } = schedule;
-  const [scope, setScope] = useState<PulseKillScope>(kill.active ? kill.scope : "partners");
+  const [scope, setScope] = useState<PulseKillScope>("partners");
   const [reason, setReason] = useState("");
   const [result, setResult] = useState<string | null>(null);
 
-  const apply = async (active: boolean) => {
-    const r = await write((repo) => repo.setEditorialKill({ active, scope, reason: active ? reason : `Restored: ${reason || "no note"}` }));
+  const apply = async (active: boolean, nextScope: PulseKillScope) => {
+    const input = { active, scope: nextScope, reason: active ? reason : `Restored: ${reason || "no note"}` };
+    const r = await write((repo) => repo.setEditorialKill(input, kill));
     setResult(r.ok ? null : r.message);
     if (r.ok) setReason("");
   };
+  const restoreIsFresh = killLevel(kill, { active: false, scope: kill.scope, reason: "" }) === "fresh";
 
   return (
     <section
@@ -58,8 +63,8 @@ export function PulseEmergencyControl({ schedule, busy, write }: { schedule: Pul
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Pulls content off the public Home Hub at once. Pulse itself stays on; turning the whole device off is the build-time rollback
-              (<code>VITE_ACADEMY_PULSE=off</code>).
+              Pulls content off the public Home Hub at once, with no verification prompt. Pulse itself stays on; turning the whole device
+              off is the build-time rollback (<code>VITE_ACADEMY_PULSE=off</code>). Restoring asks for a fresh authenticator code.
             </p>
           )}
         </div>
@@ -76,13 +81,24 @@ export function PulseEmergencyControl({ schedule, busy, write }: { schedule: Pul
           )}
           <label className="space-y-1 text-[11px] font-semibold">
             <span className="block">{kill.active ? "Note (optional)" : "Reason (recorded)"}</span>
-            <input className="w-56 rounded-md border bg-background px-2 py-1 text-xs" value={reason} disabled={busy} maxLength={300}
+            <input className="w-56 max-w-full rounded-md border bg-background px-2 py-1 text-xs" value={reason} disabled={busy} maxLength={300}
               onChange={(e) => setReason(e.target.value)} data-testid="pulse-emergency-reason" />
           </label>
           {kill.active ? (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void apply(false)} data-testid="pulse-emergency-restore">Restore content</Button>
+            <>
+              {kill.scope === "partners" && (
+                <Button size="sm" variant="destructive" disabled={busy || !reason.trim()} data-testid="pulse-emergency-widen"
+                  onClick={() => void apply(true, "managed")}>
+                  Disable all managed content
+                </Button>
+              )}
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => void apply(false, kill.scope)} data-testid="pulse-emergency-restore"
+                title={restoreIsFresh ? FRESH_HINT : undefined}>
+                Restore content{restoreIsFresh && <span className="ml-1 text-[10px] font-normal text-muted-foreground" data-testid="pulse-fresh-badge">· fresh code</span>}
+              </Button>
+            </>
           ) : (
-            <Button size="sm" variant="destructive" disabled={busy || !reason.trim()} onClick={() => void apply(true)} data-testid="pulse-emergency-disable">
+            <Button size="sm" variant="destructive" disabled={busy || !reason.trim()} onClick={() => void apply(true, scope)} data-testid="pulse-emergency-disable">
               Disable now
             </Button>
           )}

@@ -57,7 +57,8 @@ describe("assurance policy (provisional, PR #155 command center)", () => {
     for (const a of ["submit", "reject", "pause", "end", "revise"] as const) expect(partnerTransitionLevel(sp, a)).toBe("trusted");
   });
   it("editing approved/paused paid promotion FRESH; drafts and unpaid creators trusted", () => {
-    const rec = (status: string, p = sp) => ({ ...p, record: { status } as never });
+    type Who = { type: "sponsor" | "creator"; compensation: "unpaid" | "paid" | "affiliate" | null };
+    const rec = (status: string, p: Who = sp) => ({ ...p, record: { status } as never }) as never;
     expect(partnerSaveLevel(null, sp)).toBe("trusted");
     expect(partnerSaveLevel(rec("draft"), sp)).toBe("trusted");
     expect(partnerSaveLevel(rec("approved"), sp)).toBe("fresh");

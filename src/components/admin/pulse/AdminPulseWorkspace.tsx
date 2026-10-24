@@ -21,9 +21,9 @@ import type { PulseAdminRepository } from "@/lib/admin/pulse/repository";
 import { usePulseWorkspace } from "@/lib/admin/pulse/usePulseWorkspace";
 
 import { PulseCadencePanel } from "./PulseCadencePanel";
-import { PulseCampaignsPanel } from "./PulseCampaignsPanel";
 import { PulseContentPanel } from "./PulseContentPanel";
 import { PulseEmergencyControl } from "./PulseEmergencyControl";
+import { PulsePartnersPanel } from "./PulsePartnersPanel";
 import { PulsePreviewPanel } from "./PulsePreviewPanel";
 
 export interface AdminPulseWorkspaceProps {
@@ -63,7 +63,7 @@ export function AdminPulseWorkspace({ repository, now: nowOverride }: AdminPulse
             <Radio className="h-4 w-4 text-primary" aria-hidden /> Academy Pulse
           </h2>
           <p className="max-w-2xl text-xs text-muted-foreground">
-            Editorial content, cadence and partner campaigns for the Home Hub's Pulse device.
+            Editorial content, cadence and partner records for the Home Hub's Pulse device.
             {live !== null && <> <span data-testid="pulse-live-count">{live}</span> managed item(s) eligible right now.</>}
           </p>
         </div>
@@ -94,7 +94,7 @@ export function AdminPulseWorkspace({ repository, now: nowOverride }: AdminPulse
             <TabsList className="h-auto flex-wrap justify-start">
               <TabsTrigger value="content" data-testid="pulse-tab-content">Content</TabsTrigger>
               <TabsTrigger value="cadence" data-testid="pulse-tab-cadence">Cadence & categories</TabsTrigger>
-              <TabsTrigger value="campaigns" data-testid="pulse-tab-campaigns">Campaigns</TabsTrigger>
+              <TabsTrigger value="partners" data-testid="pulse-tab-partners">Partners</TabsTrigger>
               <TabsTrigger value="preview" data-testid="pulse-tab-preview">Preview</TabsTrigger>
             </TabsList>
             <TabsContent value="content" className="pt-3">
@@ -103,8 +103,8 @@ export function AdminPulseWorkspace({ repository, now: nowOverride }: AdminPulse
             <TabsContent value="cadence" className="pt-3">
               <PulseCadencePanel snapshot={ws.snapshot} now={stableNow} busy={ws.busy} write={ws.write} />
             </TabsContent>
-            <TabsContent value="campaigns" className="pt-3">
-              <PulseCampaignsPanel snapshot={ws.snapshot} busy={ws.busy} write={ws.write} />
+            <TabsContent value="partners" className="pt-3">
+              <PulsePartnersPanel snapshot={ws.snapshot} now={stableNow} busy={ws.busy} write={ws.write} />
             </TabsContent>
             <TabsContent value="preview" className="pt-3">
               <PulsePreviewPanel snapshot={ws.snapshot} now={stableNow} />

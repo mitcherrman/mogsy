@@ -1,5 +1,6 @@
-// PULSE-2B — the scene-specific half of the item editor. One form per
-// authorable kind; field names match validation.ts so issues land in place.
+// PULSE-2B — the scene-specific half of the editorial item editor. One form
+// per editorial kind; field names match validation.ts so issues land in place.
+// Sponsor and creator content are partner records (PulsePartnersPanel).
 import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import type { AuthorablePulseItem } from "@/lib/admin/pulse/contract";
 import { isoToLocalInput, localInputToIso } from "@/lib/admin/pulse/usePulseWorkspace";
 import type { PulseIssue } from "@/lib/admin/pulse/validation";
 
-import { DateTimeField, NullableTextField, NumberField, SelectField, TextField } from "./fields";
+import { DateTimeField, NullableTextField, NumberField, TextField } from "./fields";
 
 interface Props {
   payload: AuthorablePulseItem;
@@ -104,52 +105,6 @@ export function PulsePayloadFields({ payload: p, onChange, issues, disabled }: P
           <div className="sm:col-span-2">{titleField}</div>
         </div>
       );
-
-    case "sponsor":
-      return (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <TextField {...common} label="Sponsor name" value={p.sponsorName} onChange={(v) => onChange({ ...p, sponsorName: v })} testId="pulse-field-sponsor" />
-          <TextField {...common} label="Campaign title" value={p.campaignTitle} onChange={(v) => onChange({ ...p, campaignTitle: v })} />
-          <TextField {...common} className="sm:col-span-2" label="Tagline" value={p.tagline} onChange={(v) => onChange({ ...p, tagline: v })} />
-          <NullableTextField {...common} label="Destination (https)" field="href" value={p.href} placeholder="https://"
-            onChange={(v) => onChange({ ...p, href: v })} hint="Opens with rel=sponsored noopener. Empty = inert button." />
-          <TextField {...common} label="Button label" value={p.ctaLabel} onChange={(v) => onChange({ ...p, ctaLabel: v })} />
-          <NullableTextField {...common} className="sm:col-span-2" label="Artwork URL (https, optional)" field="artUrl" value={p.artUrl}
-            onChange={(v) => onChange({ ...p, artUrl: v })} />
-          <div className="sm:col-span-2">{titleField}</div>
-          <p className="sm:col-span-2 text-[11px] text-muted-foreground">The scene always carries the permanent SPONSORED band.</p>
-        </div>
-      );
-
-    case "creator": {
-      const m = p.media;
-      return (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <TextField {...common} label="Creator name" value={p.creatorName} onChange={(v) => onChange({ ...p, creatorName: v })} />
-          <TextField {...common} label="Creator tag" value={p.creatorTag} onChange={(v) => onChange({ ...p, creatorTag: v })} />
-          <SelectField {...common} label="Platform" value={m.platform}
-            options={[{ value: "youtube", label: "YouTube video" }, { value: "twitch", label: "Twitch channel" }]}
-            onChange={(platform) => onChange({
-              ...p,
-              media: platform === "youtube"
-                ? { platform, videoId: null, title: m.title, durationLabel: "", thumbnailUrl: m.thumbnailUrl }
-                : { platform, channel: null, title: m.title, live: false, viewersLabel: "", thumbnailUrl: m.thumbnailUrl },
-            })} />
-          {m.platform === "youtube"
-            ? <NullableTextField {...common} label="YouTube video id" field="media" value={m.videoId} placeholder="11 characters"
-                onChange={(v) => onChange({ ...p, media: { ...m, videoId: v } })} />
-            : <NullableTextField {...common} label="Twitch channel" field="media" value={m.channel}
-                onChange={(v) => onChange({ ...p, media: { ...m, channel: v } })} hint="LIVE is never set by hand." />}
-          <TextField {...common} className="sm:col-span-2" label="Media title" value={m.title} onChange={(v) => onChange({ ...p, media: { ...m, title: v } })} />
-          {m.platform === "youtube" && (
-            <TextField {...common} label="Duration label" value={m.durationLabel} onChange={(v) => onChange({ ...p, media: { ...m, durationLabel: v } })} />
-          )}
-          <NullableTextField {...common} label="Thumbnail URL (https, optional)" field="thumbnailUrl" value={m.thumbnailUrl}
-            onChange={(v) => onChange({ ...p, media: { ...m, thumbnailUrl: v } as typeof m })} />
-          <div className="sm:col-span-2">{titleField}</div>
-        </div>
-      );
-    }
   }
 }
 

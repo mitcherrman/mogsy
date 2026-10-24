@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // PULSE-2B — edit one piece of Pulse content: envelope (name, schedule,
-// ordering, campaign), scene payload, lifecycle actions, and a live preview
+// ordering), scene payload, lifecycle actions, and a live preview
 // of the real scene as it is being typed.
 //
 // Lifecycle buttons are offered from the same table the server enforces
@@ -13,10 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CATEGORY_LABEL, type PulseItem } from "@/features/academy-pulse/model/pulse-types";
 import {
-  CAMPAIGN_KINDS,
-  DISCLOSURE_LABEL,
   KIND_CATEGORIES,
-  type PulseCampaign,
   type PulseContentRecord,
   type PulseItemInput,
   type PulseItemTransition,
@@ -39,14 +36,13 @@ const ACTION_LABEL: Record<PulseItemTransition["action"], string> = {
 };
 
 export function toInput(r: PulseContentRecord): PulseItemInput {
-  const { id, label, payload, publishAt, expiresAt, priority, featured, campaignId, note } = r;
-  return { id, label, payload, publishAt, expiresAt, priority, featured, campaignId, note };
+  const { id, label, payload, publishAt, expiresAt, priority, featured, note } = r;
+  return { id, label, payload, publishAt, expiresAt, priority, featured, note };
 }
 
 interface Props {
   record: PulseContentRecord | null;
   initial: PulseItemInput;
-  campaigns: readonly PulseCampaign[];
   now: Date;
   busy: boolean;
   onSave(input: PulseItemInput, expectedRevision: number | null): Promise<PulseWriteResult>;
@@ -54,7 +50,7 @@ interface Props {
   onClose(): void;
 }
 
-export function PulseItemEditor({ record, initial, campaigns, now, busy, onSave, onTransition, onClose }: Props) {
+export function PulseItemEditor({ record, initial, now, busy, onSave, onTransition, onClose }: Props) {
   const [draft, setDraft] = useState<PulseItemInput>(initial);
   const [serverIssues, setServerIssues] = useState<PulseIssue[]>([]);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -65,9 +61,8 @@ export function PulseItemEditor({ record, initial, campaigns, now, busy, onSave,
   useEffect(() => { setDraft(initial); setServerIssues([]); setScheduleAt(isoToLocalInput(initial.publishAt)); }, [initial]);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
-  const campaign = campaigns.find((c) => c.id === draft.campaignId) ?? null;
   const saveIssues = useMemo(() => validateItemForSave(draft), [draft]);
-  const publishIssues = useMemo(() => validateItemForPublish(draft, campaign, now), [draft, campaign, now]);
+  const publishIssues = useMemo(() => validateItemForPublish(draft, now), [draft, now]);
   const issues = serverIssues.length ? serverIssues : saveIssues;
   const status = record ? effectiveStatus(record, now) : "draft";
   const actions = record ? allowedTransitions(record.state) : [];
@@ -126,14 +121,6 @@ export function PulseItemEditor({ record, initial, campaigns, now, busy, onSave,
               value={draft.payload.dwellMs ? draft.payload.dwellMs / 1000 : null} min={6} max={30} disabled={busy}
               onChange={(v) => setDraft({ ...draft, payload: { ...draft.payload, dwellMs: v == null ? undefined : Math.round(v * 1000) } })}
               hint="Empty = the scene's default." />
-            {CAMPAIGN_KINDS.has(kind) && (
-              <SelectField label="Campaign" field="campaignId" issues={issues} value={draft.campaignId ?? ""} disabled={busy} testId="pulse-field-campaign"
-                options={[{ value: "", label: "— choose a campaign —" }, ...campaigns.filter((c) => c.type === kind).map((c) => ({
-                  value: c.id, label: `${c.partnerName} · ${c.title} (${c.approval})`,
-                }))]}
-                onChange={(v) => setDraft({ ...draft, campaignId: v || null })}
-                hint={campaign ? `Disclosed as “${DISCLOSURE_LABEL[campaign.disclosure]}”.` : "Required: carries the disclosure and approval."} />
-            )}
             <TextField className="sm:col-span-2" label="Internal note" value={draft.note} disabled={busy} multiline
               onChange={(v) => setDraft({ ...draft, note: v })} hint="Source, reason, follow-ups. Never shown publicly." />
           </div>

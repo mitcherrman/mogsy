@@ -103,7 +103,6 @@ export function PulseContentPanel({ snapshot, now, busy, write }: Props) {
         <PulseItemEditor
           record={record}
           initial={initial}
-          campaigns={snapshot.campaigns}
           now={now}
           busy={busy}
           onClose={() => { setSelected(null); setCreating(null); }}

@@ -362,7 +362,7 @@ describe("assurance policy, row by row (database vs policy.ts)", () => {
       const note = action === "pause" || action === "end" ? "flight change" : "";
       const { level, result } = await required(`SELECT public.pulse_admin_transition_partner('autumn', $1, $2, $3) AS r`, [action, note, p.revision]);
       expectOk(result);
-      expect(level, action).toBe(partnerTransitionLevel(p, action));
+      expect(level, action).toBe(partnerTransitionLevel(p as never, action));
       p = result.rows![0].r as Partner;
     }
     expect(p.record.status).toBe("ended");
@@ -394,7 +394,7 @@ describe("assurance policy, row by row (database vs policy.ts)", () => {
       p = await one<Partner>(TRUSTED, `SELECT public.pulse_admin_transition_partner($1, 'submit', '', $2) AS r`, [id, p.revision]);
       const approve = await required(`SELECT public.pulse_admin_transition_partner($1, 'approve', '', $2) AS r`, [id, p.revision]);
       expectOk(approve.result);
-      expect(approve.level, comp).toBe(partnerTransitionLevel(p, "approve"));
+      expect(approve.level, comp).toBe(partnerTransitionLevel(p as never, "approve"));
       expect(approve.level, comp).toBe(comp === "unpaid" ? "trusted" : "fresh");
       p = approve.result.rows![0].r as Partner;
       if (comp === "affiliate") continue; // stays approved for the public-read checks below

@@ -2,7 +2,8 @@
 // PULSE-2B — the routable page: owner gate + repository choice.
 //
 // Integration (command center, see docs/handoffs/ACADEMY_PULSE_P2B.md):
-// route `/admin/pulse` → this page inside AdminShell, plus a registry entry.
+// route `/admin/pulse` → this page inside AdminShell, plus a registry entry in
+// the **Studio** area (owner decision, PR #155). NOT mounted by this PR.
 //
 // Storage: `VITE_PULSE_ADMIN_STORAGE=server` selects the owner-RPC repository
 // once the staged migration is applied; anything else is the labelled

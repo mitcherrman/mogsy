@@ -1,5 +1,5 @@
 // PULSE-2B — the owner workflow end to end on the prototype repository:
-// author → publish → it plays; categories and cadence; campaign approval;
+// author → publish → it plays; categories and cadence; partner records;
 // emergency disable; the real Pulse device in preview.
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -59,7 +59,7 @@ describe("AdminPulseWorkspace", () => {
     expect(await screen.findByTestId("pulse-prototype-banner")).toBeTruthy();
     expect(liveCount()).toBe(4);
     expect(within(screen.getByTestId("pulse-row-pc-news-hover")).getByTestId("pulse-row-eligibility").textContent).toBe("Playing");
-    expect(within(screen.getByTestId("pulse-row-pc-sponsor-placeholder")).getByTestId("pulse-row-eligibility").textContent).toBe("Not live");
+    expect(within(screen.getByTestId("pulse-row-pc-draft-announcement")).getByTestId("pulse-row-eligibility").textContent).toBe("Not live");
   });
 
   it("authors an announcement, shows publish blockers, publishes it, and it plays", async () => {
@@ -114,27 +114,50 @@ describe("AdminPulseWorkspace", () => {
     expect(screen.getByTestId("pulse-cycle-0").children.length).toBeGreaterThan(0);
   });
 
-  it("a sponsor needs an approved campaign; approval then lets it publish", async () => {
-    mount();
+  it("partners: a sponsor needs an allowlisted host to be approved, approval is FRESH, and the release gate still holds it", async () => {
+    const repo = mount();
     await screen.findByTestId("pulse-content-table");
-    fireEvent.click(screen.getByText("Placeholder sponsor slot"));
-    expect((await screen.findByTestId("pulse-action-publish") as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/Campaign is pending/)).toBeTruthy();
+    openTab("partners");
+    fireEvent.click(await screen.findByText(/Placeholder Co · Workflow rehearsal/));
+    expect((await screen.findByTestId("pulse-partner-submit") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/not on the sponsor host allowlist/)).toBeTruthy();
+    expect(screen.getByTestId("pulse-host-empty")).toBeTruthy();
 
-    openTab("campaigns");
-    fireEvent.click(await screen.findByText(/Placeholder partner · Workflow rehearsal/));
-    fireEvent.click(await screen.findByTestId("pulse-campaign-approve"));
-    await waitFor(() => expect(screen.getByTestId("pulse-campaign-approval-cmp-placeholder-sponsor").textContent).toBe("approved"));
+    type("pulse-host-input", "example.com");
+    expect(within(screen.getByTestId("pulse-host-add")).getByTestId("pulse-fresh-badge")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("pulse-host-add"));
+    await screen.findByTestId("pulse-host-example.com");
 
-    openTab("content");
-    fireEvent.click(await screen.findByText("Placeholder sponsor slot"));
-    await waitFor(() => expect((screen.getByTestId("pulse-action-publish") as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByTestId("pulse-action-publish"));
-    await waitFor(() => expect(liveCount()).toBe(5));
+    await waitFor(() => expect((screen.getByTestId("pulse-partner-submit") as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByTestId("pulse-partner-submit"));
+    const approve = await screen.findByTestId("pulse-partner-approve");
+    expect(within(approve).getByTestId("pulse-fresh-badge")).toBeTruthy();
+    fireEvent.click(approve);
+    await waitFor(() => expect(screen.getByTestId("pulse-partner-status").textContent).toBe("approved"));
+    expect(screen.getByTestId("pulse-partner-eligibility").textContent).toMatch(/release gate/);
+    expect(screen.getByTestId("pulse-partner-gate")).toBeTruthy();
+    expect(screen.getByTestId("pulse-gate-sponsor").textContent).toBe("closed");
+    expect(liveCount()).toBe(4);
+    expect(repo.assuranceLog.map((e) => `${e.action}:${e.level}`)).toEqual(["host.add:fresh", "partner.submit:trusted", "partner.approve:fresh"]);
   });
 
-  it("emergency disable: needs a reason, removes content, restores it", async () => {
+  it("partners: forged fields can't be typed — LIVE is not a field, and a bad destination is refused", async () => {
     mount();
+    await screen.findByTestId("pulse-content-table");
+    openTab("partners");
+    fireEvent.click(screen.getByTestId("pulse-new-creator"));
+    expect(await screen.findByTestId("pulse-partner-editor")).toBeTruthy();
+    expect(screen.queryByLabelText(/live/i)).toBeNull();
+    fireEvent.click(screen.getByTestId("pulse-new-sponsor"));
+    type("pulse-partner-id", "autumn");
+    type("pulse-partner-hosts", "example.com");
+    type("pulse-partner-destination", "http://example.com/x");
+    expect(screen.getByTestId("pulse-issue-destinationUrl").textContent).toMatch(/https/);
+    expect((screen.getByTestId("pulse-partner-save") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("emergency disable: needs a reason, no verification to disable; restore is marked fresh", async () => {
+    const repo = mount();
     await screen.findByTestId("pulse-content-table");
     const disable = screen.getByTestId("pulse-emergency-disable") as HTMLButtonElement;
     expect(disable.disabled).toBe(true);
@@ -148,8 +171,11 @@ describe("AdminPulseWorkspace", () => {
     openTab("preview");
     expect(await screen.findByTestId("pulse-preview-fallback")).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId("pulse-emergency-restore"));
+    const restore = screen.getByTestId("pulse-emergency-restore");
+    expect(within(restore).getByTestId("pulse-fresh-badge")).toBeTruthy();
+    fireEvent.click(restore);
     await waitFor(() => expect(liveCount()).toBe(4));
+    expect(repo.assuranceLog.map((e) => `${e.action}:${e.level}`)).toEqual(["kill.on:trusted", "kill.restore:fresh"]);
   });
 
   it("preview runs the production Pulse device on the public projection", async () => {
@@ -158,7 +184,7 @@ describe("AdminPulseWorkspace", () => {
     openTab("preview");
     const frame = await screen.findByTestId("pulse-admin-presentation");
     await waitFor(() => expect(within(frame).getByTestId("academy-pulse-scene")).toBeTruthy());
-    expect(screen.getByTestId("pulse-preview-excluded").textContent).toMatch(/Placeholder sponsor slot/);
+    expect(screen.getByTestId("pulse-preview-excluded").textContent).toMatch(/placeholder-sponsor/);
     fireEvent.click(screen.getByTestId("pulse-preview-size-short"));
     expect(screen.getByTestId("pulse-admin-presentation").getAttribute("data-size")).toBe("short");
   });
