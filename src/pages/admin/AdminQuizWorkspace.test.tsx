@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
-// Admin Quiz Review — the consolidated two-tab workspace.
+// Admin Quiz Review — the consolidated owner workspace.
 //
 // What is worth pinning here is the consolidation itself:
-//   * exactly two tabs are visible, and the retired two are not;
+//   * Query Explorer joins the existing tabs; retired tabs stay absent;
 //   * Ranked questions remain reachable through Quiz Review;
 //   * a Diagnostics card is a DESTINATION — clicking it switches tab and
 //     arrives with the affected rows already filtered.
@@ -42,6 +42,10 @@ vi.mock("./AdminQuizReview", () => ({
       </div>
     );
   },
+}));
+
+vi.mock("./QuestionExplorer", () => ({
+  default: () => <div data-testid="question-explorer">MQS1 Query Explorer</div>,
 }));
 
 // --- the audit report the Diagnostics tab renders --------------------------
@@ -221,10 +225,10 @@ afterEach(() => {
 /* ------------------------------------------------------------------------- */
 
 describe("two-tab navigation", () => {
-  it("shows exactly Quiz Review and Diagnostics", () => {
+  it("shows Quiz Review, Query Explorer and Diagnostics", () => {
     renderAt("/admin/quiz-content");
     const tabs = screen.getAllByRole("tab").map((t) => t.textContent?.trim());
-    expect(tabs).toEqual(["Quiz Review", "Diagnostics"]);
+    expect(tabs).toEqual(["Quiz Review", "Query Explorer", "Diagnostics"]);
   });
 
   it("no longer offers Quiz Builder or Ranked Duel Review", () => {
@@ -243,7 +247,7 @@ describe("two-tab navigation", () => {
     const back = screen.getByRole("link", { name: /Admin/i });
     expect(back.getAttribute("href")).toBe("/admin");
     expect(screen.getByRole("heading", { name: "Quiz Review" })).toBeTruthy();
-    expect(screen.getAllByRole("tab").length).toBe(2);
+    expect(screen.getAllByRole("tab").length).toBe(3);
   });
 
   it("opens on Quiz Review by default — review, not authoring, is the job", () => {
@@ -254,6 +258,12 @@ describe("two-tab navigation", () => {
   it("falls back to Quiz Review for a retired tab in the URL", () => {
     renderAt("/admin/quiz-content?tab=ranked-duel");
     expect(screen.getByTestId("quiz-review-tab")).toBeTruthy();
+  });
+
+  it("mounts Query Explorer on its URL-controlled tab", async () => {
+    renderAt("/admin/quiz-content?tab=query");
+    expect(await screen.findByTestId("question-explorer")).toBeTruthy();
+    expect(loc()).toContain("tab=query");
   });
 
   it("mounts Diagnostics on ?tab=diagnostics and mirrors a tab switch in the URL", async () => {
