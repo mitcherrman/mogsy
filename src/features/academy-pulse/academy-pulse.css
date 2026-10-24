@@ -641,8 +641,9 @@
 .apulse-tally { margin: 0; font-size: 12px; }
 .apulse-tally-num { font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: clamp(15px, 6cqw, 22px); color: #ffe0bf; font-variant-numeric: tabular-nums; }
 
-/* ---------------- tall glass (big desktops): the scenes stand up ---------------- */
-@container apulse-view (min-height: 280px) {
+/* ---------------- tall glass (big desktops): the scenes stand up ----------------
+   Only on roughly square glass: wide tablet glass keeps the side-by-side layout. */
+@container apulse-view (min-height: 280px) and (max-aspect-ratio: 3 / 2) {
   :is(.apulse-activity, .apulse-minigame, .apulse-premium, .apulse-challenge, .apulse-creator, .apulse-sponsor) {
     flex-direction: column; justify-content: center; text-align: center; gap: 14px; padding: 16px;
   }

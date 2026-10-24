@@ -33,8 +33,8 @@ function labProvider(sceneId: string): PulseContentProvider {
 
 /** Frame sizes measured from the Orrery's left column (see academy-core-pulse.css). */
 export const LAB_SIZES = {
-  desktop: { w: 369, h: 236, note: "1366 x 768 laptop" },
-  short: { w: 345, h: 160, note: "1280 x 640 short laptop" },
+  desktop: { w: 369, h: 246, note: "1366 x 768" },
+  short: { w: 369, h: 151, note: "1366 x 657 (a 768 px laptop screen in a browser): the ticker" },
   tall: { w: 430, h: 420, note: "1920 x 1080 desktop" },
   mobile: { w: 358, h: 286, note: "390 px phone, below the first screen" },
 } as const;

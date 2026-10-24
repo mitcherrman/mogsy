@@ -245,6 +245,7 @@ test.describe("behaviour at 1366x768", () => {
     await page.waitForTimeout(1800); // the climb
     await page.getByTestId("pulse-board-row-2").click();
     await expect(page.getByRole("dialog", { name: /FrostfireFox details/ })).toBeVisible();
+    await page.waitForTimeout(700); // the card's turn-in
     await page.screenshot({ path: path.join(OUT, "interaction-leaderboard-inspect.png"), clip: { x: 0, y: 380, width: 440, height: 388 } });
 
     const thirdParty: string[] = [];
