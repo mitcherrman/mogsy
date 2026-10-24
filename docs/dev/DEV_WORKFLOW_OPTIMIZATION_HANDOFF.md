@@ -32,7 +32,7 @@ hooks, projections, pure TS edge-function logic, contract tests) is jsdom/pytest
 
 **CI status (checked, no workflow was triggered):**
 * Frontend `mitcherrman/mogsy` is **public**: Actions are free. Unauthenticated API shows 1,018 runs; the last 100 completed runs were 95 success / 4 failure / 1 cancelled; latest run 2026-10-23 22:26 UTC. All 38 workflows are path-filtered `pull_request` jobs on `ubuntu-latest` (20 run targeted Vitest, 27 run Playwright). Operational; **no billing block** is visible.
-* Backend `mitcherrman/League_Combat_Simulator` is **private** (404 unauthenticated) and `gh` is not installed on this PC, so run history and billing could **not** be verified. 17 workflows, all path-filtered `pull_request`, no schedules. **Action for owner:** check GitHub → Settings → Billing → Actions minutes (or install `gh` and run `gh run list -R mitcherrman/League_Combat_Simulator -L 5`). If metered minutes are exhausted, backend CI-only gates will not run.
+* Backend `mitcherrman/League_Combat_Simulator` is **private** (404 unauthenticated) and `gh` is not installed on this PC, so run history and billing could not be verified directly. Earlier owner handoffs (GRES1, QRT1, BKP1) report its Actions as **billing-blocked**; assume backend CI does not run until the owner confirms. 17 workflows, all path-filtered `pull_request`, no schedules. Consequence: backend L2/L3 verification has to run locally, which is exactly why the guard and the "verify once" rule matter there.
 * There is no repo-wide "run everything" workflow in either repo, which is why L3 explicitly lists which gates to use.
 
 **Leftovers:** three Vite dev servers (+ esbuild helpers) are running now from other sessions; frontend `e2e/global-teardown.ts` stops only the disposable API backend it spawned (the Vite server is Playwright's `webServer`). Nothing was stopped. `mogzy-guard status` lists them with PIDs so the owning session can stop its own.
@@ -87,7 +87,7 @@ Proposed migration (each step needs owner approval; do it with all sessions idle
 
 1. Review/merge the two draft PRs (merge is the owner's call).
 2. Approve the guard installation plan in `tools/dev-guard/README.md` (copy 4 files to `%LOCALAPPDATA%\mogzy-dev-guard`, create `~\.claude\settings.json` from `claude-settings.proposed.json`). Until then the policy is by-convention plus the repo-level backstops.
-3. Verify backend Actions billing (see §1). Install `gh` if desired.
+3. Confirm backend Actions billing is restored (see §1); until then backend CI-only gates are not available. Install `gh` if desired.
 4. Tune `policy.json` after a week of real `mogzy-guard` output (RAM estimates are conservative guesses).
 5. Approve Phase 5 steps one by one; start with the read-only inventory.
 6. Follow-ups not done here: bring the 13 files that reference a browser `channel`/`PW_CHANNEL` in line with AGENTS.md in a separate reviewed change; consider a single `workflow_dispatch` "affected-system" workflow for L3 releases instead of local exhaustive runs; stop the three leftover Vite servers from their owning sessions.
