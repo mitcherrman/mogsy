@@ -172,3 +172,17 @@ Evidence artifact `academy-pulse-evidence`:
 - reduced motion;
 - `gallery/` with 13 scenes × 4 sizes at 2×;
 - `video/`, a motion recording of a full cycle. Headless Chromium records slowly, so it shows choreography order, not real smoothness.
+
+
+## 9. PULSE-1 public launch approval and production safety (owner, 2026-10-23)
+
+The owner approved the visual direction and explicitly requested completion and public launch. This is a new release phase, superseding the earlier "not public" status for *final certification*, not permission to present invented activity as real.
+
+- **Motion:** switch to overlapping scene enter/exit (`AnimatePresence mode="sync"`) to reduce the dark blank gap between broadcasts; preserve absolute scene viewport geometry and reduced motion.
+- **Dwell:** increase defaults from 8–12 seconds to approximately 12–20 seconds depending on category so people have time to read after the entrance choreography.
+- **Patch Report integration:** the legacy browser test that timed out on `locator.click()` against the continuously floating report now uses a physical, hit-tested mouse click. Preserve the destination and pointer-accessibility assertion.
+- **Public content:** the production `AcademyPulse` uses `publicPulseProvider`, which includes only Academy editorial news, the unscored reflex dial, a stable trivia question and shipped Premium benefits. No fabricated public players, leaderboards, progress statistics, creator channels, Twitch LIVE states, sponsor campaigns, or announced events are displayed. `fixturePulseProvider` remains exclusive to local development and the gallery. Do not enable those archetypes publicly until the PULSE-2 live data provider is ready and verified.
+- **Flag:** build-time `VITE_ACADEMY_PULSE` is explicitly `off`, `preview`, or `on`. The owner-authorized production default is now `on`; development remains `preview`. Set `VITE_ACADEMY_PULSE=off` at build time for a fast rollback.
+- **Verification required:** both `academy-pulse` and `academy-core-orrery` workflow checks green on the final head and production-build no DEV lab. Different failing workflows require evidence on current base before waiving them.
+- **Deploy gate:** merge only when final relevant CI is green; verify latest GitHub `main` equals latest Lovable sync; publish via Lovable; compare the live `/lol` bundle and content to the merged release as far as accessible. No claim of live until deployment completes.
+- **Next task after launch:** PULSE-2 real authorized activity, user-specific recommendations, creator embeds, sponsor/admin campaigns, leaderboard events and per-user cadence; retain consent and authoritative source constraints.
