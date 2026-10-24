@@ -10,7 +10,7 @@ import { quizApi } from "@/lib/quiz/api";
 type Row = Record<string, unknown> & { question_key: string; question_text: string; correct_answer: string };
 type Source = "bank" | "candidates";
 const MANA = 'FROM candidates\nWHERE family = "ability_cost_rank" AND resource = "mana"\nORDER BY champion, slot, rank\nLIMIT 10000\nEXPORT CSV';
-const BANK = 'FROM bank\nORDER BY family, champion, question_key\nLIMIT 10000\nEXPORT CSV';
+const BANK = 'FROM bank\nWHERE family = "ability_cost_rank" AND resource = "mana"\nORDER BY champion, slot, rank\nLIMIT 10000\nEXPORT CSV';
 
 function compose(source: Source, family: string, resource: string, champion: string, difficulty: string) {
   const terms = ["family = " + JSON.stringify(family)];
@@ -86,7 +86,7 @@ export default function QuestionExplorer() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-xl font-semibold">Question Explorer</h2>
-            <p className="text-sm text-muted-foreground">Visual filters and query text use one backend engine. Read-only.</p>
+            <p className="text-sm text-muted-foreground">Visual filters and query text use one backend engine. Read-only; exports have a 10,000-row safety ceiling.</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" disabled={busy !== null} onClick={() => void run("preview")}>
@@ -141,7 +141,7 @@ export default function QuestionExplorer() {
           <div className="space-y-2">
             <p className="text-sm font-semibold">Presets</p>
             <Button variant="outline" className="w-full justify-start" onClick={() => setQuery(MANA)}>All producible mana costs</Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => setQuery(BANK)}>Entire stored bank</Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => setQuery(BANK)}>Stored mana-cost questions</Button>
           </div>
         </div>
         {error && <p role="alert" className="rounded border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
