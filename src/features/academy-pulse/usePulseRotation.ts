@@ -25,6 +25,8 @@ export interface PulseRotation {
   playing: boolean;
   /** The viewer's own Pause is on. */
   userPaused: boolean;
+  /** Every active hold (diagnostics). */
+  holds: ReadonlySet<PulseHold>;
   dwellMs: number;
   next(): void;
   prev(): void;
@@ -105,6 +107,7 @@ export function usePulseRotation(
     direction: state.direction,
     playing,
     userPaused: state.holds.has("user"),
+    holds: state.holds,
     dwellMs,
     next: useCallback(() => dispatch({ type: "next" }), []),
     prev: useCallback(() => dispatch({ type: "prev" }), []),

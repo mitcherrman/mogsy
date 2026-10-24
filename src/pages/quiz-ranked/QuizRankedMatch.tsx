@@ -36,6 +36,7 @@ import { isPublicModeId, PUBLIC_MODE_TITLES } from "@/lib/public-modes/contracts
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { rendererForDailyV2Segment } from "@/lib/daily-v2/adapters/modeReuse";
 import { actOpeningTitle, projectSetTimeline } from "@/lib/daily-v2/threeActsPlan";
+import { projectCooldownContinuity } from "@/lib/journey/cooldownContinuity";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
@@ -828,6 +829,26 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     () => projectSurfaceReveal(m.lastResolved, surfaceRoundNumber, question,
       m.lastResolved?.players.p1 ?? null),
     [m.lastResolved, surfaceRoundNumber, question]);
+  // Daily three acts — a Summoner Spell set's cooldown, carried across its
+  // three rounds. Read from SETTLED rounds only (the ledger a resume backfills,
+  // plus the latest settlement), and from this round's own settlement only
+  // once the reveal gate above has opened. Driven ONLY by the server's frozen
+  // linked-set marker on the round's segment; null for every other round.
+  const linkedSet = surfaceRound?.segment?.linkedSet ?? null;
+  const stateContinuity = useMemo(() => {
+    if (!linkedSet) return null;
+    const explanations = new Map<number, Record<string, unknown> | null>();
+    for (const s of m.damageLog) explanations.set(s.roundNumber, s.questionExplanation);
+    if (m.lastResolved) {
+      explanations.set(m.lastResolved.roundNumber, m.lastResolved.questionExplanation);
+    }
+    return projectCooldownContinuity({
+      linkedSet,
+      roundNumber: surfaceRoundNumber,
+      explanations,
+      currentRevealed: reveal?.revealed === true,
+    });
+  }, [linkedSet, m.damageLog, m.lastResolved, surfaceRoundNumber, reveal]);
 
   // ── RFX1 Phase 2A — ONE PRESENTED ROUND ────────────────────────────────
   // During a live reveal the controller already holds round N+1 (the server
@@ -1748,6 +1769,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       entryPresentationMs: specialCandidate?.kind === "meta-reflex-entry"
         ? specialWindowMs : 0,
       reveal,
+      stateContinuity,
       // R3: selecting an option IS answering. The index comes from the
       // projected question so the arena never guesses it from the option id.
       onSelect: (sel) => {

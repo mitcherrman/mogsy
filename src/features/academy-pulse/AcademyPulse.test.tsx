@@ -152,16 +152,24 @@ describe("the device", () => {
     expect(root).toHaveAttribute("data-playing", "true");
   });
 
-  it("Play overrides a transient hover hold and updates its true playing state", () => {
+  it("PULSE-1.2: reaching for Pause with the mouse doesn't flip it; the first click pauses, the next resumes", () => {
     mount({ provider: provider(30_000) });
     const root = screen.getByTestId("academy-pulse");
     const toggle = screen.getByTestId("academy-pulse-toggle");
+    // the pointer arriving holds the clock, but the button still offers Pause
     fireEvent.pointerOver(root, { pointerType: "mouse", relatedTarget: document.body });
     expect(root).toHaveAttribute("data-playing", "false");
-    expect(toggle).toHaveAccessibleName("Play Academy Pulse");
-    fireEvent.click(toggle);
-    expect(root).toHaveAttribute("data-playing", "true");
     expect(toggle).toHaveAccessibleName("Pause Academy Pulse");
+    expect(root).toHaveAttribute("data-holds", "hover");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAccessibleName("Play Academy Pulse");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(root).toHaveAttribute("data-holds", "hover user");
+    // Play resumes at once, clearing the pointer's transient hold too
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAccessibleName("Pause Academy Pulse");
+    expect(root).toHaveAttribute("data-playing", "true");
+    expect(root).toHaveAttribute("data-holds", "");
   });
 
   it("mouse focus on a scene control does not persist as keyboard focus after pointer departure", () => {

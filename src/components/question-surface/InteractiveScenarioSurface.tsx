@@ -122,6 +122,14 @@ export interface InteractiveScenarioSurfaceProps {
   answerColumns?: "auto" | "wide-2" | "pair";
   /** PPQ2-C (proposed) — drawn over the gap of a "pair". */
   pairDivider?: ReactNode;
+  /**
+   * Daily three acts — the state a linked set carries across its questions
+   * (`JourneyCooldownTrack`), drawn at the top of the prompt region, above the
+   * category line. Present from a set round's first frame, so a reveal changes
+   * what is inside it and never moves the prompt or the answers. Absent
+   * everywhere else: every other caller renders exactly as before.
+   */
+  continuity?: ReactNode;
 }
 
 /**
@@ -205,6 +213,7 @@ export function InteractiveScenarioSurface({
   answerContent = null,
   answerColumns,
   pairDivider = null,
+  continuity = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
   // Pre-reveal premise fields only — see resolveBandProfile. Recomputed per
@@ -312,6 +321,7 @@ export function InteractiveScenarioSurface({
       )}
 
       <header data-surface-region="prompt" className="space-y-1">
+        {continuity}
         {/* Category shows once: in the compact band when that is shown, else here. */}
         {question.category && bandProfile !== "compact" && (
           // `scenario-category` is a styling HOOK, not new behaviour: the label

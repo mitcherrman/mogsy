@@ -192,6 +192,34 @@ export interface SegmentMeta {
    * Absent on quiz segments and on payloads from an older backend.
    */
   topic?: TimelineTopic | null;
+  /**
+   * Daily three acts — the server's frozen marker of ONE child of a linked
+   * set (e.g. a Summoner Spell Mastery set), or null. Question-safe: an
+   * opaque sequence id and a position, never a value. Absent on every other
+   * round and on payloads from an older backend.
+   */
+  linkedSet?: LinkedSetMeta | null;
+}
+
+export interface LinkedSetMeta {
+  /** The curriculum family of the set ("summoner_spell_mastery"). */
+  kind: string;
+  /** Opaque id shared by the set's children. */
+  sequence: string;
+  /** 1-based position of this child in the set. */
+  position: number;
+  of: number;
+}
+
+function readLinkedSet(v: unknown): LinkedSetMeta | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const ok = typeof o.kind === "string" && o.kind && typeof o.sequence === "string"
+    && o.sequence && Number.isInteger(o.of) && (o.of as number) >= 2
+    && Number.isInteger(o.position) && (o.position as number) >= 1
+    && (o.position as number) <= (o.of as number);
+  return ok ? { kind: o.kind as string, sequence: o.sequence as string,
+    position: o.position as number, of: o.of as number } : null;
 }
 
 export type SegmentPhase = "ability" | "challenges" | null;
@@ -1645,6 +1673,7 @@ function readSegment(v: unknown): SegmentMeta {
     pressureApplied: o.pressure_applied === true,
     resolved: o.resolved === true,
     ...(o.topic ? { topic: readTimelineTopic(o.topic) } : {}),
+    ...(o.linked_set ? { linkedSet: readLinkedSet(o.linked_set) } : {}),
   };
 }
 
