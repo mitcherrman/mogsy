@@ -14,6 +14,7 @@ on:
       - "src/components/audio/AcademyRadioStrip*"
       - "src/components/lol/broadcast/AcademyBroadcastCenterpiece.tsx"
       - "e2e/academy-pulse.spec.ts"
+      - "e2e/academy-pulse-live.spec.ts"
       - ".github/workflows/academy-pulse.yml"
   workflow_dispatch:
 
@@ -52,6 +53,10 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Pulse acceptance and review evidence
         run: npx playwright test -c playwright.frontend.config.ts e2e/academy-pulse.spec.ts --workers=1
+      - name: Pulse live provider (PULSE-2A) - who is read, what each tier sees, fallback
+        env:
+          VITE_ACADEMY_PULSE_CONTENT: live
+        run: npx playwright test -c playwright.frontend.config.ts e2e/academy-pulse-live.spec.ts --workers=1
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4

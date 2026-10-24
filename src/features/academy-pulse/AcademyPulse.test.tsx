@@ -303,3 +303,37 @@ describe("the expanded view", () => {
     expect(within(viewer).getByRole("link", { name: "Open on YouTube" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   });
 });
+
+describe("content belongs to its provider (PULSE-2A: the live provider is per viewer)", () => {
+  it("a new provider never shows the previous provider's scenes while its own load is in flight", async () => {
+    const first = provider();
+    const pending: PulseContentProvider = { id: "next-viewer", load: () => new Promise(() => {}), peek: () => null };
+    const view = mount({ provider: first });
+    expect(scene()).toHaveAttribute("data-category", "player-activity");
+    view.rerender(
+      <MemoryRouter>
+        <div style={{ height: 260 }}>
+          <AcademyPulse provider={pending} cadence={DEFAULT_PULSE_CADENCE} />
+        </div>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByTestId("academy-pulse-scene")).toBeNull();
+  });
+
+  it("a new provider draws its own peek at once", () => {
+    const only = fixturePulseCatalogue();
+    const next: PulseContentProvider = { id: "next", load: () => new Promise(() => {}), peek: () => ({ news: only.news }) };
+    const view = mount();
+    view.rerender(
+      <MemoryRouter>
+        <div style={{ height: 260 }}>
+          <AcademyPulse provider={next} cadence={DEFAULT_PULSE_CADENCE} />
+        </div>
+      </MemoryRouter>,
+    );
+    // The old provider's scene is cut at once; only the new provider's (re-keyed by the resize) remain.
+    const scenes = screen.getAllByTestId("academy-pulse-scene");
+    expect(scenes.length).toBeGreaterThan(0);
+    for (const el of scenes) expect(el).toHaveAttribute("data-category", "news");
+  });
+});

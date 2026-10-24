@@ -3,9 +3,10 @@
  *
  * A provider answers one question, "what is there to show?", as a catalogue
  * grouped by category. It never decides order (that is the cadence) and never
- * draws anything (that is the scenes). PULSE-1 ships the fixture provider; a
- * live provider (Academy activity, leaderboards, creator feeds, sponsor
- * flights) plugs in behind the same interface later.
+ * draws anything (that is the scenes). The fixture provider is for local
+ * development and the scene lab; production uses the per-viewer live provider
+ * (`live/live-provider.ts`, PULSE-2A), which serves `publicPulseCatalogue` to
+ * guests and adds a signed-in account's own record to it.
  */
 import { benefitById } from "@/lib/premium/matrix";
 
