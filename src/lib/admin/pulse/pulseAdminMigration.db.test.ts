@@ -87,7 +87,8 @@ const OWNER_AAL1: Who = { role: "authenticated", uid: OWNER, aal: "aal1" };
 const PLAYER_AAL2: Who = { role: "authenticated", uid: PLAYER, aal: "aal2", mfaSecondsAgo: 30 };
 const ANON: Who = { role: "anon" };
 
-type Outcome = { ok: true; rows: Record<string, unknown>[] } | { ok: false; code?: string; message?: string; detail?: string };
+// Flat (tsconfig.app.json is strict:false, so `!r.ok` would not narrow a union).
+type Outcome = { ok: boolean; rows?: Record<string, unknown>[]; code?: string; message?: string; detail?: string };
 
 async function run(who: Who, sql: string, params: unknown[] = []): Promise<Outcome> {
   if (who.role === "anon") {
@@ -111,7 +112,7 @@ async function run(who: Who, sql: string, params: unknown[] = []): Promise<Outco
 async function ok(who: Who, sql: string, params: unknown[] = []) {
   const r = await run(who, sql, params);
   if (!r.ok) throw new Error(`${sql}: ${r.code} ${r.message} ${r.detail ?? ""}`);
-  return r.rows;
+  return r.rows ?? [];
 }
 
 const one = async <T = Record<string, unknown>>(who: Who, sql: string, params: unknown[] = []) =>
@@ -144,11 +145,11 @@ describe("PULSE-2B staged migration: who can do what", () => {
     for (const t of ["pulse_content_items", "pulse_campaigns", "pulse_category_settings", "pulse_schedule_settings"]) {
       const r = await run(ANON, `SELECT * FROM public.${t}`);
       expect(r.ok, t).toBe(false);
-      expect(r.ok === false && r.code).toBe("42501");
+      expect(!r.ok && r.code).toBe("42501");
     }
     const rpc = await run(ANON, `SELECT public.pulse_admin_snapshot()`);
     expect(rpc.ok).toBe(false);
-    expect(rpc.ok === false && rpc.code).toBe("42501");
+    expect(!rpc.ok && rpc.code).toBe("42501");
     expect((await publicCatalogue()).items).toEqual([]);
   });
 
@@ -290,8 +291,9 @@ describe("PULSE-2B staged migration: partners, approval and the emergency disabl
     expect(noNote.ok === false && noNote.message).toBe("pulse_invalid");
     campaign = await one(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'end', 'Flight over', $2) AS r`, [campaign.id, campaign.revision]);
     expect((await publicCatalogue()).items.some((i) => i.item.kind === "sponsor")).toBe(false);
-    campaign = await one(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'approve', '', $2) AS r`, [campaign.id, campaign.revision])
-      .catch(() => campaign);
+    // An ended campaign is final.
+    const again = await run(OWNER_MFA, `SELECT public.pulse_admin_decide_campaign($1::uuid, 'approve', '', $2)`, [campaign.id, campaign.revision]);
+    expect(again.message).toBe("pulse_invalid");
   });
 
   it("hand-claimed Twitch LIVE is refused", async () => {
