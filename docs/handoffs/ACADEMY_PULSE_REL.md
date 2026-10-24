@@ -37,7 +37,10 @@ The icon and label followed `playing`, meaning "no hold at all". A mouse moving 
 ## Verification
 
 - Local vitest: `src/features/academy-pulse` + `AcademyCorePage.test.tsx`, 139/139 passing.
-- CI `academy-pulse` on the PR: see the PR for the run. Browser runs happen there only.
+- CI `academy-pulse` on draft PR #152 (run 40073116223, 676838a8): **pass**, including unit tests, the production build and the Chromium acceptance suite.
+- The first CI run (45dffadd) failed 2 browser cases:
+  - My new expand/close test read a scene with a single-element locator, but two scenes coexist during the overlapping transition (rotation had in fact advanced). It now uses the spec's `incomingScene` helper.
+  - A #148 test asserted the faulty behaviour itself: clicking while hovering resumed. It now asserts that the first click pauses and the second resumes.
 
 ## Remaining uncertainties
 
