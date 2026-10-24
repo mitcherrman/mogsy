@@ -252,6 +252,20 @@ test.describe("behaviour at 1366x768", () => {
     await expect(incomingScene(page)).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
   });
 
+  test("PULSE-1.2: mouse-opened expanded view closed with Escape does not leave rotation paused", async ({ page }) => {
+    const pulse = page.getByTestId("academy-pulse");
+    await page.getByTestId("academy-pulse-expand").click(); // mouse
+    await expect(page.getByTestId("pulse-expanded")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);
+    await page.mouse.move(900, 400); // pointer leaves Pulse
+    // past the 6 s hover grace: nothing may still hold the clock
+    await expect(pulse).toHaveAttribute("data-holds", "", { timeout: 8_000 });
+    await expect(pulse).toHaveAttribute("data-playing", "true");
+    const before = await incomingScene(page).getAttribute("data-category");
+    await expect(incomingScene(page)).not.toHaveAttribute("data-category", before!, { timeout: 20_000 });
+  });
+
   test("hovering holds the rotation; leaving lets it go", async ({ page }) => {
     const pulse = page.getByTestId("academy-pulse");
     const b = await box(page, '[data-testid="academy-pulse-viewport"]');
