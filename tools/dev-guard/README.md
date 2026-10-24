@@ -88,3 +88,15 @@ Nothing below has been executed. Review, then run it yourself or reply "approved
 4. **Rollback**: delete the settings entries (or the file) and the folder. Nothing else changes. No Windows, registry, scheduled-task or service settings are touched.
 
 The guard never raises privileges and installs no services. The `.cmd` shim passes `-ExecutionPolicy Bypass` to its own single `powershell.exe` process only; it does not change the machine or user execution policy.
+
+## Installed-guard verification (2026-10-23, L1 guard-only)
+
+- Installed files (`hook-pretooluse.mjs`, `mogzy-guard.ps1`, `mogzy-guard.cmd`, `policy.json`) are byte-identical (CRLF-normalised hash) to this branch.
+- `hook-pretooluse.test.mjs` 8/8 and `selftest.ps1` all PASS (second heavy job refused with exit 4, kill-on-close, lock recoverable after holder death).
+- Live in Claude Desktop: unguarded `vitest`/`pnpm build` denied in the Bash and PowerShell tools; `git`, `ls`, `Get-ChildItem` and `--version` allowed.
+
+**Known enforcement gaps** (the hook matcher is `Bash|PowerShell` only):
+1. `preview_start` dev servers from `.claude/launch.json` (vite/python) never pass through the hook. They are long-running, not test suites, but can be heavy.
+2. The Terminal panel tool (`run_in_terminal`), `Monitor`, scheduled tasks/cron and the `Workflow` script runner are not matched. Vitest/pytest still hit the enforcement-variable backstop only if that variable is inherited there (not verified).
+3. Vite builds and Playwright have no in-process backstop, so they rely on the hook alone.
+4. A user's own terminal is outside the guard by design.
