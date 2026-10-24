@@ -183,6 +183,18 @@ describe("scenes are interactive, and nothing they do leaves the browser", () =>
     fetchSpy.mockRestore();
   });
 
+  it("an answered practice question releases its interaction hold after ten quiet seconds", () => {
+    vi.useFakeTimers();
+    mount({ startAt: "fx-question-fox", provider: provider(30_000) });
+    const pulse = screen.getByTestId("academy-pulse");
+    fireEvent.click(screen.getByTestId("pulse-question-option-lux"));
+    expect(pulse).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(9_900); });
+    expect(pulse).toHaveAttribute("data-playing", "false");
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(pulse).toHaveAttribute("data-playing", "true");
+  });
+
   it("a leaderboard row opens an inspect card; closing it returns focus to the row", async () => {
     mount({ startAt: "fx-leaderboard-daily" });
     const row = screen.getByTestId("pulse-board-row-1");
