@@ -579,3 +579,12 @@ Tests:
 - The existing tiles (D-7).
 
 **Next:** CV4 UI (§9.5) after the owner sets D-6 (server-play coverage threshold), using Q5. CV3 is optional (D-5).
+
+**Verification status: NOT RUN.**
+- `mogzy-guard` blocked the targeted vitest run. Free RAM was about 3.0 GB against the 5.5 GB required, the disk was 100% busy, and League was in-game.
+- Type checking was not run either.
+
+Run this when the machine is free:
+`mogzy-guard.cmd run --class vitest -- node node_modules/vitest/vitest.mjs run src/lib/admin/analytics/conversion.test.ts src/lib/admin/analytics/metrics.test.ts src/lib/admin/analytics/cohorts.test.ts src/lib/admin/analytics/visitorJourney.test.ts`
+
+If the config fails to load with ERR_SWC_NATIVE_CACHE, use the esbuild scratch-config workaround (shared @swc/core).
