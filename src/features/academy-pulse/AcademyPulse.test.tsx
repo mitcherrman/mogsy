@@ -345,3 +345,28 @@ describe("content belongs to its provider (PULSE-2A: the live provider is per vi
     for (const el of scenes) expect(el).toHaveAttribute("data-category", "news");
   });
 });
+
+describe("truthful labels (PULSE-2A)", () => {
+  it("the viewer's own Daily card is chipped and announced as Your Daily", () => {
+    const record = {
+      id: "live-daily-record", kind: "news" as const, category: "player-activity" as const, provenance: "live" as const,
+      title: "Your last Daily Challenge (Sep 14): 459 points, 72 of 82 correct", variant: "announcement" as const,
+      kicker: "Your Daily", headline: "459 points in your last Daily", summary: "72 of 82 correct in the Daily for Sep 14.",
+      body: ["b"], dateLabel: "Sep 14", href: "/quiz#history", ctaLabel: "See your record",
+    };
+    const news = fixturePulseCatalogue().news!;
+    const cat: PulseCatalogue = { "player-activity": [record], news };
+    mount({ provider: { id: "labels", load: async () => cat, peek: () => cat } });
+    expect(screen.getByTestId("academy-pulse-viewport")).toHaveAccessibleName(/^1 of \d+: Your Daily\./);
+    expect(screen.getByRole("button", { name: "Scene 1: Your Daily" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Player activity/ })).toBeNull();
+  });
+
+  it("chart points are named by their place in the series, not as days", () => {
+    const insight = fixturePulseCatalogue()["personal-insight"]![0];
+    mount({ startAt: insight.id });
+    const probes = within(screen.getByRole("list", { name: /oldest first$/ })).getAllByRole("listitem");
+    expect(probes[0]).toHaveAccessibleName(`1 of ${probes.length}: 62%`);
+    expect(screen.queryByRole("listitem", { name: /^Day / })).toBeNull();
+  });
+});

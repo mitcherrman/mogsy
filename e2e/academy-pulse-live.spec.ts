@@ -93,7 +93,7 @@ async function open(page: Page) {
 }
 
 /** A pip by its accessible name, "Scene N: <category label>". */
-const pip = (page: Page, category: "Premium" | "Your insight") =>
+const pip = (page: Page, category: "Premium" | "Your insight" | "Your Daily" | "Player activity") =>
   page.getByRole("button", { name: new RegExp("^Scene [0-9]+: " + category + "$") });
 const current = (page: Page) => page.getByTestId("academy-pulse-scene").last();
 
@@ -135,6 +135,10 @@ test.describe("Academy Pulse live provider", () => {
     await open(page);
     await expect(current(page)).toContainText("459 points in your last Daily", { timeout: 10_000 });
     await expect(current(page)).toHaveAttribute("data-category", "player-activity");
+    // truthful labels: the viewer's own Daily is "Your Daily", never "Player activity"
+    await expect(page.locator(".apulse-cat").last()).toHaveText("Your Daily");
+    await expect(pip(page, "Your Daily")).toHaveCount(1);
+    await expect(pip(page, "Player activity")).toHaveCount(0);
     await page.getByTestId("academy-pulse").screenshot({ path: path.join(OUT, "free-daily-record.png") });
 
     // exactly the two self-scoped reads, once each, with the account's bearer token

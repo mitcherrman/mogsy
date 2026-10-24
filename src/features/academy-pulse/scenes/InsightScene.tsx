@@ -1,9 +1,9 @@
 /**
  * Personal insight — "the reading".
  *
- * The week's line draws itself across a faint grid, its last point lands with
- * a pulse, the improvement chip pops beside the headline and the milestone
- * ring fills to where the player stands. Hovering or focusing a day reads its
+ * The series' line draws itself across a faint grid, its last point lands with
+ * a pulse, the change chip pops beside the headline and the milestone ring
+ * fills to where the player stands. Hovering or focusing a point reads its
  * value out.
  */
 import { useMemo, useState } from "react";
@@ -75,14 +75,16 @@ export default function InsightScene({ item, reduced, onInteract }: SceneProps<I
             variants={{ enter: { scale: 0 }, show: { scale: 1, transition: { delay: 1.35, type: "spring", stiffness: 500, damping: 16 } }, exit: { scale: 0 } }}
             aria-hidden
           />
-          <div className="apulse-spark-probes" role="list" aria-label={item.seriesLabel}>
+          {/* A point may be a day, a run or a day studied: `seriesLabel` says which, so each
+              probe names only its place in the series (oldest first), never a "day" it may not be. */}
+          <div className="apulse-spark-probes" role="list" aria-label={`${item.seriesLabel}, oldest first`}>
             {item.series.map((v, i) => (
               <button
                 key={i}
                 type="button"
                 role="listitem"
                 className="apulse-spark-probe"
-                aria-label={`Day ${i + 1}: ${v}%`}
+                aria-label={`${i + 1} of ${item.series.length}: ${v}%`}
                 onPointerEnter={() => { setProbe(i); onInteract(); }}
                 onPointerLeave={() => setProbe(null)}
                 onFocus={() => { setProbe(i); onInteract(); }}

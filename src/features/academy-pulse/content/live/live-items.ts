@@ -23,7 +23,7 @@ import { planDateLabel, signedPoints } from "@/components/quiz/workspace/history
 import type { DailyHistoryRecord, HistoryPage } from "@/lib/history/contracts";
 import { recentSpanLabel, windowLabel, type TrendReport } from "@/lib/quiz/analyticsApi";
 
-import type { InsightItem, NewsItem, PulseCatalogue } from "../../model/pulse-types";
+import { CATEGORY_LABEL, type InsightItem, type NewsItem, type PulseCatalogue, type PulseItem } from "../../model/pulse-types";
 
 export const PULSE_HISTORY_HREF = "/quiz#history";
 export const PULSE_TRENDS_HREF = "/quiz#trends";
@@ -35,6 +35,21 @@ export const LIVE_ITEM_IDS = {
   dailyTrend: "live-daily-trend",
   practice: "live-practice",
 } as const;
+
+/**
+ * The viewer's own Daily sits in the `player-activity` slot (a News-kind
+ * scene there never lands next to the editorial News scene), but it is the
+ * viewer's record, not community activity, so it is labelled as such
+ * wherever a category label is shown. Live items only; no shared type.
+ */
+const LIVE_LABELS: Readonly<Record<string, string>> = {
+  [LIVE_ITEM_IDS.dailyRecord]: "Your Daily",
+};
+
+/** The label a scene is announced and chipped with. */
+export function pulseItemLabel(item: PulseItem): string {
+  return (item.provenance === "live" ? LIVE_LABELS[item.id] : undefined) ?? CATEGORY_LABEL[item.category];
+}
 
 const whole = (n: number) => Math.round(n).toLocaleString("en-US");
 
@@ -60,7 +75,7 @@ export function dailyRecordItem(page: HistoryPage): NewsItem | null {
     provenance: "live",
     title: `Your last Daily Challenge (${date}): ${whole(head.score)} points${result ? `, ${result}` : ""}`,
     variant: "announcement",
-    kicker: "Your Daily record",
+    kicker: "Your Daily",
     headline,
     summary: result ? `${result} in the Daily for ${date}.` : `Your Daily for ${date}.`,
     body: [

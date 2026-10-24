@@ -11,7 +11,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { CATEGORY_LABEL, type PulseItem } from "./model/pulse-types";
+import { pulseItemLabel } from "./content/live/live-items";
+import type { PulseItem } from "./model/pulse-types";
 import PulseVideoViewer from "./PulseVideoViewer";
 import SceneRenderer, { SCENE_ACCENT } from "./scenes/SceneRenderer";
 import { MASCOT_NAME, mascotSrc } from "./scenes/scene-kit";
@@ -117,7 +118,7 @@ export default function PulseExpanded({
             <header className="apulse-x-head">
               <p className="apulse-x-cat">
                 <span className="apulse-signal" aria-hidden><i /><i /><i /></span>
-                Academy Pulse · {CATEGORY_LABEL[item.category]}
+                Academy Pulse · {pulseItemLabel(item)}
                 {item.provenance === "fixture" && <span className="apulse-sample-inline">Preview sample</span>}
               </p>
               <Dialog.Title className="apulse-x-title">{item.title}</Dialog.Title>

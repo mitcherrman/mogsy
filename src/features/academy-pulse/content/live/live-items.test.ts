@@ -18,6 +18,7 @@ import {
   dailyRecordItem,
   dailyTrendItem,
   practiceItem,
+  pulseItemLabel,
   serverSaysPremium,
   withLiveItems,
 } from "./live-items";
@@ -76,7 +77,7 @@ describe("the viewer's newest Daily", () => {
       kind: "news",
       category: "player-activity",
       provenance: "live",
-      kicker: "Your Daily record",
+      kicker: "Your Daily",
       headline: "459 points in your last Daily",
       summary: "72 of 82 correct in the Daily for Sep 14.",
       dateLabel: "Sep 14",
@@ -173,6 +174,20 @@ describe("Practice & Time Trial figures", () => {
   it("says nothing without answers", () => {
     expect(practiceItem({ ...FREE_REPORT, sufficiency: { has_data: false } })).toBeNull();
     expect(practiceItem({ ...FREE_REPORT, current: { attempts: 0, correct: 0, accuracy: 0, active_days: 0 } })).toBeNull();
+  });
+});
+
+describe("labels", () => {
+  it("the viewer's own Daily is announced as Your Daily, never as community activity", () => {
+    const record = dailyRecordItem(page(scenario("lab_free")))!;
+    expect(record.category).toBe("player-activity");
+    expect(pulseItemLabel(record)).toBe("Your Daily");
+  });
+
+  it("every other item keeps its category label, and a non-live item cannot borrow the live label", () => {
+    expect(pulseItemLabel(practiceItem(FREE_REPORT)!)).toBe("Your insight");
+    const record = dailyRecordItem(page(scenario("lab_free")))!;
+    expect(pulseItemLabel({ ...record, provenance: "fixture" })).toBe("Player activity");
   });
 });
 

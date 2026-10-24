@@ -29,7 +29,8 @@ import { cn } from "@/lib/utils";
 import { useLivePulseProvider } from "./content/live/useLivePulseProvider";
 import { fixturePulseProvider } from "./content/pulse-provider";
 import { DEFAULT_PULSE_CADENCE } from "./model/pulse-cadence";
-import { CATEGORY_LABEL, type PulseCadence, type PulseCatalogue, type PulseContentProvider } from "./model/pulse-types";
+import { pulseItemLabel } from "./content/live/live-items";
+import type { PulseCadence, PulseCatalogue, PulseContentProvider } from "./model/pulse-types";
 import PulseExpanded from "./PulseExpanded";
 import SceneRenderer, { SCENE_ACCENT } from "./scenes/SceneRenderer";
 import TickerScene from "./scenes/TickerScene";
@@ -263,13 +264,13 @@ export default function AcademyPulse({
               <AnimatePresence mode="popLayout" initial={false}>
                 {item && (
                   <motion.span
-                    key={item.category}
+                    key={pulseItemLabel(item)}
                     className="apulse-cat"
                     initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { delay: 0.25, duration: 0.45, ease: EASE_OUT } }}
                     exit={{ opacity: 0, y: -10, filter: "blur(4px)", transition: { duration: 0.2 } }}
                   >
-                    {CATEGORY_LABEL[item.category]}
+                    {pulseItemLabel(item)}
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -284,7 +285,7 @@ export default function AcademyPulse({
             data-compact={compact ? "true" : "false"}
             role="group"
             aria-roledescription="slide"
-            aria-label={item ? `${rot.index + 1} of ${count}: ${CATEGORY_LABEL[item.category]}. ${item.title}` : "Academy Pulse"}
+            aria-label={item ? `${rot.index + 1} of ${count}: ${pulseItemLabel(item)}. ${item.title}` : "Academy Pulse"}
             aria-live={rot.playing ? "off" : "polite"}
             data-testid="academy-pulse-viewport"
           >
@@ -355,7 +356,7 @@ export default function AcademyPulse({
                     className="apulse-pip"
                     data-current={i === rot.index ? "true" : "false"}
                     style={{ ["--pip" as string]: SCENE_ACCENT[it.kind] }}
-                    aria-label={`Scene ${i + 1}: ${CATEGORY_LABEL[it.category]}`}
+                    aria-label={`Scene ${i + 1}: ${pulseItemLabel(it)}`}
                     aria-current={i === rot.index ? "true" : undefined}
                     onClick={() => rot.goTo(i)}
                     tabIndex={i === rot.index ? 0 : -1}
