@@ -559,7 +559,8 @@ function AcademyCoreOrrery() {
   };
 
   const secondScreen = (
-    <nav className="acore-second-screen o35-second-screen" aria-label="Academy rooms beyond the Core">
+    <div className="acore-second-screen o35-second-screen">
+      <nav className="acore-secondary-nav" aria-label="Academy rooms beyond the Core">
       <Link
         to={ACADEMY_COMMONS_HREF}
         className="acore-minor-link"
@@ -578,8 +579,9 @@ function AcademyCoreOrrery() {
       >
         Academy Hall
       </Link>
+      </nav>
       <OfficialSocialLinks placement="home_hub" compact />
-    </nav>
+    </div>
   );
 
   const orbit = DESKTOP_ORBIT;
