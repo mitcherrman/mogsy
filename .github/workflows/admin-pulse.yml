@@ -1,0 +1,43 @@
+name: Admin Pulse Workspace
+on:
+  pull_request:
+    paths:
+      - 'src/components/admin/pulse/**'
+      - 'src/lib/admin/pulse/**'
+      - 'src/features/academy-pulse/model/**'
+      - 'supabase/pulse-p2b-staged/**'
+      - 'supabase/own1-staged/migrations/01_own1_a_owner_core.sql'
+      - 'e2e/admin-pulse/**'
+      - 'playwright.admin-pulse.config.ts'
+      - '.github/workflows/admin-pulse.yml'
+permissions:
+  contents: read
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Unit, UI, owner-gate and PGlite migration tests
+        run: npm test -- src/lib/admin/pulse src/components/admin/pulse src/features/academy-pulse
+      - name: Staged migration stays out of the auto-applied folder
+        run: |
+          test ! -e supabase/migrations/*pulse_admin_workspace*
+          ! grep -l "pulse_admin_" supabase/migrations/*.sql
+      - name: Vite production build
+        run: npx vite build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance (headless Chromium, 1 worker)
+        run: npx playwright test -c playwright.admin-pulse.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-pulse-evidence
+          path: test-results/
+          retention-days: 14
