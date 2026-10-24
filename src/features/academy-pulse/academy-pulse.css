@@ -666,6 +666,13 @@
   .apulse-option { font-size: 13.5px; }
 }
 
+/* ---------------- wide glass (tablets): the composition sits in the middle ---------------- */
+@container apulse-view (min-width: 560px) {
+  :is(.apulse-activity, .apulse-minigame, .apulse-premium, .apulse-challenge, .apulse-creator, .apulse-sponsor) { justify-content: center; gap: 28px; }
+  :is(.apulse-activity-text, .apulse-minigame-text, .apulse-premium-text, .apulse-challenge-text, .apulse-creator-text, .apulse-sponsor-text) { flex: 0 1 340px; }
+  .apulse-board, .apulse-insight, .apulse-question { padding-inline: max(16px, calc((100cqw - 560px) / 2)); }
+}
+
 /* ---------------- ticker (short glass) ---------------- */
 .apulse-ticker { padding: 8px 10px 8px 12px; gap: 10px; }
 .apulse-ticker-sigil {

@@ -233,6 +233,7 @@ test.describe("behaviour at 1366x768", () => {
 
     await page.getByTestId("academy-pulse-expand").click();
     await expect(page.getByTestId("pulse-expanded")).toBeVisible();
+    await page.waitForTimeout(700); // its entrance (toBeVisible counts opacity 0 as visible)
     await page.screenshot({ path: path.join(OUT, "interaction-expanded.png") });
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("pulse-expanded")).toHaveCount(0);

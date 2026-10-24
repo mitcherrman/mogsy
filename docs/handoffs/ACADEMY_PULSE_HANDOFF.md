@@ -153,6 +153,22 @@ A **live content provider** behind the same `PulseContentProvider` interface:
 - An owner-editable cadence and catalogue (admin), with `provenance: "live"` items.
 - Then: the owner's motion review, and turning the flag to `on` only on the owner's decision.
 
-## 8. CI
+## 8. CI (PR #140)
 
-(Filled in after the first run of #140.)
+| Workflow | Result | Note |
+|---|---|---|
+| `academy-pulse` (new) | **pass**, run 40055797657 on a3f1ec15 | vitest 319/319; build and bundle guard; Playwright **19/19** in 4.7 min |
+| `academy-core-orrery` | **pass**, run 40047186116 | V3.5 + V3 Orrery browser specs, unit tests, build: flag-off `/lol` unaffected |
+| `academy-masthead-review` | **pass** | Masthead geometry unchanged |
+| `academy-seamless-hud` | fail, **pre-existing** | Its "before" job deletes `academy-core-seamless-hud.css` from main's source while main's page still imports it, so Vite cannot resolve it. It fails the same way on every PR touching `src/pages/academy-core` since #111 merged (atlas, tournament-arena PRs). Needs its own fix: drop the import too, or retire the before/after job. |
+| `interaction-labs-integration` | fail, **pre-existing** | The owner-prototypes browser suite fails on unrelated PRs too (e.g. qrt2/mastery-tablet-tabs) |
+
+First run (36e33792): 18/19. The real defect it found was that Escape didn't return focus to the opener of the expanded view, because Radix restores focus only to a `Dialog.Trigger`. It was fixed in 9665cbc3 and covered by unit and browser tests.
+
+Evidence artifact `academy-pulse-evidence`:
+- desktop full-page and column stills at 6 viewports;
+- first-screen and Pulse stills at 5 stacked viewports;
+- interaction stills: question, expanded view, leaderboard inspect, creator viewer;
+- reduced motion;
+- `gallery/` with 13 scenes × 4 sizes at 2×;
+- `video/`, a motion recording of a full cycle. Headless Chromium records slowly, so it shows choreography order, not real smoothness.
