@@ -55,6 +55,7 @@ import {
   SourcesSection,
 } from "@/components/admin/users/AudienceSections";
 import { VisitorsSection } from "@/components/admin/users/VisitorsSection";
+import { ConversionDashboard } from "@/components/admin/users/ConversionDashboard";
 import { AudiencePulse } from "@/components/admin/users/AudiencePulse";
 import { CohortRetentionPanel } from "@/components/admin/users/CohortRetention";
 import { useAdminRoles } from "@/hooks/useAdminRoles";
@@ -248,6 +249,16 @@ export default function AdminUsersPage() {
     setParams(next, { replace: false });
   };
 
+  /** Open one browser's record in the visitor list below and scroll to it. */
+  const openVisitor = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.delete("population");
+    next.set("visitor", id);
+    setParams(next, { replace: false });
+    const visitors = document.getElementById("users-audience-visitors");
+    if (typeof visitors?.scrollIntoView === "function") visitors.scrollIntoView({ block: "start" });
+  };
+
   const drill = (populationKey: string) => {
     const next = new URLSearchParams(params);
     next.set("section", "audience");
@@ -342,16 +353,10 @@ export default function AdminUsersPage() {
               range={state.range}
               now={state.now}
               classification={filtered.byVisitor}
-              onVisitor={(id) => {
-                const next = new URLSearchParams(params);
-                next.delete("population");
-                next.set("visitor", id);
-                setParams(next, { replace: false });
-                const visitors = document.getElementById("users-audience-visitors");
-                if (typeof visitors?.scrollIntoView === "function") visitors.scrollIntoView({ block: "start" });
-              }}
+              onVisitor={openVisitor}
             />
             <CohortRetentionPanel filter={filter} refreshKey={nonce} />
+            <ConversionDashboard loaded={viewLoaded} range={state.range} now={state.now} onVisitor={openVisitor} />
             <section id="users-audience-visitors" aria-label="Visitors">
               <details
                 open={Boolean(visitor || population)}

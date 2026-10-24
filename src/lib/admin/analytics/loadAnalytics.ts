@@ -58,7 +58,14 @@ export interface LoadedAnalytics {
 
 type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-/** Read every page up to the cap. Throws on the first error — a partial read is not reported as data. */
+/**
+ * Read every page up to the cap. Throws on the first error — a partial read is not reported as data.
+ *
+ * Callers must order by a UNIQUE key (a timestamp plus the primary key). Offset
+ * pages over a non-unique order are not stable in Postgres: rows that tie on
+ * the timestamp across a page boundary can be read twice or not at all, and
+ * Railway delivers batches that share one received_at.
+ */
 export async function readAllPages<T>(
   page: (from: number, to: number) => PageResult<T>,
   cap = ROW_CAP,
@@ -95,7 +102,10 @@ export async function loadAnalytics(range: Pick<AnalyticsRange, "start">): Promi
     readAllPages<AnalyticsEventRecord>((from, to) => {
       let q = analyticsDb.from("analytics_events").select(EVENT_COLUMNS);
       if (startIso) q = q.gte("received_at", startIso);
-      return q.order("received_at", { ascending: true }).range(from, to) as unknown as PageResult<AnalyticsEventRecord>;
+      return q
+        .order("received_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to) as unknown as PageResult<AnalyticsEventRecord>;
     }),
     // All-time: "new" and "returning" are questions about history before the range.
     readAllPages<AnalyticsSessionRecord>(
@@ -104,6 +114,7 @@ export async function loadAnalytics(range: Pick<AnalyticsRange, "start">): Promi
           .from("analytics_sessions")
           .select(SESSION_COLUMNS)
           .order("started_at", { ascending: true })
+          .order("session_id", { ascending: true })
           .range(from, to) as unknown as PageResult<AnalyticsSessionRecord>,
     ),
     readAllPages<AnalyticsVisitorRecord>(
@@ -112,6 +123,7 @@ export async function loadAnalytics(range: Pick<AnalyticsRange, "start">): Promi
           .from("analytics_visitors")
           .select(VISITOR_COLUMNS)
           .order("first_seen_at", { ascending: true })
+          .order("visitor_id", { ascending: true })
           .range(from, to) as unknown as PageResult<AnalyticsVisitorRecord>,
     ),
     latestReceived({ source_system: "web" }),
