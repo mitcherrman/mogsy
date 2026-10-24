@@ -1,6 +1,10 @@
 # Academy Pulse — PULSE-2A: real Academy data
 
-Lane: PULSE-2A / DATA (GitHub issue mitcherrman/mogsy#151). Branch `pulse/p2a-real-data`, base frontend `main` **a0f426d4** (verified as origin/main on 2026-10-24). Backend audited at `League_Combat_Simulator` `master` **0a0d88f2**. Draft PR: see §8. Nothing is merged or published.
+Lane: PULSE-2A / DATA (GitHub issue mitcherrman/mogsy#151). Branch `pulse/p2a-real-data`, draft PR mitcherrman/mogsy#154. Nothing is merged or published.
+
+- **Current integration:** `origin/main` **6e334d60** (which includes PULSE-1.2 #152, `edac9d7d`) was merged into the branch at `5d1543d5`. The code head tested in CI is **f735bd59** (§8). Later commits are docs only.
+- **Original base:** `main` **a0f426d4**.
+- **Backend audited:** `League_Combat_Simulator` `master` **0a0d88f2**.
 
 ## 1. Outcome
 
@@ -9,8 +13,8 @@ Production Pulse now gets its content from a **per-viewer live provider** (`src/
 | Viewer | What Pulse shows | Network |
 |---|---|---|
 | Signed out, auth still resolving, **anonymous guest session**, or no AuthProvider | The public editorial catalogue from PULSE-1 §9, unchanged | **None** |
-| Signed-in account, Free | Editorial, plus **Your Daily record** (newest Daily: score and C/A) and **Your Practice & Time Trial** (the server's snapshot of recent answers) | 2 self-scoped GETs |
-| Signed-in account, Premium | Editorial without the Premium promotion, plus Your Daily record, the **server-fitted Daily accuracy trajectory** and the **server's Practice window** (series and comparable movement) | Same 2 GETs |
+| Signed-in account, Free | Editorial, plus **Your Daily** (newest Daily: score and C/A) and **Your Practice & Time Trial** (the server's snapshot of recent answers) | 2 self-scoped GETs |
+| Signed-in account, Premium | Editorial without the Premium promotion, plus Your Daily, the **server-fitted Daily accuracy trajectory** and the **server's Practice window** (series and comparable movement) | Same 2 GETs |
 | Any account whose reads fail, are refused or exceed 3 s | Exactly the guest catalogue | Reads aborted |
 
 All other cadence slots stay empty for everyone, and the existing scheduler skips them: community activity, leaderboards, sponsor, creator, community challenge and event. The data needed for them does not exist or is not consented (§2).
@@ -132,7 +136,7 @@ createLivePulseProvider(viewer) ── guest: publicPulseCatalogue (peek = load,
 AcademyPulse (usePulseContent) ⟶ usePulseRotation (unchanged) ⟶ buildPulseCycle (unchanged) ⟶ scenes (unchanged)
 ```
 
-- **No second scheduler.** Live items are ordinary `PulseItem`s in existing categories, drawn by existing scene kinds. Cadence, rotation and scenes are untouched.
+- **No second scheduler.** Live items are ordinary `PulseItem`s in existing categories, drawn by existing scene kinds. Cadence and rotation are untouched; scenes have label-only edits (below).
 - **Placement.** The viewer's Daily record is a News-kind item in the `player-activity` slot. Premium readings are Insight-kind items in `personal-insight`, and the Free Practice card is a News-kind item there. Why not put everything in `personal-insight`: the scheduler never plays two scenes of the same kind back to back. For a Premium viewer the Premium slot is dropped, so a News-kind personal card in `personal-insight` would always follow the editorial News scene, and most cycles would skip it.
 - **Bounded.** One deadline for both reads (`LIVE_READ_TIMEOUT_MS = 3000`). A read still running is aborted and contributes nothing; the other read's scene still shows.
 - **Cancellation-safe.** The shell's AbortSignal aborts every read. `load` rejects only on that abort, which the shell ignores. Any other failure (401/403, 5xx, contract violation, timeout) returns the editorial catalogue, never `{}`.
@@ -144,6 +148,9 @@ AcademyPulse (usePulseContent) ⟶ usePulseRotation (unchanged) ⟶ buildPulseCy
   - Premium Practice content appears only if the server's `tier` is `premium`;
   - a Free payload's absent comparison keys are never rebuilt (no Free sparkline of per-run accuracy, no client-computed delta);
   - the Premium promotion is hidden when the session says `pro` or a server payload says Premium.
+- **Truthful labels** (command center, 2026-10-24):
+  - **Your Daily.** The viewer's own Daily card is labelled **"Your Daily"** wherever a category label appears: the nameplate chip, the slide's accessible name, the scene pips, the expanded header and the ticker. Its kicker also reads "Your Daily". `pulseItemLabel(item)` (`live-items.ts`) overrides the label for that one live item id only; every other item, including any non-live item with the same id, keeps `CATEGORY_LABEL`. No shared type changed.
+  - **Chart points.** `InsightScene` probes are named by their place in the series, e.g. "3 of 5: 88%", and the list is announced as "<seriesLabel>, oldest first". They no longer say "Day N", because a point may be a Daily run or a day studied. `seriesLabel` says which. The visible tip still shows the value.
 - **Copy.** Each figure is formatted with History's and the Practice record's own helpers: `dailyHeadline`, `planDateLabel`, `signedPoints`, `recentSpanLabel`, `windowLabel`. Scope wording follows the Practice record: "Practice & Time Trial".
 - **DEV.** The dev server and the lab still play the labelled fixtures. `VITE_ACADEMY_PULSE_CONTENT=live` makes the dev server use the live provider (CI uses this for the browser spec). Production always uses the live provider, which still behaves exactly as PULSE-1's public editorial feed for every guest.
 
@@ -158,11 +165,19 @@ New (lane-owned):
 - `docs/handoffs/ACADEMY_PULSE_P2A.md`: this file.
 
 Edited (final integration, the lane's assignment in #151):
-- `src/features/academy-pulse/AcademyPulse.tsx`: default provider is the live one (DEV fixtures unless `VITE_ACADEMY_PULSE_CONTENT=live`); `usePulseContent` is per provider; the scene presence is keyed by provider. Its test gains 2 provider-switch tests.
+- `src/features/academy-pulse/AcademyPulse.tsx`:
+  - default provider is the live one (DEV fixtures unless `VITE_ACADEMY_PULSE_CONTENT=live`);
+  - `usePulseContent` is per provider;
+  - the scene presence is keyed by provider;
+  - labels come from `pulseItemLabel`.
+  - #152's focus-restore (`openedByKeyboard`/`restoreFocusTarget`), `data-holds` diagnostics and `userPaused`-driven Pause control are preserved unchanged by the merge.
+  - Its test gains 2 provider-switch and 2 label tests.
+- `src/features/academy-pulse/PulseExpanded.tsx`, `scenes/TickerScene.tsx`: the category label comes from `pulseItemLabel`.
+- `src/features/academy-pulse/scenes/InsightScene.tsx`: probe and list labels (see §3).
 - `src/features/academy-pulse/content/pulse-provider.ts`: header comment only. `publicPulseCatalogue`/`publicPulseProvider` are unchanged and remain the editorial base.
 - `.github/workflows/academy-pulse.yml`: an additive step running the live spec with `VITE_ACADEMY_PULSE_CONTENT=live`, plus its path filter.
 
-**Not touched:** `model/pulse-types.ts`, `model/pulse-cadence.ts`, scenes, `AcademyCorePage.tsx`, `App.tsx`, migrations, the Admin Pulse UI (P2B), partner content (P2C), `e2e/academy-pulse.spec.ts` (REL), and the backend. **No shared type change**, so no contract PR is needed.
+**Not touched:** `model/pulse-types.ts`, `model/pulse-cadence.ts`, `model/pulse-rotation.ts`, `usePulseRotation.ts`, `AcademyCorePage.tsx`, `App.tsx`, migrations, the Admin Pulse UI (P2B), partner content (P2C), `e2e/academy-pulse.spec.ts` (REL), and the backend. **No shared type change**, so no contract PR is needed.
 
 ## 5. Evidence
 
@@ -171,10 +186,11 @@ Local, L2. Unit/integration only: no local browser was run (AGENTS.md, #151).
 | Check | Result |
 |---|---|
 | Baseline `src/features/academy-pulse` on a0f426d4 | 55/55 |
-| `src/features/academy-pulse` with this branch | **89/89** (34 new: items 14, provider 9, reads 5, viewer 4, shell 2) |
-| `src/pages/academy-core` + `AcademyRadioStrip` | **200/200** |
+| `src/features/academy-pulse` on the first head 89a1372b | 89/89 (34 new: items 14, provider 9, reads 5, viewer 4, shell 2) |
+| `src/features/academy-pulse` on the combined head f735bd59 (with #152) | **94/94** (adds #152's updated tests, 2 label item tests and 2 label shell tests) |
+| `src/pages/academy-core` + `AcademyRadioStrip`, combined head | **200/200** |
 | `tsc -p tsconfig.app.json` | 0 errors in touched files. The 2 reported errors (`OnboardingProfile.tsx:180`, `lib/identity/connections.ts:263`) are in files this branch does not touch. |
-| eslint on every touched file, including the spec | 0 problems |
+| eslint on `src/features/academy-pulse` and the live spec | 0 errors. 17 `react-refresh/only-export-components` warnings in scene files: the existing pattern, none new. |
 | Spec typecheck alone | **Not run.** The mogzy resource guard blocked it (≈0.8 GB RAM free of the 5.5 GB required, League client open). CI compiles the spec. |
 
 Local vitest used the documented workaround: an esbuild-JSX scratch config plus a `@rollup/wasm-node` require hook, because shared swc and native rollup are blocked on this machine.
@@ -182,7 +198,7 @@ Local vitest used the documented workaround: an esbuild-JSX scratch config plus 
 Browser (GitHub runner, `academy-pulse` workflow, new step):
 - guest: no personal read;
 - anonymous session: no personal read;
-- Free: record and Practice card, exact request paths and bearer token, Premium invitation present, no "Sample";
+- Free: record and Practice card, exact request paths and bearer token, Premium invitation present, no "Sample"; the chip reads "Your Daily", there is a "Scene N: Your Daily" pip, and no "Player activity" pip;
 - Premium: Insight scene, no Premium promotion;
 - failure plus hang: editorial within the budget, never "quiet".
 
@@ -190,20 +206,43 @@ Stills are written to `test-results/academy-pulse-live/` in the `academy-pulse-e
 
 ## 6. Risks and owner questions
 
-1. **The "Player activity" chip on the viewer's own Daily card.** It is the viewer's own activity, but the chip could be read as community activity. The kicker says "Your Daily record". Alternatives: an owner cadence change, or a new category, which is a shared-type change through #151.
-2. **Insight probe wording.** `InsightScene` labels each point "Day N" with a % tip. Daily trajectory points are runs, and Practice points are days studied. Accurate wording needs an optional per-item point label on `InsightItem`, a shared-type change for #151.
+1. ~~"Player activity" chip on the viewer's own Daily~~ **Resolved** (command-center default): it is labelled "Your Daily" everywhere, with no shared type. A dedicated category remains an option for later, as a shared-type change through #151.
+2. ~~Insight "Day N" probes~~ **Resolved**: probes are named by their place in the series. Per-point dates or run labels would need an optional field on `InsightItem`, a shared type, so that is not done.
 3. **Cold start for accounts.** The glass can be empty for up to 3 s on a slow backend. The alternative is to draw editorial and accept a scene swap.
 4. **The Premium promotion stays visible while entitlement is `unknown`.** This is conservative: no content is unlocked by the client.
 5. **Freshness.** Personal scenes are read once per mount, with a 5-minute warm cache. A Daily finished in another tab appears on the next visit.
 6. **Owner wording decisions** for the verified but unused sources in §2: the game-modes `streak_days` scope, Mastery "continue", XP tier, `/api/quiz/stats`.
-7. **Unverified until CI runs:** the live spec's selectors on the real page, and the Supabase RPC stub making `proStatus=pro`. If the stub doesn't take, the server-says-Premium path still hides the promotion for the Premium payloads.
+7. **The Premium browser case** passes. It cannot tell whether the RPC stub (`proStatus=pro`) or the server-says-Premium path hid the promotion: both hide it, and both are unit-tested separately.
 
 ## 7. Next
 
 - P2B/P2C publish their content contracts, then integrate admin and partner items through the same provider (`withLiveItems`).
 - Leaderboard and community activity need a backend consent model and a public read first. That is backend work, owner-gated.
-- Decide §6.1–6.2, then make one shared-type PR (point labels, optional category) through #151.
+- Optional, later: one shared-type PR through #151 (a per-point label on `InsightItem`, a dedicated "your record" category).
 
 ## 8. PR and CI
 
-Recorded after the push: see the PR description and the #151 report.
+PR mitcherrman/mogsy#154 (draft). All runs on GitHub's runner, with bundled headless Chromium.
+
+| Head | Content | Workflow | Run | Result |
+|---|---|---|---|---|
+| 89a1372b | first P2A head, on a0f426d4 | `academy-pulse` | 40073772559 | success: vitest 361/361; `academy-pulse.spec` 21/21; live spec 5/5 |
+| 89a1372b | | `academy-core-orrery` (dispatch) | 40074472756 | success |
+| **f735bd59** | **combined: main 6e334d60 (incl. #152) + P2A + labels** | `academy-pulse` | **40089419144** | **success** (details below) |
+| **f735bd59** | | `academy-core-orrery` (dispatch; its path filter doesn't fire for Pulse-only changes) | **40089423141** | **success** (details below) |
+
+`academy-pulse` on f735bd59:
+- vitest **366/366**;
+- production build and the DEV-lab bundle guard passed;
+- `e2e/academy-pulse.spec.ts` **25/25**, including #152's "mouse-opened expanded view closed with Escape does not leave rotation paused", "keyboard-opened … keeps the keyboard focus hold", Pause-holds and parked-cursor cases;
+- `e2e/academy-pulse-live.spec.ts` **5/5**.
+
+`academy-core-orrery` on f735bd59:
+- vitest **277/277**;
+- production build passed;
+- `academy-core-v35.spec` **68 passed, 10 skipped** (its evidence suites, skipped by the workflow's design);
+- `academy-core.spec` **23/23**.
+
+Evidence artifact: `academy-pulse-evidence`, including `academy-pulse-live/`.
+
+**Integration-ready:** yes, as a draft for command-center review. It is not merged and not published.
