@@ -1,0 +1,19 @@
+{
+  "env": {
+    "MOGZY_GUARD_ENFORCE": "1"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Monitor|mcp__terminal__run_in_terminal",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/mlmit/AppData/Local/mogzy-dev-guard/hook-pretooluse.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

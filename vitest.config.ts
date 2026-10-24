@@ -1,10 +1,36 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
+import os from "os";
 import path from "path";
+import { currentVitestArgs, vitestScope } from "./tools/dev-guard/scope.mjs";
+
+// Local resource bounds; CI keeps Vitest's defaults (GitHub runners are isolated). Vitest's default is
+// (CPU threads - 1), i.e. ~15 jsdom workers on the owner's 16-thread PC, which saturated RAM when several
+// Claude sessions ran suites at once. These bounds never refuse a run, so tests keep working while League
+// and Firefox are open:
+//  * targeted runs (<= 8 named test files): 1 worker, files run one after another;
+//  * broad runs: MOGZY_VITEST_WORKERS (set by mogzy-guard) or 2;
+//  * every local worker gets a heap cap (MOGZY_VITEST_HEAP_MB, default 2048) and the run below-normal CPU
+//    priority, which its workers inherit, so the game and the browser are scheduled first.
+const isLocal = !process.env.CI;
+const targeted = vitestScope(currentVitestArgs()).scope === "targeted";
+const localWorkers = targeted ? 1 : Math.max(1, Number(process.env.MOGZY_VITEST_WORKERS) || 2);
+const workerExecArgv = [`--max-old-space-size=${Math.max(512, Number(process.env.MOGZY_VITEST_HEAP_MB) || 2048)}`];
+if (isLocal) {
+  try { os.setPriority(os.constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* not permitted: run at normal priority */ }
+}
 
 export default defineConfig({
   plugins: [react()],
   test: {
+    ...(isLocal
+      ? {
+          maxWorkers: localWorkers,
+          minWorkers: 1,
+          fileParallelism: localWorkers > 1,
+          poolOptions: { forks: { execArgv: workerExecArgv }, threads: { execArgv: workerExecArgv } },
+        }
+      : {}),
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

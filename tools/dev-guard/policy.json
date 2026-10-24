@@ -1,0 +1,41 @@
+{
+  "_comment": "Limits for mogzy-guard, which only serializes BROAD jobs. Targeted test runs (<= 8 named test files, scope.mjs) never use it. No value here can refuse a job: League, Firefox, RAM and CPU only shrink it (workers, priority). See README 'Tuning'.",
+  "version": 2,
+  "lock": {
+    "mutexName": "Global\\mogzy-dev-guard-heavy-job",
+    "defaultWaitSec": 120,
+    "maxWaitSec": 600
+  },
+  "stateDirEnvDefault": "%LOCALAPPDATA%\\mogzy-dev-guard",
+  "resources": {
+    "_comment": "Advisory only. Below advisoryFreeRamMB (+ class estimate) the job runs with 1 worker; above advisoryCpuPercent a note is printed.",
+    "advisoryFreeRamMB": 1000,
+    "advisoryCpuPercent": 85
+  },
+  "league": {
+    "inGameProcesses": ["League of Legends"],
+    "clientProcesses": ["LeagueClient", "LeagueClientUx", "LeagueClientUxRender"]
+  },
+  "classes": {
+    "vitest":  { "estimateMB": 2500, "workers": 2, "timeoutSec": 900,  "jobMemoryLimitMB": 6000 },
+    "pytest":  { "estimateMB": 1500, "workers": 1, "timeoutSec": 1200, "jobMemoryLimitMB": 4000 },
+    "build":   { "estimateMB": 2500, "workers": 2, "timeoutSec": 900,  "jobMemoryLimitMB": 6000 },
+    "e2e":     { "estimateMB": 3000, "workers": 1, "timeoutSec": 1200, "jobMemoryLimitMB": 6000 },
+    "generic": { "estimateMB": 1500, "workers": 1, "timeoutSec": 900,  "jobMemoryLimitMB": 4000 }
+  },
+  "childNodeMaxOldSpaceMB": 2048,
+  "_heavyProcessComment": "Command-line patterns used only by 'status' (and an advisory note) to list test/build processes running outside the guard. They never block anything: targeted runs from other sessions are expected to appear here.",
+  "heavyProcessNames": ["node.exe", "python.exe", "py.exe", "bun.exe", "pythonw.exe"],
+  "heavyProcessPatterns": [
+    "vitest",
+    "(^|\\s)-m\\s+(pytest|unittest)\\b",
+    "(^|[\\\\/\\s])pytest(\\.exe)?(\\s|$)",
+    "playwright[\\\\/ ].*\\btest\\b",
+    "_validate\\.py",
+    "(^|[\\\\/\\s])validate_[A-Za-z0-9_]+\\.py",
+    "vite(\\.js|\\.mjs)?\"?\\s+build\\b",
+    "[\\\\/]typescript[\\\\/]bin[\\\\/]tsc\\b",
+    "prerender-(items|champions)",
+    "remotion\\s+render"
+  ]
+}
