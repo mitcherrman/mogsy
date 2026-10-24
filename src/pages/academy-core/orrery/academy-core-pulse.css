@@ -35,7 +35,7 @@
   flex: 1 1 0;
   min-height: 118px;
   max-height: calc(var(--o35-col) * 0.98);
-  margin-top: 0.2rem;
+  margin-top: 0.6rem; /* the nameplate rides 9 px above the frame */
 }
 .o35-root[data-pulse="on"][data-layout="full"] .o35-second-screen { margin-top: auto; }
 /* a mouse needs no 44 px row for two text links; the height goes to Pulse */

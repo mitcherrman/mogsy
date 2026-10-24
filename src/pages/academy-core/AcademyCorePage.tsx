@@ -96,9 +96,9 @@ import {
 import "@/pages/academy-core/academy-core.css";
 import "./orrery/academy-core-v35.css";
 import "./orrery/academy-core-masthead.css";
+import "./orrery/academy-core-pulse.css";
 import "./orrery/academy-core-phone-fit.css";
 import "./orrery/academy-core-seamless-hud.css";
-import "./orrery/academy-core-pulse.css";
 import AcademyRadioStrip from "@/components/audio/AcademyRadioStrip";
 import AcademyPulseSlot from "@/features/academy-pulse/AcademyPulseSlot";
 import { readAcademyPulseEnabled } from "@/features/academy-pulse/model/pulse-flag";
