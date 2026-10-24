@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PREMIUM_MATRIX } from "@/lib/premium/matrix";
-import { fixturePulseCatalogue, fixturePulseProvider, resolvePremiumBenefits } from "./pulse-provider";
+import { fixturePulseCatalogue, fixturePulseProvider, publicPulseCatalogue, publicPulseProvider, resolvePremiumBenefits } from "./pulse-provider";
 import { PREMIUM_LEAD_BENEFIT_IDS } from "./pulse-fixtures";
 
 describe("Premium copy comes only from the canonical matrix", () => {
@@ -28,5 +28,27 @@ describe("Premium copy comes only from the canonical matrix", () => {
     const premium = cat.premium![0];
     expect(premium.kind === "premium" && premium.benefits.length).toBeGreaterThan(0);
     expect(fixturePulseProvider.peek!()).toEqual(fixturePulseCatalogue());
+  });
+});
+
+
+describe("public launch content safety", () => {
+  it("contains only genuine Academy editorial, unscored gameplay and shipped Premium benefits", async () => {
+    const catalogue = await publicPulseProvider.load();
+    expect(catalogue).toEqual(publicPulseCatalogue());
+    const items = Object.values(catalogue).flat();
+    expect(items.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
+    for (const item of items) {
+      expect(item.provenance).toBe("live");
+      expect(["minigame", "news", "premium", "question"]).toContain(item.kind);
+      expect(item.id).toMatch(/^editorial-/);
+      expect(item.title).not.toMatch(/sample|placeholder/i);
+      if (item.kind === "premium") expect(item.benefits.length).toBeGreaterThan(0);
+      if (item.kind === "news" && item.href) expect(item.href.startsWith("/")).toBe(true);
+    }
+    for (const absent of ["player-activity", "leaderboard", "personal-insight", "sponsor", "creator-spotlight", "community-challenge", "event"]) {
+      expect(catalogue[absent as keyof typeof catalogue]).toBeUndefined();
+    }
   });
 });
