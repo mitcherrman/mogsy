@@ -203,3 +203,21 @@ export function actOpeningTitle(plan: ThreeActsPlan, roundNumber: number | null)
   }
   return null;
 }
+
+/**
+ * The three round numbers of the SET a round belongs to, in play order, or
+ * null for a Meta Reflex round / a round outside the plan. The same walk as
+ * `projectSetTimeline`: a set's rounds are where the plan puts them.
+ */
+export function setRoundsFor(plan: ThreeActsPlan, roundNumber: number | null): number[] | null {
+  if (roundNumber === null) return null;
+  let round = 1;
+  for (const unit of plan.units) {
+    const size = unit.kind === "set" ? 3 : 1;
+    if (roundNumber >= round && roundNumber < round + size) {
+      return unit.kind === "set" ? [round, round + 1, round + 2] : null;
+    }
+    round += size;
+  }
+  return null;
+}

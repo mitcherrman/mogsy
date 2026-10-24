@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo } from "react";
+import { JourneyCooldownTrack } from "@/components/journey/JourneyCooldownTrack";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
@@ -28,7 +29,7 @@ function projectQuestion(pub: PublicRoundView): QuestionView | null {
 
 function QuizViewport({
   publicRound, selection, permissions, onSelect, reveal, feedback,
-  surfaceVerdict, surfaceSettings,
+  surfaceVerdict, surfaceSettings, stateContinuity,
 }: ModuleViewportProps) {
   const question = useMemo(() => projectQuestion(publicRound), [publicRound]);
   // Optional rich-visual source; null → the polished text fallback.
@@ -64,6 +65,9 @@ function QuizViewport({
       feedback={feedback ?? null}
       verdict={surfaceVerdict ?? null}
       settings={surfaceSettings}
+      // Daily three acts — a Summoner Spell set's cooldown, carried across its
+      // three questions. Absent for every other round, which renders as before.
+      continuity={stateContinuity ? <JourneyCooldownTrack continuity={stateContinuity} /> : null}
     />
   );
 }

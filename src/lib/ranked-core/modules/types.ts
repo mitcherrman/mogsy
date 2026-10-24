@@ -26,6 +26,7 @@ import type { SegmentChoice } from "@/lib/ranked-public/client";
 import type { SurfaceReveal, SurfaceSettings } from "@/lib/question-surface/contract";
 import type { ResolvedFeedback } from "@/lib/question-feedback/model";
 import type { QuizFeedbackVerdict } from "@/components/quiz/QuizAnswerFeedback";
+import type { CooldownContinuity } from "@/lib/journey/cooldownContinuity";
 import type { PublicRoundView, SegmentStateView } from "@/lib/ranked-public/contracts";
 
 /**
@@ -123,6 +124,13 @@ export interface ModuleViewportProps {
    * absent (every Ranked and Tutorial round).
    */
   surfaceSettings?: Partial<SurfaceSettings>;
+  /**
+   * Daily three acts — the settled state a linked set carries from question to
+   * question (a summoner spell's cooldown), or absent. Built by the mode from
+   * SETTLED rounds and this round's reveal gate only, so it never names a
+   * value the viewer has not been shown. Absent everywhere else.
+   */
+  stateContinuity?: CooldownContinuity | null;
 }
 
 /**
