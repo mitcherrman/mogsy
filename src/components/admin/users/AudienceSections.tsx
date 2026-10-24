@@ -306,8 +306,8 @@ export function AcquisitionSection({ loaded, range, now }: SectionProps) {
   return (
     <div className="space-y-4" data-testid="analytics-section-acquisition">
       <AdminPanel
-        title="Acquisition funnel"
-        description={`Distinct visitors reaching each step in range, read against all ${total} visitors in range. Steps are not forced into order — a direct link to /quiz skips Landing and Hub — so a later step can exceed an earlier one. Percentages appear only once the range has ${MIN_RATE_SAMPLE}+ visitors.`}
+        title="Reach by surface (independent)"
+        description={`Distinct visitors reaching each step in range, read against all ${total} visitors in range. Steps are not forced into order — a direct link to /quiz skips Landing and Hub — so a later step can exceed an earlier one. The ordered funnel is under Conversion and drop-off. Percentages appear only once the range has ${MIN_RATE_SAMPLE}+ visitors.`}
       >
         <Table
           testId="analytics-funnel"
