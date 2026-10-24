@@ -5,13 +5,14 @@ import {
   fetchPlayerSummary,
   setPlayerState,
   type InboxMode,
+  type NotificationLoadError,
   type PlayerAction,
   type PlayerInboxItem,
   type PlayerSummary,
   type PlayerView,
 } from "./api";
 import { announceNotificationsChanged, nextSurfaceId, onNotificationsChanged } from "./sync";
-import type { LoadStatus } from "./useAdminInbox";
+import { nextChannelTopic, reportLoadError, type LoadStatus } from "./useAdminInbox";
 
 interface Options {
   enabled: boolean;
@@ -48,6 +49,7 @@ export function usePlayerInbox({
   const [summary, setSummary] = useState<PlayerSummary>({ unread: 0, active: 0, actionable: 0, saved: 0 });
   const [mode, setMode] = useState<InboxMode>("v2");
   const [status, setStatus] = useState<LoadStatus>("loading");
+  const [error, setError] = useState<NotificationLoadError | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const surface = useRef(nextSurfaceId("player-inbox")).current;
@@ -79,9 +81,12 @@ export function usePlayerInbox({
       setHasMore(page.hasMore);
       setMode(page.mode);
       setSummary(s ?? deriveSummary(page.items));
+      setError(null);
       setStatus("ready");
-    } catch {
-      if (gen === generation.current) setStatus("error");
+    } catch (e) {
+      if (gen !== generation.current) return;
+      setError(reportLoadError("player", e));
+      setStatus("error");
     }
   }, [enabled, userId, view, pageSize, signupAt]);
 
@@ -96,6 +101,7 @@ export function usePlayerInbox({
     known.current = null;
     if (!enabled || !userId) {
       setItems([]);
+      setError(null);
       setStatus("loading");
       return;
     }
@@ -115,7 +121,8 @@ export function usePlayerInbox({
         return [...prev, ...page.items.filter(i => !seen.has(i.id))];
       });
       setHasMore(page.hasMore);
-    } catch {
+    } catch (e) {
+      setError(reportLoadError("player", e));
       setStatus("error");
     } finally {
       setLoadingMore(false);
@@ -133,8 +140,9 @@ export function usePlayerInbox({
 
   useEffect(() => {
     if (!enabled || !userId) return;
+    // A fresh topic per subscription; see useAdminInbox (#146).
     const channel = supabase
-      .channel(surface)
+      .channel(nextChannelTopic(surface))
       // New rows and server-side lifecycle changes (a friend request becoming
       // non-actionable, a report update superseding the previous one). RLS
       // delivers only rows this account may read; the server RPC re-scopes.
@@ -194,5 +202,5 @@ export function usePlayerInbox({
     [userId, items, summary, view, surface, refresh],
   );
 
-  return { items, summary, mode, status, hasMore, loadingMore, refresh, loadMore, act };
+  return { items, summary, mode, status, error, hasMore, loadingMore, refresh, loadMore, act };
 }

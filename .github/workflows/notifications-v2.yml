@@ -13,6 +13,9 @@ on:
       - 'src/components/admin/RecordFocusNotice*'
       - 'src/components/admin/recordDeepLinks*'
       - 'src/pages/Notifications*'
+      - 'src/components/notifications/**'
+      - 'src/lib/admin-auth/ownerSession*'
+      - 'supabase/own1-staged/migrations/0[12]_*'
       - 'src/test/notifications/**'
       - 'src/test/security/adminNotification*'
       - 'src/test/security/notificationsV2*'
@@ -36,7 +39,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Database lifecycle, RLS, backfill, rollback and policy parity (real Postgres via PGlite)
-        run: npm test -- src/test/security/notificationsV2Lifecycle.test.ts src/test/security/notificationsV2Policy.test.ts src/test/security/adminNotificationReadSemantics.test.ts src/test/security/adminNotificationReadsMigration.test.ts src/test/security/adminNotificationPolicy.test.ts src/test/security/com1SocialNotificationIdentity.test.ts src/test/security/com1LiveSocialRealtime.test.ts
+        run: npm test -- src/test/security/notificationsV2Lifecycle.test.ts src/test/security/notificationsV2OwnerAuth.test.ts src/test/security/notificationsV2Policy.test.ts src/test/security/adminNotificationReadSemantics.test.ts src/test/security/adminNotificationReadsMigration.test.ts src/test/security/adminNotificationPolicy.test.ts src/test/security/com1SocialNotificationIdentity.test.ts src/test/security/com1LiveSocialRealtime.test.ts
       - name: Notification surfaces and neighbouring workflows (unit + component)
         run: npm test -- src/lib/notifications src/components/hud src/components/admin/AdminNotifications.test.tsx src/components/admin/AdminPushNotifications.test.tsx src/components/admin/AdminModeratorConfig.test.tsx src/components/admin/recordDeepLinks.test.tsx src/pages/Notifications.test.tsx src/lib/admin/useAdminAttention.test.ts
       - name: Typecheck (app and the browser harness)

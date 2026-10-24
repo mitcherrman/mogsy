@@ -128,7 +128,7 @@ export function isMissingRpc(error: unknown): boolean {
 // The v2 RPCs are not in the generated types until types.ts is regenerated
 // from the migrated schema; this is the one narrow, typed escape hatch.
 // Called as a METHOD on the client: a detached `supabase.rpc` loses `this`.
-type DbError = { code?: string; message?: string };
+type DbError = { code?: string; message?: string; operation?: string };
 type RpcResult = { data: unknown; error: DbError | null };
 type UntypedClient = {
   rpc: (name: string, args?: Record<string, unknown>) => PromiseLike<RpcResult>;
@@ -141,8 +141,77 @@ type UntypedClient = {
   };
 };
 const untyped = supabase as unknown as UntypedClient;
-const rpc = (name: string, args?: Record<string, unknown>): Promise<RpcResult> =>
-  Promise.resolve(untyped.rpc(name, args));
+
+/**
+ * #146: a request that never settles must not leave a surface on "Loading…"
+ * forever. After this long the read counts as failed (code `timeout`), the
+ * request is aborted where the builder supports it, and a late reply is ignored.
+ */
+export const NOTIFICATION_RPC_TIMEOUT_MS = 15_000;
+
+type AbortableResult = PromiseLike<RpcResult> & { abortSignal?: (signal: AbortSignal) => PromiseLike<RpcResult> };
+
+const rpc = (name: string, args?: Record<string, unknown>): Promise<RpcResult> => {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const builder = untyped.rpc(name, args) as AbortableResult;
+  const pending = controller && typeof builder.abortSignal === "function" ? builder.abortSignal(controller.signal) : builder;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<RpcResult>(resolve => {
+    timer = setTimeout(() => {
+      controller?.abort();
+      resolve({ data: null, error: { code: "timeout", message: `${name} did not respond` } });
+    }, NOTIFICATION_RPC_TIMEOUT_MS);
+  });
+  // Every error names the RPC that produced it, so a failure can say which read failed.
+  const tag = (r: RpcResult): RpcResult => (r.error ? { ...r, error: { ...r.error, operation: name } } : r);
+  return Promise.race([Promise.resolve(pending), timedOut]).then(tag).finally(() => clearTimeout(timer));
+};
+
+/**
+ * #146: what a failed notification read may say about itself — operation,
+ * code and a short message with ids, emails and anything token-shaped
+ * removed. Never the request, the session or row data.
+ */
+export interface NotificationLoadError {
+  operation: string;
+  code: string | null;
+  message: string;
+}
+
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const EMAIL_RE = /[^\s@]+@[^\s@]+\.[^\s@]+/g;
+// JWTs, and any long run that mixes in digits (keys, hashes). Plain long
+// identifiers such as get_my_notification_summary stay readable.
+const TOKEN_RE = /eyJ[A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*|\b(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{24,}\b/g;
+
+export function describeNotificationError(error: unknown, operation = "notifications"): NotificationLoadError {
+  const e = (error && typeof error === "object" ? error : {}) as { code?: unknown; message?: unknown; operation?: unknown };
+  const code = typeof e.code === "string" && /^[A-Za-z0-9_]{1,16}$/.test(e.code) ? e.code : null;
+  const op = typeof e.operation === "string" && /^[a-z_]{1,64}$/.test(e.operation) ? e.operation : operation;
+  const raw = typeof e.message === "string" ? e.message : "";
+  const message =
+    raw
+      .replace(EMAIL_RE, "<email>")
+      .replace(UUID_RE, "<id>")
+      .replace(TOKEN_RE, "<redacted>")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 160) || "Request failed";
+  return { operation: op, code, message };
+}
+
+/**
+ * The server's owner gate refused. has_role(auth.uid(), 'admin') is the OWN1
+ * shim — the owner AND (aal2 OR a live trusted-device attestation for THIS
+ * JWT session) — so for the owner this almost always means the 15-minute
+ * attestation lapsed (sleep, a throttled background tab), which re-attesting
+ * the trusted device restores without MFA. The server still decides.
+ */
+export function isOwnerRefusal(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e || e.code !== "42501") return false;
+  return /admin role required|step_up_required/i.test(e.message ?? "");
+}
 
 /** A row as PostgREST returns it; every field is narrowed where it is read. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped RPC rows, narrowed field by field below

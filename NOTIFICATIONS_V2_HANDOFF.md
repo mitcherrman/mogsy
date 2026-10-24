@@ -347,3 +347,109 @@ GitHub REST events, and a plain HTTP fetch of mogzy.lol.
    - regenerate Supabase types;
    - the Perfect Timing owners land their access-spec fix
      (`fix/interaction-labs-pt-portal-assertion`, `8a438810`).
+
+## Production loading failures — #146 (2026-10-23)
+
+Issue: [mitcherrman/mogsy#146](https://github.com/mitcherrman/mogsy/issues/146) · Branch: `fix/notifications-146-loading` (from `main` @ `e6b91095`)
+
+**Starting state (verified):** mogzy.lol serves the v2 bundle (`index-a0BKr9Ok.js`
+contains `get_my_notifications`, `admin_notification_counts`, "History, saved").
+All four inbox RPCs exist in production: an anonymous call gets
+`42501 permission denied for function …`, not `PGRST202`. The migration was
+not touched.
+
+### Owner auth: notification RPCs vs the working admin surfaces
+
+| Surface | Server check | Lapsed attestation (owner at aal1) | Client recovery before #146 |
+|---|---|---|---|
+| `owner_auth_state()` (AdminRoute, bell gate) | `is_owner()` | `authorized=false` | keep-alive re-attests every 10 min; refresh on focus |
+| Railway admin (AdminAuthProvider) | Railway owner check | 403 | `ensureOwnerAuthorized()` + retry once |
+| Owner RPCs via `assert_owner` (runOwnerAction) | `assert_owner('trusted')` | `step_up_required`, hint `aal2_or_trusted_device` | re-attest + retry once |
+| `admin_unread_notification_count` (useAdminAttention) | `has_role(auth.uid(),'admin')` | `42501 admin role required` | none |
+| **v2 inbox RPCs** (`admin_get_notifications`, `admin_notification_counts`, …) | `has_role(auth.uid(),'admin')` | **`42501 admin role required`** | **none: sticky "Couldn't load"** |
+
+`has_role(_, 'admin')` is the OWN1-B shim: configured owner AND `_user_id = auth.uid()`
+AND `is_owner()` (aal2 OR a live trusted-device attestation for this JWT
+`session_id`). An empty `user_roles` table is expected and irrelevant.
+`src/test/security/notificationsV2OwnerAuth.test.ts` installs the exact
+OWN1 function bodies (read from `supabase/own1-staged/migrations/01`/`02`) over
+the v2 migration on PGlite. It proves that the inbox RPCs authorize **exactly**
+when `owner_auth_state().authorized` and the legacy count do, for owner aal2,
+owner aal1 + live attestation, owner aal1 lapsed, an unattested session, and
+a player at aal2. It also proves that re-attesting the same session restores
+access without MFA.
+
+**Verdict:** the server-side authorization is consistent and correct. It needs
+no change, and none was made. The defect is client-side session handling. A
+trusted-device attestation lasts 15 minutes. After sleep or a throttled
+background tab, the shared owner session still says `authorized` until its next
+keep-alive. On wake, realtime reconnects and refetches immediately, the server
+refuses with `42501`, and the inbox hooks went to a permanent error.
+
+### Root causes fixed
+
+1. **No re-attestation on an owner refusal** (admin). `withOwnerRetry`
+   (`useAdminInbox.ts`) catches `42501 admin role required` or `step_up_required`
+   only, calls `ensureOwnerAuthorized()` (re-presents the device token and
+   re-reads `owner_auth_state`), and retries **once**. This is the same contract
+   as AdminAuthProvider and runOwnerAction. If the device cannot restore access,
+   the refusal stands and the owner session moves to `needs_mfa`. Nothing is
+   authorized client-side.
+2. **One feed's failure blanked the whole bell.** `panelStatus` was `error`
+   whenever the admin feed failed, which hid the owner's own player notifications.
+   The admin feed now reports inline (`hud-admin-error`). The player list renders
+   independently.
+3. **Live sync died after a tab or view switch** (admin page tabs, `/notifications`
+   views). `removeChannel()` is async, and supabase-js 2.97
+   `channel(sameTopic)` returns the still-closing channel, whose `subscribe()` is
+   a no-op. The inbox then got no realtime changes until a reload ("missing"
+   notifications). Each subscription now uses a fresh topic (`nextChannelTopic`).
+4. **A request that never settles stayed on "Loading…" forever.** Every inbox RPC
+   now times out at 15 s (`NOTIFICATION_RPC_TIMEOUT_MS`, aborts where supported)
+   and fails as code `timeout`.
+5. **Errors were swallowed** (`catch { setStatus('error') }`). Both hooks now
+   expose `error: { operation, code, message }`, built by
+   `describeNotificationError`, which strips UUIDs, emails, JWTs and digit-bearing
+   long tokens and caps the message at 160 characters. It is logged once as
+   `[notifications:admin|player] load failed` and shown under "Couldn't load…"
+   (`notification-error-detail`). An owner refusal reads "Admin session needs
+   re-verification. (admin_get_notifications · 42501)".
+
+### Player inbox
+
+The player inbox is not independently failing at the database layer. A normal
+player and the owner (at aal1 and aal2, attested or not) read `get_my_notifications`
+and `get_my_notification_summary`. Recipient scoping holds: the player's targeted
+row is never in the owner's bell. The player-side defects were the shared ones
+(3, 4, 5) and the bell coupling (2), which hit the owner's player list. A
+real non-owner production session was **not** exercised: no test account exists
+and creating one is out of bounds. See verification below.
+
+### Tests
+
+- `src/test/security/notificationsV2OwnerAuth.test.ts`: 9 tests (PGlite, real OWN1 bodies).
+- `src/lib/notifications/inboxLoading.test.ts`: 7 tests (re-attest-once, no
+  loop, no re-attest for other errors, fresh topic per tab and view, sanitized
+  player error and retry).
+- `src/lib/notifications/api.test.ts`: operation tagging, timeout,
+  redaction, `isOwnerRefusal` scope.
+- `MogzyIdentityMenu.notifications.test.tsx`: a refused owner feed keeps the
+  player list visible, shows the sanitized detail, and Retry recovers.
+- Local (Windows): 22 notification files, 331 tests. 2 failures are the
+  pre-existing CRLF byte-hash pins in `adminNotificationReadsMigration.test.ts`
+  (working copy is CRLF, CI is LF; no migration was touched).
+- The workflow now runs the new DB suite and triggers on
+  `src/components/notifications/**`, `ownerSession*` and the OWN1 staged SQL it reads.
+
+### Release and production verification
+
+- Owner deploys: merge the PR, then publish in Lovable (Lovable must show the
+  merge commit; see the sync audit above).
+- After publishing, a plain HTTP check: the new entry hash contains
+  `notification-error-detail` and `did not respond`.
+- Owner check (cannot be automated without an owner session): on a trusted
+  device, leave the tab hidden or the laptop asleep for over 15 minutes, then
+  return. The bell and `/admin/operations?section=notifications` load without
+  "Couldn't load". Switch admin tabs, trigger a report from another account,
+  and confirm it arrives live. If anything fails, the error line now names the
+  RPC and code; send a screenshot of that line.
