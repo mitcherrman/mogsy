@@ -35,7 +35,7 @@ import { BonusModeRules } from "@/components/public-modes/BonusModeRules";
 import { isPublicModeId, PUBLIC_MODE_TITLES } from "@/lib/public-modes/contracts";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { rendererForDailyV2Segment } from "@/lib/daily-v2/adapters/modeReuse";
-import { actOpeningTitle, projectSetTimeline, setRoundsFor } from "@/lib/daily-v2/threeActsPlan";
+import { actOpeningTitle, projectSetTimeline } from "@/lib/daily-v2/threeActsPlan";
 import { projectCooldownContinuity } from "@/lib/journey/cooldownContinuity";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
@@ -832,22 +832,23 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // Daily three acts — a Summoner Spell set's cooldown, carried across its
   // three rounds. Read from SETTLED rounds only (the ledger a resume backfills,
   // plus the latest settlement), and from this round's own settlement only
-  // once the reveal gate above has opened. Null outside a three-act set.
+  // once the reveal gate above has opened. Driven ONLY by the server's frozen
+  // linked-set marker on the round's segment; null for every other round.
+  const linkedSet = surfaceRound?.segment?.linkedSet ?? null;
   const stateContinuity = useMemo(() => {
-    if (!threeActsPlan) return null;
+    if (!linkedSet) return null;
     const explanations = new Map<number, Record<string, unknown> | null>();
     for (const s of m.damageLog) explanations.set(s.roundNumber, s.questionExplanation);
     if (m.lastResolved) {
       explanations.set(m.lastResolved.roundNumber, m.lastResolved.questionExplanation);
     }
     return projectCooldownContinuity({
-      setRounds: setRoundsFor(threeActsPlan, surfaceRoundNumber),
+      linkedSet,
       roundNumber: surfaceRoundNumber,
-      category: question?.category ?? null,
       explanations,
       currentRevealed: reveal?.revealed === true,
     });
-  }, [threeActsPlan, m.damageLog, m.lastResolved, surfaceRoundNumber, question, reveal]);
+  }, [linkedSet, m.damageLog, m.lastResolved, surfaceRoundNumber, reveal]);
 
   // ── RFX1 Phase 2A — ONE PRESENTED ROUND ────────────────────────────────
   // During a live reveal the controller already holds round N+1 (the server

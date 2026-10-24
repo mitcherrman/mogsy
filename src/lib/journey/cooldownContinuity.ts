@@ -22,8 +22,8 @@
 
 export const COOLDOWN_WORKING_CONTRACT = "summoner_cooldown_working.v1";
 
-/** The category the backend gives a Summoner Spell Mastery step (SSM slices). */
-export const SUMMONER_SLICE_CATEGORY = "summoners";
+/** The backend's `linked_set.kind` for a Summoner Spell Mastery set. */
+export const SUMMONER_SET_KIND = "summoner_spell_mastery";
 
 export interface HasteSourceStep {
   name: string;
@@ -109,37 +109,39 @@ function changeBetween(before: HasteSourceStep[], after: HasteSourceStep[]): Coo
  * The bar's model for the round on screen, or null when it is not a step of a
  * Summoner Spell Mastery set.
  *
- * `setRounds` are the round numbers of the round's set (in order). A round is
- * a set step when every earlier stage settled with a working for ONE spell, or
- * — for the opening stage, whose only settled fact would be its own answer —
- * when the backend gave it the slice category.
+ * Driven by the server's EXPLICIT marker (`SegmentMeta.linkedSet`, frozen with
+ * the round): only a `summoner_spell_mastery` child draws the bar, and its
+ * position says which rounds are its siblings (a set's children are
+ * consecutive segments). A sibling whose working is not in the settled
+ * ledger reads as withheld rather than guessed.
  */
 export function projectCooldownContinuity(input: {
-  setRounds: readonly number[] | null;
+  linkedSet: { kind: string; position: number; of: number } | null | undefined;
   roundNumber: number | null;
-  category: string | null | undefined;
   /** Each SETTLED round's frozen explanation, by round number. */
   explanations: ReadonlyMap<number, Record<string, unknown> | null>;
   /** The shell's reveal gate for the round on screen. */
   currentRevealed: boolean;
 }): CooldownContinuity | null {
-  const { setRounds, roundNumber } = input;
-  if (!setRounds || roundNumber === null) return null;
-  const index = setRounds.indexOf(roundNumber);
-  if (index < 0) return null;
-  const prior: SummonerCooldownWorking[] = [];
+  const { linkedSet, roundNumber } = input;
+  if (!linkedSet || linkedSet.kind !== SUMMONER_SET_KIND || roundNumber === null) return null;
+  const first = roundNumber - (linkedSet.position - 1);
+  const setRounds = Array.from({ length: linkedSet.of }, (_v, k) => first + k);
+  const index = linkedSet.position - 1;
+  const prior: (SummonerCooldownWorking | null)[] = [];
   for (const rn of setRounds.slice(0, index)) {
     const w = readSummonerCooldownWorking(input.explanations.get(rn) ?? null);
-    if (!w || (prior.length && w.spell !== prior[0].spell)) return null;
+    const spell = prior.find((p) => p)?.spell;
+    if (w && spell && w.spell !== spell) return null;
     prior.push(w);
   }
-  if (index === 0 && input.category !== SUMMONER_SLICE_CATEGORY) return null;
+  const spell = prior.find((p) => p)?.spell;
   let current: SummonerCooldownWorking | null = null;
   if (input.currentRevealed) {
     const w = readSummonerCooldownWorking(input.explanations.get(roundNumber) ?? null);
-    if (w && (!prior.length || w.spell === prior[0].spell)) current = w;
+    if (w && (!spell || w.spell === spell)) current = w;
   }
-  const known = [...prior, ...(current ? [current] : [])];
+  const known = [...prior, current];
   const stages: CooldownStage[] = setRounds.map((_rn, k) => {
     const working = known[k] ?? null;
     const before = k > 0 ? known[k - 1] : null;
@@ -148,5 +150,5 @@ export function projectCooldownContinuity(input: {
       change: working && before ? changeBetween(before.sources, working.sources) : null,
     };
   });
-  return { spell: known[0]?.spell ?? null, current: index + 1, stages };
+  return { spell: known.find((w) => w)?.spell ?? null, current: index + 1, stages };
 }

@@ -50,7 +50,7 @@ import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { JourneyCooldownTrack } from "@/components/journey/JourneyCooldownTrack";
 import {
-  projectCooldownContinuity, SUMMONER_SLICE_CATEGORY, type CooldownContinuity,
+  projectCooldownContinuity, SUMMONER_SET_KIND, type CooldownContinuity,
 } from "@/lib/journey/cooldownContinuity";
 import { masterySliceModule } from "@/lib/ranked-core/modules/masterySliceModule";
 import { readPublicRound } from "@/lib/ranked-public/contracts";
@@ -608,7 +608,7 @@ function cooldownTrackFixture(round: number, revealed: boolean, path: "A" | "C")
     : [w("300s", 1, 300, []), w("254.2s", 100 / 118, 300 * 100 / 118, [["Cosmic Insight", "rune", 18]]),
       w("234.4s", 0.78125, 234.375, [["Cosmic Insight", "rune", 18], ["Ionian Boots of Lucidity", "item", 10]])];
   return projectCooldownContinuity({
-    setRounds: [1, 2, 3], roundNumber: round, category: SUMMONER_SLICE_CATEGORY,
+    linkedSet: { kind: SUMMONER_SET_KIND, position: round, of: 3 }, roundNumber: round,
     explanations: new Map(chain.slice(0, round).map((e, i) => [i + 1, e])),
     currentRevealed: revealed,
   });

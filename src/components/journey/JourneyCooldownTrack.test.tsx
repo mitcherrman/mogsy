@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { projectCooldownContinuity, SUMMONER_SLICE_CATEGORY } from "@/lib/journey/cooldownContinuity";
+import { projectCooldownContinuity, SUMMONER_SET_KIND } from "@/lib/journey/cooldownContinuity";
 import { JourneyCooldownTrack } from "./JourneyCooldownTrack";
 
 const working = (answer: string, multiplier: number, effective: number,
@@ -19,7 +19,7 @@ const CRIMSON = working("250s", 0.8333333, 250, [["Crimson Lucidity", "item", 20
 
 function track(roundNumber: number, settled: Record<number, object>, revealed: boolean) {
   const c = projectCooldownContinuity({
-    setRounds: [1, 2, 3], roundNumber, category: SUMMONER_SLICE_CATEGORY,
+    linkedSet: { kind: SUMMONER_SET_KIND, position: roundNumber, of: 3 }, roundNumber,
     explanations: new Map(Object.entries(settled).map(([k, v]) => [Number(k), v as Record<string, unknown>])),
     currentRevealed: revealed,
   })!;
