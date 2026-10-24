@@ -17,7 +17,7 @@ test("prototype is labelled; the shipped editorial set is what plays", async ({ 
   await open(page);
   await expect(page.getByTestId("pulse-prototype-banner")).toBeVisible();
   await expect(page.getByTestId("pulse-live-count")).toHaveText("4");
-  await expect(page.getByTestId("pulse-row-pc-sponsor-placeholder").getByTestId("pulse-row-eligibility")).toHaveText("Not live");
+  await expect(page.getByTestId("pulse-row-pc-draft-announcement").getByTestId("pulse-row-eligibility")).toHaveText("Not live");
   await shot(page, "01-content-list");
 });
 
