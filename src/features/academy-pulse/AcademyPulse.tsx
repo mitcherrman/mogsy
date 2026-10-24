@@ -182,6 +182,8 @@ export default function AcademyPulse({
           data-variant={variant}
           data-kind={item?.kind ?? "none"}
           data-playing={rot.playing ? "true" : "false"}
+          // DEV-only diagnostics: why the clock is held (no cost in production)
+          data-holds={import.meta.env.DEV ? [...rot.holds].sort().join(" ") : undefined}
           data-reduced={reduced ? "true" : "false"}
           data-provenance={item?.provenance}
           style={{ ["--apulse-accent" as string]: accent }}
@@ -289,11 +291,11 @@ export default function AcademyPulse({
               className="apulse-icon-btn apulse-icon-btn-main"
               onClick={rot.toggle}
               disabled={count < 2}
-              aria-label={rot.playing ? "Pause Academy Pulse" : "Play Academy Pulse"}
+              aria-label={rot.userPaused ? "Play Academy Pulse" : "Pause Academy Pulse"}
               aria-pressed={rot.userPaused}
               data-testid="academy-pulse-toggle"
             >
-              {!rot.playing ? (
+              {rot.userPaused ? (
                 <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M8 5.5v13l11-6.5z" className="apulse-fill" /></svg>
               ) : (
                 <svg viewBox="0 0 24 24" aria-hidden focusable="false"><path d="M8.5 5.5v13M15.5 5.5v13" /></svg>

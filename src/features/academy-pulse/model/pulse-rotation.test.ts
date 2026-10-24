@@ -47,8 +47,15 @@ describe("rotation", () => {
     expect(s.holds.has("focus")).toBe(true);
   });
 
+  it("Pause follows the viewer's choice, not a transient hold (PULSE-1.2)", () => {
+    const hovering = run(initialRotation(4), { type: "hold", reason: "hover", on: true });
+    expect(isRotating(hovering)).toBe(false);
+    const paused = run(hovering, { type: "toggle-user" });
+    expect(paused.holds.has("user")).toBe(true); // the first press pauses, it does not resume
+  });
+
   it("explicit Play clears pointer, mouse-focus and stale interaction pauses", () => {
-    const stopped = run(initialRotation(4),
+    const stopped = run(initialRotation(4, true),
       { type: "hold", reason: "hover", on: true },
       { type: "hold", reason: "focus", on: true },
       { type: "hold", reason: "interaction", on: true });
