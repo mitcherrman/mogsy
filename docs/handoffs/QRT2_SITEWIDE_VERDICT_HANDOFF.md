@@ -194,7 +194,7 @@ Local-run note: AGENTS.md prefers GitHub Actions for browser matrices. These ran
 
 # PHASE 2A-MASTERY REPORT (2026-10-23): atomic-recall rows and the comparison duel
 
-Second stacked draft PR (base `qrt2/phase2a-adopt-modes`, branch `qrt2/mastery-tablet-tabs`). Frontend only, presentation only. Finishes the Ranked Mastery slice: its prose path was done in the adoption PR; this covers the other two render paths.
+Second stacked draft PR [mitcherrman/mogsy#141](https://github.com/mitcherrman/mogsy/pull/141) (base `qrt2/phase2a-adopt-modes`, branch `qrt2/mastery-tablet-tabs`). Frontend only, presentation only. Finishes the Ranked Mastery slice: its prose path was done in the adoption PR; this covers the other two render paths.
 
 ## What changes
 
